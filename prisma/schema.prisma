@@ -1,0 +1,423 @@
+// Tavolo — gestionale ospitalità
+// Schema multi-tenant: Organization (gruppo) -> Venue (locale) -> risorse operative.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Identità ────────────────────────────────────────────────────────────────
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  passwordHash    String?
+  image           String?
+  createdAt       DateTime         @default(now())
+  orgMemberships  OrgMembership[]
+  venueMemberships VenueMembership[]
+  sessions        Session[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Multi-tenant ────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String          @id @default(cuid())
+  name      String
+  slug      String          @unique
+  plan      Plan            @default(STARTER)
+  createdAt DateTime        @default(now())
+  venues    Venue[]
+  members   OrgMembership[]
+}
+
+enum Plan {
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+model OrgMembership {
+  id        String      @id @default(cuid())
+  userId    String
+  orgId    String
+  role      OrgRole     @default(OWNER)
+  createdAt DateTime    @default(now())
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@map("org_membership")
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  BILLING
+}
+
+model Venue {
+  id          String            @id @default(cuid())
+  orgId       String
+  name        String
+  slug        String
+  kind        VenueKind          @default(RESTAURANT)
+  timezone    String             @default("Europe/Rome")
+  currency    String             @default("EUR")
+  address     String?
+  city        String?
+  country     String?
+  phone       String?
+  email       String?
+  coverImage  String?
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+
+  org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  members     VenueMembership[]
+  rooms       Room[]
+  tables      Table[]
+  shifts      Shift[]
+  bookings    Booking[]
+  guests      Guest[]
+  experiences Experience[]
+  campaigns   Campaign[]
+  payments    Payment[]
+  blocks      TableBlock[]
+
+  @@unique([orgId, slug])
+}
+
+enum VenueKind {
+  RESTAURANT
+  BEACH_CLUB
+  BAR
+  HOTEL_RESTAURANT
+  PRIVATE_CLUB
+}
+
+model VenueMembership {
+  id        String      @id @default(cuid())
+  userId    String
+  venueId   String
+  role      StaffRole   @default(RECEPTION)
+  createdAt DateTime    @default(now())
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue     Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, venueId])
+  @@map("venue_membership")
+}
+
+enum StaffRole {
+  MANAGER
+  RECEPTION
+  WAITER
+  MARKETING
+  READ_ONLY
+}
+
+// ─── Sala e tavoli ───────────────────────────────────────────────────────────
+
+model Room {
+  id        String   @id @default(cuid())
+  venueId   String
+  name      String
+  width     Int       @default(1200)  // canvas px
+  height    Int       @default(800)
+  ordering  Int       @default(0)
+  venue     Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tables    Table[]
+}
+
+model Table {
+  id        String   @id @default(cuid())
+  venueId   String
+  roomId    String?
+  label     String                              // es. "T7", "Beach 12"
+  seats     Int       @default(2)
+  shape     TableShape @default(ROUND)
+  posX      Int       @default(0)
+  posY      Int       @default(0)
+  rotation  Int       @default(0)
+  combinable Boolean   @default(true)
+  active    Boolean   @default(true)
+
+  venue     Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  room      Room?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  bookings  Booking[]
+  blocks    TableBlock[]
+
+  @@unique([venueId, label])
+}
+
+enum TableShape {
+  ROUND
+  SQUARE
+  RECT
+  BOOTH
+  LOUNGE
+}
+
+model TableBlock {
+  id        String   @id @default(cuid())
+  venueId   String
+  tableId   String
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String?
+
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table     Table    @relation(fields: [tableId], references: [id], onDelete: Cascade)
+}
+
+model Shift {
+  id          String   @id @default(cuid())
+  venueId     String
+  name        String                       // "Pranzo", "Cena", "Aperitivo"
+  weekday     Int                          // 0 = domenica
+  startMinute Int                          // 0..1439
+  endMinute   Int
+  capacity    Int       @default(80)
+  slotMinutes Int       @default(15)
+  active      Boolean   @default(true)
+
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+}
+
+// ─── CRM ─────────────────────────────────────────────────────────────────────
+
+model Guest {
+  id           String      @id @default(cuid())
+  venueId      String
+  firstName    String
+  lastName     String?
+  email        String?
+  phone        String?
+  birthday     DateTime?
+  language     String       @default("it")
+  loyaltyTier  LoyaltyTier  @default(NEW)
+  totalVisits  Int          @default(0)
+  totalSpend   Decimal      @default(0) @db.Decimal(12, 2)
+  noShowCount  Int          @default(0)
+  lastVisitAt  DateTime?
+  preferences  Json?                       // diete, posti preferiti
+  allergies    String?
+  privateNotes String?                     // visibile solo a manager
+  tags         String[]                    @default([])
+  marketingOptIn Boolean    @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  venue        Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+  payments     Payment[]
+
+  @@index([venueId, email])
+  @@index([venueId, phone])
+  @@index([venueId, lastName])
+}
+
+enum LoyaltyTier {
+  NEW
+  REGULAR
+  VIP
+  AMBASSADOR
+}
+
+// ─── Prenotazioni ────────────────────────────────────────────────────────────
+
+model Booking {
+  id            String         @id @default(cuid())
+  reference     String         @unique @default(cuid())
+  venueId       String
+  guestId       String?
+  tableId       String?
+  partySize     Int
+  startsAt      DateTime
+  durationMin   Int            @default(105)
+  status        BookingStatus  @default(CONFIRMED)
+  source        BookingSource  @default(WIDGET)
+  occasion      Occasion?
+  notes         String?
+  internalNotes String?
+  depositCents  Int            @default(0)
+  depositStatus DepositStatus  @default(NONE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  arrivedAt     DateTime?
+  seatedAt      DateTime?
+  closedAt      DateTime?
+
+  venue         Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest         Guest?         @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  table         Table?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  payments      Payment[]
+
+  @@index([venueId, startsAt])
+  @@index([venueId, status])
+}
+
+enum BookingStatus {
+  CONFIRMED
+  PENDING
+  ARRIVED
+  SEATED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum BookingSource {
+  WIDGET
+  PHONE
+  WALK_IN
+  GOOGLE
+  SOCIAL
+  CONCIERGE
+  EVENT
+}
+
+enum Occasion {
+  BIRTHDAY
+  ANNIVERSARY
+  BUSINESS
+  DATE
+  CELEBRATION
+  OTHER
+}
+
+enum DepositStatus {
+  NONE
+  HELD
+  CAPTURED
+  REFUNDED
+  FAILED
+}
+
+// ─── Esperienze / Eventi ─────────────────────────────────────────────────────
+
+model Experience {
+  id          String   @id @default(cuid())
+  venueId     String
+  title       String
+  slug        String
+  description String?
+  startsAt    DateTime
+  endsAt      DateTime
+  capacity    Int       @default(40)
+  priceCents  Int       @default(0)
+  ticketUrl   String?
+  coverImage  String?
+  published   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  venue       Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tickets     Ticket[]
+
+  @@unique([venueId, slug])
+}
+
+model Ticket {
+  id           String   @id @default(cuid())
+  experienceId String
+  buyerName    String
+  buyerEmail   String
+  quantity     Int       @default(1)
+  totalCents   Int       @default(0)
+  status       TicketStatus @default(PAID)
+  createdAt    DateTime @default(now())
+
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+}
+
+enum TicketStatus {
+  PAID
+  REFUNDED
+  CANCELLED
+}
+
+// ─── Marketing ───────────────────────────────────────────────────────────────
+
+model Campaign {
+  id         String         @id @default(cuid())
+  venueId    String
+  name       String
+  channel    CampaignChannel @default(EMAIL)
+  segment    Json?                      // filtro CRM
+  subject    String?
+  body       String?
+  scheduledAt DateTime?
+  status     CampaignStatus  @default(DRAFT)
+  sentCount  Int             @default(0)
+  openedCount Int            @default(0)
+  bookedCount Int            @default(0)
+  createdAt  DateTime        @default(now())
+
+  venue      Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+}
+
+enum CampaignChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  ARCHIVED
+}
+
+// ─── Pagamenti ───────────────────────────────────────────────────────────────
+
+model Payment {
+  id              String        @id @default(cuid())
+  venueId         String
+  bookingId       String?
+  guestId         String?
+  amountCents     Int
+  currency        String         @default("EUR")
+  kind            PaymentKind    @default(DEPOSIT)
+  status          PaymentStatus  @default(PENDING)
+  stripePaymentId String?
+  createdAt       DateTime       @default(now())
+  refundedAt      DateTime?
+
+  venue           Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  booking         Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  guest           Guest?         @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, createdAt])
+}
+
+enum PaymentKind {
+  DEPOSIT
+  PREAUTH
+  TICKET
+  REFUND
+  PACKAGE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}

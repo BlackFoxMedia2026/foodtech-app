@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 36 33% 97%;
+    --foreground: 222 13% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 13% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 13% 12%;
+    --primary: 222 13% 12%;
+    --primary-foreground: 36 33% 97%;
+    --secondary: 36 30% 92%;
+    --secondary-foreground: 222 13% 12%;
+    --muted: 36 22% 93%;
+    --muted-foreground: 220 5% 40%;
+    --accent: 38 48% 58%;
+    --accent-foreground: 36 33% 97%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 36 18% 88%;
+    --input: 36 18% 88%;
+    --ring: 38 48% 58%;
+    --radius: 0.65rem;
+  }
+
+  .dark {
+    --background: 222 14% 8%;
+    --foreground: 36 33% 95%;
+    --card: 222 14% 11%;
+    --card-foreground: 36 33% 95%;
+    --popover: 222 14% 11%;
+    --popover-foreground: 36 33% 95%;
+    --primary: 36 33% 95%;
+    --primary-foreground: 222 14% 8%;
+    --secondary: 222 14% 16%;
+    --secondary-foreground: 36 33% 95%;
+    --muted: 222 14% 14%;
+    --muted-foreground: 220 8% 65%;
+    --accent: 38 48% 58%;
+    --accent-foreground: 222 14% 8%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 14% 18%;
+    --input: 222 14% 18%;
+    --ring: 38 48% 58%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  ::selection {
+    background: hsl(var(--accent) / 0.35);
+  }
+}
+
+@layer components {
+  .surface {
+    @apply rounded-xl border border-border bg-card shadow-[0_1px_0_0_rgb(0_0_0_/_0.02),0_18px_40px_-32px_rgb(0_0_0_/_0.18)];
+  }
+  .text-display {
+    @apply font-display tracking-tight;
+  }
+  .badge-dot::before {
+    content: "";
+    @apply mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current;
+  }
+}
