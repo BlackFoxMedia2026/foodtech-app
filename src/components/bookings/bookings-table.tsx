@@ -64,8 +64,12 @@ export function BookingsTable({ rows }: { rows: Row[] }) {
         <tbody className="divide-y divide-border">
           {rows.map((b) => {
             const name = b.guest ? `${b.guest.firstName} ${b.guest.lastName ?? ""}`.trim() : "Walk-in";
+            const isPending = b.status === "PENDING";
             return (
-              <tr key={b.id} className="transition-colors hover:bg-secondary/30">
+              <tr
+                key={b.id}
+                className={`transition-colors ${isPending ? "bg-red-50 hover:bg-red-100" : "hover:bg-secondary/30"}`}
+              >
                 <td className="px-4 py-3 font-medium">{formatTime(b.startsAt)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -84,16 +88,35 @@ export function BookingsTable({ rows }: { rows: Row[] }) {
                 <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-2">
-                    <Select value={b.status} onValueChange={(v) => changeStatus(b.id, v)}>
-                      <SelectTrigger className="h-8 w-[140px] text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map(([k, l]) => (
-                          <SelectItem key={k} value={k}>{l}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isPending ? (
+                      <>
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => changeStatus(b.id, "CONFIRMED")}
+                        >
+                          Approva
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => changeStatus(b.id, "CANCELLED")}
+                        >
+                          Rifiuta
+                        </Button>
+                      </>
+                    ) : (
+                      <Select value={b.status} onValueChange={(v) => changeStatus(b.id, v)}>
+                        <SelectTrigger className="h-8 w-[140px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map(([k, l]) => (
+                            <SelectItem key={k} value={k}>{l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <Button asChild variant="ghost" size="sm">
                       <Link href={`/bookings/${b.id}`}>Apri</Link>
                     </Button>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { startOfDay, endOfDay } from "@/lib/utils";
+import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
+import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } from "./emails";
 
 export const BookingInput = z.object({
   guestId: z.string().optional().nullable(),
@@ -45,10 +46,45 @@ export async function listBookingsForDay(venueId: string, day: Date) {
   return listBookings(venueId, { from: startOfDay(day), to: endOfDay(day) });
 }
 
+async function determineBookingStatus(
+  source: string,
+  startsAt: Date,
+  guestId: string | null,
+  venueId: string
+): Promise<"CONFIRMED" | "PENDING"> {
+  if (source === "PHONE" || source === "WALK_IN") {
+    return "CONFIRMED";
+  }
+
+  const now = new Date();
+  const leadTimeMs = startsAt.getTime() - now.getTime();
+  const leadTimeHours = leadTimeMs / (1000 * 60 * 60);
+
+  if (leadTimeHours < 2) {
+    return "CONFIRMED";
+  }
+
+  if (leadTimeHours < 168) {
+    if (guestId) {
+      const guest = await db.guest.findUnique({ where: { id: guestId } });
+      if (guest && (guest.loyaltyTier === "VIP" || guest.loyaltyTier === "AMBASSADOR" || guest.totalVisits > 3)) {
+        return "CONFIRMED";
+      }
+    }
+    return "CONFIRMED";
+  }
+
+  return "PENDING";
+}
+
 export async function createBooking(venueId: string, raw: unknown) {
   const data = BookingInput.parse(raw);
 
   let guestId = data.guestId ?? null;
+  let guestEmail: string | null = null;
+  let guestPhone: string | null = null;
+  let guestName = "";
+
   if (!guestId && data.guest?.firstName) {
     const created = await db.guest.create({
       data: {
@@ -60,9 +96,21 @@ export async function createBooking(venueId: string, raw: unknown) {
       },
     });
     guestId = created.id;
+    guestEmail = created.email;
+    guestPhone = created.phone;
+    guestName = `${created.firstName} ${created.lastName || ""}`.trim();
+  } else if (guestId) {
+    const guest = await db.guest.findUnique({ where: { id: guestId } });
+    if (guest) {
+      guestEmail = guest.email;
+      guestPhone = guest.phone;
+      guestName = `${guest.firstName} ${guest.lastName || ""}`.trim();
+    }
   }
 
-  return db.booking.create({
+  const status = await determineBookingStatus(data.source, data.startsAt, guestId, venueId);
+
+  const booking = await db.booking.create({
     data: {
       venueId,
       guestId,
@@ -70,15 +118,53 @@ export async function createBooking(venueId: string, raw: unknown) {
       partySize: data.partySize,
       startsAt: data.startsAt,
       durationMin: data.durationMin,
-      status: data.status,
+      status,
       source: data.source,
       occasion: data.occasion ?? null,
       notes: data.notes ?? null,
       internalNotes: data.internalNotes ?? null,
       depositCents: data.depositCents,
     },
-    include: { guest: true, table: true },
+    include: { guest: true, table: true, venue: true },
   });
+
+  const bookingTime = formatTime(booking.startsAt);
+
+  if (status === "CONFIRMED" && guestEmail) {
+    await sendBookingConfirmationEmail(
+      guestEmail,
+      guestName,
+      booking.venue.name,
+      booking.startsAt,
+      bookingTime,
+      booking.partySize,
+      booking.reference
+    );
+  } else if (status === "PENDING") {
+    const ownerMembership = await db.orgMembership.findFirst({
+      where: {
+        org: { venues: { some: { id: venueId } } },
+        role: "OWNER",
+      },
+      include: { user: true },
+    });
+
+    if (ownerMembership?.user.email) {
+      await sendPendingBookingNotificationEmail(
+        ownerMembership.user.email,
+        ownerMembership.user.name || "Manager",
+        guestName,
+        booking.venue.name,
+        booking.startsAt,
+        bookingTime,
+        booking.partySize,
+        booking.reference,
+        guestPhone || "Non disponibile"
+      );
+    }
+  }
+
+  return booking;
 }
 
 export async function updateBooking(venueId: string, id: string, raw: unknown) {
