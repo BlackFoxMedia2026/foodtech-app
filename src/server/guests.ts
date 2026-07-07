@@ -7,6 +7,7 @@ export const GuestInput = z.object({
   lastName: z.string().optional().nullable(),
   email: z.string().email().optional().or(z.literal("")).optional().nullable(),
   phone: z.string().optional().nullable(),
+  birthday: z.coerce.date().optional().nullable(),
   language: z.string().optional(),
   loyaltyTier: z.enum(["NEW", "REGULAR", "VIP", "AMBASSADOR"]).optional(),
   preferences: z.any().optional(),
@@ -42,6 +43,10 @@ export async function getGuest(venueId: string, id: string) {
         take: 30,
         include: { table: true },
       },
+      payments: {
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
     },
   });
 }
@@ -55,6 +60,7 @@ export async function createGuest(venueId: string, raw: unknown) {
       lastName: data.lastName ?? null,
       email: data.email || null,
       phone: data.phone ?? null,
+      birthday: data.birthday ?? null,
       allergies: data.allergies ?? null,
       privateNotes: data.privateNotes ?? null,
       marketingOptIn: data.marketingOptIn ?? false,

@@ -6,10 +6,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoyaltyPill } from "@/components/guests/loyalty-pill";
+import { EditGuestDialog } from "@/components/guests/edit-guest-dialog";
 import { StatusBadge } from "@/components/bookings/status-badge";
 import { getActiveVenue } from "@/lib/tenant";
 import { getGuest } from "@/server/guests";
 import { formatCurrency, formatDate, formatDateTime, initials } from "@/lib/utils";
+
+const PAYMENT_KIND_LABEL = {
+  DEPOSIT: "Caparra",
+  PREAUTH: "Preautorizzazione",
+  TICKET: "Ticket",
+  REFUND: "Rimborso",
+  PACKAGE: "Pacchetto",
+} as const;
+
+const PAYMENT_STATUS_TONE = {
+  PENDING: "warning",
+  SUCCEEDED: "success",
+  FAILED: "danger",
+  REFUNDED: "neutral",
+} as const;
+
+function preferencesNote(preferences: unknown): string | null {
+  if (preferences && typeof preferences === "object" && "note" in preferences) {
+    const note = (preferences as { note?: unknown }).note;
+    if (typeof note === "string" && note.trim()) return note;
+  }
+  return null;
+}
 
 export default async function GuestDetail({ params }: { params: { id: string } }) {
   const ctx = await getActiveVenue();
@@ -41,6 +65,21 @@ export default async function GuestDetail({ params }: { params: { id: string } }
             </div>
           </div>
         </div>
+        <EditGuestDialog
+          guest={{
+            id: g.id,
+            firstName: g.firstName,
+            lastName: g.lastName,
+            email: g.email,
+            phone: g.phone,
+            birthday: g.birthday,
+            loyaltyTier: g.loyaltyTier,
+            allergies: g.allergies,
+            privateNotes: g.privateNotes,
+            marketingOptIn: g.marketingOptIn,
+            preferences: g.preferences,
+          }}
+        />
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.6fr]">
@@ -64,8 +103,16 @@ export default async function GuestDetail({ params }: { params: { id: string } }
               <Stat label="Spesa totale" value={formatCurrency(Math.round(Number(g.totalSpend) * 100))} />
               <Stat label="No-show" value={String(g.noShowCount)} />
               <Stat label="Ultima visita" value={g.lastVisitAt ? formatDate(g.lastVisitAt) : "—"} />
+              <Stat label="Punti fedeltà" value={String(g.loyaltyPoints)} />
             </CardContent>
           </Card>
+
+          {preferencesNote(g.preferences) && (
+            <Card>
+              <CardHeader><CardTitle>Preferenze</CardTitle></CardHeader>
+              <CardContent className="text-sm text-muted-foreground">{preferencesNote(g.preferences)}</CardContent>
+            </Card>
+          )}
 
           {g.privateNotes && (
             <Card>
@@ -79,30 +126,58 @@ export default async function GuestDetail({ params }: { params: { id: string } }
           )}
         </div>
 
-        <Card>
-          <CardHeader><CardTitle>Storico visite</CardTitle></CardHeader>
-          <CardContent>
-            {g.bookings.length === 0 ? (
-              <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-                Nessuna prenotazione storica.
-              </p>
-            ) : (
-              <ul className="divide-y">
-                {g.bookings.map((b) => (
-                  <li key={b.id} className="flex items-center justify-between gap-4 py-3 text-sm">
-                    <div>
-                      <p className="font-medium">{formatDateTime(b.startsAt)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {b.partySize} pers. · {b.table?.label ?? "—"}
-                      </p>
-                    </div>
-                    <StatusBadge status={b.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Storico visite</CardTitle></CardHeader>
+            <CardContent>
+              {g.bookings.length === 0 ? (
+                <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+                  Nessuna prenotazione storica.
+                </p>
+              ) : (
+                <ul className="divide-y">
+                  {g.bookings.map((b) => (
+                    <li key={b.id} className="flex items-center justify-between gap-4 py-3 text-sm">
+                      <div>
+                        <p className="font-medium">{formatDateTime(b.startsAt)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {b.partySize} pers. · {b.table?.label ?? "—"}
+                        </p>
+                      </div>
+                      <StatusBadge status={b.status} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Movimenti</CardTitle></CardHeader>
+            <CardContent>
+              {g.payments.length === 0 ? (
+                <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+                  Nessun pagamento registrato.
+                </p>
+              ) : (
+                <ul className="divide-y">
+                  {g.payments.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between gap-4 py-3 text-sm">
+                      <div>
+                        <p className="font-medium">{PAYMENT_KIND_LABEL[p.kind]}</p>
+                        <p className="text-xs text-muted-foreground">{formatDateTime(p.createdAt)}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium">{formatCurrency(p.amountCents, p.currency)}</span>
+                        <Badge tone={PAYMENT_STATUS_TONE[p.status]}>{p.status}</Badge>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
