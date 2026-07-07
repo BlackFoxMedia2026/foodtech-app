@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "./auth";
@@ -13,7 +14,7 @@ export async function requireUser() {
   return { userId, session: session! };
 }
 
-export async function getActiveVenue() {
+export const getActiveVenue = cache(async function getActiveVenue() {
   const { userId, session } = await requireUser();
 
   const memberships = await db.venueMembership.findMany({
@@ -38,7 +39,7 @@ export async function getActiveVenue() {
     org: active.venue.org,
     allMemberships: memberships,
   };
-}
+});
 
 export type Ability = "manage_org" | "manage_venue" | "manage_bookings" | "view_revenue" | "edit_marketing";
 
