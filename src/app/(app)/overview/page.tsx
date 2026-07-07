@@ -65,7 +65,7 @@ export default async function OverviewPage() {
         <Card>
           <CardHeader>
             <CardTitle>Alert operativi</CardTitle>
-            <CardDescription>Cose da tenere d'occhio per il servizio</CardDescription>
+            <CardDescription>Cose da tenere d&apos;occhio per il servizio</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {data.alerts.length === 0 ? (
