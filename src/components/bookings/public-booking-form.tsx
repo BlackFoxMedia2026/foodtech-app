@@ -6,20 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 interface PublicBookingFormProps {
-  venues: Array<{ id: string; name: string; slug: string }>;
-  selectedVenueId: string;
-  selectedVenueName: string;
+  venueId: string;
+  venueName: string;
+  embed?: boolean;
 }
 
-export function PublicBookingForm({ venues, selectedVenueId, selectedVenueName }: PublicBookingFormProps) {
+export function PublicBookingForm({ venueId, venueName, embed }: PublicBookingFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [venueId, setVenueId] = useState(selectedVenueId);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -74,7 +72,7 @@ export function PublicBookingForm({ venues, selectedVenueId, selectedVenueName }
       }
 
       const booking = await res.json();
-      router.push(`/book/confirmation?bookingId=${booking.id}&status=${booking.status}`);
+      router.push(`/book/confirmation?bookingId=${booking.id}&status=${booking.status}${embed ? "&embed=1" : ""}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore sconosciuto");
     } finally {
@@ -93,21 +91,9 @@ export function PublicBookingForm({ venues, selectedVenueId, selectedVenueName }
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="venue">Locale</Label>
-        <Select value={venueId} onValueChange={setVenueId}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {venues.map((v) => (
-              <SelectItem key={v.id} value={v.id}>
-                {v.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Prenotazione presso <strong>{venueName}</strong>
+      </p>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">

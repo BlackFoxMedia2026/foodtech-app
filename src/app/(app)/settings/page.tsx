@@ -1,8 +1,10 @@
+import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CopyButton } from "@/components/ui/copy-button";
 import { initials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +30,12 @@ export default async function SettingsPage() {
       orderBy: { startMinute: "asc" },
     }),
   ]);
+
+  const hdrs = headers();
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
+  const proto = hdrs.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const embedSrc = `${proto}://${host}/book?venue=${ctx.venueId}&embed=1`;
+  const embedSnippet = `<iframe src="${embedSrc}" width="480" height="820" style="border:0;max-width:100%" title="Prenota un tavolo"></iframe>`;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -76,6 +84,19 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Widget di prenotazione</CardTitle>
+          <CardDescription>
+            Incolla questo codice sul sito del locale per far prenotare i clienti in autonomia
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <pre className="overflow-x-auto rounded-md border bg-secondary p-3 text-xs">{embedSnippet}</pre>
+          <CopyButton value={embedSnippet} size="sm" variant="outline" />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
