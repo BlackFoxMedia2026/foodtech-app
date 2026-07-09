@@ -4,9 +4,11 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 const PRESETS = [
-  { key: "week", label: "Settimana" },
-  { key: "month", label: "Mese" },
-  { key: "year", label: "Anno" },
+  { key: "last7", label: "Ultimi 7 giorni" },
+  { key: "last30", label: "Ultimi 30 giorni" },
+  { key: "last90", label: "Ultimi 90 giorni" },
+  { key: "currentMonth", label: "Mese corrente" },
+  { key: "currentYear", label: "Anno corrente" },
   { key: "custom", label: "Personalizzato" },
 ] as const;
 
