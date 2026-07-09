@@ -1,15 +1,41 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/overview/stat-card";
-import { SlotChart, SourcesChart } from "@/components/insights/charts";
+import { SlotChart, SourcesChart, WeekdayHeatmap } from "@/components/insights/charts";
+import { PeriodSelector } from "@/components/insights/period-selector";
+import { ComparisonStat } from "@/components/insights/comparison-stat";
 import { getActiveVenue } from "@/lib/tenant";
-import { getAnalytics } from "@/server/analytics";
-import { formatCurrency } from "@/lib/utils";
+import { getAnalytics, getPeriodComparison } from "@/server/analytics";
+import { formatCurrency, startOfDay, endOfDay } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function InsightsPage() {
+const PRESET_DAYS: Record<string, number> = { week: 7, month: 30, year: 365 };
+
+function computeRange(searchParams: { range?: string; from?: string; to?: string }) {
+  const range = searchParams.range && searchParams.range in PRESET_DAYS ? searchParams.range : "custom";
+  const now = new Date();
+
+  if (range === "custom" && searchParams.from && searchParams.to) {
+    return { range: "custom", from: startOfDay(new Date(searchParams.from)), to: endOfDay(new Date(searchParams.to)) };
+  }
+
+  const days = PRESET_DAYS[searchParams.range ?? "week"] ?? PRESET_DAYS.week;
+  const from = startOfDay(now);
+  from.setDate(from.getDate() - days);
+  return { range: searchParams.range && PRESET_DAYS[searchParams.range] ? searchParams.range : "week", from, to: endOfDay(now) };
+}
+
+export default async function InsightsPage({
+  searchParams,
+}: {
+  searchParams: { range?: string; from?: string; to?: string };
+}) {
   const ctx = await getActiveVenue();
-  const a = await getAnalytics(ctx.venueId);
+  const { range, from, to } = computeRange(searchParams);
+  const [a, comparison] = await Promise.all([
+    getAnalytics(ctx.venueId),
+    getPeriodComparison(ctx.venueId, from, to),
+  ]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -42,6 +68,35 @@ export default async function InsightsPage() {
           <CardContent><SourcesChart data={a.sources} /></CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Confronto periodi</CardTitle>
+          <CardDescription>Periodo corrente rispetto a quello immediatamente precedente</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <PeriodSelector
+            range={range}
+            from={from.toISOString().slice(0, 10)}
+            to={to.toISOString().slice(0, 10)}
+          />
+          <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
+            <ComparisonStat label="Prenotazioni" current={comparison.current.bookings} previous={comparison.previous.bookings} />
+            <ComparisonStat label="Coperti" current={comparison.current.covers} previous={comparison.previous.covers} />
+            <ComparisonStat label="Tasso completamento" current={comparison.current.occupancyRate} previous={comparison.previous.occupancyRate} format={(v) => `${v}%`} />
+            <ComparisonStat label="No-show" current={comparison.current.noShowRate} previous={comparison.previous.noShowRate} format={(v) => `${v}%`} higherIsBetter={false} />
+            <ComparisonStat label="Cancellazioni" current={comparison.current.cancelRate} previous={comparison.previous.cancelRate} format={(v) => `${v}%`} higherIsBetter={false} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Domanda per giorno e orario</CardTitle>
+          <CardDescription>Coperti per giorno della settimana e fascia oraria, ultimi 90 giorni</CardDescription>
+        </CardHeader>
+        <CardContent><WeekdayHeatmap data={a.heatmap} /></CardContent>
+      </Card>
 
       <section className="grid gap-4 md:grid-cols-2">
         <Card>
