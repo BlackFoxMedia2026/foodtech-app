@@ -7,11 +7,13 @@ export const dynamic = "force-dynamic";
 
 export default async function FloorPage() {
   const ctx = await getActiveVenue();
-  const room = await db.room.findFirst({ where: { venueId: ctx.venueId } });
-  const tables = await db.table.findMany({
-    where: { venueId: ctx.venueId },
-    orderBy: { label: "asc" },
-  });
+  const [room, tables] = await Promise.all([
+    db.room.findFirst({ where: { venueId: ctx.venueId } }),
+    db.table.findMany({
+      where: { venueId: ctx.venueId },
+      orderBy: { label: "asc" },
+    }),
+  ]);
 
   const totalSeats = tables.reduce((s, t) => s + t.seats, 0);
 

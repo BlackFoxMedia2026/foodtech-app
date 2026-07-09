@@ -5,39 +5,37 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
   const dayStart = startOfDay(day);
   const dayEnd = endOfDay(day);
 
-  const todayBookings = await db.booking.findMany({
-    where: {
-      venueId,
-      startsAt: { gte: dayStart, lte: dayEnd },
-      status: { not: "CANCELLED" },
-    },
-    include: { guest: true, table: true },
-    orderBy: { startsAt: "asc" },
-  });
-
-  const totalCovers = todayBookings.reduce((s, b) => s + b.partySize, 0);
-
-  const noShowProb = await db.guest.aggregate({
-    where: { venueId, totalVisits: { gt: 0 } },
-    _avg: { noShowCount: true },
-  });
-  const expectedNoShow = Math.round((noShowProb._avg.noShowCount ?? 0) * todayBookings.length * 0.1);
-
-  const avgSpend = await db.guest.aggregate({
-    where: { venueId, totalVisits: { gt: 0 } },
-    _avg: { totalSpend: true },
-  });
-  const estimatedRevenueCents =
-    Math.round(((Number(avgSpend._avg.totalSpend ?? 45) * totalCovers) || 45 * totalCovers) * 100);
-
-  // Trend ultimi 7 giorni
   const weekAgo = new Date(dayStart);
   weekAgo.setDate(dayStart.getDate() - 6);
 
-  const weekBookings = await db.booking.findMany({
-    where: { venueId, startsAt: { gte: weekAgo, lte: dayEnd } },
-    select: { startsAt: true, partySize: true, status: true },
-  });
+  const [todayBookings, noShowProb, avgSpend, weekBookings] = await Promise.all([
+    db.booking.findMany({
+      where: {
+        venueId,
+        startsAt: { gte: dayStart, lte: dayEnd },
+        status: { not: "CANCELLED" },
+      },
+      include: { guest: true, table: true },
+      orderBy: { startsAt: "asc" },
+    }),
+    db.guest.aggregate({
+      where: { venueId, totalVisits: { gt: 0 } },
+      _avg: { noShowCount: true },
+    }),
+    db.guest.aggregate({
+      where: { venueId, totalVisits: { gt: 0 } },
+      _avg: { totalSpend: true },
+    }),
+    db.booking.findMany({
+      where: { venueId, startsAt: { gte: weekAgo, lte: dayEnd } },
+      select: { startsAt: true, partySize: true, status: true },
+    }),
+  ]);
+
+  const totalCovers = todayBookings.reduce((s, b) => s + b.partySize, 0);
+  const expectedNoShow = Math.round((noShowProb._avg.noShowCount ?? 0) * todayBookings.length * 0.1);
+  const estimatedRevenueCents =
+    Math.round(((Number(avgSpend._avg.totalSpend ?? 45) * totalCovers) || 45 * totalCovers) * 100);
 
   const trend: { day: string; covers: number; bookings: number }[] = [];
   for (let i = 0; i < 7; i++) {

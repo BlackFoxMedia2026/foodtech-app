@@ -31,7 +31,7 @@ export default function Landing() {
           </h1>
           <p className="max-w-lg text-lg text-muted-foreground">
             Tavolo unisce prenotazioni, mappa sala, CRM, esperienze e marketing
-            in un'unica piattaforma per ristoranti, beach club e gruppi
+            in un&apos;unica piattaforma per ristoranti, beach club e gruppi
             hospitality di fascia medio-alta.
           </p>
           <div className="flex flex-wrap gap-3">

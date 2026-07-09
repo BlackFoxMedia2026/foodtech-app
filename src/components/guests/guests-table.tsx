@@ -6,10 +6,13 @@ import { Search } from "lucide-react";
 import type { Guest } from "@prisma/client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoyaltyPill } from "./loyalty-pill";
 import { formatCurrency, formatDate, initials } from "@/lib/utils";
 
-export function GuestsTable({ rows }: { rows: Guest[] }) {
+const ALL_TAGS = "__all__";
+
+export function GuestsTable({ rows, availableTags }: { rows: Guest[]; availableTags: string[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -21,16 +24,38 @@ export function GuestsTable({ rows }: { rows: Guest[] }) {
     router.push(`${pathname}?${sp.toString()}`);
   }
 
+  function onTagFilter(tag: string) {
+    const sp = new URLSearchParams(search);
+    if (tag && tag !== ALL_TAGS) sp.set("tag", tag);
+    else sp.delete("tag");
+    router.push(`${pathname}?${sp.toString()}`);
+  }
+
   return (
     <div className="space-y-4">
-      <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          defaultValue={search.get("q") ?? ""}
-          placeholder="Cerca per nome, email o telefono…"
-          className="pl-8"
-          onChange={(e) => onSearch(e.target.value)}
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-md flex-1">
+          <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            defaultValue={search.get("q") ?? ""}
+            placeholder="Cerca per nome, email o telefono…"
+            className="pl-8"
+            onChange={(e) => onSearch(e.target.value)}
+          />
+        </div>
+        {availableTags.length > 0 && (
+          <Select defaultValue={search.get("tag") ?? ALL_TAGS} onValueChange={onTagFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filtra per tag" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_TAGS}>Tutti i tag</SelectItem>
+              {availableTags.map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-xl border bg-card">

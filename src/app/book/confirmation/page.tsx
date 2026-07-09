@@ -5,18 +5,24 @@ import { CheckCircle2, Clock } from "lucide-react";
 import Link from "next/link";
 import { formatDate, formatTime } from "@/lib/utils";
 
-export default async function ConfirmationPage(props: { searchParams?: { bookingId?: string } }) {
+export default async function ConfirmationPage(props: { searchParams?: { bookingId?: string; embed?: string } }) {
   const bookingId = props.searchParams?.bookingId;
+  const isEmbed = props.searchParams?.embed === "1";
+  const wrapperClass = isEmbed
+    ? "p-4"
+    : "min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4";
 
   if (!bookingId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 flex items-center justify-center">
+      <div className={`${wrapperClass} flex items-center justify-center`}>
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <p className="text-red-600 mb-4">Prenotazione non trovata</p>
-            <Button asChild>
-              <Link href="/">Torna alla homepage</Link>
-            </Button>
+            {!isEmbed && (
+              <Button asChild>
+                <Link href="/">Torna alla homepage</Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -30,13 +36,15 @@ export default async function ConfirmationPage(props: { searchParams?: { booking
 
   if (!booking) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 flex items-center justify-center">
+      <div className={`${wrapperClass} flex items-center justify-center`}>
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <p className="text-red-600 mb-4">Prenotazione non trovata</p>
-            <Button asChild>
-              <Link href="/">Torna alla homepage</Link>
-            </Button>
+            {!isEmbed && (
+              <Button asChild>
+                <Link href="/">Torna alla homepage</Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -46,7 +54,7 @@ export default async function ConfirmationPage(props: { searchParams?: { booking
   const isConfirmed = booking.status === "CONFIRMED";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className={wrapperClass}>
       <div className="mx-auto max-w-2xl">
         <Card className="shadow-lg border-slate-200">
           <CardContent className="pt-12 pb-12">
@@ -149,21 +157,25 @@ export default async function ConfirmationPage(props: { searchParams?: { booking
                 </>
               )}
 
-              <Button asChild size="lg" className="mt-4">
-                <Link href="/">Torna alla homepage</Link>
-              </Button>
+              {!isEmbed && (
+                <Button asChild size="lg" className="mt-4">
+                  <Link href="/">Torna alla homepage</Link>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <div className="mt-8 text-center text-sm text-slate-500">
-          <p>Hai domande? Contattaci direttamente</p>
-          <p className="mt-2">
-            {booking.venue.phone && <span>📞 {booking.venue.phone}</span>}
-            {booking.venue.phone && booking.venue.email && <span> • </span>}
-            {booking.venue.email && <span>📧 {booking.venue.email}</span>}
-          </p>
-        </div>
+        {!isEmbed && (
+          <div className="mt-8 text-center text-sm text-slate-500">
+            <p>Hai domande? Contattaci direttamente</p>
+            <p className="mt-2">
+              {booking.venue.phone && <span>📞 {booking.venue.phone}</span>}
+              {booking.venue.phone && booking.venue.email && <span> • </span>}
+              {booking.venue.email && <span>📧 {booking.venue.email}</span>}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
