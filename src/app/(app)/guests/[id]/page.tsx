@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoyaltyPill } from "@/components/guests/loyalty-pill";
 import { EditGuestDialog } from "@/components/guests/edit-guest-dialog";
+import { TagEditor } from "@/components/guests/tag-editor";
 import { StatusBadge } from "@/components/bookings/status-badge";
 import { getActiveVenue } from "@/lib/tenant";
 import { getGuest } from "@/server/guests";
@@ -56,12 +57,14 @@ export default async function GuestDetail({ params }: { params: { id: string } }
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Ospite</p>
             <h1 className="text-display text-3xl">{name}</h1>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <LoyaltyPill tier={g.loyaltyTier} />
-              {g.tags.map((t) => <Badge key={t} tone="neutral">{t}</Badge>)}
               {g.allergies && (
                 <Badge tone="danger" className="badge-dot">{g.allergies}</Badge>
               )}
+            </div>
+            <div className="mt-3">
+              <TagEditor guestId={g.id} tags={g.tags} />
             </div>
           </div>
         </div>

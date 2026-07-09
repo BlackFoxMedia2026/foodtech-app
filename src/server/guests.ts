@@ -17,7 +17,7 @@ export const GuestInput = z.object({
   tags: z.array(z.string()).optional(),
 });
 
-export async function listGuests(venueId: string, q?: string) {
+export async function listGuests(venueId: string, q?: string, tag?: string) {
   const where: Prisma.GuestWhereInput = { venueId };
   if (q) {
     where.OR = [
@@ -27,11 +27,27 @@ export async function listGuests(venueId: string, q?: string) {
       { phone: { contains: q } },
     ];
   }
+  if (tag) {
+    where.tags = { has: tag };
+  }
   return db.guest.findMany({
     where,
     orderBy: [{ loyaltyTier: "desc" }, { lastVisitAt: "desc" }, { createdAt: "desc" }],
     take: 200,
   });
+}
+
+export async function listDistinctTags(venueId: string) {
+  const guests = await db.guest.findMany({
+    where: { venueId },
+    select: { tags: true },
+    take: 500,
+  });
+  const tags = new Set<string>();
+  for (const g of guests) {
+    for (const t of g.tags) tags.add(t);
+  }
+  return Array.from(tags).sort((a, b) => a.localeCompare(b));
 }
 
 export async function getGuest(venueId: string, id: string) {
