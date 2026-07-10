@@ -30,7 +30,6 @@ export default async function OverviewPage() {
           label="Coperti previsti"
           value={String(data.totalCovers)}
           hint={`${data.todayBookings.length} prenotazioni attive`}
-          emphasize
         />
         <StatCard
           label="No-show stimati"
@@ -77,10 +76,10 @@ export default async function OverviewPage() {
                 const Icon = a.kind === "danger" ? AlertTriangle : a.kind === "info" ? Sparkles : Info;
                 const tone =
                   a.kind === "danger"
-                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                    ? "border-rose-200 bg-rose-50/70 text-rose-700"
                     : a.kind === "info"
                       ? "border-gilt/30 bg-gilt/10 text-gilt-dark"
-                      : "border-amber-200 bg-amber-50 text-amber-700";
+                      : "border-amber-200 bg-amber-50/70 text-amber-700";
                 return (
                   <div key={i} className={`flex items-start gap-3 rounded-md border p-3 text-sm ${tone}`}>
                     <Icon className="mt-0.5 h-4 w-4 shrink-0" />

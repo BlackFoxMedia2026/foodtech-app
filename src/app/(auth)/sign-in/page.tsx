@@ -34,25 +34,34 @@ function SignInForm() {
   }
 
   return (
-    <main className="grid min-h-screen lg:grid-cols-2">
-      <section className="hidden flex-col justify-between bg-carbon-800 p-10 text-sand-50 lg:flex">
+    <main className="dark relative z-0 grid min-h-screen overflow-hidden lg:grid-cols-2">
+      <div className="mesh-bg pointer-events-none absolute -inset-32 -z-10">
+        <div className="mesh-blob mesh-blob-1" />
+        <div className="mesh-blob mesh-blob-2" />
+        <div className="mesh-blob mesh-blob-3" />
+        <div className="mesh-blob mesh-blob-4" />
+        <div className="mesh-blob mesh-blob-5" />
+        <div className="mesh-blob mesh-blob-6" />
+      </div>
+
+      <section className="relative z-10 hidden flex-col justify-between p-10 text-foreground lg:flex">
         <div className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-gilt text-carbon-900 font-display font-semibold">T</span>
+          <span className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-foreground font-display font-semibold">T</span>
           <span className="text-display text-lg">Tavolo</span>
         </div>
         <div className="max-w-md space-y-4">
           <p className="text-display text-3xl leading-tight">
-            Una sala perfetta è prima di tutto una <span className="text-gilt-light">questione di ritmo</span>.
+            Una sala perfetta è prima di tutto una <span className="text-accent">questione di ritmo</span>.
           </p>
-          <p className="text-sm text-sand-200/80">
+          <p className="text-sm text-muted-foreground">
             Tavolo coordina prenotazioni, sala, ospiti ed esperienze in un'unica
             interfaccia pensata per chi accoglie ogni giorno.
           </p>
         </div>
-        <p className="text-xs text-sand-200/60">© Tavolo · gestionale ospitalità</p>
+        <p className="text-xs text-muted-foreground">© Tavolo · gestionale ospitalità</p>
       </section>
 
-      <section className="flex items-center justify-center px-6 py-12">
+      <section className="relative z-10 flex items-center justify-center bg-background/70 px-6 py-12 text-foreground backdrop-blur-2xl">
         <form onSubmit={onSubmit} className="w-full max-w-sm space-y-6">
           <div className="space-y-2">
             <h1 className="text-display text-2xl">Accedi</h1>
