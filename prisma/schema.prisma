@@ -83,6 +83,7 @@ model Venue {
   wifiSetupAt           DateTime?
   calendarToken         String?              @unique
   googlePlaceId         String?
+  brevoFolderId         Int?
   brandAccent           String?              @db.VarChar(9)
   brandFootnote         String?              @db.VarChar(280)
   brandLogoUrl          String?
@@ -101,6 +102,7 @@ model Venue {
   FloorDecor            FloorDecor[]
   GiftCard              GiftCard[]
   guests                Guest[]
+  GuestProviderLink     GuestProviderLink[]
   MenuCategory          MenuCategory[]
   MenuItem              MenuItem[]
   MenuItemCost          MenuItemCost[]
@@ -233,6 +235,7 @@ model Guest {
   Coupon             Coupon[]
   CouponRedemption   CouponRedemption[]
   venue              Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  GuestProviderLink  GuestProviderLink[]
   LoyaltyTransaction LoyaltyTransaction[]
   MessageLog         MessageLog[]
   Order              Order[]
@@ -328,12 +331,40 @@ model Campaign {
   body        String?
   scheduledAt DateTime?
   status      CampaignStatus  @default(DRAFT)
+  providerId  String?
+  providerListId Int?
   sentCount   Int             @default(0)
   openedCount Int             @default(0)
   bookedCount Int             @default(0)
   createdAt   DateTime        @default(now())
   venue       Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
   MessageLog  MessageLog[]
+}
+
+model GuestProviderLink {
+  id                String   @id @default(cuid())
+  venueId           String
+  guestId           String
+  provider          String
+  providerContactId String
+  syncedAt          DateTime @default(now())
+  Guest             Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  Venue             Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([guestId, provider])
+  @@index([venueId, provider])
+}
+
+model WebhookEvent {
+  id              String    @id @default(cuid())
+  provider        String
+  providerEventId String
+  eventType       String
+  payload         Json
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+
+  @@unique([provider, providerEventId])
 }
 
 model Payment {

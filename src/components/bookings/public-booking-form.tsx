@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, Loader2 } from "lucide-react";
 
@@ -33,6 +34,7 @@ export function PublicBookingForm({ venueId, venueName, embed }: PublicBookingFo
     const time = formData.get("time") as string;
     const partySize = formData.get("partySize") as string;
     const occasion = formData.get("occasion") as string;
+    const notes = formData.get("notes") as string;
 
     if (!firstName || !email || !phone || !date || !time || !partySize) {
       setError("Compila tutti i campi obbligatori");
@@ -62,6 +64,7 @@ export function PublicBookingForm({ venueId, venueName, embed }: PublicBookingFo
           partySize: parseInt(partySize),
           startsAt,
           occasion: occasion && occasion !== "NONE" ? occasion : null,
+          notes: notes || null,
           source: "WIDGET",
         }),
       });
@@ -160,6 +163,16 @@ export function PublicBookingForm({ venueId, venueName, embed }: PublicBookingFo
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="notes">Note o richieste speciali</Label>
+        <Textarea
+          id="notes"
+          name="notes"
+          placeholder="Allergie, intolleranze, esigenze particolari…"
+          maxLength={500}
+        />
       </div>
 
       <Button type="submit" disabled={loading} className="w-full">
