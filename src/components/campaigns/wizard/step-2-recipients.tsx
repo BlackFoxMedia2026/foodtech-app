@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { SegmentFilterType } from "@/server/campaigns";
@@ -45,6 +44,7 @@ export function Step2Recipients() {
   const dispatch = useWizardDispatch();
   const [tagsInput, setTagsInput] = useState((state.segment.tags ?? []).join(", "));
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const requestIdRef = useRef(0);
 
   function updateSegment(patch: Partial<SegmentFilterType>) {
     dispatch({ type: "SET_SEGMENT", segment: { ...state.segment, ...patch } });
@@ -52,10 +52,15 @@ export function Step2Recipients() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const requestId = ++requestIdRef.current;
     debounceRef.current = setTimeout(async () => {
       try {
         const preview = await fetchSegmentPreview(state.segment);
-        dispatch({ type: "SET_SEGMENT_PREVIEW", preview });
+        // Scarta la risposta se nel frattempo è partita una richiesta più recente
+        // (es. rete lenta/instabile): l'ultima innescata deve vincere, non l'ultima arrivata.
+        if (requestId === requestIdRef.current) {
+          dispatch({ type: "SET_SEGMENT_PREVIEW", preview });
+        }
       } catch {
         // il breakdown è un ausilio, non blocca il wizard se la preview fallisce
       }

@@ -181,6 +181,13 @@ export function withUnsubscribeBlock(blocks: Block[]): Block[] {
   ];
 }
 
+/** Blocchi puramente decorativi/di servizio: non contano come "contenuto reale" di un'email. */
+const DECORATIVE_BLOCK_TYPES = new Set<Block["type"]>(["unsubscribe_link", "footer", "logo", "divider"]);
+
+export function hasSubstantiveContent(blocks: Block[]): boolean {
+  return blocks.some((b) => !DECORATIVE_BLOCK_TYPES.has(b.type));
+}
+
 /** Variabili di merge disponibili nell'editor — vedi campaign-blocks-compiler.ts per la risoluzione. */
 export const CAMPAIGN_VARIABLES = [
   { token: "{{FIRSTNAME}}", label: "Nome" },

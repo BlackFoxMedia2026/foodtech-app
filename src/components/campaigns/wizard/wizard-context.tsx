@@ -19,7 +19,6 @@ export interface WizardState {
   testEmailSentThisSession: boolean;
   providerConfigured: boolean | null;
   saving: boolean;
-  error: string | null;
   /** Letti da env lato server e passati come prop iniziale — sola lettura, nessun override per-campagna in questa passata. */
   senderName: string;
   senderEmail: string;
@@ -37,9 +36,7 @@ export type WizardAction =
   | { type: "MARK_TEST_SENT" }
   | { type: "SET_CAMPAIGN_ID"; campaignId: string }
   | { type: "SET_SAVING"; saving: boolean }
-  | { type: "SET_ERROR"; error: string | null }
-  | { type: "SET_PROVIDER_CONFIGURED"; configured: boolean }
-  | { type: "HYDRATE"; data: Partial<WizardState> };
+  | { type: "SET_PROVIDER_CONFIGURED"; configured: boolean };
 
 export const WIZARD_STEPS = [
   { id: "objective", label: "Obiettivo" },
@@ -64,7 +61,6 @@ export const initialWizardState: WizardState = {
   testEmailSentThisSession: false,
   providerConfigured: null,
   saving: false,
-  error: null,
   senderName: "Tavolo",
   senderEmail: "marketing@tavolo.local",
 };
@@ -101,12 +97,8 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       return { ...state, campaignId: action.campaignId };
     case "SET_SAVING":
       return { ...state, saving: action.saving };
-    case "SET_ERROR":
-      return { ...state, error: action.error };
     case "SET_PROVIDER_CONFIGURED":
       return { ...state, providerConfigured: action.configured };
-    case "HYDRATE":
-      return { ...state, ...action.data };
     default:
       return state;
   }

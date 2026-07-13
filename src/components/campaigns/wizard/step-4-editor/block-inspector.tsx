@@ -131,6 +131,10 @@ export function BlockInspector({
     case "two_columns":
       return (
         <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Ogni colonna ha un solo elemento modificabile. Aggiungere o rimuovere elementi dentro le colonne non è
+            ancora supportato — prossimamente.
+          </p>
           <div>
             <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Colonna sinistra</p>
             {block.left.map((sub, i) => (

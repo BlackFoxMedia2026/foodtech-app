@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
-import { hasUnsubscribeBlock } from "@/lib/campaign-blocks";
+import { hasSubstantiveContent, hasUnsubscribeBlock } from "@/lib/campaign-blocks";
 import { createCampaignDraft, patchCampaignDraft, type DraftPayload } from "@/lib/campaign-wizard-api";
 import {
   WIZARD_STEPS,
@@ -26,12 +26,12 @@ const STEP_COMPONENTS = [Step1Objective, Step2Recipients, Step3Template, Step4Ed
 function canGoNext(state: WizardState): boolean {
   switch (state.step) {
     case 0:
-      return state.name.trim().length > 0 && state.objectiveId !== null;
+      // Una bozza già esistente (ripresa da /campaigns/[id]/edit) ha già passato lo
+      // Step 1 in una sessione precedente — objectiveId non viene persistito in DB,
+      // quindi tornare indietro con "Indietro" non deve ribloccare l'utente qui.
+      return state.name.trim().length > 0 && (state.objectiveId !== null || state.campaignId !== null);
     case 3:
-      return (
-        hasUnsubscribeBlock(state.contentBlocks) &&
-        state.contentBlocks.some((b) => b.type !== "unsubscribe_link" && b.type !== "footer")
-      );
+      return hasUnsubscribeBlock(state.contentBlocks) && hasSubstantiveContent(state.contentBlocks);
     default:
       return true;
   }
@@ -119,9 +119,9 @@ function WizardShell() {
         />
       </header>
 
-      {(localError || state.error) && (
+      {localError && (
         <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
-          {localError || state.error}
+          {localError}
         </div>
       )}
 

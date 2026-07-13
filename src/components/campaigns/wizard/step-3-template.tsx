@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { withUnsubscribeBlock, type Block } from "@/lib/campaign-blocks";
+import { hasSubstantiveContent, withUnsubscribeBlock, type Block } from "@/lib/campaign-blocks";
 import { CAMPAIGN_TEMPLATES, templatesForObjective, type CampaignTemplate } from "@/lib/campaign-templates";
 import { useWizardDispatch, useWizardState } from "./wizard-context";
 
@@ -20,11 +20,20 @@ export function Step3Template() {
   const hasSuggested = state.objectiveId !== null && suggested.length > 0;
   const list = showAll || !hasSuggested ? CAMPAIGN_TEMPLATES : suggested;
 
+  function confirmReplaceIfNeeded(): boolean {
+    if (!hasSubstantiveContent(state.contentBlocks)) return true;
+    return window.confirm(
+      "Hai già del contenuto nell'email. Continuando, verrà sostituito interamente. Procedere?"
+    );
+  }
+
   function chooseBlank() {
+    if (!confirmReplaceIfNeeded()) return;
     dispatch({ type: "SET_BLOCKS", blocks: withUnsubscribeBlock([]) });
   }
 
   function chooseTemplate(template: CampaignTemplate) {
+    if (!confirmReplaceIfNeeded()) return;
     dispatch({ type: "SET_BLOCKS", blocks: withUnsubscribeBlock(cloneBlocksWithFreshIds(template.blocks)) });
     if (!state.subject) dispatch({ type: "SET_SUBJECT", subject: template.name });
   }

@@ -314,6 +314,7 @@ export async function scheduleCampaign(venueId: string, campaignId: string, at: 
 export async function sendTestEmail(venueId: string, campaignId: string, to: string) {
   const campaign = await db.campaign.findFirst({ where: { id: campaignId, venueId } });
   if (!campaign) throw new Error("not_found");
+  if (campaign.status !== "DRAFT") throw new Error("campaign_not_editable");
   const venue = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
 
   const rawHtml = campaign.contentBlocks
