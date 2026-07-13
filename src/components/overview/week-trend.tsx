@@ -19,8 +19,8 @@ export function WeekTrend({ data }: { data: { day: string; covers: number; booki
               background: "hsl(var(--card))",
             }}
           />
-          <Bar dataKey="covers" fill="#c9a25a" radius={[6, 6, 0, 0]} name="Coperti" />
-          <Bar dataKey="bookings" fill="#15161a" radius={[6, 6, 0, 0]} name="Prenotazioni" />
+          <Bar dataKey="covers" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} name="Coperti" />
+          <Bar dataKey="bookings" fill="hsl(var(--muted-foreground))" radius={[6, 6, 0, 0]} name="Prenotazioni" />
         </BarChart>
       </ResponsiveContainer>
     </div>

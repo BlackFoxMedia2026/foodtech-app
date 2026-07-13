@@ -124,8 +124,8 @@ export function FloorCanvas({ initialTables, width = 1200, height = 760 }: {
                 t.shape === "RECT" && "rounded-md",
                 t.shape === "BOOTH" && "rounded-2xl",
                 t.shape === "LOUNGE" && "rounded-3xl",
-                t.active ? "bg-carbon-800 text-sand-50" : "bg-muted text-muted-foreground",
-                isSelected && "ring-4 ring-gilt/60",
+                t.active ? "table-pearl text-carbon-900" : "bg-muted text-muted-foreground",
+                isSelected && "ring-4 ring-accent/70",
                 "shadow-lg hover:shadow-xl cursor-grab active:cursor-grabbing",
               )}
               style={{

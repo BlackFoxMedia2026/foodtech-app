@@ -31,7 +31,7 @@ export function VenueSwitcher({ venues, activeId }: { venues: Venue[]; activeId:
 
   return (
     <Select value={activeId} onValueChange={pick} disabled={pending}>
-      <SelectTrigger className="w-[240px]">
+      <SelectTrigger className="h-10 w-[240px] rounded-xl border-white/10 bg-white/5 backdrop-blur-xl">
         <div className="flex items-center gap-2 truncate">
           <Building2 className="h-4 w-4 text-muted-foreground" />
           <SelectValue />

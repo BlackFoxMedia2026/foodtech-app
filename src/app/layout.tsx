@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import { Montserrat, Archivo } from "next/font/google";
 import "@/styles/globals.css";
 
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const display = Fraunces({ subsets: ["latin"], variable: "--font-display", display: "swap" });
+const sans = Montserrat({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const display = Archivo({
+  subsets: ["latin"],
+  weight: "variable",
+  axes: ["wdth"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Tavolo · Gestionale ospitalità",

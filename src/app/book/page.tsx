@@ -14,7 +14,7 @@ export default async function BookPage(props: { searchParams?: { venue?: string;
     : null;
 
   const card = venue ? (
-    <Card className="shadow-lg border-slate-200">
+    <Card>
       <CardHeader>
         <CardTitle className="text-2xl">Nuova prenotazione</CardTitle>
       </CardHeader>
@@ -23,8 +23,8 @@ export default async function BookPage(props: { searchParams?: { venue?: string;
       </CardContent>
     </Card>
   ) : (
-    <Card className="shadow-lg border-slate-200">
-      <CardContent className="text-center text-slate-500 py-8">Locale non trovato</CardContent>
+    <Card>
+      <CardContent className="text-center text-muted-foreground py-8">Locale non trovato</CardContent>
     </Card>
   );
 
@@ -33,16 +33,25 @@ export default async function BookPage(props: { searchParams?: { venue?: string;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <div className="mx-auto max-w-2xl space-y-6">
+    <div className="dark relative z-0 min-h-screen overflow-hidden bg-background p-4 text-foreground">
+      <div className="mesh-bg pointer-events-none absolute -inset-32 -z-10">
+        <div className="mesh-blob mesh-blob-1" />
+        <div className="mesh-blob mesh-blob-2" />
+        <div className="mesh-blob mesh-blob-3" />
+        <div className="mesh-blob mesh-blob-4" />
+        <div className="mesh-blob mesh-blob-5" />
+        <div className="mesh-blob mesh-blob-6" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-2xl space-y-6 py-8">
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-serif font-bold text-slate-900">Prenota con noi</h1>
-          <p className="text-slate-600">Scegli la data e l&apos;ora perfetta per la tua cena</p>
+          <h1 className="text-display text-4xl font-bold">Prenota con noi</h1>
+          <p className="text-muted-foreground">Scegli la data e l&apos;ora perfetta per la tua cena</p>
         </div>
 
         {card}
 
-        <div className="text-center text-sm text-slate-500">
+        <div className="text-center text-sm text-muted-foreground">
           <p>Hai domande? Chiamaci o inviaci un messaggio</p>
         </div>
       </div>

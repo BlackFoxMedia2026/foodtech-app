@@ -16,12 +16,15 @@ export function Topbar({
   activeVenueId: string;
 }) {
   return (
-    <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-background/80 px-6 backdrop-blur">
+    <header className="relative z-10 flex h-20 items-center justify-between gap-4 border-b border-white/10 px-6">
       <div className="flex items-center gap-3">
         <VenueSwitcher venues={venues} activeId={activeVenueId} />
         <div className="relative hidden md:block">
-          <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Cerca ospite, prenotazione, tavolo…" className="h-9 w-[300px] pl-8" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Cerca ospite, prenotazione, tavolo…"
+            className="h-10 w-[300px] rounded-xl border-white/10 bg-white/5 pl-9 backdrop-blur-xl"
+          />
         </div>
       </div>
 
@@ -32,11 +35,11 @@ export function Topbar({
             Nuova prenotazione
           </Link>
         </Button>
-        <Button size="icon" variant="ghost" aria-label="Notifiche">
+        <Button size="icon" variant="ghost" aria-label="Notifiche" className="rounded-xl border border-white/10 bg-white/5">
           <Bell className="h-4 w-4" />
         </Button>
-        <Avatar className="h-9 w-9">
-          <AvatarFallback>{initials(user.name ?? user.email)}</AvatarFallback>
+        <Avatar className="h-10 w-10 border border-white/10">
+          <AvatarFallback className="bg-foreground text-background">{initials(user.name ?? user.email)}</AvatarFallback>
         </Avatar>
       </div>
     </header>

@@ -14,7 +14,7 @@ import {
   YAxis,
 } from "recharts";
 
-const PALETTE = ["#15161a", "#c9a25a", "#e2c98a", "#5e6068", "#a3a4ab", "#dec59a", "#7a5a2f"];
+const PALETTE = ["#8a3710", "#cf3a03", "#d9773d", "#e6a468", "#f2eee7", "#e6ded2", "#c96939"];
 
 export const SOURCE_LABELS: Record<string, string> = {
   WIDGET: "Widget sito",
@@ -50,6 +50,12 @@ export function SlotChart({ data }: { data: { slot: string; covers: number }[] }
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+          <defs>
+            <linearGradient id="slotBarGradient" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stopColor="#cf3a03" />
+              <stop offset="100%" stopColor="#c96939" />
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
           <XAxis dataKey="slot" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
           <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
@@ -57,7 +63,7 @@ export function SlotChart({ data }: { data: { slot: string; covers: number }[] }
             cursor={{ fill: "hsl(var(--muted))" }}
             contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
           />
-          <Bar dataKey="covers" fill="#c9a25a" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="covers" fill="url(#slotBarGradient)" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
