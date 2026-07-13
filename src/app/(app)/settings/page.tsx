@@ -90,7 +90,7 @@ export default async function SettingsPage() {
                 {String(Math.floor(s.startMinute / 60)).padStart(2, "0")}:00 –{" "}
                 {String(Math.floor(s.endMinute / 60)).padStart(2, "0")}:00
               </p>
-              <p className="mt-2 text-xs">Capienza: {s.capacity} · Slot: {s.slotMinutes}'</p>
+              <p className="mt-2 text-xs">Capienza: {s.capacity} · Slot: {s.slotMinutes}&apos;</p>
             </div>
           ))}
         </CardContent>

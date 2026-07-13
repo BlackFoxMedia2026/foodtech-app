@@ -54,7 +54,7 @@ function SignInForm() {
             Una sala perfetta è prima di tutto una <span className="text-accent">questione di ritmo</span>.
           </p>
           <p className="text-sm text-muted-foreground">
-            Tavolo coordina prenotazioni, sala, ospiti ed esperienze in un'unica
+            Tavolo coordina prenotazioni, sala, ospiti ed esperienze in un&apos;unica
             interfaccia pensata per chi accoglie ogni giorno.
           </p>
         </div>
