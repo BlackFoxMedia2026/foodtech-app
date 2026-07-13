@@ -1,5 +1,7 @@
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
+import { AmbientScene } from "@/components/shell/ambient-scene";
+import { LiquidGlassDefs } from "@/components/shell/liquid-glass-defs";
 import { getActiveVenue } from "@/lib/tenant";
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
@@ -12,7 +14,8 @@ export default async function AppShell({ children }: { children: React.ReactNode
   }));
 
   return (
-    <div className="dark relative z-0 grid min-h-screen grid-cols-[288px_1fr] overflow-hidden bg-background text-foreground">
+    <AmbientScene className="dark relative z-0 grid h-screen grid-cols-[288px_1fr] overflow-hidden bg-background text-foreground">
+      <LiquidGlassDefs />
       <div className="mesh-bg pointer-events-none absolute -inset-32 -z-10">
         <div className="mesh-blob mesh-blob-1" />
         <div className="mesh-blob mesh-blob-2" />
@@ -25,7 +28,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
       <aside className="relative z-10 p-3.5">
         <Sidebar />
       </aside>
-      <div className="relative z-10 flex min-h-screen flex-col">
+      <div className="relative z-10 flex h-screen flex-col">
         <Topbar
           user={{ name: ctx.session.user?.name, email: ctx.session.user?.email }}
           venues={venueList}
@@ -33,6 +36,6 @@ export default async function AppShell({ children }: { children: React.ReactNode
         />
         <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-8">{children}</main>
       </div>
-    </div>
+    </AmbientScene>
   );
 }
