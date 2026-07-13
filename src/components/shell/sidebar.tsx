@@ -32,18 +32,18 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <nav className="glass-panel-fluted flex h-full flex-col gap-6 rounded-3xl p-4">
+    <nav className="glass-panel-premium flex h-full flex-col gap-6 rounded-[2rem] p-5">
       <Link
         href="/overview"
-        className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5"
+        className="glass-chip relative z-[2] flex items-center gap-3 rounded-2xl px-3.5 py-3"
       >
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-background text-accent">
           <span className="font-display text-sm font-bold">T</span>
         </span>
-        <span className="text-display text-lg tracking-tight text-foreground">Tavolo</span>
+        <span className="text-display text-lg tracking-tight text-white">Tavolo</span>
       </Link>
 
-      <div className="flex flex-1 flex-col gap-1 overflow-y-auto">
+      <div className="relative z-[2] flex flex-1 flex-col gap-1.5 overflow-y-auto">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
@@ -51,10 +51,8 @@ export function Sidebar() {
               key={href}
               href={href}
               className={cn(
-                "group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors",
-                active
-                  ? "btn-ember text-white shadow-lg shadow-accent/30"
-                  : "text-foreground/75 hover:bg-white/5 hover:text-foreground",
+                "group flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm",
+                active ? "nav-pill-active text-white" : "nav-pill text-[#f5e6da]/80 hover:text-white",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -64,13 +62,13 @@ export function Sidebar() {
         })}
       </div>
 
-      <div className="flex items-center gap-3 border-t border-white/10 pt-4">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+      <div className="relative z-[2] flex items-center gap-3 border-t border-white/10 pt-4">
+        <div className="icon-glass-circle grid h-11 w-11 shrink-0 place-items-center rounded-full text-white">
           <BrainCircuit className="h-5 w-5" />
         </div>
         <div className="flex flex-col leading-tight">
-          <span className="text-display text-sm text-foreground">Agente AI</span>
-          <span className="text-[11px] text-muted-foreground">Assistente attivo</span>
+          <span className="text-display text-sm text-white">Agente AI</span>
+          <span className="text-[11px] text-[#f5e6da]/60">Assistente attivo</span>
         </div>
       </div>
     </nav>

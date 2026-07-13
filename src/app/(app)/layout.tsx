@@ -21,6 +21,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
         <div className="mesh-blob mesh-blob-5" />
         <div className="mesh-blob mesh-blob-6" />
       </div>
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-background/22" />
       <aside className="relative z-10 p-3.5">
         <Sidebar />
       </aside>
