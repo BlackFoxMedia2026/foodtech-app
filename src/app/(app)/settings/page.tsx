@@ -100,6 +100,27 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Integrazioni</CardTitle>
+          <CardDescription>Stato del provider email marketing</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between rounded-md border p-3 text-sm">
+            <div>
+              <p className="font-medium">Brevo</p>
+              <p className="text-xs text-muted-foreground">Invio campagne email e transazionali</p>
+            </div>
+            <Badge tone={process.env.BREVO_API_KEY ? "success" : "warning"}>
+              {process.env.BREVO_API_KEY ? "Configurato" : "Non configurato"}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Verifica basata sulla presenza della chiave API. Non verifica la validità del dominio mittente.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Turni di servizio (domenica esempio)</CardTitle>
           <CardDescription>Gestisci capienza e durata slot per ogni turno</CardDescription>
         </CardHeader>
