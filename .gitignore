@@ -18,6 +18,15 @@ prisma/migrations/dev*
 .idea/
 .DS_Store
 
+# Claude Code / impeccable local state (personal, cache, locks)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Logs
 *.log
 npm-debug.log*

@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-13T00:00:00.000Z",
+  "title": "Design System: Tavolo",
+  "extensions": {
+    "colorMeta": {
+      "ember-glow": { "role": "primary", "displayName": "Ember Glow", "canonical": "#FF924E", "tonalRamp": ["#2B1006", "#4A1B0A", "#75300F", "#A64C1A", "#D66E2E", "#FF924E", "#FFB27C", "#FFD6B3"] },
+      "ember-bright": { "role": "primary", "displayName": "Ember Bright", "canonical": "#FF6E28", "tonalRamp": ["#260D03", "#421706", "#69250B", "#963A12", "#CB531D", "#FF6E28", "#FF9459", "#FFC0A0"] },
+      "ember-core": { "role": "primary", "displayName": "Ember Core", "canonical": "#F44C12", "tonalRamp": ["#280D02", "#451604", "#6E2408", "#9B370D", "#CB4A12", "#F44C12", "#FF7743", "#FFAB84"] },
+      "ember-deep": { "role": "primary", "displayName": "Ember Deep", "canonical": "#B0300E", "tonalRamp": ["#1D0803", "#310E05", "#4E1808", "#71260C", "#96350F", "#B0300E", "#D2551F", "#EC8555" ] },
+      "ember-char": { "role": "primary", "displayName": "Ember Char", "canonical": "#601C0A", "tonalRamp": ["#100301", "#1D0602", "#300B04", "#481207", "#5A1809", "#601C0A", "#7F2C11", "#A54C22"] },
+      "ember-ash": { "role": "neutral", "displayName": "Ember Ash", "canonical": "#0F0603", "tonalRamp": ["#050201", "#0F0603", "#1B0A04", "#2A1006", "#3B1608", "#4E1D0B", "#66280F", "#7F3413"] },
+      "accent-ember": { "role": "primary", "displayName": "Accent Ember", "canonical": "#CD3A04", "tonalRamp": ["#210900", "#3B1000", "#5E1A01", "#8A2802", "#B03302", "#CD3A04", "#EA5E20", "#FF9256"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#120C08", "tonalRamp": ["#0A0705", "#120C08", "#1D1611", "#2C231C", "#3E332A", "#584939", "#786248", "#9B8365"] },
+      "surface-card": { "role": "neutral", "displayName": "Surface Card", "canonical": "#1D1913", "tonalRamp": ["#0F0D09", "#1D1913", "#2A241C", "#3A3226", "#4C4232", "#615540", "#786A51", "#928263"] },
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#F8F6F1", "tonalRamp": ["#3A362E", "#5A554A", "#7C7568", "#9E9789", "#C0B9AB", "#DDD7CB", "#EFEBE2", "#F8F6F1"] },
+      "muted-clay": { "role": "neutral", "displayName": "Muted Clay", "canonical": "#B7ADA4", "tonalRamp": ["#2B2723", "#443E37", "#5E564C", "#7A7166", "#948A7D", "#B7ADA4", "#D3CAC1", "#EAE4DD"] },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#3B362B", "tonalRamp": ["#141210", "#221F1A", "#3B362B", "#544D3C", "#6E644D", "#897C5F", "#A69773", "#C4B38B"] },
+      "destructive-ember": { "role": "error", "displayName": "Destructive Ember", "canonical": "#D53434", "tonalRamp": ["#280808", "#460E0E", "#6D1616", "#992020", "#C22B2B", "#D53434", "#E8635F", "#F59B96"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Titoli hero e titoli di card/sezione. font-stretch 125% riservato a questo ruolo." },
+      "body": { "displayName": "Body", "purpose": "Testo corrente, tabelle, form. Max 65-75ch per riga di prosa." },
+      "label": { "displayName": "Label", "purpose": "Etichette di statistica, eyebrow, testo dei badge." }
+    },
+    "shadows": [
+      { "name": "card-rest", "value": "0 1px 0 0 rgb(0 0 0 / 0.02), 0 18px 40px -32px rgb(0 0 0 / 0.18)", "purpose": "Ombra ambientale minima per le card in light mode." },
+      { "name": "card-dark", "value": "0 14px 40px rgba(0,0,0,0.5)", "purpose": "Card in dark mode: vetro scuro su fondo mesh, serve più contrasto." },
+      { "name": "sidebar-glass", "value": "inset 0 1px 0 rgb(255 255 255 / 0.34), inset 1px 0 0 rgb(255 255 255 / 0.12), inset -1px 0 0 rgb(244 76 18 / 0.10), inset 0 -70px 90px -46px rgb(10 4 2 / 0.55), 0 32px 70px rgb(0 0 0 / 0.55), 0 8px 22px rgb(0 0 0 / 0.35)", "purpose": "Elevazione massima del sistema: la capsula di vetro della sidebar." },
+      { "name": "ember-glow-active", "value": "0 10px 22px -8px rgb(244 76 18 / 0.5)", "purpose": "Bagliore colorato per lo stato attivo di navigazione, non un'ombra neutra." }
+    ],
+    "motion": [
+      { "name": "ease-out-standard", "value": "ease-out", "purpose": "Transizioni di stato (hover, focus) su bottoni e nav-pill." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Filtro hover sul bottone ember (btn-ember)." },
+      { "name": "duration-standard", "value": "260ms", "purpose": "Transizioni di background/shadow/color sui nav-pill." },
+      { "name": "mesh-drift", "value": "17s-27s ease-in-out infinite", "purpose": "Movimento lentissimo delle braci di sfondo (mesh-blob), non percepibile come animazione ma come atmosfera." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "2xl-container", "value": "1440px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (Ember)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "CTA di punta — gradiente ember, una sola per schermata.",
+      "html": "<button class=\"ds-btn-ember\">Conferma prenotazione</button>",
+      "css": ".ds-btn-ember { background: linear-gradient(135deg, #cf3a03 0%, #c96939 100%); color: #fff; padding: 0 1rem; height: 36px; border-radius: 11.6px; font-size: 0.875rem; font-weight: 500; border: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); transition: filter 150ms ease; } .ds-btn-ember:hover { filter: brightness(1.08); } .ds-btn-ember:focus-visible { outline: none; box-shadow: 0 0 0 2px #F44C12, inset 0 1px 0 rgba(255,255,255,0.12); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Azione terziaria — bordo neutro trasparente.",
+      "html": "<button class=\"ds-btn-outline\">Annulla</button>",
+      "css": ".ds-btn-outline { background: transparent; color: #F8F6F1; padding: 0 1rem; height: 36px; border-radius: 11.6px; border: 1px solid #3B362B; font-size: 0.875rem; font-weight: 500; transition: background-color 150ms ease; } .ds-btn-outline:hover { background: rgba(255,255,255,0.05); }"
+    },
+    {
+      "name": "Gold Badge",
+      "kind": "chip",
+      "refersTo": "badge-gold",
+      "description": "Chip d'accento ember, usato per stati/tag premium.",
+      "html": "<span class=\"ds-badge-gold\">Beta</span>",
+      "css": ".ds-badge-gold { display: inline-flex; align-items: center; border-radius: 9999px; border: 1px solid rgba(205,58,4,0.3); background: rgba(205,58,4,0.1); color: #CD3A04; padding: 2px 10px; font-size: 0.75rem; font-weight: 500; }"
+    },
+    {
+      "name": "Data Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Contenitore per statistiche e liste — vetro scuro sottile in dark mode, mai decorativo.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-label\">Coperti oggi</p><p class=\"ds-card-value\">128</p></div>",
+      "css": ".ds-card { border-radius: 17.6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); backdrop-filter: blur(24px); box-shadow: 0 14px 40px rgba(0,0,0,0.5); padding: 20px; } .ds-card-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #B7ADA4; } .ds-card-value { margin-top: 8px; font-size: 1.875rem; font-weight: 600; color: #F8F6F1; }"
+    },
+    {
+      "name": "Sidebar Nav Pill (Active)",
+      "kind": "nav",
+      "refersTo": "nav-pill-active",
+      "description": "Voce di navigazione attiva nella sidebar — pieno gradiente ember con bagliore esterno.",
+      "html": "<a class=\"ds-nav-pill-active\">Panoramica</a>",
+      "css": ".ds-nav-pill-active { display: flex; align-items: center; gap: 12px; border-radius: 17.6px; padding: 12px 14px; font-size: 0.875rem; font-weight: 600; color: #fff; background: linear-gradient(158deg, rgba(255,110,40,0.95) 0%, rgba(244,76,18,0.92) 30%, rgba(176,48,14,0.92) 68%, rgba(96,28,10,0.94) 100%); backdrop-filter: blur(10px) saturate(155%); border-top: 1px solid rgba(255,225,200,0.55); box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -8px 16px -10px rgba(0,0,0,0.45), 0 10px 22px -8px rgba(244,76,18,0.5); }"
+    },
+    {
+      "name": "Sidebar Shell (signature)",
+      "kind": "custom",
+      "refersTo": "glass-panel-premium",
+      "description": "La capsula di vetro che contiene l'intera navigazione — componente distintivo del sistema.",
+      "html": "<nav class=\"ds-sidebar\"><div class=\"ds-sidebar-logo\">Tavolo</div></nav>",
+      "css": ".ds-sidebar { position: relative; overflow: hidden; border-radius: 32px; padding: 20px; background: radial-gradient(115% 55% at 24% 0%, rgba(255,146,78,0.5) 0%, transparent 52%), linear-gradient(162deg, rgba(255,110,40,0.94) 0%, rgba(244,76,18,0.92) 22%, rgba(176,48,14,0.92) 46%, rgba(96,28,10,0.94) 70%, rgba(15,6,3,0.97) 100%); backdrop-filter: blur(26px) saturate(168%); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 32px 70px rgba(0,0,0,0.55); } .ds-sidebar-logo { border-radius: 16px; background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 100%); border: 1px solid rgba(255,255,255,0.26); backdrop-filter: blur(18px) saturate(150%); padding: 12px 14px; color: #fff; font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ember Hearth",
+    "overview": "Tavolo è il gestionale che scalda il retro-sala: sotto ogni schermata brace un fondo quasi nero (#120C08) e un solo accento incandescente, l'ember arancio-rame, che emerge da vetro smerigliato e bagliori radiali invece che da colori piatti. Non è un tool enterprise freddo — ogni riquadro con dati (tabelle prenotazioni, liste ospiti, righe di pagamento) resta leggibile e denso, ma la cornice attorno — sidebar, badge, CTA, stato attivo — porta calore, non decorazione. Il sistema respinge esplicitamente due tentazioni: il minimalismo grigio da SaaS B2B, e il glassmorphism decorativo ovunque. Il vetro sfocato è riservato alla cornice strutturale (sidebar, chip di navigazione, il badge dell'agente AI) — non copre indiscriminatamente ogni card di dati.",
+    "keyCharacteristics": [
+      "Fondo quasi-nero caldo con un mesh ambientale di braci sfocate in movimento lentissimo",
+      "Un solo accento cromatico — l'ember arancio-rame — usato con intenzione, mai come tinta di sfondo diffusa",
+      "Vetro smerigliato riservato alla cornice strutturale, non ai contenuti di dati",
+      "Tipografia display espansa (font-stretch 125%) bilanciata da un sans geometrico compatto per il corpo"
+    ],
+    "rules": [
+      { "name": "La Regola del Fuoco Unico", "body": "L'ember (in ogni sua tonalità) è l'unico accento cromatico del sistema. Non introdurre una seconda famiglia di colore per un modulo diverso: tutta l'enfasi passa per la stessa fiamma.", "section": "colors" },
+      { "name": "La Regola del Vetro Strutturale", "body": "Il backdrop-filter è riservato agli elementi di cornice e navigazione — mai alle tabelle o alle liste di dati, che restano leggibili su fondo pieno.", "section": "colors" },
+      { "name": "La Regola dell'Espansione Unica", "body": "Il font-stretch: 125% è riservato alla classe .text-display. Non applicarlo al corpo testo o alle label.", "section": "typography" },
+      { "name": "La Regola del Bagliore, non dell'Ombra", "body": "Dove il sistema convenzionale userebbe un'ombra grigia per segnalare stato attivo/hover, Tavolo usa un bagliore ember colorato. L'ombra neutra resta per la profondità strutturale.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usare il gradiente ember (#FF6E28 → #F44C12 → #B0300E) come unico linguaggio di accento cromatico in tutto il prodotto.",
+      "Do riservare il vetro smerigliato alla cornice strutturale — sidebar, chip, badge — non ai contenuti di dati.",
+      "Do mantenere le card di dati leggibili e dense anche in dark mode: il calore vive nella cornice, non nel contenuto.",
+      "Do usare font-stretch: 125% solo sulla classe .text-display, mai sul corpo testo.",
+      "Do rispettare prefers-reduced-motion per ogni animazione."
+    ],
+    "donts": [
+      "Don't introdurre una seconda famiglia cromatica per un modulo specifico.",
+      "Don't far diventare il gestionale un tool enterprise generico — niente tabelle grigie anonime senza personalità.",
+      "Don't usare bordi laterali colorati come accento decorativo su card o liste.",
+      "Don't applicare background-clip: text con gradiente sul testo per enfasi.",
+      "Don't coprire di vetro smerigliato ogni superficie."
+    ]
+  }
+}
