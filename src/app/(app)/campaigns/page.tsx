@@ -3,8 +3,8 @@ import { getActiveVenue } from "@/lib/tenant";
 import { listCampaigns } from "@/server/campaigns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { NewCampaignDialog } from "@/components/campaigns/new-campaign-dialog";
-import { Megaphone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Megaphone, Plus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,11 @@ export default async function CampaignsPage() {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing</p>
           <h1 className="text-display text-3xl">Campagne</h1>
         </div>
-        <NewCampaignDialog />
+        <Button asChild variant="gold">
+          <Link href="/campaigns/new">
+            <Plus className="h-4 w-4" /> Nuova campagna
+          </Link>
+        </Button>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

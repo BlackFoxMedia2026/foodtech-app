@@ -1,0 +1,159 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Stepper } from "@/components/ui/stepper";
+import { hasUnsubscribeBlock } from "@/lib/campaign-blocks";
+import { createCampaignDraft, patchCampaignDraft, type DraftPayload } from "@/lib/campaign-wizard-api";
+import {
+  WIZARD_STEPS,
+  WizardProvider,
+  useWizardDispatch,
+  useWizardState,
+  type WizardState,
+} from "./wizard-context";
+import { Step1Objective } from "./step-1-objective";
+import { Step2Recipients } from "./step-2-recipients";
+import { Step3Template } from "./step-3-template";
+import { Step4Editor } from "./step-4-editor/step-4-editor";
+import { Step5PreviewTest } from "./step-5-preview-test";
+import { Step6Send } from "./step-6-send";
+
+const STEP_COMPONENTS = [Step1Objective, Step2Recipients, Step3Template, Step4Editor, Step5PreviewTest, Step6Send];
+
+function canGoNext(state: WizardState): boolean {
+  switch (state.step) {
+    case 0:
+      return state.name.trim().length > 0 && state.objectiveId !== null;
+    case 3:
+      return (
+        hasUnsubscribeBlock(state.contentBlocks) &&
+        state.contentBlocks.some((b) => b.type !== "unsubscribe_link" && b.type !== "footer")
+      );
+    default:
+      return true;
+  }
+}
+
+function payloadForStep(step: number, state: WizardState): DraftPayload {
+  switch (step) {
+    case 0:
+      return { name: state.name, segment: state.segment, subject: state.subject };
+    case 1:
+      return { segment: state.segment };
+    case 2:
+    case 3:
+      return { contentBlocks: state.contentBlocks };
+    case 4:
+      return { previewText: state.previewText, subject: state.subject };
+    default:
+      return {};
+  }
+}
+
+function WizardShell() {
+  const state = useWizardState();
+  const dispatch = useWizardDispatch();
+  const router = useRouter();
+  const [localError, setLocalError] = useState<string | null>(null);
+  const StepComponent = STEP_COMPONENTS[state.step];
+
+  async function persistStep(step: number) {
+    const payload = payloadForStep(step, state);
+    if (!state.campaignId) {
+      if (!payload.name) return; // niente da creare ancora
+      const created = await createCampaignDraft({ ...payload, name: payload.name });
+      dispatch({ type: "SET_CAMPAIGN_ID", campaignId: created.id });
+      router.replace(`/campaigns/${created.id}/edit`);
+      return created.id;
+    }
+    await patchCampaignDraft(state.campaignId, payload);
+    return state.campaignId;
+  }
+
+  async function handleNext() {
+    setLocalError(null);
+    dispatch({ type: "SET_SAVING", saving: true });
+    try {
+      await persistStep(state.step);
+      dispatch({ type: "SET_STEP", step: Math.min(state.step + 1, WIZARD_STEPS.length - 1) });
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : "Errore durante il salvataggio");
+    } finally {
+      dispatch({ type: "SET_SAVING", saving: false });
+    }
+  }
+
+  function handleBack() {
+    dispatch({ type: "SET_STEP", step: Math.max(state.step - 1, 0) });
+  }
+
+  async function handleSaveDraft() {
+    setLocalError(null);
+    dispatch({ type: "SET_SAVING", saving: true });
+    try {
+      await persistStep(state.step);
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : "Errore durante il salvataggio");
+    } finally {
+      dispatch({ type: "SET_SAVING", saving: false });
+    }
+  }
+
+  const isLastStep = state.step === WIZARD_STEPS.length - 1;
+
+  return (
+    <div className="mx-auto flex max-w-4xl flex-col gap-6 pb-24">
+      <header className="space-y-4">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Nuova campagna email</p>
+          <h1 className="text-display text-2xl">{state.name || "Senza nome"}</h1>
+        </div>
+        <Stepper
+          steps={WIZARD_STEPS}
+          currentStepIndex={state.step}
+          furthestStepIndex={state.furthestStep}
+          onStepClick={(index) => dispatch({ type: "SET_STEP", step: index })}
+        />
+      </header>
+
+      {(localError || state.error) && (
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
+          {localError || state.error}
+        </div>
+      )}
+
+      <div className="surface p-6">
+        <StepComponent />
+      </div>
+
+      {!isLastStep && (
+        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur">
+          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+            <Button variant="outline" onClick={handleBack} disabled={state.step === 0}>
+              <ChevronLeft className="h-4 w-4" /> Indietro
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={handleSaveDraft} disabled={state.saving || !state.campaignId}>
+                <Save className="h-4 w-4" /> Salva bozza
+              </Button>
+              <Button variant="gold" onClick={handleNext} disabled={state.saving || !canGoNext(state)}>
+                Avanti <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CampaignWizard({ initialState }: { initialState?: Partial<WizardState> }) {
+  return (
+    <WizardProvider initialState={initialState}>
+      <WizardShell />
+    </WizardProvider>
+  );
+}

@@ -329,8 +329,11 @@ model Campaign {
   segment     Json?
   subject     String?
   body        String?
+  contentBlocks Json?
+  previewText String?
   scheduledAt DateTime?
   status      CampaignStatus  @default(DRAFT)
+  // TODO(futuro): estendere con READY/SENDING/FAILED/CANCELLED una volta stabilizzato il wizard
   providerId  String?
   providerListId Int?
   sentCount   Int             @default(0)
