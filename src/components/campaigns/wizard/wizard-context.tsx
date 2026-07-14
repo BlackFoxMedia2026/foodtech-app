@@ -5,6 +5,11 @@ import type { Block } from "@/lib/campaign-blocks";
 import type { SegmentFilterType } from "@/server/campaigns";
 import type { SegmentPreviewResult } from "@/lib/campaign-wizard-api";
 
+export interface PendingTemplateSelection {
+  type: "blank" | "template";
+  templateId?: string;
+}
+
 export interface WizardState {
   campaignId: string | null;
   step: number;
@@ -16,6 +21,8 @@ export interface WizardState {
   subject: string;
   previewText: string;
   contentBlocks: Block[];
+  /** Selezione nello Step 3 in attesa di conferma — applicata a contentBlocks/subject solo su "Avanti", vedi campaign-wizard.tsx. */
+  pendingTemplateSelection: PendingTemplateSelection | null;
   testEmailSentThisSession: boolean;
   providerConfigured: boolean | null;
   saving: boolean;
@@ -33,6 +40,7 @@ export type WizardAction =
   | { type: "SET_SUBJECT"; subject: string }
   | { type: "SET_PREVIEW_TEXT"; previewText: string }
   | { type: "SET_BLOCKS"; blocks: Block[] }
+  | { type: "SET_PENDING_TEMPLATE_SELECTION"; selection: PendingTemplateSelection | null }
   | { type: "MARK_TEST_SENT" }
   | { type: "SET_CAMPAIGN_ID"; campaignId: string }
   | { type: "SET_SAVING"; saving: boolean }
@@ -58,6 +66,7 @@ export const initialWizardState: WizardState = {
   subject: "",
   previewText: "",
   contentBlocks: [],
+  pendingTemplateSelection: null,
   testEmailSentThisSession: false,
   providerConfigured: null,
   saving: false,
@@ -91,6 +100,8 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       return { ...state, previewText: action.previewText };
     case "SET_BLOCKS":
       return { ...state, contentBlocks: action.blocks };
+    case "SET_PENDING_TEMPLATE_SELECTION":
+      return { ...state, pendingTemplateSelection: action.selection };
     case "MARK_TEST_SENT":
       return { ...state, testEmailSentThisSession: true };
     case "SET_CAMPAIGN_ID":

@@ -136,6 +136,7 @@ export function resolveTestVariables(
     lastName: string;
     restaurantName: string;
     bookingLink: string;
+    unsubscribeLink: string;
     lastVisitDate: string;
     loyaltyLevel: string;
   }
@@ -145,7 +146,7 @@ export function resolveTestVariables(
     "{{LASTNAME}}": vars.lastName,
     "{{RESTAURANT_NAME}}": vars.restaurantName,
     "{{BOOKING_LINK}}": vars.bookingLink,
-    "{{UNSUBSCRIBE_LINK}}": "#",
+    "{{UNSUBSCRIBE_LINK}}": vars.unsubscribeLink,
     "{{LAST_VISIT_DATE}}": vars.lastVisitDate,
     "{{LOYALTY_LEVEL}}": vars.loyaltyLevel,
   });
@@ -154,19 +155,23 @@ export function resolveTestVariables(
 /**
  * Mappa i token per-destinatario rimanenti alla sintassi di merge-tag reale di Brevo,
  * da usare SOLO sull'HTML inviato a adapter.createCampaign (mai su test-send, che
- * risolve tutto localmente). FIRSTNAME/LASTNAME sono già sincronizzati come attributi
- * contatto in brevo-adapter.ts#createContact; LOYALTY_LEVEL/LAST_VISIT_DATE richiedono
- * di estendere createContact/syncContact con quegli attributi custom prima che questa
- * mappatura risolva davvero qualcosa per loro in un invio reale.
+ * risolve tutto localmente). FIRSTNAME/LASTNAME/UNSUB_TOKEN sono già sincronizzati
+ * come attributi contatto in brevo-adapter.ts#createContact; LOYALTY_LEVEL/
+ * LAST_VISIT_DATE richiedono di estendere createContact/syncContact con quegli
+ * attributi custom prima che questa mappatura risolva davvero qualcosa per loro
+ * in un invio reale.
+ * Il link di disiscrizione punta al nostro endpoint /api/unsubscribe (non al tag
+ * di sistema {{ unsubscribe }} di Brevo): usa il token per-contatto UNSUB_TOKEN,
+ * risolto da Brevo stesso come qualsiasi altro merge tag al momento dell'invio.
  * NOTA: verificare la sintassi esatta dei merge tag Brevo (contact.FIRSTNAME vs altra
- * convenzione) e il tag di sistema per l'unsubscribe prima del go-live.
+ * convenzione) prima del go-live.
  */
-export function toBrevoMergeTags(html: string): string {
+export function toBrevoMergeTags(html: string, origin: string): string {
   return substituteTokens(html, {
     "{{FIRSTNAME}}": "{{ contact.FIRSTNAME }}",
     "{{LASTNAME}}": "{{ contact.LASTNAME }}",
     "{{LOYALTY_LEVEL}}": "{{ contact.LOYALTY_LEVEL }}",
     "{{LAST_VISIT_DATE}}": "{{ contact.LAST_VISIT_DATE }}",
-    "{{UNSUBSCRIBE_LINK}}": "{{ unsubscribe }}",
+    "{{UNSUBSCRIBE_LINK}}": `${origin}/api/unsubscribe?token={{ contact.UNSUB_TOKEN }}`,
   });
 }

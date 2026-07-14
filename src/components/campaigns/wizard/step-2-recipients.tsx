@@ -9,19 +9,18 @@ import type { SegmentFilterType } from "@/server/campaigns";
 import { fetchSegmentPreview } from "@/lib/campaign-wizard-api";
 import { useWizardDispatch, useWizardState } from "./wizard-context";
 
+// Volutamente limitati a 6 (max consigliato per non confondere un utente non
+// tecnico). "Tutti con consenso marketing" è la base imprescindibile e resta
+// sempre presente. I segmenti rimossi da qui restano comunque impostabili
+// tramite i filtri dettagliati più sotto (es. no-show, prenotazione futura/
+// cancellata, clienti ricorrenti, altre soglie di giorni di inattività).
 const PRESETS: { label: string; segment: SegmentFilterType }[] = [
   { label: "Tutti con consenso marketing", segment: {} },
   { label: "Clienti nuovi", segment: { loyaltyTier: "NEW" } },
-  { label: "Clienti ricorrenti", segment: { minTotalVisits: 2 } },
   { label: "Clienti VIP", segment: { loyaltyTier: "VIP" } },
-  { label: "Inattivi da 30gg", segment: { inactiveDays: 30 } },
   { label: "Inattivi da 60gg", segment: { inactiveDays: 60 } },
-  { label: "Inattivi da 90gg", segment: { inactiveDays: 90 } },
-  { label: "Alto spendenti", segment: { minTotalSpend: 150 } },
-  { label: "Con no-show", segment: { minNoShowCount: 1 } },
   { label: "Compleanno nel mese", segment: { birthdayThisMonth: true } },
-  { label: "Senza prenotazione futura", segment: { noFutureBooking: true } },
-  { label: "Con prenotazione cancellata", segment: { hadCancelledBooking: true } },
+  { label: "Alto spendenti", segment: { minTotalSpend: 150 } },
 ];
 
 const UNAVAILABLE_FILTERS = [

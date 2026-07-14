@@ -1,6 +1,7 @@
 import { BrevoClient } from "@getbrevo/brevo";
 import type { Campaign, Guest } from "@prisma/client";
 import { db } from "@/lib/db";
+import { signUnsubscribeToken } from "@/lib/unsubscribe-token";
 import type {
   CampaignStats,
   EmailProviderAdapter,
@@ -54,7 +55,11 @@ export const brevoAdapter: EmailProviderAdapter = {
     try {
       const res = await client.contacts.createContact({
         email: guest.email,
-        attributes: { FIRSTNAME: guest.firstName, LASTNAME: guest.lastName ?? "" },
+        attributes: {
+          FIRSTNAME: guest.firstName,
+          LASTNAME: guest.lastName ?? "",
+          UNSUB_TOKEN: signUnsubscribeToken(guest.id),
+        },
         updateEnabled: true,
         getId: true,
       });

@@ -3,14 +3,9 @@
 import {
   UserX,
   PartyPopper,
-  CalendarClock,
-  UtensilsCrossed,
   Cake,
   Crown,
   Star,
-  Briefcase,
-  Wine,
-  Sparkles,
   Wand2,
   type LucideIcon,
 } from "lucide-react";
@@ -24,14 +19,9 @@ import { useWizardDispatch, useWizardState } from "./wizard-context";
 const ICONS: Record<CampaignObjective["icon"], LucideIcon> = {
   UserX,
   PartyPopper,
-  CalendarClock,
-  UtensilsCrossed,
   Cake,
   Crown,
   Star,
-  Briefcase,
-  Wine,
-  Sparkles,
   Wand2,
 };
 
