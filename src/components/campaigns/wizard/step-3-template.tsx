@@ -4,11 +4,29 @@ import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { withUnsubscribeBlock, type Block } from "@/lib/campaign-blocks";
+import { compileBlocksToHtml, resolveTestVariables } from "@/lib/campaign-blocks-compiler";
 import { CAMPAIGN_TEMPLATES, getCampaignTemplate, templatesForObjective, type CampaignTemplate } from "@/lib/campaign-templates";
 import { useWizardDispatch, useWizardState, type PendingTemplateSelection } from "./wizard-context";
 
 function cloneBlocksWithFreshIds(blocks: Block[]): Block[] {
   return blocks.map((b) => ({ ...b, id: crypto.randomUUID() }));
+}
+
+// Dati fittizi solo per rendere leggibile l'anteprima delle card (non toccano
+// mai il server): senza questi, l'anteprima mostrerebbe token letterali come
+// "{{FIRSTNAME}}" invece di un nome plausibile.
+const TEMPLATE_PREVIEW_VARS = {
+  firstName: "Mario",
+  lastName: "Rossi",
+  restaurantName: "Il Tuo Locale",
+  bookingLink: "#",
+  unsubscribeLink: "#",
+  lastVisitDate: "12 giugno 2026",
+  loyaltyLevel: "VIP",
+};
+
+function templatePreviewHtml(blocks: Block[]): string {
+  return resolveTestVariables(compileBlocksToHtml(blocks), TEMPLATE_PREVIEW_VARS);
 }
 
 /**
@@ -105,10 +123,19 @@ export function Step3Template() {
                 type="button"
                 onClick={() => selectTemplate(template)}
                 className={cn(
-                  "rounded-lg border p-4 text-left transition-colors",
+                  "rounded-lg border p-3 text-left transition-colors",
                   isSelected ? "border-accent bg-accent/10" : "border-border hover:bg-secondary",
                 )}
               >
+                <div className="mb-2 h-36 overflow-hidden rounded-md border border-hairline bg-white">
+                  <iframe
+                    title={`Anteprima ${template.name}`}
+                    srcDoc={templatePreviewHtml(template.blocks)}
+                    tabIndex={-1}
+                    className="pointer-events-none origin-top-left"
+                    style={{ width: 600, height: 900, transform: "scale(0.4)" }}
+                  />
+                </div>
                 <p className="text-sm font-medium">{template.name}</p>
                 <p className="text-xs text-muted-foreground">{template.previewText}</p>
                 <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{template.category}</p>

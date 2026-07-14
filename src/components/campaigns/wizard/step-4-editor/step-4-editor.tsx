@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Block } from "@/lib/campaign-blocks";
+import { compileBlocksToHtml } from "@/lib/campaign-blocks-compiler";
 import { useWizardDispatch, useWizardState } from "../wizard-context";
 import { BlockCanvas } from "./block-canvas";
 import { BlockInspector } from "./block-inspector";
@@ -18,6 +19,7 @@ export function Step4Editor() {
   const blocks = state.contentBlocks;
   const selectedBlock = blocks.find((b) => b.id === selectedId) ?? null;
   const canInsertVariable = !!selectedBlock && !!focusedField && selectedBlock.type !== "two_columns";
+  const previewHtml = compileBlocksToHtml(blocks);
 
   function setBlocks(next: Block[]) {
     dispatch({ type: "SET_BLOCKS", blocks: next });
@@ -72,7 +74,7 @@ export function Step4Editor() {
         </Select>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[0.9fr_1fr_1fr]">
         <BlockCanvas
           blocks={blocks}
           selectedId={selectedId}
@@ -80,6 +82,17 @@ export function Step4Editor() {
           onReorder={setBlocks}
           onDelete={deleteBlock}
         />
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Anteprima live</p>
+          <div className="flex justify-center rounded-md border border-border bg-secondary/30 p-3">
+            <iframe
+              title="Anteprima email"
+              srcDoc={previewHtml}
+              className="rounded bg-white"
+              style={{ width: 320, height: 520 }}
+            />
+          </div>
+        </div>
         <div className="space-y-6 rounded-md border border-border p-4">
           <BlockInspector block={selectedBlock} onChange={updateBlock} onFieldFocus={setFocusedField} />
           <div className="border-t border-border pt-4">

@@ -89,21 +89,6 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     ]),
   },
   {
-    id: "review_request",
-    name: "Richiesta recensione",
-    category: "Recensioni",
-    objectiveTags: ["review_request"],
-    tone: "formale",
-    previewText: "Chiedi un feedback dopo la visita.",
-    blocks: blocks("review_request", [
-      { type: "logo", imageUrl: "", align: "center" },
-      { type: "title", text: "Com'è andata la tua visita?", align: "center" },
-      { type: "text", text: "Ciao {{FIRSTNAME}},\n\nGrazie per averci scelto. Un tuo feedback ci aiuta a migliorare." },
-      { type: "button_cta", label: "Lascia una recensione", url: "#", align: "center" },
-      { type: "footer", text: "{{RESTAURANT_NAME}}" },
-    ]),
-  },
-  {
     id: "business_lunch",
     name: "Formula pranzo di lavoro",
     category: "Pranzo",

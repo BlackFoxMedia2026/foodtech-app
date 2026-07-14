@@ -9,17 +9,18 @@ import type { SegmentFilterType } from "@/server/campaigns";
 import { fetchSegmentPreview } from "@/lib/campaign-wizard-api";
 import { useWizardDispatch, useWizardState } from "./wizard-context";
 
-// Volutamente limitati a 6 (max consigliato per non confondere un utente non
-// tecnico). "Tutti con consenso marketing" è la base imprescindibile e resta
-// sempre presente. I segmenti rimossi da qui restano comunque impostabili
-// tramite i filtri dettagliati più sotto (es. no-show, prenotazione futura/
-// cancellata, clienti ricorrenti, altre soglie di giorni di inattività).
+// Volutamente ridotti al minimo per non confondere un utente non tecnico.
+// Nessun preset "tutti con consenso marketing": il consenso è già applicato
+// sempre e comunque a ogni filtro (vedi testo sotto), non è una scelta di
+// segmento. I compleanni sono gestiti da un'automazione dedicata a parte,
+// non da questo wizard. I segmenti rimossi da qui restano comunque
+// impostabili tramite i filtri dettagliati più sotto (es. no-show,
+// prenotazione futura/cancellata, clienti ricorrenti, altre soglie di
+// giorni di inattività).
 const PRESETS: { label: string; segment: SegmentFilterType }[] = [
-  { label: "Tutti con consenso marketing", segment: {} },
   { label: "Clienti nuovi", segment: { loyaltyTier: "NEW" } },
   { label: "Clienti VIP", segment: { loyaltyTier: "VIP" } },
   { label: "Inattivi da 60gg", segment: { inactiveDays: 60 } },
-  { label: "Compleanno nel mese", segment: { birthdayThisMonth: true } },
   { label: "Alto spendenti", segment: { minTotalSpend: 150 } },
 ];
 
@@ -199,17 +200,8 @@ export function Step2Recipients() {
 
         <div className="flex items-center justify-between rounded-md border border-border p-3">
           <div>
-            <p className="text-sm font-medium">Compleanno questo mese</p>
-          </div>
-          <Switch
-            checked={!!state.segment.birthdayThisMonth}
-            onCheckedChange={(checked) => updateSegment({ birthdayThisMonth: checked || undefined })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-md border border-border p-3">
-          <div>
-            <p className="text-sm font-medium">Ha avuto una prenotazione cancellata</p>
+            <p className="text-sm font-medium">Ha annullato una prenotazione in passato</p>
+            <p className="text-xs text-muted-foreground">Il cliente ha prenotato ma poi cancellato almeno una volta.</p>
           </div>
           <Switch
             checked={!!state.segment.hadCancelledBooking}

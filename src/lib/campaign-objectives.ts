@@ -4,7 +4,7 @@ export interface CampaignObjective {
   id: string;
   label: string;
   description: string;
-  icon: "UserX" | "PartyPopper" | "Cake" | "Crown" | "Star" | "Wand2";
+  icon: "UserX" | "PartyPopper" | "CalendarClock" | "UtensilsCrossed" | "Crown" | "Wand2";
   suggestedSegment: Partial<SegmentFilterType>;
   suggestedSubject: string;
   suggestedTemplateId?: string;
@@ -19,9 +19,12 @@ export interface CampaignObjective {
  * sui dati disponibili.
  *
  * Lista volutamente limitata a 6 voci (max consigliato per non confondere un
- * utente non tecnico): i template rimossi da qui (giorno debole, nuovo menù,
- * pranzo di lavoro, aperitivo, degustazione) restano comunque selezionabili
- * in Step 3 tramite "Vedi tutti i template".
+ * utente non tecnico): i template corrispondenti agli obiettivi non elencati
+ * qui (pranzo di lavoro, aperitivo, degustazione) restano comunque
+ * selezionabili in Step 3 tramite "Vedi tutti i template". Compleanni del
+ * mese e Richiedi recensioni non sono qui perché diventeranno automazioni
+ * dedicate (sezione a parte, non ancora costruita) invece di obiettivi di
+ * campagna manuale.
  */
 export const CAMPAIGN_OBJECTIVES: CampaignObjective[] = [
   {
@@ -43,13 +46,12 @@ export const CAMPAIGN_OBJECTIVES: CampaignObjective[] = [
     suggestedTemplateId: "event_announcement",
   },
   {
-    id: "birthday_month",
-    label: "Compleanni del mese",
-    description: "Fai gli auguri a chi festeggia questo mese.",
-    icon: "Cake",
-    suggestedSegment: { birthdayThisMonth: true },
-    suggestedSubject: "Buon compleanno da parte nostra",
-    suggestedTemplateId: "birthday",
+    id: "fill_slow_day",
+    label: "Riempi un giorno debole",
+    description: "Incentiva le prenotazioni nei giorni con meno affluenza.",
+    icon: "CalendarClock",
+    suggestedSegment: {},
+    suggestedSubject: "Questa settimana ti aspettiamo",
   },
   {
     id: "vip",
@@ -60,13 +62,13 @@ export const CAMPAIGN_OBJECTIVES: CampaignObjective[] = [
     suggestedSubject: "Qualcosa di speciale per te",
   },
   {
-    id: "review_request",
-    label: "Richiedi recensioni",
-    description: "Chiedi un feedback a chi ti ha già visitato.",
-    icon: "Star",
-    suggestedSegment: { minTotalVisits: 1 },
-    suggestedSubject: "Com'è andata la tua ultima visita?",
-    suggestedTemplateId: "review_request",
+    id: "new_menu",
+    label: "Comunica un nuovo menù",
+    description: "Racconta le novità del menù ai tuoi clienti.",
+    icon: "UtensilsCrossed",
+    suggestedSegment: {},
+    suggestedSubject: "Novità in menù",
+    suggestedTemplateId: "new_menu",
   },
   {
     id: "custom",
