@@ -74,15 +74,23 @@ export function Step4Editor() {
         </Select>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[0.9fr_1fr_1fr]">
-        <BlockCanvas
-          blocks={blocks}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onReorder={setBlocks}
-          onDelete={deleteBlock}
-        />
-        <div className="space-y-2">
+      {/*
+        min-w-0 su ogni colonna è necessario, non decorativo: senza, un
+        contenuto senza spazi (es. un URL data: lunghissimo in un riepilogo
+        blocco) può far espandere la larghezza minima di una colonna ben
+        oltre la sua quota, schiacciando le altre fuori dalla vista.
+      */}
+      <div className="grid gap-6 md:grid-cols-[0.9fr_1fr_1fr]">
+        <div className="min-w-0">
+          <BlockCanvas
+            blocks={blocks}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onReorder={setBlocks}
+            onDelete={deleteBlock}
+          />
+        </div>
+        <div className="min-w-0 space-y-2">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Anteprima live</p>
           <div className="flex justify-center rounded-md border border-border bg-secondary/30 p-3">
             <iframe
@@ -93,7 +101,7 @@ export function Step4Editor() {
             />
           </div>
         </div>
-        <div className="space-y-6 rounded-md border border-border p-4">
+        <div className="min-w-0 space-y-6 rounded-md border border-border p-4">
           <BlockInspector block={selectedBlock} onChange={updateBlock} onFieldFocus={setFocusedField} />
           <div className="border-t border-border pt-4">
             <VariablesPanel onInsert={insertVariable} disabled={!canInsertVariable} />
