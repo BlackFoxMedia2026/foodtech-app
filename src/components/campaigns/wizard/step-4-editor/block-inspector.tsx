@@ -1,10 +1,75 @@
 "use client";
 
+import { useRef, useState } from "react";
+import { Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Block, BlockAlign, SimpleBlock } from "@/lib/campaign-blocks";
+import { uploadCampaignImage } from "@/lib/campaign-wizard-api";
+
+/**
+ * URL manuale + upload diretto dal dispositivo (via /api/campaigns/upload-image,
+ * storage su Vercel Blob). Tenute entrambe le vie: l'URL resta utile per chi ha
+ * già un'immagine ospitata altrove (es. sul sito del locale).
+ */
+function ImageField({
+  label,
+  value,
+  onChange,
+  onFocus,
+}: {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  onFocus?: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const { url } = await uploadCampaignImage(file);
+      onChange(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Caricamento non riuscito");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {value && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={value} alt="" className="h-16 w-auto rounded border border-border bg-white object-contain p-1" />
+      )}
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onFocus={onFocus}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Incolla un URL oppure carica un file"
+        />
+        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          <Upload className="h-3.5 w-3.5" />
+          {uploading ? "Carico..." : "Carica"}
+        </Button>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+      </div>
+      {error && <p className="text-xs text-rose-600">{error}</p>}
+    </div>
+  );
+}
 
 function AlignField({ value, onChange }: { value: BlockAlign; onChange: (v: BlockAlign) => void }) {
   return (
@@ -49,8 +114,12 @@ function SimpleBlockFields({
     case "image":
       return (
         <div className="space-y-2">
-          <Label>URL immagine</Label>
-          <Input value={block.imageUrl} onFocus={() => onFieldFocus("imageUrl")} onChange={(e) => onChange({ ...block, imageUrl: e.target.value })} />
+          <ImageField
+            label="Immagine"
+            value={block.imageUrl}
+            onFocus={() => onFieldFocus("imageUrl")}
+            onChange={(imageUrl) => onChange({ ...block, imageUrl })}
+          />
           <Label>Testo alternativo</Label>
           <Input value={block.alt} onFocus={() => onFieldFocus("alt")} onChange={(e) => onChange({ ...block, alt: e.target.value })} />
         </div>
@@ -84,16 +153,24 @@ export function BlockInspector({
     case "logo":
       return (
         <div className="space-y-3">
-          <Label>URL logo</Label>
-          <Input value={block.imageUrl} onFocus={() => onFieldFocus("imageUrl")} onChange={(e) => onChange({ ...block, imageUrl: e.target.value })} />
+          <ImageField
+            label="Logo"
+            value={block.imageUrl}
+            onFocus={() => onFieldFocus("imageUrl")}
+            onChange={(imageUrl) => onChange({ ...block, imageUrl })}
+          />
           <AlignField value={block.align} onChange={(align) => onChange({ ...block, align })} />
         </div>
       );
     case "hero_image":
       return (
         <div className="space-y-3">
-          <Label>URL immagine</Label>
-          <Input value={block.imageUrl} onFocus={() => onFieldFocus("imageUrl")} onChange={(e) => onChange({ ...block, imageUrl: e.target.value })} />
+          <ImageField
+            label="Immagine"
+            value={block.imageUrl}
+            onFocus={() => onFieldFocus("imageUrl")}
+            onChange={(imageUrl) => onChange({ ...block, imageUrl })}
+          />
           <Label>Testo alternativo</Label>
           <Input value={block.alt} onFocus={() => onFieldFocus("alt")} onChange={(e) => onChange({ ...block, alt: e.target.value })} />
         </div>

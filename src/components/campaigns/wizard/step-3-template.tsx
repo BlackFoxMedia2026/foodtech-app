@@ -114,7 +114,7 @@ export function Step3Template() {
             </button>
           )}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4">
           {list.map((template) => {
             const isSelected = selection?.type === "template" && selection.templateId === template.id;
             return (
@@ -123,22 +123,20 @@ export function Step3Template() {
                 type="button"
                 onClick={() => selectTemplate(template)}
                 className={cn(
-                  "rounded-lg border p-3 text-left transition-colors",
+                  "grid gap-4 rounded-lg border p-3 text-left transition-colors sm:grid-cols-[240px_1fr]",
                   isSelected ? "border-accent bg-accent/10" : "border-border hover:bg-secondary",
                 )}
               >
-                <div className="mb-2 h-36 overflow-hidden rounded-md border border-hairline bg-white">
-                  <iframe
-                    title={`Anteprima ${template.name}`}
-                    srcDoc={templatePreviewHtml(template.blocks)}
-                    tabIndex={-1}
-                    className="pointer-events-none origin-top-left"
-                    style={{ width: 600, height: 900, transform: "scale(0.4)" }}
-                  />
+                <div>
+                  <p className="text-sm font-medium">{template.name}</p>
+                  <p className="text-xs text-muted-foreground">{template.previewText}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{template.category}</p>
                 </div>
-                <p className="text-sm font-medium">{template.name}</p>
-                <p className="text-xs text-muted-foreground">{template.previewText}</p>
-                <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{template.category}</p>
+                {/* Anteprima intera, senza ritagli: mostra davvero copy e immagini del template. */}
+                <div
+                  className="overflow-hidden rounded-md border border-hairline bg-white p-1"
+                  dangerouslySetInnerHTML={{ __html: templatePreviewHtml(template.blocks) }}
+                />
               </button>
             );
           })}

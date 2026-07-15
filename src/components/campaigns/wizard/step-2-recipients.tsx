@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { SegmentFilterType } from "@/server/campaigns";
 import { fetchSegmentPreview } from "@/lib/campaign-wizard-api";
 import { useWizardDispatch, useWizardState } from "./wizard-context";
@@ -81,16 +82,27 @@ export function Step2Recipients() {
       <div>
         <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">Segmenti rapidi</Label>
         <div className="flex flex-wrap gap-2">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => dispatch({ type: "SET_SEGMENT", segment: preset.segment })}
-              className="rounded-full border border-border px-3 py-1 text-xs hover:bg-secondary"
-            >
-              {preset.label}
-            </button>
-          ))}
+          {PRESETS.map((preset) => {
+            // Confronto diretto con lo stato corrente: il pulsante resta "attivo"
+            // solo finché i filtri coincidono esattamente col preset, non è un
+            // semplice "ultimo cliccato" — se poi tocchi un filtro dettagliato
+            // sotto, l'evidenziazione sparisce di conseguenza (corretto, riflette
+            // lo stato reale).
+            const isActive = JSON.stringify(state.segment) === JSON.stringify(preset.segment);
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => dispatch({ type: "SET_SEGMENT", segment: preset.segment })}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  isActive ? "border-accent bg-accent/10 font-medium text-accent" : "border-border hover:bg-secondary",
+                )}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
