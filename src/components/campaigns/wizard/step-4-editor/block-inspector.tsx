@@ -11,9 +11,11 @@ import type { Block, BlockAlign, SimpleBlock } from "@/lib/campaign-blocks";
 import { uploadCampaignImage } from "@/lib/campaign-wizard-api";
 
 /**
- * URL manuale + upload diretto dal dispositivo (via /api/campaigns/upload-image,
- * storage su Vercel Blob). Tenute entrambe le vie: l'URL resta utile per chi ha
- * già un'immagine ospitata altrove (es. sul sito del locale).
+ * Un'unica azione primaria (carica dal dispositivo, via
+ * /api/campaigns/upload-image → Vercel Blob). L'URL manuale resta
+ * disponibile ma dietro un link secondario, non come campo sempre visibile:
+ * per chi carica una foto propria è rumore, per chi ha già un'immagine
+ * ospitata altrove resta a un click di distanza.
  */
 function ImageField({
   label,
@@ -29,6 +31,7 @@ function ImageField({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showUrlField, setShowUrlField] = useState(false);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -49,23 +52,39 @@ function ImageField({
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
-      {value && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={value} alt="" className="h-16 w-auto rounded border border-border bg-white object-contain p-1" />
+      {value ? (
+        <div className="flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={value} alt="" className="h-12 w-12 rounded border border-border bg-white object-contain p-1" />
+          <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            {uploading ? "Carico..." : "Sostituisci"}
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
+            Rimuovi
+          </Button>
+        </div>
+      ) : (
+        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          <Upload className="h-3.5 w-3.5" />
+          {uploading ? "Carico..." : "Carica immagine"}
+        </Button>
       )}
-      <div className="flex gap-2">
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+
+      {showUrlField ? (
         <Input
           value={value}
           onFocus={onFocus}
+          autoFocus
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Incolla un URL oppure carica un file"
+          placeholder="URL immagine"
+          className="text-xs"
         />
-        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-          <Upload className="h-3.5 w-3.5" />
-          {uploading ? "Carico..." : "Carica"}
-        </Button>
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-      </div>
+      ) : (
+        <button type="button" className="block text-xs text-muted-foreground underline" onClick={() => setShowUrlField(true)}>
+          Oppure incolla un URL
+        </button>
+      )}
       {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>
   );
