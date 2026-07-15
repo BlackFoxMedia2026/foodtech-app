@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getActiveVenue } from "@/lib/tenant";
 import { getCampaign, resolveSegment, type SegmentFilterType } from "@/server/campaigns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 import { CampaignActions } from "@/components/campaigns/campaign-actions";
 import { CampaignResultsChart } from "@/components/campaigns/campaign-results-chart";
 
@@ -30,7 +33,16 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing / Campagne</p>
           <h1 className="text-display text-3xl">{campaign.name}</h1>
         </div>
-        <Badge tone="neutral">{campaign.status}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge tone="neutral">{campaign.status}</Badge>
+          {campaign.status === "DRAFT" && (
+            <Button asChild variant="outline">
+              <Link href={`/campaigns/${campaign.id}/edit`}>
+                <Pencil className="h-4 w-4" /> Continua modifica
+              </Link>
+            </Button>
+          )}
+        </div>
       </header>
 
       <div className="grid gap-4 lg:grid-cols-2">
