@@ -1,9 +1,25 @@
 import Link from "next/link";
-import { Megaphone, QrCode as QrCodeIcon } from "lucide-react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ChevronRight, Megaphone, QrCode as QrCodeIcon } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
+
+const SECTIONS = [
+  {
+    href: "/campaigns",
+    icon: Megaphone,
+    eyebrow: "Campagne email",
+    title: "Campagne email",
+    description: "Crea campagne email, scegli segmenti di ospiti e programma comunicazioni.",
+  },
+  {
+    href: "/marketing/qr-codes",
+    icon: QrCodeIcon,
+    eyebrow: "QR Code",
+    title: "QR Code",
+    description: "Genera QR code collegati a URL specifici per menu, prenotazioni, eventi o campagne.",
+  },
+];
 
 export default function MarketingPage() {
   return (
@@ -17,43 +33,25 @@ export default function MarketingPage() {
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2 text-accent">
-              <Megaphone className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wide">Campagne email</span>
-            </div>
-            <CardTitle>Campagne email</CardTitle>
-            <CardDescription>
-              Crea campagne email, scegli segmenti di ospiti e programma comunicazioni.
-            </CardDescription>
-          </CardHeader>
-          <CardContent />
-          <CardFooter>
-            <Button asChild variant="gold">
-              <Link href="/campaigns">Gestisci campagne</Link>
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2 text-accent">
-              <QrCodeIcon className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wide">QR Code</span>
-            </div>
-            <CardTitle>QR Code</CardTitle>
-            <CardDescription>
-              Genera QR code collegati a URL specifici per menu, prenotazioni, eventi o campagne.
-            </CardDescription>
-          </CardHeader>
-          <CardContent />
-          <CardFooter>
-            <Button asChild variant="gold">
-              <Link href="/marketing/qr-codes">Crea QR code</Link>
-            </Button>
-          </CardFooter>
-        </Card>
+        {SECTIONS.map(({ href, icon: Icon, eyebrow, title, description }) => (
+          <Link key={href} href={href}>
+            <Card className="h-full transition-colors hover:border-gilt-dark/50">
+              <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+                <div>
+                  <div className="flex items-center gap-2 text-accent">
+                    <Icon className="h-4 w-4" />
+                    <span className="text-xs font-medium uppercase tracking-wide">{eyebrow}</span>
+                  </div>
+                  <CardTitle className="mt-1">{title}</CardTitle>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <CardDescription>{description}</CardDescription>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
     </div>
   );
