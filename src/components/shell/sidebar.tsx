@@ -17,13 +17,16 @@ import {
 import { cn } from "@/lib/utils";
 import { usePointerGlass } from "@/lib/use-pointer-glass";
 
-const NAV = [
+const NAV: { href: string; label: string; icon: typeof LayoutDashboard; matchPrefixes?: string[] }[] = [
   { href: "/overview", label: "Panoramica", icon: LayoutDashboard },
   { href: "/bookings", label: "Prenotazioni", icon: CalendarRange },
   { href: "/floor", label: "Sala", icon: LayoutPanelLeft },
   { href: "/guests", label: "Ospiti", icon: Users },
   { href: "/experiences", label: "Esperienze", icon: Sparkles },
-  { href: "/campaigns", label: "Campagne", icon: Megaphone },
+  // href punta all'hub Marketing, ma resta "attiva" anche dentro le pagine
+  // campagne esistenti (/campaigns/*), rimaste al loro path per non rompere
+  // il wizard già in uso — vedi matchPrefixes sotto.
+  { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"] },
   { href: "/payments", label: "Pagamenti", icon: CreditCard },
   { href: "/insights", label: "Analytics", icon: LineChart },
   { href: "/settings", label: "Impostazioni", icon: Settings },
@@ -56,8 +59,11 @@ export function Sidebar() {
         </Link>
 
         <div className="flex flex-1 flex-col gap-1.5 overflow-y-auto">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(`${href}/`);
+          {NAV.map(({ href, label, icon: Icon, matchPrefixes }) => {
+            const active =
+              pathname === href ||
+              pathname.startsWith(`${href}/`) ||
+              (matchPrefixes?.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? false);
             return (
               <Link
                 key={href}

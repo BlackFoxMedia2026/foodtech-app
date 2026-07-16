@@ -114,6 +114,7 @@ model Venue {
   Order                 Order[]
   POSConnector          POSConnector[]
   payments              Payment[]
+  QrCode                QrCode[]
   Review                Review[]
   ReviewLink            ReviewLink[]
   ReviewLinkClick       ReviewLinkClick[]
@@ -342,6 +343,34 @@ model Campaign {
   createdAt   DateTime        @default(now())
   venue       Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
   MessageLog  MessageLog[]
+}
+
+enum QrCodeCategory {
+  MENU
+  BOOKING
+  EVENT
+  REVIEW
+  CAMPAIGN
+  SOCIAL
+  OTHER
+}
+
+model QrCode {
+  id             String         @id @default(cuid())
+  venueId        String
+  name           String
+  description    String?
+  destinationUrl String
+  category       QrCodeCategory @default(OTHER)
+  isActive       Boolean        @default(true)
+  scansCount     Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  Venue          Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  // TODO(futuro): quando esisterà un redirect tracciato (QR -> /r/[id] -> destinationUrl),
+  // scansCount si incrementerà lì; oggi resta 0 perché il QR punta direttamente all'URL.
+  @@index([venueId, createdAt])
 }
 
 model GuestProviderLink {
