@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, QrCode as QrCodeIcon, Trash2 } from "lucide-react";
+import { Pencil, Plus, QrCode as QrCodeIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,20 +45,43 @@ export interface QrCodeItem {
   createdAtLabel: string;
 }
 
-function CreateQrCodeDialog({ onCreated }: { onCreated: () => void }) {
+interface QrCodeFormValues {
+  name: string;
+  destinationUrl: string;
+  description?: string;
+  category: Category;
+}
+
+/**
+ * Form condiviso da creazione e modifica: stessi campi, stessa validazione,
+ * cambia solo il testo del dialog e cosa succede al submit (create vs update).
+ */
+function QrCodeFormDialog({
+  trigger,
+  title,
+  submitLabel,
+  initial,
+  onSubmit,
+}: {
+  trigger: React.ReactNode;
+  title: string;
+  submitLabel: string;
+  initial?: { name: string; destinationUrl: string; description: string; category: Category };
+  onSubmit: (values: QrCodeFormValues) => Promise<void>;
+}) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [destinationUrl, setDestinationUrl] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<Category>("OTHER");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [destinationUrl, setDestinationUrl] = useState(initial?.destinationUrl ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [category, setCategory] = useState<Category>(initial?.category ?? "OTHER");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function reset() {
-    setName("");
-    setDestinationUrl("");
-    setDescription("");
-    setCategory("OTHER");
+  function resetToInitial() {
+    setName(initial?.name ?? "");
+    setDestinationUrl(initial?.destinationUrl ?? "");
+    setDescription(initial?.description ?? "");
+    setCategory(initial?.category ?? "OTHER");
     setError(null);
   }
 
@@ -70,17 +93,17 @@ function CreateQrCodeDialog({ onCreated }: { onCreated: () => void }) {
     setSubmitting(true);
     setError(null);
     try {
-      await createQrCode({
+      await onSubmit({
         name: name.trim(),
         destinationUrl: destinationUrl.trim(),
         description: description.trim() || undefined,
         category,
       });
       setOpen(false);
-      reset();
-      onCreated();
     } catch (err) {
-      setError(err instanceof Error && err.message === "URL non valido" ? "L'URL inserito non è valido." : "Creazione non riuscita.");
+      setError(
+        err instanceof Error && err.message === "URL non valido" ? "L'URL inserito non è valido." : "Salvataggio non riuscito.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -91,17 +114,13 @@ function CreateQrCodeDialog({ onCreated }: { onCreated: () => void }) {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) reset();
+        if (!next) resetToInitial();
       }}
     >
-      <DialogTrigger asChild>
-        <Button variant="gold">
-          <Plus className="h-4 w-4" /> Nuovo QR code
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuovo QR code</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -146,7 +165,7 @@ function CreateQrCodeDialog({ onCreated }: { onCreated: () => void }) {
             Annulla
           </Button>
           <Button variant="gold" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? "Creazione..." : "Crea QR code"}
+            {submitting ? "Salvataggio..." : submitLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -202,6 +221,25 @@ function QrCodeCard({ item, onChanged }: { item: QrCodeItem; onChanged: () => vo
           <CopyButton value={item.destinationUrl} variant="outline" size="sm">
             Copia URL
           </CopyButton>
+          <QrCodeFormDialog
+            trigger={
+              <Button type="button" variant="outline" size="sm">
+                <Pencil className="h-3.5 w-3.5" /> Modifica
+              </Button>
+            }
+            title="Modifica QR code"
+            submitLabel="Salva modifiche"
+            initial={{
+              name: item.name,
+              destinationUrl: item.destinationUrl,
+              description: item.description ?? "",
+              category: item.category,
+            }}
+            onSubmit={async (values) => {
+              await updateQrCode(item.id, values);
+              onChanged();
+            }}
+          />
           <Button type="button" variant="outline" size="sm" onClick={toggleActive} disabled={busy}>
             {item.isActive ? "Disattiva" : "Attiva"}
           </Button>
@@ -228,7 +266,19 @@ export function QrCodeManager({ items }: { items: QrCodeItem[] }) {
             Crea QR code collegati a menu, prenotazioni, eventi o campagne.
           </p>
         </div>
-        <CreateQrCodeDialog onCreated={refresh} />
+        <QrCodeFormDialog
+          trigger={
+            <Button variant="gold">
+              <Plus className="h-4 w-4" /> Nuovo QR code
+            </Button>
+          }
+          title="Nuovo QR code"
+          submitLabel="Crea QR code"
+          onSubmit={async (values) => {
+            await createQrCode(values);
+            refresh();
+          }}
+        />
       </header>
 
       {items.length === 0 ? (
