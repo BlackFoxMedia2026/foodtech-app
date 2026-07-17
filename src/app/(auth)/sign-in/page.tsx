@@ -43,23 +43,23 @@ function SignInForm() {
         <AmbientBackground />
 
         {/* Visual panel */}
-        <section className="relative order-2 flex min-h-[260px] flex-col overflow-hidden rounded-[28px] p-8 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.6)] sm:p-10 md:order-1 md:min-h-0 md:p-10 lg:p-12">
+        <section className="relative order-2 flex min-h-[260px] flex-col overflow-hidden rounded-[28px] p-8 sm:p-10 md:order-1 md:min-h-0 md:p-10 lg:p-12">
           <div className="relative z-10 flex h-full flex-col text-foreground">
             <div className="flex items-center gap-2">
               <span className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-foreground font-display font-semibold">T</span>
               <span className="text-display text-lg">Tavolo</span>
             </div>
 
-            <div className="flex-1" />
-
-            <div className="max-w-md space-y-4">
-              <p className="text-display text-2xl leading-tight sm:text-3xl">
-                Una sala perfetta è prima di tutto una <span className="text-accent">questione di ritmo</span>.
-              </p>
-              <p className="hidden text-sm text-muted-foreground sm:block">
-                Tavolo coordina prenotazioni, sala, ospiti ed esperienze in un&apos;unica
-                interfaccia pensata per chi accoglie ogni giorno.
-              </p>
+            <div className="flex flex-1 flex-col items-end justify-center">
+              <div className="max-w-md space-y-4">
+                <p className="text-display text-2xl leading-tight sm:text-3xl">
+                  Una sala perfetta è prima di tutto una <span className="text-accent">questione di ritmo</span>.
+                </p>
+                <p className="hidden text-sm text-muted-foreground sm:block">
+                  Tavolo coordina prenotazioni, sala, ospiti ed esperienze in un&apos;unica
+                  interfaccia pensata per chi accoglie ogni giorno.
+                </p>
+              </div>
             </div>
 
             <p className="mt-8 text-xs text-muted-foreground">© Tavolo · gestionale ospitalità</p>
@@ -67,81 +67,83 @@ function SignInForm() {
         </section>
 
         {/* Login form */}
-        <section className="relative order-1 flex items-center justify-center bg-background py-6 md:order-2 md:py-0">
-          <form onSubmit={onSubmit} noValidate className="w-full max-w-[400px] space-y-6 text-left lg:max-w-[440px]">
-            <div className="flex flex-col items-start space-y-4 text-left">
-              <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-accent-foreground font-display font-semibold">T</span>
-              <div className="space-y-1.5">
-                <h1 className="text-display text-2xl leading-tight text-foreground">Accedi</h1>
-                <p className="text-sm text-muted-foreground">
-                  Gestisci prenotazioni, sala e ospiti da un unico spazio.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  defaultValue="owner@tavolo.demo"
-                  aria-invalid={!!error}
-                  aria-describedby={error ? "sign-in-error" : undefined}
-                  className="h-11 bg-black/40 text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    autoComplete="current-password"
-                    defaultValue="tavolo2026"
-                    aria-invalid={!!error}
-                    aria-describedby={error ? "sign-in-error" : undefined}
-                    className="h-11 bg-black/40 pr-10 text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? "Nascondi password" : "Mostra password"}
-                    aria-pressed={showPassword}
-                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+        <section className="relative order-1 flex items-center justify-center py-6 md:order-2 md:py-0">
+          <div className="w-full max-w-[400px] rounded-[28px] border border-white/10 bg-black/50 p-8 sm:p-10 lg:max-w-[440px]">
+            <form onSubmit={onSubmit} noValidate className="w-full space-y-6 text-left">
+              <div className="flex flex-col items-start space-y-4 text-left">
+                <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-accent-foreground font-display font-semibold">T</span>
+                <div className="space-y-1.5">
+                  <h1 className="text-display text-2xl leading-tight text-foreground">Accedi</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Gestisci prenotazioni, sala e ospiti da un unico spazio.
+                  </p>
                 </div>
               </div>
-            </div>
 
-            <div className="flex justify-end">
-              <span className="text-xs text-muted-foreground">Password dimenticata?</span>
-            </div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    defaultValue="owner@tavolo.demo"
+                    aria-invalid={!!error}
+                    aria-describedby={error ? "sign-in-error" : undefined}
+                    className="h-11 bg-black/40 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      autoComplete="current-password"
+                      defaultValue="tavolo2026"
+                      aria-invalid={!!error}
+                      aria-describedby={error ? "sign-in-error" : undefined}
+                      className="h-11 bg-black/40 pr-10 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                      aria-pressed={showPassword}
+                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-            <div aria-live="polite" className="sr-only">
-              {loading ? "Accesso in corso…" : ""}
-            </div>
-            {error && (
-              <p id="sign-in-error" role="alert" className="text-sm text-destructive">
-                {error}
+              <div className="flex justify-end">
+                <span className="text-xs text-muted-foreground">Password dimenticata?</span>
+              </div>
+
+              <div aria-live="polite" className="sr-only">
+                {loading ? "Accesso in corso…" : ""}
+              </div>
+              {error && (
+                <p id="sign-in-error" role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+
+              <Button type="submit" variant="gold" disabled={loading} className="h-11 w-full">
+                {loading ? "Accesso in corso…" : "Entra in Tavolo"}
+              </Button>
+
+              <p className="text-left text-xs text-muted-foreground">
+                Accesso demo: <code>owner@tavolo.demo</code> · <code>tavolo2026</code>
               </p>
-            )}
-
-            <Button type="submit" variant="gold" disabled={loading} className="h-11 w-full">
-              {loading ? "Accesso in corso…" : "Entra in Tavolo"}
-            </Button>
-
-            <p className="text-left text-xs text-muted-foreground">
-              Accesso demo: <code>owner@tavolo.demo</code> · <code>tavolo2026</code>
-            </p>
-          </form>
+            </form>
+          </div>
         </section>
       </AmbientScene>
     </main>
