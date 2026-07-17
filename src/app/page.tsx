@@ -1,18 +1,12 @@
 import Link from "next/link";
 import { ArrowRight, CalendarRange, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AmbientBackground } from "@/components/shell/ambient-background";
 
 export default function Landing() {
   return (
     <main className="dark relative z-0 min-h-screen overflow-hidden bg-background text-foreground">
-      <div className="mesh-bg pointer-events-none absolute -inset-32 -z-10">
-        <div className="mesh-blob mesh-blob-1" />
-        <div className="mesh-blob mesh-blob-2" />
-        <div className="mesh-blob mesh-blob-3" />
-        <div className="mesh-blob mesh-blob-4" />
-        <div className="mesh-blob mesh-blob-5" />
-        <div className="mesh-blob mesh-blob-6" />
-      </div>
+      <AmbientBackground />
 
       <header className="container relative z-10 flex items-center justify-between py-6">
         <div className="flex items-center gap-2">

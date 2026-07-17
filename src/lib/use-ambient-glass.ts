@@ -50,7 +50,7 @@ export function useAmbientGlass<T extends HTMLElement>() {
 
       const stopCount = EMBER_STOPS.length;
       const scaled = phase * stopCount;
-      const i0 = Math.floor(scaled) % stopCount;
+      const i0 = ((Math.floor(scaled) % stopCount) + stopCount) % stopCount;
       const localT = scaled - Math.floor(scaled);
 
       const color1 = mixHex(EMBER_STOPS[i0], EMBER_STOPS[(i0 + 1) % stopCount], localT);

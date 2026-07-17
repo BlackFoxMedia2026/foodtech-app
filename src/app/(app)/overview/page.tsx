@@ -30,6 +30,7 @@ export default async function OverviewPage() {
           label="Coperti previsti"
           value={String(data.totalCovers)}
           hint={`${data.todayBookings.length} prenotazioni attive`}
+          variant="liquid"
         />
         <StatCard
           label="No-show stimati"
