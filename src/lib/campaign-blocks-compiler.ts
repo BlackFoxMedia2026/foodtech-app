@@ -13,7 +13,15 @@ function alignStyle(align: "left" | "center" | "right"): string {
   return `text-align:${align};`;
 }
 
-function renderSimpleBlock(block: SimpleBlock): string {
+const DEFAULT_ACCENT_COLOR = "#c9a25a";
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6,8}$/;
+
+/** Colore d'accento del brand del locale (Impostazioni → Brand) per bottoni e badge; ricade sul gold neutro se non impostato o non valido. */
+function resolveAccentColor(accentColor?: string): string {
+  return accentColor && HEX_COLOR_RE.test(accentColor) ? accentColor : DEFAULT_ACCENT_COLOR;
+}
+
+function renderSimpleBlock(block: SimpleBlock, accentColor: string): string {
   switch (block.type) {
     case "text":
       return `<tr><td style="padding:12px 24px;font-size:15px;line-height:1.5;color:#2b2b2b;">${escapeHtml(
@@ -33,13 +41,13 @@ function renderSimpleBlock(block: SimpleBlock): string {
     case "button_cta":
       return `<tr><td style="padding:12px 24px;${alignStyle(block.align)}"><a href="${escapeHtml(
         block.url
-      )}" style="display:inline-block;background:#c9a25a;color:#1a1a1a;font-weight:600;padding:12px 28px;border-radius:6px;text-decoration:none;">${escapeHtml(
+      )}" style="display:inline-block;background:${accentColor};color:#ffffff;font-weight:600;padding:12px 28px;border-radius:6px;text-decoration:none;">${escapeHtml(
         block.label
       )}</a></td></tr>`;
   }
 }
 
-function renderBlock(block: Block): string {
+function renderBlock(block: Block, accentColor: string): string {
   switch (block.type) {
     case "logo":
       return `<tr><td style="padding:20px 24px 8px 24px;${alignStyle(
@@ -58,13 +66,13 @@ function renderBlock(block: Block): string {
     case "text":
     case "image":
     case "button_cta":
-      return renderSimpleBlock(block);
+      return renderSimpleBlock(block, accentColor);
     case "divider":
       return `<tr><td style="padding:8px 24px;"><hr style="border:none;border-top:1px solid #e5e5e5;margin:0;" /></td></tr>`;
     case "offer_box":
       return `<tr><td style="padding:12px 24px;"><table role="presentation" width="100%" style="background:#f7f1e6;border-radius:8px;"><tr><td style="padding:16px;">${
         block.badge
-          ? `<span style="display:inline-block;background:#c9a25a;color:#1a1a1a;font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;margin-bottom:8px;">${escapeHtml(
+          ? `<span style="display:inline-block;background:${accentColor};color:#ffffff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;margin-bottom:8px;">${escapeHtml(
               block.badge
             )}</span><br/>`
           : ""
@@ -75,9 +83,9 @@ function renderBlock(block: Block): string {
       )}</p></td></tr></table></td></tr>`;
     case "two_columns":
       return `<tr><td style="padding:12px 24px;"><table role="presentation" width="100%"><tr><td width="50%" valign="top" style="padding-right:8px;"><table role="presentation" width="100%">${block.left
-        .map(renderSimpleBlock)
+        .map((b) => renderSimpleBlock(b, accentColor))
         .join("")}</table></td><td width="50%" valign="top" style="padding-left:8px;"><table role="presentation" width="100%">${block.right
-        .map(renderSimpleBlock)
+        .map((b) => renderSimpleBlock(b, accentColor))
         .join("")}</table></td></tr></table></td></tr>`;
     case "social_links":
       return `<tr><td style="padding:12px 24px;text-align:center;">${block.links
@@ -103,9 +111,12 @@ function renderBlock(block: Block): string {
  * Compila i blocchi in HTML "email-safe" (tabelle + stili inline — i client email
  * ignorano classi CSS esterne). I token variabile restano placeholder letterali:
  * la risoluzione è un passo separato, vedi resolveGlobalVariables/resolveAllVariables/toBrevoMergeTags.
+ * `accentColor` è il colore principale del brand (Impostazioni → Brand): usato per
+ * bottoni e badge, ricade su un gold neutro se il locale non l'ha ancora impostato.
  */
-export function compileBlocksToHtml(blocks: Block[]): string {
-  const rows = blocks.map(renderBlock).join("");
+export function compileBlocksToHtml(blocks: Block[], accentColor?: string): string {
+  const resolvedAccent = resolveAccentColor(accentColor);
+  const rows = blocks.map((b) => renderBlock(b, resolvedAccent)).join("");
   return `<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;background:#ffffff;border-collapse:collapse;">${rows}</table>`;
 }
 

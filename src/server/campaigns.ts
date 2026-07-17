@@ -58,12 +58,15 @@ export async function getCampaign(venueId: string, id: string) {
 
 export async function createCampaign(venueId: string, raw: unknown) {
   const data = CampaignInput.parse(raw);
+  const venue = await db.venue.findUniqueOrThrow({ where: { id: venueId }, select: { brandAccent: true } });
   return db.campaign.create({
     data: {
       venueId,
       name: data.name,
       subject: data.subject,
-      body: data.contentBlocks ? compileBlocksToHtml(data.contentBlocks as Block[]) : data.body,
+      body: data.contentBlocks
+        ? compileBlocksToHtml(data.contentBlocks as Block[], venue.brandAccent ?? undefined)
+        : data.body,
       previewText: data.previewText,
       contentBlocks: data.contentBlocks as unknown as Prisma.InputJsonValue,
       segment: (data.segment ?? {}) as Prisma.InputJsonValue,
@@ -81,6 +84,10 @@ export async function updateCampaign(venueId: string, id: string, raw: unknown) 
   // Quando arrivano contentBlocks, il body compilato viene sempre ricalcolato qui:
   // contentBlocks resta l'unica fonte di verità, body è solo una cache derivata,
   // così i due non possono mai disallinearsi anche se il client invia un body stantio.
+  const venue =
+    data.contentBlocks !== undefined
+      ? await db.venue.findUniqueOrThrow({ where: { id: venueId }, select: { brandAccent: true } })
+      : null;
   return db.campaign.update({
     where: { id },
     data: {
@@ -89,7 +96,7 @@ export async function updateCampaign(venueId: string, id: string, raw: unknown) 
       ...(data.previewText !== undefined && { previewText: data.previewText }),
       ...(data.contentBlocks !== undefined && {
         contentBlocks: data.contentBlocks as unknown as Prisma.InputJsonValue,
-        body: compileBlocksToHtml(data.contentBlocks as Block[]),
+        body: compileBlocksToHtml(data.contentBlocks as Block[], venue?.brandAccent ?? undefined),
       }),
       ...(data.contentBlocks === undefined && data.body !== undefined && { body: data.body }),
       ...(data.segment !== undefined && { segment: data.segment as Prisma.InputJsonValue }),
@@ -319,7 +326,7 @@ export async function sendTestEmail(venueId: string, campaignId: string, to: str
   const venue = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
 
   const rawHtml = campaign.contentBlocks
-    ? compileBlocksToHtml(campaign.contentBlocks as unknown as Block[])
+    ? compileBlocksToHtml(campaign.contentBlocks as unknown as Block[], venue.brandAccent ?? undefined)
     : campaign.body || "";
 
   const origin = getRequestOrigin();
