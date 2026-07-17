@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
 import { AmbientScene } from "@/components/shell/ambient-scene";
+import { AmbientBackground } from "@/components/shell/ambient-background";
 import { LiquidGlassDefs } from "@/components/shell/liquid-glass-defs";
 import { BrandSetupDialog } from "@/components/settings/brand-setup-dialog";
 import { can, getActiveVenue } from "@/lib/tenant";
@@ -18,14 +19,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
   return (
     <AmbientScene className="dark relative z-0 grid h-screen grid-cols-[288px_1fr] overflow-hidden bg-background text-foreground">
       <LiquidGlassDefs />
-      <div className="mesh-bg pointer-events-none absolute -inset-32 -z-10">
-        <div className="mesh-blob mesh-blob-1" />
-        <div className="mesh-blob mesh-blob-2" />
-        <div className="mesh-blob mesh-blob-3" />
-        <div className="mesh-blob mesh-blob-4" />
-        <div className="mesh-blob mesh-blob-5" />
-        <div className="mesh-blob mesh-blob-6" />
-      </div>
+      <AmbientBackground />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-background/22" />
       <aside className="relative z-10 p-3.5">
         <Sidebar />

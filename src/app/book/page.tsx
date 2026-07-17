@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PublicBookingForm } from "@/components/bookings/public-booking-form";
+import { AmbientBackground } from "@/components/shell/ambient-background";
 import { db } from "@/lib/db";
 
 export default async function BookPage(props: { searchParams?: { venue?: string; embed?: string } }) {
@@ -42,14 +43,7 @@ export default async function BookPage(props: { searchParams?: { venue?: string;
 
   return (
     <div className="dark relative z-0 min-h-screen overflow-hidden bg-background p-4 text-foreground">
-      <div className="mesh-bg pointer-events-none absolute -inset-32 -z-10">
-        <div className="mesh-blob mesh-blob-1" />
-        <div className="mesh-blob mesh-blob-2" />
-        <div className="mesh-blob mesh-blob-3" />
-        <div className="mesh-blob mesh-blob-4" />
-        <div className="mesh-blob mesh-blob-5" />
-        <div className="mesh-blob mesh-blob-6" />
-      </div>
+      <AmbientBackground />
 
       <div className="relative z-10 mx-auto max-w-2xl space-y-6 py-8">
         <div className="text-center space-y-2">
