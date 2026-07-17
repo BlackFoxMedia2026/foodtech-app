@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { CAMPAIGN_OBJECTIVES, type CampaignObjective } from "@/lib/campaign-objectives";
-import { getCampaignTemplate } from "@/lib/campaign-templates";
+import { getCampaignTemplate, withBrandLogo } from "@/lib/campaign-templates";
 import { useWizardDispatch, useWizardState } from "./wizard-context";
 
 const ICONS: Record<CampaignObjective["icon"], LucideIcon> = {
@@ -31,12 +31,13 @@ export function Step1Objective() {
 
   function selectObjective(objective: CampaignObjective) {
     const template = objective.suggestedTemplateId ? getCampaignTemplate(objective.suggestedTemplateId) : undefined;
+    const blocks = template ? template.blocks.map((b, i) => ({ ...b, id: `${objective.id}-init-${i}` })) : [];
     dispatch({
       type: "SET_OBJECTIVE",
       objectiveId: objective.id,
       segment: objective.suggestedSegment,
       subject: objective.suggestedSubject,
-      blocks: template ? template.blocks.map((b, i) => ({ ...b, id: `${objective.id}-init-${i}` })) : [],
+      blocks: withBrandLogo(blocks, state.brandLogoUrl || undefined),
     });
   }
 

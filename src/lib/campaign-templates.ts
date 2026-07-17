@@ -199,3 +199,14 @@ export function templatesForObjective(objectiveId: string | null): CampaignTempl
   if (!objectiveId) return CAMPAIGN_TEMPLATES;
   return CAMPAIGN_TEMPLATES.filter((t) => t.objectiveTags.includes(objectiveId));
 }
+
+/**
+ * Sostituisce il placeholder logo dei blocchi con quello reale del locale
+ * (Impostazioni → Brand), se impostato — altrimenti lascia il placeholder
+ * del template invariato. Usata ovunque un template venga istanziato per
+ * una campagna vera (Step 1 e Step 3), non per la sola anteprima.
+ */
+export function withBrandLogo(blocks: Block[], logoUrl?: string): Block[] {
+  if (!logoUrl) return blocks;
+  return blocks.map((b) => (b.type === "logo" ? { ...b, imageUrl: logoUrl } : b));
+}

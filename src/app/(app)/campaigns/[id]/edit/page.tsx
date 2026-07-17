@@ -41,6 +41,8 @@ export default async function EditCampaignPage({ params }: { params: { id: strin
         furthestStep: 1,
         senderName: process.env.BREVO_FROM_NAME || "Tavolo",
         senderEmail: process.env.BREVO_FROM_EMAIL || "marketing@tavolo.local",
+        brandLogoUrl: ctx.venue.brandLogoUrl ?? "",
+        brandPrimaryColor: ctx.venue.brandAccent ?? "",
       }}
     />
   );

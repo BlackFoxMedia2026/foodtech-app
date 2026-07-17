@@ -31,7 +31,7 @@ export function Step4Editor() {
   const selectedBlock = blocks.find((b) => b.id === selectedId) ?? null;
   const canInsertVariable = !!selectedBlock && !!focusedField && selectedBlock.type !== "two_columns";
   const showVariablesPanel = !!selectedBlock && !BLOCK_TYPES_WITHOUT_VARIABLES.includes(selectedBlock.type);
-  const previewHtml = compileBlocksToHtml(blocks);
+  const previewHtml = compileBlocksToHtml(blocks, state.brandPrimaryColor || undefined);
 
   function setBlocks(next: Block[]) {
     dispatch({ type: "SET_BLOCKS", blocks: next });

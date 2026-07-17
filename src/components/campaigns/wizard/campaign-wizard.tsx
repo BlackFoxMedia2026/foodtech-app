@@ -98,7 +98,7 @@ function WizardShell() {
       ) {
         return;
       }
-      const resolved = resolveTemplateSelection(state.pendingTemplateSelection, state.subject);
+      const resolved = resolveTemplateSelection(state.pendingTemplateSelection, state.subject, state.brandLogoUrl || undefined);
       stateToPersist = {
         ...state,
         contentBlocks: resolved.blocks,

@@ -29,6 +29,9 @@ export interface WizardState {
   /** Letti da env lato server e passati come prop iniziale — sola lettura, nessun override per-campagna in questa passata. */
   senderName: string;
   senderEmail: string;
+  /** Brand del locale (Impostazioni → Brand): usati come default per logo/colore nei nuovi contenuti. */
+  brandLogoUrl: string;
+  brandPrimaryColor: string;
 }
 
 export type WizardAction =
@@ -72,6 +75,8 @@ export const initialWizardState: WizardState = {
   saving: false,
   senderName: "Tavolo",
   senderEmail: "marketing@tavolo.local",
+  brandLogoUrl: "",
+  brandPrimaryColor: "",
 };
 
 function reducer(state: WizardState, action: WizardAction): WizardState {

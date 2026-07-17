@@ -5,7 +5,13 @@ import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { withUnsubscribeBlock, type Block } from "@/lib/campaign-blocks";
 import { compileBlocksToHtml, resolveTestVariables } from "@/lib/campaign-blocks-compiler";
-import { CAMPAIGN_TEMPLATES, getCampaignTemplate, templatesForObjective, type CampaignTemplate } from "@/lib/campaign-templates";
+import {
+  CAMPAIGN_TEMPLATES,
+  getCampaignTemplate,
+  templatesForObjective,
+  withBrandLogo,
+  type CampaignTemplate,
+} from "@/lib/campaign-templates";
 import { useWizardDispatch, useWizardState, type PendingTemplateSelection } from "./wizard-context";
 
 function cloneBlocksWithFreshIds(blocks: Block[]): Block[] {
@@ -25,8 +31,9 @@ const TEMPLATE_PREVIEW_VARS = {
   loyaltyLevel: "VIP",
 };
 
-function templatePreviewHtml(blocks: Block[]): string {
-  return resolveTestVariables(compileBlocksToHtml(blocks), TEMPLATE_PREVIEW_VARS);
+function templatePreviewHtml(blocks: Block[], brandLogoUrl: string, brandPrimaryColor: string): string {
+  const withLogo = withBrandLogo(blocks, brandLogoUrl || undefined);
+  return resolveTestVariables(compileBlocksToHtml(withLogo, brandPrimaryColor || undefined), TEMPLATE_PREVIEW_VARS);
 }
 
 /**
@@ -36,7 +43,8 @@ function templatePreviewHtml(blocks: Block[]): string {
  */
 export function resolveTemplateSelection(
   selection: PendingTemplateSelection,
-  currentSubject: string
+  currentSubject: string,
+  brandLogoUrl?: string
 ): { blocks: Block[]; subject?: string } {
   if (selection.type === "blank") {
     return { blocks: withUnsubscribeBlock([]) };
@@ -44,7 +52,7 @@ export function resolveTemplateSelection(
   const template = getCampaignTemplate(selection.templateId ?? null);
   if (!template) return { blocks: withUnsubscribeBlock([]) };
   return {
-    blocks: withUnsubscribeBlock(cloneBlocksWithFreshIds(template.blocks)),
+    blocks: withUnsubscribeBlock(withBrandLogo(cloneBlocksWithFreshIds(template.blocks), brandLogoUrl)),
     subject: currentSubject.trim() ? undefined : template.name,
   };
 }
@@ -132,10 +140,12 @@ export function Step3Template() {
                   <p className="text-xs text-muted-foreground">{template.previewText}</p>
                   <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{template.category}</p>
                 </div>
-                {/* Anteprima intera, senza ritagli: mostra davvero copy e immagini del template. */}
+                {/* Anteprima intera, senza ritagli: mostra davvero copy, logo e colore del locale. */}
                 <div
                   className="overflow-hidden rounded-md border border-hairline bg-white p-1"
-                  dangerouslySetInnerHTML={{ __html: templatePreviewHtml(template.blocks) }}
+                  dangerouslySetInnerHTML={{
+                    __html: templatePreviewHtml(template.blocks, state.brandLogoUrl, state.brandPrimaryColor),
+                  }}
                 />
               </button>
             );

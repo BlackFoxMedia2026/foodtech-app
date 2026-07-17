@@ -27,7 +27,7 @@ export function Step5PreviewTest() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const html = compileBlocksToHtml(state.contentBlocks);
+  const html = compileBlocksToHtml(state.contentBlocks, state.brandPrimaryColor || undefined);
 
   async function handleSendTest() {
     if (!state.campaignId || !testEmail) return;
