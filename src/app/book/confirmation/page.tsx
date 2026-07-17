@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Clock } from "lucide-react";
+import { CheckCircle2, Clock, Facebook, Instagram, MapPin } from "lucide-react";
 import Link from "next/link";
 import { formatDate, formatTime } from "@/lib/utils";
 
@@ -174,6 +174,25 @@ export default async function ConfirmationPage(props: { searchParams?: { booking
               {booking.venue.phone && booking.venue.email && <span> • </span>}
               {booking.venue.email && <span>📧 {booking.venue.email}</span>}
             </p>
+            {(booking.venue.instagramUrl || booking.venue.facebookUrl || booking.venue.googleBusinessUrl) && (
+              <div className="mt-4 flex items-center justify-center gap-4">
+                {booking.venue.instagramUrl && (
+                  <a href={booking.venue.instagramUrl} target="_blank" rel="noreferrer" className="hover:text-slate-700" aria-label="Instagram">
+                    <Instagram className="h-5 w-5" />
+                  </a>
+                )}
+                {booking.venue.facebookUrl && (
+                  <a href={booking.venue.facebookUrl} target="_blank" rel="noreferrer" className="hover:text-slate-700" aria-label="Facebook">
+                    <Facebook className="h-5 w-5" />
+                  </a>
+                )}
+                {booking.venue.googleBusinessUrl && (
+                  <a href={booking.venue.googleBusinessUrl} target="_blank" rel="noreferrer" className="hover:text-slate-700" aria-label="Google Maps">
+                    <MapPin className="h-5 w-5" />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

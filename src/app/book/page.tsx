@@ -9,7 +9,7 @@ export default async function BookPage(props: { searchParams?: { venue?: string;
   const venue = venueId
     ? await db.venue.findFirst({
         where: { id: venueId, active: true },
-        select: { id: true, name: true, slug: true },
+        select: { id: true, name: true, slug: true, brandLogoUrl: true, brandAccent: true, phone: true, email: true },
       })
     : null;
 
@@ -19,7 +19,15 @@ export default async function BookPage(props: { searchParams?: { venue?: string;
         <CardTitle className="text-2xl">Nuova prenotazione</CardTitle>
       </CardHeader>
       <CardContent>
-        <PublicBookingForm venueId={venue.id} venueName={venue.name} embed={isEmbed} />
+        <PublicBookingForm
+          venueId={venue.id}
+          venueName={venue.name}
+          embed={isEmbed}
+          logoUrl={venue.brandLogoUrl ?? undefined}
+          primaryColor={venue.brandAccent ?? undefined}
+          phone={venue.phone ?? undefined}
+          email={venue.email ?? undefined}
+        />
       </CardContent>
     </Card>
   ) : (
@@ -50,10 +58,6 @@ export default async function BookPage(props: { searchParams?: { venue?: string;
         </div>
 
         {card}
-
-        <div className="text-center text-sm text-muted-foreground">
-          <p>Hai domande? Chiamaci o inviaci un messaggio</p>
-        </div>
       </div>
     </div>
   );

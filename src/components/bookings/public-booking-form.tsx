@@ -7,15 +7,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, Mail, Phone } from "lucide-react";
+
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6,8}$/;
 
 interface PublicBookingFormProps {
   venueId: string;
   venueName: string;
   embed?: boolean;
+  logoUrl?: string;
+  primaryColor?: string;
+  phone?: string;
+  email?: string;
 }
 
-export function PublicBookingForm({ venueId, venueName, embed }: PublicBookingFormProps) {
+export function PublicBookingForm({ venueId, venueName, embed, logoUrl, primaryColor, phone, email }: PublicBookingFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,9 +90,18 @@ export function PublicBookingForm({ venueId, venueName, embed }: PublicBookingFo
   };
 
   const today = new Date().toISOString().split("T")[0];
+  const buttonStyle =
+    primaryColor && HEX_COLOR_RE.test(primaryColor) ? { background: primaryColor } : undefined;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {logoUrl && (
+        <div className="flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt={venueName} className="h-12 w-auto object-contain" />
+        </div>
+      )}
+
       {error && (
         <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
           <AlertCircle className="h-5 w-5" />
@@ -175,7 +190,7 @@ export function PublicBookingForm({ venueId, venueName, embed }: PublicBookingFo
         />
       </div>
 
-      <Button type="submit" variant="gold" disabled={loading} className="w-full">
+      <Button type="submit" variant="gold" disabled={loading} className="w-full" style={buttonStyle}>
         {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -185,6 +200,21 @@ export function PublicBookingForm({ venueId, venueName, embed }: PublicBookingFo
           "Prenota ora"
         )}
       </Button>
+
+      {(phone || email) && (
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-sm text-muted-foreground">
+          {phone && (
+            <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 hover:text-foreground">
+              <Phone className="h-3.5 w-3.5" /> {phone}
+            </a>
+          )}
+          {email && (
+            <a href={`mailto:${email}`} className="inline-flex items-center gap-1.5 hover:text-foreground">
+              <Mail className="h-3.5 w-3.5" /> {email}
+            </a>
+          )}
+        </div>
+      )}
     </form>
   );
 }
