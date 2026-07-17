@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { listBookingsForDay } from "@/server/bookings";
@@ -68,22 +69,22 @@ export default async function BookingsPage({
           variant={statusFilter === "all" ? "default" : "outline"}
           asChild
         >
-          <a href={getStatusFilterUrl("all")}>Tutte</a>
+          <Link href={getStatusFilterUrl("all")}>Tutte</Link>
         </Button>
         <Button
           variant={statusFilter === "confirmed" ? "default" : "outline"}
           asChild
         >
-          <a href={getStatusFilterUrl("confirmed")}>Confermate</a>
+          <Link href={getStatusFilterUrl("confirmed")}>Confermate</Link>
         </Button>
         <Button
           variant={statusFilter === "pending" ? "default" : "outline"}
           asChild
           className={statusFilter === "pending" ? "bg-amber-600 hover:bg-amber-700" : ""}
         >
-          <a href={getStatusFilterUrl("pending")}>
+          <Link href={getStatusFilterUrl("pending")}>
             In sospeso {pendingCount > 0 && <span className="ml-2 bg-white text-amber-600 px-2 py-1 rounded text-xs font-bold">{pendingCount}</span>}
-          </a>
+          </Link>
         </Button>
       </div>
 

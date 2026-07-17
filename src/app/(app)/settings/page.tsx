@@ -1,8 +1,13 @@
+import { headers } from "next/headers";
+import Link from "next/link";
+import { Palette } from "lucide-react";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CopyButton } from "@/components/ui/copy-button";
 import { initials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -29,12 +34,41 @@ export default async function SettingsPage() {
     }),
   ]);
 
+  const hdrs = headers();
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
+  const proto = hdrs.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const embedSrc = `${proto}://${host}/book?venue=${ctx.venueId}&embed=1`;
+  const embedSnippet = `<iframe src="${embedSrc}" width="480" height="820" style="border:0;max-width:100%" title="Prenota un tavolo"></iframe>`;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <header>
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Configurazione</p>
         <h1 className="text-display text-3xl">Impostazioni</h1>
       </header>
+
+      {ctx.venue.onboardingStatus === "SKIPPED" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-4">
+          <p className="text-sm font-medium">Completa la personalizzazione del brand</p>
+          <Button asChild variant="gold" size="sm">
+            <Link href="/settings/brand">Completa ora</Link>
+          </Button>
+        </div>
+      )}
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-accent" /> Brand
+            </CardTitle>
+            <CardDescription>Logo, colori e informazioni pubbliche del tuo ristorante.</CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/settings/brand">Gestisci brand</Link>
+          </Button>
+        </CardHeader>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -76,6 +110,40 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Widget di prenotazione</CardTitle>
+          <CardDescription>
+            Incolla questo codice sul sito del locale per far prenotare i clienti in autonomia
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <pre className="overflow-x-auto rounded-md border bg-secondary p-3 text-xs">{embedSnippet}</pre>
+          <CopyButton value={embedSnippet} size="sm" variant="outline" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Integrazioni</CardTitle>
+          <CardDescription>Stato del provider email marketing</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between rounded-md border p-3 text-sm">
+            <div>
+              <p className="font-medium">Brevo</p>
+              <p className="text-xs text-muted-foreground">Invio campagne email e transazionali</p>
+            </div>
+            <Badge tone={process.env.BREVO_API_KEY ? "success" : "warning"}>
+              {process.env.BREVO_API_KEY ? "Configurato" : "Non configurato"}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Verifica basata sulla presenza della chiave API. Non verifica la validità del dominio mittente.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

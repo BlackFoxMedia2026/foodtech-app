@@ -46,34 +46,14 @@ export async function listBookingsForDay(venueId: string, day: Date) {
   return listBookings(venueId, { from: startOfDay(day), to: endOfDay(day) });
 }
 
-async function determineBookingStatus(
-  source: string,
-  startsAt: Date,
-  guestId: string | null,
-  venueId: string
-): Promise<"CONFIRMED" | "PENDING"> {
+function determineBookingStatus(source: string): "CONFIRMED" | "PENDING" {
+  // Solo le prenotazioni inserite direttamente dallo staff (telefono/walk-in)
+  // sono già state gestite da una persona umana al momento dell'inserimento.
+  // Tutte le altre fonti (widget, Google, social, ecc.) restano in attesa di
+  // approvazione manuale: nessuna conferma automatica.
   if (source === "PHONE" || source === "WALK_IN") {
     return "CONFIRMED";
   }
-
-  const now = new Date();
-  const leadTimeMs = startsAt.getTime() - now.getTime();
-  const leadTimeHours = leadTimeMs / (1000 * 60 * 60);
-
-  if (leadTimeHours < 2) {
-    return "CONFIRMED";
-  }
-
-  if (leadTimeHours < 168) {
-    if (guestId) {
-      const guest = await db.guest.findUnique({ where: { id: guestId } });
-      if (guest && (guest.loyaltyTier === "VIP" || guest.loyaltyTier === "AMBASSADOR" || guest.totalVisits > 3)) {
-        return "CONFIRMED";
-      }
-    }
-    return "CONFIRMED";
-  }
-
   return "PENDING";
 }
 
@@ -108,7 +88,7 @@ export async function createBooking(venueId: string, raw: unknown) {
     }
   }
 
-  const status = await determineBookingStatus(data.source, data.startsAt, guestId, venueId);
+  const status = determineBookingStatus(data.source);
 
   const booking = await db.booking.create({
     data: {

@@ -39,3 +39,6 @@ coverage/
 
 # Next types
 next-env.d.ts
+.vercel
+.env*
+*.tsbuildinfo

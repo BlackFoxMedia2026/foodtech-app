@@ -83,9 +83,20 @@ model Venue {
   wifiSetupAt           DateTime?
   calendarToken         String?              @unique
   googlePlaceId         String?
+  brevoFolderId         Int?
   brandAccent           String?              @db.VarChar(9)
   brandFootnote         String?              @db.VarChar(280)
   brandLogoUrl          String?
+  brandSecondaryColor   String?              @db.VarChar(9)
+  brandBackgroundColor  String?              @db.VarChar(9)
+  brandTypography       BrandTypography?
+  websiteUrl            String?
+  instagramUrl          String?
+  facebookUrl           String?
+  googleBusinessUrl     String?
+  onboardingStatus      BrandOnboardingStatus @default(NOT_STARTED)
+  onboardingCompletedAt DateTime?
+  onboardingSkippedAt   DateTime?
   ApiToken              ApiToken[]
   AutomationWorkflow    AutomationWorkflow[]
   bookings              Booking[]
@@ -101,6 +112,7 @@ model Venue {
   FloorDecor            FloorDecor[]
   GiftCard              GiftCard[]
   guests                Guest[]
+  GuestProviderLink     GuestProviderLink[]
   MenuCategory          MenuCategory[]
   MenuItem              MenuItem[]
   MenuItemCost          MenuItemCost[]
@@ -112,6 +124,7 @@ model Venue {
   Order                 Order[]
   POSConnector          POSConnector[]
   payments              Payment[]
+  QrCode                QrCode[]
   Review                Review[]
   ReviewLink            ReviewLink[]
   ReviewLinkClick       ReviewLinkClick[]
@@ -233,6 +246,7 @@ model Guest {
   Coupon             Coupon[]
   CouponRedemption   CouponRedemption[]
   venue              Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  GuestProviderLink  GuestProviderLink[]
   LoyaltyTransaction LoyaltyTransaction[]
   MessageLog         MessageLog[]
   Order              Order[]
@@ -326,14 +340,73 @@ model Campaign {
   segment     Json?
   subject     String?
   body        String?
+  contentBlocks Json?
+  previewText String?
   scheduledAt DateTime?
   status      CampaignStatus  @default(DRAFT)
+  // TODO(futuro): estendere con READY/SENDING/FAILED/CANCELLED una volta stabilizzato il wizard
+  providerId  String?
+  providerListId Int?
   sentCount   Int             @default(0)
   openedCount Int             @default(0)
   bookedCount Int             @default(0)
   createdAt   DateTime        @default(now())
   venue       Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
   MessageLog  MessageLog[]
+}
+
+enum QrCodeCategory {
+  MENU
+  BOOKING
+  EVENT
+  REVIEW
+  CAMPAIGN
+  SOCIAL
+  OTHER
+}
+
+model QrCode {
+  id             String         @id @default(cuid())
+  venueId        String
+  name           String
+  description    String?
+  destinationUrl String
+  category       QrCodeCategory @default(OTHER)
+  isActive       Boolean        @default(true)
+  scansCount     Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  Venue          Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  // TODO(futuro): quando esisterà un redirect tracciato (QR -> /r/[id] -> destinationUrl),
+  // scansCount si incrementerà lì; oggi resta 0 perché il QR punta direttamente all'URL.
+  @@index([venueId, createdAt])
+}
+
+model GuestProviderLink {
+  id                String   @id @default(cuid())
+  venueId           String
+  guestId           String
+  provider          String
+  providerContactId String
+  syncedAt          DateTime @default(now())
+  Guest             Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  Venue             Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([guestId, provider])
+  @@index([venueId, provider])
+}
+
+model WebhookEvent {
+  id              String    @id @default(cuid())
+  provider        String
+  providerEventId String
+  eventType       String
+  payload         Json
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+
+  @@unique([provider, providerEventId])
 }
 
 model Payment {
@@ -1160,6 +1233,19 @@ enum VenueKind {
   BAR
   HOTEL_RESTAURANT
   PRIVATE_CLUB
+}
+
+enum BrandOnboardingStatus {
+  NOT_STARTED
+  SKIPPED
+  COMPLETED
+}
+
+enum BrandTypography {
+  ELEGANT
+  MODERN
+  CLASSIC
+  CASUAL
 }
 
 enum StaffRole {

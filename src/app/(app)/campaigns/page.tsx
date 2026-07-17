@@ -1,5 +1,6 @@
-import { db } from "@/lib/db";
+import Link from "next/link";
 import { getActiveVenue } from "@/lib/tenant";
+import { listCampaigns } from "@/server/campaigns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,10 +16,7 @@ const CHANNEL_TONE = {
 
 export default async function CampaignsPage() {
   const ctx = await getActiveVenue();
-  const items = await db.campaign.findMany({
-    where: { venueId: ctx.venueId },
-    orderBy: { createdAt: "desc" },
-  });
+  const items = await listCampaigns(ctx.venueId);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -27,7 +25,11 @@ export default async function CampaignsPage() {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing</p>
           <h1 className="text-display text-3xl">Campagne</h1>
         </div>
-        <Button variant="gold"><Plus className="h-4 w-4" /> Nuova campagna</Button>
+        <Button asChild variant="gold">
+          <Link href="/campaigns/new">
+            <Plus className="h-4 w-4" /> Nuova campagna
+          </Link>
+        </Button>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -38,25 +40,28 @@ export default async function CampaignsPage() {
         )}
         {items.map((c) => {
           const openRate = c.sentCount > 0 ? Math.round((c.openedCount / c.sentCount) * 100) : 0;
+          const href = c.status === "DRAFT" ? `/campaigns/${c.id}/edit` : `/campaigns/${c.id}`;
           return (
-            <Card key={c.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <Badge tone={CHANNEL_TONE[c.channel]}>{c.channel}</Badge>
-                  <Badge tone="neutral">{c.status}</Badge>
-                </div>
-                <CardTitle className="flex items-center gap-2">
-                  <Megaphone className="h-4 w-4 text-gilt-dark" />
-                  {c.name}
-                </CardTitle>
-                {c.subject && <p className="text-sm text-muted-foreground">{c.subject}</p>}
-              </CardHeader>
-              <CardContent className="grid grid-cols-3 gap-3 text-sm">
-                <Metric label="Inviate" value={c.sentCount} />
-                <Metric label="Aperte" value={`${openRate}%`} />
-                <Metric label="Prenotazioni" value={c.bookedCount} />
-              </CardContent>
-            </Card>
+            <Link key={c.id} href={href}>
+              <Card className="transition-colors hover:border-gilt-dark/50">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <Badge tone={CHANNEL_TONE[c.channel]}>{c.channel}</Badge>
+                    <Badge tone="neutral">{c.status}</Badge>
+                  </div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Megaphone className="h-4 w-4 text-gilt-dark" />
+                    {c.name}
+                  </CardTitle>
+                  {c.subject && <p className="text-sm text-muted-foreground">{c.subject}</p>}
+                </CardHeader>
+                <CardContent className="grid grid-cols-3 gap-3 text-sm">
+                  <Metric label="Inviate" value={c.sentCount} />
+                  <Metric label="Aperte" value={`${openRate}%`} />
+                  <Metric label="Prenotazioni" value={c.bookedCount} />
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>

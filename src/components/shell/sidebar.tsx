@@ -21,7 +21,13 @@ import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 import { useSidebarCollapse } from "@/components/shell/sidebar-state";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** Percorsi aggiuntivi che contano come "attivo" per questa voce anche se l'href non corrisponde — es. Marketing resta evidenziata dentro /campaigns/*, rimasto al suo path per non rompere il wizard esistente. */
+  matchPrefixes?: string[];
+};
 
 const TOP_ITEM: NavItem = { href: "/overview", label: "Panoramica", icon: LayoutDashboard };
 
@@ -41,7 +47,7 @@ const NAV_GROUPS: { key: string; label: string; items: NavItem[] }[] = [
     label: "Business",
     items: [
       { href: "/experiences", label: "Esperienze", icon: Sparkles },
-      { href: "/campaigns", label: "Campagne", icon: Megaphone },
+      { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"] },
       { href: "/payments", label: "Pagamenti", icon: CreditCard },
     ],
   },
@@ -49,15 +55,16 @@ const NAV_GROUPS: { key: string; label: string; items: NavItem[] }[] = [
 
 const ANALYTICS_ITEM: NavItem = { href: "/insights", label: "Analytics", icon: LineChart };
 
-// The shared sliding indicator travels between these items — the only ones
-// left in the scrollable list now that Segnalazioni/Impostazioni moved to
-// the profile dropdown menu.
-const MAIN_HREFS = [TOP_ITEM.href, ...NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href)), ANALYTICS_ITEM.href];
+// The shared sliding indicator only travels between these items — they live
+// together in the one scrollable list. Segnalazioni/Impostazioni moved to
+// the profile dropdown menu, so they no longer have a place here at all.
+const MAIN_ITEMS: NavItem[] = [TOP_ITEM, ...NAV_GROUPS.flatMap((g) => g.items), ANALYTICS_ITEM];
 
 const INDICATOR_EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 
-function isActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
+function isActive(pathname: string, item: NavItem) {
+  if (pathname === item.href || pathname.startsWith(`${item.href}/`)) return true;
+  return item.matchPrefixes?.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? false;
 }
 
 function NavLink({
@@ -125,8 +132,8 @@ export function Sidebar() {
   }, []);
 
   useLayoutEffect(() => {
-    const activeHref = MAIN_HREFS.find((href) => isActive(pathname, href));
-    const el = activeHref ? itemRefs.current.get(activeHref) : undefined;
+    const activeItem = MAIN_ITEMS.find((item) => isActive(pathname, item));
+    const el = activeItem ? itemRefs.current.get(activeItem.href) : undefined;
     setIndicator(el ? { top: el.offsetTop, height: el.offsetHeight } : null);
   }, [pathname, collapsed]);
 
@@ -179,7 +186,7 @@ export function Sidebar() {
 
             <NavLink
               item={TOP_ITEM}
-              active={isActive(pathname, TOP_ITEM.href)}
+              active={isActive(pathname, TOP_ITEM)}
               collapsed={collapsed}
               registerRef={(el) => {
                 if (el) itemRefs.current.set(TOP_ITEM.href, el);
@@ -193,7 +200,7 @@ export function Sidebar() {
                   <NavLink
                     key={item.href}
                     item={item}
-                    active={isActive(pathname, item.href)}
+                    active={isActive(pathname, item)}
                     collapsed={collapsed}
                     registerRef={(el) => {
                       if (el) itemRefs.current.set(item.href, el);
@@ -206,7 +213,7 @@ export function Sidebar() {
 
             <NavLink
               item={ANALYTICS_ITEM}
-              active={isActive(pathname, ANALYTICS_ITEM.href)}
+              active={isActive(pathname, ANALYTICS_ITEM)}
               collapsed={collapsed}
               registerRef={(el) => {
                 if (el) itemRefs.current.set(ANALYTICS_ITEM.href, el);

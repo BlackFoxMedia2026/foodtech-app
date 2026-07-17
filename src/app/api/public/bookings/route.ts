@@ -5,18 +5,28 @@ import { db } from "@/lib/db";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { venueId } = body;
+    const venueId = typeof body?.venueId === "string" ? body.venueId : undefined;
 
     if (!venueId) {
       return NextResponse.json({ error: "venueId required" }, { status: 400 });
     }
 
-    const venue = await db.venue.findUnique({ where: { id: venueId } });
+    const venue = await db.venue.findFirst({ where: { id: venueId, active: true } });
     if (!venue) {
       return NextResponse.json({ error: "venue not found" }, { status: 404 });
     }
 
-    const booking = await createBooking(venueId, body);
+    const payload = {
+      guest: body?.guest,
+      partySize: body?.partySize,
+      startsAt: body?.startsAt,
+      durationMin: body?.durationMin,
+      occasion: body?.occasion,
+      notes: body?.notes,
+      source: "WIDGET" as const,
+    };
+
+    const booking = await createBooking(venueId, payload);
     return NextResponse.json(booking, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "invalid";

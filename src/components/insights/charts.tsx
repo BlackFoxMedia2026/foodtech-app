@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import {
   Bar,
   BarChart,
@@ -15,7 +16,36 @@ import {
 
 const PALETTE = ["#8a3710", "#cf3a03", "#d9773d", "#e6a468", "#f2eee7", "#e6ded2", "#c96939"];
 
+export const SOURCE_LABELS: Record<string, string> = {
+  WIDGET: "Widget sito",
+  PHONE: "Telefono",
+  WALK_IN: "Walk-in",
+  GOOGLE: "Google",
+  SOCIAL: "Social",
+  CONCIERGE: "Manuale",
+  EVENT: "Evento",
+};
+
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex h-64 flex-col items-center justify-center rounded-md border border-dashed p-6 text-center">
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
 export function SlotChart({ data }: { data: { slot: string; covers: number }[] }) {
+  const hasData = data.some((d) => d.covers > 0);
+  if (!hasData) {
+    return (
+      <EmptyState
+        title="Nessun dato disponibile nel periodo selezionato."
+        description="Quando inizieranno ad arrivare prenotazioni tracciate, vedrai qui la distribuzione per fascia oraria."
+      />
+    );
+  }
+
   return (
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
@@ -40,13 +70,84 @@ export function SlotChart({ data }: { data: { slot: string; covers: number }[] }
   );
 }
 
+const WEEKDAY_ORDER = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+const SLOT_ORDER = ["12-14", "14-17", "17-19", "19-21", "21-23", "23+"];
+
+export function WeekdayHeatmap({ data }: { data: { weekday: string; slot: string; covers: number }[] }) {
+  const hasData = data.some((d) => d.covers > 0);
+  if (!hasData) {
+    return (
+      <EmptyState
+        title="Nessun dato disponibile nel periodo selezionato."
+        description="Quando inizieranno ad arrivare prenotazioni tracciate, vedrai qui l'andamento per giorno e orario."
+      />
+    );
+  }
+
+  const byKey = new Map(data.map((d) => [`${d.weekday}|${d.slot}`, d.covers]));
+  const max = Math.max(1, ...data.map((d) => d.covers));
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-x-auto">
+        <div className="grid min-w-[560px] grid-cols-[3.5rem_repeat(6,1fr)] gap-1.5 text-xs">
+          <div />
+          {SLOT_ORDER.map((slot) => (
+            <div key={slot} className="text-center text-muted-foreground">{slot}</div>
+          ))}
+          {WEEKDAY_ORDER.map((weekday) => (
+            <Fragment key={weekday}>
+              <div className="flex items-center text-muted-foreground">{weekday}</div>
+              {SLOT_ORDER.map((slot) => {
+                const covers = byKey.get(`${weekday}|${slot}`) ?? 0;
+                const alpha = covers === 0 ? 0 : 0.15 + 0.85 * (covers / max);
+                return (
+                  <div
+                    key={`${weekday}-${slot}`}
+                    title={`${weekday} ${slot}: ${covers} coperti`}
+                    className="flex h-10 items-center justify-center rounded-md font-medium text-carbon-900"
+                    style={{ backgroundColor: covers === 0 ? "hsl(var(--secondary))" : `rgba(201, 162, 90, ${alpha})` }}
+                  >
+                    {covers > 0 ? covers : ""}
+                  </div>
+                );
+              })}
+            </Fragment>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span>Meno coperti</span>
+        <div className="flex h-3 w-24 overflow-hidden rounded-full">
+          {[0.15, 0.35, 0.55, 0.75, 1].map((a) => (
+            <div key={a} className="flex-1" style={{ backgroundColor: `rgba(201, 162, 90, ${a})` }} />
+          ))}
+        </div>
+        <span>Più coperti</span>
+      </div>
+    </div>
+  );
+}
+
 export function SourcesChart({ data }: { data: { source: string; count: number }[] }) {
+  const hasData = data.some((d) => d.count > 0);
+  if (!hasData) {
+    return (
+      <EmptyState
+        title="Le fonti di prenotazione non sono ancora tracciate."
+        description="Quando collegherai widget, Google, Instagram o altre integrazioni, vedrai qui da dove arrivano gli ospiti."
+      />
+    );
+  }
+
+  const labeled = data.map((d) => ({ ...d, label: SOURCE_LABELS[d.source] ?? d.source }));
+
   return (
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Pie data={data} dataKey="count" nameKey="source" innerRadius={56} outerRadius={86} paddingAngle={4}>
-            {data.map((_, i) => (
+          <Pie data={labeled} dataKey="count" nameKey="label" innerRadius={56} outerRadius={86} paddingAngle={4}>
+            {labeled.map((_, i) => (
               <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
             ))}
           </Pie>

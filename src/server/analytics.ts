@@ -1,65 +1,120 @@
 import { db } from "@/lib/db";
 
-export async function getAnalytics(venueId: string) {
-  const since = new Date();
-  since.setDate(since.getDate() - 90);
+const SLOT_BUCKETS = ["12-14", "14-17", "17-19", "19-21", "21-23", "23+"] as const;
+const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
-  const [bookings, guests] = await Promise.all([
-    db.booking.findMany({
-      where: { venueId, startsAt: { gte: since } },
-      select: { partySize: true, startsAt: true, status: true, source: true, guestId: true },
-    }),
-    db.guest.findMany({
-      where: { venueId },
-      select: { totalVisits: true, totalSpend: true, createdAt: true, lastVisitAt: true },
-    }),
-  ]);
+type BookingRow = {
+  partySize: number;
+  status: string;
+  guestId: string | null;
+  startsAt: Date;
+  source: string;
+};
 
-  const total = bookings.length || 1;
+function bucketOf(startsAt: Date) {
+  const h = new Date(startsAt).getHours();
+  return h < 14 ? "12-14" : h < 17 ? "14-17" : h < 19 ? "17-19" : h < 21 ? "19-21" : h < 23 ? "21-23" : "23+";
+}
+
+async function fetchBookingsInRange(venueId: string, from: Date, to: Date): Promise<BookingRow[]> {
+  return db.booking.findMany({
+    where: { venueId, startsAt: { gte: from, lt: to } },
+    select: { partySize: true, status: true, guestId: true, startsAt: true, source: true },
+  });
+}
+
+function coreMetrics(bookings: BookingRow[]) {
+  const total = bookings.length;
+  const covers = bookings.reduce((s, b) => s + b.partySize, 0);
   const completed = bookings.filter((b) => b.status === "COMPLETED").length;
   const noShow = bookings.filter((b) => b.status === "NO_SHOW").length;
   const cancelled = bookings.filter((b) => b.status === "CANCELLED").length;
 
-  const occupancyRate = Math.round((completed / total) * 100);
-  const noShowRate = Math.round((noShow / total) * 100);
-  const cancelRate = Math.round((cancelled / total) * 100);
+  return {
+    bookings: total,
+    covers,
+    occupancyRate: total ? Math.round((completed / total) * 100) : 0,
+    noShowRate: total ? Math.round((noShow / total) * 100) : 0,
+    cancelRate: total ? Math.round((cancelled / total) * 100) : 0,
+  };
+}
 
-  // Coperti per fascia oraria
-  const buckets = ["12-14", "14-17", "17-19", "19-21", "21-23", "23+"] as const;
-  const slotMap: Record<string, number> = Object.fromEntries(buckets.map((b) => [b, 0]));
+function slotsOf(bookings: BookingRow[]) {
+  const slotMap: Record<string, number> = Object.fromEntries(SLOT_BUCKETS.map((b) => [b, 0]));
   bookings.forEach((b) => {
-    const h = new Date(b.startsAt).getHours();
-    const bucket =
-      h < 14 ? "12-14" : h < 17 ? "14-17" : h < 19 ? "17-19" : h < 21 ? "19-21" : h < 23 ? "21-23" : "23+";
-    slotMap[bucket] += b.partySize;
+    slotMap[bucketOf(b.startsAt)] += b.partySize;
   });
-  const slots = Object.entries(slotMap).map(([slot, covers]) => ({ slot, covers }));
+  return Object.entries(slotMap).map(([slot, covers]) => ({ slot, covers }));
+}
 
-  // Fonti
+function heatmapOf(bookings: BookingRow[]) {
+  const heatmapMap: Record<string, number> = {};
+  for (const weekday of WEEKDAY_LABELS) {
+    for (const slot of SLOT_BUCKETS) heatmapMap[`${weekday}|${slot}`] = 0;
+  }
+  bookings.forEach((b) => {
+    const jsDay = new Date(b.startsAt).getDay();
+    const weekday = WEEKDAY_LABELS[(jsDay + 6) % 7];
+    heatmapMap[`${weekday}|${bucketOf(b.startsAt)}`] += b.partySize;
+  });
+  return Object.entries(heatmapMap).map(([key, covers]) => {
+    const [weekday, slot] = key.split("|");
+    return { weekday, slot, covers };
+  });
+}
+
+function sourcesOf(bookings: BookingRow[]) {
   const sources: Record<string, number> = {};
   bookings.forEach((b) => {
     sources[b.source] = (sources[b.source] ?? 0) + 1;
   });
-  const sourcesData = Object.entries(sources).map(([source, count]) => ({ source, count }));
+  return Object.entries(sources).map(([source, count]) => ({ source, count }));
+}
 
-  // Nuovi vs ricorrenti
-  const newGuests = guests.filter((g) => g.createdAt >= since).length;
-  const repeat = guests.filter((g) => g.totalVisits > 1).length;
+async function guestMetrics(bookings: BookingRow[], from: Date, to: Date) {
+  const guestIds = Array.from(
+    new Set(bookings.map((b) => b.guestId).filter((id): id is string => Boolean(id))),
+  );
+  const guests = guestIds.length
+    ? await db.guest.findMany({
+        where: { id: { in: guestIds } },
+        select: { totalSpend: true, totalVisits: true, createdAt: true },
+      })
+    : [];
 
-  // ARPC (avg revenue per cover)
-  const avgSpend = guests.length
-    ? guests.reduce((s, g) => s + Number(g.totalSpend), 0) /
-      guests.reduce((s, g) => s + Math.max(g.totalVisits, 1), 0)
-    : 45;
+  const newGuests = guests.filter((g) => g.createdAt >= from && g.createdAt < to).length;
+  const repeatGuests = guests.filter((g) => g.totalVisits > 1).length;
+  const avgSpendCents = guests.length
+    ? Math.round(
+        (guests.reduce((s, g) => s + Number(g.totalSpend) / Math.max(g.totalVisits, 1), 0) / guests.length) * 100,
+      )
+    : 0;
+
+  return { newGuests, repeatGuests, totalGuests: guests.length, avgSpendCents };
+}
+
+export async function getAnalytics(venueId: string, from: Date, to: Date) {
+  const bookings = await fetchBookingsInRange(venueId, from, to);
+  const gm = await guestMetrics(bookings, from, to);
 
   return {
-    occupancyRate,
-    noShowRate,
-    cancelRate,
-    slots,
-    sources: sourcesData,
-    newGuests,
-    repeatGuests: repeat,
-    avgSpendCents: Math.round(avgSpend * 100),
+    ...coreMetrics(bookings),
+    ...gm,
+    slots: slotsOf(bookings),
+    heatmap: heatmapOf(bookings),
+    sources: sourcesOf(bookings),
   };
 }
+
+export async function getPreviousPeriodMetrics(venueId: string, from: Date, to: Date) {
+  const lengthMs = to.getTime() - from.getTime();
+  const prevFrom = new Date(from.getTime() - lengthMs);
+  const prevTo = from;
+
+  const bookings = await fetchBookingsInRange(venueId, prevFrom, prevTo);
+  const gm = await guestMetrics(bookings, prevFrom, prevTo);
+
+  return { ...coreMetrics(bookings), ...gm };
+}
+
+export type PeriodMetrics = Awaited<ReturnType<typeof getPreviousPeriodMetrics>>;
