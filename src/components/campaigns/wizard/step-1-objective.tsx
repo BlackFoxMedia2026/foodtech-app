@@ -5,12 +5,7 @@ import {
   PartyPopper,
   CalendarClock,
   UtensilsCrossed,
-  Cake,
   Crown,
-  Star,
-  Briefcase,
-  Wine,
-  Sparkles,
   Wand2,
   type LucideIcon,
 } from "lucide-react";
@@ -26,12 +21,7 @@ const ICONS: Record<CampaignObjective["icon"], LucideIcon> = {
   PartyPopper,
   CalendarClock,
   UtensilsCrossed,
-  Cake,
   Crown,
-  Star,
-  Briefcase,
-  Wine,
-  Sparkles,
   Wand2,
 };
 

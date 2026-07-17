@@ -22,7 +22,10 @@ function blockSummary(block: Block): string {
     case "logo":
     case "hero_image":
     case "image":
-      return block.imageUrl || "(nessuna immagine impostata)";
+      if (!block.imageUrl) return "(nessuna immagine impostata)";
+      // Un URL data: (es. i placeholder generati per i template, o un file
+      // appena caricato) è lunghissimo e illeggibile se mostrato per intero.
+      return block.imageUrl.startsWith("data:") ? "Immagine impostata" : block.imageUrl;
     default:
       return "";
   }

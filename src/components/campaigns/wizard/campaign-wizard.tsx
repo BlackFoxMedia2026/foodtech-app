@@ -16,7 +16,7 @@ import {
 } from "./wizard-context";
 import { Step1Objective } from "./step-1-objective";
 import { Step2Recipients } from "./step-2-recipients";
-import { Step3Template } from "./step-3-template";
+import { Step3Template, resolveTemplateSelection } from "./step-3-template";
 import { Step4Editor } from "./step-4-editor/step-4-editor";
 import { Step5PreviewTest } from "./step-5-preview-test";
 import { Step6Send } from "./step-6-send";
@@ -30,6 +30,10 @@ function canGoNext(state: WizardState): boolean {
       // Step 1 in una sessione precedente — objectiveId non viene persistito in DB,
       // quindi tornare indietro con "Indietro" non deve ribloccare l'utente qui.
       return state.name.trim().length > 0 && (state.objectiveId !== null || state.campaignId !== null);
+    case 2:
+      // La scelta del template si applica solo su "Avanti": basta una selezione
+      // in sospeso oppure contenuto già presente da una visita precedente allo step.
+      return state.pendingTemplateSelection !== null || hasSubstantiveContent(state.contentBlocks);
     case 3:
       return hasUnsubscribeBlock(state.contentBlocks) && hasSubstantiveContent(state.contentBlocks);
     default:
@@ -37,17 +41,24 @@ function canGoNext(state: WizardState): boolean {
   }
 }
 
+// L'oggetto è opzionale finché l'utente non lo compila (es. "Campagna
+// personalizzata" parte con subject vuoto): va omesso dal payload, non
+// inviato come stringa vuota, perché lo schema lo valida con min(1) quando presente.
+function subjectOrUndefined(state: WizardState): string | undefined {
+  return state.subject.trim() ? state.subject : undefined;
+}
+
 function payloadForStep(step: number, state: WizardState): DraftPayload {
   switch (step) {
     case 0:
-      return { name: state.name, segment: state.segment, subject: state.subject };
+      return { name: state.name, segment: state.segment, subject: subjectOrUndefined(state) };
     case 1:
       return { segment: state.segment };
     case 2:
     case 3:
       return { contentBlocks: state.contentBlocks };
     case 4:
-      return { previewText: state.previewText, subject: state.subject };
+      return { previewText: state.previewText, subject: subjectOrUndefined(state) };
     default:
       return {};
   }
@@ -60,24 +71,47 @@ function WizardShell() {
   const [localError, setLocalError] = useState<string | null>(null);
   const StepComponent = STEP_COMPONENTS[state.step];
 
-  async function persistStep(step: number) {
-    const payload = payloadForStep(step, state);
-    if (!state.campaignId) {
+  // Accetta uno stato esplicito (invece di leggere sempre lo `state` di closure)
+  // perché handleNext, nel caso Step 3, deve poter salvare blocchi appena risolti
+  // da una selezione in sospeso prima che il reducer li rifletta nel render successivo.
+  async function persistStep(step: number, stateToPersist: WizardState = state) {
+    const payload = payloadForStep(step, stateToPersist);
+    if (!stateToPersist.campaignId) {
       if (!payload.name) return; // niente da creare ancora
       const created = await createCampaignDraft({ ...payload, name: payload.name });
       dispatch({ type: "SET_CAMPAIGN_ID", campaignId: created.id });
       router.replace(`/campaigns/${created.id}/edit`);
       return created.id;
     }
-    await patchCampaignDraft(state.campaignId, payload);
-    return state.campaignId;
+    await patchCampaignDraft(stateToPersist.campaignId, payload);
+    return stateToPersist.campaignId;
   }
 
   async function handleNext() {
     setLocalError(null);
+    let stateToPersist = state;
+
+    if (state.step === 2 && state.pendingTemplateSelection) {
+      if (
+        hasSubstantiveContent(state.contentBlocks) &&
+        !window.confirm("Hai già del contenuto nell'email. Continuando, verrà sostituito interamente. Procedere?")
+      ) {
+        return;
+      }
+      const resolved = resolveTemplateSelection(state.pendingTemplateSelection, state.subject);
+      stateToPersist = {
+        ...state,
+        contentBlocks: resolved.blocks,
+        subject: resolved.subject ?? state.subject,
+      };
+      dispatch({ type: "SET_BLOCKS", blocks: resolved.blocks });
+      if (resolved.subject) dispatch({ type: "SET_SUBJECT", subject: resolved.subject });
+      dispatch({ type: "SET_PENDING_TEMPLATE_SELECTION", selection: null });
+    }
+
     dispatch({ type: "SET_SAVING", saving: true });
     try {
-      await persistStep(state.step);
+      await persistStep(state.step, stateToPersist);
       dispatch({ type: "SET_STEP", step: Math.min(state.step + 1, WIZARD_STEPS.length - 1) });
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Errore durante il salvataggio");

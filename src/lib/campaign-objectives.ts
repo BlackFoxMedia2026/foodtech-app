@@ -4,7 +4,7 @@ export interface CampaignObjective {
   id: string;
   label: string;
   description: string;
-  icon: "UserX" | "PartyPopper" | "CalendarClock" | "UtensilsCrossed" | "Cake" | "Crown" | "Star" | "Briefcase" | "Wine" | "Sparkles" | "Wand2";
+  icon: "UserX" | "PartyPopper" | "CalendarClock" | "UtensilsCrossed" | "Crown" | "Wand2";
   suggestedSegment: Partial<SegmentFilterType>;
   suggestedSubject: string;
   suggestedTemplateId?: string;
@@ -13,10 +13,18 @@ export interface CampaignObjective {
 /**
  * Solo gli obiettivi con un segnale reale nello schema hanno un segmento
  * suggerito non vuoto (es. VIP → loyaltyTier, compleanni → birthdayThisMonth).
- * Per gli altri (evento, nuovo menù, aperitivo, degustazione, pranzo di lavoro,
- * giorno debole, campagna personalizzata) NON esiste un dato che permetta di
- * indovinare un target sensato — il segmento resta vuoto e il ristoratore lo
- * imposta liberamente nello Step 2. Non è un bug, è onestà sui dati disponibili.
+ * Per gli altri (evento, campagna personalizzata) NON esiste un dato che
+ * permetta di indovinare un target sensato — il segmento resta vuoto e il
+ * ristoratore lo imposta liberamente nello Step 2. Non è un bug, è onestà
+ * sui dati disponibili.
+ *
+ * Lista volutamente limitata a 6 voci (max consigliato per non confondere un
+ * utente non tecnico): i template corrispondenti agli obiettivi non elencati
+ * qui (pranzo di lavoro, aperitivo, degustazione) restano comunque
+ * selezionabili in Step 3 tramite "Vedi tutti i template". Compleanni del
+ * mese e Richiedi recensioni non sono qui perché diventeranno automazioni
+ * dedicate (sezione a parte, non ancora costruita) invece di obiettivi di
+ * campagna manuale.
  */
 export const CAMPAIGN_OBJECTIVES: CampaignObjective[] = [
   {
@@ -46,24 +54,6 @@ export const CAMPAIGN_OBJECTIVES: CampaignObjective[] = [
     suggestedSubject: "Questa settimana ti aspettiamo",
   },
   {
-    id: "new_menu",
-    label: "Comunica un nuovo menù",
-    description: "Racconta le novità del menù ai tuoi clienti.",
-    icon: "UtensilsCrossed",
-    suggestedSegment: {},
-    suggestedSubject: "Novità in menù",
-    suggestedTemplateId: "new_menu",
-  },
-  {
-    id: "birthday_month",
-    label: "Compleanni del mese",
-    description: "Fai gli auguri a chi festeggia questo mese.",
-    icon: "Cake",
-    suggestedSegment: { birthdayThisMonth: true },
-    suggestedSubject: "Buon compleanno da parte nostra",
-    suggestedTemplateId: "birthday",
-  },
-  {
     id: "vip",
     label: "Clienti VIP",
     description: "Un messaggio dedicato ai tuoi clienti più fedeli.",
@@ -72,38 +62,13 @@ export const CAMPAIGN_OBJECTIVES: CampaignObjective[] = [
     suggestedSubject: "Qualcosa di speciale per te",
   },
   {
-    id: "review_request",
-    label: "Richiedi recensioni",
-    description: "Chiedi un feedback a chi ti ha già visitato.",
-    icon: "Star",
-    suggestedSegment: { minTotalVisits: 1 },
-    suggestedSubject: "Com'è andata la tua ultima visita?",
-    suggestedTemplateId: "review_request",
-  },
-  {
-    id: "business_lunch",
-    label: "Pranzo di lavoro",
-    description: "Promuovi la formula pranzo per il pubblico business.",
-    icon: "Briefcase",
+    id: "new_menu",
+    label: "Comunica un nuovo menù",
+    description: "Racconta le novità del menù ai tuoi clienti.",
+    icon: "UtensilsCrossed",
     suggestedSegment: {},
-    suggestedSubject: "La soluzione ideale per il pranzo di lavoro",
-    suggestedTemplateId: "business_lunch",
-  },
-  {
-    id: "aperitivo",
-    label: "Aperitivo / serata speciale",
-    description: "Invita i clienti a una serata o un aperitivo speciale.",
-    icon: "Wine",
-    suggestedSegment: {},
-    suggestedSubject: "Ti aspettiamo per l'aperitivo",
-  },
-  {
-    id: "tasting_menu",
-    label: "Degustazione / menu fisso",
-    description: "Promuovi un percorso degustazione o un menu fisso.",
-    icon: "Sparkles",
-    suggestedSegment: {},
-    suggestedSubject: "Un percorso di degustazione da provare",
+    suggestedSubject: "Novità in menù",
+    suggestedTemplateId: "new_menu",
   },
   {
     id: "custom",

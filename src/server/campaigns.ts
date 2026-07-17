@@ -11,6 +11,7 @@ import {
   resolveTestVariables,
   toBrevoMergeTags,
 } from "@/lib/campaign-blocks-compiler";
+import { PREVIEW_UNSUBSCRIBE_ID, signUnsubscribeToken } from "@/lib/unsubscribe-token";
 
 const adapter: EmailProviderAdapter = brevoAdapter;
 
@@ -40,7 +41,7 @@ export const CampaignInput = z.object({
 });
 export type CampaignInputType = z.infer<typeof CampaignInput>;
 
-function getRequestOrigin(): string {
+export function getRequestOrigin(): string {
   const hdrs = headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
   const proto = hdrs.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
@@ -257,7 +258,7 @@ async function compileHtmlForBrevoSend(venueId: string, body: string): Promise<s
     restaurantName: venue.name,
     bookingLink: `${origin}/book?venue=${venueId}`,
   });
-  return toBrevoMergeTags(withGlobals);
+  return toBrevoMergeTags(withGlobals, origin);
 }
 
 export async function sendCampaignNow(venueId: string, campaignId: string) {
@@ -327,6 +328,7 @@ export async function sendTestEmail(venueId: string, campaignId: string, to: str
     lastName: "Rossi",
     restaurantName: venue.name,
     bookingLink: `${origin}/book?venue=${venueId}#test`,
+    unsubscribeLink: `${origin}/api/unsubscribe?token=${signUnsubscribeToken(PREVIEW_UNSUBSCRIBE_ID)}`,
     lastVisitDate: new Date().toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }),
     loyaltyLevel: "VIP",
   });

@@ -54,6 +54,13 @@ export async function fetchProviderStatus(): Promise<{ configured: boolean }> {
   return parseJsonOrThrow(res);
 }
 
+export async function uploadCampaignImage(file: File): Promise<{ url: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch("/api/campaigns/upload-image", { method: "POST", body: form });
+  return parseJsonOrThrow(res);
+}
+
 export async function sendTestEmail(id: string, to: string) {
   const res = await fetch(`/api/campaigns/${id}/test-send`, {
     method: "POST",

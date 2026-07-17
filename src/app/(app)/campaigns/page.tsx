@@ -40,8 +40,9 @@ export default async function CampaignsPage() {
         )}
         {items.map((c) => {
           const openRate = c.sentCount > 0 ? Math.round((c.openedCount / c.sentCount) * 100) : 0;
+          const href = c.status === "DRAFT" ? `/campaigns/${c.id}/edit` : `/campaigns/${c.id}`;
           return (
-            <Link key={c.id} href={`/campaigns/${c.id}`}>
+            <Link key={c.id} href={href}>
               <Card className="transition-colors hover:border-gilt-dark/50">
                 <CardHeader>
                   <div className="flex items-center justify-between">

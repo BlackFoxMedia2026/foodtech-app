@@ -5,23 +5,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { SegmentFilterType } from "@/server/campaigns";
 import { fetchSegmentPreview } from "@/lib/campaign-wizard-api";
 import { useWizardDispatch, useWizardState } from "./wizard-context";
 
+// Volutamente ridotti al minimo per non confondere un utente non tecnico.
+// Nessun preset "tutti con consenso marketing": il consenso è già applicato
+// sempre e comunque a ogni filtro (vedi testo sotto), non è una scelta di
+// segmento. I compleanni sono gestiti da un'automazione dedicata a parte,
+// non da questo wizard. I segmenti rimossi da qui restano comunque
+// impostabili tramite i filtri dettagliati più sotto (es. no-show,
+// prenotazione futura/cancellata, clienti ricorrenti, altre soglie di
+// giorni di inattività).
 const PRESETS: { label: string; segment: SegmentFilterType }[] = [
-  { label: "Tutti con consenso marketing", segment: {} },
   { label: "Clienti nuovi", segment: { loyaltyTier: "NEW" } },
-  { label: "Clienti ricorrenti", segment: { minTotalVisits: 2 } },
   { label: "Clienti VIP", segment: { loyaltyTier: "VIP" } },
-  { label: "Inattivi da 30gg", segment: { inactiveDays: 30 } },
   { label: "Inattivi da 60gg", segment: { inactiveDays: 60 } },
-  { label: "Inattivi da 90gg", segment: { inactiveDays: 90 } },
   { label: "Alto spendenti", segment: { minTotalSpend: 150 } },
-  { label: "Con no-show", segment: { minNoShowCount: 1 } },
-  { label: "Compleanno nel mese", segment: { birthdayThisMonth: true } },
-  { label: "Senza prenotazione futura", segment: { noFutureBooking: true } },
-  { label: "Con prenotazione cancellata", segment: { hadCancelledBooking: true } },
 ];
 
 const UNAVAILABLE_FILTERS = [
@@ -81,16 +82,27 @@ export function Step2Recipients() {
       <div>
         <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">Segmenti rapidi</Label>
         <div className="flex flex-wrap gap-2">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => dispatch({ type: "SET_SEGMENT", segment: preset.segment })}
-              className="rounded-full border border-border px-3 py-1 text-xs hover:bg-secondary"
-            >
-              {preset.label}
-            </button>
-          ))}
+          {PRESETS.map((preset) => {
+            // Confronto diretto con lo stato corrente: il pulsante resta "attivo"
+            // solo finché i filtri coincidono esattamente col preset, non è un
+            // semplice "ultimo cliccato" — se poi tocchi un filtro dettagliato
+            // sotto, l'evidenziazione sparisce di conseguenza (corretto, riflette
+            // lo stato reale).
+            const isActive = JSON.stringify(state.segment) === JSON.stringify(preset.segment);
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => dispatch({ type: "SET_SEGMENT", segment: preset.segment })}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  isActive ? "border-accent bg-accent/10 font-medium text-accent" : "border-border hover:bg-secondary",
+                )}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -200,17 +212,8 @@ export function Step2Recipients() {
 
         <div className="flex items-center justify-between rounded-md border border-border p-3">
           <div>
-            <p className="text-sm font-medium">Compleanno questo mese</p>
-          </div>
-          <Switch
-            checked={!!state.segment.birthdayThisMonth}
-            onCheckedChange={(checked) => updateSegment({ birthdayThisMonth: checked || undefined })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-md border border-border p-3">
-          <div>
-            <p className="text-sm font-medium">Ha avuto una prenotazione cancellata</p>
+            <p className="text-sm font-medium">Ha annullato una prenotazione in passato</p>
+            <p className="text-xs text-muted-foreground">Il cliente ha prenotato ma poi cancellato almeno una volta.</p>
           </div>
           <Switch
             checked={!!state.segment.hadCancelledBooking}
