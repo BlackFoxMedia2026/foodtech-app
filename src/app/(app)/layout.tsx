@@ -2,10 +2,12 @@ import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
 import { AmbientScene } from "@/components/shell/ambient-scene";
 import { LiquidGlassDefs } from "@/components/shell/liquid-glass-defs";
-import { getActiveVenue } from "@/lib/tenant";
+import { BrandSetupDialog } from "@/components/settings/brand-setup-dialog";
+import { can, getActiveVenue } from "@/lib/tenant";
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const ctx = await getActiveVenue();
+  const showBrandSetup = ctx.venue.onboardingStatus === "NOT_STARTED" && can(ctx.role, "manage_venue");
 
   const venueList = ctx.allMemberships.map((m) => ({
     id: m.venue.id,
@@ -36,6 +38,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
         />
         <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-8">{children}</main>
       </div>
+      {showBrandSetup && <BrandSetupDialog initialName={ctx.venue.name} />}
     </AmbientScene>
   );
 }

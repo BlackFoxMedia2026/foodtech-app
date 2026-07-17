@@ -1,8 +1,11 @@
 import { headers } from "next/headers";
+import Link from "next/link";
+import { Palette } from "lucide-react";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CopyButton } from "@/components/ui/copy-button";
 import { initials } from "@/lib/utils";
@@ -43,6 +46,29 @@ export default async function SettingsPage() {
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Configurazione</p>
         <h1 className="text-display text-3xl">Impostazioni</h1>
       </header>
+
+      {ctx.venue.onboardingStatus === "SKIPPED" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-4">
+          <p className="text-sm font-medium">Completa la personalizzazione del brand</p>
+          <Button asChild variant="gold" size="sm">
+            <Link href="/settings/brand">Completa ora</Link>
+          </Button>
+        </div>
+      )}
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-accent" /> Brand
+            </CardTitle>
+            <CardDescription>Logo, colori e informazioni pubbliche del tuo ristorante.</CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/settings/brand">Gestisci brand</Link>
+          </Button>
+        </CardHeader>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

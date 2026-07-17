@@ -1,18 +1,6 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-
-function normalizeUrl(value: string): string {
-  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
-}
-
-function isValidUrl(value: string): boolean {
-  try {
-    new URL(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { isValidUrl, normalizeUrl } from "@/lib/url-utils";
 
 export const QrCodeInput = z.object({
   name: z.string().min(1),

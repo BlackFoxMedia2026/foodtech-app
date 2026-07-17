@@ -87,6 +87,16 @@ model Venue {
   brandAccent           String?              @db.VarChar(9)
   brandFootnote         String?              @db.VarChar(280)
   brandLogoUrl          String?
+  brandSecondaryColor   String?              @db.VarChar(9)
+  brandBackgroundColor  String?              @db.VarChar(9)
+  brandTypography       BrandTypography?
+  websiteUrl            String?
+  instagramUrl          String?
+  facebookUrl           String?
+  googleBusinessUrl     String?
+  onboardingStatus      BrandOnboardingStatus @default(NOT_STARTED)
+  onboardingCompletedAt DateTime?
+  onboardingSkippedAt   DateTime?
   ApiToken              ApiToken[]
   AutomationWorkflow    AutomationWorkflow[]
   bookings              Booking[]
@@ -1223,6 +1233,19 @@ enum VenueKind {
   BAR
   HOTEL_RESTAURANT
   PRIVATE_CLUB
+}
+
+enum BrandOnboardingStatus {
+  NOT_STARTED
+  SKIPPED
+  COMPLETED
+}
+
+enum BrandTypography {
+  ELEGANT
+  MODERN
+  CLASSIC
+  CASUAL
 }
 
 enum StaffRole {
