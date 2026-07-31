@@ -14,7 +14,7 @@ import {
   YAxis,
 } from "recharts";
 
-const PALETTE = ["#8a3710", "#cf3a03", "#d9773d", "#e6a468", "#f2eee7", "#e6ded2", "#c96939"];
+const PALETTE = ["#8a7510", "#cfad03", "#d9bf3d", "#e6d168", "#f2f0e7", "#e6e3d2", "#c9b139"];
 
 export const SOURCE_LABELS: Record<string, string> = {
   WIDGET: "Widget sito",
@@ -52,8 +52,8 @@ export function SlotChart({ data }: { data: { slot: string; covers: number }[] }
         <BarChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
           <defs>
             <linearGradient id="slotBarGradient" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0%" stopColor="#cf3a03" />
-              <stop offset="100%" stopColor="#c96939" />
+              <stop offset="0%" stopColor="#cfad03" />
+              <stop offset="100%" stopColor="#c9b139" />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />

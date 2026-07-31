@@ -91,7 +91,7 @@ function NavLink({
         active ? "text-white" : "nav-pill text-white hover:text-white",
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className={collapsed ? "h-[18px] w-[18px] shrink-0" : "h-4 w-4 shrink-0"} />
       {!collapsed && <span className={active ? "font-semibold" : "font-medium"}>{item.label}</span>}
     </Link>
   );
@@ -153,22 +153,18 @@ export function Sidebar() {
 
         {/* Layer 4: real content — never blurred or distorted. */}
         <div className="liquid-sidebar__content flex h-full flex-col gap-6">
-          <div className={cn("flex py-3", collapsed ? "flex-col items-center gap-3 px-0" : "items-center justify-between px-3.5")}>
+          <div className={cn("flex py-3", collapsed ? "justify-center px-0" : "items-center px-3.5")}>
             <Link href="/overview" className="flex items-center gap-3 overflow-hidden">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-background text-accent">
-                <span className="font-display text-sm font-bold">T</span>
+              <span
+                className={cn(
+                  "grid shrink-0 place-items-center rounded-lg bg-background text-accent",
+                  collapsed ? "h-9 w-9" : "h-8 w-8",
+                )}
+              >
+                <span className={cn("font-display font-bold", collapsed ? "text-base" : "text-sm")}>T</span>
               </span>
               {!collapsed && <span className="text-display text-lg tracking-tight text-white">Tavolo</span>}
             </Link>
-
-            <button
-              type="button"
-              onClick={toggle}
-              aria-label={collapsed ? "Espandi la sidebar" : "Contrai la sidebar"}
-              className="sidebar-toggle"
-            >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </button>
           </div>
 
           <div className="relative flex flex-1 flex-col gap-1.5 overflow-y-auto">
@@ -222,24 +218,39 @@ export function Sidebar() {
             />
           </div>
 
-          <div className={cn("agent-divider flex items-center gap-3 pt-4", collapsed && "justify-center")}>
-            <div
-              className={cn(
-                "icon-glass-circle grid shrink-0 place-items-center rounded-full text-white",
-                collapsed ? "h-8 w-8" : "h-11 w-11",
-              )}
-            >
-              <BrainCircuit className={collapsed ? "h-4 w-4" : "h-5 w-5"} />
+          <div className="flex flex-col">
+            <div className="agent-divider" aria-hidden="true" />
+
+            <div className={cn("flex pt-4", collapsed ? "justify-center" : "justify-end")}>
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label={collapsed ? "Espandi la sidebar" : "Contrai la sidebar"}
+                className="sidebar-toggle"
+              >
+                {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              </button>
             </div>
-            {!collapsed && (
-              <div className="flex flex-col leading-tight">
-                <span className="text-display text-sm text-white">Agente AI</span>
-                <span className="flex items-center gap-1.5 text-[11px] text-[#f5e6da]/60">
-                  <span className="agent-status-dot" aria-hidden="true" />
-                  Assistente attivo
-                </span>
+
+            <div className={cn("flex items-center gap-3 pt-4", collapsed && "justify-center")}>
+              <div
+                className={cn(
+                  "icon-glass-circle grid shrink-0 place-items-center rounded-full text-white",
+                  collapsed ? "h-9 w-9" : "h-11 w-11",
+                )}
+              >
+                <BrainCircuit className={collapsed ? "h-[18px] w-[18px]" : "h-5 w-5"} />
               </div>
-            )}
+              {!collapsed && (
+                <div className="flex flex-col leading-tight">
+                  <span className="text-display text-sm text-white">Agente AI</span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-[#FFFFFF]/60">
+                    <span className="agent-status-dot" aria-hidden="true" />
+                    Assistente attivo
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </nav>

@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 36 33% 97%;
-    --foreground: 222 13% 12%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 222 13% 12%;
+    --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 13% 12%;
-    --primary: 222 13% 12%;
-    --primary-foreground: 36 33% 97%;
-    --secondary: 36 30% 92%;
-    --secondary-foreground: 222 13% 12%;
-    --muted: 36 22% 93%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 95%;
     --muted-foreground: 220 5% 40%;
-    --accent: 38 48% 58%;
-    --accent-foreground: 36 33% 97%;
+    --accent: 46 95% 37%;
+    --accent-foreground: 0 0% 10%;
     --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
-    --border: 36 18% 88%;
-    --input: 36 18% 88%;
-    --ring: 38 48% 58%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 46 95% 37%;
     --radius: 0.65rem;
 
     /* Reactive liquid-glass config — centralised so nothing is duplicated
@@ -35,25 +35,25 @@
   }
 
   .dark {
-    --background: 20 35% 4%;
-    --foreground: 40 30% 96%;
-    --card: 20 22% 9%;
-    --card-foreground: 40 30% 96%;
-    --popover: 20 22% 9%;
-    --popover-foreground: 40 30% 96%;
-    --primary: 40 30% 96%;
-    --primary-foreground: 20 35% 4%;
-    --secondary: 20 18% 14%;
-    --secondary-foreground: 40 30% 96%;
-    --muted: 20 16% 12%;
+    --background: 0 0% 10%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 18%;
     --muted-foreground: 30 10% 68%;
-    --accent: 16 96% 41%;
-    --accent-foreground: 40 30% 96%;
+    --accent: 50 100% 50%;
+    --accent-foreground: 0 0% 10%;
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 20 15% 20%;
-    --input: 20 15% 20%;
-    --ring: 16 96% 41%;
+    --border: 0 0% 26%;
+    --input: 0 0% 26%;
+    --ring: 50 100% 50%;
     --radius: 0.85rem;
 
     /* Pre-hydration fallback for the shared ambient variables — useAmbientGlass
@@ -61,9 +61,9 @@
     --gradient-x: 50%;
     --gradient-y: 40%;
     --gradient-angle: 300deg;
-    --gradient-color-1: rgb(154 69 25);
-    --gradient-color-2: rgb(113 55 15);
-    --gradient-color-3: rgb(87 41 12);
+    --gradient-color-1: rgb(154 132 25);
+    --gradient-color-2: rgb(113 97 15);
+    --gradient-color-3: rgb(87 74 12);
     --gradient-intensity: 0.85;
     --gradient-lightness: 0.9;
   }
@@ -89,10 +89,10 @@
 }
 
 @layer components {
-  .bg-anim { position: fixed; inset: 0; overflow: hidden; background: #0a0705; z-index: -1; }
+  .bg-anim { position: fixed; inset: 0; overflow: hidden; background: #151515; z-index: -1; }
   /* IMPORTANTE: il blur ammorbidisce tutto — è ciò che lo rende "premium" */
   .bg-anim > * { position: absolute; inset: -90px; filter: blur(24px); }
-  .bg-base { background: radial-gradient(130% 120% at 16% 6%, #070504 0%, #0b0705 38%, #180c05 100%); }
+  .bg-base { background: radial-gradient(130% 120% at 16% 6%, #131313 0%, #151515 38%, #1b1b1b 100%); }
   .bg-layer { animation: bg-x 27s ease-in-out infinite; }
   .surface {
     @apply rounded-xl border border-border bg-card shadow-[0_1px_0_0_rgb(0_0_0_/_0.02),0_18px_40px_-32px_rgb(0_0_0_/_0.18)] dark:border-white/10 dark:bg-black/50 dark:backdrop-blur-xl dark:shadow-[0_14px_40px_rgba(0,0,0,0.5)];
@@ -160,7 +160,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(255, 255, 255, 0.6);
   }
   .btn-ember {
-    background: linear-gradient(135deg, #cf3a03 0%, #c96939 100%);
+    background: linear-gradient(135deg, #cfad03 0%, #c9b139 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
     transition: filter 0.15s ease;
   }
@@ -212,7 +212,7 @@
     position: absolute;
     z-index: -1;
     inset: -30px;
-    background-image: repeating-linear-gradient(100deg, #150802 0px, #6e2408 30px, #cf3a03 55px, #d9773d 70px, #6e2408 95px, #150802 120px);
+    background-image: repeating-linear-gradient(100deg, #151202 0px, #6e5d08 30px, #cfad03 55px, #d9bf3d 70px, #6e5d08 95px, #151202 120px);
     background-size: 220% 100%;
     animation: fluted-shift 24s ease-in-out infinite;
     filter: blur(24px);
@@ -289,8 +289,8 @@
     .liquid-sidebar__glass {
       background: linear-gradient(
         160deg,
-        color-mix(in srgb, var(--gradient-color-2, #71370F) 30%, transparent) 0%,
-        color-mix(in srgb, var(--gradient-color-3, #57290C) 34%, transparent) 100%
+        color-mix(in srgb, var(--gradient-color-2, #71610F) 30%, transparent) 0%,
+        color-mix(in srgb, var(--gradient-color-3, #574A0C) 34%, transparent) 100%
       );
     }
   }
@@ -300,8 +300,8 @@
         linear-gradient(135deg, rgb(255 255 255 / 0.12) 0%, transparent 45%),
         linear-gradient(
           160deg,
-          color-mix(in srgb, var(--gradient-color-2, #71370F) 26%, transparent) 0%,
-          color-mix(in srgb, var(--gradient-color-3, #57290C) 30%, transparent) 100%
+          color-mix(in srgb, var(--gradient-color-2, #71610F) 26%, transparent) 0%,
+          color-mix(in srgb, var(--gradient-color-3, #574A0C) 30%, transparent) 100%
         );
       backdrop-filter: blur(var(--glass-blur, 16px)) saturate(var(--glass-saturation, 145%)) contrast(var(--glass-contrast, 108%));
       -webkit-backdrop-filter: blur(var(--glass-blur, 16px)) saturate(var(--glass-saturation, 145%)) contrast(var(--glass-contrast, 108%));
@@ -320,7 +320,7 @@
       radial-gradient(70% 50% at var(--gradient-x, 50%) var(--gradient-y, 20%), rgb(255 255 255 / calc(0.1 * var(--gradient-lightness, 0.9))) 0%, transparent 65%),
       linear-gradient(180deg, rgb(255 255 255 / 0.1) 0%, transparent 30%),
       linear-gradient(90deg, rgb(255 255 255 / 0.05) 0%, transparent 12%, transparent 88%, rgb(255 255 255 / 0.05) 100%),
-      linear-gradient(0deg, rgb(255 190 140 / calc(0.05 * var(--gradient-intensity, 0.85))) 0%, transparent 22%);
+      linear-gradient(0deg, rgb(255 236 140 / calc(0.05 * var(--gradient-intensity, 0.85))) 0%, transparent 22%);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.22),
       inset 0 -30px 40px -28px rgb(0 0 0 / 0.35);
@@ -346,7 +346,7 @@
       radial-gradient(70% 50% at var(--gradient-x, 50%) var(--gradient-y, 20%), rgb(255 255 255 / calc(0.1 * var(--gradient-lightness, 0.9))) 0%, transparent 65%),
       linear-gradient(180deg, rgb(255 255 255 / 0.1) 0%, transparent 30%),
       linear-gradient(90deg, rgb(255 255 255 / 0.05) 0%, transparent 12%, transparent 88%, rgb(255 255 255 / 0.05) 100%),
-      linear-gradient(0deg, rgb(255 190 140 / calc(0.05 * var(--gradient-intensity, 0.85))) 0%, transparent 22%);
+      linear-gradient(0deg, rgb(255 236 140 / calc(0.05 * var(--gradient-intensity, 0.85))) 0%, transparent 22%);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.22),
       inset 0 -30px 40px -28px rgb(0 0 0 / 0.35);
@@ -357,14 +357,14 @@
     background:
       radial-gradient(
         circle at 32% 26%,
-        rgb(255 180 132 / 0.5) 0%,
-        color-mix(in srgb, var(--gradient-color-1, #9A4519) 70%, transparent) 55%,
-        rgb(120 40 16 / 0.4) 100%
+        rgb(255 234 132 / 0.5) 0%,
+        color-mix(in srgb, var(--gradient-color-1, #9A8419) 70%, transparent) 55%,
+        rgb(120 102 16 / 0.4) 100%
       );
     border: 1px solid rgb(255 205 170 / 0.22);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.28),
-      0 0 calc(10px + 6px * var(--gradient-intensity, 0.85)) color-mix(in srgb, var(--gradient-color-1, #9A4519) 55%, transparent);
+      0 0 calc(10px + 6px * var(--gradient-intensity, 0.85)) color-mix(in srgb, var(--gradient-color-1, #9A8419) 55%, transparent);
     transition: box-shadow 260ms ease;
   }
   @supports (backdrop-filter: blur(1px)) {
@@ -411,12 +411,12 @@
      not a flat filled rectangle — the brand accent stays an accent. */
   .nav-pill-active {
     position: relative;
-    background: linear-gradient(135deg, rgb(255 128 20 / 0.58), rgb(255 96 0 / 0.28));
+    background: linear-gradient(135deg, rgb(255 215 20 / 0.58), rgb(255 212 0 / 0.28));
     border: 1px solid rgb(255 255 255 / 0.22);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.38),
-      inset 0 -1px 0 rgb(90 35 0 / 0.2),
-      0 8px 22px rgb(255 95 0 / 0.15);
+      inset 0 -1px 0 rgb(90 75 0 / 0.2),
+      0 8px 22px rgb(255 212 0 / 0.15);
     transition: background-color 260ms ease, box-shadow 260ms ease;
   }
   @supports (backdrop-filter: blur(1px)) {
@@ -428,8 +428,8 @@
   .nav-pill-active:hover {
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.44),
-      inset 0 -1px 0 rgb(90 35 0 / 0.22),
-      0 10px 26px rgb(255 95 0 / 0.2);
+      inset 0 -1px 0 rgb(90 75 0 / 0.22),
+      0 10px 26px rgb(255 212 0 / 0.2);
   }
 }
 

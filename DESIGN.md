@@ -2,18 +2,18 @@
 name: Tavolo
 description: Gestionale ospitalità multi-locale — prenotazioni, sala, CRM, marketing, pagamenti, analytics
 colors:
-  ember-glow: "#FF924E"
-  ember-bright: "#FF6E28"
-  ember-core: "#F44C12"
-  ember-deep: "#B0300E"
-  ember-char: "#601C0A"
-  ember-ash: "#0F0603"
-  accent-ember: "#CD3A04"
-  ink: "#120C08"
-  surface-card: "#1D1913"
-  paper: "#F8F6F1"
-  muted-clay: "#B7ADA4"
-  hairline: "#3B362B"
+  ember-glow: "#FCEC9C"
+  ember-bright: "#FFE14D"
+  ember-core: "#FFD400"
+  ember-deep: "#A98804"
+  ember-char: "#5B4706"
+  ember-ash: "#1A1A1A"
+  accent-ember: "#B88E05"
+  ink: "#1A1A1A"
+  surface-card: "#262626"
+  paper: "#FFFFFF"
+  muted-clay: "#B6B6B6"
+  hairline: "#484848"
   destructive-ember: "#D53434"
 typography:
   display:
@@ -86,33 +86,33 @@ components:
 
 **Creative North Star: "The Ember Hearth"**
 
-Tavolo è il gestionale che scalda il retro-sala: sotto ogni schermata brace un fondo quasi nero (`#120C08`) e un solo accento incandescente, l'ember arancio-rame, che emerge da vetro smerigliato e bagliori radiali invece che da colori piatti. Non è un tool enterprise freddo — ogni riquadro con dati (tabelle prenotazioni, liste ospiti, righe di pagamento) resta leggibile e denso, ma la cornice attorno — sidebar, badge, CTA, stato attivo — porta calore, non decorazione. Questo è deliberatamente l'opposto del "gestionale generico enterprise": niente grigi anonimi, niente tabelle senza personalità (vedi PRODUCT.md, Anti-references).
+Tavolo è il gestionale che scalda il retro-sala: sotto ogni schermata brace un fondo quasi nero (`#1A1A1A`) e un solo accento incandescente, l'ember giallo, che emerge da vetro smerigliato e bagliori radiali invece che da colori piatti. Non è un tool enterprise freddo — ogni riquadro con dati (tabelle prenotazioni, liste ospiti, righe di pagamento) resta leggibile e denso, ma la cornice attorno — sidebar, badge, CTA, stato attivo — porta calore, non decorazione. Questo è deliberatamente l'opposto del "gestionale generico enterprise": niente grigi anonimi, niente tabelle senza personalità (vedi PRODUCT.md, Anti-references).
 
 Il sistema respinge esplicitamente due tentazioni: il minimalismo grigio da SaaS B2B, e il glassmorphism decorativo ovunque. Il vetro sfocato è riservato alla "cornice" strutturale (sidebar, chip di navigazione, il badge dell'agente AI) — non copre indiscriminatamente ogni card di dati.
 
 **Key Characteristics:**
 - Fondo quasi-nero caldo (non un grigio neutro freddo) con un mesh ambientale di braci sfocate in movimento lentissimo dietro il contenuto
-- Un solo accento cromatico — l'ember arancio-rame — usato con intenzione su CTA, stato attivo, badge, mai come tinta di sfondo diffusa
+- Un solo accento cromatico — l'ember giallo — usato con intenzione su CTA, stato attivo, badge, mai come tinta di sfondo diffusa
 - Vetro smerigliato riservato alla cornice strutturale (sidebar), non ai contenuti di dati
 - Tipografia display "espansa" (font-stretch 125%) per titoli con presenza, bilanciata da un sans geometrico compatto per il corpo denso di dati
 
 ## 2. Colors
 
-La palette è quasi monocromatica: un fondo carbone-caldo, testo quasi-bianco caldo, e una singola famiglia di arancio-rame ("ember") che scala dal chiarore acceso al carbone bruciato.
+La palette è essenziale: un fondo nero neutro, testo bianco puro, un grigio chiaro per le superfici secondarie, e una singola famiglia gialla ("ember") che scala dal chiarore acceso al giallo scuro/olivastro bruciato — niente più bronzo/rame: la scala resta pulita, dal giallo pieno al nero, senza deviare verso il caldo terracotta.
 
 ### Primary
-- **Ember Core** (#F44C12): il midpoint del gradiente ember. Usato nei bottoni CTA primari (variant `gold`/`btn-ember`), nel pill di navigazione attivo, nel bagliore della sidebar.
-- **Ember Glow** (#FF924E) e **Ember Bright** (#FF6E28): gli estremi chiari del gradiente ember, usati per gli highlight radiali (`--ember-hi`) e per gli stati hover.
-- **Ember Deep** (#B0300E) e **Ember Char** (#601C0A): gli estremi scuri, dove il gradiente ember si fonde nel fondo carbone della sidebar.
-- **Accent Ember** (#CD3A04): la variante solida (non-gradiente) dell'accento, usata su testo, icone, link e badge (`text-accent`, `border-accent`) dove serve un colore piatto invece di un gradiente.
+- **Ember Core** (#FFD400): il midpoint del gradiente ember — il giallo principale del brand. Usato nei bottoni CTA primari (variant `gold`/`btn-ember`), nel pill di navigazione attivo, nel bagliore della sidebar.
+- **Ember Glow** (#FCEC9C) e **Ember Bright** (#FFE14D): gli estremi chiari del gradiente ember, usati per gli highlight radiali (`--ember-hi`) e per gli stati hover.
+- **Ember Deep** (#A98804) e **Ember Char** (#5B4706): gli estremi scuri, dove il gradiente ember si fonde nel fondo nero della sidebar — restano gialli scuri/olivastri, non bronzo o rame.
+- **Accent Ember** (#B88E05): la variante solida (non-gradiente) dell'accento, usata su testo, icone, link e badge (`text-accent`, `border-accent`) dove serve un colore piatto e più leggibile invece di un gradiente.
 
 ### Neutral
-- **Ink** (#120C08): il fondo dell'intera applicazione (dashboard e landing). Non è nero puro né un grigio freddo — ha una nota calda bruno-carbone.
-- **Surface Card** (#1D1913): il fondo delle card e dei pannelli di contenuto, leggermente più chiaro dell'ink, spesso con `backdrop-blur` e bordo bianco 10% per un effetto vetro sottile.
-- **Paper** (#F8F6F1): il testo primario — bianco caldo, mai bianco puro, per restare coerente con la temperatura calda del sistema.
-- **Muted Clay** (#B7ADA4): testo secondario/didascalie, un grigio-tortora caldo, mai un grigio neutro freddo.
-- **Hairline** (#3B362B): bordi e divisori, un bruno scurissimo quasi invisibile a riposo.
-- **Destructive Ember** (#D53434): stati di errore/eliminazione — un rosso caldo distinto dall'ember arancio per non creare ambiguità con l'accento del brand.
+- **Ink** (#1A1A1A): il fondo dell'intera applicazione (dashboard e landing) — il nero neutro del brand ("Night Black").
+- **Surface Card** (#262626): il fondo delle card e dei pannelli di contenuto, leggermente più chiaro dell'ink, spesso con `backdrop-blur` e bordo bianco 10% per un effetto vetro sottile.
+- **Paper** (#FFFFFF): il testo primario e il bianco del brand, puro.
+- **Muted Clay** (#B6B6B6): testo secondario/didascalie, un grigio neutro medio.
+- **Hairline** (#484848): bordi e divisori, un grigio scuro quasi invisibile a riposo.
+- **Destructive Ember** (#D53434): stati di errore/eliminazione — un rosso distinto dal giallo del brand per non creare ambiguità con l'accento.
 
 ### Named Rules
 **La Regola del Fuoco Unico.** L'ember (in ogni sua tonalità) è l'unico accento cromatico del sistema. Non introdurre una seconda famiglia di colore per un modulo diverso (es. un blu per "analytics", un verde per "pagamenti"): tutta l'enfasi passa per la stessa fiamma, altrimenti il sistema perde identità.
@@ -152,7 +152,7 @@ Il sistema non usa ombre piatte convenzionali come primo linguaggio di profondit
 
 ### Buttons
 - **Shape:** angoli morbidi, raggio medio (11.6px, `rounded-md`).
-- **Primary (variant `gold`/`btn-ember`):** gradiente ember 135° da `#CF3A03` a `#C96939`, testo bianco, leggero rilievo interno (`inset 0 1px 0 rgba(255,255,255,0.12)`); è la CTA di punta, da usare una sola volta per schermata.
+- **Primary (variant `gold`/`btn-ember`):** gradiente ember 135° da `#CFAD03` a `#C9B139`, testo bianco, leggero rilievo interno (`inset 0 1px 0 rgba(255,255,255,0.12)`); è la CTA di punta, da usare una sola volta per schermata.
 - **Default:** inverte i toni neutri primary/foreground — usato per azioni secondarie di forte enfasi ma non di brand.
 - **Outline / Ghost / Subtle:** bordo o sfondo neutro trasparente, per azioni terziarie.
 - **Hover / Focus:** transizione di filtro (`brightness(1.08)`) sul variant ember; ring di focus a 2px nel colore `ring` per tutte le varianti.
@@ -174,12 +174,12 @@ Il sistema non usa ombre piatte convenzionali come primo linguaggio di profondit
 - **Disabled:** opacità 50%, cursore disabilitato.
 
 ### Navigation (Sidebar — signature component)
-La sidebar è il componente distintivo del sistema: una capsula di vetro (`.glass-panel-premium`, raggio 32px) con un bagliore radiale ember in alto a sinistra, bordo luminoso interno e uno shadow esterno profondo che la stacca dal fondo mesh. Il logo vive in un `glass-chip` (capsula di vetro più leggera) in cima. Ogni voce di navigazione è un `nav-pill`: a riposo trasparente con testo `#f5e6da` all'80% di opacità; in hover si illumina con un gradiente bianco sottile e si sposta di 2px verso destra; nello stato attivo diventa un pieno gradiente ember con bordo superiore chiaro e bagliore colorato esterno. In fondo, un divisore a gradiente (`agent-divider`) introduce il badge dell'agente AI, in un cerchio di vetro (`icon-glass-circle`) con bagliore ember.
+La sidebar è il componente distintivo del sistema: una capsula di vetro (`.glass-panel-premium`, raggio 32px) con un bagliore radiale ember in alto a sinistra, bordo luminoso interno e uno shadow esterno profondo che la stacca dal fondo mesh. Il logo vive in un `glass-chip` (capsula di vetro più leggera) in cima. Ogni voce di navigazione è un `nav-pill`: a riposo trasparente con testo `#FFFFFF` all'80% di opacità; in hover si illumina con un gradiente bianco sottile e si sposta di 2px verso destra; nello stato attivo diventa un pieno gradiente ember con bordo superiore chiaro e bagliore colorato esterno. In fondo, un divisore a gradiente (`agent-divider`) introduce il badge dell'agente AI, in un cerchio di vetro (`icon-glass-circle`) con bagliore ember.
 
 ## 6. Do's and Don'ts
 
 ### Do:
-- **Do** usare il gradiente ember (`#FF6E28` → `#F44C12` → `#B0300E`) come unico linguaggio di accento cromatico in tutto il prodotto.
+- **Do** usare il gradiente ember (`#FFE14D` → `#FFD400` → `#A98804`) come unico linguaggio di accento cromatico in tutto il prodotto.
 - **Do** riservare il vetro smerigliato (`backdrop-filter`) alla cornice strutturale — sidebar, chip, badge — non ai contenuti di dati.
 - **Do** mantenere le card di dati (tabelle prenotazioni, liste ospiti, righe pagamento) leggibili e dense anche in dark mode: il calore vive nella cornice, non nel contenuto.
 - **Do** usare `font-stretch: 125%` solo sulla classe `.text-display`, mai sul corpo testo.

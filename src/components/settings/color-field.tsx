@@ -9,7 +9,7 @@ export function ColorField({
   label,
   value,
   onChange,
-  placeholder = "#F44C12",
+  placeholder = "#FFD400",
 }: {
   label: string;
   value: string;

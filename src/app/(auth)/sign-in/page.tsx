@@ -135,7 +135,13 @@ function SignInForm() {
                 </p>
               )}
 
-              <Button type="submit" variant="gold" disabled={loading} className="h-11 w-full">
+              <Button
+                type="submit"
+                variant="gold"
+                disabled={loading}
+                className="h-11 w-full text-black"
+                style={{ background: "#FFD400" }}
+              >
                 {loading ? "Accesso in corso…" : "Entra in Tavolo"}
               </Button>
 

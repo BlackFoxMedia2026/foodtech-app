@@ -4,7 +4,7 @@ import { brevoAdapter } from "@/server/marketing/brevo-adapter";
 import { PREVIEW_UNSUBSCRIBE_ID, verifyUnsubscribeToken } from "@/lib/unsubscribe-token";
 
 function htmlPage(opts: { title: string; message: string; accent?: string | null; logoUrl?: string | null }) {
-  const accent = opts.accent && /^#[0-9a-fA-F]{3,8}$/.test(opts.accent) ? opts.accent : "#F44C12";
+  const accent = opts.accent && /^#[0-9a-fA-F]{3,8}$/.test(opts.accent) ? opts.accent : "#FFD400";
   const html = `<!doctype html>
 <html lang="it">
 <head>
@@ -12,11 +12,11 @@ function htmlPage(opts: { title: string; message: string; accent?: string | null
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${opts.title}</title>
 <style>
-  body { font-family: -apple-system, system-ui, sans-serif; background: #120C08; color: #F8F6F1; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; }
+  body { font-family: -apple-system, system-ui, sans-serif; background: #1A1A1A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; }
   .card { max-width: 420px; text-align: center; }
   img { max-height: 48px; margin-bottom: 16px; }
   h1 { font-size: 1.25rem; margin: 0 0 8px; color: ${accent}; }
-  p { color: #B7ADA4; line-height: 1.5; }
+  p { color: #B6B6B6; line-height: 1.5; }
 </style>
 </head>
 <body>

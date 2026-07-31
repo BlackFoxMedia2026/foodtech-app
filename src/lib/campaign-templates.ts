@@ -23,7 +23,7 @@ function blocks(templateId: string, list: WithoutId<Block>[]): Block[] {
  */
 function placeholderImage(label: string, width: number, height: number): string {
   const fontSize = Math.max(13, Math.round(height / 9));
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#F4E9DE"/><rect x="3" y="3" width="${width - 6}" height="${height - 6}" fill="none" stroke="#CD3A04" stroke-width="2" stroke-dasharray="10 8"/><text x="50%" y="50%" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="600" fill="#B0300E" text-anchor="middle" dominant-baseline="middle">${label}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#F4E9DE"/><rect x="3" y="3" width="${width - 6}" height="${height - 6}" fill="none" stroke="#D1AF05" stroke-width="2" stroke-dasharray="10 8"/><text x="50%" y="50%" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="600" fill="#A98D04" text-anchor="middle" dominant-baseline="middle">${label}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
