@@ -19,8 +19,8 @@ export function BrandPreviewCard({
   primaryColor?: string;
   secondaryColor?: string;
 }) {
-  const primary = primaryColor && HEX_RE.test(primaryColor) ? primaryColor : "#F44C12";
-  const secondary = secondaryColor && HEX_RE.test(secondaryColor) ? secondaryColor : "#B7ADA4";
+  const primary = primaryColor && HEX_RE.test(primaryColor) ? primaryColor : "#FFD400";
+  const secondary = secondaryColor && HEX_RE.test(secondaryColor) ? secondaryColor : "#B6B6B6";
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-white text-carbon-900 shadow-sm">

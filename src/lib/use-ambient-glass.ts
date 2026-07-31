@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
  * elsewhere in the app (see DESIGN.md), so the shared variables stay within
  * the documented brand hues instead of drifting into arbitrary colors.
  */
-const EMBER_STOPS = ["#9A4519", "#D98B4A", "#71370F", "#57290C"];
+const EMBER_STOPS = ["#9A8419", "#D9C14A", "#71610F", "#574A0C"];
 
 const CYCLE_MS = 16000;
 

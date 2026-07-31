@@ -20,7 +20,7 @@ export function SidebarCollapseProvider({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="contents" style={{ "--sidebar-w": collapsed ? "96px" : "288px" } as React.CSSProperties}>
+    <div className="contents" style={{ "--sidebar-w": collapsed ? "104px" : "288px" } as React.CSSProperties}>
       <SidebarCollapseContext.Provider value={{ collapsed, toggle: () => setCollapsed((c) => !c) }}>
         {children}
       </SidebarCollapseContext.Provider>

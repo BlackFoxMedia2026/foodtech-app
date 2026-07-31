@@ -42,7 +42,7 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettingsInitial }
   const [name, setName] = useState(initial.name);
   const [logoUrl, setLogoUrl] = useState(initial.brandLogoUrl);
   const [coverImage, setCoverImage] = useState(initial.coverImage);
-  const [primaryColor, setPrimaryColor] = useState(initial.brandAccent || "#F44C12");
+  const [primaryColor, setPrimaryColor] = useState(initial.brandAccent || "#FFD400");
   const [secondaryColor, setSecondaryColor] = useState(initial.brandSecondaryColor);
   const [typography, setTypography] = useState<Typography | "">(initial.brandTypography);
   const [phone, setPhone] = useState(initial.phone);
@@ -116,7 +116,7 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettingsInitial }
           </CardHeader>
           <CardContent className="space-y-4">
             <ColorField label="Colore principale" value={primaryColor} onChange={setPrimaryColor} />
-            <ColorField label="Colore secondario (opzionale)" value={secondaryColor} onChange={setSecondaryColor} placeholder="#B7ADA4" />
+            <ColorField label="Colore secondario (opzionale)" value={secondaryColor} onChange={setSecondaryColor} placeholder="#B6B6B6" />
             <div className="space-y-1.5">
               <Label>Stile tipografico (opzionale)</Label>
               <Select value={typography || undefined} onValueChange={(v) => setTypography(v as Typography)}>

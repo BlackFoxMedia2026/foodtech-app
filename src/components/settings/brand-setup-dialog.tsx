@@ -29,7 +29,7 @@ export function BrandSetupDialog({ initialName }: { initialName: string }) {
 
   const [name, setName] = useState(initialName);
   const [logoUrl, setLogoUrl] = useState("");
-  const [primaryColor, setPrimaryColor] = useState("#F44C12");
+  const [primaryColor, setPrimaryColor] = useState("#FFD400");
   const [secondaryColor, setSecondaryColor] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -116,7 +116,7 @@ export function BrandSetupDialog({ initialName }: { initialName: string }) {
         {step === 1 && (
           <div className="space-y-4">
             <ColorField label="Colore principale" value={primaryColor} onChange={setPrimaryColor} />
-            <ColorField label="Colore secondario (opzionale)" value={secondaryColor} onChange={setSecondaryColor} placeholder="#B7ADA4" />
+            <ColorField label="Colore secondario (opzionale)" value={secondaryColor} onChange={setSecondaryColor} placeholder="#B6B6B6" />
             <BrandPreviewCard name={name} logoUrl={logoUrl} primaryColor={primaryColor} secondaryColor={secondaryColor} />
           </div>
         )}
