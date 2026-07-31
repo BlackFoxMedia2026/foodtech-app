@@ -2,6 +2,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
 import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } from "./emails";
+import { assertAvailability, OCCUPYING_STATUSES } from "./availability";
 
 export const BookingInput = z.object({
   guestId: z.string().optional().nullable(),
@@ -57,8 +58,24 @@ function determineBookingStatus(source: string): "CONFIRMED" | "PENDING" {
   return "PENDING";
 }
 
-export async function createBooking(venueId: string, raw: unknown) {
+/**
+ * `skipAvailabilityCheck` esiste per i casi in cui è lo staff a decidere di forzare
+ * (tavolo condiviso, gruppo sistemato a mano). Non è raggiungibile dai canali pubblici:
+ * va passato esplicitamente da codice server.
+ */
+export type BookingWriteOptions = { skipAvailabilityCheck?: boolean };
+
+export async function createBooking(venueId: string, raw: unknown, opts: BookingWriteOptions = {}) {
   const data = BookingInput.parse(raw);
+
+  if (!opts.skipAvailabilityCheck) {
+    await assertAvailability(venueId, {
+      startsAt: data.startsAt,
+      durationMin: data.durationMin,
+      partySize: data.partySize,
+      tableId: data.tableId ?? null,
+    });
+  }
 
   let guestId = data.guestId ?? null;
   let guestEmail: string | null = null;
@@ -147,10 +164,38 @@ export async function createBooking(venueId: string, raw: unknown) {
   return booking;
 }
 
-export async function updateBooking(venueId: string, id: string, raw: unknown) {
+export async function updateBooking(
+  venueId: string,
+  id: string,
+  raw: unknown,
+  opts: BookingWriteOptions = {},
+) {
   const data = BookingInput.partial().parse(raw);
   const existing = await db.booking.findFirst({ where: { id, venueId } });
   if (!existing) throw new Error("not_found");
+
+  // Ricontrolla solo quando la modifica può creare un conflitto: spostare l'orario,
+  // allungare la durata, cambiare tavolo o coperti, oppure riportare in vita una
+  // prenotazione annullata. Cambiare le note non richiede alcuna verifica.
+  const touchesAvailability =
+    data.startsAt !== undefined ||
+    data.durationMin !== undefined ||
+    data.partySize !== undefined ||
+    data.tableId !== undefined ||
+    data.status !== undefined;
+
+  const nextStatus = data.status ?? existing.status;
+  const stillOccupies = OCCUPYING_STATUSES.includes(nextStatus as (typeof OCCUPYING_STATUSES)[number]);
+
+  if (!opts.skipAvailabilityCheck && touchesAvailability && stillOccupies) {
+    await assertAvailability(venueId, {
+      startsAt: data.startsAt ?? existing.startsAt,
+      durationMin: data.durationMin ?? existing.durationMin,
+      partySize: data.partySize ?? existing.partySize,
+      tableId: data.tableId === undefined ? existing.tableId : data.tableId,
+      excludeBookingId: id,
+    });
+  }
 
   return db.booking.update({
     where: { id },

@@ -52,7 +52,10 @@ export function BookingForm({
     });
     setSubmitting(false);
     if (!res.ok) {
-      setError("Impossibile salvare. Verifica i dati.");
+      // Il server spiega già perché ha rifiutato — locale chiuso, servizio pieno,
+      // tavolo occupato. Mostrarlo tale e quale è più utile di un messaggio generico.
+      const data = await res.json().catch(() => null);
+      setError(data?.error || "Impossibile salvare. Verifica i dati.");
       return;
     }
     router.refresh();
