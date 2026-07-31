@@ -10,7 +10,10 @@ import {
   evaluateAvailability,
   overlaps,
   zonedDayAndMinute,
+  zonedTimeToInstant,
+  zonedCalendarDate,
   findShiftFor,
+  buildDaySlots,
   type AvailabilityContext,
   type ShiftLike,
 } from "../src/server/availability";
@@ -39,6 +42,7 @@ const dinner: ShiftLike = {
   endMinute: 23 * 60,
   capacity: 90,
   active: true,
+  slotMinutes: 15,
 };
 
 const lunch: ShiftLike = { ...dinner, id: "s-lunch", name: "Pranzo", startMinute: 12 * 60, endMinute: 15 * 60, capacity: 60 };
@@ -222,6 +226,133 @@ check(
   "più motivi di rifiuto vengono riportati insieme",
   multi.issues.length >= 2,
   multi.issues.map((i) => i.code).join(", "),
+);
+
+/* ------------------------- orario del locale → istante --------------------- */
+
+check(
+  "20:00 del 3 agosto a Roma corrisponde alle 18:00 UTC (ora estiva)",
+  zonedTimeToInstant({ year: 2026, month: 8, day: 3 }, 20 * 60, ROME).toISOString() ===
+    "2026-08-03T18:00:00.000Z",
+  zonedTimeToInstant({ year: 2026, month: 8, day: 3 }, 20 * 60, ROME).toISOString(),
+);
+
+check(
+  "20:00 del 3 gennaio a Roma corrisponde alle 19:00 UTC (ora solare)",
+  zonedTimeToInstant({ year: 2026, month: 1, day: 3 }, 20 * 60, ROME).toISOString() ===
+    "2026-01-03T19:00:00.000Z",
+  zonedTimeToInstant({ year: 2026, month: 1, day: 3 }, 20 * 60, ROME).toISOString(),
+);
+
+// L'ora legale 2026 in Europa inizia domenica 29 marzo: alle 02:00 locali le lancette
+// vanno alle 03:00, quindi le 02:30 non esistono.
+check(
+  "notte del cambio d'ora: le 12:00 restano corrette",
+  zonedTimeToInstant({ year: 2026, month: 3, day: 29 }, 12 * 60, ROME).toISOString() ===
+    "2026-03-29T10:00:00.000Z",
+  zonedTimeToInstant({ year: 2026, month: 3, day: 29 }, 12 * 60, ROME).toISOString(),
+);
+
+check(
+  "notte del ritorno all'ora solare: le 12:00 restano corrette",
+  zonedTimeToInstant({ year: 2026, month: 10, day: 25 }, 12 * 60, ROME).toISOString() ===
+    "2026-10-25T11:00:00.000Z",
+  zonedTimeToInstant({ year: 2026, month: 10, day: 25 }, 12 * 60, ROME).toISOString(),
+);
+
+check(
+  "andata e ritorno fra istante e orario del locale",
+  (() => {
+    const instant = zonedTimeToInstant({ year: 2026, month: 8, day: 3 }, 19 * 60 + 45, ROME);
+    const back = zonedDayAndMinute(instant, ROME);
+    return back.minuteOfDay === 19 * 60 + 45;
+  })(),
+);
+
+check(
+  "un fuso diverso dà un istante diverso a parità di orario",
+  zonedTimeToInstant({ year: 2026, month: 8, day: 3 }, 20 * 60, "America/New_York").toISOString() ===
+    "2026-08-04T00:00:00.000Z",
+  zonedTimeToInstant({ year: 2026, month: 8, day: 3 }, 20 * 60, "America/New_York").toISOString(),
+);
+
+check(
+  "data civile letta nel fuso del locale",
+  (() => {
+    // 22:30 UTC del 3 agosto è già il 4 agosto a Roma.
+    const d = zonedCalendarDate(new Date("2026-08-03T22:30:00.000Z"), ROME);
+    return d.year === 2026 && d.month === 8 && d.day === 4;
+  })(),
+);
+
+/* ----------------------- orari prenotabili della giornata ------------------ */
+
+const AUG_3 = { year: 2026, month: 8, day: 3 }; // lunedì
+const BEFORE = new Date("2026-08-01T00:00:00.000Z");
+
+const monday = { ...dinner, weekday: 1 };
+const mondayLunch = { ...lunch, weekday: 1 };
+
+const day = buildDaySlots(
+  { date: AUG_3, partySize: 2, durationMin: 105, now: BEFORE },
+  ctx({ shifts: [mondayLunch, monday] }),
+);
+
+check("la giornata riporta entrambi i servizi", day.shifts.length === 2, day.shifts.map((s) => s.name).join(", "));
+check("i servizi sono in ordine di orario", day.shifts[0].name === "Pranzo");
+check("la giornata non risulta chiusa", !day.closed);
+
+const dinnerSlots = day.shifts.find((s) => s.name === "Cena")!;
+check(
+  "cena 19:00-23:00 a passi di 15 minuti dà 17 orari",
+  dinnerSlots.slots.length === 17,
+  `ottenuti ${dinnerSlots.slots.length}`,
+);
+check("il primo orario della cena è 19:00", dinnerSlots.slots[0].label === "19:00");
+check("l'ultimo orario della cena è 23:00", dinnerSlots.slots.at(-1)!.label === "23:00");
+check(
+  "gli orari portano un istante assoluto",
+  dinnerSlots.slots[0].startsAt === "2026-08-03T17:00:00.000Z",
+  dinnerSlots.slots[0].startsAt,
+);
+check("con la sala vuota tutti gli orari sono disponibili", dinnerSlots.slots.every((s) => s.available));
+check("riporta i coperti ancora liberi", dinnerSlots.slots[0].seatsLeft === 90);
+
+const dayClosed = buildDaySlots(
+  { date: AUG_3, partySize: 2, durationMin: 105, now: BEFORE },
+  ctx({ shifts: [dinner] }), // solo domenica
+);
+check("giorno senza servizi: chiuso e senza orari", dayClosed.closed && dayClosed.shifts.length === 0);
+
+const dayPast = buildDaySlots(
+  { date: AUG_3, partySize: 2, durationMin: 105, now: new Date("2026-08-03T18:30:00.000Z") }, // 20:30 a Roma
+  ctx({ shifts: [monday] }),
+);
+check(
+  "gli orari già passati non vengono proposti",
+  dayPast.shifts[0].slots[0].label === "20:45",
+  dayPast.shifts[0].slots[0]?.label,
+);
+
+const dayFull = buildDaySlots(
+  { date: AUG_3, partySize: 4, durationMin: 105, now: BEFORE },
+  ctx({
+    shifts: [monday],
+    // 90 coperti impegnati alle 20:00: gli orari che si sovrappongono si chiudono
+    bookings: [booking({ id: "big", startsAt: new Date("2026-08-03T18:00:00.000Z"), partySize: 90, durationMin: 105 })],
+  }),
+);
+const at2000 = dayFull.shifts[0].slots.find((s) => s.label === "20:00")!;
+const at1900 = dayFull.shifts[0].slots.find((s) => s.label === "19:00")!;
+// La prenotazione da 90 coperti occupa 20:00–21:45, quindi anche le 19:00 ricadono
+// nella sua ombra: 19:00 + 105 minuti arriva alle 20:45.
+const at2200 = dayFull.shifts[0].slots.find((s) => s.label === "22:00")!;
+check("orario al completo: non disponibile", !at2000.available && at2000.seatsLeft === 0);
+check("orario nell'ombra di un tavolone: non disponibile", !at1900.available);
+check(
+  "orario dopo la fine del tavolone: di nuovo disponibile",
+  at2200.available && at2200.seatsLeft === 90,
+  `22:00 seatsLeft=${at2200.seatsLeft}`,
 );
 
 /* ---------------------------------- esito ---------------------------------- */
