@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SlotPicker } from "@/components/bookings/slot-picker";
 import { AlertCircle, Loader2, Mail, Phone } from "lucide-react";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6,8}$/;
@@ -26,6 +27,12 @@ export function PublicBookingForm({ venueId, venueName, embed, logoUrl, primaryC
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Data e coperti pilotano gli orari proponibili, quindi vivono nello stato.
+  const [date, setDate] = useState("");
+  const [partySize, setPartySize] = useState(2);
+  /** Istante ISO scelto: arriva dal server e torna indietro identico. */
+  const [startsAt, setStartsAt] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -36,21 +43,17 @@ export function PublicBookingForm({ venueId, venueName, embed, logoUrl, primaryC
     const lastName = formData.get("lastName") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
-    const date = formData.get("date") as string;
-    const time = formData.get("time") as string;
-    const partySize = formData.get("partySize") as string;
     const occasion = formData.get("occasion") as string;
     const notes = formData.get("notes") as string;
 
-    if (!firstName || !email || !phone || !date || !time || !partySize) {
+    if (!firstName || !email || !phone || !date) {
       setError("Compila tutti i campi obbligatori");
       setLoading(false);
       return;
     }
 
-    const startsAt = new Date(`${date}T${time}`);
-    if (isNaN(startsAt.getTime())) {
-      setError("Data e ora non valide");
+    if (!startsAt) {
+      setError("Scegli un orario fra quelli disponibili");
       setLoading(false);
       return;
     }
@@ -67,7 +70,7 @@ export function PublicBookingForm({ venueId, venueName, embed, logoUrl, primaryC
             email,
             phone,
           },
-          partySize: parseInt(partySize),
+          partySize,
           startsAt,
           occasion: occasion && occasion !== "NONE" ? occasion : null,
           notes: notes || null,
@@ -137,18 +140,24 @@ export function PublicBookingForm({ venueId, venueName, embed, logoUrl, primaryC
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="date">Data *</Label>
-          <Input id="date" name="date" type="date" required min={today} />
+          <Input
+            id="date"
+            name="date"
+            type="date"
+            required
+            min={today}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="time">Ora *</Label>
-          <Input id="time" name="time" type="time" required />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="partySize">Numero di persone *</Label>
-          <Select name="partySize" defaultValue="2" required>
+          <Select
+            name="partySize"
+            value={String(partySize)}
+            onValueChange={(v) => setPartySize(Number(v))}
+            required
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -161,23 +170,35 @@ export function PublicBookingForm({ venueId, venueName, embed, logoUrl, primaryC
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="occasion">Occasione</Label>
-          <Select name="occasion" defaultValue="NONE">
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="NONE">Nessuna</SelectItem>
-              <SelectItem value="BIRTHDAY">Compleanno</SelectItem>
-              <SelectItem value="ANNIVERSARY">Anniversario</SelectItem>
-              <SelectItem value="BUSINESS">Riunione di lavoro</SelectItem>
-              <SelectItem value="DATE">Cena romantica</SelectItem>
-              <SelectItem value="CELEBRATION">Celebrazione</SelectItem>
-              <SelectItem value="OTHER">Altro</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Orario *</Label>
+        <SlotPicker
+          venueId={venueId}
+          date={date}
+          partySize={partySize}
+          value={startsAt}
+          onChange={setStartsAt}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="occasion">Occasione</Label>
+        <Select name="occasion" defaultValue="NONE">
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="NONE">Nessuna</SelectItem>
+            <SelectItem value="BIRTHDAY">Compleanno</SelectItem>
+            <SelectItem value="ANNIVERSARY">Anniversario</SelectItem>
+            <SelectItem value="BUSINESS">Riunione di lavoro</SelectItem>
+            <SelectItem value="DATE">Cena romantica</SelectItem>
+            <SelectItem value="CELEBRATION">Celebrazione</SelectItem>
+            <SelectItem value="OTHER">Altro</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">

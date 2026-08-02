@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getActiveVenue } from "@/lib/tenant";
 import { createBooking, listBookingsForDay } from "@/server/bookings";
+import { bookingWriteErrorResponse } from "@/server/booking-errors";
 
 export async function GET(req: Request) {
   const ctx = await getActiveVenue();
@@ -18,6 +19,6 @@ export async function POST(req: Request) {
     const created = await createBooking(ctx.venueId, body);
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    return bookingWriteErrorResponse(err);
   }
 }

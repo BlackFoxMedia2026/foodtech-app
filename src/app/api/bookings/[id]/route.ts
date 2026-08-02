@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getActiveVenue } from "@/lib/tenant";
 import { db } from "@/lib/db";
 import { deleteBooking, updateBooking } from "@/server/bookings";
+import { bookingWriteErrorResponse } from "@/server/booking-errors";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const ctx = await getActiveVenue();
@@ -20,7 +21,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const updated = await updateBooking(ctx.venueId, params.id, body);
     return NextResponse.json(updated);
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    return bookingWriteErrorResponse(err);
   }
 }
 
