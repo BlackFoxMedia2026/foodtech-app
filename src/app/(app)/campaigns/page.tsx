@@ -25,7 +25,7 @@ export default async function CampaignsPage() {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing</p>
           <h1 className="text-display text-3xl">Campagne</h1>
         </div>
-        <Button asChild variant="gold">
+        <Button asChild variant="accent">
           <Link href="/campaigns/new">
             <Plus className="h-4 w-4" /> Nuova campagna
           </Link>

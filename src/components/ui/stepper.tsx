@@ -34,8 +34,8 @@ export function Stepper({ steps, currentStepIndex, furthestStepIndex, onStepClic
               <span
                 className={cn(
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
-                  isCompleted && "border-accent bg-accent text-accent-foreground",
-                  isCurrent && !isCompleted && "border-accent text-accent",
+                  isCompleted && "border-accent-strong bg-accent-strong text-accent-strong-foreground",
+                  isCurrent && !isCompleted && "border-accent-strong text-accent-strong",
                   !isCompleted && !isCurrent && "border-border text-muted-foreground",
                 )}
               >
@@ -51,7 +51,7 @@ export function Stepper({ steps, currentStepIndex, furthestStepIndex, onStepClic
               </span>
             </button>
             {index < steps.length - 1 && (
-              <div className={cn("mx-2 h-px flex-1", isCompleted ? "bg-accent" : "bg-border")} />
+              <div className={cn("mx-2 h-px flex-1", isCompleted ? "bg-accent-strong" : "bg-border")} />
             )}
           </li>
         );

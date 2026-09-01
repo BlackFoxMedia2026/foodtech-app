@@ -174,11 +174,11 @@ export function BrandSetupDialog({ initialName }: { initialName: string }) {
               </Button>
             )}
             {step < STEPS.length - 1 ? (
-              <Button type="button" variant="gold" onClick={() => goTo(step + 1)} disabled={!canAdvance || submitting}>
+              <Button type="button" variant="accent" onClick={() => goTo(step + 1)} disabled={!canAdvance || submitting}>
                 Avanti
               </Button>
             ) : (
-              <Button type="button" variant="gold" onClick={handleComplete} disabled={submitting}>
+              <Button type="button" variant="accent" onClick={handleComplete} disabled={submitting}>
                 {submitting ? "Salvataggio..." : "Completa setup"}
               </Button>
             )}

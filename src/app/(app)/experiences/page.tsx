@@ -24,7 +24,7 @@ export default async function ExperiencesPage() {
           <h1 className="text-display text-3xl">Esperienze</h1>
           <p className="text-sm text-muted-foreground">{items.length} eventi in calendario</p>
         </div>
-        <Button variant="gold"><Plus className="h-4 w-4" /> Nuova esperienza</Button>
+        <Button variant="accent"><Plus className="h-4 w-4" /> Nuova esperienza</Button>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">

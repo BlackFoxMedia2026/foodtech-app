@@ -53,7 +53,7 @@ export function BlockItem({
       onClick={onSelect}
       className={cn(
         "flex items-center gap-2 rounded-md border p-3 text-sm",
-        selected ? "border-accent bg-accent/10" : "border-border hover:bg-secondary",
+        selected ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
       )}
     >
       <button type="button" {...attributes} {...listeners} className="cursor-grab text-muted-foreground" aria-label="Trascina per riordinare">

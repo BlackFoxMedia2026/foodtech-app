@@ -97,6 +97,7 @@ model Venue {
   onboardingStatus      BrandOnboardingStatus @default(NOT_STARTED)
   onboardingCompletedAt DateTime?
   onboardingSkippedAt   DateTime?
+  serviceAssignmentMode ServiceAssignmentMode @default(ROOMS)
   ApiToken              ApiToken[]
   AutomationWorkflow    AutomationWorkflow[]
   bookings              Booking[]
@@ -139,6 +140,8 @@ model Venue {
   WifiLead              WifiLead[]
   WifiSession           WifiSession[]
   members               VenueMembership[]
+  waiters               Waiter[]
+  waiterAssignments     WaiterAssignment[]
 
   @@unique([orgId, slug])
 }
@@ -157,15 +160,21 @@ model VenueMembership {
 }
 
 model Room {
-  id         String       @id @default(cuid())
-  venueId    String
-  name       String
-  width      Int          @default(1200)
-  height     Int          @default(800)
-  ordering   Int          @default(0)
-  FloorDecor FloorDecor[]
-  venue      Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  tables     Table[]
+  id                String             @id @default(cuid())
+  venueId           String
+  name              String
+  width             Int                @default(1200)
+  height            Int                @default(800)
+  ordering          Int                @default(0)
+  floorPlanUrl      String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @default(now()) @updatedAt
+  FloorDecor        FloorDecor[]
+  venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tables            Table[]
+  waiterAssignments WaiterAssignment[]
+
+  @@index([venueId, ordering])
 }
 
 model Table {
@@ -183,7 +192,7 @@ model Table {
   height     Int?
   width      Int?
   bookings   Booking[]
-  room       Room?        @relation(fields: [roomId], references: [id])
+  room       Room?        @relation(fields: [roomId], references: [id], onDelete: Restrict)
   venue      Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
   blocks     TableBlock[]
 
@@ -1087,6 +1096,48 @@ model ReviewLinkClick {
   @@index([venueId, createdAt])
 }
 
+model Waiter {
+  id          String             @id @default(cuid())
+  venueId     String
+  firstName   String
+  lastName    String
+  birthday    DateTime
+  phone       String
+  role        String
+  status      WaiterStatus       @default(ACTIVE)
+  photoUrl    String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  venue       Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  assignments WaiterAssignment[]
+
+  @@index([venueId, createdAt])
+}
+
+enum WaiterStatus {
+  ACTIVE
+  RESTING
+}
+
+model WaiterAssignment {
+  id             String                @id @default(cuid())
+  venueId        String
+  waiterId       String
+  date           DateTime
+  service        String
+  assignmentMode ServiceAssignmentMode
+  roomId         String?
+  tableIds       String[]              @default([])
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  venue          Venue                 @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter         Waiter                @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  room           Room?                 @relation(fields: [roomId], references: [id], onDelete: Restrict)
+
+  @@unique([waiterId, date, service])
+  @@index([venueId, date, service])
+}
+
 model StaffShift {
   id          String   @id
   venueId     String
@@ -1239,6 +1290,11 @@ enum BrandOnboardingStatus {
   NOT_STARTED
   SKIPPED
   COMPLETED
+}
+
+enum ServiceAssignmentMode {
+  ROOMS
+  TABLES
 }
 
 enum BrandTypography {

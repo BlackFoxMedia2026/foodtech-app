@@ -20,10 +20,12 @@ export function ProfileMenu({ user }: { user: { name?: string | null; email?: st
         <button
           type="button"
           aria-label="Menu profilo"
-          className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <Avatar className="h-10 w-10 border border-white/10">
-            <AvatarFallback className="bg-foreground text-background">{initials(user.name ?? user.email)}</AvatarFallback>
+          <Avatar className="h-9 w-9 rounded-lg border border-border">
+            <AvatarFallback className="rounded-lg bg-foreground text-background">
+              {initials(user.name ?? user.email)}
+            </AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>

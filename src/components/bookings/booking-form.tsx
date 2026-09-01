@@ -166,7 +166,7 @@ export function BookingForm({
             Annulla
           </Button>
         )}
-        <Button type="submit" variant="gold" disabled={submitting}>
+        <Button type="submit" variant="accent" disabled={submitting}>
           {submitting ? "Salvataggio…" : "Crea prenotazione"}
         </Button>
       </div>

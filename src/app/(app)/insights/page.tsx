@@ -47,7 +47,7 @@ function DeltaBadge({ current, previous }: { current: number; previous: number }
   if (!delta.available) return <p className="text-xs text-muted-foreground">Confronto non disponibile</p>;
   if (delta.value === 0) return <p className="text-xs text-muted-foreground">Invariato rispetto al periodo precedente</p>;
   return (
-    <p className={cn("flex items-center gap-1 text-xs font-medium", delta.isGood ? "text-emerald-600" : "text-rose-600")}>
+    <p className={cn("flex items-center gap-1 text-xs font-medium", delta.isGood ? "text-sage" : "text-rose-600")}>
       {delta.value > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
       {Math.abs(delta.value)}% rispetto al periodo precedente
     </p>

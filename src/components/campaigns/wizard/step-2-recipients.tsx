@@ -96,7 +96,7 @@ export function Step2Recipients() {
                 onClick={() => dispatch({ type: "SET_SEGMENT", segment: preset.segment })}
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs transition-colors",
-                  isActive ? "border-accent bg-accent/10 font-medium text-accent" : "border-border hover:bg-secondary",
+                  isActive ? "border-accent-strong bg-accent-strong/10 font-medium text-accent-strong" : "border-border hover:bg-secondary",
                 )}
               >
                 {preset.label}

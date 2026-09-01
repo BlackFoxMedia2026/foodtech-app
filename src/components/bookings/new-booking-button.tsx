@@ -11,7 +11,7 @@ export function NewBookingButton({ tables }: { tables: { id: string; label: stri
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="gold">
+        <Button variant="accent">
           <Plus className="h-4 w-4" /> Nuova prenotazione
         </Button>
       </DialogTrigger>

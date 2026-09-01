@@ -173,7 +173,7 @@ function WizardShell() {
               <Button variant="ghost" onClick={handleSaveDraft} disabled={state.saving || !state.campaignId}>
                 <Save className="h-4 w-4" /> Salva bozza
               </Button>
-              <Button variant="gold" onClick={handleNext} disabled={state.saving || !canGoNext(state)}>
+              <Button variant="accent" onClick={handleNext} disabled={state.saving || !canGoNext(state)}>
                 Avanti <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

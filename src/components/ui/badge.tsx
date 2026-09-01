@@ -7,10 +7,10 @@ const badgeVariants = cva(
   {
     variants: {
       tone: {
-        neutral: "border-border bg-secondary text-foreground",
+        neutral: "border-current/25 bg-current/10",
         gold: "border-accent/30 bg-accent/10 text-accent",
         pearl: "border-white/60 bg-gradient-to-br from-white to-[#F2F2F2] text-carbon-900 shadow-sm",
-        success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+        success: "border-sage/40 bg-sage/15 text-sage",
         warning: "border-amber-200 bg-amber-50 text-amber-700",
         danger: "border-rose-200 bg-rose-50 text-rose-700",
         info: "border-sky-200 bg-sky-50 text-sky-700",

@@ -61,10 +61,10 @@ export function Step1Objective() {
               onClick={() => selectObjective(objective)}
               className={cn(
                 "flex items-start gap-3 rounded-lg border p-4 text-left transition-colors",
-                selected ? "border-accent bg-accent/10" : "border-border hover:bg-secondary",
+                selected ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
               )}
             >
-              <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", selected ? "text-accent" : "text-muted-foreground")} />
+              <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", selected ? "text-accent-strong" : "text-muted-foreground")} />
               <div>
                 <p className="text-sm font-medium">{objective.label}</p>
                 <p className="text-xs text-muted-foreground">{objective.description}</p>

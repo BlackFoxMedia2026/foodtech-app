@@ -46,7 +46,7 @@ export function CampaignActions({ campaignId }: { campaignId: string }) {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="gold" disabled={submitting} onClick={sendNow}>
+        <Button variant="accent" disabled={submitting} onClick={sendNow}>
           Invia ora
         </Button>
         <Input

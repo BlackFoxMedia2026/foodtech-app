@@ -164,7 +164,7 @@ function QrCodeFormDialog({
           <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
             Annulla
           </Button>
-          <Button variant="gold" onClick={handleSubmit} disabled={submitting}>
+          <Button variant="accent" onClick={handleSubmit} disabled={submitting}>
             {submitting ? "Salvataggio..." : submitLabel}
           </Button>
         </DialogFooter>
@@ -268,7 +268,7 @@ export function QrCodeManager({ items }: { items: QrCodeItem[] }) {
         </div>
         <QrCodeFormDialog
           trigger={
-            <Button variant="gold">
+            <Button variant="accent">
               <Plus className="h-4 w-4" /> Nuovo QR code
             </Button>
           }

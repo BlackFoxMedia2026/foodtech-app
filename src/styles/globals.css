@@ -4,34 +4,33 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
-    --primary: 0 0% 10%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 95%;
-    --secondary-foreground: 0 0% 10%;
-    --muted: 0 0% 95%;
-    --muted-foreground: 220 5% 40%;
-    --accent: 46 95% 37%;
-    --accent-foreground: 0 0% 10%;
+    --background: 160 46% 11%;
+    --foreground: 41 59% 88%;
+    --card: 160 46% 16%;
+    --card-foreground: 41 59% 88%;
+    --popover: 157 32% 23%;
+    --popover-foreground: 41 59% 88%;
+    --primary: 41 59% 88%;
+    --primary-foreground: 160 46% 11%;
+    --secondary: 157 32% 23%;
+    --secondary-foreground: 41 59% 88%;
+    --muted: 157 32% 23%;
+    --muted-foreground: 41 38% 66%;
+    --tertiary: 41 19% 58%;
+    --accent: 30 44% 48%;
+    --accent-foreground: 41 59% 92%;
     --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --ring: 46 95% 37%;
-    --radius: 0.65rem;
+    --border: 157 19% 26%;
+    --border-strong: 157 19% 34%;
+    --input: 157 19% 26%;
+    --ring: 30 44% 48%;
+    --radius: 1.2rem;
 
-    /* Reactive liquid-glass config — centralised so nothing is duplicated
-       ad hoc across the sidebar's layers. */
-    --glass-blur: 16px;
-    --glass-saturation: 145%;
-    --glass-contrast: 108%;
-    --glass-radius: 2rem;
-    --glass-darkness: 0.62;
+    /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
+       surfaces below — this is what turns a flat gradient into a "brushed"/
+       "paper grain" texture without any image asset or extra DOM node. */
+    --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   .dark {
@@ -73,6 +72,21 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    background-color: #0f2a21;
+    background-image:
+      var(--noise),
+      repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.35) 0px,
+        rgba(0, 0, 0, 0.35) 1px,
+        transparent 1px,
+        transparent 10px
+      ),
+      radial-gradient(130% 110% at 12% -10%, rgba(255, 255, 255, 0.07), transparent 55%),
+      linear-gradient(180deg, #0f2a21 0%, #17382c 100%);
+    background-blend-mode: overlay, normal, normal, normal;
+    background-size: 240px 240px, 100% 10px, auto, auto;
+    background-attachment: fixed;
     font-feature-settings: "ss01", "cv11";
   }
   ::selection {
@@ -95,7 +109,102 @@
   .bg-base { background: radial-gradient(130% 120% at 16% 6%, #131313 0%, #151515 38%, #1b1b1b 100%); }
   .bg-layer { animation: bg-x 27s ease-in-out infinite; }
   .surface {
-    @apply rounded-xl border border-border bg-card shadow-[0_1px_0_0_rgb(0_0_0_/_0.02),0_18px_40px_-32px_rgb(0_0_0_/_0.18)] dark:border-white/10 dark:bg-black/50 dark:backdrop-blur-xl dark:shadow-[0_14px_40px_rgba(0,0,0,0.5)];
+    @apply rounded-xl border border-border text-card-foreground;
+    background-image:
+      radial-gradient(120% 100% at 15% 0%, rgba(255, 255, 255, 0.05), transparent 50%),
+      linear-gradient(180deg, #163c2f 0%, #102c1f 100%);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+      0 10px 18px rgba(0, 0, 0, 0.22),
+      0 24px 48px rgba(0, 0, 0, 0.35);
+  }
+
+  /* "Prenotazioni di oggi" list well — recessed instead of raised, per the
+     material brief: content wells sit incised into the page, cards float. */
+  .recessed {
+    box-shadow:
+      inset 0 10px 22px rgba(0, 0, 0, 0.4),
+      inset 0 -2px 4px rgba(255, 255, 255, 0.03);
+  }
+
+  /* Cream/parchment finish (StatCard "Prenotazioni"): woven linen crosshatch
+     + soft top-left light wash, under the shared grain. */
+  .finish-parchment {
+    background-image:
+      repeating-linear-gradient(0deg, rgba(74, 53, 32, 0.035) 0px, rgba(74, 53, 32, 0.035) 1px, transparent 1px, transparent 3px),
+      repeating-linear-gradient(90deg, rgba(74, 53, 32, 0.035) 0px, rgba(74, 53, 32, 0.035) 1px, transparent 1px, transparent 3px),
+      radial-gradient(140% 110% at 20% -10%, rgba(255, 255, 255, 0.35), transparent 55%),
+      linear-gradient(180deg, #f6eed6 0%, #f3e4c9 100%);
+    background-blend-mode: multiply, multiply, normal, normal;
+  }
+
+  /* Brushed bronze/gold finish — kept for potential reuse, no longer wired to
+     any component (its metallic sheen read as "gold", which the terracotta/
+     matte brown surfaces below replace it with). */
+  .finish-bronze {
+    background-image:
+      repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.10) 0px, rgba(255, 255, 255, 0.10) 1px, transparent 1px, transparent 4px),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 40%),
+      linear-gradient(180deg, #b98a54 0%, #8a6640 100%);
+    background-blend-mode: soft-light, normal, normal;
+  }
+
+  /* Brown material system — exact user-given bases (#BA9B7A / #875D41 /
+     #6D4634), textured but NOT reinterpreted:
+     1) no light-wash gradient layer — that radial highlight was what pushed
+        an already-warm base toward a pale peach/salmon look. Removed.
+     2) grain blends with `luminosity` only — transfers brightness alone,
+        never touches hue/saturation, so it cannot tint the base at all.
+     3) the only tonal variation is the exact base color scaled ±10-15% in
+        RGB (uniform per-channel scaling preserves hue exactly by
+        construction) — never an independently-picked lighter/darker brown. */
+  .finish-brown-medium {
+    /* #875D41 — card marroni principali (Coperti, Azioni rapide container) */
+    background-image: linear-gradient(180deg, #a56941 0%, #7b4e30 100%);
+  }
+
+  .finish-brown-dark {
+    /* #6D4634 — card scure / tile interne (Andamento, tile Azioni rapide, KPI) */
+    background-image: linear-gradient(180deg, #854e34 0%, #633a26 100%);
+  }
+
+  .finish-brown-container {
+    /* same #875D41 step as finish-brown-medium — "card marroni principali" */
+    background-image: linear-gradient(180deg, #a56941 0%, #7b4e30 100%);
+  }
+
+  .finish-brown-tile {
+    /* same #6D4634 step as finish-brown-dark — "tile interne" */
+    background-image: linear-gradient(180deg, #854e34 0%, #633a26 100%);
+  }
+
+  .finish-peach {
+    /* #BA9B7A — CTA / superfici chiare */
+    background-image: linear-gradient(180deg, #d2a77b 0%, #ae8c67 100%);
+  }
+
+  .finish-sage-container {
+    /* rgb(120,148,99) / #789463 — "Azioni rapide" banner */
+    background-image: linear-gradient(180deg, #83aa66 0%, #65834f 100%);
+  }
+
+  .finish-sage-tile {
+    /* lighter green than the standard card surface it sits on — the same
+       hue as the header/dropdown "secondary" surface, one step up. */
+    background-image: linear-gradient(180deg, #2f5b4a 0%, #214034 100%);
+  }
+
+  .finish-sage-bright {
+    /* #7FA46F, saturation-boosted ~25% to match the rest of the palette —
+       "Andamento in linea" banner. Bright enough that it needs dark
+       (clay-ink) text, not cream. */
+    background-image: linear-gradient(180deg, #8bc074 0%, #699158 100%);
+  }
+
+  /* Subtle metallic sheen for small icon chips — layers over whatever
+     background-color/tint the chip already has. */
+  .finish-metal-chip {
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.25), transparent 50%), linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08));
   }
   .text-display {
     @apply font-display tracking-tight;
@@ -131,34 +240,6 @@
     opacity: 1;
     transform: scale(1);
   }
-  .sidebar-toggle {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-    border-radius: 999px;
-    background: rgba(60, 25, 10, 0.45);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: rgba(255, 255, 255, 0.85);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-    transition: background-color 160ms ease-out, border-color 160ms ease-out, transform 160ms ease-out;
-  }
-  .sidebar-toggle:hover {
-    background: rgba(90, 42, 18, 0.55);
-    border-color: rgba(255, 255, 255, 0.24);
-    color: rgba(255, 255, 255, 1);
-  }
-  .sidebar-toggle:active {
-    transform: scale(0.92);
-  }
-  .sidebar-toggle:focus-visible {
-    outline: none;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(255, 255, 255, 0.6);
-  }
   .btn-ember {
     background: linear-gradient(135deg, #cfad03 0%, #c9b139 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
@@ -171,293 +252,26 @@
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(242, 238, 231, 0.88) 45%, rgba(230, 224, 214, 0.88) 70%, rgba(255, 255, 255, 0.88) 100%);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   }
-  .glass-panel {
-    position: relative;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(8, 6, 5, 0.6) 35%, rgba(4, 3, 2, 0.72) 100%);
-    backdrop-filter: blur(40px) saturate(160%);
-    -webkit-backdrop-filter: blur(40px) saturate(160%);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow:
-      0 24px 60px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-  }
-  .glass-panel::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, transparent 35%);
-    pointer-events: none;
-  }
-  @keyframes fluted-shift {
-    0%, 100% { background-position: 0% 0; }
-    50% { background-position: 100% 0; }
-  }
-  .glass-panel-fluted {
-    position: relative;
-    z-index: 0;
-    overflow: hidden;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(8, 6, 5, 0.35) 35%, rgba(4, 3, 2, 0.45) 100%);
-    backdrop-filter: blur(40px) saturate(160%);
-    -webkit-backdrop-filter: blur(40px) saturate(160%);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow:
-      0 24px 60px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-  }
-  .glass-panel-fluted::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: -30px;
-    background-image: repeating-linear-gradient(100deg, #151202 0px, #6e5d08 30px, #cfad03 55px, #d9bf3d 70px, #6e5d08 95px, #151202 120px);
-    background-size: 220% 100%;
-    animation: fluted-shift 24s ease-in-out infinite;
-    filter: blur(24px);
-    pointer-events: none;
-  }
-  .glass-panel-fluted::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, transparent 35%);
-    pointer-events: none;
+
+  /* Dashboard card signature: a single netto corner (top-left) against three
+     softened ones — kept as one named utility so every dashboard card stays
+     pixel-identical instead of drifting via repeated arbitrary values. */
+  .card-notch {
+    border-radius: 4px 24px 24px 24px;
   }
 
-  /* ================================================================
-     Reactive liquid glass — the sidebar shares --gradient-* with the
-     mesh background (see AmbientScene / useAmbientGlass) instead of
-     running an independent animation. Split into four layers so a
-     browser that can't do one trick (SVG-filter backdrop, mask-composite
-     border) doesn't lose the others: each @supports gate is scoped to
-     its own layer, never combined into one filter/background value.
-     ================================================================ */
-
-  .liquid-sidebar {
-    position: relative;
-    isolation: isolate;
-    z-index: 0;
-    overflow: hidden;
-    border-radius: var(--glass-radius, 2rem);
-    box-shadow:
-      0 24px 60px -20px rgb(0 0 0 / 0.5),
-      0 2px 10px rgb(0 0 0 / 0.3);
+  /* Hides the scrollbar on the horizontally-scrolling top nav without
+     hiding the ability to scroll (wheel/touch/keyboard still work). */
+  .nav-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-  /* Opaque fill ONLY when the browser can't do backdrop-filter at all — when
-     it can, the element must stay transparent so the layers below actually
-     sample the real mesh background instead of this element's own fill. */
-  @supports not (backdrop-filter: blur(1px)) {
-    .liquid-sidebar {
-      background: rgb(14 10 7 / 0.86);
-    }
+  .nav-scroll::-webkit-scrollbar {
+    display: none;
   }
-
-  /* Layer 1 — refraction: bends what's actually rendered behind the sidebar
-     (the mesh background) via an SVG displacement filter. Alone in its own
-     backdrop-filter — an unsupported filter function can invalidate the
-     whole property value in some engines, so it must never share a
-     declaration with the blur/saturate layer below it. */
-  .liquid-sidebar__refraction {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-  }
-  @supports (backdrop-filter: blur(1px)) {
-    .liquid-sidebar__refraction {
-      backdrop-filter: url(#liquid-glass-distortion);
-      -webkit-backdrop-filter: url(#liquid-glass-distortion);
-    }
-  }
-
-  /* Layer 2 — glass: blur/saturate/contrast plus a genuinely translucent tint
-     mixed from the same --gradient-color variables the mesh background
-     reads (mixed toward transparent, not black — a color-mix mixed with an
-     opaque color is itself opaque and would hide the blur/refraction under
-     it entirely, which is the bug this replaced). */
-  .liquid-sidebar__glass {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    background: rgb(14 10 7 / 0.4);
-  }
-  @supports (background: color-mix(in srgb, red 50%, blue)) {
-    .liquid-sidebar__glass {
-      background: linear-gradient(
-        160deg,
-        color-mix(in srgb, var(--gradient-color-2, #71610F) 30%, transparent) 0%,
-        color-mix(in srgb, var(--gradient-color-3, #574A0C) 34%, transparent) 100%
-      );
-    }
-  }
-  @supports (backdrop-filter: blur(1px)) {
-    .liquid-sidebar__glass {
-      background:
-        linear-gradient(135deg, rgb(255 255 255 / 0.12) 0%, transparent 45%),
-        linear-gradient(
-          160deg,
-          color-mix(in srgb, var(--gradient-color-2, #71610F) 26%, transparent) 0%,
-          color-mix(in srgb, var(--gradient-color-3, #574A0C) 30%, transparent) 100%
-        );
-      backdrop-filter: blur(var(--glass-blur, 16px)) saturate(var(--glass-saturation, 145%)) contrast(var(--glass-contrast, 108%));
-      -webkit-backdrop-filter: blur(var(--glass-blur, 16px)) saturate(var(--glass-saturation, 145%)) contrast(var(--glass-contrast, 108%));
-    }
-  }
-
-  /* Layer 3 — highlights: top sheen, side reflections, inner shadow, and a
-     mouse-reactive local highlight blended with the ambient light position. */
-  .liquid-sidebar__highlights {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
-    background:
-      radial-gradient(60% 45% at var(--mouse-x, 50%) var(--mouse-y, 28%), rgb(255 255 255 / 0.16) 0%, transparent 70%),
-      radial-gradient(70% 50% at var(--gradient-x, 50%) var(--gradient-y, 20%), rgb(255 255 255 / calc(0.1 * var(--gradient-lightness, 0.9))) 0%, transparent 65%),
-      linear-gradient(180deg, rgb(255 255 255 / 0.1) 0%, transparent 30%),
-      linear-gradient(90deg, rgb(255 255 255 / 0.05) 0%, transparent 12%, transparent 88%, rgb(255 255 255 / 0.05) 100%),
-      linear-gradient(0deg, rgb(255 236 140 / calc(0.05 * var(--gradient-intensity, 0.85))) 0%, transparent 22%);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.22),
-      inset 0 -30px 40px -28px rgb(0 0 0 / 0.35);
-    transition:
-      --mouse-x 420ms cubic-bezier(0.16, 1, 0.3, 1),
-      --mouse-y 420ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  /* Layer 4 — content: logo, nav, agent card. Never blurred or distorted. */
-  .liquid-sidebar__content {
-    position: relative;
-    z-index: 3;
-  }
-
-  /* Same glass highlight as the sidebar, minus the mouse-reactive white spot —
-     used where the glass look is wanted without a pointer-following glow. */
-  .liquid-card__highlights {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
-    background:
-      radial-gradient(70% 50% at var(--gradient-x, 50%) var(--gradient-y, 20%), rgb(255 255 255 / calc(0.1 * var(--gradient-lightness, 0.9))) 0%, transparent 65%),
-      linear-gradient(180deg, rgb(255 255 255 / 0.1) 0%, transparent 30%),
-      linear-gradient(90deg, rgb(255 255 255 / 0.05) 0%, transparent 12%, transparent 88%, rgb(255 255 255 / 0.05) 100%),
-      linear-gradient(0deg, rgb(255 236 140 / calc(0.05 * var(--gradient-intensity, 0.85))) 0%, transparent 22%);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.22),
-      inset 0 -30px 40px -28px rgb(0 0 0 / 0.35);
-  }
-
-  .icon-glass-circle {
-    position: relative;
-    background:
-      radial-gradient(
-        circle at 32% 26%,
-        rgb(255 234 132 / 0.5) 0%,
-        color-mix(in srgb, var(--gradient-color-1, #9A8419) 70%, transparent) 55%,
-        rgb(120 102 16 / 0.4) 100%
-      );
-    border: 1px solid rgb(255 205 170 / 0.22);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.28),
-      0 0 calc(10px + 6px * var(--gradient-intensity, 0.85)) color-mix(in srgb, var(--gradient-color-1, #9A8419) 55%, transparent);
-    transition: box-shadow 260ms ease;
-  }
-  @supports (backdrop-filter: blur(1px)) {
-    .icon-glass-circle {
-      backdrop-filter: blur(14px) saturate(160%);
-      -webkit-backdrop-filter: blur(14px) saturate(160%);
-    }
-  }
-
-  .agent-status-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: rgb(52 211 153);
-    box-shadow: 0 0 6px rgb(52 211 153 / 0.7);
-    animation: agent-pulse 2.4s ease-in-out infinite alternate;
-  }
-  @keyframes agent-pulse {
-    from { opacity: 1; }
-    to { opacity: 0.55; }
-  }
-
-  .agent-divider {
-    border-top: 1px solid transparent;
-    border-image: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.22), transparent) 1;
-  }
-
-  .nav-pill {
-    position: relative;
-    border: 1px solid transparent;
-    transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease, transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .nav-pill:hover {
-    background: rgb(255 255 255 / 0.07);
-    border-color: rgb(255 255 255 / 0.14);
-    transform: translateX(2px);
-  }
-  .nav-pill:active {
-    transform: translateX(2px) scale(0.98);
-  }
-
-  /* The active pill: a translucent orange glass capsule with an inner glow,
-     not a flat filled rectangle — the brand accent stays an accent. */
-  .nav-pill-active {
-    position: relative;
-    background: linear-gradient(135deg, rgb(255 215 20 / 0.58), rgb(255 212 0 / 0.28));
-    border: 1px solid rgb(255 255 255 / 0.22);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.38),
-      inset 0 -1px 0 rgb(90 75 0 / 0.2),
-      0 8px 22px rgb(255 212 0 / 0.15);
-    transition: background-color 260ms ease, box-shadow 260ms ease;
-  }
-  @supports (backdrop-filter: blur(1px)) {
-    .nav-pill-active {
-      backdrop-filter: blur(16px) saturate(160%);
-      -webkit-backdrop-filter: blur(16px) saturate(160%);
-    }
-  }
-  .nav-pill-active:hover {
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.44),
-      inset 0 -1px 0 rgb(90 75 0 / 0.22),
-      0 10px 26px rgb(255 212 0 / 0.2);
-  }
-}
-
-@property --mouse-x {
-  syntax: "<percentage>";
-  inherits: true;
-  initial-value: 50%;
-}
-@property --mouse-y {
-  syntax: "<percentage>";
-  inherits: true;
-  initial-value: 28%;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-pill,
-  .nav-pill:hover,
-  .nav-pill:active,
-  .nav-pill-active,
-  .icon-glass-circle,
-  .liquid-sidebar__highlights {
-    transition: none;
-    transform: none;
-  }
-  .agent-status-dot {
-    animation: none;
-    opacity: 1;
-  }
   .dropdown-content,
   .dropdown-content[data-state="open"],
   .dropdown-content[data-state="closed"] {
@@ -466,9 +280,7 @@
   }
   .tooltip-content,
   .tooltip-content[data-state="delayed-open"],
-  .tooltip-content[data-state="instant-open"],
-  .sidebar-toggle,
-  .sidebar-toggle:active {
+  .tooltip-content[data-state="instant-open"] {
     transition: none;
     transform: none;
   }

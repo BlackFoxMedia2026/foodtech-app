@@ -90,7 +90,7 @@ export function Step3Template() {
           onClick={selectBlank}
           className={cn(
             "rounded-lg border p-4 text-left transition-colors",
-            selection?.type === "blank" ? "border-accent bg-accent/10" : "border-border hover:bg-secondary",
+            selection?.type === "blank" ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
           )}
         >
           <p className="text-sm font-medium">Parti da zero</p>
@@ -132,7 +132,7 @@ export function Step3Template() {
                 onClick={() => selectTemplate(template)}
                 className={cn(
                   "grid gap-4 rounded-lg border p-3 text-left transition-colors sm:grid-cols-[240px_1fr]",
-                  isSelected ? "border-accent bg-accent/10" : "border-border hover:bg-secondary",
+                  isSelected ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
                 )}
               >
                 <div>
