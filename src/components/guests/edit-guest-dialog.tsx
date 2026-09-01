@@ -163,7 +163,7 @@ export function EditGuestDialog({ guest }: { guest: EditableGuest }) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Annulla
             </Button>
-            <Button type="submit" variant="gold" disabled={submitting}>
+            <Button type="submit" variant="accent" disabled={submitting}>
               {submitting ? "Salvataggio…" : "Salva modifiche"}
             </Button>
           </div>

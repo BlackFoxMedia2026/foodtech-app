@@ -88,14 +88,14 @@ export function Step5PreviewTest() {
           <button
             type="button"
             onClick={() => setViewport("desktop")}
-            className={cn("flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs", viewport === "desktop" ? "border-accent bg-accent/10" : "border-border")}
+            className={cn("flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs", viewport === "desktop" ? "border-accent-strong bg-accent-strong/10" : "border-border")}
           >
             <Monitor className="h-3.5 w-3.5" /> Desktop
           </button>
           <button
             type="button"
             onClick={() => setViewport("mobile")}
-            className={cn("flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs", viewport === "mobile" ? "border-accent bg-accent/10" : "border-border")}
+            className={cn("flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs", viewport === "mobile" ? "border-accent-strong bg-accent-strong/10" : "border-border")}
           >
             <Smartphone className="h-3.5 w-3.5" /> Mobile
           </button>
@@ -125,7 +125,7 @@ export function Step5PreviewTest() {
           </Button>
         </div>
         {testError && <p className="text-xs text-rose-600">{testError}</p>}
-        {testSuccess && <p className="text-xs text-emerald-600">Email di test inviata.</p>}
+        {testSuccess && <p className="text-xs text-sage">Email di test inviata.</p>}
       </div>
     </div>
   );

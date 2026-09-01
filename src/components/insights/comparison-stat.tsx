@@ -31,7 +31,7 @@ export function ComparisonStat({
           <span
             className={cn(
               "flex items-center gap-0.5 text-xs font-medium",
-              delta.value === 0 ? "text-muted-foreground" : delta.isGood ? "text-emerald-600" : "text-rose-600",
+              delta.value === 0 ? "text-muted-foreground" : delta.isGood ? "text-sage" : "text-rose-600",
             )}
           >
             {delta.value === 0 ? (

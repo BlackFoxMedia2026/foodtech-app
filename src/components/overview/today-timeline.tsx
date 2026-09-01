@@ -31,23 +31,23 @@ function getStatusDisplay(booking: Row, now: Date): { label: string; tone: Tone 
 }
 
 const DOT_TONE: Record<Tone, string> = {
-  positive: "bg-emerald-400",
-  warn: "bg-accent",
-  negative: "bg-rose-400",
-  neutral: "bg-muted-foreground",
+  positive: "bg-sage",
+  warn: "bg-card-foreground",
+  negative: "bg-rose-600",
+  neutral: "bg-card-foreground/40",
 };
 
 const TEXT_TONE: Record<Tone, string> = {
-  positive: "text-emerald-400",
-  warn: "text-accent",
-  negative: "text-rose-400",
-  neutral: "text-muted-foreground",
+  positive: "text-sage",
+  warn: "text-card-foreground",
+  negative: "text-rose-600",
+  neutral: "text-card-foreground/65",
 };
 
 export function TodayTimeline({ bookings }: { bookings: Row[] }) {
   if (bookings.length === 0) {
     return (
-      <p className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+      <p className="rounded-md border border-dashed border-cream/20 bg-white/5 p-8 text-center text-sm text-card-foreground/65">
         Nessuna prenotazione per oggi.
       </p>
     );
@@ -65,18 +65,18 @@ export function TodayTimeline({ bookings }: { bookings: Row[] }) {
           <li key={b.id} className="relative">
             <Link
               href={`/bookings/${b.id}`}
-              className="flex items-center gap-4 rounded-lg py-3 pl-1 pr-2 transition-colors hover:bg-white/5"
+              className="flex items-center gap-4 rounded-lg py-3 pl-1 pr-2 transition-colors hover:bg-muted"
             >
-              <p className="w-14 shrink-0 text-right text-sm font-medium text-foreground">{formatTime(b.startsAt)}</p>
+              <p className="w-14 shrink-0 text-right text-sm font-medium text-card-foreground">{formatTime(b.startsAt)}</p>
               <span className={cn("z-10 h-2.5 w-2.5 shrink-0 rounded-full", DOT_TONE[status.tone])} aria-hidden="true" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{name}</p>
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="truncate text-sm font-medium text-card-foreground">{name}</p>
+                <p className="truncate text-xs text-card-foreground/65">
                   {b.partySize} {b.partySize === 1 ? "persona" : "persone"} · {b.table ? `Tavolo ${b.table.label}` : "Tavolo da assegnare"}
                 </p>
               </div>
               <span className={cn("shrink-0 text-right text-xs font-medium", TEXT_TONE[status.tone])}>{status.label}</span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-card-foreground/65" />
             </Link>
           </li>
         );

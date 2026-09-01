@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CopyButton } from "@/components/ui/copy-button";
+import { ServiceOrganizationSettings } from "@/components/settings/service-organization-settings";
+import { listRooms } from "@/server/rooms";
 import { initials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +24,7 @@ const ROLE_LABELS = {
 
 export default async function SettingsPage() {
   const ctx = await getActiveVenue();
-  const [venues, members, shifts] = await Promise.all([
+  const [venues, members, shifts, rooms, tablesCount] = await Promise.all([
     db.venue.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: "asc" } }),
     db.venueMembership.findMany({
       where: { venueId: ctx.venueId },
@@ -32,6 +34,8 @@ export default async function SettingsPage() {
       where: { venueId: ctx.venueId, weekday: 0 },
       orderBy: { startMinute: "asc" },
     }),
+    listRooms(ctx.venueId),
+    db.table.count({ where: { venueId: ctx.venueId, active: true } }),
   ]);
 
   const hdrs = headers();
@@ -50,7 +54,7 @@ export default async function SettingsPage() {
       {ctx.venue.onboardingStatus === "SKIPPED" && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-4">
           <p className="text-sm font-medium">Completa la personalizzazione del brand</p>
-          <Button asChild variant="gold" size="sm">
+          <Button asChild variant="accent" size="sm">
             <Link href="/settings/brand">Completa ora</Link>
           </Button>
         </div>
@@ -142,6 +146,16 @@ export default async function SettingsPage() {
           <p className="text-xs text-muted-foreground">
             Verifica basata sulla presenza della chiave API. Non verifica la validità del dominio mittente.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5">
+          <ServiceOrganizationSettings
+            initialMode={ctx.venue.serviceAssignmentMode}
+            initialRooms={rooms.map((r) => ({ id: r.id, name: r.name }))}
+            tablesCount={tablesCount}
+          />
         </CardContent>
       </Card>
 

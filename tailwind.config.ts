@@ -13,13 +13,42 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui"],
         display: ["var(--font-display)", "ui-serif", "Georgia"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {
-        border: "hsl(var(--border) / <alpha-value>)",
+        border: {
+          DEFAULT: "hsl(var(--border) / <alpha-value>)",
+          strong: "hsl(var(--border-strong) / <alpha-value>)",
+        },
         input: "hsl(var(--input) / <alpha-value>)",
         ring: "hsl(var(--ring) / <alpha-value>)",
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
+        tertiary: {
+          foreground: "hsl(var(--tertiary) / <alpha-value>)",
+        },
+        forest: "#13332C",
+        cream: "#F2E7D0",
+        terracotta: "#AF6648",
+        /** The brown family — exact user-given bases, not reinterpreted.
+         * dark = card scure/tile interne, DEFAULT = card marroni principali,
+         * light = CTA/superfici chiare. Any tonal variation (gradient stops)
+         * is these exact values scaled ±10-15%, never a separately-picked
+         * hue — that's what previously drifted toward gold, then toward
+         * pink/peach. */
+        "surface-brown": {
+          dark: "#74432D",
+          DEFAULT: "#905B38",
+          light: "#C29B72",
+        },
+        "clay-ink": {
+          DEFAULT: "#2F1F11",
+          soft: "#4F351B",
+        },
+        sage: {
+          DEFAULT: "#8A9F60",
+          deep: "#3D5C34",
+        },
         carbon: {
           DEFAULT: "#15161a",
           50: "#f6f6f7",
@@ -58,6 +87,11 @@ const config: Config = {
         accent: {
           DEFAULT: "hsl(var(--accent) / <alpha-value>)",
           foreground: "hsl(var(--accent-foreground) / <alpha-value>)",
+        },
+        "accent-strong": {
+          DEFAULT: "#AF7944",
+          hover: "#936637",
+          foreground: "#2F1F11",
         },
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",

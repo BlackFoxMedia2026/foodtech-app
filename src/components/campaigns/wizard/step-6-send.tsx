@@ -14,7 +14,7 @@ import { useWizardDispatch, useWizardState } from "./wizard-context";
 function ChecklistRow({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li className="flex items-center gap-2 text-sm">
-      {ok ? <Check className="h-4 w-4 text-emerald-600" /> : <X className="h-4 w-4 text-rose-500" />}
+      {ok ? <Check className="h-4 w-4 text-sage" /> : <X className="h-4 w-4 text-rose-500" />}
       <span className={cn(!ok && "text-rose-600")}>{label}</span>
     </li>
   );
@@ -98,7 +98,7 @@ export function Step6Send() {
         <Button variant="outline" onClick={handleSaveDraft}>
           Salva bozza ed esci
         </Button>
-        <Button variant="gold" onClick={handleSendNow} disabled={!canSend || busy}>
+        <Button variant="accent" onClick={handleSendNow} disabled={!canSend || busy}>
           Invia ora
         </Button>
       </div>

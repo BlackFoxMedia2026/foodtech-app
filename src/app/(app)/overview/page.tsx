@@ -18,7 +18,6 @@ export default async function OverviewPage() {
   const data = await getOverview(ctx.venueId);
 
   const today = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
-  const todayShort = new Date().toLocaleDateString("it-IT", { day: "numeric", month: "long" });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -28,7 +27,7 @@ export default async function OverviewPage() {
           <h1 className="text-display text-3xl">Buona giornata, {ctx.session.user?.name?.split(" ")[0] ?? "ospite"}.</h1>
           <p className="text-sm text-muted-foreground capitalize">{today}</p>
         </div>
-        <Button asChild variant="gold">
+        <Button asChild variant="accent">
           <Link href="/bookings/new">
             <Plus className="h-4 w-4" />
             Nuova prenotazione
@@ -37,8 +36,6 @@ export default async function OverviewPage() {
       </header>
 
       <TodaySummary
-        dateLabel={todayShort}
-        serviceName={data.serviceName}
         bookingsCount={data.todayBookings.length}
         totalCovers={data.totalCovers}
         occupancyPct={data.occupancyPct}
@@ -46,7 +43,7 @@ export default async function OverviewPage() {
       />
 
       <section className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        <Card>
+        <Card className="card-notch recessed">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Prenotazioni di oggi</CardTitle>
@@ -63,7 +60,7 @@ export default async function OverviewPage() {
             <TodayTimeline bookings={data.todayBookings} />
             <Link
               href="/bookings"
-              className="mt-2 flex items-center justify-center gap-1 rounded-lg py-2.5 text-sm font-medium text-accent transition-colors hover:bg-white/5"
+              className="mt-2 flex items-center justify-center gap-1 rounded-lg py-2.5 text-sm font-medium text-surface-brown-light transition-colors hover:bg-white/5"
             >
               Vedi tutte le prenotazioni
             </Link>
@@ -84,7 +81,7 @@ export default async function OverviewPage() {
         </div>
       </section>
 
-      <Card>
+      <Card className="card-notch">
         <CardHeader>
           <CardTitle>Andamento settimanale</CardTitle>
           <CardDescription>Coperti</CardDescription>
@@ -93,12 +90,12 @@ export default async function OverviewPage() {
           <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
             <WeekTrend data={data.trend} />
             <div className="flex flex-col justify-center gap-1 border-t border-border pt-4 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Confronto settimana scorsa</p>
-              <p className={`text-2xl font-semibold ${data.weekComparisonPct >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              <p className="text-xs uppercase tracking-wider text-card-foreground/65">Confronto settimana scorsa</p>
+              <p className={`font-mono text-2xl font-semibold ${data.weekComparisonPct >= 0 ? "text-sage" : "text-rose-600"}`}>
                 {data.weekComparisonPct >= 0 ? "▲" : "▼"} {Math.abs(data.weekComparisonPct)}%
               </p>
-              <p className="text-xs text-muted-foreground">Coperti medi</p>
-              <Link href="/insights" className="mt-3 text-xs font-medium text-accent hover:underline">
+              <p className="text-xs text-card-foreground/65">Coperti medi</p>
+              <Link href="/insights" className="mt-3 text-xs font-medium text-surface-brown-light hover:underline">
                 Vedi report completo
               </Link>
             </div>

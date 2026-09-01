@@ -1,17 +1,13 @@
-import { CalendarDays, TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { StatCard } from "@/components/overview/stat-card";
 import { Card } from "@/components/ui/card";
 
 export function TodaySummary({
-  dateLabel,
-  serviceName,
   bookingsCount,
   totalCovers,
   occupancyPct,
   coversChangePct,
 }: {
-  dateLabel: string;
-  serviceName: string | null;
   bookingsCount: number;
   totalCovers: number;
   occupancyPct: number;
@@ -20,21 +16,22 @@ export function TodaySummary({
   const positive = coversChangePct >= 0;
 
   return (
-    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-[0.75fr_0.75fr_0.5fr_0.5fr]">
+      <StatCard className="card-notch" tone="cream" fill label="Prenotazioni" value={String(bookingsCount)} hint="totali" />
+      <StatCard className="card-notch" tone="brown-light" fill label="Coperti" value={String(totalCovers)} hint="persone" />
       <StatCard
-        className="sm:col-span-2 lg:col-span-1"
-        icon={CalendarDays}
-        label="Oggi"
-        value={dateLabel}
-        hint={serviceName ? `Servizio ${serviceName.toLowerCase()}` : "Nessun turno attivo"}
+        className="card-notch"
+        tone="brown-dark"
+        fill
+        label="Occupazione"
+        value={`${occupancyPct}%`}
+        hint="su capienza cena"
+        progressPct={occupancyPct}
       />
-      <StatCard label="Prenotazioni" value={String(bookingsCount)} hint="totali" />
-      <StatCard label="Coperti" value={String(totalCovers)} hint="persone" />
-      <StatCard label="Occupazione" value={`${occupancyPct}%`} hint="su capienza cena" progressPct={occupancyPct} />
-      <Card className="flex flex-col justify-center p-5">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Andamento in linea</p>
-        <p className="mt-1 text-xs text-muted-foreground">Rispetto a ieri</p>
-        <p className={`mt-2 inline-flex items-center gap-1.5 text-2xl font-semibold ${positive ? "text-emerald-400" : "text-rose-400"}`}>
+      <Card className="finish-sage-bright card-notch flex flex-col justify-center border-[#699158] p-5 shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]">
+        <p className="text-xs uppercase tracking-wider text-clay-ink-soft">Andamento in linea</p>
+        <p className="mt-1 text-xs text-clay-ink-soft">Rispetto a ieri</p>
+        <p className={`mt-2 inline-flex items-center gap-1.5 font-mono text-2xl font-semibold ${positive ? "text-[#1f4a3a]" : "text-[#9c3b3b]"}`}>
           {positive ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
           {positive ? "+" : ""}
           {coversChangePct}%

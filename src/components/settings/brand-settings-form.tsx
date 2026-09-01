@@ -173,10 +173,10 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettingsInitial }
         </Card>
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
-        {success && <p className="text-sm text-emerald-600">Brand salvato correttamente.</p>}
+        {success && <p className="text-sm text-sage">Brand salvato correttamente.</p>}
 
         <div className="flex items-center gap-3">
-          <Button variant="gold" onClick={handleSave} disabled={saving}>
+          <Button variant="accent" onClick={handleSave} disabled={saving}>
             {saving ? "Salvataggio..." : "Salva modifiche"}
           </Button>
           <p className="text-xs text-muted-foreground">Potrai modificare questi dati in qualsiasi momento.</p>
