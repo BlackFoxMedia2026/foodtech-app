@@ -41,10 +41,10 @@ export const getActiveVenue = cache(async function getActiveVenue() {
   };
 });
 
-export type Ability = "manage_org" | "manage_venue" | "manage_bookings" | "view_revenue" | "edit_marketing";
+export type Ability = "manage_org" | "manage_venue" | "manage_bookings" | "view_revenue" | "edit_marketing" | "manage_staff";
 
 const matrix: Record<StaffRole, Ability[]> = {
-  MANAGER: ["manage_venue", "manage_bookings", "view_revenue", "edit_marketing"],
+  MANAGER: ["manage_venue", "manage_bookings", "view_revenue", "edit_marketing", "manage_staff"],
   RECEPTION: ["manage_bookings"],
   WAITER: ["manage_bookings"],
   MARKETING: ["edit_marketing", "view_revenue"],

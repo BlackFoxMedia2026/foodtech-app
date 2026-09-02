@@ -4,14 +4,16 @@ import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Plus } from "lucide-react";
+import type { StaffCapability, StaffPrimaryRole } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { WAITER_ROLES } from "@/server/waiters";
+import { CapabilityPicker } from "@/components/waiters/capability-picker";
+import { DEFAULT_CAPABILITIES_BY_ROLE, STAFF_PRIMARY_ROLES } from "@/lib/staff-roles";
 
-type FieldErrors = Partial<Record<"firstName" | "lastName" | "birthday" | "phone" | "role" | "customRole", string>>;
+type FieldErrors = Partial<Record<"firstName" | "lastName" | "birthday" | "phone" | "primaryRole", string>>;
 
 function calculateAge(birthday: string): number | null {
   if (!birthday) return null;
@@ -37,13 +39,26 @@ export function NewWaiterDialog() {
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [birthday, setBirthday] = useState("");
-  const [role, setRole] = useState("");
+  const [primaryRole, setPrimaryRole] = useState<StaffPrimaryRole | null>(null);
+  const [capabilities, setCapabilities] = useState<StaffCapability[]>([]);
+  const capabilitiesTouchedRef = useRef(false);
   const [showToast, setShowToast] = useState(false);
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const age = useMemo(() => calculateAge(birthday), [birthday]);
-  const isOther = role === "Altro";
+
+  function handlePrimaryRoleChange(next: StaffPrimaryRole) {
+    setPrimaryRole(next);
+    if (!capabilitiesTouchedRef.current) {
+      setCapabilities(DEFAULT_CAPABILITIES_BY_ROLE[next]);
+    }
+  }
+
+  function handleCapabilitiesChange(next: StaffCapability[]) {
+    capabilitiesTouchedRef.current = true;
+    setCapabilities(next);
+  }
 
   function resetTransientState() {
     setFormError(null);
@@ -58,8 +73,6 @@ export function NewWaiterDialog() {
     const firstName = ((fd.get("firstName") as string) || "").trim();
     const lastName = ((fd.get("lastName") as string) || "").trim();
     const phone = ((fd.get("phone") as string) || "").trim();
-    const customRole = ((fd.get("customRole") as string) || "").trim();
-    const resolvedRole = isOther ? customRole : role;
 
     const errors: FieldErrors = {};
     if (!firstName) errors.firstName = "Inserisci il nome.";
@@ -74,8 +87,7 @@ export function NewWaiterDialog() {
     } else if (!isValidPhone(phone)) {
       errors.phone = "Numero di telefono non valido.";
     }
-    if (!role) errors.role = "Seleziona una mansione.";
-    if (isOther && !customRole) errors.customRole = "Specifica la mansione.";
+    if (!primaryRole) errors.primaryRole = "Seleziona un ruolo principale.";
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -86,7 +98,7 @@ export function NewWaiterDialog() {
     setSubmitting(true);
     const res = await fetch("/api/waiters", {
       method: "POST",
-      body: JSON.stringify({ firstName, lastName, birthday, phone, role: resolvedRole }),
+      body: JSON.stringify({ firstName, lastName, birthday, phone, primaryRole, capabilities }),
       headers: { "content-type": "application/json" },
     });
     setSubmitting(false);
@@ -98,7 +110,9 @@ export function NewWaiterDialog() {
 
     setOpen(false);
     setBirthday("");
-    setRole("");
+    setPrimaryRole(null);
+    setCapabilities([]);
+    capabilitiesTouchedRef.current = false;
     resetTransientState();
     router.refresh();
     setShowToast(true);
@@ -219,37 +233,29 @@ export function NewWaiterDialog() {
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="role">Ruolo / Mansione</Label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger id="role" aria-invalid={!!fieldErrors.role}>
-                    <SelectValue placeholder="Seleziona una mansione" />
+                <Label htmlFor="primaryRole">Ruolo principale</Label>
+                <Select
+                  value={primaryRole ?? undefined}
+                  onValueChange={(v) => handlePrimaryRoleChange(v as StaffPrimaryRole)}
+                >
+                  <SelectTrigger id="primaryRole" aria-invalid={!!fieldErrors.primaryRole}>
+                    <SelectValue placeholder="Seleziona un ruolo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {WAITER_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
+                    {STAFF_PRIMARY_ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {fieldErrors.role && <p className="text-xs text-destructive">{fieldErrors.role}</p>}
+                {fieldErrors.primaryRole && <p className="text-xs text-destructive">{fieldErrors.primaryRole}</p>}
+              </div>
 
-                {isOther && (
-                  <div className="pt-2">
-                    <Input
-                      id="customRole"
-                      name="customRole"
-                      placeholder="Specifica la mansione"
-                      aria-invalid={!!fieldErrors.customRole}
-                      aria-describedby={fieldErrors.customRole ? "customRole-error" : undefined}
-                    />
-                    {fieldErrors.customRole && (
-                      <p id="customRole-error" className="mt-1 text-xs text-destructive">
-                        {fieldErrors.customRole}
-                      </p>
-                    )}
-                  </div>
-                )}
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Competenze operative</Label>
+                <CapabilityPicker value={capabilities} onChange={handleCapabilitiesChange} />
+                <p className="text-xs text-muted-foreground">Determinano a quali ruoli tavolo può essere assegnato.</p>
               </div>
             </div>
 

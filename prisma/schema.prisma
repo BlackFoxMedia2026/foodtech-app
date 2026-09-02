@@ -8,18 +8,19 @@ datasource db {
 }
 
 model User {
-  id                String            @id @default(cuid())
-  email             String            @unique
-  name              String?
-  passwordHash      String?
-  image             String?
-  createdAt         DateTime          @default(now())
-  totpEnabled       Boolean           @default(false)
-  totpSecret        String?
-  recoveryCodesHash String[]          @default([])
-  sessions          Session[]
-  orgMemberships    OrgMembership[]
-  venueMemberships  VenueMembership[]
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String?
+  passwordHash       String?
+  image              String?
+  createdAt          DateTime            @default(now())
+  totpEnabled        Boolean             @default(false)
+  totpSecret         String?
+  recoveryCodesHash  String[]            @default([])
+  sessions           Session[]
+  orgMemberships     OrgMembership[]
+  venueMemberships   VenueMembership[]
+  agentConversations AgentConversation[]
 }
 
 model Session {
@@ -56,39 +57,39 @@ model OrgMembership {
 }
 
 model Venue {
-  id                    String               @id @default(cuid())
+  id                    String                @id @default(cuid())
   orgId                 String
   name                  String
   slug                  String
-  kind                  VenueKind            @default(RESTAURANT)
-  timezone              String               @default("Europe/Rome")
-  currency              String               @default("EUR")
+  kind                  VenueKind             @default(RESTAURANT)
+  timezone              String                @default("Europe/Rome")
+  currency              String                @default("EUR")
   address               String?
   city                  String?
   country               String?
   phone                 String?
   email                 String?
   coverImage            String?
-  active                Boolean              @default(true)
-  createdAt             DateTime             @default(now())
-  depositPerPersonCents Int                  @default(2000)
-  depositThreshold      Int                  @default(8)
-  wifiAutoCouponDays    Int                  @default(30)
-  wifiAutoCouponEnabled Boolean              @default(false)
-  wifiAutoCouponPercent Int                  @default(10)
-  wifiPortalAccent      String?              @db.VarChar(9)
-  wifiPortalLegal       String?              @db.VarChar(2000)
+  active                Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  depositPerPersonCents Int                   @default(2000)
+  depositThreshold      Int                   @default(8)
+  wifiAutoCouponDays    Int                   @default(30)
+  wifiAutoCouponEnabled Boolean               @default(false)
+  wifiAutoCouponPercent Int                   @default(10)
+  wifiPortalAccent      String?               @db.VarChar(9)
+  wifiPortalLegal       String?               @db.VarChar(2000)
   wifiPortalLogoUrl     String?
-  wifiPortalWelcome     String?              @db.VarChar(500)
+  wifiPortalWelcome     String?               @db.VarChar(500)
   wifiSetupAt           DateTime?
-  calendarToken         String?              @unique
+  calendarToken         String?               @unique
   googlePlaceId         String?
   brevoFolderId         Int?
-  brandAccent           String?              @db.VarChar(9)
-  brandFootnote         String?              @db.VarChar(280)
+  brandAccent           String?               @db.VarChar(9)
+  brandFootnote         String?               @db.VarChar(280)
   brandLogoUrl          String?
-  brandSecondaryColor   String?              @db.VarChar(9)
-  brandBackgroundColor  String?              @db.VarChar(9)
+  brandSecondaryColor   String?               @db.VarChar(9)
+  brandBackgroundColor  String?               @db.VarChar(9)
   brandTypography       BrandTypography?
   websiteUrl            String?
   instagramUrl          String?
@@ -98,6 +99,8 @@ model Venue {
   onboardingCompletedAt DateTime?
   onboardingSkippedAt   DateTime?
   serviceAssignmentMode ServiceAssignmentMode @default(ROOMS)
+  agentConversations    AgentConversation[]
+  agentUsages           AgentUsage[]
   ApiToken              ApiToken[]
   AutomationWorkflow    AutomationWorkflow[]
   bookings              Booking[]
@@ -135,13 +138,14 @@ model Venue {
   Survey                Survey[]
   tables                Table[]
   blocks                TableBlock[]
-  org                   Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org                   Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
   WaitlistEntry         WaitlistEntry[]
   WifiLead              WifiLead[]
   WifiSession           WifiSession[]
   members               VenueMembership[]
   waiters               Waiter[]
   waiterAssignments     WaiterAssignment[]
+  staffAssignments      StaffAssignment[]
 
   @@unique([orgId, slug])
 }
@@ -167,34 +171,53 @@ model Room {
   height            Int                @default(800)
   ordering          Int                @default(0)
   floorPlanUrl      String?
+  activeLayoutMode  RoomLayoutMode?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @default(now()) @updatedAt
   FloorDecor        FloorDecor[]
   venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
   tables            Table[]
   waiterAssignments WaiterAssignment[]
+  staffAssignments  StaffAssignment[]
+  roomLayout        RoomLayout?
 
   @@index([venueId, ordering])
 }
 
+// Structured "Crea la tua sala" builder layout — additive/optional alongside
+// the pre-existing image-upload flow (Room.floorPlanUrl). A Room can have
+// both; Room.activeLayoutMode says which one is currently rendered, so
+// switching modes never destroys the other's data (see floor-plan upload).
+model RoomLayout {
+  id             String   @id @default(cuid())
+  roomId         String   @unique
+  room           Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  unit           String   @default("m")
+  pixelsPerMeter Int      @default(100)
+  elements       Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 model Table {
-  id         String       @id @default(cuid())
-  venueId    String
-  roomId     String?
-  label      String
-  seats      Int          @default(2)
-  shape      TableShape   @default(ROUND)
-  posX       Int          @default(0)
-  posY       Int          @default(0)
-  rotation   Int          @default(0)
-  combinable Boolean      @default(true)
-  active     Boolean      @default(true)
-  height     Int?
-  width      Int?
-  bookings   Booking[]
-  room       Room?        @relation(fields: [roomId], references: [id], onDelete: Restrict)
-  venue      Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  blocks     TableBlock[]
+  id               String            @id @default(cuid())
+  venueId          String
+  roomId           String?
+  label            String
+  seats            Int               @default(2)
+  shape            TableShape        @default(ROUND)
+  posX             Int               @default(0)
+  posY             Int               @default(0)
+  rotation         Int               @default(0)
+  combinable       Boolean           @default(true)
+  active           Boolean           @default(true)
+  height           Int?
+  width            Int?
+  bookings         Booking[]
+  room             Room?             @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  venue            Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  blocks           TableBlock[]
+  staffAssignments StaffAssignment[]
 
   @@unique([venueId, label])
 }
@@ -342,26 +365,26 @@ model Ticket {
 }
 
 model Campaign {
-  id          String          @id @default(cuid())
-  venueId     String
-  name        String
-  channel     CampaignChannel @default(EMAIL)
-  segment     Json?
-  subject     String?
-  body        String?
-  contentBlocks Json?
-  previewText String?
-  scheduledAt DateTime?
-  status      CampaignStatus  @default(DRAFT)
+  id             String          @id @default(cuid())
+  venueId        String
+  name           String
+  channel        CampaignChannel @default(EMAIL)
+  segment        Json?
+  subject        String?
+  body           String?
+  contentBlocks  Json?
+  previewText    String?
+  scheduledAt    DateTime?
+  status         CampaignStatus  @default(DRAFT)
   // TODO(futuro): estendere con READY/SENDING/FAILED/CANCELLED una volta stabilizzato il wizard
-  providerId  String?
+  providerId     String?
   providerListId Int?
-  sentCount   Int             @default(0)
-  openedCount Int             @default(0)
-  bookedCount Int             @default(0)
-  createdAt   DateTime        @default(now())
-  venue       Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  MessageLog  MessageLog[]
+  sentCount      Int             @default(0)
+  openedCount    Int             @default(0)
+  bookedCount    Int             @default(0)
+  createdAt      DateTime        @default(now())
+  venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  MessageLog     MessageLog[]
 }
 
 enum QrCodeCategory {
@@ -1097,19 +1120,22 @@ model ReviewLinkClick {
 }
 
 model Waiter {
-  id          String             @id @default(cuid())
-  venueId     String
-  firstName   String
-  lastName    String
-  birthday    DateTime
-  phone       String
-  role        String
-  status      WaiterStatus       @default(ACTIVE)
-  photoUrl    String?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  venue       Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  assignments WaiterAssignment[]
+  id               String             @id @default(cuid())
+  venueId          String
+  firstName        String
+  lastName         String
+  birthday         DateTime
+  phone            String
+  role             String
+  primaryRole      StaffPrimaryRole?
+  capabilities     StaffCapability[]  @default([])
+  status           WaiterStatus       @default(ACTIVE)
+  photoUrl         String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  venue            Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  assignments      WaiterAssignment[]
+  staffAssignments StaffAssignment[]
 
   @@index([venueId, createdAt])
 }
@@ -1117,6 +1143,45 @@ model Waiter {
 enum WaiterStatus {
   ACTIVE
   RESTING
+}
+
+// Job title (what this person primarily is). Distinct from StaffCapability
+// (what they're allowed to be assigned to do) — primaryRole only drives a
+// default-fill suggestion for capabilities, never gates assignment on its own.
+enum StaffPrimaryRole {
+  RESTAURANT_MANAGER
+  MAITRE
+  CHEF_DE_RANG
+  CAMERIERE
+  COMMIS_SALA
+  SOMMELIER
+  HEAD_SOMMELIER
+  RUNNER
+  BUSSER
+  HOST
+  BARTENDER
+}
+
+// Shared vocabulary for both "what a waiter can do" (Waiter.capabilities)
+// and "what function a specific assignment fills" (StaffAssignment.assignmentType)
+// — one enum instead of two parallel taxonomies that would drift apart.
+enum StaffCapability {
+  TABLE_RESPONSIBLE
+  TABLE_SUPPORT
+  SOMMELIER
+  RUNNER
+  BUSSER
+  ROOM_SUPERVISOR
+  SERVICE_MANAGER
+  MAITRE
+  HOST
+  BARTENDER
+}
+
+enum AssignmentScope {
+  SERVICE
+  ROOM
+  TABLE
 }
 
 model WaiterAssignment {
@@ -1136,6 +1201,33 @@ model WaiterAssignment {
 
   @@unique([waiterId, date, service])
   @@index([venueId, date, service])
+}
+
+// Multi-scope staff assignment (service / room / table), role+capability
+// model. Table-scoped rows are the only ones written in Phase 1; SERVICE and
+// ROOM scopes are modeled now so a future phase can add them without a
+// schema change. Superseding WaiterAssignment's table mode, which stays in
+// place (deprecated, unused by new code) for rollback safety.
+model StaffAssignment {
+  id             String          @id @default(cuid())
+  venueId        String
+  waiterId       String
+  date           DateTime
+  service        String
+  scope          AssignmentScope
+  roomId         String?
+  tableId        String?
+  assignmentType StaffCapability
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter         Waiter          @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  room           Room?           @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  table          Table?          @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@unique([tableId, date, service, assignmentType], name: "StaffAssignment_table_slot")
+  @@index([venueId, date, service, scope])
+  @@index([waiterId, date, service])
 }
 
 model StaffShift {
@@ -1318,6 +1410,11 @@ enum TableShape {
   RECT
   BOOTH
   LOUNGE
+}
+
+enum RoomLayoutMode {
+  IMAGE
+  BUILDER
 }
 
 enum LoyaltyTier {
@@ -1718,4 +1815,52 @@ enum WaitlistStatus {
   CONFIRMED
   EXPIRED
   DECLINED
+}
+
+// --- Agente AI (in-app assistant, distinct from the guest-facing
+// ChatSession/ChatMessage booking-widget models above) ---
+
+enum AgentMessageRole {
+  USER
+  ASSISTANT
+}
+
+model AgentConversation {
+  id        String   @id @default(cuid())
+  venueId   String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue    Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AgentMessage[]
+
+  @@index([venueId, userId, updatedAt])
+}
+
+model AgentMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  role           AgentMessageRole
+  content        String
+  structured     Json?
+  source         String?
+  createdAt      DateTime         @default(now())
+
+  conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model AgentUsage {
+  id              String   @id @default(cuid())
+  venueId         String
+  yearMonth       String
+  llmRequestCount Int      @default(0)
+  updatedAt       DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, yearMonth])
 }

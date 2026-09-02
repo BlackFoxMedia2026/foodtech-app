@@ -22,7 +22,7 @@ export function ProfileMenu({ user }: { user: { name?: string | null; email?: st
           aria-label="Menu profilo"
           className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <Avatar className="h-9 w-9 rounded-lg border border-border">
+          <Avatar className="h-[46px] w-[46px] rounded-lg border border-border">
             <AvatarFallback className="rounded-lg bg-foreground text-background">
               {initials(user.name ?? user.email)}
             </AvatarFallback>

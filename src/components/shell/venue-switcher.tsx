@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Building2 } from "lucide-react";
+import { Building2, ChevronLeft } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -69,31 +69,53 @@ export function VenueSwitcher({ venues, activeId }: { venues: Venue[]; activeId:
       <button
         type="button"
         aria-expanded={open}
-        aria-label={open ? "Chiudi selettore locale" : "Seleziona locale"}
-        onClick={() => setOpen((o) => !o)}
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        aria-label="Seleziona locale"
+        aria-hidden={open}
+        tabIndex={open ? -1 : 0}
+        onClick={() => setOpen(true)}
+        className={cn(
+          "grid shrink-0 place-items-center overflow-hidden rounded-lg bg-accent text-white ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          reducedMotion ? "transition-none" : "transition-[width,opacity] duration-[400ms]",
+          open ? "h-9 w-0 opacity-0 pointer-events-none" : "h-9 w-9 opacity-100",
+        )}
       >
         <span className="font-display text-sm font-semibold">T</span>
+      </button>
+
+      <button
+        type="button"
+        aria-label="Comprimi selettore ristorante"
+        aria-hidden={!open}
+        tabIndex={open ? 0 : -1}
+        onClick={() => setOpen(false)}
+        className={cn(
+          "flex shrink-0 items-center gap-1 overflow-hidden text-muted-foreground ease-[cubic-bezier(0.16,1,0.3,1)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          reducedMotion ? "transition-none" : "transition-[width,opacity,margin-right] duration-[400ms]",
+          open ? "mr-1 w-5 opacity-100" : "mr-0 w-0 opacity-0 pointer-events-none",
+        )}
+      >
+        <ChevronLeft className="h-4 w-4 shrink-0" />
+        <span className="h-5 w-px shrink-0 bg-foreground/30" aria-hidden="true" />
       </button>
 
       <div
         className={cn(
           "overflow-hidden ease-[cubic-bezier(0.16,1,0.3,1)]",
-          reducedMotion ? "transition-none" : "transition-[width,opacity,margin-left] duration-[400ms]",
-          open ? "ml-2 w-[200px] opacity-100" : "ml-0 w-0 opacity-0",
+          reducedMotion ? "transition-none" : "transition-[width,opacity] duration-[400ms]",
+          open ? "w-40 opacity-100" : "w-0 opacity-0",
         )}
       >
         <div
           className={cn(
-            "w-[200px] ease-[cubic-bezier(0.16,1,0.3,1)]",
+            "w-40 ease-[cubic-bezier(0.16,1,0.3,1)]",
             reducedMotion ? "transition-none" : "transition-[opacity,transform] duration-300",
             open ? "translate-x-0 opacity-100 delay-100" : "-translate-x-2 opacity-0 delay-0",
           )}
         >
           <Select value={activeId} onValueChange={pick} disabled={pending} onOpenChange={setSelectOpen}>
-            <SelectTrigger className="h-9 w-[200px] rounded-lg border-border bg-transparent">
-              <div className="flex items-center gap-2 truncate">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
+            <SelectTrigger className="h-9 w-40 rounded-lg border-border bg-transparent px-2.5">
+              <div className="flex min-w-0 items-center gap-1.5 truncate">
+                <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <SelectValue />
               </div>
             </SelectTrigger>

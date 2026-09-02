@@ -229,6 +229,20 @@
     opacity: 0;
     transform: scale(0.96) translateY(-4px);
   }
+  .popover-content {
+    transform-origin: var(--radix-popover-content-transform-origin);
+    opacity: 0;
+    transform: scale(0.98) translateY(-6px);
+    transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1), transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .popover-content[data-state="open"] {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  .popover-content[data-state="closed"] {
+    opacity: 0;
+    transform: scale(0.98) translateY(-6px);
+  }
   .tooltip-content {
     transform-origin: var(--radix-tooltip-content-transform-origin);
     opacity: 0;
@@ -239,6 +253,154 @@
   .tooltip-content[data-state="instant-open"] {
     opacity: 1;
     transform: scale(1);
+  }
+  .sheet-content {
+    opacity: 0;
+    transform: translateX(26px);
+    transition: opacity 280ms cubic-bezier(0.16, 1, 0.3, 1), transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .sheet-content[data-state="open"] {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .sheet-content[data-state="closed"] {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+
+  /* --- Agent visual: raster asset composition (agent-visual.tsx), see
+     use-agent-motion.ts for the single rAF loop that drives all of this.
+     Waves' rhythm (speed via Web Animations `playbackRate`, amplitude via
+     the --wave-amp custom property read inside the keyframe below) is eased
+     continuously toward whatever the current state wants, rather than the
+     CSS `animation-duration`/`animation-name` being swapped outright — a
+     duration change on a running CSS animation applies immediately with no
+     tween, which reads as a snap; a per-frame rate lerp is what makes
+     idle -> processing feel like spinning up, not a class flip. Core is a
+     separate parallax wrapper (JS translate) around the image itself (CSS
+     breathing scale) so the two transforms don't fight; eyes is JS-driven
+     translate only, fully independent of the waves/core animation. ---- */
+  .agent-visual {
+    position: relative;
+    display: inline-block;
+    overflow: visible;
+    line-height: 0;
+    /* As a flex child (the header button is inline-flex), a fixed-width
+       parent narrower than this element's own width/height style would
+       otherwise flex-shrink it — squeezing the square asset into a
+       distorted, effectively-smaller rectangle instead of the intended
+       square. This keeps every AgentVisual instance at its true requested
+       size regardless of the flex container it sits in. */
+    flex-shrink: 0;
+  }
+  .agent-visual__layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+  }
+  .agent-visual__waves-parallax {
+    position: absolute;
+    inset: 0;
+    transform: translate(var(--waves-x, 0px), var(--waves-y, 0px));
+  }
+  .agent-visual__waves {
+    position: absolute;
+    inset: 0;
+    transform-origin: center;
+    animation: agent-waves-drift 6s ease-in-out infinite;
+  }
+  .agent-visual__core-parallax {
+    position: absolute;
+    inset: 0;
+    transform: translate(var(--core-x, 0px), var(--core-y, 0px));
+  }
+  .agent-visual__core {
+    position: absolute;
+    inset: 0;
+    transform-origin: center;
+    animation: agent-core-breathe 4.8s ease-in-out infinite;
+  }
+  .agent-visual__eyes {
+    transform: translate(var(--eye-x, 0px), var(--eye-y, 0px));
+  }
+
+  /* Amplitude (--wave-amp, default 1 = idle) is JS-driven and eased every
+     frame; the shape itself — an asymmetric 4-stop drift, never a uniform
+     rotate(360deg) — stays fixed so scaling it up/down can't distort it into
+     something else. */
+  @keyframes agent-waves-drift {
+    0%   { transform: rotate(0deg) scale(1) translate(0, 0); }
+    25%  { transform: rotate(calc(var(--wave-amp, 1) * 7deg)) scale(calc(1 + var(--wave-amp, 1) * 0.025)) translate(calc(var(--wave-amp, 1) * 1px), calc(var(--wave-amp, 1) * -0.7px)); }
+    50%  { transform: rotate(calc(var(--wave-amp, 1) * -8deg)) scale(calc(1 - var(--wave-amp, 1) * 0.015)) translate(calc(var(--wave-amp, 1) * -0.9px), calc(var(--wave-amp, 1) * 0.8px)); }
+    75%  { transform: rotate(calc(var(--wave-amp, 1) * 6deg)) scale(calc(1 + var(--wave-amp, 1) * 0.015)) translate(calc(var(--wave-amp, 1) * 0.7px), calc(var(--wave-amp, 1) * 0.4px)); }
+    100% { transform: rotate(0deg) scale(1) translate(0, 0); }
+  }
+  @keyframes agent-core-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.015); }
+  }
+  @keyframes agent-core-breathe-hover {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.025); }
+  }
+  /* Processing core pulse: a real "1 -> up -> slightly under -> 1" beat
+     rather than a plain breathe, so it reads as active work, not just a
+     bigger sigh — but still soft, not a heartbeat thump. */
+  @keyframes agent-core-breathe-active {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.02); }
+    70%  { transform: scale(0.995); }
+    100% { transform: scale(1); }
+  }
+  @keyframes agent-waves-open {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+  @keyframes agent-core-compress {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(0.955); }
+    100% { transform: scale(1); }
+  }
+  @keyframes agent-waves-pulse {
+    0%   { transform: scale(1) rotate(0deg); }
+    50%  { transform: scale(1.045) rotate(1deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+  @keyframes agent-core-pop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.025); }
+    100% { transform: scale(1); }
+  }
+
+  .agent-visual[data-state="hover"] .agent-visual__core { animation-name: agent-core-breathe-hover; }
+  .agent-visual[data-state="processing"] .agent-visual__core { animation-name: agent-core-breathe-active; }
+
+  /* Transient one-shot reactions — click/open and processing→done — swap the
+     continuous keyframe out for a short-lived one, at their own authored
+     speed (use-agent-motion.ts only ever rate-controls `agent-waves-drift`
+     itself), then the rAF loop picks the continuous animation back up next
+     frame once React clears data-transient. */
+  .agent-visual[data-transient="opening"] .agent-visual__waves { animation: agent-waves-open 200ms ease-out; }
+  .agent-visual[data-transient="opening"] .agent-visual__core { animation: agent-core-compress 200ms ease-out; }
+  .agent-visual[data-transient="done"] .agent-visual__waves { animation: agent-waves-pulse 380ms ease-out; }
+  .agent-visual[data-transient="done"] .agent-visual__core { animation: agent-core-pop 380ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+  .agent-visual[data-paused] .agent-visual__waves,
+  .agent-visual[data-paused] .agent-visual__core {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .agent-visual__waves,
+    .agent-visual__core {
+      animation: none;
+      transform: none;
+    }
   }
   .btn-ember {
     background: linear-gradient(135deg, #cfad03 0%, #c9b139 100%);

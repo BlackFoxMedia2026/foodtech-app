@@ -6,7 +6,11 @@ export const RoomInput = z.object({
 });
 
 export async function listRooms(venueId: string) {
-  return db.room.findMany({ where: { venueId }, orderBy: { ordering: "asc" } });
+  return db.room.findMany({
+    where: { venueId },
+    orderBy: { ordering: "asc" },
+    include: { roomLayout: true },
+  });
 }
 
 export async function createRoom(venueId: string, raw: unknown) {
@@ -39,5 +43,9 @@ export async function deleteRoom(venueId: string, id: string) {
 export async function setRoomFloorPlan(venueId: string, id: string, floorPlanUrl: string | null) {
   const existing = await db.room.findFirst({ where: { id, venueId } });
   if (!existing) throw new Error("not_found");
-  return db.room.update({ where: { id }, data: { floorPlanUrl } });
+  // Uploading an image makes IMAGE the active mode (matches the choice the
+  // user just made in the dialog); removing it only clears the mode if
+  // IMAGE was active, so a Room Builder layout underneath stays selected.
+  const activeLayoutMode = floorPlanUrl ? "IMAGE" : existing.activeLayoutMode === "IMAGE" ? null : existing.activeLayoutMode;
+  return db.room.update({ where: { id }, data: { floorPlanUrl, activeLayoutMode } });
 }

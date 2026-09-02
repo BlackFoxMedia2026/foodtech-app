@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Bell } from "lucide-react";
 import {
   LayoutDashboard,
   CalendarRange,
@@ -15,8 +15,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
+import { Agent } from "@/components/agent/agent";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
 
@@ -43,44 +43,6 @@ const NAV_ITEMS: NavItem[] = [
 function isActive(pathname: string, item: NavItem) {
   if (pathname === item.href || pathname.startsWith(`${item.href}/`)) return true;
   return item.matchPrefixes?.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? false;
-}
-
-function SearchButton() {
-  const [open, setOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
-
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className={cn(
-          "overflow-hidden transition-[width,opacity] duration-200 ease-out",
-          open ? "w-64 opacity-100" : "w-0 opacity-0",
-        )}
-      >
-        <Input
-          ref={inputRef}
-          placeholder="Cerca ospite, prenotazione, tavolo…"
-          className="h-9 w-64 rounded-lg border-border shadow-[inset_0_3px_8px_rgba(0,0,0,0.35)] focus-visible:ring-0 focus-visible:ring-offset-0"
-          tabIndex={open ? 0 : -1}
-        />
-      </div>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        aria-label="Cerca"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="shrink-0 rounded-lg border border-border text-foreground hover:bg-white/10"
-      >
-        <Search className="h-4 w-4" />
-      </Button>
-    </div>
-  );
 }
 
 export function Header({
@@ -157,12 +119,12 @@ export function Header({
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
-          <SearchButton />
+          <Agent />
           <Button
             size="icon"
             variant="ghost"
             aria-label="Notifiche"
-            className="rounded-lg border border-border text-foreground hover:bg-white/10"
+            className="h-[46px] w-[46px] rounded-lg border border-border text-foreground hover:bg-white/10"
           >
             <Bell className="h-4 w-4" />
           </Button>
