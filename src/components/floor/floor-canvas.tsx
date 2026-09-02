@@ -1,47 +1,32 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Table } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Plus, Save, Lock, MapIcon, Trash2, ZoomIn, ZoomOut, MoreHorizontal, UserPlus, ChevronRight } from "lucide-react";
+import { Plus, Save, Check, MapIcon, ZoomIn, ZoomOut, Maximize2, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FloorPlanDialog } from "./floor-plan-dialog";
+import { useRoomCamera, MIN_ZOOM, MAX_ZOOM } from "./use-room-camera";
+import { useViewportGestures } from "./use-viewport-gestures";
+import { TableNode, TABLE_SIZE, type LocalTable, type TableStaffMap } from "./table-node";
+import { ManagePlanDialog } from "./manage-plan-dialog";
+import { AssignStaffDialog } from "./assign-staff-dialog";
+import { RoomLayoutRenderer } from "./builder/room-layout-renderer";
+import { parseRoomLayoutElements } from "@/lib/room-layout";
+import type { RoomLayoutMode } from "@prisma/client";
 
-type Local = Table & { dirty?: boolean };
 type CoverageFilter = "all" | "assigned" | "unassigned";
-
-const VIEWPORT_HEIGHT = 420;
-const MIN_ZOOM = 0.4;
-const MAX_ZOOM = 1.5;
-const DEFAULT_ZOOM = 0.7;
-const ZOOM_STEP = 0.1;
 
 export type FloorCanvasHandle = {
   save: () => Promise<void>;
   isDirty: () => boolean;
 };
-
-function compactWaiterName(fullName: string) {
-  if (fullName.length <= 10) return fullName;
-  const [first, ...rest] = fullName.split(" ");
-  const last = rest[rest.length - 1];
-  return last ? `${first} ${last[0]}.` : first;
-}
-
-type WaiterOption = { id: string; name: string };
-type TableAssignment = { id: string; name: string };
-type AssignStep = { kind: "list" } | { kind: "confirm"; waiterId: string; waiterName: string };
 
 export const FloorCanvas = forwardRef<
   FloorCanvasHandle,
@@ -50,10 +35,11 @@ export const FloorCanvas = forwardRef<
     roomId: string;
     roomName: string;
     floorPlanUrl?: string | null;
+    activeLayoutMode?: RoomLayoutMode | null;
+    roomLayoutElements?: unknown;
     width?: number;
     height?: number;
-    waiterByTableId?: Record<string, TableAssignment>;
-    waiters?: WaiterOption[];
+    staffByTableId?: Record<string, TableStaffMap>;
     date?: string;
     service?: string;
     onDirtyChange?: (dirty: boolean) => void;
@@ -64,10 +50,11 @@ export const FloorCanvas = forwardRef<
     roomId,
     roomName,
     floorPlanUrl = null,
+    activeLayoutMode = null,
+    roomLayoutElements = [],
     width = 1200,
     height = 760,
-    waiterByTableId,
-    waiters = [],
+    staffByTableId,
     date,
     service,
     onDirtyChange,
@@ -75,83 +62,111 @@ export const FloorCanvas = forwardRef<
   ref,
 ) {
   const router = useRouter();
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const [tables, setTables] = useState<Local[]>(initialTables);
+  const [tables, setTables] = useState<LocalTable[]>(initialTables);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
-  const [floorPlanOpen, setFloorPlanOpen] = useState(false);
-  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  const [managePlanOpen, setManagePlanOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [assignStep, setAssignStep] = useState<AssignStep>({ kind: "list" });
-  const [assignSubmitting, setAssignSubmitting] = useState(false);
-  const [assignError, setAssignError] = useState<string | null>(null);
+  const [assignStaffTableId, setAssignStaffTableId] = useState<string | null>(null);
+
+  const { camera, worldRef, viewportRef, getZoom, panBy, zoomAt, fitRoom, reset100, stepZoom } = useRoomCamera({
+    roomWidth: width,
+    roomHeight: height,
+  });
+  const parsedLayoutElements = parseRoomLayoutElements(roomLayoutElements);
 
   useEffect(() => {
     setMenuOpen(false);
-    setAssignStep({ kind: "list" });
-    setAssignError(null);
   }, [selectedId]);
 
   const isDirty = tables.some((t) => t.dirty);
+  const lod: "full" | "medium" | "low" = camera.zoom > 0.7 ? "full" : camera.zoom > 0.45 ? "medium" : "low";
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDirty]);
 
-  function onDrag(id: string, e: React.MouseEvent) {
-    const card = canvasRef.current?.getBoundingClientRect();
-    if (!card) return;
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const t = tables.find((x) => x.id === id);
-    if (!t) return;
-    const baseX = t.posX;
-    const baseY = t.posY;
-    const dragZoom = zoom;
+  const onStartDrag = useCallback(
+    (id: string, e: React.PointerEvent) => {
+      const target = e.currentTarget as HTMLElement;
+      target.setPointerCapture(e.pointerId);
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const t = tables.find((x) => x.id === id);
+      if (!t) return;
+      const baseX = t.posX;
+      const baseY = t.posY;
+      const dragZoom = getZoom();
+      const size = TABLE_SIZE[t.shape];
 
-    function move(ev: MouseEvent) {
-      const dx = (ev.clientX - startX) / dragZoom;
-      const dy = (ev.clientY - startY) / dragZoom;
-      setTables((prev) =>
-        prev.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                posX: Math.max(0, Math.min(width - 80, baseX + dx)),
-                posY: Math.max(0, Math.min(height - 80, baseY + dy)),
-                dirty: true,
-              }
-            : p,
-        ),
-      );
-    }
-    function up() {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-    }
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-  }
+      function move(ev: PointerEvent) {
+        const dx = (ev.clientX - startX) / dragZoom;
+        const dy = (ev.clientY - startY) / dragZoom;
+        setTables((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  // Rounded to whole px: the API validates posX/posY as
+                  // integers, and a sub-pixel value here (dx/dy divided by a
+                  // fractional zoom) would otherwise fail that check on save.
+                  posX: Math.round(Math.max(0, Math.min(width - size.w, baseX + dx))),
+                  posY: Math.round(Math.max(0, Math.min(height - size.h, baseY + dy))),
+                  dirty: true,
+                }
+              : p,
+          ),
+        );
+      }
+      function up() {
+        target.removeEventListener("pointermove", move);
+        target.removeEventListener("pointerup", up);
+        target.removeEventListener("pointercancel", up);
+      }
+      target.addEventListener("pointermove", move);
+      target.addEventListener("pointerup", up);
+      target.addEventListener("pointercancel", up);
+    },
+    [tables, width, height, getZoom],
+  );
 
   async function persist() {
     const dirty = tables.filter((t) => t.dirty);
     if (dirty.length === 0) return;
     setSaving(true);
-    await Promise.all(
+    const results = await Promise.all(
       dirty.map((t) =>
         fetch(`/api/tables/${t.id}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ posX: t.posX, posY: t.posY, rotation: t.rotation, seats: t.seats, label: t.label }),
-        }),
+        }).then((res) => ({ id: t.id, ok: res.ok })),
       ),
     );
-    setTables((prev) => prev.map((t) => ({ ...t, dirty: false })));
+    const failedIds = new Set(results.filter((r) => !r.ok).map((r) => r.id));
+    // Tables that failed to save stay dirty, so the existing "Modifiche non
+    // salvate" indicator keeps telling the truth — and the confirmation
+    // below only fires when every change actually made it to the server.
+    setTables((prev) => prev.map((t) => (failedIds.has(t.id) ? t : { ...t, dirty: false })));
     setSaving(false);
     router.refresh();
+
+    if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+    if (failedIds.size === 0) {
+      setJustSaved(true);
+      savedTimeoutRef.current = setTimeout(() => setJustSaved(false), 2200);
+    }
   }
+
+  useEffect(() => {
+    return () => {
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+    };
+  }, []);
 
   useImperativeHandle(ref, () => ({ save: persist, isDirty: () => tables.some((t) => t.dirty) }));
 
@@ -171,331 +186,256 @@ export const FloorCanvas = forwardRef<
     }
   }
 
-  async function deleteTable(id: string) {
-    setTables((prev) => prev.filter((t) => t.id !== id));
-    setSelectedId(null);
-    await fetch(`/api/tables/${id}`, { method: "DELETE" });
-    router.refresh();
-  }
+  const deleteTable = useCallback(
+    async (id: string) => {
+      setTables((prev) => prev.filter((t) => t.id !== id));
+      setSelectedId(null);
+      await fetch(`/api/tables/${id}`, { method: "DELETE" });
+      router.refresh();
+    },
+    [router],
+  );
 
-  async function handleAssign(tableId: string, waiterId: string) {
-    if (!date || !service) return;
-    setAssignSubmitting(true);
-    setAssignError(null);
-    const res = await fetch("/api/waiter-assignments/table", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ tableId, waiterId, date, service }),
-    });
-    setAssignSubmitting(false);
-    if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      setAssignError(body?.message ?? "Impossibile assegnare il tavolo. Riprova.");
-      return;
-    }
-    setMenuOpen(false);
-    router.refresh();
-  }
+  const onSelect = useCallback((id: string) => setSelectedId(id), []);
 
-  async function handleRemoveAssignment(tableId: string) {
-    if (!date || !service) return;
-    setAssignSubmitting(true);
-    setAssignError(null);
-    const res = await fetch("/api/waiter-assignments/table", {
-      method: "DELETE",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ tableId, date, service }),
-    });
-    setAssignSubmitting(false);
-    if (!res.ok) {
-      setAssignError("Impossibile rimuovere l'assegnazione. Riprova.");
-      return;
-    }
-    setMenuOpen(false);
-    router.refresh();
-  }
+  const gestures = useViewportGestures({
+    viewportRef,
+    getZoom,
+    panBy,
+    zoomAt,
+    onBackgroundClick: () => setSelectedId(null),
+  });
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Trascina i tavoli per riorganizzare la sala. Clicca per selezionare.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          {waiterByTableId && (
-            <div className="flex items-center gap-1 rounded-md border border-border p-1 text-xs">
-              {(["all", "assigned", "unassigned"] as const).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setCoverageFilter(f)}
-                  className={cn(
-                    "rounded px-2 py-1 transition-colors",
-                    coverageFilter === f ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
-                  )}
-                >
-                  {f === "all" ? "Tutti" : f === "assigned" ? "Assegnati" : "Non assegnati"}
-                </button>
-              ))}
+    <div
+      ref={viewportRef}
+      className={cn(
+        "relative h-full w-full touch-none select-none overflow-hidden rounded-xl",
+        gestures.isPanning ? "cursor-grabbing" : "cursor-grab",
+      )}
+      onPointerDown={gestures.onPointerDown}
+      onPointerMove={gestures.onPointerMove}
+      onPointerUp={gestures.onPointerUp}
+      onPointerCancel={gestures.onPointerUp}
+    >
+      <div
+        ref={worldRef}
+        className="absolute left-0 top-0 origin-top-left bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.06)_1px,transparent_0)] [background-size:20px_20px]"
+        style={{ width, height, transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}
+      >
+        {activeLayoutMode === "BUILDER" ? (
+          <RoomLayoutRenderer elements={parsedLayoutElements} width={width} height={height} />
+        ) : (
+          floorPlanUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={floorPlanUrl}
+              alt=""
+              className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-60"
+              draggable={false}
+            />
+          )
+        )}
+
+        {activeLayoutMode !== "BUILDER" && !floorPlanUrl && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
+            <div
+              className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              Nessuna piantina caricata.
+              <button type="button" className="font-medium text-accent-strong hover:underline" onClick={() => setManagePlanOpen(true)}>
+                Crea la tua sala
+              </button>
             </div>
-          )}
-          <div className="flex items-center gap-1 rounded-md border border-border p-1">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
-              onClick={() => setZoom((z) => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
-              disabled={zoom <= MIN_ZOOM}
-              aria-label="Riduci zoom"
-            >
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="w-10 text-center text-xs text-muted-foreground">{Math.round(zoom * 100)}%</span>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
-              onClick={() => setZoom((z) => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)))}
-              disabled={zoom >= MAX_ZOOM}
-              aria-label="Aumenta zoom"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setFloorPlanOpen(true)}>
-            <MapIcon className="h-4 w-4" /> {floorPlanUrl ? "Gestisci piantina" : "Carica piantina"}
+        )}
+
+        {tables.map((t) => {
+          const isSelected = selectedId === t.id;
+          const staff = staffByTableId?.[t.id];
+          const isAssigned = Boolean(staff?.TABLE_RESPONSIBLE);
+          const matchesFilter =
+            !staffByTableId ||
+            coverageFilter === "all" ||
+            (coverageFilter === "assigned" && isAssigned) ||
+            (coverageFilter === "unassigned" && !isAssigned);
+          return (
+            <TableNode
+              key={t.id}
+              table={t}
+              isSelected={isSelected}
+              matchesFilter={matchesFilter}
+              staff={staff}
+              lod={lod}
+              onSelect={onSelect}
+              onDelete={deleteTable}
+              onStartDrag={onStartDrag}
+              menu={
+                isSelected
+                  ? {
+                      menuOpen,
+                      onMenuOpenChange: setMenuOpen,
+                      onOpenAssignStaff: (tableId) => {
+                        setMenuOpen(false);
+                        setAssignStaffTableId(tableId);
+                      },
+                    }
+                  : undefined
+              }
+            />
+          );
+        })}
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start gap-2">
+        {staffByTableId && (
+          <div
+            className="pointer-events-auto flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 text-xs shadow-lg backdrop-blur-sm"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {(["all", "assigned", "unassigned"] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setCoverageFilter(f)}
+                className={cn(
+                  "rounded px-2 py-1 transition-colors",
+                  coverageFilter === f ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
+                )}
+              >
+                {f === "all" ? "Tutti" : f === "assigned" ? "Assegnati" : "Non assegnati"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div
+          className="pointer-events-auto ml-auto flex flex-wrap items-center justify-end gap-2"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden shadow-lg sm:inline-flex"
+            onClick={() => setManagePlanOpen(true)}
+          >
+            <MapIcon className="h-4 w-4" /> {floorPlanUrl || activeLayoutMode === "BUILDER" ? "Gestisci piantina" : "Carica piantina"}
           </Button>
-          <Button variant="subtle" size="sm" onClick={addTable}>
+          <Button variant="subtle" size="sm" className="hidden shadow-lg sm:inline-flex" onClick={addTable}>
             <Plus className="h-4 w-4" /> Nuovo tavolo
           </Button>
-          <Button variant="accent" size="sm" onClick={persist} disabled={saving}>
-            <Save className="h-4 w-4" /> {saving ? "Salvataggio…" : "Salva sala"}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" size="icon" variant="outline" className="shadow-lg sm:hidden" aria-label="Altre azioni">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setManagePlanOpen(true)}>
+                <MapIcon className="h-4 w-4" /> {floorPlanUrl || activeLayoutMode === "BUILDER" ? "Gestisci piantina" : "Carica piantina"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={addTable}>
+                <Plus className="h-4 w-4" /> Nuovo tavolo
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="accent"
+            size="sm"
+            onClick={persist}
+            disabled={saving}
+            className={cn("shadow-lg transition-colors duration-300", justSaved && "bg-sage text-forest hover:bg-sage")}
+          >
+            {justSaved ? (
+              <>
+                <Check className="h-4 w-4" /> Sala salvata
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" /> {saving ? "Salvataggio…" : "Salva sala"}
+              </>
+            )}
           </Button>
         </div>
       </div>
 
-      <div className="relative overflow-auto rounded-xl border-2 border-dashed border-border" style={{ height: VIEWPORT_HEIGHT }}>
-        <div style={{ width: width * zoom, height: height * zoom }}>
-          <div
-            ref={canvasRef}
-            className="relative bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.06)_1px,transparent_0)] [background-size:20px_20px]"
-            style={{ width, height, transform: `scale(${zoom})`, transformOrigin: "0 0" }}
+      <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden sm:block">
+        <span className="rounded-md border border-border bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground/80 backdrop-blur-sm">
+          Trascina lo sfondo per navigare · trascina un tavolo per spostarlo
+        </span>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 shadow-lg backdrop-blur-sm">
+        <div
+          className="pointer-events-auto flex items-center gap-1"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            onClick={() => stepZoom(-1)}
+            disabled={camera.zoom <= MIN_ZOOM}
+            aria-label="Riduci zoom"
           >
-            {floorPlanUrl && (
-              <div
-                className="pointer-events-none absolute inset-0 bg-center bg-no-repeat opacity-40"
-                style={{ backgroundImage: `url(${floorPlanUrl})`, backgroundSize: "contain" }}
-                aria-hidden="true"
-              />
-            )}
-
-            {!floorPlanUrl && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-                <div className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  Nessuna piantina caricata.
-                  <button type="button" className="font-medium text-accent-strong hover:underline" onClick={() => setFloorPlanOpen(true)}>
-                    Carica piantina
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {tables.map((t) => {
-              const isSelected = selectedId === t.id;
-              const assignment = waiterByTableId?.[t.id];
-              const isAssigned = Boolean(assignment);
-              const assignableWaiters = waiters.filter((w) => w.id !== assignment?.id);
-              const matchesFilter =
-                !waiterByTableId ||
-                coverageFilter === "all" ||
-                (coverageFilter === "assigned" && isAssigned) ||
-                (coverageFilter === "unassigned" && !isAssigned);
-              return (
-                <div
-                  key={t.id}
-                  role="button"
-                  tabIndex={0}
-                  onMouseDown={(e) => onDrag(t.id, e)}
-                  onClick={() => setSelectedId(t.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setSelectedId(t.id);
-                    } else if (e.key === "Delete" || e.key === "Backspace") {
-                      if (isSelected) deleteTable(t.id);
-                    }
-                  }}
-                  className={cn(
-                    "absolute grid place-items-center select-none transition-shadow",
-                    t.shape === "ROUND" && "rounded-full",
-                    t.shape === "SQUARE" && "rounded-md",
-                    t.shape === "RECT" && "rounded-md",
-                    t.shape === "BOOTH" && "rounded-2xl",
-                    t.shape === "LOUNGE" && "rounded-3xl",
-                    t.active ? "table-pearl text-carbon-900" : "bg-muted text-muted-foreground",
-                    isSelected && "ring-4 ring-accent/70",
-                    waiterByTableId && !isAssigned && "opacity-70",
-                    !matchesFilter && "opacity-20",
-                    "shadow-lg hover:shadow-xl cursor-grab active:cursor-grabbing",
-                  )}
-                  style={{
-                    left: t.posX,
-                    top: t.posY,
-                    width: t.shape === "RECT" ? 120 : t.shape === "BOOTH" ? 160 : t.shape === "LOUNGE" ? 140 : 80,
-                    height: t.shape === "RECT" ? 70 : t.shape === "BOOTH" ? 90 : t.shape === "LOUNGE" ? 100 : 80,
-                    transform: `rotate(${t.rotation}deg)`,
-                  }}
-                >
-                  {isSelected && (
-                    <DropdownMenu
-                      open={menuOpen}
-                      onOpenChange={(next) => {
-                        setMenuOpen(next);
-                        if (!next) {
-                          setAssignStep({ kind: "list" });
-                          setAssignError(null);
-                        }
-                      }}
-                    >
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label={`Azioni tavolo ${t.label}`}
-                          aria-haspopup="menu"
-                          aria-expanded={menuOpen}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-destructive text-destructive-foreground shadow-md transition-transform hover:scale-110"
-                        >
-                          <MoreHorizontal className="h-3.5 w-3.5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="start"
-                        onMouseDown={(e) => e.stopPropagation()}
-                        className="min-w-[200px]"
-                      >
-                        {waiterByTableId && waiters.length > 0 && (
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              <UserPlus className="h-4 w-4" /> Assegna
-                              <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-60" />
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="min-w-[220px]">
-                              <div className="px-3 py-1.5 text-xs text-muted-foreground">Tavolo {t.label}</div>
-
-                              {assignStep.kind === "confirm" ? (
-                                <div className="space-y-2 p-2">
-                                  <p className="px-1 text-xs text-card-foreground">
-                                    {t.label} è assegnato a {assignment?.name}. Assegnarlo a {assignStep.waiterName}?
-                                  </p>
-                                  {assignError && <p className="px-1 text-xs text-destructive">{assignError}</p>}
-                                  <div className="flex justify-end gap-1.5">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        setAssignStep({ kind: "list" });
-                                      }}
-                                    >
-                                      Annulla
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="accent"
-                                      size="sm"
-                                      disabled={assignSubmitting}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        handleAssign(t.id, assignStep.waiterId);
-                                      }}
-                                    >
-                                      {assignSubmitting ? "Assegno…" : "Cambia assegnazione"}
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
-                                  {assignment && (
-                                    <div className="px-3 py-1 text-xs">
-                                      <span className="text-muted-foreground">Assegnato a</span>{" "}
-                                      <span className="font-medium text-card-foreground">{assignment.name}</span>
-                                    </div>
-                                  )}
-                                  {assignError && <p className="px-3 py-1 text-xs text-destructive">{assignError}</p>}
-                                  <DropdownMenuSeparator />
-                                  {assignableWaiters.map((w) => (
-                                    <DropdownMenuItem
-                                      key={w.id}
-                                      disabled={assignSubmitting}
-                                      onSelect={(e) => {
-                                        if (assignment) {
-                                          e.preventDefault();
-                                          setAssignStep({ kind: "confirm", waiterId: w.id, waiterName: w.name });
-                                        } else {
-                                          handleAssign(t.id, w.id);
-                                        }
-                                      }}
-                                    >
-                                      {w.name}
-                                    </DropdownMenuItem>
-                                  ))}
-                                  {assignment && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        disabled={assignSubmitting}
-                                        onSelect={(e) => {
-                                          e.preventDefault();
-                                          handleRemoveAssignment(t.id);
-                                        }}
-                                      >
-                                        Rimuovi assegnazione
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                </>
-                              )}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                        )}
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onSelect={() => deleteTable(t.id)}
-                        >
-                          <Trash2 className="h-4 w-4" /> Elimina tavolo
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  <span className="text-display text-sm font-semibold">{t.label}</span>
-                  <span className="text-[10px] opacity-70">{t.seats} posti</span>
-                  {waiterByTableId && (
-                    <span
-                      className={cn("max-w-[90%] truncate text-[9px]", isAssigned ? "font-medium opacity-90" : "italic opacity-50")}
-                      title={assignment?.name}
-                    >
-                      {assignment ? compactWaiterName(assignment.name) : "Non assegnato"}
-                    </span>
-                  )}
-                  {!t.active && <Lock className="absolute bottom-1 left-1 h-3 w-3" />}
-                </div>
-              );
-            })}
-          </div>
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <button
+            type="button"
+            className="w-10 text-center text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => reset100()}
+            title="Dimensione reale (100%)"
+          >
+            {Math.round(camera.zoom * 100)}%
+          </button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            onClick={() => stepZoom(1)}
+            disabled={camera.zoom >= MAX_ZOOM}
+            aria-label="Aumenta zoom"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            onClick={() => fitRoom(true)}
+            aria-label="Adatta alla sala"
+            title="Adatta alla sala"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      <FloorPlanDialog
-        open={floorPlanOpen}
-        onOpenChange={setFloorPlanOpen}
+      <ManagePlanDialog
+        open={managePlanOpen}
+        onOpenChange={setManagePlanOpen}
         roomId={roomId}
         roomName={roomName}
-        currentUrl={floorPlanUrl}
+        currentFloorPlanUrl={floorPlanUrl}
+        activeLayoutMode={activeLayoutMode}
+        roomLayoutElements={parsedLayoutElements}
+        roomWidth={width}
+        roomHeight={height}
+        allTables={tables}
+      />
+
+      <AssignStaffDialog
+        open={!!assignStaffTableId}
+        onOpenChange={(next) => !next && setAssignStaffTableId(null)}
+        table={tables.find((t) => t.id === assignStaffTableId) ?? null}
+        roomName={roomName}
+        date={date ?? ""}
+        service={service ?? ""}
+        onChanged={() => router.refresh()}
       />
     </div>
   );

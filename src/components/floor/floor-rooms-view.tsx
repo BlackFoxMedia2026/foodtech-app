@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FloorCanvas, type FloorCanvasHandle } from "./floor-canvas";
+import type { TableStaffMap } from "./table-node";
 import { FloorServiceFilter } from "./floor-service-filter";
 
 type RoomWithTables = {
@@ -20,6 +20,8 @@ type RoomWithTables = {
   width: number;
   height: number;
   floorPlanUrl: string | null;
+  activeLayoutMode: "IMAGE" | "BUILDER" | null;
+  roomLayoutElements: unknown;
   tables: Table[];
 };
 
@@ -32,7 +34,7 @@ function RoomTransition({ roomKey, children }: { roomKey: string; children: Reac
   }, [roomKey]);
   return (
     <div
-      className="motion-reduce:!translate-x-0 motion-reduce:!opacity-100 motion-reduce:transition-none"
+      className="h-full motion-reduce:!translate-x-0 motion-reduce:!opacity-100 motion-reduce:transition-none"
       style={{
         transition: "opacity 200ms ease-out, transform 200ms ease-out",
         opacity: visible ? 1 : 0,
@@ -46,20 +48,16 @@ function RoomTransition({ roomKey, children }: { roomKey: string; children: Reac
 
 export function FloorRoomsView({
   rooms,
-  isTablesMode,
   date,
   service,
   serviceOptions,
-  waiterByTableId,
-  waiters,
+  staffByTableId,
 }: {
   rooms: RoomWithTables[];
-  isTablesMode: boolean;
   date: string;
   service: string;
   serviceOptions: string[];
-  waiterByTableId: Record<string, { id: string; name: string }>;
-  waiters: { id: string; name: string }[];
+  staffByTableId: Record<string, TableStaffMap>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -95,7 +93,7 @@ export function FloorRoomsView({
   const activeRoom = rooms[activeIndex] ?? rooms[0];
   const totalSeats = activeRoom ? activeRoom.tables.reduce((s, t) => s + t.seats, 0) : 0;
   const activeTables = activeRoom ? activeRoom.tables.filter((t) => t.active) : [];
-  const assignedCount = activeTables.filter((t) => waiterByTableId[t.id]).length;
+  const assignedCount = activeTables.filter((t) => staffByTableId[t.id]?.TABLE_RESPONSIBLE).length;
   const fullyCovered = activeTables.length > 0 && assignedCount === activeTables.length;
 
   function navigateTo(roomId: string) {
@@ -218,11 +216,11 @@ export function FloorRoomsView({
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="flex h-full min-h-0 flex-col gap-3 animate-fade-in">
+      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
-          <div className="flex items-center gap-1">
+          <div className="flex min-w-0 items-center gap-1">
             <Button
               type="button"
               size="icon"
@@ -233,7 +231,7 @@ export function FloorRoomsView({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-display text-3xl">{activeRoom.name}</h1>
+            <h1 className="min-w-0 truncate text-display text-xl sm:text-2xl">{activeRoom.name}</h1>
             <Button
               type="button"
               size="icon"
@@ -291,44 +289,34 @@ export function FloorRoomsView({
             {dirty && <span className="text-accent"> · Modifiche non salvate</span>}
           </p>
         </div>
-        {isTablesMode && (
-          <div className="flex flex-wrap items-center gap-3">
-            <FloorServiceFilter date={date} service={service} serviceOptions={serviceOptions} />
-            <Badge tone={fullyCovered ? "success" : "neutral"}>
-              {assignedCount} di {activeTables.length} tavoli assegnati
-            </Badge>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <FloorServiceFilter date={date} service={service} serviceOptions={serviceOptions} />
+          <Badge tone={fullyCovered ? "success" : "neutral"}>
+            {assignedCount} di {activeTables.length} tavoli assegnati
+          </Badge>
+        </div>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Editor visuale</CardTitle>
-          <CardDescription>
-            Riorganizza la sala visivamente. Le modifiche restano locali finché non premi
-            <span className="font-medium"> Salva sala</span>.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RoomTransition roomKey={activeRoom.id}>
-            <FloorCanvas
-              ref={canvasRef}
-              key={activeRoom.id}
-              initialTables={activeRoom.tables}
-              roomId={activeRoom.id}
-              roomName={activeRoom.name}
-              floorPlanUrl={activeRoom.floorPlanUrl}
-              width={activeRoom.width}
-              height={activeRoom.height}
-              waiterByTableId={isTablesMode ? waiterByTableId : undefined}
-              waiters={waiters}
-              date={date}
-              service={service}
-              onDirtyChange={setDirty}
-            />
-          </RoomTransition>
-        </CardContent>
-      </Card>
+      <div className="surface relative min-h-0 flex-1 overflow-hidden rounded-xl">
+        <RoomTransition roomKey={activeRoom.id}>
+          <FloorCanvas
+            ref={canvasRef}
+            key={activeRoom.id}
+            initialTables={activeRoom.tables}
+            roomId={activeRoom.id}
+            roomName={activeRoom.name}
+            floorPlanUrl={activeRoom.floorPlanUrl}
+            activeLayoutMode={activeRoom.activeLayoutMode}
+            roomLayoutElements={activeRoom.roomLayoutElements}
+            width={activeRoom.width}
+            height={activeRoom.height}
+            staffByTableId={staffByTableId}
+            date={date}
+            service={service}
+            onDirtyChange={setDirty}
+          />
+        </RoomTransition>
+      </div>
 
       <Dialog open={unsavedOpen} onOpenChange={(next) => !next && handleCancelSwitch()}>
         <DialogContent className="max-w-[440px]">

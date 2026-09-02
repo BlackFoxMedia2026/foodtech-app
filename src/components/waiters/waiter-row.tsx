@@ -1,3 +1,4 @@
+import type { StaffCapability, StaffPrimaryRole } from "@prisma/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn, initials } from "@/lib/utils";
@@ -23,6 +24,8 @@ export function WaiterRow({
     phone: string;
     birthday: Date;
     role: string;
+    primaryRole: StaffPrimaryRole | null;
+    capabilities: StaffCapability[];
     status: Status;
     photoUrl: string | null;
   };

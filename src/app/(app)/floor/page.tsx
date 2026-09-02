@@ -1,9 +1,10 @@
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
-import { listWaiters } from "@/server/waiters";
-import { listServiceOptions, listTableAssignmentsForService } from "@/server/waiter-assignments";
+import { listServiceOptions } from "@/server/waiter-assignments";
+import { listStaffAssignmentsForService } from "@/server/staff-assignments";
 import { FloorRoomsView } from "@/components/floor/floor-rooms-view";
+import type { TableStaffMap } from "@/components/floor/table-node";
 
 export const dynamic = "force-dynamic";
 
@@ -13,27 +14,30 @@ export default async function FloorPage({
   searchParams: { date?: string; service?: string; room?: string };
 }) {
   const ctx = await getActiveVenue();
-  const isTablesMode = ctx.venue.serviceAssignmentMode === "TABLES";
 
-  const [rooms, tables, serviceOptions, allWaiters] = await Promise.all([
+  const [rooms, tables, serviceOptions] = await Promise.all([
     listRooms(ctx.venueId),
     db.table.findMany({
       where: { venueId: ctx.venueId },
       orderBy: { label: "asc" },
     }),
     listServiceOptions(ctx.venueId),
-    listWaiters(ctx.venueId),
   ]);
 
   const date = searchParams.date ?? new Date().toISOString().slice(0, 10);
   const service = searchParams.service ?? serviceOptions[0] ?? "";
 
-  const waiterByTableId: Record<string, { id: string; name: string }> = {};
-  if (isTablesMode && service) {
-    const assignments = await listTableAssignmentsForService(ctx.venueId, new Date(date), service);
+  const staffByTableId: Record<string, TableStaffMap> = {};
+  if (service) {
+    const assignments = await listStaffAssignmentsForService(ctx.venueId, new Date(date), service);
     for (const a of assignments) {
-      const name = `${a.waiter.firstName} ${a.waiter.lastName}`;
-      for (const tableId of a.tableIds) waiterByTableId[tableId] = { id: a.waiterId, name };
+      if (!a.tableId) continue;
+      const map = (staffByTableId[a.tableId] ??= {});
+      map[a.assignmentType as keyof TableStaffMap] = {
+        id: a.waiterId,
+        name: `${a.waiter.firstName} ${a.waiter.lastName}`,
+        status: a.waiter.status,
+      };
     }
   }
 
@@ -43,22 +47,18 @@ export default async function FloorPage({
     width: r.width,
     height: r.height,
     floorPlanUrl: r.floorPlanUrl,
+    activeLayoutMode: r.activeLayoutMode,
+    roomLayoutElements: r.roomLayout?.elements ?? [],
     tables: tables.filter((t) => t.roomId === r.id),
   }));
-
-  const waiters = allWaiters
-    .filter((w) => w.status === "ACTIVE")
-    .map((w) => ({ id: w.id, name: `${w.firstName} ${w.lastName}` }));
 
   return (
     <FloorRoomsView
       rooms={roomsWithTables}
-      isTablesMode={isTablesMode}
       date={date}
       service={service}
       serviceOptions={serviceOptions}
-      waiterByTableId={waiterByTableId}
-      waiters={waiters}
+      staffByTableId={staffByTableId}
     />
   );
 }

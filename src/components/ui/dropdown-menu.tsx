@@ -32,7 +32,11 @@ export const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "flex cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-popover-foreground/90 outline-none transition-colors focus:bg-muted focus:text-popover-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      // bg-muted used to match bg-popover exactly (same HSL value), so hover/
+      // focus was invisible — data-[highlighted] is Radix's actual hover+
+      // keyboard-nav state, darkened via a black overlay so it stays visible
+      // regardless of the popover's own color.
+      "flex cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-popover-foreground/90 outline-none transition-colors data-[highlighted]:bg-black/15 data-[highlighted]:text-popover-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
@@ -57,7 +61,7 @@ export const DropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      "flex cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-popover-foreground/90 outline-none transition-colors focus:bg-muted focus:text-popover-foreground data-[state=open]:bg-muted",
+      "flex cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-popover-foreground/90 outline-none transition-colors data-[highlighted]:bg-black/15 data-[highlighted]:text-popover-foreground data-[state=open]:bg-black/15",
       className,
     )}
     {...props}
