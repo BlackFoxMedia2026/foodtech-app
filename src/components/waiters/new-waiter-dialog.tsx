@@ -9,9 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { CapabilityPicker } from "@/components/waiters/capability-picker";
+import { ContractFields } from "@/components/waiters/contract-fields";
 import { DEFAULT_CAPABILITIES_BY_ROLE, STAFF_PRIMARY_ROLES } from "@/lib/staff-roles";
+import {
+  EMPTY_CONTRACT_FORM,
+  contractFormToPayload,
+  isContractFormDirty,
+  validateContractForm,
+  type ContractFormErrors,
+} from "@/lib/contract-form";
 
 type FieldErrors = Partial<Record<"firstName" | "lastName" | "birthday" | "phone" | "primaryRole", string>>;
 
@@ -32,7 +41,7 @@ function isValidPhone(phone: string) {
   return (trimmed.match(/\d/g)?.length ?? 0) >= 6;
 }
 
-export function NewWaiterDialog() {
+export function NewWaiterDialog({ canManageContracts = false }: { canManageContracts?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -44,6 +53,8 @@ export function NewWaiterDialog() {
   const capabilitiesTouchedRef = useRef(false);
   const [showToast, setShowToast] = useState(false);
   const firstFieldRef = useRef<HTMLInputElement>(null);
+  const [contractForm, setContractForm] = useState(EMPTY_CONTRACT_FORM);
+  const [contractErrors, setContractErrors] = useState<ContractFormErrors>({});
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const age = useMemo(() => calculateAge(birthday), [birthday]);
@@ -63,6 +74,7 @@ export function NewWaiterDialog() {
   function resetTransientState() {
     setFormError(null);
     setFieldErrors({});
+    setContractErrors({});
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -89,11 +101,18 @@ export function NewWaiterDialog() {
     }
     if (!primaryRole) errors.primaryRole = "Seleziona un ruolo principale.";
 
-    if (Object.keys(errors).length > 0) {
+    // The contract section is optional here (brief section 4) — only
+    // validated at all if the manager actually started filling it in.
+    const contractDirty = canManageContracts && isContractFormDirty(contractForm);
+    const contractFieldErrors = contractDirty ? validateContractForm(contractForm) : {};
+
+    if (Object.keys(errors).length > 0 || Object.keys(contractFieldErrors).length > 0) {
       setFieldErrors(errors);
+      setContractErrors(contractFieldErrors);
       return;
     }
     setFieldErrors({});
+    setContractErrors({});
 
     setSubmitting(true);
     const res = await fetch("/api/waiters", {
@@ -101,17 +120,34 @@ export function NewWaiterDialog() {
       body: JSON.stringify({ firstName, lastName, birthday, phone, primaryRole, capabilities }),
       headers: { "content-type": "application/json" },
     });
-    setSubmitting(false);
 
     if (!res.ok) {
+      setSubmitting(false);
       setFormError("Impossibile salvare il cameriere. Verifica i dati e riprova.");
       return;
     }
 
+    const created = await res.json();
+
+    if (contractDirty) {
+      const contractRes = await fetch(`/api/waiters/${created.id}/contracts`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(contractFormToPayload(contractForm)),
+      });
+      if (!contractRes.ok) {
+        setSubmitting(false);
+        setFormError("Cameriere registrato, ma il contratto non è stato salvato. Aggiungilo dal profilo.");
+        return;
+      }
+    }
+
+    setSubmitting(false);
     setOpen(false);
     setBirthday("");
     setPrimaryRole(null);
     setCapabilities([]);
+    setContractForm(EMPTY_CONTRACT_FORM);
     capabilitiesTouchedRef.current = false;
     resetTransientState();
     router.refresh();
@@ -134,7 +170,7 @@ export function NewWaiterDialog() {
           </Button>
         </DialogTrigger>
         <DialogContent
-          className="max-w-[560px]"
+          className="max-h-[85vh] max-w-[560px] overflow-y-auto"
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             firstFieldRef.current?.focus();
@@ -258,6 +294,16 @@ export function NewWaiterDialog() {
                 <p className="text-xs text-muted-foreground">Determinano a quali ruoli tavolo può essere assegnato.</p>
               </div>
             </div>
+
+            {canManageContracts && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Contratto (opzionale)</p>
+                  <ContractFields idPrefix="new-contract" value={contractForm} onChange={setContractForm} errors={contractErrors} />
+                </div>
+              </>
+            )}
 
             {formError && <p className="text-sm text-destructive">{formError}</p>}
 

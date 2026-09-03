@@ -59,6 +59,10 @@ const rules: Rule[] = [
     test: (m) => (/(fatturat|incass|ricav)/.test(m) ? {} : null),
   },
   {
+    intent: "get_expiring_contracts",
+    test: (m) => (/contratt/.test(m) && /scaden|scad/.test(m) ? {} : null),
+  },
+  {
     intent: "assign_waiter",
     test: (m) => {
       const match = m.match(/assegna\s+([a-z]+(?:\s+[a-z]+)?)\s+(?:ai\s+tavoli|al\s+tavolo)\s+(.+)/);
