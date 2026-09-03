@@ -1,20 +1,20 @@
-import { UserCog } from "lucide-react";
 import { db } from "@/lib/db";
-import { getActiveVenue } from "@/lib/tenant";
+import { can, getActiveVenue } from "@/lib/tenant";
 import { listWaiters } from "@/server/waiters";
 import { listRooms } from "@/server/rooms";
 import { listAssignmentsForDate, listServiceOptions } from "@/server/waiter-assignments";
+import { listAttentionNeededContracts } from "@/server/staff-contracts";
 import { formatTableSelectionLabel } from "@/lib/table-range";
-import { NewWaiterDialog } from "@/components/waiters/new-waiter-dialog";
-import { WaiterRow } from "@/components/waiters/waiter-row";
+import { WaitersPageClient } from "@/components/waiters/waiters-page-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function WaitersPage() {
   const ctx = await getActiveVenue();
   const mode = ctx.venue.serviceAssignmentMode;
+  const canManageContracts = can(ctx.role, "manage_contracts");
 
-  const [waiters, rooms, tables, serviceOptions, todayAssignments] = await Promise.all([
+  const [waiters, rooms, tables, serviceOptions, todayAssignments, contractAttention] = await Promise.all([
     listWaiters(ctx.venueId),
     listRooms(ctx.venueId),
     db.table.findMany({
@@ -24,6 +24,7 @@ export default async function WaitersPage() {
     }),
     listServiceOptions(ctx.venueId),
     listAssignmentsForDate(ctx.venueId, new Date()),
+    canManageContracts ? listAttentionNeededContracts(ctx.venueId) : Promise.resolve(new Map()),
   ]);
 
   const tableLabelById = new Map(tables.map((t) => [t.id, t.label]));
@@ -39,35 +40,15 @@ export default async function WaitersPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
-          <h1 className="text-display text-3xl">Camerieri</h1>
-        </div>
-        <NewWaiterDialog />
-      </header>
-
-      {waiters.length === 0 ? (
-        <div className="rounded-md border border-dashed p-12 text-center text-sm text-muted-foreground">
-          <UserCog className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          Nessun cameriere registrato ancora.
-        </div>
-      ) : (
-        <div className="divide-y divide-border rounded-md border border-border bg-card">
-          {waiters.map((w) => (
-            <WaiterRow
-              key={w.id}
-              waiter={w}
-              assignmentSummary={summaryByWaiterId.get(w.id) ?? null}
-              mode={mode}
-              rooms={rooms.map((r) => ({ id: r.id, name: r.name }))}
-              tables={tables}
-              serviceOptions={serviceOptions}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    <WaitersPageClient
+      waiters={waiters}
+      mode={mode}
+      rooms={rooms.map((r) => ({ id: r.id, name: r.name }))}
+      tables={tables}
+      serviceOptions={serviceOptions}
+      canManageContracts={canManageContracts}
+      assignmentSummaryByWaiterId={Object.fromEntries(summaryByWaiterId)}
+      contractAttentionByWaiterId={Object.fromEntries(contractAttention)}
+    />
   );
 }
