@@ -6,6 +6,7 @@ import { getWaiterAssignmentsTool } from "./tools/waiters";
 import { getPeriodRevenueTool } from "./tools/analytics";
 import { navigateTool } from "./tools/navigation";
 import { assignWaiterTool } from "./tools/assign-waiter";
+import { getExpiringContractsTool } from "./tools/contracts";
 
 export const toolRegistry: Record<string, Tool> = {
   get_today_reservations: getTodayReservationsTool,
@@ -17,4 +18,5 @@ export const toolRegistry: Record<string, Tool> = {
   get_period_revenue: getPeriodRevenueTool,
   navigate_to_section: navigateTool,
   assign_waiter: assignWaiterTool,
+  get_expiring_contracts: getExpiringContractsTool,
 };

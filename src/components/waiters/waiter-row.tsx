@@ -16,6 +16,8 @@ export function WaiterRow({
   rooms,
   tables,
   serviceOptions,
+  canManageContracts = false,
+  contractAttention = null,
 }: {
   waiter: {
     id: string;
@@ -34,6 +36,8 @@ export function WaiterRow({
   rooms: { id: string; name: string }[];
   tables: { id: string; label: string; seats: number }[];
   serviceOptions: string[];
+  canManageContracts?: boolean;
+  contractAttention?: { status: "EXPIRING_SOON" | "EXPIRED"; detail: string } | null;
 }) {
   const isResting = waiter.status === "RESTING";
   const fullName = `${waiter.firstName} ${waiter.lastName}`;
@@ -45,7 +49,7 @@ export function WaiterRow({
         isResting ? "bg-black/20" : "bg-white/[0.04]",
       )}
     >
-      <WaiterProfileDialog waiter={waiter}>
+      <WaiterProfileDialog waiter={waiter} canManageContracts={canManageContracts}>
         <button type="button" className="flex items-center gap-3 rounded-sm text-left hover:opacity-80">
           <Avatar>
             {waiter.photoUrl && <AvatarImage src={waiter.photoUrl} alt={fullName} />}
@@ -54,6 +58,11 @@ export function WaiterRow({
           <div>
             <p className="text-sm font-medium text-card-foreground underline-offset-2 hover:underline">{fullName}</p>
             <p className="text-xs text-muted-foreground">{waiter.role}</p>
+            {contractAttention && (
+              <Badge tone={contractAttention.status === "EXPIRED" ? "danger" : "warning"} className="mt-1">
+                {contractAttention.detail}
+              </Badge>
+            )}
           </div>
         </button>
       </WaiterProfileDialog>

@@ -276,10 +276,14 @@
      CSS `animation-duration`/`animation-name` being swapped outright — a
      duration change on a running CSS animation applies immediately with no
      tween, which reads as a snap; a per-frame rate lerp is what makes
-     idle -> processing feel like spinning up, not a class flip. Core is a
-     separate parallax wrapper (JS translate) around the image itself (CSS
-     breathing scale) so the two transforms don't fight; eyes is JS-driven
-     translate only, fully independent of the waves/core animation. ---- */
+     idle -> processing feel like spinning up, not a class flip. Waves are
+     two nested layers (agent-waves-morph outer, agent-waves-drift inner) at
+     deliberately mismatched durations so their combined motion drifts in
+     and out of phase instead of looping identically — see the keyframes
+     below. Core is a separate parallax wrapper (JS translate) around the
+     image itself (CSS breathing scale) so the two transforms don't fight;
+     eyes is JS-driven translate only, fully independent of the waves/core
+     animation. ---- */
   .agent-visual {
     position: relative;
     display: inline-block;
@@ -307,11 +311,22 @@
     inset: 0;
     transform: translate(var(--waves-x, 0px), var(--waves-y, 0px));
   }
+  /* Slow outer morph — scale/skew/opacity with a drifting transform-origin,
+     deliberately no rotation, so it reads as the mark folding/stretching
+     rather than spinning. Stacked with the faster inner drift below at a
+     duration that never shares a clean ratio with it (7.4s vs 5.4s), so the
+     two never resync into a predictable combined cycle. */
+  .agent-visual__waves-morph {
+    position: absolute;
+    inset: 0;
+    transform-origin: center;
+    animation: agent-waves-morph 7.4s cubic-bezier(0.45, 0.05, 0.35, 0.95) infinite;
+  }
   .agent-visual__waves {
     position: absolute;
     inset: 0;
     transform-origin: center;
-    animation: agent-waves-drift 6s ease-in-out infinite;
+    animation: agent-waves-drift 5.4s ease-in-out infinite;
   }
   .agent-visual__core-parallax {
     position: absolute;
@@ -328,16 +343,33 @@
     transform: translate(var(--eye-x, 0px), var(--eye-y, 0px));
   }
 
-  /* Amplitude (--wave-amp, default 1 = idle) is JS-driven and eased every
-     frame; the shape itself — an asymmetric 4-stop drift, never a uniform
-     rotate(360deg) — stays fixed so scaling it up/down can't distort it into
-     something else. */
+  /* Amplitude (--wave-amp, default 1 = idle, set on .agent-visual__waves-morph
+     and inherited down) is JS-driven and eased every frame. Two layers stack
+     here: this inner one keeps a *small* rotation (well under a full
+     revolution) but pairs it with asymmetric scaleX/scaleY and a drifting
+     transform-origin so it reads as a squash-and-stretch fold, not a
+     spinning ring — and its 5-stop, non-evenly-spaced timing never mirrors
+     the outer morph's, so the combination doesn't repeat in an obvious way. */
   @keyframes agent-waves-drift {
-    0%   { transform: rotate(0deg) scale(1) translate(0, 0); }
-    25%  { transform: rotate(calc(var(--wave-amp, 1) * 7deg)) scale(calc(1 + var(--wave-amp, 1) * 0.025)) translate(calc(var(--wave-amp, 1) * 1px), calc(var(--wave-amp, 1) * -0.7px)); }
-    50%  { transform: rotate(calc(var(--wave-amp, 1) * -8deg)) scale(calc(1 - var(--wave-amp, 1) * 0.015)) translate(calc(var(--wave-amp, 1) * -0.9px), calc(var(--wave-amp, 1) * 0.8px)); }
-    75%  { transform: rotate(calc(var(--wave-amp, 1) * 6deg)) scale(calc(1 + var(--wave-amp, 1) * 0.015)) translate(calc(var(--wave-amp, 1) * 0.7px), calc(var(--wave-amp, 1) * 0.4px)); }
-    100% { transform: rotate(0deg) scale(1) translate(0, 0); }
+    0%   { transform-origin: 50% 50%; transform: rotate(0deg) scaleX(1) scaleY(1) translate(0, 0); }
+    20%  { transform-origin: 55% 47%; transform: rotate(calc(var(--wave-amp, 1) * 5deg)) scaleX(calc(1 + var(--wave-amp, 1) * 0.022)) scaleY(calc(1 - var(--wave-amp, 1) * 0.018)) translate(calc(var(--wave-amp, 1) * 0.6px), calc(var(--wave-amp, 1) * -0.5px)); }
+    46%  { transform-origin: 45% 58%; transform: rotate(calc(var(--wave-amp, 1) * -6deg)) scaleX(calc(1 - var(--wave-amp, 1) * 0.016)) scaleY(calc(1 + var(--wave-amp, 1) * 0.02)) translate(calc(var(--wave-amp, 1) * -0.7px), calc(var(--wave-amp, 1) * 0.5px)); }
+    71%  { transform-origin: 58% 52%; transform: rotate(calc(var(--wave-amp, 1) * 4deg)) scaleX(calc(1 + var(--wave-amp, 1) * 0.012)) scaleY(calc(1 - var(--wave-amp, 1) * 0.01)) translate(calc(var(--wave-amp, 1) * 0.5px), calc(var(--wave-amp, 1) * 0.4px)); }
+    100% { transform-origin: 50% 50%; transform: rotate(0deg) scaleX(1) scaleY(1) translate(0, 0); }
+  }
+  /* Outer, slower morph — dominant scaleX/scaleY/skew with no rotation at
+     all, plus a very light opacity flicker (brief §7-8: helps the fold read
+     as one shape fusing into another, never actually transparent). Its
+     6-stop, non-evenly-spaced timing at 7.4s (vs. the inner layer's 5.4s)
+     means the two are almost never at the same point in their cycle at
+     once. */
+  @keyframes agent-waves-morph {
+    0%   { transform-origin: 50% 50%; transform: scaleX(1) scaleY(1) skew(0deg, 0deg); opacity: 1; }
+    18%  { transform-origin: 46% 55%; transform: scaleX(calc(1 + var(--wave-amp, 1) * 0.045)) scaleY(calc(1 - var(--wave-amp, 1) * 0.035)) skew(calc(var(--wave-amp, 1) * -2.2deg), calc(var(--wave-amp, 1) * 1.4deg)); opacity: 0.97; }
+    41%  { transform-origin: 57% 46%; transform: scaleX(calc(1 - var(--wave-amp, 1) * 0.03)) scaleY(calc(1 + var(--wave-amp, 1) * 0.05)) skew(calc(var(--wave-amp, 1) * 1.8deg), calc(var(--wave-amp, 1) * -1.2deg)); opacity: 1; }
+    67%  { transform-origin: 44% 60%; transform: scaleX(calc(1 + var(--wave-amp, 1) * 0.03)) scaleY(calc(1 - var(--wave-amp, 1) * 0.02)) skew(calc(var(--wave-amp, 1) * -1.4deg), calc(var(--wave-amp, 1) * 0.9deg)); opacity: 0.95; }
+    84%  { transform-origin: 53% 49%; transform: scaleX(calc(1 - var(--wave-amp, 1) * 0.018)) scaleY(calc(1 + var(--wave-amp, 1) * 0.022)) skew(calc(var(--wave-amp, 1) * 0.9deg), calc(var(--wave-amp, 1) * -0.6deg)); opacity: 0.98; }
+    100% { transform-origin: 50% 50%; transform: scaleX(1) scaleY(1) skew(0deg, 0deg); opacity: 1; }
   }
   @keyframes agent-core-breathe {
     0%, 100% { transform: scale(1); }
@@ -397,6 +429,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .agent-visual__waves,
+    .agent-visual__waves-morph,
     .agent-visual__core {
       animation: none;
       transform: none;

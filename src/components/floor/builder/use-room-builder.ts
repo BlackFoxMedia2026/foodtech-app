@@ -161,6 +161,17 @@ export function useRoomBuilder({
     closeShape(drawPoints);
   }
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape" || toolState.mode === "idle") return;
+      if (toolState.mode === "drawing-wall") cancelDrawing();
+      else setTool({ mode: "idle" });
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toolState.mode]);
+
   // --- Tables ---
   const placedTableIds = new Set(history.state.elements.filter(isTableRef).map((e) => e.tableId));
   const unplacedTables = history.state.tables.filter((t) => !placedTableIds.has(t.id));

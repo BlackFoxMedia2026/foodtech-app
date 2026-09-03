@@ -2,17 +2,26 @@
 
 import { useEffect, useState } from "react";
 import type { Table } from "@prisma/client";
-import { X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import type { RoomElement } from "@/lib/room-layout";
-import { ShapeWizard } from "./shape-wizard";
-import { ElementLibraryPanel } from "./element-library-panel";
-import { UnplacedTablesPanel } from "./unplaced-tables-panel";
+import { DEFAULT_WIZARD_FORM, ShapeWizard, type WizardFormState } from "./shape-wizard";
+import { WizardStepper, type WizardStepDef } from "./wizard-stepper";
+import { ElementLibraryPanel, type ToolCategory } from "./element-library-panel";
 import { ElementInspectorPanel } from "./element-inspector-panel";
 import { RoomBuilderCanvas } from "./room-builder-canvas";
+import { ToolRail } from "./tool-rail";
 import { useRoomBuilder } from "./use-room-builder";
 
 const MIN_WIDTH_PX = 1024;
+
+const WIZARD_STEPS: WizardStepDef[] = [
+  { key: "shape", label: "Forma" },
+  { key: "dimensions", label: "Dimensioni" },
+  { key: "customize", label: "Personalizza" },
+];
 
 export function RoomBuilderOverlay({
   open,
@@ -36,6 +45,9 @@ export function RoomBuilderOverlay({
   onSaved: () => void;
 }) {
   const [tooSmall, setTooSmall] = useState(false);
+  // Lifted out of ShapeWizard so shape/width/depth survive it being
+  // unmounted — e.g. "Modifica forma e dimensioni" from step 3 (brief §25/§36).
+  const [wizardForm, setWizardForm] = useState<WizardFormState>(DEFAULT_WIZARD_FORM);
   const [wizardResult, setWizardResult] = useState<{ elements: RoomElement[]; startTool: "idle" | "drawing-wall" } | null>(
     initialElements.length > 0 ? { elements: initialElements, startTool: "idle" } : null,
   );
@@ -54,18 +66,28 @@ export function RoomBuilderOverlay({
     if (open && initialElements.length > 0) {
       setWizardResult({ elements: initialElements, startTool: "idle" });
     }
-    if (!open) setWizardResult(initialElements.length > 0 ? { elements: initialElements, startTool: "idle" } : null);
+    if (!open) {
+      setWizardResult(initialElements.length > 0 ? { elements: initialElements, startTool: "idle" } : null);
+      setWizardForm(DEFAULT_WIZARD_FORM);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!open) return null;
+
+  // 0 = scelta forma, 1 = dimensioni, 2 = editor — pilota lo stesso stepper
+  // in tutti e tre gli step (brief §1-3).
+  const stepIndex = wizardResult ? 2 : wizardForm.shapeConfirmed ? 1 : 0;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`Costruisci la sala ${roomName}`}
-      className="fixed inset-0 z-50 flex flex-col bg-[#F4EFE4] text-carbon-900"
+      // The whole workspace now matches the app's own dark theme (brief §2) —
+      // only the actual room surface (the editor canvas, and the Forma/
+      // Dimensioni previews standing in for it) stays cream.
+      className="fixed inset-0 z-50 flex flex-col bg-background text-foreground"
       // Full-screen takeover, not a portal — it's a real DOM descendant of
       // FloorCanvas's pan/zoom viewport. Without this, every pointerdown in
       // here would bubble into the viewport's gesture handler and hijack the
@@ -83,9 +105,12 @@ export function RoomBuilderOverlay({
         </div>
       ) : !wizardResult ? (
         <div className="flex h-full flex-col">
-          <OverlayHeader roomName={roomName} onClose={() => onOpenChange(false)} isDirty={() => false} />
-          <div className="flex flex-1 items-center justify-center overflow-y-auto">
-            <ShapeWizard onComplete={setWizardResult} />
+          <OverlayHeader roomName={roomName} onClose={() => onOpenChange(false)} isDirty={() => false} stepIndex={stepIndex} />
+          {/* Keyed on stepIndex so Forma↔Dimensioni replays the fade-in
+              instead of a hard cut (brief §10/§32), while panel/preview stay
+              in the same slot. */}
+          <div key={stepIndex} className="min-h-0 flex-1 animate-fade-in overflow-hidden">
+            <ShapeWizard value={wizardForm} onChange={setWizardForm} onComplete={setWizardResult} />
           </div>
         </div>
       ) : (
@@ -141,37 +166,79 @@ function RoomBuilderShell({
       onClose();
     },
   });
+  const [confirmEditShape, setConfirmEditShape] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<ToolCategory>("structure");
+
+  // Inspector opens only when there's something to show (brief §30): a
+  // selected element/table, or an armed tool with instructions to display.
+  const inspectorOpen = builder.selectedId !== null || builder.tool.mode !== "idle";
 
   async function handleSave() {
     await builder.save();
   }
 
+  // Free to bail out while nothing has been touched yet; once walls/elements
+  // exist, confirm first since regenerating the perimeter replaces them
+  // (brief §35).
+  function requestEditShape() {
+    if (builder.canUndo) setConfirmEditShape(true);
+    else onBack();
+  }
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col animate-fade-in">
       <OverlayHeader
         roomName={roomName}
         onClose={onClose}
         isDirty={builder.isDirty}
-        onBack={initialElements.length === 0 && !builder.canUndo ? onBack : undefined}
+        stepIndex={2}
+        onEditShape={requestEditShape}
         onSave={handleSave}
         saving={builder.saving}
       />
-      <div className="grid flex-1 grid-cols-[220px_1fr_260px] gap-3 overflow-hidden p-3">
-        <aside className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="flex h-full flex-col">
-            <div className="flex-[3] overflow-hidden">
-              <ElementLibraryPanel builder={builder} />
-            </div>
-            <div className="flex-[2] overflow-hidden">
-              <UnplacedTablesPanel builder={builder} />
-            </div>
+      <div className="flex min-h-0 flex-1 gap-3 overflow-hidden p-3">
+        <ToolRail active={activeCategory} onChange={setActiveCategory} />
+        <div className="w-[228px] shrink-0 overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
+          <ElementLibraryPanel builder={builder} category={activeCategory} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <RoomBuilderCanvas builder={builder} />
+        </div>
+        <div
+          className={cn(
+            "shrink-0 overflow-hidden rounded-lg border border-border bg-card text-card-foreground transition-[width] duration-200",
+            inspectorOpen ? "w-[260px]" : "w-0 border-transparent",
+          )}
+        >
+          <div className="h-full w-[260px] overflow-y-auto">
+            <ElementInspectorPanel builder={builder} />
           </div>
-        </aside>
-        <RoomBuilderCanvas builder={builder} />
-        <aside className="overflow-y-auto rounded-xl border border-border bg-card">
-          <ElementInspectorPanel builder={builder} />
-        </aside>
+        </div>
       </div>
+
+      <Dialog open={confirmEditShape} onOpenChange={setConfirmEditShape}>
+        <DialogContent className="max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Modificare forma o dimensioni?</DialogTitle>
+            <DialogDescription>Modificare forma o dimensioni può cambiare la geometria della sala.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConfirmEditShape(false)}>
+              Annulla
+            </Button>
+            <Button
+              type="button"
+              variant="accent"
+              onClick={() => {
+                setConfirmEditShape(false);
+                onBack();
+              }}
+            >
+              Continua
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -180,14 +247,16 @@ function OverlayHeader({
   roomName,
   onClose,
   isDirty,
-  onBack,
+  stepIndex,
+  onEditShape,
   onSave,
   saving,
 }: {
   roomName: string;
   onClose: () => void;
   isDirty: () => boolean;
-  onBack?: () => void;
+  stepIndex: number;
+  onEditShape?: () => void;
   onSave?: () => void;
   saving?: boolean;
 }) {
@@ -199,17 +268,13 @@ function OverlayHeader({
   }
 
   return (
-    <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
-      <div className="flex items-center gap-3">
-        {onBack && (
-          <Button type="button" variant="ghost" size="sm" onClick={onBack}>
-            Indietro
-          </Button>
-        )}
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-2.5 text-card-foreground">
+      <div className="flex flex-wrap items-center gap-4">
         <div>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Costruisci la sala</p>
           <h1 className="text-display text-base font-semibold">{roomName}</h1>
         </div>
+        <WizardStepper steps={WIZARD_STEPS} currentIndex={stepIndex} />
       </div>
 
       {confirmClose ? (
@@ -238,6 +303,17 @@ function OverlayHeader({
         </div>
       ) : (
         <div className="flex items-center gap-2">
+          {onEditShape && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground hover:text-card-foreground"
+              onClick={onEditShape}
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Modifica forma e dimensioni
+            </Button>
+          )}
           {onSave && (
             <Button type="button" variant="accent" size="sm" onClick={onSave} disabled={saving}>
               {saving ? "Salvataggio…" : "Salva sala"}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Camera, CheckCircle2, Trash2 } from "lucide-react";
 import type { StaffCapability, StaffPrimaryRole } from "@prisma/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { CapabilityPicker } from "@/components/waiters/capability-picker";
+import { WaiterContractSection } from "@/components/waiters/waiter-contract-section";
 import { DEFAULT_CAPABILITIES_BY_ROLE, STAFF_PRIMARY_ROLES } from "@/lib/staff-roles";
 import { initials } from "@/lib/utils";
 
@@ -46,8 +48,17 @@ function isValidPhone(phone: string) {
   return (trimmed.match(/\d/g)?.length ?? 0) >= 6;
 }
 
-export function WaiterProfileDialog({ waiter, children }: { waiter: ProfileWaiter; children: React.ReactNode }) {
+export function WaiterProfileDialog({
+  waiter,
+  children,
+  canManageContracts = false,
+}: {
+  waiter: ProfileWaiter;
+  children: React.ReactNode;
+  canManageContracts?: boolean;
+}) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +81,12 @@ export function WaiterProfileDialog({ waiter, children }: { waiter: ProfileWaite
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const age = useMemo(() => calculateAge(birthday), [birthday]);
   const fullName = `${waiter.firstName} ${waiter.lastName}`;
+
+  // Deep-link from a notification's "Visualizza profilo" (brief section 12):
+  // ?waiterId=<id> opens this profile directly when it matches.
+  useEffect(() => {
+    if (searchParams.get("waiterId") === waiter.id) setOpen(true);
+  }, [searchParams, waiter.id]);
 
   function handlePrimaryRoleChange(next: StaffPrimaryRole) {
     setPrimaryRole(next);
@@ -184,7 +201,7 @@ export function WaiterProfileDialog({ waiter, children }: { waiter: ProfileWaite
       >
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent
-          className="max-w-[560px]"
+          className="max-h-[85vh] max-w-[560px] overflow-y-auto"
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             firstFieldRef.current?.focus();
@@ -326,6 +343,13 @@ export function WaiterProfileDialog({ waiter, children }: { waiter: ProfileWaite
                 <p className="text-xs text-muted-foreground">Determinano a quali ruoli tavolo può essere assegnato.</p>
               </div>
             </div>
+
+            {canManageContracts && (
+              <>
+                <Separator />
+                <WaiterContractSection waiterId={waiter.id} open={open} />
+              </>
+            )}
 
             {formError && <p className="text-sm text-destructive">{formError}</p>}
 

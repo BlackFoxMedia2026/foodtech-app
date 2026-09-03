@@ -3,7 +3,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell } from "lucide-react";
 import {
   LayoutDashboard,
   CalendarRange,
@@ -14,11 +13,11 @@ import {
   LineChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 import { Agent } from "@/components/agent/agent";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
+import { NotificationBell } from "./notification-bell";
 
 type NavItem = {
   href: string;
@@ -120,14 +119,7 @@ export function Header({
 
         <div className="flex shrink-0 items-center gap-2">
           <Agent />
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="Notifiche"
-            className="h-[46px] w-[46px] rounded-lg border border-border text-foreground hover:bg-white/10"
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
+          <NotificationBell />
           <ProfileMenu user={user} />
         </div>
       </div>

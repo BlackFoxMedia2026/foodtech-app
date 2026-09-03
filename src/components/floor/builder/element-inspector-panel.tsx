@@ -17,20 +17,69 @@ import {
   wallLength,
   metersToPx,
 } from "@/lib/room-layout";
-import type { RoomBuilder } from "./use-room-builder";
+import type { PlaceableType, RoomBuilder } from "./use-room-builder";
 
 const STRUCTURE_LABEL: Record<string, string> = { DOOR: "Porta", WINDOW: "Finestra", COLUMN: "Colonna", WALL: "Parete" };
+
+const PLACE_ON_CANVAS_HINT = "Clicca sulla piantina per posizionarla, poi ridimensionala.";
+
+const PLACING_TOOL_COPY: Record<PlaceableType, { title: string; body: string }> = {
+  DOOR: { title: "Aggiungi una porta", body: "Clicca o trascinala sopra una parete: si aggancerà automaticamente." },
+  WINDOW: { title: "Aggiungi una finestra", body: "Clicca o trascinala sopra una parete: si aggancerà automaticamente." },
+  COLUMN: { title: "Aggiungi una colonna", body: "Clicca sulla piantina nel punto in cui vuoi posizionarla." },
+  AREA_KITCHEN: { title: "Aggiungi l'area Cucina", body: PLACE_ON_CANVAS_HINT },
+  AREA_BAR: { title: "Aggiungi l'area Bancone", body: PLACE_ON_CANVAS_HINT },
+  AREA_WC: { title: "Aggiungi l'area WC", body: PLACE_ON_CANVAS_HINT },
+  AREA_STORAGE: { title: "Aggiungi l'area Magazzino", body: PLACE_ON_CANVAS_HINT },
+  AREA_PRIVATE: { title: "Aggiungi la Zona privata", body: PLACE_ON_CANVAS_HINT },
+  AREA_ENTRANCE: { title: "Aggiungi l'Ingresso", body: PLACE_ON_CANVAS_HINT },
+  AREA_TERRACE: { title: "Aggiungi la Terrazza / Dehors", body: PLACE_ON_CANVAS_HINT },
+};
 
 /** Contextual properties panel for the selected element — minimal fields per
  * type (brief §22), with the destructive table actions kept explicitly apart
  * ("Rimuovi dalla piantina" vs "Elimina tavolo") so a graphic removal never
- * silently deletes gestionale data. */
+ * silently deletes gestionale data. When nothing is selected it now doubles
+ * as tool guidance (brief §24-27): an idle empty state, or short instructions
+ * for whichever tool is currently armed. */
 export function ElementInspectorPanel({ builder }: { builder: RoomBuilder }) {
   const el = builder.selectedElement;
   const selectedTable = builder.tables.find((t) => t.id === builder.selectedId) ?? null;
 
   if (!el && !selectedTable) {
-    return <div className="p-4 text-xs text-muted-foreground">Seleziona un elemento della piantina per modificarne le proprietà.</div>;
+    if (builder.tool.mode === "drawing-wall") {
+      return (
+        <ToolInstructions
+          title="Disegna una parete"
+          body="Clicca sulla piantina per iniziare, poi clicca di nuovo per aggiungere ogni segmento. Clicca sul primo punto per chiudere la forma."
+        />
+      );
+    }
+    if (builder.tool.mode === "placing") {
+      const copy = PLACING_TOOL_COPY[builder.tool.elementType];
+      return <ToolInstructions title={copy.title} body={copy.body} />;
+    }
+    if (builder.tool.mode === "placing-table") {
+      return (
+        <ToolInstructions
+          title="Aggiungi un tavolo"
+          body="Clicca sulla piantina per posizionarlo: verrà creato come tavolo reale del gestionale."
+        />
+      );
+    }
+    return (
+      <div className="flex flex-col gap-3 p-4">
+        <div>
+          <h3 className="text-sm font-semibold text-card-foreground">Personalizza la tua sala</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Seleziona uno strumento a sinistra oppure clicca un elemento della piantina.</p>
+        </div>
+        <ul className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+          <li>· Trascina gli elementi direttamente sulla piantina.</li>
+          <li>· Clicca un elemento per modificarne le proprietà.</li>
+          <li>· Ricorda di salvare la sala al termine.</li>
+        </ul>
+      </div>
+    );
   }
 
   if (selectedTable) {
@@ -154,5 +203,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="text-xs text-muted-foreground">{label}</span>
       {children}
     </label>
+  );
+}
+
+function ToolInstructions({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="flex flex-col gap-2 p-4">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-accent-strong">{title}</h3>
+      <p className="text-xs text-muted-foreground">{body}</p>
+      <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground/80">
+        <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-sans text-[10px]">Esc</kbd> Annulla
+      </p>
+    </div>
   );
 }

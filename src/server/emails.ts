@@ -110,3 +110,79 @@ export async function sendPendingBookingNotificationEmail(
     console.error(`[EMAIL] Failed to send pending notification to ${managerEmail}:`, error);
   }
 }
+
+export async function sendContractExpiringEmail(
+  recipientEmail: string,
+  recipientName: string,
+  waiterName: string,
+  venueName: string,
+  endDate: Date,
+  daysRemaining: number,
+  profileUrl: string,
+) {
+  if (!resend) {
+    console.log(`[EMAIL] Contract expiring (Resend not configured): ${recipientEmail}`);
+    return;
+  }
+
+  const dateStr = endDate.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" });
+  const timing = daysRemaining === 0 ? "scade oggi" : daysRemaining === 1 ? "scade domani" : `scade tra ${daysRemaining} giorni`;
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h1 style="color: #A98804;">Contratto in scadenza</h1>
+      <p style="font-size: 16px; color: #333;">Ciao ${recipientName},</p>
+      <p style="font-size: 16px; color: #333;">Il contratto di <strong>${waiterName}</strong> presso <strong>${venueName}</strong> ${timing} (${dateStr}).</p>
+      <p style="font-size: 14px; color: #666;"><a href="${profileUrl}">Visualizza profilo</a></p>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: recipientEmail,
+      subject: `Contratto in scadenza - ${waiterName}`,
+      html: htmlContent,
+    });
+    console.log(`[EMAIL] Contract expiring email sent to ${recipientEmail}`);
+  } catch (error) {
+    console.error(`[EMAIL] Failed to send contract expiring email to ${recipientEmail}:`, error);
+  }
+}
+
+export async function sendContractExpiredEmail(
+  recipientEmail: string,
+  recipientName: string,
+  waiterName: string,
+  venueName: string,
+  endDate: Date,
+  profileUrl: string,
+) {
+  if (!resend) {
+    console.log(`[EMAIL] Contract expired (Resend not configured): ${recipientEmail}`);
+    return;
+  }
+
+  const dateStr = endDate.toLocaleDateString("it-IT", { year: "numeric", month: "long", day: "numeric" });
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h1 style="color: #D53434;">Contratto scaduto</h1>
+      <p style="font-size: 16px; color: #333;">Ciao ${recipientName},</p>
+      <p style="font-size: 16px; color: #333;">Il contratto di <strong>${waiterName}</strong> presso <strong>${venueName}</strong> è scaduto il ${dateStr}.</p>
+      <p style="font-size: 14px; color: #666;"><a href="${profileUrl}">Visualizza profilo</a></p>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: recipientEmail,
+      subject: `Contratto scaduto - ${waiterName}`,
+      html: htmlContent,
+    });
+    console.log(`[EMAIL] Contract expired email sent to ${recipientEmail}`);
+  } catch (error) {
+    console.error(`[EMAIL] Failed to send contract expired email to ${recipientEmail}:`, error);
+  }
+}

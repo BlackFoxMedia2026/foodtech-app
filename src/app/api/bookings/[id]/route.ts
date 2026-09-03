@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getActiveVenue } from "@/lib/tenant";
+import { can, getActiveVenue } from "@/lib/tenant";
 import { db } from "@/lib/db";
 import { deleteBooking, updateBooking } from "@/server/bookings";
 import { bookingWriteErrorResponse } from "@/server/booking-errors";
@@ -16,6 +16,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const ctx = await getActiveVenue();
+  if (!can(ctx.role, "manage_bookings")) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   try {
     const body = await req.json();
     const updated = await updateBooking(ctx.venueId, params.id, body);
@@ -27,6 +30,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const ctx = await getActiveVenue();
+  if (!can(ctx.role, "manage_bookings")) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   try {
     await deleteBooking(ctx.venueId, params.id);
     return NextResponse.json({ ok: true });

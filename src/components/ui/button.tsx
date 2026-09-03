@@ -14,7 +14,7 @@ const buttonVariants = cva(
         brand:
           "bg-surface-brown text-cream shadow-[0_10px_24px_rgba(0,0,0,0.28)] hover:bg-surface-brown-dark",
         accent:
-          "bg-white rounded-full text-clay-ink shadow-[0_10px_24px_rgba(0,0,0,0.35)] hover:brightness-105",
+          "bg-cream rounded-full text-clay-ink shadow-[0_10px_24px_rgba(0,0,0,0.35)] hover:brightness-105",
         outline:
           "border border-surface-brown/40 bg-transparent hover:bg-surface-brown/15",
         ghost: "hover:bg-current/10",

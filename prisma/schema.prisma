@@ -146,6 +146,8 @@ model Venue {
   waiters               Waiter[]
   waiterAssignments     WaiterAssignment[]
   staffAssignments      StaffAssignment[]
+  staffContracts        StaffContract[]
+  contractDocuments     ContractDocument[]
 
   @@unique([orgId, slug])
 }
@@ -1136,6 +1138,7 @@ model Waiter {
   venue            Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
   assignments      WaiterAssignment[]
   staffAssignments StaffAssignment[]
+  contracts        StaffContract[]
 
   @@index([venueId, createdAt])
 }
@@ -1143,6 +1146,90 @@ model Waiter {
 enum WaiterStatus {
   ACTIVE
   RESTING
+}
+
+// Employment contract for a Waiter. One-to-many on purpose (brief section 22):
+// a worker moves through renewals over time (contract 1 expires, contract 2
+// renews it, ...) and the roster must keep that history, not just the latest
+// end date. "Current" contract is picked at query time (see
+// src/lib/staff-contracts.ts), never stored — status/label included.
+model StaffContract {
+  id              String                   @id @default(cuid())
+  venueId         String
+  waiterId        String
+  contractType    StaffContractType
+  startDate       DateTime
+  endDate         DateTime?
+  weeklyHours     Float?
+  contractualRole String?
+  notes           String?                  @db.VarChar(2000)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  venue           Venue                    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter          Waiter                   @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  reminders       StaffContractReminder[]
+  document        ContractDocument?
+
+  @@index([venueId, waiterId, startDate])
+  @@index([venueId, endDate])
+}
+
+// The digital copy attached to one specific contract (not to the waiter
+// profile) — a renewal gets its own row/document, the old one keeps its own
+// (brief: "Staff -> Contratto A -> Documento A, Contratto B -> Documento B").
+// One document per contract in V1 (contractId is unique); storageKey is an
+// internal Vercel Blob pathname, never a public URL — access is always
+// mediated by /api/waiters/[id]/contracts/[contractId]/document, which
+// checks session + tenant + contract ownership + the manage_contracts
+// ability before streaming the blob (brief sections 16/19).
+model ContractDocument {
+  id               String        @id @default(cuid())
+  venueId          String
+  contractId       String        @unique
+  storageKey       String
+  originalFileName String
+  mimeType         String
+  fileSize         Int
+  uploadedBy       String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  venue            Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  contract         StaffContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([venueId])
+}
+
+enum StaffContractType {
+  TEMPO_DETERMINATO
+  TEMPO_INDETERMINATO
+  PART_TIME
+  FULL_TIME
+  STAGIONALE
+  APPRENDISTATO
+  COLLABORAZIONE
+  A_CHIAMATA
+  ALTRO
+}
+
+// Tracks which expiry reminder thresholds have already fired for a contract,
+// so the daily cron (brief sections 13/41) never re-notifies the same
+// threshold twice. (contractId, reminderType) is the dedupe key.
+model StaffContractReminder {
+  id           String                    @id @default(cuid())
+  contractId   String
+  reminderType StaffContractReminderType
+  sentAt       DateTime                  @default(now())
+  contract     StaffContract             @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, reminderType])
+}
+
+enum StaffContractReminderType {
+  DAYS_30
+  DAYS_15
+  DAYS_7
+  DUE_TODAY
+  EXPIRED
 }
 
 // Job title (what this person primarily is). Distinct from StaffCapability
@@ -1720,6 +1807,8 @@ enum NotificationKind {
   AUTH_RECOVERY_LOW
   CONNECTOR_ERROR
   VIP_UNASSIGNED
+  STAFF_CONTRACT_EXPIRING
+  STAFF_CONTRACT_EXPIRED
 }
 
 enum OrderKind {

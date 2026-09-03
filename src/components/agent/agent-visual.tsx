@@ -37,6 +37,7 @@ export function AgentVisual({
   const wrapperRef = useRef<HTMLSpanElement>(null);
   const wavesRef = useRef<HTMLImageElement>(null);
   const wavesParallaxRef = useRef<HTMLSpanElement>(null);
+  const wavesMorphRef = useRef<HTMLSpanElement>(null);
   const coreParallaxRef = useRef<HTMLSpanElement>(null);
   const eyesRef = useRef<HTMLImageElement>(null);
 
@@ -78,6 +79,7 @@ export function AgentVisual({
     wrapperRef,
     wavesRef,
     wavesParallaxRef,
+    wavesMorphRef,
     coreParallaxRef,
     eyesRef,
     active: !reducedMotion,
@@ -108,7 +110,14 @@ export function AgentVisual({
           cutout — a ghost pair trailing the real ones. Only reduced-motion
           (above) uses the flattened master. */}
       <span ref={wavesParallaxRef} className="agent-visual__waves-parallax">
-        <img ref={wavesRef} src={ASSET.waves} alt="" className="agent-visual__layer agent-visual__waves" draggable={false} />
+        {/* Two independently-timed transforms stacked on the same single
+            raster layer (there's no separate green/brown/cream asset to
+            stagger) — a slow outer scale/skew morph plus a faster inner
+            drift, at durations that never resync, so the composite reads as
+            fluid and asynchronous instead of one rotating ring. */}
+        <span ref={wavesMorphRef} className="agent-visual__waves-morph">
+          <img ref={wavesRef} src={ASSET.waves} alt="" className="agent-visual__layer agent-visual__waves" draggable={false} />
+        </span>
       </span>
       <span ref={coreParallaxRef} className="agent-visual__core-parallax">
         <img src={ASSET.core} alt="" className="agent-visual__layer agent-visual__core" draggable={false} />
