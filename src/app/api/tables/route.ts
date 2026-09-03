@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
@@ -28,6 +29,12 @@ export async function POST(req: Request) {
     const created = await db.table.create({ data: { ...data, venueId: ctx.venueId } });
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json(
+        { error: "Esiste già un tavolo con questo nome.", code: "DUPLICATE_LABEL" },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
   }
 }

@@ -50,9 +50,14 @@ function clamp(value: number, min: number, max: number) {
 type MotionOptions = {
   wrapperRef: RefObject<HTMLElement>;
   /** The element carrying the CSS `agent-waves-drift` animation itself (its
-   * playback rate and `--wave-amp` are driven here every frame). */
+   * playback rate is driven here every frame). */
   wavesRef: RefObject<HTMLElement>;
   wavesParallaxRef: RefObject<HTMLElement>;
+  /** Outer wrapper carrying the slower `agent-waves-morph` animation — gets
+   * its own playback-rate nudge plus the shared `--wave-amp` custom property
+   * (set once here so it inherits down to wavesRef's keyframe too, instead
+   * of being written twice). */
+  wavesMorphRef: RefObject<HTMLElement>;
   coreParallaxRef: RefObject<HTMLElement>;
   eyesRef: RefObject<HTMLElement>;
   /** false under prefers-reduced-motion — the hook fully no-ops. */
@@ -70,7 +75,16 @@ type MotionOptions = {
  * per-frame lerp toward a target rate is what makes idle -> processing feel
  * like something spinning up, not a CSS class flipping.
  */
-export function useAgentMotion({ wrapperRef, wavesRef, wavesParallaxRef, coreParallaxRef, eyesRef, active, state }: MotionOptions) {
+export function useAgentMotion({
+  wrapperRef,
+  wavesRef,
+  wavesParallaxRef,
+  wavesMorphRef,
+  coreParallaxRef,
+  eyesRef,
+  active,
+  state,
+}: MotionOptions) {
   const pointer = useRef({ x: 0, y: 0, has: false, inViewport: true, lastMoveAt: 0 });
   const current = useRef({ ex: 0, ey: 0, cx: 0, cy: 0, wx: 0, wy: 0, rate: 1, amp: 1 });
   const stateRef = useRef(state);
@@ -158,14 +172,28 @@ export function useAgentMotion({ wrapperRef, wavesRef, wavesParallaxRef, corePar
       c.rate += (WAVE_RATE[currentState] - c.rate) * WAVE_RATE_EASE;
       c.amp += (WAVE_AMP[currentState] - c.amp) * WAVE_RATE_EASE;
       const wavesEl = wavesRef.current;
+      const wavesMorphEl = wavesMorphRef.current;
+      // Set once on the outer wrapper — custom properties inherit down
+      // through the DOM, so the inner drift keyframe (on wavesEl, a
+      // descendant of wavesMorphEl) reads the same value for free.
+      wavesMorphEl?.style.setProperty("--wave-amp", c.amp.toFixed(3));
+      // Only the continuous drift/morph animations are rate-controlled — a
+      // click/response-ready transient briefly swaps in a different
+      // (short, one-shot) keyframe and must play at its own authored speed,
+      // not whatever rate processing last left behind. Both layers share
+      // the same rate so processing/hover speeds up the whole composite
+      // without collapsing their independent phase drift (their base
+      // durations differ, so a shared multiplier keeps them out of sync).
       if (wavesEl) {
-        wavesEl.style.setProperty("--wave-amp", c.amp.toFixed(3));
         for (const anim of wavesEl.getAnimations()) {
-          // Only the continuous drift animation is rate-controlled — a
-          // click/response-ready transient briefly swaps in a different
-          // (short, one-shot) keyframe and must play at its own authored
-          // speed, not whatever rate processing last left behind.
           if (anim instanceof CSSAnimation && anim.animationName === "agent-waves-drift") {
+            anim.playbackRate = c.rate;
+          }
+        }
+      }
+      if (wavesMorphEl) {
+        for (const anim of wavesMorphEl.getAnimations()) {
+          if (anim instanceof CSSAnimation && anim.animationName === "agent-waves-morph") {
             anim.playbackRate = c.rate;
           }
         }

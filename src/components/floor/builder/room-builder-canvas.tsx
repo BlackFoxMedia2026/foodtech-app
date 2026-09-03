@@ -7,7 +7,7 @@ import { Check, Maximize2, Redo2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react
 import { MIN_ZOOM, MAX_ZOOM } from "../use-room-camera";
 import { useViewportGestures } from "../use-viewport-gestures";
 import { TableNode, TABLE_SIZE } from "../table-node";
-import { isTableRef } from "@/lib/room-layout";
+import { boundingBox, formatMeters, isTableRef, isWall } from "@/lib/room-layout";
 import { RoomLayoutRenderer } from "./room-layout-renderer";
 import type { RoomBuilder } from "./use-room-builder";
 
@@ -25,6 +25,11 @@ export function RoomBuilderCanvas({ builder }: { builder: RoomBuilder }) {
   const drawing = builder.tool.mode === "drawing-wall";
   const placedTableIds = new Set(builder.elements.filter(isTableRef).map((e) => e.tableId));
   const placedTables = builder.tables.filter((t) => placedTableIds.has(t.id));
+  const walls = builder.elements.filter(isWall);
+  // Discreet overall-size quotes on the generated perimeter (brief §31-32).
+  // Derived straight from the wall bounding box every render, so they track
+  // any later edits for free without a dedicated recompute path.
+  const wallBox = walls.length > 0 ? boundingBox(walls) : null;
 
   function onPointerMove(e: React.PointerEvent) {
     gestures.onPointerMove(e);
@@ -36,7 +41,7 @@ export function RoomBuilderCanvas({ builder }: { builder: RoomBuilder }) {
       ref={builder.viewportRef}
       data-testid="room-builder-canvas"
       className={cn(
-        "relative h-full w-full touch-none select-none overflow-hidden rounded-xl border border-border bg-[#F4EFE4]",
+        "relative h-full w-full touch-none select-none overflow-hidden rounded-lg border border-border bg-[#F4EFE4]",
         gestures.isPanning ? "cursor-grabbing" : drawing ? "cursor-crosshair" : "cursor-grab",
       )}
       onPointerDown={gestures.onPointerDown}
@@ -67,6 +72,37 @@ export function RoomBuilderCanvas({ builder }: { builder: RoomBuilder }) {
           onDragStart={builder.beginTransaction}
           onCommit={builder.endTransaction}
         />
+
+        {wallBox && (
+          <svg
+            className="pointer-events-none absolute left-0 top-0 overflow-visible"
+            width={builder.dims.width}
+            height={builder.dims.height}
+            aria-hidden
+          >
+            <text
+              x={(wallBox.minX + wallBox.maxX) / 2}
+              y={wallBox.minY - 14}
+              textAnchor="middle"
+              fontSize={12}
+              fill="#905B38"
+              className="select-none font-medium"
+            >
+              {formatMeters(wallBox.maxX - wallBox.minX)}
+            </text>
+            <text
+              x={wallBox.minX - 14}
+              y={(wallBox.minY + wallBox.maxY) / 2}
+              textAnchor="middle"
+              fontSize={12}
+              fill="#905B38"
+              className="select-none font-medium"
+              transform={`rotate(-90 ${wallBox.minX - 14} ${(wallBox.minY + wallBox.maxY) / 2})`}
+            >
+              {formatMeters(wallBox.maxY - wallBox.minY)}
+            </text>
+          </svg>
+        )}
 
         {placedTables.map((t) => (
           <TableNode
@@ -105,7 +141,7 @@ export function RoomBuilderCanvas({ builder }: { builder: RoomBuilder }) {
       {drawing && (
         <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
           <div
-            className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/95 px-3 py-1.5 text-xs shadow-lg backdrop-blur-sm"
+            className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/95 px-3 py-1.5 text-xs text-card-foreground shadow-lg backdrop-blur-sm"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <span className="text-muted-foreground">
@@ -124,7 +160,7 @@ export function RoomBuilderCanvas({ builder }: { builder: RoomBuilder }) {
       {(builder.tool.mode === "placing" || builder.tool.mode === "placing-table") && (
         <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
           <div
-            className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/95 px-3 py-1.5 text-xs shadow-lg backdrop-blur-sm"
+            className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/95 px-3 py-1.5 text-xs text-card-foreground shadow-lg backdrop-blur-sm"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <span className="text-muted-foreground">Clicca sulla piantina per posizionare l&apos;elemento</span>
@@ -135,7 +171,7 @@ export function RoomBuilderCanvas({ builder }: { builder: RoomBuilder }) {
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 shadow-lg backdrop-blur-sm">
+      <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 text-card-foreground shadow-lg backdrop-blur-sm">
         <div className="pointer-events-auto flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
           <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={builder.undo} disabled={!builder.canUndo} aria-label="Annulla">
             <Undo2 className="h-4 w-4" />

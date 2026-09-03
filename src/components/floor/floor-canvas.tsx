@@ -17,6 +17,7 @@ import { useViewportGestures } from "./use-viewport-gestures";
 import { TableNode, TABLE_SIZE, type LocalTable, type TableStaffMap } from "./table-node";
 import { ManagePlanDialog } from "./manage-plan-dialog";
 import { AssignStaffDialog } from "./assign-staff-dialog";
+import { NewTableDialog } from "./new-table-dialog";
 import { RoomLayoutRenderer } from "./builder/room-layout-renderer";
 import { parseRoomLayoutElements } from "@/lib/room-layout";
 import type { RoomLayoutMode } from "@prisma/client";
@@ -69,6 +70,7 @@ export const FloorCanvas = forwardRef<
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
   const [managePlanOpen, setManagePlanOpen] = useState(false);
+  const [newTableOpen, setNewTableOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [assignStaffTableId, setAssignStaffTableId] = useState<string | null>(null);
 
@@ -169,22 +171,6 @@ export const FloorCanvas = forwardRef<
   }, []);
 
   useImperativeHandle(ref, () => ({ save: persist, isDirty: () => tables.some((t) => t.dirty) }));
-
-  async function addTable() {
-    const label = prompt("Etichetta nuovo tavolo (es. T20)") ?? "";
-    if (!label) return;
-    const seats = Number(prompt("Posti", "2") ?? 2);
-    const res = await fetch("/api/tables", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label, seats, roomId, posX: 80, posY: 80 }),
-    });
-    if (res.ok) {
-      const t = await res.json();
-      setTables((prev) => [...prev, t]);
-      router.refresh();
-    }
-  }
 
   const deleteTable = useCallback(
     async (id: string) => {
@@ -322,7 +308,7 @@ export const FloorCanvas = forwardRef<
           >
             <MapIcon className="h-4 w-4" /> {floorPlanUrl || activeLayoutMode === "BUILDER" ? "Gestisci piantina" : "Carica piantina"}
           </Button>
-          <Button variant="subtle" size="sm" className="hidden shadow-lg sm:inline-flex" onClick={addTable}>
+          <Button variant="subtle" size="sm" className="hidden shadow-lg sm:inline-flex" onClick={() => setNewTableOpen(true)}>
             <Plus className="h-4 w-4" /> Nuovo tavolo
           </Button>
           <DropdownMenu>
@@ -335,7 +321,7 @@ export const FloorCanvas = forwardRef<
               <DropdownMenuItem onSelect={() => setManagePlanOpen(true)}>
                 <MapIcon className="h-4 w-4" /> {floorPlanUrl || activeLayoutMode === "BUILDER" ? "Gestisci piantina" : "Carica piantina"}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={addTable}>
+              <DropdownMenuItem onSelect={() => setNewTableOpen(true)}>
                 <Plus className="h-4 w-4" /> Nuovo tavolo
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -426,6 +412,17 @@ export const FloorCanvas = forwardRef<
         roomWidth={width}
         roomHeight={height}
         allTables={tables}
+      />
+
+      <NewTableDialog
+        open={newTableOpen}
+        onOpenChange={setNewTableOpen}
+        roomId={roomId}
+        roomName={roomName}
+        onCreated={(t) => {
+          setTables((prev) => [...prev, t]);
+          router.refresh();
+        }}
       />
 
       <AssignStaffDialog

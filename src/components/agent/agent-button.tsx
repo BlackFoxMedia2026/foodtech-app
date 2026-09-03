@@ -23,7 +23,7 @@ export const AgentButton = forwardRef<HTMLButtonElement, { open: boolean; proces
         className="h-[46px] w-[46px] shrink-0 -translate-x-[14px] overflow-visible text-foreground hover:bg-transparent"
         {...props}
       >
-        <AgentVisual state={state} size={76} />
+        <AgentVisual state={state} size={62} />
       </Button>
     );
   },
