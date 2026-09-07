@@ -1,0 +1,25 @@
+-- LA PRIMA MIGRAZIONE DISTRUTTIVA DI QUESTO PROGETTO, ed è dichiarata.
+--
+-- `Campaign.bookedCount` era una colonna morta: nessuno la scriveva, e la
+-- pagina delle campagne mostrava zero prenotazioni generate su ognuna — una
+-- bocciatura inventata. Il merito vero si calcola da `Booking.campaignId`
+-- dalla migrazione `20260907190000_attribuzione_campagne`.
+--
+-- Perché si può fare senza perdere niente: i valori in colonna sono o lo zero
+-- del default, o i numeri finti scritti dal seed della demo. Non c'è un solo
+-- dato vero dentro.
+--
+-- Perché arriva DOPO e non insieme al codice che ha smesso di dichiararla:
+-- durante una pubblicazione il codice vecchio serve ancora le richieste
+-- mentre le migrazioni sono già applicate, e un client Prisma che seleziona
+-- una colonna appena cancellata restituisce un errore a un utente. Prima si
+-- smette di leggerla (fatto, e già in produzione), poi si cancella (qui).
+--
+-- Il freno delle anteprime la riconoscerà come distruttiva e NON la applicherà
+-- sull'anteprima di questa richiesta: il database delle anteprime è quello di
+-- produzione. La applicherà la pubblicazione della fusione. È esattamente il
+-- comportamento per cui quel freno è stato scritto, e questa è la prima volta
+-- che si vede all'opera.
+
+-- AlterTable
+ALTER TABLE "Campaign" DROP COLUMN "bookedCount";
