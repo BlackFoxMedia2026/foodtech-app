@@ -92,7 +92,7 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
 
 ## Phase 6 — Ecosistema
 
-- Loyalty e gift card: fatte. Restano Wi-Fi e connettori
+- Loyalty, gift card e Wi-Fi: fatti. Restano i connettori (POS e simili)
 - [x] **Menu**: categorie e piatti, allergeni da elenco chiuso, disponibilità, ordine, costo facoltativo con il margine. Più il **menu pubblico** per il QR sul tavolo. Serve a sé, e regge i due passi dopo
 - [x] **Ordini / conto del tavolo**: si apre dalla prenotazione, si cerca un piatto e si tocca. Prezzo fotografato all'ordine, totale dalle righe, fuori carta a mano. Chiuso il conto, la Panoramica smette di stimare e mostra l'**incasso**
       → `Order` era pensato per l'asporto (nome e telefono obbligatori, nessun legame con la prenotazione): aggiunto `bookingId` e resi facoltativi i due campi, invece di inventare un nome e un telefono per ogni tavolo
@@ -104,6 +104,11 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
 - [x] **Gift card**: si emettono al bancone (serve solo l'importo), si scalano dal conto **anche in più volte** — quello che resta resta sulla carta. Il residuo si calcola dalle righe, non si scala più di quello che c'è, e annullare un utilizzo scrive un movimento negativo che rimette i soldi sulla carta
       → sul conto, gift card e punti sono **modi di pagare**, non righe: le righe sono quello che è stato mangiato, e serve così com'è al costo del cibo. Sotto il totale compare «da incassare»
       → una gift card **non è un incasso di oggi**: sposta il momento in cui il denaro è entrato. La Panoramica dice quanta parte dell'incasso di oggi era già pagata, e l'elenco delle carte chiama il residuo col suo nome — un **debito** verso i clienti
+- [x] **Portale Wi-Fi**: pagina pubblica su `/wifi/<locale>`, contatto in cambio della password della rete, consenso registrato con data e provenienza, sconto personale facoltativo. In Marketing: quanti contatti e — l'unico numero che conta — quanti hanno **poi prenotato**
+      → mancava nello schema la cosa per cui una persona compila un modulo: la password. Tavolo non apre la rete (lo fa il router del locale), quindi lo scambio è dichiarato invece che finto, e funziona in qualunque locale senza toccare nessun apparato
+      → `WifiSession` resta **non scritta di proposito**: una sessione ha una fine, e la fine non possiamo vederla. Righe con `endedAt` sempre vuoto sarebbero i contatori mai scritti che abbiamo passato giorni a togliere
+- [x] **Riconoscimento del cliente**: prenotazioni dal sito e contatti dal Wi-Fi cercano la persona che c'è già prima di crearne una copia
+      → `createBooking` creava **sempre** un ospite nuovo: chi prenotava dal sito per la terza volta finiva nel CRM per la terza volta. Nessun doppione era ancora comparso, ma con i punti fedeltà tre copie sono tre saldi che non si sommano
 - POS e altri connettori sopra un livello di integrazione astratto
 
 ## Phase 7 — Enterprise
