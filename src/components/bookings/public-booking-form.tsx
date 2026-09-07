@@ -109,7 +109,7 @@ export function PublicBookingForm({
     primaryColor && HEX_COLOR_RE.test(primaryColor) ? { background: primaryColor } : undefined;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} method="post" className="space-y-6">
       {logoUrl && (
         <div className="flex justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}

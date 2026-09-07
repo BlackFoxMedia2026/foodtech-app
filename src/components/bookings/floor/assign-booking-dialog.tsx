@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { Table } from "@prisma/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatTime } from "@/lib/utils";
 import type { FloorBooking } from "./booking-table-node";
 
@@ -24,24 +26,33 @@ export function AssignBookingDialog({
   onOpenChange: (open: boolean) => void;
   table: Table | null;
   unassignedBookings: FloorBooking[];
-  onAssign: (bookingId: string, opts: { force?: boolean }) => Promise<{ ok: boolean; message?: string }>;
+  onAssign: (
+    bookingId: string,
+    opts: { force?: boolean; forceReason?: string },
+  ) => Promise<{ ok: boolean; message?: string }>;
 }) {
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
   const [confirmBooking, setConfirmBooking] = useState<FloorBooking | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState("");
 
   if (!table) return null;
 
   async function doAssign(booking: FloorBooking, force: boolean) {
+    if (force && !motivo.trim()) {
+      setError("Scrivi il motivo: il tavolo ha meno posti delle persone.");
+      return;
+    }
     setPendingBookingId(booking.id);
     setError(null);
-    const result = await onAssign(booking.id, { force });
+    const result = await onAssign(booking.id, { force, forceReason: force ? motivo.trim() : undefined });
     setPendingBookingId(null);
     if (!result.ok) {
       setError(result.message ?? "Impossibile assegnare la prenotazione. Riprova.");
       return;
     }
     setConfirmBooking(null);
+    setMotivo("");
     onOpenChange(false);
   }
 
@@ -69,12 +80,34 @@ export function AssignBookingDialog({
             <p className="text-sm text-card-foreground">
               Il tavolo {table.label} ha {table.seats} posti, ma la prenotazione è per {confirmBooking.partySize} persone.
             </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="ab-motivo">Perché la assegni comunque</Label>
+              <Input
+                id="ab-motivo"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Es. aggiungiamo una sedia, sono due bambini"
+                autoFocus
+              />
+            </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setConfirmBooking(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setConfirmBooking(null);
+                  setError(null);
+                }}
+              >
                 Annulla
               </Button>
-              <Button type="button" variant="accent" disabled={pendingBookingId === confirmBooking.id} onClick={() => doAssign(confirmBooking, true)}>
+              <Button
+                type="button"
+                variant="accent"
+                disabled={pendingBookingId === confirmBooking.id || !motivo.trim()}
+                onClick={() => doAssign(confirmBooking, true)}
+              >
                 {pendingBookingId === confirmBooking.id ? "Assegno…" : "Assegna comunque"}
               </Button>
             </div>

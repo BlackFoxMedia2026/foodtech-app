@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { createBooking } from "@/server/bookings";
 import { AvailabilityError } from "@/server/availability";
+import { BookingAssignError, assignBookingToTable } from "@/server/booking-floor";
 
 /**
  * La forzatura: accettare una prenotazione oltre orari, capienza o posti del
@@ -150,5 +151,62 @@ describe("con forzatura", () => {
     expect(normale).not.toBeNull();
 
     await db.booking.delete({ where: { id: booking.id } });
+  });
+});
+
+describe("forzare l'assegnazione di un tavolo troppo piccolo", () => {
+  /** Una prenotazione per quattro, in orario, senza tavolo. */
+  async function perQuattro() {
+    return createBooking(
+      venueId,
+      {
+        guest: { firstName: "Gruppo", lastName: "Grande" },
+        partySize: 4,
+        startsAt: dentroServizio().toISOString(),
+        source: "PHONE",
+      },
+      { skipAvailabilityCheck: true, forceReason: "prova" },
+    );
+  }
+
+  it("senza forzatura si rifiuta e dice quanti posti mancano", async () => {
+    const b = await perQuattro();
+    await expect(assignBookingToTable(venueId, b.id, tavolo2)).rejects.toMatchObject({
+      code: "capacity_mismatch",
+      detail: { tableSeats: 2, partySize: 4 },
+    });
+  });
+
+  it("forzare senza motivo non basta più", async () => {
+    const b = await perQuattro();
+    // Prima passava: il registro segnava «forzata» e non il perché, cioè
+    // proprio la parte che serve a chi controlla dopo.
+    await expect(assignBookingToTable(venueId, b.id, tavolo2, { force: true })).rejects.toMatchObject({
+      code: "reason_required",
+    });
+    await expect(
+      assignBookingToTable(venueId, b.id, tavolo2, { force: true, forceReason: "   " }),
+    ).rejects.toBeInstanceOf(BookingAssignError);
+
+    const dopo = await db.booking.findUniqueOrThrow({ where: { id: b.id } });
+    expect(dopo.tableId).toBeNull();
+  });
+
+  it("con il motivo assegna, e il motivo finisce nel registro", async () => {
+    const b = await perQuattro();
+    const attore = { userId: "u1", email: "p@test.local", orgId, venueId, ip: null, userAgent: null };
+
+    const assegnata = await assignBookingToTable(venueId, b.id, tavolo2, {
+      force: true,
+      forceReason: "aggiungiamo una sedia, due sono bambini",
+      actor: attore,
+    });
+    expect(assegnata.tableId).toBe(tavolo2);
+
+    const riga = await db.auditLog.findFirstOrThrow({
+      where: { venueId, action: "booking.assign_table_forced", entityId: b.id },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(JSON.stringify(riga.diff)).toContain("aggiungiamo una sedia");
   });
 });

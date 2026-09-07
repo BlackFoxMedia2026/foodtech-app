@@ -89,7 +89,7 @@ function SignInForm() {
       {/* Login form */}
       <section className="relative order-1 flex items-center justify-center py-6 md:order-2 md:py-0">
         <Card className="card-notch w-full max-w-[400px] p-8 sm:p-10 lg:max-w-[440px]">
-          <form onSubmit={onSubmit} noValidate className="w-full space-y-6 text-left">
+          <form onSubmit={onSubmit} method="post" noValidate className="w-full space-y-6 text-left">
             <div className="flex flex-col items-start space-y-4 text-left">
               <Logo />
               <div className="space-y-1.5">

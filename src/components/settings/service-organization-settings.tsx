@@ -212,7 +212,7 @@ export function ServiceOrganizationSettings({
             </div>
           ))}
 
-          <form onSubmit={addRoom} className="flex items-center gap-2 pt-1">
+          <form onSubmit={addRoom} method="post" className="flex items-center gap-2 pt-1">
             <Input
               value={newRoomName}
               onChange={(e) => setNewRoomName(e.target.value)}

@@ -245,7 +245,12 @@ describe("spostare una tavolata su un tavolo solo", () => {
     const b = await prenotazione(8);
     await combineTablesForBooking(venueId, b.id, [t1, t2]);
 
-    const spostata = await assignBookingToTable(venueId, b.id, t3, { force: true });
+    // Forzare vuole un motivo scritto, come per la creazione e per le
+    // tavolate: era l'ultima scorciatoia rimasta senza attrito.
+    const spostata = await assignBookingToTable(venueId, b.id, t3, {
+      force: true,
+      forceReason: "il gruppo si è ridotto a quattro",
+    });
     expect(spostata.tableId).toBe(t3);
     expect(spostata.combinedTableIds).toEqual([]);
 

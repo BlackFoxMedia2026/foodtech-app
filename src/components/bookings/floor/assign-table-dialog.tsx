@@ -5,6 +5,8 @@ import type { Table } from "@prisma/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { bookingsOverlap } from "@/lib/booking-time";
 import type { FloorBooking } from "./booking-table-node";
@@ -31,11 +33,15 @@ export function AssignTableDialog({
   booking: FloorBooking | null;
   tablesByRoom: { roomId: string; roomName: string; tables: Table[] }[];
   assignedBookings: FloorBooking[];
-  onAssign: (tableId: string, opts: { force?: boolean }) => Promise<{ ok: boolean; message?: string }>;
+  onAssign: (
+    tableId: string,
+    opts: { force?: boolean; forceReason?: string },
+  ) => Promise<{ ok: boolean; message?: string }>;
 }) {
   const [pendingTableId, setPendingTableId] = useState<string | null>(null);
   const [confirmTable, setConfirmTable] = useState<Table | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState("");
 
   const occupiedTableIds = useMemo(() => {
     if (!booking) return new Set<string>();
@@ -50,15 +56,20 @@ export function AssignTableDialog({
   if (!booking) return null;
 
   async function doAssign(table: Table, force: boolean) {
+    if (force && !motivo.trim()) {
+      setError("Scrivi il motivo: il tavolo ha meno posti delle persone.");
+      return;
+    }
     setPendingTableId(table.id);
     setError(null);
-    const result = await onAssign(table.id, { force });
+    const result = await onAssign(table.id, { force, forceReason: force ? motivo.trim() : undefined });
     setPendingTableId(null);
     if (!result.ok) {
       setError(result.message ?? "Impossibile assegnare il tavolo. Riprova.");
       return;
     }
     setConfirmTable(null);
+    setMotivo("");
     onOpenChange(false);
   }
 
@@ -86,12 +97,37 @@ export function AssignTableDialog({
             <p className="text-sm text-card-foreground">
               Il tavolo {confirmTable.label} ha {confirmTable.seats} posti, ma la prenotazione è per {booking.partySize} persone.
             </p>
+            {/* Il motivo è obbligatorio: una riga di spiegazione è quel tanto
+                di attrito che distingue «lo faccio perché serve» da «lo faccio
+                perché è più veloce», e finisce nel registro con nome e ora. */}
+            <div className="space-y-1.5">
+              <Label htmlFor="at-motivo">Perché lo assegni comunque</Label>
+              <Input
+                id="at-motivo"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Es. aggiungiamo una sedia, sono due bambini"
+                autoFocus
+              />
+            </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setConfirmTable(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setConfirmTable(null);
+                  setError(null);
+                }}
+              >
                 Annulla
               </Button>
-              <Button type="button" variant="accent" disabled={pendingTableId === confirmTable.id} onClick={() => doAssign(confirmTable, true)}>
+              <Button
+                type="button"
+                variant="accent"
+                disabled={pendingTableId === confirmTable.id || !motivo.trim()}
+                onClick={() => doAssign(confirmTable, true)}
+              >
                 {pendingTableId === confirmTable.id ? "Assegno…" : "Assegna comunque"}
               </Button>
             </div>

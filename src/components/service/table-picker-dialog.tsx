@@ -144,7 +144,10 @@ export function TablePickerDialog({
 
     const corpo = unione
       ? { tableIds: scelti, ...(bastano ? {} : { force: true, forceReason: motivo.trim() }) }
-      : { tableId: scelti[0], ...(bastano ? {} : { force: true }) };
+      // Il motivo va anche qui: prima lo chiedevamo e poi lo buttavamo via
+      // sulla strada del tavolo singolo, e nel registro restava «forzata»
+      // senza il perché — cioè senza la parte utile.
+      : { tableId: scelti[0], ...(bastano ? {} : { force: true, forceReason: motivo.trim() }) };
 
     const assegna = await fetch(`/api/bookings/${bookingId}/${unione ? "combine-tables" : "assign-table"}`, {
       method: "POST",
