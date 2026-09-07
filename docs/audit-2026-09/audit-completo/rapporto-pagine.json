@@ -1,0 +1,262 @@
+[
+ {
+  "nome": "01-panoramica",
+  "url": "/overview",
+  "titolo": "Panoramica: la giornata in un colpo d'occhio",
+  "http": 200,
+  "ms": 4441,
+  "caratteri": 1610,
+  "errori": []
+ },
+ {
+  "nome": "02-servizio",
+  "url": "/service",
+  "titolo": "Servizio: chi arriva, chi è a tavola, cosa fare adesso",
+  "http": 200,
+  "ms": 4247,
+  "caratteri": 3219,
+  "errori": []
+ },
+ {
+  "nome": "03-sala-live",
+  "url": "/service/room",
+  "titolo": "Sala viva: stato di ogni tavolo in tempo reale",
+  "http": 200,
+  "ms": 4158,
+  "caratteri": 470,
+  "errori": []
+ },
+ {
+  "nome": "04-prenotazioni",
+  "url": "/bookings",
+  "titolo": "Prenotazioni: elenco del giorno",
+  "http": 200,
+  "ms": 4184,
+  "caratteri": 1364,
+  "errori": []
+ },
+ {
+  "nome": "05-prenotazioni-settimana",
+  "url": "/bookings?vista=settimana",
+  "titolo": "Prenotazioni: la settimana sui libri",
+  "http": 200,
+  "ms": 3847,
+  "caratteri": 1364,
+  "errori": []
+ },
+ {
+  "nome": "06-nuova-prenotazione",
+  "url": "/bookings/new",
+  "titolo": "Nuova prenotazione a mano",
+  "http": 200,
+  "ms": 4015,
+  "caratteri": 781,
+  "errori": []
+ },
+ {
+  "nome": "07-piantina",
+  "url": "/floor",
+  "titolo": "Sala: piantina e tavoli",
+  "http": 200,
+  "ms": 4285,
+  "caratteri": 783,
+  "errori": []
+ },
+ {
+  "nome": "08-attesa",
+  "url": "/waitlist",
+  "titolo": "Lista d'attesa",
+  "http": 200,
+  "ms": 4029,
+  "caratteri": 400,
+  "errori": []
+ },
+ {
+  "nome": "09-ospiti",
+  "url": "/guests",
+  "titolo": "CRM ospiti, a pagine",
+  "http": 200,
+  "ms": 4077,
+  "caratteri": 5377,
+  "errori": []
+ },
+ {
+  "nome": "10-scheda-ospite",
+  "url": "/guests/cms94qrk90018yzl2w68ytdi4",
+  "titolo": "Scheda ospite: profilo calcolato, punti, esporta/cancella dati",
+  "http": 200,
+  "ms": 4429,
+  "caratteri": 2405,
+  "errori": []
+ },
+ {
+  "nome": "11-analytics",
+  "url": "/insights",
+  "titolo": "Analytics: costo del cibo, assenze, previsione, NPS",
+  "http": 200,
+  "ms": 4099,
+  "caratteri": 6706,
+  "errori": []
+ },
+ {
+  "nome": "12-menu",
+  "url": "/menu",
+  "titolo": "Menu: categorie, piatti, allergeni, costo e margine",
+  "http": 200,
+  "ms": 4185,
+  "caratteri": 1694,
+  "errori": []
+ },
+ {
+  "nome": "13-marketing",
+  "url": "/marketing",
+  "titolo": "Marketing: le cinque sezioni",
+  "http": 200,
+  "ms": 4172,
+  "caratteri": 912,
+  "errori": []
+ },
+ {
+  "nome": "14-campagne",
+  "url": "/campaigns",
+  "titolo": "Campagne email",
+  "http": 200,
+  "ms": 4107,
+  "caratteri": 349,
+  "errori": []
+ },
+ {
+  "nome": "15-automazioni",
+  "url": "/marketing/automations",
+  "titolo": "Automazioni: catalogo chiuso di tre",
+  "http": 200,
+  "ms": 4375,
+  "caratteri": 2919,
+  "errori": []
+ },
+ {
+  "nome": "16-coupon",
+  "url": "/marketing/coupons",
+  "titolo": "Coupon",
+  "http": 200,
+  "ms": 4166,
+  "caratteri": 759,
+  "errori": []
+ },
+ {
+  "nome": "17-gift-card",
+  "url": "/marketing/gift-cards",
+  "titolo": "Gift card: il residuo è un debito",
+  "http": 200,
+  "ms": 4082,
+  "caratteri": 910,
+  "errori": []
+ },
+ {
+  "nome": "18-wifi-contatti",
+  "url": "/marketing/wifi",
+  "titolo": "Wi-Fi: contatti e quanti hanno poi prenotato",
+  "http": 200,
+  "ms": 4198,
+  "caratteri": 606,
+  "errori": []
+ },
+ {
+  "nome": "19-qr",
+  "url": "/marketing/qr-codes",
+  "titolo": "QR code",
+  "http": 200,
+  "ms": 4314,
+  "caratteri": 279,
+  "errori": []
+ },
+ {
+  "nome": "20-esperienze",
+  "url": "/experiences",
+  "titolo": "Esperienze",
+  "http": 200,
+  "ms": 4320,
+  "caratteri": 468,
+  "errori": []
+ },
+ {
+  "nome": "21-camerieri",
+  "url": "/waiters",
+  "titolo": "Camerieri e contratti",
+  "http": 200,
+  "ms": 4837,
+  "caratteri": 545,
+  "errori": []
+ },
+ {
+  "nome": "22-pagamenti",
+  "url": "/payments",
+  "titolo": "Pagamenti: schema pronto, Stripe non collegato",
+  "http": 200,
+  "ms": 4080,
+  "caratteri": 206,
+  "errori": []
+ },
+ {
+  "nome": "23-impostazioni",
+  "url": "/settings",
+  "titolo": "Impostazioni: scontrino medio, raccolta punti, coda, turni",
+  "http": 200,
+  "ms": 4138,
+  "caratteri": 2529,
+  "errori": []
+ },
+ {
+  "nome": "24-impostazioni-brand",
+  "url": "/settings/brand",
+  "titolo": "Brand: logo, colori, dati pubblici",
+  "http": 200,
+  "ms": 4163,
+  "caratteri": 736,
+  "errori": []
+ },
+ {
+  "nome": "25-impostazioni-wifi",
+  "url": "/settings/wifi",
+  "titolo": "Portale Wi-Fi: rete, password, sconto",
+  "http": 200,
+  "ms": 4087,
+  "caratteri": 1363,
+  "errori": []
+ },
+ {
+  "nome": "mobile-01-panoramica",
+  "url": "/overview",
+  "overflowOrizzontale": 0
+ },
+ {
+  "nome": "mobile-02-servizio",
+  "url": "/service",
+  "overflowOrizzontale": 0
+ },
+ {
+  "nome": "mobile-03-sala",
+  "url": "/service/room",
+  "overflowOrizzontale": 0
+ },
+ {
+  "nome": "mobile-04-prenotazioni",
+  "url": "/bookings",
+  "overflowOrizzontale": 0
+ },
+ {
+  "nome": "mobile-05-ospiti",
+  "url": "/guests",
+  "overflowOrizzontale": 0
+ },
+ {
+  "nome": "mobile-06-menu",
+  "url": "/menu",
+  "overflowOrizzontale": 0
+ },
+ {
+  "nome": "mobile-07-analytics",
+  "url": "/insights",
+  "overflowOrizzontale": 0
+ }
+]
