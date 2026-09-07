@@ -2,7 +2,7 @@
 
 Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso commit che cambia lo stato di un modulo.
 
-**Aggiornato:** 7 settembre 2026 · commit di riferimento `c6a1a82` + Phase 0 + Phase 1 (parziale) + Phase 2 (in corso)
+**Aggiornato:** 7 settembre 2026 · commit di riferimento `c6a1a82` + Phase 0 + Phase 1 + Phase 2 + Phase 3 + Phase 4 (in corso)
 
 ## Come si legge
 
@@ -53,7 +53,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Guest Intelligence | LIVE | Visite, prima/ultima, frequenza, coperti medi, anticipo di prenotazione, tasso disdette e assenze, giorno/fascia/sala/tavolo preferiti, occasioni — **tutto calcolato dalle prenotazioni**. Undici etichette automatiche, ognuna con il motivo |
 | Storia dell'ospite (timeline) | LIVE | Prenotazioni, visite, assenze, disdette, attese, messaggi. Ordini, pagamenti e recensioni compariranno quando esisteranno |
 
-| Marketing / campagne email | BETA | Funziona via Brevo. I segmenti filtrano su dati veri (contatori riallineati; rimosso il filtro sulla spesa, che leggeva un campo mai aggiornato). L'invio non scala: una chiamata per ospite dentro la richiesta HTTP, serve una coda |
+| Marketing / campagne email | LIVE | Funziona via Brevo. I segmenti filtrano su dati veri e usano le stesse etichette della scheda ospite. L'invio passa dalla coda: il clic risponde subito, i contatti si preparano a lotti di venticinque, la pagina mostra l'avanzamento contato sui contatti veri e lo stato dice «in invio» finché lo è |
 | QR code | LIVE | |
 | Automazioni | SCHEMA ONLY | |
 | Recensioni e NPS | LIVE | Il giorno dopo la visita: una domanda sola (0-10). Promotori → link alla recensione pubblica; detrattori → commento privato **e notifica immediata al locale**. Pannello con NPS, distribuzione, andamento a quattro settimane e commenti recenti |
@@ -96,10 +96,11 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 | Migrazioni versionate | LIVE | `prisma migrate deploy` al deploy |
 | Branding | LIVE | |
 | Notifiche in-app | LIVE | Filtrate per ruolo |
-| Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii |
+| Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii. La risposta del fornitore viene verificata: un rifiuto non risulta più «inviato» |
+| Coda dei lavori | LIVE | `BackgroundJob` su Postgres, smaltita ogni minuto. Presa in carico atomica (due cron sovrapposti non fanno partire due volte lo stesso invio), lavori a lotti che cedono il turno, nuovi tentativi con attese crescenti, ripresa dei lavori interrotti, errori definitivi visibili in Impostazioni con «Riprova» |
 | Navigazione mobile | LIVE | Barra in basso con «+» per i gesti rapidi; nessuno scorrimento orizzontale |
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
-| Test | PARTIAL | 214 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo, profilo ospite e sondaggi. Nessun end-to-end sul browser |
+| Test | PARTIAL | 248 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo, profilo ospite, sondaggi, coda dei lavori e invio campagne. Nessun end-to-end sul browser automatizzato (le verifiche dal vivo si fanno a mano, con gli screenshot in `docs/audit-2026-09/`) |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
 
@@ -107,7 +108,7 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 
 | Canale | Stato | Note |
 |---|---|---|
-| Email | LIVE | Resend. Senza chiave i messaggi non partono e chi chiama lo sa |
+| Email | LIVE | Resend. Senza chiave i messaggi non partono e chi chiama lo sa. Con una chiave non valida l'invio risulta non riuscito, non riuscito a metà |
 | SMS | PLANNED | Il posto è pronto in `PROVIDERS`; manca il fornitore. Nessuna interfaccia lo offre |
 | WhatsApp | PLANNED | Come sopra |
 

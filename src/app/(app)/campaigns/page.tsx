@@ -3,6 +3,7 @@ import { getActiveVenue } from "@/lib/tenant";
 import { listCampaigns } from "@/server/campaigns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CAMPAIGN_STATUS } from "@/lib/campaign-status";
 import { Button } from "@/components/ui/button";
 import { Megaphone, Plus } from "lucide-react";
 
@@ -47,7 +48,7 @@ export default async function CampaignsPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <Badge tone={CHANNEL_TONE[c.channel]}>{c.channel}</Badge>
-                    <Badge tone="neutral">{c.status}</Badge>
+                    <Badge tone={CAMPAIGN_STATUS[c.status].tone}>{CAMPAIGN_STATUS[c.status].label}</Badge>
                   </div>
                   <CardTitle className="flex items-center gap-2">
                     <Megaphone className="h-4 w-4 text-gilt-dark" />

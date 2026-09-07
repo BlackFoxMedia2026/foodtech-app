@@ -85,7 +85,7 @@ Legenda valori: ✅ completo · 🟨 parziale · ❌ assente · — non applicab
 
 **A2 — 43 modelli con `id` senza valore predefinito.** Il codice compensa a mano (`id: crypto.randomUUID()` in `notifications.ts:20`, `campaigns.ts:244`). Funziona, ma qualunque nuovo `create` che se ne dimentichi va in errore a runtime. È debito che si paga a ogni nuova feature su quelle tabelle — cioè su tutte le 16 SCHEMA ONLY.
 
-**A3 — L'invio campagne non scala e non è transazionale.** `prepareRecipients` (`campaigns.ts:217-234`) esegue **una chiamata a Brevo più una scrittura su database per ogni ospite**, in sequenza, dentro la richiesta HTTP. Nessun `maxDuration` è configurato. Con qualche centinaio di ospiti la funzione viene interrotta a metà: contatti sincronizzati in parte, campagna in stato incoerente, nessuna ripresa. Serve una coda.
+**A3 — L'invio campagne non scala e non è transazionale.** `prepareRecipients` (`campaigns.ts:217-234`) esegue **una chiamata a Brevo più una scrittura su database per ogni ospite**, in sequenza, dentro la richiesta HTTP. Nessun `maxDuration` è configurato. Con qualche centinaio di ospiti la funzione viene interrotta a metà: contatti sincronizzati in parte, campagna in stato incoerente, nessuna ripresa. Serve una coda. **[Risolto il 7 settembre 2026]** `BackgroundJob` + `/api/cron/jobs`: l'invio è un lavoro a lotti, ripartibile, con l'avanzamento visibile.
 
 **A4 — Nessun middleware.** Non esiste `middleware.ts`: autenticazione, rate limiting e intestazioni di sicurezza non hanno un punto centrale dove vivere. Ogni route se la cava da sola.
 

@@ -116,6 +116,23 @@ export function apiErrorResponse(err: unknown) {
   if (message === "conflict") {
     return apiError(409, "conflict", "Qualcuno ha modificato questo elemento nel frattempo.");
   }
+  if (message === "campaign_already_sent") {
+    return apiError(409, "campaign_already_sent", "Questa campagna è già partita: non si può inviare due volte.");
+  }
+  if (message === "campaign_already_handed_over") {
+    return apiError(
+      409,
+      "campaign_already_handed_over",
+      "Questa campagna era già stata consegnata al fornitore: non la rimandiamo, per non scrivere due volte agli stessi clienti."
+    );
+  }
+  if (message === "no_recipients") {
+    return apiError(
+      422,
+      "no_recipients",
+      "Nessun destinatario: con questi criteri non c'è nessun cliente con email e consenso."
+    );
+  }
   if (message === "permission_denied") {
     return apiError(403, "forbidden", "Il tuo ruolo non consente questa operazione.");
   }

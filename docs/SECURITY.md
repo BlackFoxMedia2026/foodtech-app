@@ -115,7 +115,7 @@ resta salvata e l'errore finisce nei log.
 |---|---|---|
 | `POST /api/public/bookings` | nessuna, per progetto | limite di frequenza; `venueId` verificato attivo; disponibilità server-side |
 | `GET /api/public/availability` | nessuna | limite di frequenza |
-| `GET /api/cron/staff-contracts-expiry` | `Authorization: Bearer $CRON_SECRET` | **si rifiuta di partire** se `CRON_SECRET` non è configurato |
+| `GET /api/cron/*` (quattro: `jobs`, `booking-reminders`, `staff-contracts-expiry`, `survey-requests`) | `Authorization: Bearer $CRON_SECRET` | **si rifiutano di partire** se `CRON_SECRET` non è configurato |
 | `POST /api/webhooks/brevo` | token in query | 401 senza token valido |
 | `GET /api/unsubscribe` | token firmato | |
 

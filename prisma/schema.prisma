@@ -108,6 +108,7 @@ model Venue {
   agentUsages           AgentUsage[]
   ApiToken              ApiToken[]
   AutomationWorkflow    AutomationWorkflow[]
+  BackgroundJob         BackgroundJob[]
   bookings              Booking[]
   CallLog               CallLog[]
   campaigns             Campaign[]
@@ -392,7 +393,6 @@ model Campaign {
   previewText    String?
   scheduledAt    DateTime?
   status         CampaignStatus  @default(DRAFT)
-  // TODO(futuro): estendere con READY/SENDING/FAILED/CANCELLED una volta stabilizzato il wizard
   providerId     String?
   providerListId Int?
   sentCount      Int             @default(0)
@@ -1598,7 +1598,12 @@ enum CampaignChannel {
 enum CampaignStatus {
   DRAFT
   SCHEDULED
+  /// Presa in carico dalla coda: i contatti si stanno sincronizzando.
+  SENDING
   SENT
+  /// La coda ha esaurito i tentativi. Lo stato esiste perché «inviata» su una
+  /// campagna che non e' partita e' la bugia peggiore che possa dire.
+  FAILED
   ARCHIVED
 }
 
@@ -1987,4 +1992,58 @@ model AgentUsage {
   venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@unique([venueId, yearMonth])
+}
+
+/// Il lavoro che non deve stare dentro una richiesta HTTP.
+///
+/// L'invio di una campagna contattava il fornitore email una volta per ogni
+/// destinatario **dentro** la richiesta del browser: con qualche centinaio di
+/// clienti la richiesta scadeva a metà, e nessuno sapeva quali contatti erano
+/// stati sincronizzati e quali no. Lo stesso vale per i promemoria.
+///
+/// Qui il lavoro diventa una riga: chi la crea risponde subito, e il cron la
+/// smaltisce a piccoli gruppi, riprovando quelle non riuscite con attese
+/// crescenti. Non serve un servizio esterno, non ci sono code in memoria che
+/// spariscono al riavvio della funzione.
+model BackgroundJob {
+  id        String  @id @default(cuid())
+  /// Il locale a cui il lavoro appartiene, quando ne ha uno: serve per
+  /// mostrarlo nell'interfaccia giusta e per avvisare chi deve saperlo.
+  venueId   String?
+  /// Che lavoro è: message.send, campaign.send, ...
+  kind      String  @db.VarChar(60)
+  payload   Json
+  /// Due lavori con la stessa chiave non stanno in coda insieme: è così che
+  /// due clic sul pulsante «invia» non fanno partire due campagne.
+  dedupeKey String? @unique
+
+  status      BackgroundJobStatus @default(PENDING)
+  /// Da quando è eseguibile: adesso per il lavoro immediato, più tardi per
+  /// quello programmato o per un nuovo tentativo dopo un errore.
+  runAt       DateTime            @default(now())
+  attempts    Int                 @default(0)
+  maxAttempts Int                 @default(4)
+  /// Quante volte il lavoro ha ceduto il turno perché aveva ancora da fare.
+  /// Contato a parte dai tentativi: cedere il turno non è un errore, ma un
+  /// lavoro che cede per sempre è un lavoro rotto e va fermato.
+  yields      Int                 @default(0)
+  lastError   String?             @db.VarChar(500)
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  venue Venue? @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAt])
+  @@index([venueId, kind, createdAt])
+}
+
+enum BackgroundJobStatus {
+  PENDING
+  RUNNING
+  DONE
+  /// Tentativi esauriti: resta in tabella, perché un invio non riuscito che
+  /// scompare è peggio di uno che resta visibile.
+  FAILED
 }

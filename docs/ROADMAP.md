@@ -50,14 +50,15 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] **Timeline ospite**, con i soli eventi che esistono davvero
 - [x] **Tag automatici** con il motivo di ognuno; soglie in un posto solo, pronte a diventare configurabili per locale
 - [x] I segmenti delle campagne filtrano su dati **veri**: i contatori sono riallineati alle prenotazioni e il filtro sulla spesa (che leggeva un campo mai aggiornato) è stato rimosso
-- [ ] Segmenti basati direttamente sulle etichette calcolate («manda a chi è a rischio»)
+- [x] Segmenti basati direttamente sulle etichette calcolate («manda a chi è a rischio»)
 - [ ] Il valore in euro resta una **stima dichiarata** finché non ci sono ordini o incassi
 
 ## Phase 4 — Crescita 🔄 in corso
 
 - [x] **Recensioni e NPS**: richiesta il giorno dopo la visita, due strade dopo la risposta, notifica immediata sui detrattori, pannello in Analytics
+- [x] **Coda dei lavori in background** (`BackgroundJob` + `/api/cron/jobs` ogni minuto): era il prerequisito. L'invio campagne e i messaggi agli ospiti non stanno più dentro la richiesta HTTP; l'avanzamento e gli errori si vedono
 - [ ] **Motore automazioni** (segmento → trigger → condizione → azione → attesa)
-      → **prima serve una coda**: l'invio campagne fa già una chiamata per ospite dentro la richiesta HTTP e va in timeout con qualche centinaio di destinatari. Un motore di automazioni sopra un'architettura senza lavoro in background sarebbe fragile per costruzione
+      → ora si può: la coda regge l'attesa fra un passo e l'altro (`runAt`), i nuovi tentativi e i lotti. Serve deciderne la forma: quali eventi generano un'esecuzione, dove si fermano le condizioni, e come si evita che una regola scritta male scriva a tutti tre volte
 - [ ] WhatsApp e SMS come canali (il posto è pronto in `PROVIDERS`, manca il fornitore)
 - [ ] Coupon
 

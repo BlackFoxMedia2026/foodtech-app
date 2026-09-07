@@ -18,7 +18,9 @@ export interface DraftPayload {
 
 async function parseJsonOrThrow(res: Response) {
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? "request_failed");
+  // Il messaggio del server è scritto per essere letto da chi usa
+  // l'applicazione: il codice serve solo se quel messaggio non c'è.
+  if (!res.ok) throw new Error(data.message ?? data.error ?? "request_failed");
   return data;
 }
 

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Sentiment } from "@prisma/client";
 import { db } from "@/lib/db";
-import { sendMessage } from "./messaging/send";
+import { enqueueMessage } from "./messaging/send";
 import { createNotification } from "./notifications";
 
 /**
@@ -65,7 +65,8 @@ function corpo(opts: { guestName: string; venueName: string; url: string }) {
 
 export type SurveyRequestResult = {
   bookingId: string;
-  outcome: "sent" | "already_asked" | "no_address" | "no_channel" | "error";
+  /** `queued`: la consegna la fa la coda, vedi server/jobs/queue.ts. */
+  outcome: "queued" | "already_asked" | "no_address" | "no_channel";
 };
 
 /**
@@ -115,7 +116,7 @@ export async function sendDueSurveyRequests(now: Date = new Date()): Promise<Sur
       data: { venueId: b.venueId, bookingId: b.id, guestId: b.guest!.id, token },
     });
 
-    const esito = await sendMessage({
+    const esito = await enqueueMessage({
       venueId: b.venueId,
       venueName: b.venue.name,
       channel: "EMAIL",
@@ -132,7 +133,7 @@ export async function sendDueSurveyRequests(now: Date = new Date()): Promise<Sur
       preview: "Richiesta di valutazione dopo la visita",
     });
 
-    if (!esito.sent) {
+    if (!esito.queued) {
       // Senza canale il sondaggio non serve a nulla: si rimuove, così domani
       // si riprova invece di restare una riga muta per sempre.
       if (esito.reason === "no_channel" || esito.reason === "no_address") {
@@ -140,12 +141,12 @@ export async function sendDueSurveyRequests(now: Date = new Date()): Promise<Sur
       }
       risultati.push({
         bookingId: b.id,
-        outcome: esito.reason === "no_channel" ? "no_channel" : esito.reason === "duplicate" ? "already_asked" : "error",
+        outcome: esito.reason === "duplicate" ? "already_asked" : esito.reason,
       });
       continue;
     }
 
-    risultati.push({ bookingId: b.id, outcome: "sent" });
+    risultati.push({ bookingId: b.id, outcome: "queued" });
   }
 
   return risultati;

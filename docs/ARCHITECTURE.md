@@ -130,6 +130,50 @@ un processo interrotto lascia comunque la traccia del tentativo; `bookingId` +
 uno non tocca il resto, e finché non c'è il fornitore chi chiama riceve
 `no_channel` invece di un silenzio.
 
+Ci sono due uscite: `enqueueMessage` (la normale: scrive la riga come `QUEUED`
+e lascia consegnare alla coda) e `sendMessage` (immediata, per quando serve
+sapere subito com'è andata). Entrambe passano dagli stessi controlli e scrivono
+la stessa riga.
+
+**La risposta del fornitore si legge.** Il client di Resend non solleva un
+errore quando l'invio viene rifiutato: torna un oggetto con `error` dentro. Il
+codice guardava solo `data?.id ?? null` e considerava riuscito tutto: con una
+chiave non valida i promemoria risultavano «inviati». `esitoResend` ora
+pretende un identificativo e solleva altrimenti — trovato provando dal vivo
+con una chiave finta, non ragionando sul codice.
+
+### Il lavoro lungo sta in una coda, su Postgres
+
+`src/server/jobs/queue.ts` più il cron `/api/cron/jobs`, ogni minuto.
+
+L'invio di una campagna sincronizzava i contatti col fornitore uno per uno
+**dentro** la richiesta del browser: trecento destinatari e la richiesta
+scadeva a metà, lasciando parte dei contatti sincronizzati, nessun invio
+partito e nessun errore mostrato. Le regole che rendono la coda affidabile
+senza aggiungere un servizio esterno:
+
+- **chi chiede non aspetta**: l'API scrive una riga e risponde;
+- **un lavoro non parte due volte**: si prende in carico con una scrittura
+  condizionata (`PENDING` → `RUNNING`); chi vede zero righe aggiornate sa che
+  qualcun altro è arrivato prima. Due cron sovrapposti sono innocui;
+- **un lavoro può cedere il turno**: `{ again: true }` lo rimette in coda, e
+  così un budget di venticinque secondi basta anche per mille destinatari. I
+  rinvii si contano a parte dai tentativi, altrimenti un invio lungo si
+  esaurirebbe solo per essere stato lungo;
+- **niente lavori appesi**: una riga rimasta `RUNNING` oltre dieci minuti torna
+  in coda. I tentativi si contano quando il lavoro *parte*, non quando finisce:
+  altrimenti un lavoro che fa morire il processo riproverebbe per sempre;
+- **un errore definitivo resta visibile**: tentativi esauriti significa
+  `FAILED` in tabella con il motivo, e un avviso al locale. Un invio che non è
+  partito e sparisce è peggio di uno che non è partito e si vede.
+
+L'invio di una campagna è ripartibile in ogni punto: i contatti già
+sincronizzati durante quel lavoro non si risincronizzano (è perché il momento
+di messa in coda sta nel payload), la campagna presso il fornitore si crea una
+volta sola, e se il processo muore **dopo** aver dato l'ordine di invio, al
+giro dopo la campagna finisce in «non riuscita» con scritto perché — mai un
+secondo invio alla cieca a clienti veri.
+
 ### Lo stato di una prenotazione lo decide il canale, non il client
 
 `BookingInput.status` **non** viene usato in creazione: lo stato dipende dalla
@@ -147,9 +191,13 @@ così la notte del cambio d'ora non salta un giorno.
 
 ## Cosa manca, e si sa
 
-- **Nessuna coda.** `sendCampaignNow` sincronizza un contatto per ospite dentro la richiesta
-  HTTP: con qualche centinaio di ospiti va in timeout a metà, lasciando la campagna in stato
-  incoerente. È il primo posto dove servirà un lavoro in background.
+- **La coda non ha priorità né limiti per fornitore.** Prende i lavori in ordine di
+  scadenza, venticinque per giro: se una campagna grossa è in mezzo, un promemoria aspetta
+  qualche minuto. Basta oggi; con più locali serviranno una priorità e un tetto di chiamate
+  al minuto per fornitore.
+- **Le campagne programmate restano «programmate».** L'orario lo tiene il fornitore, e
+  nessuno riporta indietro il momento in cui è partita davvero: lo stato non diventa mai
+  «inviata». Si risolve leggendo le statistiche del fornitore, non con un altro cron.
 - **Nessuna paginazione reale.** Le liste hanno tetti fissi (`take: 200`, `take: 500`): oltre,
   i dati spariscono in silenzio.
 - **Nessun confine d'errore.** Ci sono 6 `loading.tsx` e zero `error.tsx`: un'eccezione lato

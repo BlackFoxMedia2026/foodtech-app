@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getActiveVenue } from "@/lib/tenant";
-import { getCampaign, resolveSegment, type SegmentFilterType } from "@/server/campaigns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCampaign, getCampaignSendProgress, resolveSegment, type SegmentFilterType } from "@/server/campaigns";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import { CampaignActions } from "@/components/campaigns/campaign-actions";
 import { CampaignResultsChart } from "@/components/campaigns/campaign-results-chart";
+import { CampaignSendStatus } from "@/components/campaigns/campaign-send-status";
+import { CAMPAIGN_STATUS } from "@/lib/campaign-status";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,9 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
 
   const segment = (campaign.segment as SegmentFilterType | null) ?? {};
   const matchingGuests = campaign.status === "DRAFT" ? await resolveSegment(ctx.venueId, segment) : [];
+  const stato = CAMPAIGN_STATUS[campaign.status];
+  const inCoda = campaign.status === "SENDING" || campaign.status === "FAILED";
+  const avanzamento = inCoda ? await getCampaignSendProgress(ctx.venueId, campaign.id) : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -34,7 +39,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
           <h1 className="text-display text-3xl">{campaign.name}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Badge tone="neutral">{campaign.status}</Badge>
+          <Badge tone={stato.tone}>{stato.label}</Badge>
           {campaign.status === "DRAFT" && (
             <Button asChild variant="outline">
               <Link href={`/campaigns/${campaign.id}/edit`}>
@@ -102,25 +107,44 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
         <Card>
           <CardHeader>
             <CardTitle>Invio</CardTitle>
+            <CardDescription>{matchingGuests.length} destinatari con email e consenso.</CardDescription>
           </CardHeader>
           <CardContent>
-            <CampaignActions campaignId={campaign.id} />
+            <CampaignActions campaignId={campaign.id} recipients={matchingGuests.length} />
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Risultati</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CampaignResultsChart
-            sentCount={campaign.sentCount}
-            openedCount={campaign.openedCount}
-            bookedCount={campaign.bookedCount}
-          />
-        </CardContent>
-      </Card>
+      {inCoda && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Invio</CardTitle>
+            {stato.hint && <CardDescription>{stato.hint}</CardDescription>}
+          </CardHeader>
+          <CardContent>
+            <CampaignSendStatus
+              campaignId={campaign.id}
+              status={campaign.status === "SENDING" ? "SENDING" : "FAILED"}
+              progress={avanzamento}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {(campaign.status === "SENT" || campaign.status === "SCHEDULED") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Risultati</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CampaignResultsChart
+              sentCount={campaign.sentCount}
+              openedCount={campaign.openedCount}
+              bookedCount={campaign.bookedCount}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

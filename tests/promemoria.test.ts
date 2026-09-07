@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { signBookingToken, verifyBookingToken } from "@/lib/booking-token";
-import { alreadySent } from "@/server/messaging/send";
+import { alreadySent, esitoResend } from "@/server/messaging/send";
 import { sendDueReminders, REMINDER_KINDS } from "@/server/reminders";
 import { applyBookingAction, readBookingByToken } from "@/server/guest-actions";
 
@@ -235,5 +235,25 @@ describe("l'ospite risponde dal link", () => {
     expect(vista?.action).toBe("confirm");
     expect(vista?.closed).toBe(false);
     await db.booking.delete({ where: { id: booking.id } });
+  });
+});
+
+describe("l'esito del fornitore email", () => {
+  it("un rifiuto non è un invio riuscito", () => {
+    // Il client di Resend non solleva un errore: torna un oggetto con
+    // `error` dentro. Prima veniva ignorato, e con una chiave non valida i
+    // promemoria risultavano «inviati» senza che fosse partito niente.
+    expect(() => esitoResend({ data: null, error: { message: "API key is invalid" } })).toThrow(
+      "API key is invalid"
+    );
+  });
+
+  it("un esito senza identificativo non si crede", () => {
+    expect(() => esitoResend({ data: null, error: null })).toThrow("non ha confermato");
+    expect(() => esitoResend({ data: {}, error: null })).toThrow("non ha confermato");
+  });
+
+  it("un invio accettato porta l'identificativo del fornitore", () => {
+    expect(esitoResend({ data: { id: "re_123" }, error: null })).toEqual({ providerId: "re_123" });
   });
 });

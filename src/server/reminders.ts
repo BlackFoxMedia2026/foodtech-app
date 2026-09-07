@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { signBookingToken } from "@/lib/booking-token";
 import { dateKeyInVenue } from "@/lib/venue-time";
-import { sendMessage } from "./messaging/send";
+import { enqueueMessage } from "./messaging/send";
 
 /**
  * Promemoria prima del servizio.
@@ -19,7 +19,8 @@ import { sendMessage } from "./messaging/send";
  *
  * - **Un promemoria per tipo, per prenotazione.** La chiave è `MessageLog`
  *   (`bookingId` + `kind`): il cron può girare ogni quarto d'ora senza il
- *   rischio di inondare nessuno.
+ *   rischio di inondare nessuno. La riga nasce come `QUEUED`, quindi vale da
+ *   subito anche mentre il messaggio è ancora in coda.
  * - **Mai a chi non aspetta niente.** Chi ha annullato, chi è già arrivato,
  *   chi non ha lasciato un contatto: nessun messaggio.
  */
@@ -50,7 +51,12 @@ const REMINDABLE = ["CONFIRMED", "PENDING"] as const;
 export type ReminderResult = {
   kind: string;
   bookingId: string;
-  outcome: "sent" | "duplicate" | "no_address" | "no_channel" | "error";
+  /**
+   * `queued` e non `sent`: qui il messaggio viene messo in coda, e la coda lo
+   * consegna. Dire «inviato» quando è solo in coda sarebbe la stessa bugia
+   * che questa riscrittura serve a togliere.
+   */
+  outcome: "queued" | "duplicate" | "no_address" | "no_channel";
 };
 
 function formatOra(instant: Date, timezone: string) {
@@ -123,6 +129,11 @@ function corpo(opts: {
  * della prenotazione — quindi il fuso del locale non entra nel *quando*
  * mandare. Entra nel *cosa scrivere*: «domani» e l'ora vanno detti nel fuso
  * del ristorante, non in quello del server.
+ *
+ * I messaggi vanno **in coda**: duecento prenotazioni per finestra sono
+ * duecento chiamate al fornitore, e dentro una funzione serverless non ci
+ * stanno. Qui si preparano e si accodano; a consegnarli pensa
+ * `/api/cron/jobs`.
  */
 export async function sendDueReminders(now: Date = new Date()): Promise<ReminderResult[]> {
   const risultati: ReminderResult[] = [];
@@ -159,7 +170,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
       const quando = dateKeyInVenue(booking.startsAt, timezone) === dateKeyInVenue(now, timezone) ? "oggi" : "domani";
       const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-      const esito = await sendMessage({
+      const esito = await enqueueMessage({
         venueId: booking.venueId,
         venueName: booking.venue.name,
         channel: "EMAIL",
@@ -191,15 +202,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
       risultati.push({
         kind,
         bookingId: booking.id,
-        outcome: esito.sent
-          ? "sent"
-          : esito.reason === "duplicate"
-            ? "duplicate"
-            : esito.reason === "no_address"
-              ? "no_address"
-              : esito.reason === "no_channel"
-                ? "no_channel"
-                : "error",
+        outcome: esito.queued ? "queued" : esito.reason,
       });
     }
   }

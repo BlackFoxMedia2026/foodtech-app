@@ -25,9 +25,9 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     totale: risultati.length,
-    inviati: per("sent"),
+    inCoda: per("queued"),
     senzaContatto: per("no_address"),
     canaleAssente: per("no_channel"),
-    errori: per("error"),
+    giaMandati: per("duplicate"),
   });
 }
