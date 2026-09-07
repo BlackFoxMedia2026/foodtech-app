@@ -169,9 +169,22 @@ Per gravità, non per difficoltà:
 7. **Cancellazioni distruttive** su ospiti, camerieri e tavoli: nessun ripristino possibile,
    solo la traccia nel registro.
 
-8. **Nessuna esportazione dei dati di un ospite.** La cancellazione su richiesta ora c'è; la
-   richiesta di *accesso* ai propri dati si evade ancora a mano. È la metà più facile: gli
-   stessi sette posti, letti invece che svuotati.
+8. **Nessuna conferma dal fornitore email.** Una campagna programmata viene consegnata a
+   Brevo e l'esito non torna indietro: l'applicazione dice «consegnata al fornitore» e rimanda
+   al suo pannello, che è la verità disponibile. Sapere *a quanti* è arrivata richiede
+   interrogare il fornitore, quindi la sua chiave.
+
+## Dare a una persona i suoi dati
+
+`src/server/guest-export.ts`, dalla scheda del cliente, solo `manage_venue`, registrato nel
+registro azioni. Un JSON scaricato come allegato, `cache-control: no-store`.
+
+Sono gli **stessi sette posti** della cancellazione, letti invece che svuotati — e ci sono
+dentro anche le **note scritte dal personale** e il motivo di un eventuale blocco: sono dati
+su quella persona, e il fatto che siano scomodi da mostrare non li rende di qualcun altro. Un
+export che tiene fuori le note riservate non è un export, è una vetrina.
+
+Restano fuori gli identificativi interni: non dicono niente a chi legge e non sono dati suoi.
 
 ## Cancellare i dati di una persona
 
