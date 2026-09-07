@@ -10,7 +10,11 @@ import { Label } from "@/components/ui/label";
 import { readApiError } from "@/lib/api-client";
 
 /**
- * La spesa media per coperto, dichiarata da chi la conosce.
+ * Lo scontrino medio per persona, dichiarato da chi lo conosce.
+ *
+ * Si chiama «scontrino medio» e non «spesa media per coperto» perché è il modo
+ * in cui la chiamano i ristoratori: la parola giusta è quella che fa trovare
+ * la cosa a chi la cerca.
  *
  * Un ristoratore sa quanto spende in media un cliente al suo tavolo. Il
  * software no — non finché non ci sono ordini o incassi collegati. Chiederla è
@@ -56,7 +60,7 @@ export function AvgSpendSettings({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Spesa media per coperto</CardTitle>
+        <CardTitle>Scontrino medio per persona</CardTitle>
         <CardDescription>
           Serve per stimare gli incassi in Panoramica e il valore di un cliente nella sua scheda.
         </CardDescription>
@@ -65,13 +69,13 @@ export function AvgSpendSettings({
         <form onSubmit={salva} method="post" className="space-y-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="avg-spend">Euro per persona</Label>
+              <Label htmlFor="avg-spend">Euro a persona</Label>
               <Input
                 id="avg-spend"
                 inputMode="decimal"
                 value={valore}
                 onChange={(e) => setValore(e.target.value)}
-                placeholder="Es. 45"
+                placeholder="Es. 55"
                 disabled={!canManage}
                 className="w-32"
               />

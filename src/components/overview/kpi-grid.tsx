@@ -71,7 +71,7 @@ export function KpiGrid({
        */
       label: "Incassi stimati",
       value: estimatedRevenueCents != null ? formatCurrency(estimatedRevenueCents, currency) : "—",
-      hint: estimatedRevenueCents != null ? undefined : "imposta la spesa media per coperto",
+      hint: estimatedRevenueCents != null ? undefined : "imposta lo scontrino medio in Impostazioni",
       icon: Wallet,
       delta: comparisons.revenue ?? undefined,
       higherIsBetter: true,
