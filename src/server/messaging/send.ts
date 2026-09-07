@@ -45,6 +45,8 @@ export type OutboundMessage = {
   preview?: string;
   guestId?: string | null;
   bookingId?: string | null;
+  /** L'esecuzione di automazione che l'ha generato, se viene da lì. */
+  workflowRunId?: string | null;
   /** Che messaggio è. Con `bookingId` impedisce il doppio invio. */
   kind: string;
   /** Nome del locale, usato come mittente visibile. */
@@ -56,13 +58,27 @@ export type SendOutcome =
   | { sent: false; reason: "duplicate" | "no_channel" | "no_address" | "provider_error"; detail?: string };
 
 type Provider = {
-  /** Vero quando il canale è configurato e utilizzabile. */
-  available: boolean;
+  /**
+   * Vero quando il canale è configurato e utilizzabile.
+   *
+   * È una funzione e non un valore: letta al caricamento del modulo, una
+   * chiave aggiunta dopo non sarebbe mai vista, e nei test non ci sarebbe modo
+   * di provare il percorso «canale disponibile» senza mandare niente.
+   */
+  available(): boolean;
   send(message: OutboundMessage): Promise<{ providerId: string | null }>;
 };
 
-const resendKey = process.env.RESEND_API_KEY;
-const resend = resendKey ? new Resend(resendKey) : null;
+let clientCache: { key: string; client: Resend } | null = null;
+
+/** Il client del fornitore, creato alla prima richiesta e riusato. */
+function resendClient(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  if (clientCache?.key !== key) clientCache = { key, client: new Resend(key) };
+  return clientCache.client;
+}
+
 const FROM = process.env.RESEND_FROM || "noreply@tavolo.local";
 
 /**
@@ -89,8 +105,9 @@ export function esitoResend(res: { data?: { id?: string } | null; error?: { mess
 
 const PROVIDERS: Record<MessageChannel, Provider> = {
   EMAIL: {
-    available: !!resend,
+    available: () => !!resendClient(),
     async send(message) {
+      const resend = resendClient();
       if (!resend) throw new Error("email_not_configured");
       const res = await resend.emails.send({
         from: message.venueName ? `${message.venueName} <${FROM}>` : FROM,
@@ -104,13 +121,13 @@ const PROVIDERS: Record<MessageChannel, Provider> = {
   // Il posto è pronto e la firma è quella giusta: quando ci sarà un fornitore,
   // qui va l'adattatore e non cambia nient'altro. Vedi docs/INTEGRATIONS.md.
   SMS: {
-    available: false,
+    available: () => false,
     async send() {
       throw new Error("sms_not_configured");
     },
   },
   WHATSAPP: {
-    available: false,
+    available: () => false,
     async send() {
       throw new Error("whatsapp_not_configured");
     },
@@ -118,7 +135,7 @@ const PROVIDERS: Record<MessageChannel, Provider> = {
 };
 
 export function channelAvailable(channel: MessageChannel): boolean {
-  return PROVIDERS[channel]?.available ?? false;
+  return PROVIDERS[channel]?.available() ?? false;
 }
 
 /** Questo messaggio è già stato mandato per questa prenotazione? */
@@ -145,7 +162,7 @@ async function motivoPerNonMandare(
 ): Promise<"no_address" | "duplicate" | "no_channel" | null> {
   if (!message.to?.trim()) return "no_address";
   if (message.bookingId && (await alreadySent(message.bookingId, message.kind))) return "duplicate";
-  if (!PROVIDERS[message.channel]?.available) return "no_channel";
+  if (!channelAvailable(message.channel)) return "no_channel";
   return null;
 }
 
@@ -162,6 +179,7 @@ async function creaRigaRegistro(message: OutboundMessage) {
       venueId: message.venueId,
       guestId: message.guestId ?? null,
       bookingId: message.bookingId ?? null,
+      workflowRunId: message.workflowRunId ?? null,
       kind: message.kind,
       channel: message.channel,
       toAddress: message.to,
@@ -248,7 +266,7 @@ export async function deliverQueuedMessage(
   if (!log || log.status === "SENT" || log.status === "DELIVERED") return;
 
   const provider = PROVIDERS[payload.channel];
-  if (!provider?.available) {
+  if (!provider?.available()) {
     await db.messageLog.update({
       where: { id: log.id },
       data: { status: "SKIPPED", error: `canale ${payload.channel} non configurato` },
@@ -283,6 +301,36 @@ export async function deliverQueuedMessage(
 }
 
 /** Consegna immediata: per quando serve sapere subito com'è andata. */
+/**
+ * Questo tipo di messaggio è già stato mandato a questa persona di recente?
+ *
+ * Serve alle automazioni, dove la chiave non è la prenotazione ma l'ospite:
+ * gli auguri di compleanno si mandano una volta all'anno, l'invito a tornare
+ * una volta e basta.
+ */
+export async function alreadySentToGuest(guestId: string, kind: string, entroGiorni: number): Promise<boolean> {
+  const da = new Date(Date.now() - entroGiorni * 86_400_000);
+  const esistente = await db.messageLog.findFirst({
+    where: { guestId, kind, createdAt: { gte: da }, status: { in: ["QUEUED", "SENT", "DELIVERED"] } },
+    select: { id: true },
+  });
+  return !!esistente;
+}
+
+/**
+ * Quando è l'ultima volta che abbiamo scritto a questa persona, per qualunque
+ * motivo. Le automazioni la usano per stare zitte: un ospite che ieri ha
+ * ricevuto la richiesta di parere non deve trovarsi oggi un invito a tornare.
+ */
+export async function lastMessageToGuest(guestId: string): Promise<Date | null> {
+  const ultimo = await db.messageLog.findFirst({
+    where: { guestId, status: { in: ["QUEUED", "SENT", "DELIVERED"] } },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+  return ultimo?.createdAt ?? null;
+}
+
 export async function sendMessage(message: OutboundMessage): Promise<SendOutcome> {
   const motivo = await motivoPerNonMandare(message);
   if (motivo) {

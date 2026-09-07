@@ -57,8 +57,9 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 
 - [x] **Recensioni e NPS**: richiesta il giorno dopo la visita, due strade dopo la risposta, notifica immediata sui detrattori, pannello in Analytics
 - [x] **Coda dei lavori in background** (`BackgroundJob` + `/api/cron/jobs` ogni minuto): era il prerequisito. L'invio campagne e i messaggi agli ospiti non stanno più dentro la richiesta HTTP; l'avanzamento e gli errori si vedono
-- [ ] **Motore automazioni** (segmento → trigger → condizione → azione → attesa)
-      → ora si può: la coda regge l'attesa fra un passo e l'altro (`runAt`), i nuovi tentativi e i lotti. Serve deciderne la forma: quali eventi generano un'esecuzione, dove si fermano le condizioni, e come si evita che una regola scritta male scriva a tutti tre volte
+- [x] **Automazioni**: tre, non un costruttore di regole — compleanno, chi non torna da un po', invito a tornare dopo la prima volta. Il numero di persone che toccherebbero si vede **prima** di accenderle, con i nomi e il motivo. Nascono spente
+      → la forma scelta: un catalogo chiuso invece di un editor «se questo allora quello». Un editor sembra più potente e in un gestionale per ristoranti resta vuoto; e una regola scritta di fretta scrive a tutti la cosa sbagliata. Quando serviranno automazioni nuove si aggiungono al catalogo, dove si possono ragionare e provare
+      → restano fuori, per mancanza di dati: coupon, Wi-Fi, ordini. E resta fuori per scelta la risposta automatica a un voto basso: a chi è uscito insoddisfatto scrive una persona
 - [ ] WhatsApp e SMS come canali (il posto è pronto in `PROVIDERS`, manca il fornitore)
 - [ ] Coupon
 

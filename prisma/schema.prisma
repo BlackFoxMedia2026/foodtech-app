@@ -544,6 +544,12 @@ model AutomationRun {
 model AutomationWorkflow {
   id            String            @id @default(cuid())
   venueId       String
+  /// Quale automazione del catalogo è questa: `compleanno`, `non_torna`,
+  /// `invito_ritorno`. Le automazioni non si scrivono da zero — sono un
+  /// numero chiuso, e questa colonna è il modo di ritrovare la propria riga
+  /// senza appoggiarsi al fatto che oggi ogni automazione ha un evento
+  /// diverso. Vedi server/automations/catalogue.ts.
+  key           String?           @db.VarChar(40)
   name          String
   description   String?
   trigger       AutomationTrigger
@@ -557,6 +563,7 @@ model AutomationWorkflow {
   AutomationRun AutomationRun[]
   Venue         Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
+  @@unique([venueId, key])
   @@index([venueId, trigger, active])
 }
 

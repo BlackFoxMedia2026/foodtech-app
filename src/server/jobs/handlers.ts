@@ -1,6 +1,14 @@
+import { z } from "zod";
 import { deliverQueuedMessage } from "@/server/messaging/send";
 import { runCampaignSendJob } from "@/server/campaigns";
+import { runAutomation } from "@/server/automations/engine";
+import { AUTOMATION_KEYS } from "@/server/automations/catalogue";
 import type { JobHandlers } from "./queue";
+
+const AutomationRunPayload = z.object({
+  venueId: z.string(),
+  key: z.enum(AUTOMATION_KEYS),
+});
 
 /**
  * Chi sa fare cosa.
@@ -22,4 +30,14 @@ export const JOB_HANDLERS: JobHandlers = {
 
   /** L'invio di una campagna: sincronizza i contatti a lotti, poi consegna. */
   "campaign.send": (payload, job) => runCampaignSendJob(payload, job),
+
+  /**
+   * Un'automazione per un locale: capisce chi tocca oggi e mette in coda i
+   * messaggi. Non consegna niente da sé — i messaggi che crea tornano in
+   * questa stessa coda come `message.send`.
+   */
+  "automation.run": async (payload) => {
+    const { venueId, key } = AutomationRunPayload.parse(payload);
+    await runAutomation(venueId, key);
+  },
 };

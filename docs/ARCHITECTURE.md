@@ -184,6 +184,41 @@ d'attesa e il walk-in, che stanno accomodando qualcuno adesso — passa da
 Stessa forma di `skipAvailabilityCheck`, che ora richiede anche un motivo
 scritto (`forceReason`) e finisce nel registro come azione distinta.
 
+### Le automazioni sono un catalogo, non un editor
+
+`src/server/automations/catalogue.ts` (cosa esiste) e `engine.ts` (come parte).
+
+Un costruttore «se questo allora quello» sembra più potente e in un gestionale
+per ristoranti resta vuoto: chi apre alle 19 non progetta diagrammi. Peggio,
+una regola scritta di fretta scrive a tutti la cosa sbagliata. Quindi le
+automazioni sono tre, scritte nel codice, e aggiungerne una è un commit —
+dove si può ragionare e provare.
+
+La domanda progettuale non è «cosa sanno fare», è **come si evita che
+scrivano a tutti tre volte**. Cinque difese, tutte con un test:
+
+1. **la finestra è stretta.** «Chi non torna da sessanta giorni» guarda solo
+   chi ha *appena* superato la soglia (sette giorni di finestra), non
+   l'archivio: accendere l'automazione non fa partire un diluvio. La finestra
+   larga sette giorni con un passaggio al giorno significa anche che se il
+   lavoro pianificato salta un giorno, nessuno viene saltato;
+2. **una volta per periodo per persona** (`cooldownDays`);
+3. **silenzio dopo qualunque nostro messaggio** (`SILENZIO_GIORNI`): chi ieri
+   ha ricevuto «com'è andata?» oggi non riceve l'invito a tornare. È la regola
+   che tiene insieme moduli che non si conoscono fra loro;
+4. **un tetto per esecuzione** (50): un errore di configurazione fa danni a
+   cinquanta persone, non a mille, e il resto slitta al giorno dopo;
+5. **il numero si vede prima di accendere**, con i nomi e il motivo. Anteprima
+   e invio passano dalla stessa funzione (`resolveDestinatari`): se fossero due
+   strade diverse, l'anteprima sarebbe una stima.
+
+E le automazioni nascono **spente**, senza un momento di installazione: la
+riga di configurazione si crea da sé la prima volta che serve.
+
+Il motore non manda niente: mette in coda. Il cron giornaliero accoda
+un lavoro per automazione accesa, quel lavoro accoda i messaggi, e la coda li
+consegna — quindi tentativi, errori visibili e nessun timeout, gratis.
+
 ### Le date pure restano stringhe
 
 Un giorno di servizio è `"2026-09-07"`, non un `Date`. `shiftDateKey` fa i conti su date pure,

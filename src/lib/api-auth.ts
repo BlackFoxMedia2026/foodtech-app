@@ -133,6 +133,16 @@ export function apiErrorResponse(err: unknown) {
       "Nessun destinatario: con questi criteri non c'è nessun cliente con email e consenso."
     );
   }
+  if (message === "no_channel") {
+    return apiError(
+      422,
+      "no_channel",
+      "L'email non è configurata: senza chiave del fornitore non parte nessun messaggio."
+    );
+  }
+  if (message === "send_failed") {
+    return apiError(502, "send_failed", "Il fornitore email non ha accettato il messaggio. Riprova.");
+  }
   if (message === "permission_denied") {
     return apiError(403, "forbidden", "Il tuo ruolo non consente questa operazione.");
   }

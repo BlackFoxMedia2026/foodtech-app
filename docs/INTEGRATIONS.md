@@ -72,6 +72,7 @@ Quattro pianificazioni, in `vercel.json`:
 | `/api/cron/booking-reminders` | ogni 15 minuti | prepara i promemoria dovuti e li mette in coda |
 | `/api/cron/staff-contracts-expiry` | 6:00 | avvisi sui contratti in scadenza |
 | `/api/cron/survey-requests` | 11:00 | chiede «com'è andata?» a chi è venuto ieri |
+| `/api/cron/automations` | 10:00 | accoda le automazioni accese (compleanno, chi non torna, invito a tornare) |
 
 Tutte protette da `CRON_SECRET`, e tutte **si rifiutano di partire** se il segreto non è
 configurato: meglio un cron fermo che un endpoint che chiunque trovi l'URL può innescare.
