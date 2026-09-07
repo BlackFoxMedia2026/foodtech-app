@@ -110,6 +110,15 @@ export type BookingWriteOptions = {
    */
   status?: BookingStatus;
   /**
+   * La campagna da cui arriva la prenotazione.
+   *
+   * Sta qui e non in `BookingInput` per la stessa ragione dello stato: arriva
+   * da una richiesta pubblica, e prima di finire in tabella va verificata —
+   * quella campagna deve essere di questo locale. Il controllo lo fa la route
+   * pubblica; qui si accetta solo un valore già verificato.
+   */
+  campaignId?: string | null;
+  /**
    * Motivo della forzatura, obbligatorio quando `skipAvailabilityCheck` è
    * attivo su richiesta di una persona.
    *
@@ -174,6 +183,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       status,
       source: data.source,
       occasion: data.occasion ?? null,
+      campaignId: opts.campaignId ?? null,
       notes: data.notes ?? null,
       internalNotes: data.internalNotes ?? null,
       depositCents: data.depositCents,

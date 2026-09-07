@@ -20,9 +20,20 @@ interface PublicBookingFormProps {
   primaryColor?: string;
   phone?: string;
   email?: string;
+  /** La campagna che ha portato qui questa persona, se ce n'è una. */
+  campaignId?: string;
 }
 
-export function PublicBookingForm({ venueId, venueName, embed, logoUrl, primaryColor, phone, email }: PublicBookingFormProps) {
+export function PublicBookingForm({
+  venueId,
+  venueName,
+  embed,
+  logoUrl,
+  primaryColor,
+  phone,
+  email,
+  campaignId,
+}: PublicBookingFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +86,7 @@ export function PublicBookingForm({ venueId, venueName, embed, logoUrl, primaryC
           occasion: occasion && occasion !== "NONE" ? occasion : null,
           notes: notes || null,
           source: "WIDGET",
+          ...(campaignId ? { campaignId } : {}),
         }),
       });
 

@@ -3,19 +3,34 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 /**
- * Inviate e aperte, e niente altro.
+ * Inviate, aperte, prenotate — e tutti e tre veri.
  *
- * C'era una terza colonna, «Prenotazioni», che leggeva `Campaign.bookedCount`:
- * un campo che **nessuna parte del codice scrive**. Su ogni campagna mostrava
- * zero, cioè diceva al ristoratore che la sua campagna non aveva portato
- * nessuno — quando in realtà non lo sapevamo. Peggio di non mostrare niente.
+ * La terza colonna leggeva `Campaign.bookedCount`, un campo che nessuno
+ * scriveva: su ogni campagna mostrava zero, cioè diceva al ristoratore che la
+ * sua campagna non aveva portato nessuno, quando in realtà non lo sapevamo.
  *
- * Per saperlo davvero serve l'attribuzione: il link dentro l'email deve
- * portarsi dietro la campagna, e la prenotazione che nasce da quel clic deve
- * ricordarsene. Finché non c'è, qui ci sono i due numeri veri: gli invii, che
- * contiamo noi, e le aperture, che arrivano dal fornitore.
+ * Ora il numero viene dall'attribuzione: il link dentro l'email si porta
+ * dietro la campagna, e la prenotazione che nasce da quel clic la ricorda. Il
+ * merito vale per un mese dall'invio — senza una finestra, il merito di una
+ * campagna crescerebbe per sempre.
  */
-export function CampaignResultsChart({ sentCount, openedCount }: { sentCount: number; openedCount: number }) {
+export function CampaignResultsChart({
+  sentCount,
+  openedCount,
+  bookings,
+  covers,
+  revenueCents,
+  fuoriFinestra,
+  giorniFinestra,
+}: {
+  sentCount: number;
+  openedCount: number;
+  bookings: number;
+  covers: number;
+  revenueCents: number | null;
+  fuoriFinestra: number;
+  giorniFinestra: number;
+}) {
   if (sentCount === 0) {
     return (
       <div className="flex h-56 flex-col items-center justify-center rounded-md border border-dashed p-6 text-center">
@@ -30,7 +45,13 @@ export function CampaignResultsChart({ sentCount, openedCount }: { sentCount: nu
   const data = [
     { step: "Inviate", value: sentCount },
     { step: "Aperte", value: openedCount },
+    { step: "Prenotazioni", value: bookings },
   ];
+
+  const euro = (cents: number) =>
+    new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(
+      cents / 100
+    );
 
   return (
     <div className="space-y-2">
@@ -54,9 +75,33 @@ export function CampaignResultsChart({ sentCount, openedCount }: { sentCount: nu
           </BarChart>
         </ResponsiveContainer>
       </div>
+      {bookings > 0 ? (
+        <p className="text-sm">
+          <strong>{bookings}</strong> {bookings === 1 ? "prenotazione" : "prenotazioni"} dal link di questa
+          campagna, <strong>{covers}</strong> coperti
+          {revenueCents != null ? (
+            <>
+              {" "}
+              — <strong>{euro(revenueCents)}</strong> stimati sullo scontrino medio
+            </>
+          ) : (
+            <span className="text-muted-foreground">
+              {" "}
+              — imposta lo scontrino medio in Impostazioni per vedere quanto valgono
+            </span>
+          )}
+          .
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Nessuna prenotazione dal link di questa campagna.</p>
+      )}
+
       <p className="text-xs text-tertiary-foreground">
-        Quante prenotazioni ha portato questa campagna non lo sappiamo ancora: servirebbe collegare il clic
-        sul link alla prenotazione che ne nasce. Mostrare uno zero sarebbe stato peggio.
+        Contiamo le prenotazioni nate dal link di questa email entro {giorniFinestra} giorni dall&apos;invio,
+        senza le disdette e chi non si è presentato: una prenotazione disdetta è arrivata dalla campagna ma non
+        ha portato nessuno a tavola.
+        {fuoriFinestra > 0 &&
+          ` Altre ${fuoriFinestra} sono arrivate dallo stesso link più tardi e non le contiamo.`}
       </p>
     </div>
   );

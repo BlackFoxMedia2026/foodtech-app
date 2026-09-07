@@ -93,6 +93,58 @@ export async function listCampaigns(venueId: string) {
   return db.campaign.findMany({ where: { venueId }, orderBy: { createdAt: "desc" } });
 }
 
+export type CampaignWithResults = Awaited<ReturnType<typeof listCampaigns>>[number] & {
+  attribuite: number;
+};
+
+/**
+ * L'elenco delle campagne con le prenotazioni che hanno portato.
+ *
+ * Due letture per tutta la pagina invece di due per campagna: gli istanti
+ * d'invio in un colpo, le prenotazioni attribuite in un altro, e la finestra
+ * si applica in memoria. Con dieci campagne la differenza è fra due
+ * interrogazioni e venti.
+ */
+export async function listCampaignsWithResults(venueId: string): Promise<CampaignWithResults[]> {
+  const campagne = await listCampaigns(venueId);
+  if (campagne.length === 0) return [];
+
+  const ids = campagne.map((c) => c.id);
+  const [invii, prenotazioni] = await Promise.all([
+    db.messageLog.groupBy({
+      by: ["campaignId"],
+      where: { venueId, campaignId: { in: ids } },
+      _min: { createdAt: true },
+    }),
+    db.booking.findMany({
+      where: {
+        venueId,
+        campaignId: { in: ids },
+        deletedAt: null,
+        status: { notIn: ["CANCELLED", "NO_SHOW"] },
+      },
+      select: { campaignId: true, createdAt: true },
+    }),
+  ]);
+
+  const inviata = new Map<string, Date>();
+  for (const r of invii) {
+    if (r.campaignId && r._min.createdAt) inviata.set(r.campaignId, r._min.createdAt);
+  }
+
+  const conteggi = new Map<string, number>();
+  for (const b of prenotazioni) {
+    if (!b.campaignId) continue;
+    const partenza = inviata.get(b.campaignId);
+    if (!partenza) continue;
+    const fine = new Date(partenza.getTime() + FINESTRA_ATTRIBUZIONE_GIORNI * 86_400_000);
+    if (b.createdAt < partenza || b.createdAt > fine) continue;
+    conteggi.set(b.campaignId, (conteggi.get(b.campaignId) ?? 0) + 1);
+  }
+
+  return campagne.map((c) => ({ ...c, attribuite: conteggi.get(c.id) ?? 0 }));
+}
+
 export async function getCampaign(venueId: string, id: string) {
   return db.campaign.findFirst({ where: { id, venueId } });
 }
@@ -391,13 +443,93 @@ async function createMessageLogs(campaignId: string, venueId: string, guests: { 
  * sintassi di merge-tag di Brevo, che li risolverà lui stesso al momento dell'invio
  * reale usando gli attributi contatto sincronizzati in syncContact/createContact.
  */
-async function compileHtmlForBrevoSend(venueId: string, body: string, origin: string): Promise<string> {
+async function compileHtmlForBrevoSend(
+  venueId: string,
+  campaignId: string,
+  body: string,
+  origin: string
+): Promise<string> {
   const venue = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
   const withGlobals = resolveGlobalVariables(body, {
     restaurantName: venue.name,
-    bookingLink: `${origin}/book?venue=${venueId}`,
+    // Il link si porta dietro la campagna: è così che una prenotazione nata da
+    // questa email si può riconoscere come nata da questa email. Il widget lo
+    // rimanda al server, che verifica che la campagna sia di questo locale.
+    bookingLink: `${origin}/book?venue=${venueId}&c=${campaignId}`,
   });
   return toBrevoMergeTags(withGlobals, origin);
+}
+
+/**
+ * Per quanti giorni dopo l'invio una prenotazione conta come portata dalla
+ * campagna.
+ *
+ * Un mese: chi riapre quella email a marzo e prenota non l'ha prenotata per
+ * quella email. Senza una finestra, il merito di una campagna crescerebbe per
+ * sempre — ed è il modo più comune di far sembrare efficace il marketing.
+ */
+export const FINESTRA_ATTRIBUZIONE_GIORNI = 30;
+
+export type CampaignAttribution = {
+  /** Quando è partita: il primo messaggio registrato per questa campagna. */
+  sentAt: Date | null;
+  bookings: number;
+  covers: number;
+  /** Stima, non incasso: nulla se il locale non ha dichiarato lo scontrino medio. */
+  revenueCents: number | null;
+  /** Prenotazioni con questo link ma fuori dalla finestra: non contate. */
+  fuoriFinestra: number;
+};
+
+/**
+ * Quante prenotazioni ha portato una campagna, per davvero.
+ *
+ * Si contano solo le prenotazioni nate dal link di **questa** campagna, entro
+ * la finestra, e senza le disdette e le assenze: una prenotazione disdetta è
+ * arrivata dalla campagna ma non ha portato nessuno a tavola, e il numero che
+ * interessa è il secondo.
+ */
+export async function getCampaignAttribution(venueId: string, campaignId: string): Promise<CampaignAttribution> {
+  const [primoMessaggio, venue] = await Promise.all([
+    db.messageLog.findFirst({
+      where: { campaignId, venueId },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    }),
+    db.venue.findUniqueOrThrow({ where: { id: venueId }, select: { avgSpendCents: true } }),
+  ]);
+
+  const sentAt = primoMessaggio?.createdAt ?? null;
+  if (!sentAt) {
+    return { sentAt: null, bookings: 0, covers: 0, revenueCents: null, fuoriFinestra: 0 };
+  }
+
+  const fineFinestra = new Date(sentAt.getTime() + FINESTRA_ATTRIBUZIONE_GIORNI * 86_400_000);
+  const comuni: Prisma.BookingWhereInput = {
+    venueId,
+    campaignId,
+    deletedAt: null,
+    status: { notIn: ["CANCELLED", "NO_SHOW"] },
+  };
+
+  const [dentro, fuori] = await Promise.all([
+    db.booking.findMany({
+      where: { ...comuni, createdAt: { gte: sentAt, lte: fineFinestra } },
+      select: { partySize: true },
+    }),
+    db.booking.count({
+      where: { ...comuni, createdAt: { gt: fineFinestra } },
+    }),
+  ]);
+
+  const covers = dentro.reduce((s, b) => s + b.partySize, 0);
+  return {
+    sentAt,
+    bookings: dentro.length,
+    covers,
+    revenueCents: venue.avgSpendCents ? covers * venue.avgSpendCents : null,
+    fuoriFinestra: fuori,
+  };
 }
 
 async function segnaNonRiuscita(campaignId: string, venueId: string, nome: string, motivo: string) {
@@ -570,7 +702,7 @@ export async function runCampaignSendJob(raw: unknown, job: JobRef): Promise<Job
       return { again: true };
     }
 
-    const htmlContent = await compileHtmlForBrevoSend(venueId, campaign.body || "", payload.origin);
+    const htmlContent = await compileHtmlForBrevoSend(venueId, campaignId, campaign.body || "", payload.origin);
     const recipientEmails = guests.map((g) => g.email!).filter(Boolean);
 
     // La campagna presso il fornitore si crea una volta sola.

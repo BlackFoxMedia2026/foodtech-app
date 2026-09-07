@@ -17,6 +17,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "venue not found" }, { status: 404 });
     }
 
+    /**
+     * La campagna arriva dal link cliccato, quindi dal mondo esterno: si
+     * accetta solo se esiste e appartiene a **questo** locale. Se non torna,
+     * la prenotazione si fa comunque senza attribuzione: un link storto non
+     * deve impedire a un cliente di prenotare.
+     */
+    const campagnaRichiesta = typeof body?.campaignId === "string" ? body.campaignId : null;
+    const campaignId = campagnaRichiesta
+      ? (
+          await db.campaign.findFirst({
+            where: { id: campagnaRichiesta, venueId },
+            select: { id: true },
+          })
+        )?.id ?? null
+      : null;
+
     const payload = {
       guest: body?.guest,
       partySize: body?.partySize,
@@ -27,7 +43,7 @@ export async function POST(req: Request) {
       source: "WIDGET" as const,
     };
 
-    const booking = await createBooking(venueId, payload);
+    const booking = await createBooking(venueId, payload, { campaignId });
     return NextResponse.json(booking, { status: 201 });
   } catch (err) {
     return bookingWriteErrorResponse(err);

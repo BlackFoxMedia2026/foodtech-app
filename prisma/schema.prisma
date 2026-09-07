@@ -332,6 +332,18 @@ model Booking {
   combinedTableIds  String[]           @default([])
   deletedAt         DateTime?
   deletedBy         String?
+  /// La campagna da cui arriva questa prenotazione, quando arriva da una.
+  ///
+  /// Si valorizza solo dal widget pubblico, quando il link cliccato porta con
+  /// sé la campagna, e **dopo** aver verificato che quella campagna sia di
+  /// questo locale: senza il controllo, chi conosce un identificativo
+  /// potrebbe attribuire prenotazioni alle campagne di altri.
+  ///
+  /// Serve per rispondere a «quante prenotazioni ha portato quell'email».
+  /// Prima c'era `Campaign.bookedCount`, che nessuno scriveva e che mostrava
+  /// zero su ogni campagna.
+  campaignId        String?
+  Campaign          Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   guest             Guest?             @relation(fields: [guestId], references: [id])
   table             Table?             @relation(fields: [tableId], references: [id])
   venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
@@ -345,6 +357,7 @@ model Booking {
   @@index([venueId, startsAt])
   @@index([venueId, status])
   @@index([venueId, deletedAt])
+  @@index([campaignId])
 }
 
 model Experience {
@@ -401,6 +414,7 @@ model Campaign {
   createdAt      DateTime        @default(now())
   venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
   MessageLog     MessageLog[]
+  bookings       Booking[]
 
   @@index([venueId, status, createdAt])
 }

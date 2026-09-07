@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getActiveVenue } from "@/lib/tenant";
-import { listCampaigns } from "@/server/campaigns";
+import { listCampaignsWithResults } from "@/server/campaigns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CAMPAIGN_STATUS } from "@/lib/campaign-status";
@@ -17,7 +17,7 @@ const CHANNEL_TONE = {
 
 export default async function CampaignsPage() {
   const ctx = await getActiveVenue();
-  const items = await listCampaigns(ctx.venueId);
+  const items = await listCampaignsWithResults(ctx.venueId);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -56,11 +56,13 @@ export default async function CampaignsPage() {
                   </CardTitle>
                   {c.subject && <p className="text-sm text-muted-foreground">{c.subject}</p>}
                 </CardHeader>
-                {/* «Prenotazioni» leggeva un campo che nessuno scrive: era
-                    uno zero su ogni campagna, cioè una bocciatura inventata. */}
-                <CardContent className="grid grid-cols-2 gap-3 text-sm">
+                {/* «Prenotazioni» leggeva `bookedCount`, un campo che nessuno
+                    scriveva: zero su ogni campagna, cioè una bocciatura
+                    inventata. Ora è l'attribuzione vera. */}
+                <CardContent className="grid grid-cols-3 gap-3 text-sm">
                   <Metric label="Inviate" value={c.sentCount} />
                   <Metric label="Aperte" value={`${openRate}%`} />
+                  <Metric label="Prenotazioni" value={c.attribuite} />
                 </CardContent>
               </Card>
             </Link>
