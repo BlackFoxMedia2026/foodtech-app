@@ -26,7 +26,7 @@ export function SurveyForm({ survey }: { survey: SurveyView }) {
   const [error, setError] = useState<string | null>(null);
   const [esito, setEsito] = useState<{
     sentiment: "PROMOTER" | "PASSIVE" | "DETRACTOR";
-    publicReviewUrl: string | null;
+    reviewLinks: { href: string; nome: string }[];
     message: string;
   } | null>(null);
 
@@ -63,17 +63,28 @@ export function SurveyForm({ survey }: { survey: SurveyView }) {
         <CheckCircle2 className="h-8 w-8 text-sage" aria-hidden="true" />
         <h1 className="mt-3 text-display text-2xl">{esito.message}</h1>
 
-        {esito.sentiment === "PROMOTER" && esito.publicReviewUrl && (
+        {esito.sentiment === "PROMOTER" && esito.reviewLinks.length > 0 && (
           <>
             <p className="mt-4 text-sm text-muted-foreground">
               Se ti va, scriverlo dove lo leggono gli altri ci aiuta più di quanto immagini.
             </p>
-            <Button asChild variant="accent" className="mt-4 w-full">
-              <a href={esito.publicReviewUrl} target="_blank" rel="noopener noreferrer">
-                Lascia una recensione pubblica
-                <ExternalLink className="ml-2 h-4 w-4" aria-hidden="true" />
-              </a>
-            </Button>
+            {/* Il primo è quello che conta: gli altri restano disponibili ma
+                non si contendono l'attenzione con lo stesso peso. */}
+            <div className="mt-4 space-y-2">
+              {esito.reviewLinks.map((l, i) => (
+                <Button
+                  key={l.href}
+                  asChild
+                  variant={i === 0 ? "accent" : "outline"}
+                  className="w-full"
+                >
+                  <a href={l.href} target="_blank" rel="noopener noreferrer">
+                    {esito.reviewLinks.length === 1 ? "Lascia una recensione pubblica" : `Scrivila su ${l.nome}`}
+                    <ExternalLink className="ml-2 h-4 w-4" aria-hidden="true" />
+                  </a>
+                </Button>
+              ))}
+            </div>
           </>
         )}
 

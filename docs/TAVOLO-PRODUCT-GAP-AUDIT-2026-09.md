@@ -66,14 +66,14 @@ Verifiche automatiche: TypeScript pulito, ESLint pulito, nessuna deriva fra sche
 | SMS / WhatsApp | **MISSING** | posto pronto in `PROVIDERS`, `available: () => false` `[CODE]` |
 | POS / cassa | **MISSING** | `POSConnector`, `POSEvent` senza codice `[DATABASE]` |
 | Reserve with Google | **MISSING** | esiste solo `BookingSource.GOOGLE` `[DATABASE]` |
-| Recensioni esterne | **MISSING** | `Review`, `ReviewLink`, `ReviewLinkClick` senza codice `[DATABASE]` |
+| Recensioni esterne | 🟡 **PARZIALE** | il ponte c'è ed è misurato — `ReviewLink` e `ReviewLinkClick` sono vivi (fatti dopo questo audit). `Review` (riportare dentro le recensioni vere) resta senza codice: serve l'API delle piattaforme `[DATABASE]` |
 | Voce / centralino | **MISSING** | `CallLog`, `MissedCall`, `VoiceBookingDraft` senza codice `[DATABASE]` |
 | Multi-locale | **PARTIAL** | selettore e ruoli sì; **nessuna condivisione dati fra locali** `[CODE]` |
 | Agente AI | **PARTIAL** | 8 strumenti, guardia permessi, quota; non proattivo `[CODE]` |
 | `WifiSession` | **DEAD per scelta** | decisione documentata: la fine sessione non è osservabile `[CODE]` |
 | 16 tabelle varie | **DEAD** | vedi §*Do Not Build* `[DATABASE]` |
 
-**24 modelli su 73 non sono toccati da nessuna riga di codice** `[DATABASE]`. È la misura di quanto lo schema abbia promesso più del prodotto.
+**24 modelli su 73 non erano toccati da nessuna riga di codice** al momento dell'audit `[DATABASE]`. È la misura di quanto lo schema abbia promesso più del prodotto. Due sono stati chiusi subito dopo (`ReviewLink`, `ReviewLinkClick`): oggi sono 22.
 
 ---
 
@@ -336,7 +336,9 @@ Sulla capability **Tavolo Connect** e sulla metrica-esempio del brief: `[INFEREN
 
 **Stato: C.** `[CODE]` NPS il giorno dopo, commento, sentiment, due strade dopo la risposta, notifica immediata sui detrattori, pannello in Analytics.
 
-Assenti: **il ponte verso le piattaforme pubbliche**. `Review`, `ReviewLink`, `ReviewLinkClick` sono tabelle senza codice `[DATABASE]`; nessun invito a recensire su Google/TripAdvisor, nessun instradamento promotore→recensione, nessuna raccolta o risposta alle recensioni, nessuna analisi per parole chiave, nessun confronto fra locali.
+**Aggiornamento dopo l'audit — il ponte è stato costruito.** Il locale dichiara fino a quattro posti dove recensire (Google, TripAdvisor, TheFork, Trustpilot…); chi risponde 9 o 10 li vede, chi risponde meno no; il passaggio è **contato**, perché il collegamento passa da `/r/<id>` prima di arrivare alla piattaforma; e in Analytics compare la sola frase che conta: «1 promotore è andato a scrivere una recensione, su 2». `ReviewLink` e `ReviewLinkClick` non sono più tabelle vuote.
+
+Restano assenti, e sono cose diverse: **riportare dentro Tavolo le recensioni vere** (`Review` — richiede le API delle piattaforme), rispondere alle recensioni, l'analisi per parole chiave, il confronto fra locali. E resta vero il limite dichiarato: sappiamo chi è arrivato alla porta, non chi ha scritto.
 
 La catena **visita → sondaggio → NPS → azione → recensione/recupero → CRM** oggi si ferma a «azione». `[INFERENCE]` Chiuderla vale molto: la recensione pubblica è il canale di acquisizione numero uno di un ristorante, e Tavolo sa già **chi** è contento e **quando** lo è.
 
@@ -537,7 +539,7 @@ Cinque, e ognuna è verificata — non dichiarata.
 | Rule builder tipo Zapier | **IGNORE** | Decisione già presa e giusta: un editor di regole in un gestionale per ristoranti resta vuoto |
 | Chatbot per il cliente finale | **IGNORE** | Nessuno dei problemi veri del ristoratore si risolve così |
 
-Le **16 tabelle senza codice** del §*Stato reale* vanno chiuse con una decisione, non lasciate lì: `CallLog`/`MissedCall`/`VoiceBookingDraft` (P2, solo caller ID), `Review`/`ReviewLink`/`ReviewLinkClick` (**P1, da costruire**), `BookingPreorder`(+`Item`) (da cancellare o legare al menu), `ChatSession`/`ChatMessage`, `BookingEvent`, `StaffShift`, `CostEntry`, `MenuScan`, `FloorDecor`, `ApiToken` (P2 con le API pubbliche), `ExchangeRate`.
+Le **16 tabelle senza codice** del §*Stato reale* vanno chiuse con una decisione, non lasciate lì: `CallLog`/`MissedCall`/`VoiceBookingDraft` (P2, solo caller ID), `ReviewLink`/`ReviewLinkClick` (**fatte**), `Review` (**P1, serve l'API delle piattaforme**), `BookingPreorder`(+`Item`) (da cancellare o legare al menu), `ChatSession`/`ChatMessage`, `BookingEvent`, `StaffShift`, `CostEntry`, `MenuScan`, `FloorDecor`, `ApiToken` (P2 con le API pubbliche), `ExchangeRate`.
 
 ---
 

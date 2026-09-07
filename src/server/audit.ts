@@ -77,6 +77,7 @@ export type AuditAction =
   | "venue.service_mode_update"
   | "venue.avg_spend_update"
   | "venue.wifi_update"
+  | "venue.review_links_update"
   | "waitlist.add"
   | "waitlist.update"
   | "waitlist.notify"

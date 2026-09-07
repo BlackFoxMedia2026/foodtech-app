@@ -140,6 +140,10 @@ costavano poco e valevano molto.
 - [x] **La gift card ferma**: la quarta automazione. Denaro già incassato e cena mai servita: passati i giorni scelti dal locale, chi ha una carta mai toccata riceve il promemoria del credito. Scrive **solo a chi il locale conosce già** — l'indirizzo della carta deve corrispondere a un cliente in archivio con il consenso: una carta comprata da uno sconosciuto per un altro sconosciuto non autorizza nessuna email
       → nasce senza omaggio, e per questa più che per le altre: chi ha già un credito non ha bisogno di uno sconto, e regalarglielo sopra svaluta la carta che ha in mano
 - [x] **Il posto liberato da una disdetta**: quando una prenotazione di oggi salta e in lista d'attesa c'è qualcuno che ci sta, il centro controllo lo dice con l'ora e il nome. Tre condizioni, tutte necessarie: l'ora deve avere senso per chi aspetta (chi ha chiesto le 20:30 non vuole le 22:30; chi aspetta in piedi non vuole un tavolo fra tre ore), il posto deve essere **ancora** libero davvero — nel frattempo può averlo preso qualcun altro — e si dice una disdetta sola, non l'elenco delle disdette
+- [x] **Il ponte verso le recensioni pubbliche, misurato**: il locale dichiara fino a quattro posti dove recensire; chi risponde 9 o 10 li vede, chi risponde meno no. Il collegamento passa da `/r/<id>`, che conta il passaggio e poi rimanda, e in Analytics compare «quanti promotori sono andati a scrivere, su quanti»
+      → si conta chi **arriva alla porta**, non chi scrive: se la recensione sia stata scritta lo sa solo la piattaforma, e la pagina lo dice invece di lasciarlo credere
+      → un collegamento tolto viene **spento, non cancellato**: cancellarlo porterebbe via i clic raccolti, e i numeri dell'anno scorso cambierebbero da soli
+      → di chi clicca non registriamo niente (né IP né browser): serve a contare, non a profilare
 - [ ] Restano dalla lista UX: dimensione del tavolo per numero di posti sulla mappa, ricerca e filtri nel menu con 100+ piatti, scheletri di caricamento, navigazione per categorie nel menu pubblico
 
 ## Phase 7 — Enterprise

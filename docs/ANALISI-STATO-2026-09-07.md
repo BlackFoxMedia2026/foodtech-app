@@ -245,7 +245,7 @@ I dati personali di un cliente stanno in **sette posti**, non uno: scheda, note 
 **Idee mai realizzate, da confermare o eliminare (16)**
 - Voce e telefono: `CallLog`, `MissedCall`, `VoiceBookingDraft`.
 - Chat: `ChatSession`, `ChatMessage`.
-- Recensioni esterne: `Review`, `ReviewLink`, `ReviewLinkClick` (il modulo sondaggi/NPS esiste ed è vivo, ma è un'altra cosa: questi riguardano Google e simili).
+- Recensioni esterne: resta `Review`, cioè riportare dentro Tavolo le recensioni scritte su Google e simili — serve l'API della piattaforma. `ReviewLink` e `ReviewLinkClick` non sono più vuote: il ponte «promotore → recensione» è vivo e conta i passaggi.
 - Preordine: `BookingPreorder`, `BookingPreorderItem`.
 - Altri: `BookingEvent`, `StaffShift`, `CostEntry`, `MenuScan`, `FloorDecor`, `ApiToken`.
 
