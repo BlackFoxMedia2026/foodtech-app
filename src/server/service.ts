@@ -37,6 +37,13 @@ export type ServiceBooking = {
   phone: string | null;
   tableId: string | null;
   tableLabel: string | null;
+  /**
+   * Le etichette degli altri tavoli della tavolata, se ce n'è una.
+   *
+   * Senza questo la sala mostrava «4» per una tavolata che occupa 4 e 5, e chi
+   * leggeva non sapeva di poterla dividere.
+   */
+  tavoliUniti: string[];
   notes: string | null;
   occasion: string | null;
   allergies: string | null;
@@ -106,7 +113,7 @@ function loadBookings(venueId: string, from: Date, to: Date) {
   });
 }
 
-function toServiceBooking(b: BookingRow, now: Date): ServiceBooking {
+function toServiceBooking(b: BookingRow, now: Date, etichette?: Map<string, string>): ServiceBooking {
   const minutesToArrival = Math.round((b.startsAt.getTime() - now.getTime()) / 60_000);
   const isLate =
     (b.status === "CONFIRMED" || b.status === "PENDING") && minutesToArrival < -LATE_GRACE_MIN;
@@ -125,6 +132,9 @@ function toServiceBooking(b: BookingRow, now: Date): ServiceBooking {
     phone: b.guest?.phone ?? null,
     tableId: b.table?.id ?? null,
     tableLabel: b.table?.label ?? null,
+    tavoliUniti: (b.combinedTableIds ?? [])
+      .map((id) => etichette?.get(id))
+      .filter((x): x is string => !!x),
     notes: b.notes,
     occasion: b.occasion,
     allergies: b.guest?.allergies ?? null,
@@ -172,7 +182,18 @@ export async function getServiceSnapshot(
     }),
   ]);
 
-  const tutte = bookings.map((b) => toServiceBooking(b, now));
+  // Le etichette dei tavoli accostati: una lettura sola per tutta la
+  // fotografia, invece di una per prenotazione.
+  const idUniti = [...new Set(bookings.flatMap((b) => b.combinedTableIds))];
+  const etichette = new Map<string, string>(
+    idUniti.length === 0
+      ? []
+      : (
+          await db.table.findMany({ where: { id: { in: idUniti }, venueId }, select: { id: true, label: true } })
+        ).map((t) => [t.id, t.label] as const),
+  );
+
+  const tutte = bookings.map((b) => toServiceBooking(b, now, etichette));
 
   const seated = tutte.filter((b) => b.status === "SEATED");
   const arrived = tutte.filter((b) => b.status === "ARRIVED");

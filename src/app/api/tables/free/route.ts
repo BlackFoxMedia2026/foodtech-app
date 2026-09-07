@@ -19,8 +19,12 @@ export async function GET(req: Request) {
     return apiError(422, "invalid_date", "Orario non valido.");
   }
 
+  // Con `includeSmaller` entrano anche i tavoli troppo piccoli da soli: è
+  // l'elenco da cui si compone una tavolata.
+  const includeSmaller = url.searchParams.get("includeSmaller") === "1";
+
   try {
-    return NextResponse.json(await findTablesForWalkIn(ctx.venueId, partySize, { now }));
+    return NextResponse.json(await findTablesForWalkIn(ctx.venueId, partySize, { now, includeSmaller }));
   } catch (err) {
     return apiErrorResponse(err);
   }

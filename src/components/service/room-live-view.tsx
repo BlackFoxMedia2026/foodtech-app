@@ -541,6 +541,7 @@ function TavoloRiga({
           onOpenChange={setMoveOpen}
           bookingId={corrente.bookingId}
           partySize={corrente.partySize}
+          startsAt={corrente.startsAt}
           titolo={`Sposta ${corrente.guestName}`}
           seatAfter={false}
           onDone={onChanged}

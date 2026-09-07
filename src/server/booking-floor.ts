@@ -49,7 +49,16 @@ const ACTIVE_STATUSES: BookingStatus[] = ["CONFIRMED", "PENDING", "ARRIVED", "SE
 
 export class BookingAssignError extends Error {
   constructor(
-    public code: "booking_not_found" | "table_not_found" | "table_conflict" | "capacity_mismatch" | "retry",
+    public code:
+      | "booking_not_found"
+      | "table_not_found"
+      | "table_conflict"
+      | "capacity_mismatch"
+      | "retry"
+      | "needs_two_tables"
+      | "not_combinable"
+      | "different_rooms"
+      | "reason_required",
     public detail?: unknown,
   ) {
     super(code);
@@ -71,6 +80,70 @@ function overlaps(aStart: Date, aDurationMin: number, bStart: Date, bDurationMin
  * throws a serialization failure, mapped below to a retriable "retry" —
  * see the API route) rather than silently overwriting.
  */
+/**
+ * Come ogni errore di assegnazione diventa una risposta HTTP e una frase.
+ *
+ * Stavano dentro la route: con una seconda route che solleva gli stessi errori
+ * sarebbero diventate due liste da tenere allineate a mano, e la prima volta
+ * che ne aggiungi uno te ne accorgi in produzione.
+ */
+export const ASSIGN_ERROR_STATUS: Record<BookingAssignError["code"], number> = {
+  booking_not_found: 404,
+  table_not_found: 404,
+  table_conflict: 409,
+  capacity_mismatch: 409,
+  retry: 409,
+  needs_two_tables: 422,
+  not_combinable: 422,
+  different_rooms: 422,
+  reason_required: 422,
+};
+
+export const ASSIGN_ERROR_MESSAGE: Record<BookingAssignError["code"], string> = {
+  booking_not_found: "Prenotazione non trovata.",
+  table_not_found: "Tavolo non trovato.",
+  table_conflict: "Questo tavolo è stato appena assegnato a un'altra prenotazione.",
+  capacity_mismatch: "Il tavolo ha meno posti dei previsti per questa prenotazione.",
+  retry: "Il tavolo è stato modificato nel frattempo. Riprova.",
+  needs_two_tables: "Per unire servono almeno due tavoli.",
+  not_combinable: "Uno dei tavoli scelti non si può unire agli altri.",
+  different_rooms: "I tavoli da unire devono stare nella stessa sala.",
+  reason_required: "Scrivi il motivo: i posti non bastano per questa tavolata.",
+};
+
+/**
+ * Chi occupa questi tavoli, in questo momento.
+ *
+ * Guarda `tableId` **e** `combinedTableIds`: una prenotazione che ha unito i
+ * tavoli 4 e 5 occupa il 5 senza averlo come tavolo principale, e la vecchia
+ * verifica non lo vedeva. Assegnare il 5 a qualcun altro sarebbe passato senza
+ * un errore — il motore di disponibilità lo sapeva, questa strada no.
+ */
+async function trovaConflitto(
+  tx: Prisma.TransactionClient,
+  venueId: string,
+  bookingId: string,
+  tableIds: string[],
+  quando: { startsAt: Date; durationMin: number },
+): Promise<{ id: string; tableId: string | null } | null> {
+  const dayStart = startOfDay(quando.startsAt);
+  const dayEnd = endOfDay(quando.startsAt);
+  const candidates = await tx.booking.findMany({
+    where: {
+      venueId,
+      deletedAt: null,
+      id: { not: bookingId },
+      status: { in: ACTIVE_STATUSES },
+      startsAt: { gte: dayStart, lte: dayEnd },
+      OR: [{ tableId: { in: tableIds } }, { combinedTableIds: { hasSome: tableIds } }],
+    },
+    select: { id: true, tableId: true, startsAt: true, durationMin: true },
+  });
+  return (
+    candidates.find((c) => overlaps(quando.startsAt, quando.durationMin, c.startsAt, c.durationMin)) ?? null
+  );
+}
+
 export async function assignBookingToTable(
   venueId: string,
   bookingId: string,
@@ -90,22 +163,17 @@ export async function assignBookingToTable(
           throw new BookingAssignError("capacity_mismatch", { tableSeats: table.seats, partySize: booking.partySize });
         }
 
-        const dayStart = startOfDay(booking.startsAt);
-        const dayEnd = endOfDay(booking.startsAt);
-        const candidates = await tx.booking.findMany({
-          where: {
-            venueId,
-            tableId,
-            deletedAt: null,
-            id: { not: bookingId },
-            status: { in: ACTIVE_STATUSES },
-            startsAt: { gte: dayStart, lte: dayEnd },
-          },
-        });
-        const conflict = candidates.find((c) => overlaps(booking.startsAt, booking.durationMin, c.startsAt, c.durationMin));
+        const conflict = await trovaConflitto(tx, venueId, bookingId, [tableId], booking);
         if (conflict) throw new BookingAssignError("table_conflict");
 
-        return tx.booking.update({ where: { id: bookingId }, data: { tableId }, include: { guest: true, table: true } });
+        // Assegnare un tavolo singolo scioglie l'eventuale tavolata: lasciare
+        // gli altri tavoli attaccati a una prenotazione spostata altrove
+        // significherebbe tenerli occupati per sempre.
+        return tx.booking.update({
+          where: { id: bookingId },
+          data: { tableId, combinedTableIds: [] },
+          include: { guest: true, table: true },
+        });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
@@ -132,4 +200,119 @@ export async function assignBookingToTable(
     if (code === "40001") throw new BookingAssignError("retry");
     throw err;
   }
+}
+
+/**
+ * Unire più tavoli per una tavolata.
+ *
+ * `combinedTableIds` esisteva già e tutto il resto dell'applicazione lo
+ * rispettava — la sala mostra la tavolata su ogni tavolo che occupa, il motore
+ * di disponibilità non li offre ad altri — ma **crearla si poteva solo dal
+ * database**. Durante un servizio è un gesto normale: arrivano in dieci, si
+ * accostano due tavoli da sei.
+ *
+ * Il primo tavolo dell'elenco diventa quello principale, gli altri i suoi
+ * accostati. Le regole:
+ *
+ * - **almeno due tavoli**: per uno solo c'è l'assegnazione normale;
+ * - **tutti nella stessa sala**: accostare un tavolo del dehors a uno interno
+ *   non è una tavolata, è un errore di battitura;
+ * - **tutti unibili** (`Table.combinable`, un campo che esisteva e che nessuno
+ *   leggeva): un séparé fissato al muro non si accosta a niente;
+ * - **i posti devono bastare**, e se non bastano ci vuole un motivo scritto —
+ *   come per la forzatura della disponibilità. Undici persone su dieci posti
+ *   può essere una scelta del locale, ma deve essere una scelta;
+ * - **nessuno dei tavoli può essere occupato** nella fascia della
+ *   prenotazione, considerando anche le tavolate altrui.
+ */
+export async function combineTablesForBooking(
+  venueId: string,
+  bookingId: string,
+  tableIds: string[],
+  opts: { force?: boolean; forceReason?: string; actor?: AuditActor } = {},
+): Promise<FloorBooking> {
+  const unici = [...new Set(tableIds)];
+  if (unici.length < 2) throw new BookingAssignError("needs_two_tables");
+
+  try {
+    const aggiornata = await db.$transaction(
+      async (tx) => {
+        const booking = await tx.booking.findFirst({ where: { id: bookingId, venueId, deletedAt: null } });
+        if (!booking) throw new BookingAssignError("booking_not_found");
+
+        const tables = await tx.table.findMany({ where: { id: { in: unici }, venueId, active: true } });
+        if (tables.length !== unici.length) throw new BookingAssignError("table_not_found");
+
+        const nonUnibili = tables.filter((t) => !t.combinable).map((t) => t.label);
+        if (nonUnibili.length > 0) throw new BookingAssignError("not_combinable", { tavoli: nonUnibili });
+
+        const sale = new Set(tables.map((t) => t.roomId ?? "senza-sala"));
+        if (sale.size > 1) throw new BookingAssignError("different_rooms");
+
+        const posti = tables.reduce((s, t) => s + t.seats, 0);
+        if (posti < booking.partySize) {
+          if (!opts.force) throw new BookingAssignError("capacity_mismatch", { posti, coperti: booking.partySize });
+          if (!opts.forceReason?.trim()) throw new BookingAssignError("reason_required");
+        }
+
+        const conflict = await trovaConflitto(tx, venueId, bookingId, unici, booking);
+        if (conflict) throw new BookingAssignError("table_conflict", { prenotazione: conflict.id });
+
+        // L'ordine conta: il primo è il tavolo principale, quello che compare
+        // nelle liste dove c'è spazio per un nome solo.
+        return tx.booking.update({
+          where: { id: bookingId },
+          data: { tableId: unici[0], combinedTableIds: unici.slice(1) },
+          include: { guest: true, table: true },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+
+    await recordAudit(
+      opts.actor,
+      opts.force ? "booking.combine_tables_forced" : "booking.combine_tables",
+      "booking",
+      bookingId,
+      {
+        tavoli: unici,
+        coperti: aggiornata.partySize,
+        ...(opts.forceReason ? { motivoForzatura: opts.forceReason } : {}),
+      },
+    );
+
+    return aggiornata;
+  } catch (err) {
+    if (err instanceof BookingAssignError) throw err;
+    if ((err as { code?: string } | undefined)?.code === "40001") throw new BookingAssignError("retry");
+    throw err;
+  }
+}
+
+/**
+ * Dividere una tavolata: resta il tavolo principale, gli altri tornano liberi.
+ *
+ * Non serve nessuna verifica: liberare non può creare un conflitto. È
+ * l'operazione che deve funzionare sempre, perché è quella che si fa quando
+ * qualcosa è andato storto.
+ */
+export async function splitTablesForBooking(
+  venueId: string,
+  bookingId: string,
+  opts: { actor?: AuditActor } = {},
+): Promise<FloorBooking> {
+  const booking = await db.booking.findFirst({ where: { id: bookingId, venueId, deletedAt: null } });
+  if (!booking) throw new BookingAssignError("booking_not_found");
+
+  const aggiornata = await db.booking.update({
+    where: { id: bookingId },
+    data: { combinedTableIds: [] },
+    include: { guest: true, table: true },
+  });
+
+  await recordAudit(opts.actor, "booking.split_tables", "booking", bookingId, {
+    tavoliLiberati: booking.combinedTableIds,
+  });
+
+  return aggiornata;
 }

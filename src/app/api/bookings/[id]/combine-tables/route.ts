@@ -1,26 +1,30 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auditActor } from "@/server/audit";
 import { requireVenueApi } from "@/lib/api-auth";
 import {
   ASSIGN_ERROR_MESSAGE,
   ASSIGN_ERROR_STATUS,
   BookingAssignError,
-  assignBookingToTable,
+  combineTablesForBooking,
 } from "@/server/booking-floor";
+
+const Body = z.object({
+  /** Il primo è il tavolo principale, gli altri gli accostati. */
+  tableIds: z.array(z.string().min(1)).min(2).max(8),
+  force: z.boolean().optional(),
+  forceReason: z.string().max(300).optional(),
+});
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const ctx = await requireVenueApi("manage_bookings");
   if (!ctx.ok) return ctx.response;
 
-  const body = await req.json().catch(() => null);
-  const tableId = body?.tableId;
-  if (!tableId || typeof tableId !== "string") {
-    return NextResponse.json({ error: "missing_tableId" }, { status: 400 });
-  }
-
   try {
-    const updated = await assignBookingToTable(ctx.venueId, params.id, tableId, {
-      force: !!body?.force,
+    const body = Body.parse(await req.json());
+    const updated = await combineTablesForBooking(ctx.venueId, params.id, body.tableIds, {
+      force: body.force,
+      forceReason: body.forceReason,
       actor: auditActor(ctx, req),
     });
     return NextResponse.json(updated);
@@ -31,6 +35,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         { status: ASSIGN_ERROR_STATUS[err.code] },
       );
     }
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    if (err instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "validation_failed", message: "Per unire servono almeno due tavoli." },
+        { status: 422 },
+      );
+    }
+    return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
 }

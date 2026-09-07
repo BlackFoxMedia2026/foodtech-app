@@ -23,7 +23,10 @@ type TableMatch = {
   matchesPreference: boolean;
 };
 
-type TableSearch = { tables: TableMatch[]; reason: "venue_closed" | "shift_full" | "all_busy" | null };
+type TableSearch = {
+  tables: TableMatch[];
+  reason: "venue_closed" | "shift_full" | "all_busy" | "no_table_that_big" | null;
+};
 
 /** «Nessun tavolo» non basta: il rimedio è diverso a seconda del motivo. */
 const MOTIVO: Record<NonNullable<TableSearch["reason"]>, { titolo: string; spiegazione: string }> = {
@@ -41,6 +44,11 @@ const MOTIVO: Record<NonNullable<TableSearch["reason"]>, { titolo: string; spieg
     titolo: "Tutti i tavoli sono occupati",
     spiegazione:
       "Nessun tavolo abbastanza grande è libero in questo momento. Avvisa l'ospite dell'attesa, oppure libera un tavolo dalla Sala e riprova.",
+  },
+  no_table_that_big: {
+    titolo: "Nessun tavolo di questa misura",
+    spiegazione:
+      "Non è che siano occupati: un tavolo così grande non c'è. Per un gruppo del genere si uniscono più tavoli, dalla scheda della prenotazione in Servizio.",
   },
 };
 

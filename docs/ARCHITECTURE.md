@@ -184,6 +184,26 @@ d'attesa e il walk-in, che stanno accomodando qualcuno adesso — passa da
 Stessa forma di `skipAvailabilityCheck`, che ora richiede anche un motivo
 scritto (`forceReason`) e finisce nel registro come azione distinta.
 
+### Un tavolo non si dà a due gruppi, nemmeno per sbaglio
+
+`assignBookingToTable` e `combineTablesForBooking` in `src/server/booking-floor.ts`.
+
+La verifica dei conflitti guardava solo `tableId`: il secondo tavolo di una
+tavolata risultava **libero**, e si poteva assegnare a qualcun altro. Il motore
+di disponibilità lo sapeva (legge anche `combinedTableIds`), questa strada no —
+due verità su cosa sia occupato, e quella sbagliata era proprio quella che usa
+lo staff durante il servizio. Ora c'è una funzione sola (`trovaConflitto`) che
+guarda entrambi i campi.
+
+E spostare una prenotazione su un tavolo singolo **scioglie la tavolata**: senza
+questo, gli altri tavoli restavano attaccati a una prenotazione che era
+altrove, cioè occupati da nessuno per il resto della serata.
+
+Le regole per unire stanno tutte in un posto: almeno due tavoli, stessa sala,
+solo tavoli dichiarati unibili (`Table.combinable`, un campo che esisteva e che
+nessuno leggeva), posti sufficienti — o un motivo scritto, come per la
+forzatura della disponibilità.
+
 ### Il merito di una campagna si guadagna, non si dichiara
 
 `Booking.campaignId` più `getCampaignAttribution` in `src/server/campaigns.ts`.

@@ -36,6 +36,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Modulo | Stato | Note |
 |---|---|---|
 | Sala / pianta tavoli (configurazione) | LIVE | Room Builder, layout salvati, zoom, trascinamento, assegnazione personale |
+| Tavolate (unire e dividere) | LIVE | Dal selettore tavoli del Servizio: un tocco assegna, due o più uniscono, i posti si sommano e se non bastano serve un motivo scritto. Vincoli: stessa sala, solo tavoli dichiarati unibili, nessuno occupato in quella fascia. Dividere libera gli altri tavoli |
 | Sala viva (durante il servizio) | LIVE | Sette stati derivati con colore **e** icona, chi c'è su ogni tavolo con orario e minuti oltre il previsto, tavolate unite mostrate su tutti i tavoli che usano, elenco per stato su telefono al posto di una mappa illeggibile |
 | Assegnazione tavolo a prenotazione | LIVE | Gestione collisioni con lock e 409 |
 | Tavoli (anagrafica) | LIVE | |
@@ -102,7 +103,7 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 | Coda dei lavori | LIVE | `BackgroundJob` su Postgres, smaltita ogni minuto. Presa in carico atomica (due cron sovrapposti non fanno partire due volte lo stesso invio), lavori a lotti che cedono il turno, nuovi tentativi con attese crescenti, ripresa dei lavori interrotti, errori definitivi visibili in Impostazioni con «Riprova» |
 | Navigazione mobile | LIVE | Barra in basso con «+» per i gesti rapidi; nessuno scorrimento orizzontale |
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
-| Test | PARTIAL | 332 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo, profilo ospite, sondaggi, coda dei lavori, invio campagne, automazioni, freno sulle migrazioni, previsione coperti e attribuzione delle campagne. Nessun end-to-end sul browser automatizzato (le verifiche dal vivo si fanno a mano, con gli screenshot in `docs/audit-2026-09/`) |
+| Test | PARTIAL | 372 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo, profilo ospite, sondaggi, coda dei lavori, invio campagne, automazioni, freno sulle migrazioni, previsione coperti, attribuzione delle campagne, tavolate ed esperienze. Nessun end-to-end sul browser automatizzato (le verifiche dal vivo si fanno a mano, con gli screenshot in `docs/audit-2026-09/`) |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
 
@@ -118,4 +119,6 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 
 Menu · Ordini · Food cost · POS · Connettori · Centralino e voce · Wi-Fi captive portal · Preordini · Biglietti esperienze · Chat ospiti · Eventi privati e gruppi.
 
-Le esperienze hanno una pagina in sola lettura: nessuna API per crearle o venderle. **Segnalazioni** (`/reports`) è un guscio fuori navigazione: da rimuovere o implementare.
+Le **esperienze** ora si creano, si modificano e si pubblicano; **vendere i biglietti** no — serve Stripe, come le caparre. Nel frattempo c'è il campo con il link a dove li vende il locale, e la pagina dice che da qui non si vendono.
+
+**Segnalazioni** (`/reports`) è stata rimossa: era una pagina vuota raggiungibile dal menu del profilo, che prometteva un canale di assistenza inesistente.

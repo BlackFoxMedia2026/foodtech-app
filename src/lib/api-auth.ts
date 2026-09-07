@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { resolveActiveVenue, type ActiveVenueContext } from "./tenant";
 import { can, type Ability } from "./abilities";
+import { messaggioDiValidazione } from "./validation-message";
 
 /**
  * Punto unico da cui passano autenticazione, locale attivo e permessi delle
@@ -90,7 +91,7 @@ export function apiErrorResponse(err: unknown) {
   }
 
   if (err instanceof ZodError) {
-    return apiError(422, "validation_failed", "Alcuni campi non sono validi.", err.flatten());
+    return apiError(422, "validation_failed", messaggioDiValidazione(err), err.flatten());
   }
 
   // Gli errori di dominio portano un codice: qui diventa lo status giusto,
@@ -131,6 +132,13 @@ export function apiErrorResponse(err: unknown) {
       422,
       "no_recipients",
       "Nessun destinatario: con questi criteri non c'è nessun cliente con email e consenso."
+    );
+  }
+  if (message === "has_tickets") {
+    return apiError(
+      409,
+      "has_tickets",
+      "Ci sono biglietti registrati per questa esperienza: riportala in bozza invece di eliminarla."
     );
   }
   if (message === "no_channel") {

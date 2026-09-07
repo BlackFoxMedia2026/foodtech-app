@@ -27,8 +27,16 @@ export type FreeTable = {
 
 export type FreeTableSearch = {
   tables: FreeTable[];
-  /** Perché non c'è niente da proporre. `null` quando ci sono tavoli. */
-  reason: "venue_closed" | "shift_full" | "all_busy" | null;
+  /**
+   * Perché non c'è niente da proporre. `null` quando ci sono tavoli.
+   *
+   * `no_table_that_big` non è un dettaglio: prima quel caso finiva in
+   * `all_busy`, che diceva «tutti i tavoli abbastanza grandi sono occupati»
+   * anche quando di quella misura non ne esisteva **nemmeno uno**. Due
+   * situazioni diverse con due risposte diverse: aspettare che si liberi un
+   * tavolo, o unirne due.
+   */
+  reason: "venue_closed" | "shift_full" | "all_busy" | "no_table_that_big" | null;
 };
 
 export async function findFreeTables(
@@ -38,12 +46,28 @@ export async function findFreeTables(
     startsAt: Date;
     durationMin?: number;
     preferredRoomId?: string | null;
+    /**
+     * Include anche i tavoli troppo piccoli da soli.
+     *
+     * Serve per unire: una tavolata da dieci si fa con due tavoli da sei, e
+     * l'elenco normale — che mostra solo i tavoli grandi abbastanza — per
+     * definizione non ne conterrebbe nessuno. Con questa opzione la domanda
+     * cambia da «chi può accogliere dieci persone» a «chi è libero adesso».
+     */
+    includeSmaller?: boolean;
   },
 ): Promise<FreeTableSearch> {
   const durationMin = request.durationMin ?? DEFAULT_DURATION_MIN;
 
   const tables = await db.table.findMany({
-    where: { venueId, active: true, seats: { gte: request.partySize } },
+    where: {
+      venueId,
+      active: true,
+      ...(request.includeSmaller ? {} : { seats: { gte: request.partySize } }),
+      // Un tavolo che non si può unire non serve a una tavolata: `combinable`
+      // esisteva nello schema e non lo leggeva nessuno.
+      ...(request.includeSmaller ? { combinable: true } : {}),
+    },
     select: { id: true, label: true, seats: true, roomId: true, room: { select: { name: true } } },
     orderBy: { seats: "asc" },
   });
@@ -56,7 +80,10 @@ export async function findFreeTables(
     const result = await checkAvailability(venueId, {
       startsAt: request.startsAt,
       durationMin,
-      partySize: request.partySize,
+      // Per un tavolo più piccolo del gruppo la domanda è «è libero?», non
+      // «ci stanno tutti?»: ci staranno sommando gli altri tavoli della
+      // tavolata, e la somma la verifica chi unisce.
+      partySize: request.includeSmaller ? Math.min(request.partySize, table.seats) : request.partySize,
       tableId: table.id,
     });
 
@@ -87,7 +114,18 @@ export async function findFreeTables(
   });
 
   const reason: FreeTableSearch["reason"] =
-    free.length > 0 ? null : venueClosed ? "venue_closed" : shiftFull ? "shift_full" : "all_busy";
+    free.length > 0
+      ? null
+      : venueClosed
+        ? "venue_closed"
+        : shiftFull
+          ? "shift_full"
+          : // Nessun tavolo nemmeno da esaminare: non sono occupati, non
+            // esistono di quella misura. Con `includeSmaller` non può capitare,
+            // perché l'elenco parte da tutti i tavoli del locale.
+            tables.length === 0
+            ? "no_table_that_big"
+            : "all_busy";
 
   return { tables: free, reason };
 }

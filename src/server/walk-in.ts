@@ -38,12 +38,13 @@ export type WalkInInputType = z.infer<typeof WalkInInput>;
 export function findTablesForWalkIn(
   venueId: string,
   partySize: number,
-  opts: { now?: Date; durationMin?: number } = {},
+  opts: { now?: Date; durationMin?: number; includeSmaller?: boolean } = {},
 ): Promise<FreeTableSearch> {
   return findFreeTables(venueId, {
     partySize,
     startsAt: opts.now ?? new Date(),
     durationMin: opts.durationMin,
+    includeSmaller: opts.includeSmaller,
   });
 }
 

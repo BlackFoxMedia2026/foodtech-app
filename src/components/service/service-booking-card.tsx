@@ -13,6 +13,7 @@ import {
   Timer,
   UserX,
   UtensilsCrossed,
+  Unlink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
@@ -75,6 +76,19 @@ export function ServiceBookingCard({
     onChanged();
   }
 
+  /** Scioglie la tavolata: resta il tavolo principale, gli altri si liberano. */
+  async function dividi() {
+    setBusy("split");
+    setError(null);
+    const res = await fetch(`/api/bookings/${booking.id}/split-tables`, { method: "POST" });
+    setBusy(null);
+    if (!res.ok) {
+      setError(await readApiError(res, "Non siamo riusciti a dividere la tavolata. Riprova."));
+      return;
+    }
+    onChanged();
+  }
+
   /** Accomodare richiede un tavolo: se non ce n'è uno, prima si scegli. */
   async function accomoda() {
     if (!booking.tableId) {
@@ -105,7 +119,8 @@ export function ServiceBookingCard({
             )}
             {booking.tableLabel ? (
               <span className="rounded-full bg-current/10 px-2 py-0.5 text-[11px]">
-                {booking.tableLabel}
+                {/* Una tavolata si legge per intero: «4 + 5», non «4». */}
+                {[booking.tableLabel, ...booking.tavoliUniti].join(" + ")}
               </span>
             ) : (
               <span className="rounded-full border border-dashed border-border px-2 py-0.5 text-[11px] text-tertiary-foreground">
@@ -209,6 +224,18 @@ export function ServiceBookingCard({
             )}
 
             <div className="flex items-center gap-0.5">
+              {booking.tavoliUniti.length > 0 && booking.status !== "COMPLETED" && (
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => void dividi()}
+                  aria-label="Dividi la tavolata"
+                  title="Dividi la tavolata: resta il primo tavolo, gli altri tornano liberi"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
+                >
+                  <Unlink className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
               {booking.tableId && booking.status !== "COMPLETED" && (
                 <button
                   type="button"
@@ -253,6 +280,7 @@ export function ServiceBookingCard({
           onOpenChange={(v) => !v && setPickerFor(null)}
           bookingId={booking.id}
           partySize={booking.partySize}
+          startsAt={booking.startsAt}
           titolo={pickerFor === "seat" ? `Accomoda ${booking.guestName}` : `Sposta ${booking.guestName}`}
           /** Accomodando, dopo l'assegnazione si segna anche seduto. */
           seatAfter={pickerFor === "seat"}

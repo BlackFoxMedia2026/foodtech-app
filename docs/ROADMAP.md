@@ -40,7 +40,8 @@ Obiettivo: parità competitiva sul nucleo prenotazioni.
 Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 
 - [x] **Modalità Servizio / reception**: ADESSO / PROSSIMI / ATTESA, per tablet e una mano
-- [x] **Sala viva**: sette stati con icona oltre al colore, sposta prenotazione, libera tavolo, elenco per stato su telefono. Le tavolate unite si *leggono* (`combinedTableIds`, rispettato anche dalla disponibilità); **unire e dividere dall'interfaccia** resta da fare
+- [x] **Sala viva**: sette stati con icona oltre al colore, sposta prenotazione, libera tavolo, elenco per stato su telefono
+- [x] **Unire e dividere le tavolate dall'interfaccia**: un tocco assegna, due o più uniscono, i posti si sommano sotto gli occhi. Prima `combinedTableIds` si poteva scrivere solo dal database, pur essendo rispettato da tutto il resto
 - [x] Navigazione mobile: barra in basso con «+» centrale (fatta in Phase 1)
 - [x] **Centro controllo servizio**: sette regole deterministiche, ognuna con la sua azione. Restano da aggiungere, quando ci saranno i dati: previsione dei coperti e ottimizzazione dell'occupazione (Phase 5)
 
@@ -73,6 +74,15 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [ ] RevPASH (ricavo per posto a sedere per ora): la capienza c'è, i ricavi sono una stima dichiarata. Ha senso quando ci saranno incassi veri
 - [ ] Previsione dei ricavi: è la previsione dei coperti per lo scontrino medio. Facile da mostrare, e per questo pericolosa — meglio dopo gli incassi reali
 - [ ] Intelligenza no-show oltre il singolo tavolo (il rischio per prenotazione c'è già nel centro controllo)
+
+## Funzioni che sembravano finite e non lo erano
+
+Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una funzione assente (§23).
+
+- [x] **Unire e dividere i tavoli** — vedi Phase 2
+- [x] **Esperienze**: la pagina esisteva in sola lettura con un pulsante «Nuova esperienza» che non faceva niente. Ora si creano, si modificano, si pubblicano. I biglietti **non si vendono da Tavolo** (servono i pagamenti): c'è il link a dove li vende il locale, e la pagina lo dice
+- [x] **Segnalazioni** (`/reports`): pagina vuota raggiungibile dal menu del profilo, che prometteva un canale di assistenza inesistente. Rimossa
+- [ ] Vendita dei biglietti delle esperienze → dipende da Stripe, come le caparre
 
 ## Phase 6 — Ecosistema
 
