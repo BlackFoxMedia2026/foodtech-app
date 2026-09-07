@@ -97,6 +97,7 @@ beforeEach(async () => {
   await db.couponRedemption.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
   await db.coupon.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
   await db.booking.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
+  await db.giftCard.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
   await db.guest.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
   await db.backgroundJob.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
   await db.automationRun.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
@@ -255,6 +256,86 @@ describe("chi tocca l'invito a tornare", () => {
   });
 });
 
+describe("chi tocca la gift card ferma", () => {
+  const G = 30;
+
+  /** Una gift card intestata a un indirizzo, emessa N giorni fa. */
+  async function giftCard(email: string | null, giorniFa: number, extra: Record<string, unknown> = {}) {
+    return db.giftCard.create({
+      data: {
+        venueId,
+        code: `${PREFISSO}${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+        initialCents: 5000,
+        balanceCents: 5000,
+        recipientEmail: email,
+        createdAt: piu(-giorniFa),
+        ...extra,
+      },
+    });
+  }
+
+  it("prende chi ha una carta mai usata, passati i giorni scelti", async () => {
+    const g = await ospite("Regalata");
+    await giftCard(g.email, G + 5);
+    const { pronti } = await resolveDestinatari(venueId, "gift_card_ferma", G, ORA);
+    expect(pronti.map((p) => p.guestId)).toEqual([g.id]);
+    expect(pronti[0].reason).toContain("50,00 €");
+    expect(pronti[0].reason).toContain("mai usata");
+  });
+
+  it("non prende una carta appena emessa: non è ancora dimenticata", async () => {
+    const g = await ospite("Fresca");
+    await giftCard(g.email, 2);
+    const { pronti } = await resolveDestinatari(venueId, "gift_card_ferma", G, ORA);
+    expect(pronti).toHaveLength(0);
+  });
+
+  it("non prende una carta già intaccata, nemmeno di un euro", async () => {
+    const g = await ospite("Iniziata");
+    const carta = await giftCard(g.email, G + 5, { balanceCents: 4900 });
+    await db.giftCardRedemption.create({ data: { giftCardId: carta.id, amountCents: 100 } });
+    const { pronti } = await resolveDestinatari(venueId, "gift_card_ferma", G, ORA);
+    expect(pronti).toHaveLength(0);
+  });
+
+  it("non prende una carta scaduta o già chiusa: quel credito non esiste più", async () => {
+    const g = await ospite("Scaduta");
+    await giftCard(g.email, G + 5, { expiresAt: piu(-1) });
+    const h = await ospite("Chiusa");
+    await giftCard(h.email, G + 5, { status: "CANCELLED" });
+    const { pronti } = await resolveDestinatari(venueId, "gift_card_ferma", G, ORA);
+    expect(pronti).toHaveLength(0);
+  });
+
+  it("non scrive a uno sconosciuto: una carta comprata per un estraneo non è un consenso", async () => {
+    await giftCard(`${PREFISSO}mai-vista@test.local`, G + 5);
+    const { pronti } = await resolveDestinatari(venueId, "gift_card_ferma", G, ORA);
+    expect(pronti).toHaveLength(0);
+  });
+
+  it("rispetta il consenso come tutte le altre", async () => {
+    const g = await ospite("SenzaConsenso", { marketingOptIn: false });
+    await giftCard(g.email, G + 5);
+    const { pronti } = await resolveDestinatari(venueId, "gift_card_ferma", G, ORA);
+    expect(pronti).toHaveLength(0);
+  });
+
+  it("due carte per la stessa persona sono un messaggio solo", async () => {
+    const g = await ospite("DueVolte");
+    await giftCard(g.email, G + 5);
+    await giftCard(g.email, G + 40);
+    const { pronti } = await resolveDestinatari(venueId, "gift_card_ferma", G, ORA);
+    expect(pronti).toHaveLength(1);
+  });
+
+  it("l'indirizzo scritto in maiuscolo è la stessa persona", async () => {
+    const g = await ospite("Maiuscola");
+    await giftCard(g.email!.toUpperCase(), G + 5);
+    const { pronti } = await resolveDestinatari(venueId, "gift_card_ferma", G, ORA);
+    expect(pronti.map((p) => p.guestId)).toEqual([g.id]);
+  });
+});
+
 describe("le difese comuni", () => {
   async function unCandidato(nome = "Candidata") {
     const g = await ospite(nome, { totalVisits: 3, lastVisitAt: piu(-61) });
@@ -361,7 +442,7 @@ describe("l'esecuzione", () => {
 describe("configurazione", () => {
   it("le automazioni nascono spente", async () => {
     const viste = await listAutomations(venueId, ORA);
-    expect(viste).toHaveLength(3);
+    expect(viste).toHaveLength(4);
     expect(viste.every((v) => !v.active)).toBe(true);
   });
 

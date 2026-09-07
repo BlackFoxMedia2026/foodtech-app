@@ -186,7 +186,11 @@ describe("la risposta dell'ospite", () => {
     expect(esito.ok).toBe(true);
     if (esito.ok) {
       expect(esito.sentiment).toBe("PROMOTER");
-      expect(esito.publicReviewUrl).toBe("https://esempio.test/recensione");
+      // Non l'indirizzo della piattaforma: la nostra porta, che conta il
+      // passaggio e poi rimanda (vedi server/reviews.ts).
+      expect(esito.reviewLinks).toHaveLength(1);
+      expect(esito.reviewLinks[0].href).toMatch(/^\/r\/[a-z0-9]+\?s=/);
+      expect(esito.reviewLinks[0].nome).toBe("Google");
     }
   });
 
@@ -202,7 +206,7 @@ describe("la risposta dell'ospite", () => {
       expect(esito.sentiment).toBe("DETRACTOR");
       // È il punto del meccanismo: chi è uscito male non viene spinto a
       // scriverlo in pubblico.
-      expect(esito.publicReviewUrl).toBeNull();
+      expect(esito.reviewLinks).toEqual([]);
     }
   });
 

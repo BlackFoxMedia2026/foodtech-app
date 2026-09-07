@@ -10,6 +10,7 @@ import { getNoShowReport } from "@/server/no-show";
 import { NoShowPanel } from "@/components/insights/no-show-panel";
 import { getOccupancyByWeekday, getWeekForecast } from "@/server/forecast";
 import { getSurveyStats } from "@/server/surveys";
+import { reviewFunnel } from "@/server/reviews";
 import { resolveSegment } from "@/server/campaigns";
 import { Button } from "@/components/ui/button";
 import { SlotChart, SourcesChart, WeekdayHeatmap } from "@/components/insights/charts";
@@ -70,10 +71,14 @@ export default async function InsightsPage({
 }) {
   const ctx = await getActiveVenue();
   const { range, from, to } = computeRange(searchParams);
-  const [a, prev, nps, previsione, occupazione, foodCost, assenze, inattivi] = await Promise.all([
+  const giorni = Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000));
+  const [a, prev, nps, ponteRecensioni, previsione, occupazione, foodCost, assenze, inattivi] = await Promise.all([
     getAnalytics(ctx.venueId, from, to),
     getPreviousPeriodMetrics(ctx.venueId, from, to),
-    getSurveyStats(ctx.venueId, { days: Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000)) }),
+    getSurveyStats(ctx.venueId, { days: giorni }),
+    // Lo stesso periodo del sondaggio: due numeri accanto che contassero
+    // finestre diverse sarebbero una percentuale falsa.
+    reviewFunnel(ctx.venueId, { days: giorni }),
     // La previsione guarda avanti: non dipende dal periodo selezionato, che
     // riguarda il passato.
     getWeekForecast(ctx.venueId),
@@ -116,7 +121,7 @@ export default async function InsightsPage({
 
       <ForecastPanel giorni={previsione} occupazione={occupazione} inattivi={inattivi.length} />
 
-      <NpsPanel stats={nps} />
+      <NpsPanel stats={nps} funnel={ponteRecensioni} />
 
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard

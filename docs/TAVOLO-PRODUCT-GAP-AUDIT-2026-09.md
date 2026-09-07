@@ -44,7 +44,7 @@ Verifiche automatiche: TypeScript pulito, ESLint pulito, nessuna deriva fra sche
 | Prenotazioni (4 canali d'ingresso) | **REAL** | widget, telefono, waitlist, walk-in `[CODE][SCREENSHOT]` |
 | Piantina e assegnazione tavoli | **REAL** | trascinamento, collisioni serializzabili, tavolate `[CODE]` |
 | Sala viva (7 stati) | **REAL** | derivati dai fatti, non da campi `[CODE]` |
-| Centro controllo (7 regole) | **REAL** | deterministico, ogni regola col suo rimedio `[CODE]` |
+| Centro controllo (8 regole) | **REAL** | deterministico, ogni regola col suo rimedio `[CODE]` |
 | Lista d'attesa | **REAL** | offerta con link firmato e scadenza, conversione `[CODE]` |
 | CRM comportamentale | **REAL** | profilo calcolato dalle prenotazioni, etichette con motivo `[CODE]` |
 | Menu + allergeni | **REAL** | 14 allergeni da elenco chiuso, menu pubblico `[CODE]` |
@@ -66,14 +66,14 @@ Verifiche automatiche: TypeScript pulito, ESLint pulito, nessuna deriva fra sche
 | SMS / WhatsApp | **MISSING** | posto pronto in `PROVIDERS`, `available: () => false` `[CODE]` |
 | POS / cassa | **MISSING** | `POSConnector`, `POSEvent` senza codice `[DATABASE]` |
 | Reserve with Google | **MISSING** | esiste solo `BookingSource.GOOGLE` `[DATABASE]` |
-| Recensioni esterne | **MISSING** | `Review`, `ReviewLink`, `ReviewLinkClick` senza codice `[DATABASE]` |
+| Recensioni esterne | 🟡 **PARZIALE** | il ponte c'è ed è misurato — `ReviewLink` e `ReviewLinkClick` sono vivi (fatti dopo questo audit). `Review` (riportare dentro le recensioni vere) resta senza codice: serve l'API delle piattaforme `[DATABASE]` |
 | Voce / centralino | **MISSING** | `CallLog`, `MissedCall`, `VoiceBookingDraft` senza codice `[DATABASE]` |
 | Multi-locale | **PARTIAL** | selettore e ruoli sì; **nessuna condivisione dati fra locali** `[CODE]` |
 | Agente AI | **PARTIAL** | 8 strumenti, guardia permessi, quota; non proattivo `[CODE]` |
 | `WifiSession` | **DEAD per scelta** | decisione documentata: la fine sessione non è osservabile `[CODE]` |
 | 16 tabelle varie | **DEAD** | vedi §*Do Not Build* `[DATABASE]` |
 
-**24 modelli su 73 non sono toccati da nessuna riga di codice** `[DATABASE]`. È la misura di quanto lo schema abbia promesso più del prodotto.
+**24 modelli su 73 non erano toccati da nessuna riga di codice** al momento dell'audit `[DATABASE]`. È la misura di quanto lo schema abbia promesso più del prodotto. Due sono stati chiusi subito dopo (`ReviewLink`, `ReviewLinkClick`): oggi sono 22.
 
 ---
 
@@ -94,7 +94,7 @@ Recupero di **§9 di `docs/REALITY-CHECK-2026-09.md`** `[PREVIOUS AUDIT]` — l'
 | Caparra / garanzia con carta | CoverManager | «assente — peso **alto**, è la richiesta numero uno contro i no-show» | A | A (schema pronto, zero codice) `[CODE]` | 🔴 **ANCORA MANCANTE** |
 | Waitlist operativa | CoverManager | «schema pronto, zero codice — alto» | B | D/E: posizione, offerta con link firmato e scadenza, conversione, attesa media depurata dalle righe dimenticate `[CODE]` | 🟢 RISOLTO |
 | Promemoria automatici | tutti | «assente — alto» | A | C: motore completo, 24h e 3h, conferma e annullo dal link; **canale spento** `[CODE]` | 🟡 PARZIALE |
-| Modalità servizio / reception | CoverManager | «assente — alto, è il differenziatore possibile» | A | E: Servizio + sala viva a 7 stati + centro controllo a 7 regole `[CODE][SCREENSHOT]` | 🔵 **TAVOLO ORA È MIGLIORE** (§ *Advantages*) |
+| Modalità servizio / reception | CoverManager | «assente — alto, è il differenziatore possibile» | A | E: Servizio + sala viva a 7 stati + centro controllo a 8 regole `[CODE][SCREENSHOT]` | 🔵 **TAVOLO ORA È MIGLIORE** (§ *Advantages*) |
 | CRM con LTV, tag, comportamento | SevenRooms, Pienissimo | «anagrafica sola — alto» | B | D: profilo calcolato, etichette col motivo, cronologia; LTV **stimato e dichiarato tale** `[CODE]` | 🟢 RISOLTO |
 | Automazioni marketing | Pienissimo | «assente — medio-alto» | A | C: tre automazioni con anteprima destinatari e omaggio personale; invio spento `[CODE]` | 🟡 PARZIALE |
 | Recensioni e NPS | CoverManager | «assente — medio» | A | C: NPS e sondaggio completi; **nessun ponte verso Google/TripAdvisor** `[CODE]` | 🟡 PARZIALE |
@@ -174,7 +174,7 @@ Assenti: **booking window e cutoff** configurabili, **overbooking controllato**,
 
 **Stato: E — è l'area più forte del prodotto.** `[CODE][SCREENSHOT]`
 
-Presenti: piantina con sale multiple, tavoli, capienza, unione e divisione, trascinamento, sette stati derivati dai fatti, ritardo, «quasi libero», walk-in, conversione dalla waitlist, centro controllo con sette regole deterministiche, ognuna con il posto dove intervenire.
+Presenti: piantina con sale multiple, tavoli, capienza, unione e divisione, trascinamento, sette stati derivati dai fatti, ritardo, «quasi libero», walk-in, conversione dalla waitlist, centro controllo con otto regole deterministiche, ognuna con il posto dove intervenire — l'ottava, aggiunta dopo questo audit, è **il posto liberato da una disdetta offerto a chi è in lista**.
 
 Alla domanda del brief — *rappresenta solo lo stato o aiuta a decidere?* — la risposta è: **aiuta a decidere**, ed è raro. Il centro controllo non mostra dati, dice cosa sta per andare storto e dove rimediare.
 
@@ -258,7 +258,7 @@ Rispetto a Pienissimo `[COMPETITOR SOURCE]`, che dichiara SMS + email + WhatsApp
 
 **Stato: C, con una filosofia che va difesa.** `[CODE]`
 
-Tre automazioni: compleanno, chi non torna da un po', invito a tornare dopo la prima visita. Nascono spente, mostrano **quante persone toccherebbero e chi, prima** di essere accese, possono allegare un omaggio personale (codice intestato, valido una volta, con scadenza).
+Quattro automazioni: compleanno, chi non torna da un po', invito a tornare dopo la prima visita e — aggiunta subito dopo questo audit — **gift card ferma**. Nascono spente, mostrano **quante persone toccherebbero e chi, prima** di essere accese, possono allegare un omaggio personale (codice intestato, valido una volta, con scadenza).
 
 Valutazione delle ricette proposte dal brief. Colonne: impatto, complessità, dati necessari, canale, misurabilità.
 
@@ -268,15 +268,15 @@ Valutazione delle ricette proposte dal brief. Colonne: impatto, complessità, da
 | Inattivo 30/60/90 | alto | S | ci sono | email | sì | ✅ fatta a una soglia; **le tre soglie sono una scelta del locale**, non tre automazioni |
 | Prima visita → seconda | alto | S | ci sono | email | sì | ✅ **già fatta** |
 | Punti in scadenza | medio | M | **mancano**: i punti non scadono per scelta | email | sì | ⛔ incoerente con la decisione presa sui punti |
-| Gift card inutilizzata | **alto** | S | ci sono `[CODE]` | email | sì | ⭐ **la più forte fra le nuove**: è denaro già incassato che torna a tavola |
+| Gift card inutilizzata | **alto** | S | ci sono `[CODE]` | email | sì | ✅ **fatta**: era la più forte fra le nuove — denaro già incassato che torna a tavola |
 | NPS detrattore | alto | S | ci sono | — | sì | ⛔ **scelta esplicita: risponde una persona**. Da mantenere |
 | NPS promotore → recensione | **alto** | M | ci sono; serve il ponte alle piattaforme | email | sì | ⭐ vedi *Reputation* |
 | Giorno debole | alto | **L** | serve occupazione prevista + segmento compatibile | email | sì | ⭐ candidata forte, ma è **una campagna assistita**, non un'automazione silenziosa |
 | No-show → follow-up | medio | S | ci sono | email | sì | 🟡 delicato: scrivere a chi non si è presentato può irritare |
-| Disdetta → waitlist | **alto** | M | ci sono | in-app | sì | ⭐ **operativa, non marketing**: il tavolo liberato va offerto subito |
+| Disdetta → waitlist | **alto** | M | ci sono | in-app | sì | ✅ **fatta**: è nel centro controllo, non nel marketing — il tavolo liberato va offerto subito |
 | Anniversario, alta frequenza, alto spendente, VIP, cliente perso | medio | S/M | ci sono | email | sì | 🟡 buone, ma sono **varianti di segmento** della stessa automazione: non moltiplicare il catalogo |
 
-`[INFERENCE]` Il catalogo chiuso resta la scelta giusta. Le uniche due da aggiungere davvero sono **gift card inutilizzata** e **promotore → recensione**; la terza candidata (**disdetta → waitlist**) non è marketing ma servizio, e va nel centro controllo.
+`[INFERENCE]` Il catalogo chiuso resta la scelta giusta. Le uniche due da aggiungere davvero erano **gift card inutilizzata** (fatta) e **promotore → recensione**; la terza candidata (**disdetta → waitlist**) non è marketing ma servizio, e va nel centro controllo.
 
 ---
 
@@ -336,7 +336,9 @@ Sulla capability **Tavolo Connect** e sulla metrica-esempio del brief: `[INFEREN
 
 **Stato: C.** `[CODE]` NPS il giorno dopo, commento, sentiment, due strade dopo la risposta, notifica immediata sui detrattori, pannello in Analytics.
 
-Assenti: **il ponte verso le piattaforme pubbliche**. `Review`, `ReviewLink`, `ReviewLinkClick` sono tabelle senza codice `[DATABASE]`; nessun invito a recensire su Google/TripAdvisor, nessun instradamento promotore→recensione, nessuna raccolta o risposta alle recensioni, nessuna analisi per parole chiave, nessun confronto fra locali.
+**Aggiornamento dopo l'audit — il ponte è stato costruito.** Il locale dichiara fino a quattro posti dove recensire (Google, TripAdvisor, TheFork, Trustpilot…); chi risponde 9 o 10 li vede, chi risponde meno no; il passaggio è **contato**, perché il collegamento passa da `/r/<id>` prima di arrivare alla piattaforma; e in Analytics compare la sola frase che conta: «1 promotore è andato a scrivere una recensione, su 2». `ReviewLink` e `ReviewLinkClick` non sono più tabelle vuote.
+
+Restano assenti, e sono cose diverse: **riportare dentro Tavolo le recensioni vere** (`Review` — richiede le API delle piattaforme), rispondere alle recensioni, l'analisi per parole chiave, il confronto fra locali. E resta vero il limite dichiarato: sappiamo chi è arrivato alla porta, non chi ha scritto.
 
 La catena **visita → sondaggio → NPS → azione → recensione/recupero → CRM** oggi si ferma a «azione». `[INFERENCE]` Chiuderla vale molto: la recensione pubblica è il canale di acquisizione numero uno di un ristorante, e Tavolo sa già **chi** è contento e **quando** lo è.
 
@@ -537,7 +539,7 @@ Cinque, e ognuna è verificata — non dichiarata.
 | Rule builder tipo Zapier | **IGNORE** | Decisione già presa e giusta: un editor di regole in un gestionale per ristoranti resta vuoto |
 | Chatbot per il cliente finale | **IGNORE** | Nessuno dei problemi veri del ristoratore si risolve così |
 
-Le **16 tabelle senza codice** del §*Stato reale* vanno chiuse con una decisione, non lasciate lì: `CallLog`/`MissedCall`/`VoiceBookingDraft` (P2, solo caller ID), `Review`/`ReviewLink`/`ReviewLinkClick` (**P1, da costruire**), `BookingPreorder`(+`Item`) (da cancellare o legare al menu), `ChatSession`/`ChatMessage`, `BookingEvent`, `StaffShift`, `CostEntry`, `MenuScan`, `FloorDecor`, `ApiToken` (P2 con le API pubbliche), `ExchangeRate`.
+Le **16 tabelle senza codice** del §*Stato reale* vanno chiuse con una decisione, non lasciate lì: `CallLog`/`MissedCall`/`VoiceBookingDraft` (P2, solo caller ID), `ReviewLink`/`ReviewLinkClick` (**fatte**), `Review` (**P1, serve l'API delle piattaforme**), `BookingPreorder`(+`Item`) (da cancellare o legare al menu), `ChatSession`/`ChatMessage`, `BookingEvent`, `StaffShift`, `CostEntry`, `MenuScan`, `FloorDecor`, `ApiToken` (P2 con le API pubbliche), `ExchangeRate`.
 
 ---
 

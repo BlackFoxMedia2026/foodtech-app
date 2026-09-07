@@ -80,7 +80,7 @@ Cosa non c'è: **vista mese** (su trenta caselle i numeri diventano illeggibili,
 La schermata che si guarda durante il servizio. Ogni prenotazione è una scheda con il gesto giusto in evidenza: accomoda, cambia tavolo, apri il conto, usa un coupon, chiama, apri la scheda.
 
 - **Sala viva**: sette stati per tavolo (libero, prenotato, in arrivo, seduto, al conto, in ritardo, da pulire), derivati dai fatti e non da un campo che qualcuno deve aggiornare.
-- **Centro controllo**: sette regole deterministiche che dicono cosa sta per andare storto — picco di arrivi, collisione sul tavolo, arrivi senza tavolo, rischio assenza (con lo storico del cliente), tavolo grande mezzo vuoto mentre una tavolata aspetta, tavolo libero per chi è in coda, turno oltre la capienza. Ognuna con il posto dove andare a sistemarla. Nessuna intelligenza artificiale: regole, spiegate.
+- **Centro controllo**: otto regole deterministiche che dicono cosa sta per andare storto — picco di arrivi, collisione sul tavolo, arrivi senza tavolo, rischio assenza (con lo storico del cliente), tavolo grande mezzo vuoto mentre una tavolata aspetta, tavolo libero per chi è in coda, posto liberato da una disdetta e offerto a chi è in lista, turno oltre la capienza. Ognuna con il posto dove andare a sistemarla. Nessuna intelligenza artificiale: regole, spiegate.
 - Il selettore dei tavoli cerca i tavoli liberi **all'ora della prenotazione**, non adesso: prima alle 17:00 rispondeva «il locale è chiuso» per una prenotazione delle 19:30.
 - Quando nessun tavolo è grande abbastanza lo dice con parole diverse da «sono tutti occupati», perché il rimedio è diverso (unire due tavoli).
 
@@ -245,7 +245,7 @@ I dati personali di un cliente stanno in **sette posti**, non uno: scheda, note 
 **Idee mai realizzate, da confermare o eliminare (16)**
 - Voce e telefono: `CallLog`, `MissedCall`, `VoiceBookingDraft`.
 - Chat: `ChatSession`, `ChatMessage`.
-- Recensioni esterne: `Review`, `ReviewLink`, `ReviewLinkClick` (il modulo sondaggi/NPS esiste ed è vivo, ma è un'altra cosa: questi riguardano Google e simili).
+- Recensioni esterne: resta `Review`, cioè riportare dentro Tavolo le recensioni scritte su Google e simili — serve l'API della piattaforma. `ReviewLink` e `ReviewLinkClick` non sono più vuote: il ponte «promotore → recensione» è vivo e conta i passaggi.
 - Preordine: `BookingPreorder`, `BookingPreorderItem`.
 - Altri: `BookingEvent`, `StaffShift`, `CostEntry`, `MenuScan`, `FloorDecor`, `ApiToken`.
 

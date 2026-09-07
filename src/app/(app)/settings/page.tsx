@@ -11,10 +11,12 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { ServiceOrganizationSettings } from "@/components/settings/service-organization-settings";
 import { AvgSpendSettings } from "@/components/settings/avg-spend-settings";
 import { LoyaltySettings } from "@/components/settings/loyalty-settings";
+import { ReviewLinksSettings } from "@/components/settings/review-links-settings";
 import { QueuePanel } from "@/components/settings/queue-panel";
 import { jobQueueHealth } from "@/server/jobs/queue";
 import { can } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
+import { listReviewLinks } from "@/server/reviews";
 import { initials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +31,7 @@ const ROLE_LABELS = {
 
 export default async function SettingsPage() {
   const ctx = await getActiveVenue();
-  const [venues, members, shifts, rooms, tablesCount, queueHealth] = await Promise.all([
+  const [venues, members, shifts, rooms, tablesCount, queueHealth, reviewLinks] = await Promise.all([
     db.venue.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: "asc" } }),
     db.venueMembership.findMany({
       where: { venueId: ctx.venueId },
@@ -42,6 +44,7 @@ export default async function SettingsPage() {
     listRooms(ctx.venueId),
     db.table.count({ where: { venueId: ctx.venueId, active: true } }),
     jobQueueHealth(ctx.venueId),
+    listReviewLinks(ctx.venueId),
   ]);
 
   const hdrs = headers();
@@ -204,6 +207,8 @@ export default async function SettingsPage() {
         initialCents={ctx.venue.avgSpendCents}
         canManage={can(ctx.role, "manage_venue")}
       />
+
+      <ReviewLinksSettings initial={reviewLinks} canManage={can(ctx.role, "manage_venue")} />
 
       <LoyaltySettings
         puntiPerEuro={ctx.venue.loyaltyPointsPerEuro}

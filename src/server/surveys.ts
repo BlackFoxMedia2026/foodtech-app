@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Sentiment } from "@prisma/client";
 import { db } from "@/lib/db";
+import { linksPerSondaggio } from "./reviews";
 import { enqueueMessage } from "./messaging/send";
 import { createNotification } from "./notifications";
 
@@ -156,6 +157,15 @@ export async function sendDueSurveyRequests(now: Date = new Date()): Promise<Sur
 /*  Risposta                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Un posto dove mandare chi è contento.
+ *
+ * `href` non punta alla piattaforma ma alla nostra porta `/r/<id>`, che conta
+ * il passaggio e poi rimanda: senza quel salto «quante recensioni ha portato
+ * Tavolo?» resta una domanda senza risposta.
+ */
+export type ReviewDestination = { href: string; nome: string };
+
 export type SurveyView = {
   token: string;
   venueName: string;
@@ -163,7 +173,7 @@ export type SurveyView = {
   visitedAt: string | null;
   alreadyAnswered: boolean;
   /** Dove mandare chi è contento, se il locale ha un profilo pubblico. */
-  publicReviewUrl: string | null;
+  reviewLinks: ReviewDestination[];
 };
 
 export async function readSurveyByToken(token: string): Promise<SurveyView | null> {
@@ -171,7 +181,7 @@ export async function readSurveyByToken(token: string): Promise<SurveyView | nul
     where: { token },
     include: {
       SurveyResponse: { select: { id: true } },
-      Venue: { select: { name: true, googleBusinessUrl: true } },
+      Venue: { select: { id: true, name: true } },
       Guest: { select: { firstName: true } },
       booking: { select: { startsAt: true } },
     },
@@ -184,16 +194,25 @@ export async function readSurveyByToken(token: string): Promise<SurveyView | nul
     guestName: survey.Guest?.firstName ?? null,
     visitedAt: survey.booking?.startsAt.toISOString() ?? null,
     alreadyAnswered: !!survey.SurveyResponse,
-    publicReviewUrl: survey.Venue.googleBusinessUrl ?? null,
+    reviewLinks: await destinazioniRecensione(survey.venueId, token),
   };
+}
+
+/** I collegamenti tracciati da mostrare a chi ha appena risposto bene. */
+async function destinazioniRecensione(venueId: string, token: string): Promise<ReviewDestination[]> {
+  const links = await linksPerSondaggio(venueId);
+  return links.map((l) => ({
+    href: `/r/${l.id}?s=${encodeURIComponent(token)}`,
+    nome: l.label?.trim() || l.nome,
+  }));
 }
 
 export type SubmitResult =
   | {
       ok: true;
       sentiment: Sentiment;
-      /** Presente solo per i promotori: la strada per la recensione pubblica. */
-      publicReviewUrl: string | null;
+      /** Presenti solo per i promotori: le strade verso la recensione pubblica. */
+      reviewLinks: ReviewDestination[];
       message: string;
     }
   | { ok: false; code: "invalid_token" | "already_answered" | "invalid_score"; message: string };
@@ -210,7 +229,7 @@ export async function submitSurveyResponse(
     where: { token },
     include: {
       SurveyResponse: { select: { id: true } },
-      Venue: { select: { id: true, name: true, googleBusinessUrl: true } },
+      Venue: { select: { id: true, name: true } },
       Guest: { select: { id: true, firstName: true, lastName: true } },
     },
   });
@@ -258,7 +277,9 @@ export async function submitSurveyResponse(
   return {
     ok: true,
     sentiment,
-    publicReviewUrl: sentiment === "PROMOTER" ? survey.Venue.googleBusinessUrl ?? null : null,
+    // A chi non è contento non si propone niente di pubblico: è tutto il senso
+    // delle due strade, ed è la ragione per cui questo meccanismo esiste.
+    reviewLinks: sentiment === "PROMOTER" ? await destinazioniRecensione(survey.venueId, token) : [],
     message:
       sentiment === "PROMOTER"
         ? "Grazie! Ci fa piacere davvero."

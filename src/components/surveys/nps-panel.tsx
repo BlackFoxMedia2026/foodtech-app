@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn, formatDate } from "@/lib/utils";
 import type { SurveyStats } from "@/server/surveys";
+import type { ReviewFunnel } from "@/server/reviews";
 
 const TONO = {
   PROMOTER: { icona: Smile, classe: "text-sage", etichetta: "Promotore" },
@@ -22,7 +23,7 @@ const TONO = {
  * quattro risposte non è un dato, è un aneddoto, e senza il numero accanto non
  * si distinguono.
  */
-export function NpsPanel({ stats }: { stats: SurveyStats }) {
+export function NpsPanel({ stats, funnel }: { stats: SurveyStats; funnel?: ReviewFunnel | null }) {
   if (stats.sent === 0) {
     return (
       <Card>
@@ -82,6 +83,32 @@ export function NpsPanel({ stats }: { stats: SurveyStats }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {funnel && funnel.promotori > 0 && (
+          /* Il pezzo che mancava alla catena: quanti, fra chi è uscito
+             contento, hanno fatto il passo successivo. Si dice quello che
+             sappiamo — chi è arrivato sulla piattaforma — e si dice anche
+             quello che non sappiamo, perché un clic non è una recensione. */
+          <div>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              Dai promotori alle recensioni
+            </p>
+            <p className="mt-1.5 text-sm">
+              <strong className="tabular-nums">{funnel.arrivati}</strong>{" "}
+              {funnel.arrivati === 1 ? "promotore è andato" : "promotori sono andati"} a scrivere una
+              recensione, su <strong className="tabular-nums">{funnel.promotori}</strong>.
+            </p>
+            {funnel.perPiattaforma.length > 1 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {funnel.perPiattaforma.map((p) => `${p.nome}: ${p.clic}`).join(" · ")}
+              </p>
+            )}
+            <p className="mt-1 text-[11px] text-tertiary-foreground">
+              Contiamo chi è arrivato sulla piattaforma. Se poi la recensione l&apos;abbia scritta
+              davvero lo sa solo Google: quel numero non ce l&apos;ha nessun gestionale.
+            </p>
           </div>
         )}
 
