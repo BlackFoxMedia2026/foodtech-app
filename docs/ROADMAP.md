@@ -52,7 +52,7 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] **Tag automatici** con il motivo di ognuno; soglie in un posto solo, pronte a diventare configurabili per locale
 - [x] I segmenti delle campagne filtrano su dati **veri**: i contatori sono riallineati alle prenotazioni e il filtro sulla spesa (che leggeva un campo mai aggiornato) è stato rimosso
 - [x] Segmenti basati direttamente sulle etichette calcolate («manda a chi è a rischio»)
-- [ ] Il valore in euro resta una **stima dichiarata** finché non ci sono ordini o incassi
+- [x] Il valore in euro era una **stima dichiarata**; dai conti al tavolo (Phase 6) le serate con un conto chiuso portano il numero vero, e le due cose non si mescolano né si sommano
 
 ## Phase 4 — Crescita 🔄 in corso
 
@@ -73,8 +73,9 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] **Previsione coperti a sette giorni**, col modello degli alberghi: si confronta ogni giorno con gli stessi giorni della settimana e si guarda quanto era già prenotato alla stessa distanza dal servizio. Ogni numero porta la sua frase, le assenze attese sono sottratte, e dove la storia non basta **non si prevede**
 - [x] Tolto `bookedCount` dai risultati di campagna: nessuno lo scriveva, quindi ogni campagna mostrava zero prenotazioni generate — una bocciatura inventata
 - [x] **ROI delle campagne**: il link dentro l'email si porta dietro la campagna, e la prenotazione che nasce da quel clic la ricorda (`Booking.campaignId`). Il merito vale per 30 giorni dall'invio, senza disdette e assenze; il valore in euro è la stima sullo scontrino medio, detta stima. La campagna nel link viene **verificata** lato server: un identificativo inventato non attribuisce niente e non impedisce la prenotazione
-- [ ] `Campaign.bookedCount` è una **colonna morta**: nessuno la scrive e nessuno la legge più. Da eliminare con una migrazione distruttiva dichiarata (vedi prisma/migrations/README.md)
-- [ ] RevPASH (ricavo per posto a sedere per ora): la capienza c'è, i ricavi sono una stima dichiarata. Ha senso quando ci saranno incassi veri
+- [x] **Le campagne programmate non dicono più «partirà»** un giorno dopo che l'ora è passata: consegnato l'ordine al fornitore, l'esito non ci torna indietro, e adesso c'è scritto quello — «consegnata al fornitore», con il rimando al suo pannello. Nessuno stato inventato: si guarda l'orologio
+- [~] `Campaign.bookedCount` è una **colonna morta**: il codice ha smesso di dichiararla (fatto), la migrazione che la elimina arriva **dopo** questa pubblicazione — durante un deploy il codice vecchio serve ancora le richieste, e una colonna cancellata sotto un client Prisma che la seleziona è un errore in faccia a un utente
+- [ ] RevPASH (ricavo per posto a sedere per ora): ora i ricavi veri ci sono, ma su qualche serata. Ha senso quando la storia degli incassi copre qualche settimana, altrimenti è un numero preciso calcolato su niente
 - [ ] Previsione dei ricavi: è la previsione dei coperti per lo scontrino medio. Facile da mostrare, e per questo pericolosa — meglio dopo gli incassi reali
 - [ ] Intelligenza no-show oltre il singolo tavolo (il rischio per prenotazione c'è già nel centro controllo)
 
@@ -87,7 +88,7 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
 - [x] **Segnalazioni** (`/reports`): pagina vuota raggiungibile dal menu del profilo, che prometteva un canale di assistenza inesistente. Rimossa
 - [x] **Le liste lunghe non mentono più**: gli ospiti sono a pagine con il totale scritto, e le etichette del filtro si leggono tutte
 - [x] **Schermata d'errore**: un'eccezione non mostra più la pagina grezza di Next
-- [ ] Paginare anche le prenotazioni su intervalli ampi (sulla giornata il tetto attuale basta)
+- [x] **Il tetto silenzioso sulle prenotazioni è sparito**: `take: 200` senza totale era l'ultimo posto in cui una lista poteva mentire per omissione. Una giornata si legge per intero — è la capienza del locale a fare da tetto, non un numero scelto da noi — e chi un giorno leggerà un intervallo ampio dovrà passare un limite e mostrare il totale, come già fa l'elenco degli ospiti
 - [ ] Vendita dei biglietti delle esperienze → dipende da Stripe, come le caparre
 
 ## Phase 6 — Ecosistema

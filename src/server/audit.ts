@@ -36,6 +36,7 @@ export type AuditAction =
   | "booking.guest_cancelled"
   | "guest.update"
   | "guest.anonymize"
+  | "guest.export"
   | "order.open"
   | "order.line_add"
   | "order.line_update"

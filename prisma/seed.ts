@@ -566,7 +566,6 @@ async function main() {
         status: "SENT",
         sentCount: 142,
         openedCount: 81,
-        bookedCount: 19,
       },
     });
   }

@@ -249,3 +249,25 @@ describe("l'elenco delle campagne", () => {
     expect(elenco.find((x) => x.id === c.id)?.attribuite).toBe(0);
   });
 });
+
+describe("lo stato di una campagna programmata", () => {
+  it("passata l'ora non dice più «partirà»", async () => {
+    const { statoCampagna } = await import("@/lib/campaign-status");
+    const ora = new Date("2026-09-07T21:00:00Z");
+
+    // Prima dell'ora: è in programma, e lo è davvero.
+    const futura = statoCampagna("SCHEDULED", new Date("2026-09-08T10:00:00Z"), ora);
+    expect(futura.label).toBe("Programmata");
+
+    // Dopo: l'ordine di invio è stato dato, l'esito non ci torna indietro.
+    // Prima restava «Programmata · partirà all'ora indicata» per sempre.
+    const passata = statoCampagna("SCHEDULED", new Date("2026-09-06T10:00:00Z"), ora);
+    expect(passata.label).toBe("Consegnata al fornitore");
+    expect(passata.hint).toContain("pannello del fornitore");
+
+    // Gli altri stati non li tocca, e senza data non deduce niente.
+    expect(statoCampagna("SENT", null, ora).label).toBe("Inviata");
+    expect(statoCampagna("SCHEDULED", null, ora).label).toBe("Programmata");
+    expect(statoCampagna("DRAFT", new Date("2026-01-01T00:00:00Z"), ora).label).toBe("Bozza");
+  });
+});

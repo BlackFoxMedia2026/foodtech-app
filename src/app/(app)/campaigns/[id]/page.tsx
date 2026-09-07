@@ -16,7 +16,7 @@ import { Pencil } from "lucide-react";
 import { CampaignActions } from "@/components/campaigns/campaign-actions";
 import { CampaignResultsChart } from "@/components/campaigns/campaign-results-chart";
 import { CampaignSendStatus } from "@/components/campaigns/campaign-send-status";
-import { CAMPAIGN_STATUS } from "@/lib/campaign-status";
+import { statoCampagna } from "@/lib/campaign-status";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
 
   const segment = (campaign.segment as SegmentFilterType | null) ?? {};
   const matchingGuests = campaign.status === "DRAFT" ? await resolveSegment(ctx.venueId, segment) : [];
-  const stato = CAMPAIGN_STATUS[campaign.status];
+  const stato = statoCampagna(campaign.status, campaign.scheduledAt);
   const inCoda = campaign.status === "SENDING" || campaign.status === "FAILED";
   const avanzamento = inCoda ? await getCampaignSendProgress(ctx.venueId, campaign.id) : null;
   const resa = await getCampaignAttribution(ctx.venueId, campaign.id);

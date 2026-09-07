@@ -317,3 +317,63 @@ describe("dopo la cancellazione", () => {
     expect(await db.guest.count({ where: { venueId } })).toBe(2);
   });
 });
+
+describe("l'esportazione", () => {
+  it("consegna tutto, comprese le note che il locale ha scritto su di lei", async () => {
+    const { esportaOspite, nomeFileExport } = await import("@/server/guest-export");
+    const b = await serataCompleta();
+    await tracceSparse(b.id);
+
+    const doc = await esportaOspite(venueId, guestId, { actor: attore() });
+
+    expect(doc.documento.riguarda).toBe("Marco Bianchi");
+    expect(doc.scheda.email).toBe("marco@test.local");
+    expect(doc.scheda.allergieEIntolleranze).toBe("noci");
+    // Anche questa: è un dato su di lei, non un segreto del locale.
+    expect(doc.scheda.noteDelPersonale).toBe("Preferisce il tavolo in fondo");
+
+    expect(doc.prenotazioni).toHaveLength(1);
+    expect(doc.prenotazioni[0].noteScritteDaTe).toBe("Anniversario di Marco e Giulia");
+    expect(doc.prenotazioni[0].noteInterneDelLocale).toBe("Cliente del titolare");
+
+    // Gli importi in euro, non in centesimi: lo legge una persona.
+    expect(doc.conti).toHaveLength(1);
+    expect(doc.conti[0].totale).toBe(60);
+    expect(doc.puntiFedelta.saldo).toBe(60);
+
+    expect(doc.accessiWifi[0].indirizzoIp).toBe("1.2.3.4");
+    expect(doc.messaggiRicevuti[0].oggetto).toBe("Il tuo tavolo di stasera");
+    expect(doc.consensi.length).toBeGreaterThan(0);
+    expect(doc.sondaggi[0].commento).toBe("Bravissimi, il mio cameriere si chiama Luca");
+
+    expect(nomeFileExport("Marco Bianchi", new Date("2026-09-07T12:00:00Z"))).toBe(
+      "dati-marco-bianchi-2026-09-07.json",
+    );
+  });
+
+  it("dopo la cancellazione il documento è vuoto, non sbagliato", async () => {
+    const { esportaOspite } = await import("@/server/guest-export");
+    const b = await serataCompleta();
+    await tracceSparse(b.id);
+    await anonimizzaOspite(venueId, guestId, { reason: "richiesta" }, { actor: attore() });
+
+    const doc = await esportaOspite(venueId, guestId);
+    expect(doc.scheda.email).toBeNull();
+    expect(doc.scheda.noteDelPersonale).toBeNull();
+    expect(doc.prenotazioni[0].noteScritteDaTe).toBeNull();
+    expect(doc.accessiWifi[0].indirizzoIp).toBeNull();
+    expect(doc.sondaggi[0].commento).toBeNull();
+    // Ma i conti ci sono ancora: quelli non erano suoi dati.
+    expect(doc.conti[0].totale).toBe(60);
+    expect(doc.scheda.datiCancellatiIl).not.toBeNull();
+  });
+
+  it("non esporta l'ospite di un altro locale", async () => {
+    const { esportaOspite, ExportError } = await import("@/server/guest-export");
+    const altro = await db.venue.create({
+      data: { orgId, name: `${PREFISSO}terzo`, slug: `${PREFISSO}z${Date.now()}`, timezone: TZ },
+    });
+    await expect(esportaOspite(altro.id, guestId)).rejects.toBeInstanceOf(ExportError);
+    await db.venue.delete({ where: { id: altro.id } });
+  });
+});
