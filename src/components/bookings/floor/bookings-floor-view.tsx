@@ -7,6 +7,8 @@ import type { BookingStatus, RoomLayoutMode, Table } from "@prisma/client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatTime } from "@/lib/utils";
 import { bookingsOverlap } from "@/lib/booking-time";
 import { BookingsFloorCanvas } from "./bookings-floor-canvas";
@@ -65,6 +67,7 @@ export function BookingsFloorView({
   const [assignBookingForTableId, setAssignBookingForTableId] = useState<string | null>(null);
   const [draggingBooking, setDraggingBooking] = useState<{ id: string; partySize: number; startsAt: Date; durationMin: number } | null>(null);
   const [dropConfirm, setDropConfirm] = useState<{ bookingId: string; tableId: string; tableLabel: string; tableSeats: number } | null>(null);
+  const [motivoDrop, setMotivoDrop] = useState("");
   const [banner, setBanner] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -144,11 +147,16 @@ export function BookingsFloorView({
     setTimeout(() => setBanner((cur) => (cur === message ? null : cur)), 4000);
   }
 
-  async function callAssign(bookingId: string, tableId: string, force: boolean): Promise<{ ok: boolean; message?: string }> {
+  async function callAssign(
+    bookingId: string,
+    tableId: string,
+    force: boolean,
+    forceReason?: string,
+  ): Promise<{ ok: boolean; message?: string }> {
     const res = await fetch(`/api/bookings/${bookingId}/assign-table`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ tableId, force }),
+      body: JSON.stringify({ tableId, force, ...(forceReason ? { forceReason } : {}) }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
@@ -166,14 +174,17 @@ export function BookingsFloorView({
     return { ok: true };
   }
 
-  async function handleAssignFromDialog(tableId: string, opts: { force?: boolean }) {
+  async function handleAssignFromDialog(tableId: string, opts: { force?: boolean; forceReason?: string }) {
     if (!assignPickerBooking) return { ok: false };
-    return callAssign(assignPickerBooking.id, tableId, !!opts.force);
+    return callAssign(assignPickerBooking.id, tableId, !!opts.force, opts.forceReason);
   }
 
-  async function handleAssignBookingFromDialog(bookingId: string, opts: { force?: boolean }) {
+  async function handleAssignBookingFromDialog(
+    bookingId: string,
+    opts: { force?: boolean; forceReason?: string },
+  ) {
     if (!assignBookingForTable) return { ok: false };
-    return callAssign(bookingId, assignBookingForTable.id, !!opts.force);
+    return callAssign(bookingId, assignBookingForTable.id, !!opts.force, opts.forceReason);
   }
 
   async function handleRemoveTable() {
@@ -348,18 +359,45 @@ export function BookingsFloorView({
                 Il tavolo {dropConfirm.tableLabel} ha {dropConfirm.tableSeats} posti, ma la prenotazione è per{" "}
                 {unassigned.find((b) => b.id === dropConfirm.bookingId)?.partySize} persone.
               </p>
+              {/* Il motivo resta nel registro con nome e ora: forzare senza
+                  spiegazione era l'unica scorciatoia rimasta senza attrito. */}
+              <div className="space-y-1.5">
+                <Label htmlFor="drop-motivo">Perché lo assegni comunque</Label>
+                <Input
+                  id="drop-motivo"
+                  value={motivoDrop}
+                  onChange={(e) => setMotivoDrop(e.target.value)}
+                  placeholder="Es. aggiungiamo una sedia"
+                  autoFocus
+                />
+              </div>
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setDropConfirm(null)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDropConfirm(null);
+                    setMotivoDrop("");
+                  }}
+                >
                   Annulla
                 </Button>
                 <Button
                   type="button"
                   variant="accent"
                   size="sm"
+                  disabled={!motivoDrop.trim()}
                   onClick={async () => {
-                    const result = await callAssign(dropConfirm.bookingId, dropConfirm.tableId, true);
+                    const result = await callAssign(
+                      dropConfirm.bookingId,
+                      dropConfirm.tableId,
+                      true,
+                      motivoDrop.trim(),
+                    );
                     if (!result.ok) showBanner(result.message ?? "Impossibile assegnare il tavolo.");
                     setDropConfirm(null);
+                    setMotivoDrop("");
                   }}
                 >
                   Assegna comunque

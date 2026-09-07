@@ -21,6 +21,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   try {
     const updated = await assignBookingToTable(ctx.venueId, params.id, tableId, {
       force: !!body?.force,
+      forceReason: typeof body?.forceReason === "string" ? body.forceReason : undefined,
       actor: auditActor(ctx, req),
     });
     return NextResponse.json(updated);

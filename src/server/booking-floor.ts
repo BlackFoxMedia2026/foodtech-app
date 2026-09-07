@@ -108,7 +108,7 @@ export const ASSIGN_ERROR_MESSAGE: Record<BookingAssignError["code"], string> = 
   needs_two_tables: "Per unire servono almeno due tavoli.",
   not_combinable: "Uno dei tavoli scelti non si può unire agli altri.",
   different_rooms: "I tavoli da unire devono stare nella stessa sala.",
-  reason_required: "Scrivi il motivo: i posti non bastano per questa tavolata.",
+  reason_required: "Scrivi il motivo: i posti non bastano per questo gruppo.",
 };
 
 /**
@@ -144,11 +144,21 @@ async function trovaConflitto(
   );
 }
 
+/**
+ * Assegna un tavolo a una prenotazione.
+ *
+ * Forzare l'assegnazione su un tavolo con meno posti dei coperti **richiede un
+ * motivo scritto**, come già accade per le tavolate e per la creazione
+ * forzata. Prima no: l'interfaccia del Servizio lo chiedeva perfino, e poi lo
+ * buttava via per la strada del tavolo singolo — quindi nel registro restava
+ * «forzata» senza il perché, che è la parte utile. E la scorciatoia senza
+ * motivo diventa la scorciatoia di sempre.
+ */
 export async function assignBookingToTable(
   venueId: string,
   bookingId: string,
   tableId: string,
-  opts: { force?: boolean; actor?: AuditActor } = {},
+  opts: { force?: boolean; forceReason?: string; actor?: AuditActor } = {},
 ): Promise<FloorBooking> {
   try {
     const assigned = await db.$transaction(
@@ -159,8 +169,14 @@ export async function assignBookingToTable(
         const table = await tx.table.findFirst({ where: { id: tableId, venueId, active: true } });
         if (!table) throw new BookingAssignError("table_not_found");
 
-        if (table.seats < booking.partySize && !opts.force) {
-          throw new BookingAssignError("capacity_mismatch", { tableSeats: table.seats, partySize: booking.partySize });
+        if (table.seats < booking.partySize) {
+          if (!opts.force) {
+            throw new BookingAssignError("capacity_mismatch", {
+              tableSeats: table.seats,
+              partySize: booking.partySize,
+            });
+          }
+          if (!opts.forceReason?.trim()) throw new BookingAssignError("reason_required");
         }
 
         const conflict = await trovaConflitto(tx, venueId, bookingId, [tableId], booking);
@@ -186,7 +202,12 @@ export async function assignBookingToTable(
       opts.force ? "booking.assign_table_forced" : "booking.assign_table",
       "booking",
       bookingId,
-      { tavolo: tableId, coperti: assigned.partySize, postiTavolo: assigned.table?.seats ?? null },
+      {
+        tavolo: tableId,
+        coperti: assigned.partySize,
+        postiTavolo: assigned.table?.seats ?? null,
+        ...(opts.forceReason?.trim() ? { motivoForzatura: opts.forceReason.trim() } : {}),
+      },
     );
 
     return assigned;
