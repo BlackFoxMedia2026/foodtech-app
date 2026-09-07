@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createBooking } from "@/server/bookings";
+import { bookingWriteErrorResponse } from "@/server/booking-errors";
 import { db } from "@/lib/db";
 
 export async function POST(req: Request) {
@@ -29,7 +30,6 @@ export async function POST(req: Request) {
     const booking = await createBooking(venueId, payload);
     return NextResponse.json(booking, { status: 201 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "invalid";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return bookingWriteErrorResponse(err);
   }
 }
