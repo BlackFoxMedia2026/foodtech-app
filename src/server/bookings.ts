@@ -108,6 +108,16 @@ export type BookingWriteOptions = {
    * qui, che non è raggiungibile da nessun canale pubblico.
    */
   status?: BookingStatus;
+  /**
+   * Motivo della forzatura, obbligatorio quando `skipAvailabilityCheck` è
+   * attivo su richiesta di una persona.
+   *
+   * Esiste perché la scorciatoia senza motivo diventa la scorciatoia di
+   * sempre: chiedere una riga di spiegazione è quel tanto di attrito che
+   * distingue «lo faccio perché serve» da «lo faccio perché è più veloce». E
+   * finisce nel registro, con nome e ora.
+   */
+  forceReason?: string;
 };
 
 export async function createBooking(venueId: string, raw: unknown, opts: BookingWriteOptions = {}) {
@@ -174,12 +184,20 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
     include: { guest: true, table: true, venue: true },
   });
 
-  await recordAudit(opts.actor, "booking.create", "booking", booking.id, {
-    quando: booking.startsAt.toISOString(),
-    coperti: booking.partySize,
-    fonte: booking.source,
-    stato: booking.status,
-  });
+  await recordAudit(
+    opts.actor,
+    opts.forceReason ? "booking.create_forced" : "booking.create",
+    "booking",
+    booking.id,
+    {
+      quando: booking.startsAt.toISOString(),
+      coperti: booking.partySize,
+      fonte: booking.source,
+      stato: booking.status,
+      tavolo: booking.tableId,
+      ...(opts.forceReason ? { motivoForzatura: opts.forceReason } : {}),
+    },
+  );
 
   const bookingTime = formatTime(booking.startsAt);
 

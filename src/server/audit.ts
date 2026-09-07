@@ -22,6 +22,7 @@ import type { ActiveVenueContext } from "@/lib/tenant";
 
 export type AuditAction =
   | "booking.create"
+  | "booking.create_forced"
   | "booking.update"
   | "booking.cancel"
   | "booking.delete"

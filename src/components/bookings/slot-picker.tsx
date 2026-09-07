@@ -21,7 +21,10 @@ type DayAvailability = {
 };
 
 interface SlotPickerProps {
-  venueId: string;
+  /** Presente solo dal widget pubblico: dallo staff il locale arriva dalla
+   * sessione, e passarlo dal client sarebbe un modo di leggere la
+   * disponibilità di un ristorante non proprio. */
+  venueId?: string;
   /** Data civile del locale, formato AAAA-MM-GG. */
   date: string;
   partySize: number;
@@ -55,12 +58,14 @@ export function SlotPicker({ venueId, date, partySize, value, onChange }: SlotPi
     setLoading(true);
     setError(null);
 
-    const params = new URLSearchParams({ venue: venueId, date, partySize: String(partySize) });
+    const params = new URLSearchParams({ date, partySize: String(partySize) });
+    if (venueId) params.set("venue", venueId);
+    const endpoint = venueId ? "/api/public/availability" : "/api/availability";
 
-    fetch(`/api/public/availability?${params}`, { signal: controller.signal })
+    fetch(`${endpoint}?${params}`, { signal: controller.signal })
       .then(async (res) => {
         const body = await res.json();
-        if (!res.ok) throw new Error(body?.error || "Impossibile caricare gli orari.");
+        if (!res.ok) throw new Error(body?.message || body?.error || "Impossibile caricare gli orari.");
         return body as DayAvailability;
       })
       .then((body) => {
