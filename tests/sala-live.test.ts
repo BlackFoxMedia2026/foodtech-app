@@ -229,18 +229,26 @@ describe("la sala viva, contro il database", () => {
 
   it("indica la prossima prenotazione su un tavolo libero", async () => {
     await svuota();
+    // Orologio fissato, non «adesso più quattro ore»: eseguito dopo le 20 quel
+    // «più quattro ore» cadeva nel giorno dopo, fuori dalla finestra della
+    // sala, e il test falliva di sera e passava di giorno. La prova riguarda
+    // «una prenotazione che deve ancora arrivare», non l'ora in cui gira.
+    const adesso = new Date();
+    adesso.setHours(12, 0, 0, 0);
+    const fraQuattroOre = new Date(adesso.getTime() + 4 * 3600 * 1000);
+
     await db.booking.create({
       data: {
         venueId,
         guestId,
         tableId: t1,
         partySize: 2,
-        startsAt: new Date(Date.now() + 4 * 3600 * 1000),
+        startsAt: fraQuattroOre,
         status: "CONFIRMED",
         source: "PHONE",
       },
     });
-    const live = await getFloorLive(venueId);
+    const live = await getFloorLive(venueId, { now: adesso });
     expect(live.byTableId[t1].status).toBe("PRENOTATO");
     expect(live.byTableId[t1].next ?? live.byTableId[t1].current).not.toBeNull();
   });
