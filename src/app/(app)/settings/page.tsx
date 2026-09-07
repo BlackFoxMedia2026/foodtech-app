@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CopyButton } from "@/components/ui/copy-button";
 import { ServiceOrganizationSettings } from "@/components/settings/service-organization-settings";
+import { AvgSpendSettings } from "@/components/settings/avg-spend-settings";
+import { can } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
 import { initials } from "@/lib/utils";
 

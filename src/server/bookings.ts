@@ -6,6 +6,7 @@ import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
 import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } from "./emails";
 import { deriveTableStatus, type TableOperationalStatus } from "@/lib/table-status";
 import { assertAvailability, OCCUPYING_STATUSES } from "./availability";
+import { refreshGuestStats } from "./guest-intelligence";
 
 export const BookingInput = z.object({
   guestId: z.string().optional().nullable(),
@@ -292,6 +293,18 @@ export async function updateBooking(
     },
     include: { guest: true, table: true },
   });
+
+  // I contatori sulla scheda ospite (visite, assenze, ultima visita) esistevano
+  // e nessuno li scriveva. Questi tre stati sono i momenti in cui la storia di
+  // un cliente cambia davvero, quindi è qui che vanno riallineati.
+  if (
+    updated.guestId &&
+    data.status &&
+    data.status !== existing.status &&
+    ["COMPLETED", "NO_SHOW", "CANCELLED", "SEATED"].includes(data.status)
+  ) {
+    await refreshGuestStats(updated.guestId);
+  }
 
   const diff = fieldDiff(existing, updated);
   if (diff) {

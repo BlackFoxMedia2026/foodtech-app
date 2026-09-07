@@ -63,6 +63,11 @@ model Venue {
   slug                  String
   kind                  VenueKind             @default(RESTAURANT)
   timezone              String                @default("Europe/Rome")
+  /// Spesa media per coperto, in centesimi, dichiarata dal locale.
+  /// Serve per la stima degli incassi: prima veniva calcolata dalla media di
+  /// Guest.totalSpend, un campo che nessuna parte del codice aggiorna — quindi
+  /// la stima era finzione presentata come dato.
+  avgSpendCents         Int?
   currency              String                @default("EUR")
   address               String?
   city                  String?

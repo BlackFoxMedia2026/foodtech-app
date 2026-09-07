@@ -148,6 +148,17 @@ async function main() {
     const venueIds = existingOrg.venues.map((v) => v.id);
     await riallineaDateDemo(venueIds);
     for (const id of venueIds) await creaCamerieriDemo(id);
+    // La spesa media è dichiarata dal locale: se manca, la stima degli
+    // incassi non si mostra. Sulla demo va impostata, altrimenti la
+    // Panoramica sembra incompleta.
+    for (const id of venueIds) {
+      await db.venue.update({
+        where: { id },
+        data: { avgSpendCents: 4500 },
+      });
+    }
+    console.log("→ Spesa media per coperto impostata a 45 € sui locali demo.");
+
     console.log("\n✓ Demo aggiornata.");
     return;
   }

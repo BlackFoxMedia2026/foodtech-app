@@ -44,12 +44,13 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] Navigazione mobile: barra in basso con «+» centrale (fatta in Phase 1)
 - [x] **Centro controllo servizio**: sette regole deterministiche, ognuna con la sua azione. Restano da aggiungere, quando ci saranno i dati: previsione dei coperti e ottimizzazione dell'occupazione (Phase 5)
 
-## Phase 3 — Ospiti
+## Phase 3 — Ospiti 🔄 in corso
 
-- Guest Intelligence: LTV, frequenza, preferenze, ritenzione
-- Timeline ospite (solo eventi realmente disponibili)
-- Tag automatici configurabili
-- Segmenti dinamici
+- [x] **Guest Intelligence**: frequenza, abitudini, affidabilità, ritenzione — calcolate dalle prenotazioni
+- [x] **Timeline ospite**, con i soli eventi che esistono davvero
+- [x] **Tag automatici** con il motivo di ognuno; soglie in un posto solo, pronte a diventare configurabili per locale
+- [ ] Segmenti dinamici basati sulle etichette calcolate (oggi i segmenti delle campagne usano criteri propri)
+- [ ] Il valore in euro resta una **stima dichiarata** finché non ci sono ordini o incassi
 
 ## Phase 4 — Crescita
 

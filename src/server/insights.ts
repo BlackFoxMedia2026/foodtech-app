@@ -23,7 +23,7 @@ async function getServiceWindow(venueId: string, day: Date) {
   return current ?? next ?? shifts[shifts.length - 1];
 }
 
-async function getDayStats(venueId: string, day: Date, avgSpend: number) {
+async function getDayStats(venueId: string, day: Date, avgSpend: number | null) {
   const dayStart = startOfDay(day);
   const dayEnd = endOfDay(day);
 
@@ -42,17 +42,31 @@ async function getDayStats(venueId: string, day: Date, avgSpend: number) {
   const totalCovers = bookings.reduce((s, b) => s + b.partySize, 0);
   const capacity = service?.capacity ?? 90;
   const occupancyPct = Math.min(100, Math.round((totalCovers / capacity) * 100));
-  const revenueCents = Math.round(avgSpend * totalCovers * 100);
+  // Nullo quando il locale non ha dichiarato la spesa media: la Panoramica
+  // mostra una casella vuota con l'invito a impostarla.
+  const revenueCents = avgSpend != null ? Math.round(avgSpend * totalCovers * 100) : null;
 
   return { bookings, totalCovers, occupancyPct, revenueCents, noShowCount, service, capacity };
 }
 
 export async function getOverview(venueId: string, day: Date = new Date()) {
-  const avgSpendAgg = await db.guest.aggregate({
-    where: { venueId, totalVisits: { gt: 0 } },
-    _avg: { totalSpend: true },
+  /**
+   * La stima degli incassi si basa sulla spesa media **dichiarata dal locale**.
+   *
+   * Prima veniva calcolata dalla media di `Guest.totalSpend`, un campo che
+   * nessuna parte del codice aggiornava: erano valori del seed moltiplicati per
+   * i coperti, e il risultato compariva in Panoramica come «Incassi stimati».
+   * Un numero inventato presentato come dato.
+   *
+   * Adesso: se il locale ha dichiarato la spesa media si mostra la stima, detta
+   * stima; altrimenti non si mostra nulla. Meglio una casella vuota che una
+   * cifra falsa.
+   */
+  const venue = await db.venue.findUnique({
+    where: { id: venueId },
+    select: { avgSpendCents: true },
   });
-  const avgSpend = Number(avgSpendAgg._avg.totalSpend ?? 45) || 45;
+  const avgSpend = venue?.avgSpendCents ? venue.avgSpendCents / 100 : null;
 
   const yesterday = new Date(day);
   yesterday.setDate(day.getDate() - 1);
@@ -62,11 +76,25 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
     getDayStats(venueId, yesterday, avgSpend),
   ]);
 
-  const noShowProb = await db.guest.aggregate({
-    where: { venueId, totalVisits: { gt: 0 } },
-    _avg: { noShowCount: true },
-  });
-  const expectedNoShow = Math.round((noShowProb._avg.noShowCount ?? 0) * today.bookings.length * 0.1);
+  /**
+   * Assenze attese: la quota storica di no-show di questo locale applicata
+   * alle prenotazioni di oggi. Prima si moltiplicava la media di
+   * `Guest.noShowCount` (mai aggiornato) per un fattore 0,1 scelto a occhio.
+   * Ora è una proporzione su fatti: quante prenotazioni sono finite in assenza
+   * negli ultimi novanta giorni.
+   */
+  const novantaGiorni = new Date(startOfDay(day));
+  novantaGiorni.setDate(novantaGiorni.getDate() - 90);
+  const [storiche, storicheAssenti] = await Promise.all([
+    db.booking.count({
+      where: { venueId, startsAt: { gte: novantaGiorni, lt: startOfDay(day) }, status: { not: "CANCELLED" } },
+    }),
+    db.booking.count({
+      where: { venueId, startsAt: { gte: novantaGiorni, lt: startOfDay(day) }, status: "NO_SHOW" },
+    }),
+  ]);
+  const quotaAssenze = storiche > 0 ? storicheAssenti / storiche : 0;
+  const expectedNoShow = Math.round(quotaAssenze * today.bookings.length);
 
   // Trend ultimi 7 giorni (per il grafico "Andamento settimanale")
   const weekAgo = new Date(startOfDay(day));
@@ -114,7 +142,11 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
     expectedNoShow,
     comparisons: {
       covers: pctChange(today.totalCovers, prev.totalCovers),
-      revenue: pctChange(today.revenueCents, prev.revenueCents),
+      // Senza spesa media dichiarata non c'è stima, quindi non c'è confronto.
+      revenue:
+        today.revenueCents != null && prev.revenueCents != null
+          ? pctChange(today.revenueCents, prev.revenueCents)
+          : null,
       occupancy: pctChange(today.occupancyPct, prev.occupancyPct),
       noShow: expectedNoShow - prev.noShowCount,
     },

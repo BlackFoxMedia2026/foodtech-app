@@ -50,12 +50,26 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Modulo | Stato | Note |
 |---|---|---|
 | Ospiti (anagrafica) | LIVE | Scheda, note, preferenze inserite a mano |
-| Guest Intelligence (LTV, tag, comportamento) | PLANNED | Nessuna metrica calcolata oggi |
+| Guest Intelligence | LIVE | Visite, prima/ultima, frequenza, coperti medi, anticipo di prenotazione, tasso disdette e assenze, giorno/fascia/sala/tavolo preferiti, occasioni — **tutto calcolato dalle prenotazioni**. Undici etichette automatiche, ognuna con il motivo |
+| Storia dell'ospite (timeline) | LIVE | Prenotazioni, visite, assenze, disdette, attese, messaggi. Ordini, pagamenti e recensioni compariranno quando esisteranno |
+
 | Marketing / campagne email | BETA | Funziona via Brevo. L'invio non scala: una chiamata per ospite dentro la richiesta HTTP, serve una coda |
 | QR code | LIVE | |
 | Automazioni | SCHEMA ONLY | |
 | Recensioni / NPS | SCHEMA ONLY | |
 | Loyalty / coupon / gift card | SCHEMA ONLY | |
+
+## Nota sui numeri in euro
+
+Tavolo **non sa** quanto spende un cliente: non ci sono ordini né incassi
+collegati. Fino a settembre 2026 la Panoramica mostrava «Incassi stimati»
+calcolati sulla media di `Guest.totalSpend`, un campo che nessuna parte del
+codice aggiornava — valori del seed presentati come dato (e sbagliati di un
+fattore dieci).
+
+Adesso: il locale **dichiara** la spesa media per coperto in Impostazioni, e la
+stima è detta stima. Senza quel valore, la casella resta vuota e dice cosa
+manca. Il valore reale arriverà con ordini o pagamenti.
 
 ## Analisi
 
@@ -85,7 +99,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii |
 | Navigazione mobile | LIVE | Barra in basso con «+» per i gesti rapidi; nessuno scorrimento orizzontale |
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
-| Test | PARTIAL | 173 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala e le regole del centro controllo. Nessun end-to-end sul browser |
+| Test | PARTIAL | 195 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo e profilo ospite. Nessun end-to-end sul browser |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
 
