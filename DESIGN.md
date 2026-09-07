@@ -2,19 +2,21 @@
 name: Tavolo
 description: Gestionale ospitalità multi-locale — prenotazioni, sala, CRM, marketing, pagamenti, analytics
 colors:
-  ember-glow: "#FCEC9C"
-  ember-bright: "#FFE14D"
-  ember-core: "#FFD400"
-  ember-deep: "#A98804"
-  ember-char: "#5B4706"
-  ember-ash: "#1A1A1A"
-  accent-ember: "#B88E05"
-  ink: "#1A1A1A"
-  surface-card: "#262626"
-  paper: "#FFFFFF"
-  muted-clay: "#B6B6B6"
-  hairline: "#484848"
-  destructive-ember: "#D53434"
+  forest: "#13332C"
+  forest-deep: "#0F2920"
+  forest-card: "#163C2F"
+  forest-raised: "#284D3F"
+  cream: "#F2E7D0"
+  cream-muted: "#C9B487"
+  terracotta: "#AF6648"
+  accent-terracotta: "#B07A45"
+  surface-brown-dark: "#74432D"
+  surface-brown: "#905B38"
+  surface-brown-light: "#C29B72"
+  clay-ink: "#2F1F11"
+  sage: "#8A9F60"
+  hairline: "#364F45"
+  destructive: "#C32222"
 typography:
   display:
     fontFamily: "var(--font-display), Archivo, ui-serif, Georgia"
@@ -84,40 +86,97 @@ components:
 
 ## 1. Overview
 
-**Creative North Star: "The Ember Hearth"**
+> **Nota di allineamento (7 settembre 2026).** Fino a oggi questo documento
+> descriveva la palette «ember» — giallo #FFD400 su nero — che l'applicazione
+> non usa da settimane. `CLAUDE.md` prescrive di leggere questo file prima di
+> toccare l'interfaccia, quindi chi obbediva alle istruzioni scriveva schermate
+> del colore sbagliato. Le sezioni 1 e 2 sono state riscritte leggendo i token
+> reali in `src/styles/globals.css` e `tailwind.config.ts`. Il giallo
+> sopravviveva in due soli posti — il blocco di token `.dark` e il widget
+> pubblico di prenotazione — ed è stato rimosso da entrambi.
 
-Tavolo è il gestionale che scalda il retro-sala: sotto ogni schermata brace un fondo quasi nero (`#1A1A1A`) e un solo accento incandescente, l'ember giallo, che emerge da vetro smerigliato e bagliori radiali invece che da colori piatti. Non è un tool enterprise freddo — ogni riquadro con dati (tabelle prenotazioni, liste ospiti, righe di pagamento) resta leggibile e denso, ma la cornice attorno — sidebar, badge, CTA, stato attivo — porta calore, non decorazione. Questo è deliberatamente l'opposto del "gestionale generico enterprise": niente grigi anonimi, niente tabelle senza personalità (vedi PRODUCT.md, Anti-references).
+**Creative North Star: "La sala di sera"**
 
-Il sistema respinge esplicitamente due tentazioni: il minimalismo grigio da SaaS B2B, e il glassmorphism decorativo ovunque. Il vetro sfocato è riservato alla "cornice" strutturale (sidebar, chip di navigazione, il badge dell'agente AI) — non copre indiscriminatamente ogni card di dati.
+Tavolo ha il colore di un ristorante a luci basse: un **verde bosco profondo**
+(`#0F2920`) come fondo di ogni schermata, testo e superfici chiare in **crema**
+(`#F2E7D0`), e un accento **terracotta** (`#AF6648`) sul poco che deve chiedere
+attenzione. Non è un tool enterprise freddo e non è nemmeno un tema scuro
+generico: è caldo perché il verde è saturo e il crema è avorio, non bianco.
 
-**Key Characteristics:**
-- Fondo quasi-nero caldo (non un grigio neutro freddo) con un mesh ambientale di braci sfocate in movimento lentissimo dietro il contenuto
-- Un solo accento cromatico — l'ember giallo — usato con intenzione su CTA, stato attivo, badge, mai come tinta di sfondo diffusa
-- Vetro smerigliato riservato alla cornice strutturale (sidebar), non ai contenuti di dati
-- Tipografia display "espansa" (font-stretch 125%) per titoli con presenza, bilanciata da un sans geometrico compatto per il corpo denso di dati
+Le superfici con dati restano dense e leggibili — le card crema portano una
+texture di carta appena percepibile (`finish-parchment`), i tavoli della sala un
+finish madreperlato (`table-pearl`) — mentre la cornice attorno (barra di
+navigazione, pill attivo, sfera dell'agente) porta il calore.
+
+**Caratteristiche:**
+- Fondo verde bosco pieno, non un grigio neutro: il calore viene dal verde e dal
+  crema, non da un accento acceso
+- Card in due famiglie: **crema** per i numeri del giorno (KPI, riquadri di
+  testa) e **verde più chiaro** per i contenuti operativi
+- Un solo accento — terracotta — su stato attivo, badge e ciò che avvisa. Le
+  chiamate all'azione principali sono **pillole crema su verde**, non accento
+- Tipografia display serif editoriale (Archivo con asse di larghezza) contro un
+  sans geometrico per i dati densi
+
+Il sistema respinge due tentazioni: il minimalismo grigio da SaaS B2B, e il
+vetro sfocato usato ovunque. La texture è il mezzo con cui una superficie dice
+di che materiale è fatta, e va usata sulle superfici — mai sul testo.
 
 ## 2. Colors
 
-La palette è essenziale: un fondo nero neutro, testo bianco puro, un grigio chiaro per le superfici secondarie, e una singola famiglia gialla ("ember") che scala dal chiarore acceso al giallo scuro/olivastro bruciato — niente più bronzo/rame: la scala resta pulita, dal giallo pieno al nero, senza deviare verso il caldo terracotta.
+Tre famiglie e nient'altro: il **verde** dei fondi, il **crema** dei testi e
+delle superfici chiare, il **terracotta** degli accenti. Le tinte marroni
+(`surface-brown`) sono la scala di raccordo fra crema e terracotta.
 
-### Primary
-- **Ember Core** (#FFD400): il midpoint del gradiente ember — il giallo principale del brand. Usato nei bottoni CTA primari (variant `gold`/`btn-ember`), nel pill di navigazione attivo, nel bagliore della sidebar.
-- **Ember Glow** (#FCEC9C) e **Ember Bright** (#FFE14D): gli estremi chiari del gradiente ember, usati per gli highlight radiali (`--ember-hi`) e per gli stati hover.
-- **Ember Deep** (#A98804) e **Ember Char** (#5B4706): gli estremi scuri, dove il gradiente ember si fonde nel fondo nero della sidebar — restano gialli scuri/olivastri, non bronzo o rame.
-- **Accent Ember** (#B88E05): la variante solida (non-gradiente) dell'accento, usata su testo, icone, link e badge (`text-accent`, `border-accent`) dove serve un colore piatto e più leggibile invece di un gradiente.
+### Fondi (verde)
+- **Forest Deep** (`#0F2920`, token `--background`): il fondo di ogni schermata.
+- **Forest Card** (`#163C2F`, token `--card`): le card di contenuto operativo.
+- **Forest Raised** (`#284D3F`, token `--secondary`/`--muted`/`--popover`): il
+  livello sopra la card — menu a comparsa, campi, pill inattivi.
+- **Forest** (`#13332C`): la tinta nominale del brand, usata dove serve un verde
+  fisso e non un token (grafici, illustrazioni).
+- **Hairline** (`#364F45`, token `--border`): bordi e divisori. La variante
+  `--border-strong` (`#46675B`) per i bordi che devono farsi vedere.
 
-### Neutral
-- **Ink** (#1A1A1A): il fondo dell'intera applicazione (dashboard e landing) — il nero neutro del brand ("Night Black").
-- **Surface Card** (#262626): il fondo delle card e dei pannelli di contenuto, leggermente più chiaro dell'ink, spesso con `backdrop-blur` e bordo bianco 10% per un effetto vetro sottile.
-- **Paper** (#FFFFFF): il testo primario e il bianco del brand, puro.
-- **Muted Clay** (#B6B6B6): testo secondario/didascalie, un grigio neutro medio.
-- **Hairline** (#484848): bordi e divisori, un grigio scuro quasi invisibile a riposo.
-- **Destructive Ember** (#D53434): stati di errore/eliminazione — un rosso distinto dal giallo del brand per non creare ambiguità con l'accento.
+### Testi e superfici chiare (crema)
+- **Cream** (`#F2E7D0`, token `--foreground`): il testo su fondo verde e le
+  superfici chiare. Non è bianco: è avorio, ed è deliberato.
+- **Cream Muted** (`#C9B487`, token `--muted-foreground`): testo secondario.
+- **Clay Ink** (`#2F1F11`) e **Clay Ink Soft** (`#4F351B`): il testo **sopra**
+  le superfici crema e marroni.
+
+### Accento (terracotta)
+- **Terracotta** (`#AF6648`) e **Accent Terracotta** (`#B07A45`, token
+  `--accent`): stato attivo, badge, ciò che avvisa. Anche `--ring`, così il
+  contorno di messa a fuoco è riconoscibile.
+- **Surface Brown** (`#74432D` / `#905B38` / `#C29B72`): la scala di raccordo per
+  card marroni e superfici calde. Qualunque variazione tonale sono questi valori
+  scalati del ±10-15%, mai una tinta scelta a parte — è così che in passato la
+  scala era derivata verso l'oro e poi verso il pesca.
+- **Sage** (`#8A9F60`, `#3D5C34`): l'unico verde-altro ammesso, per gli
+  andamenti positivi.
+- **Destructive** (`#C32222`, token `--destructive`): errori ed eliminazioni.
 
 ### Named Rules
-**La Regola del Fuoco Unico.** L'ember (in ogni sua tonalità) è l'unico accento cromatico del sistema. Non introdurre una seconda famiglia di colore per un modulo diverso (es. un blu per "analytics", un verde per "pagamenti"): tutta l'enfasi passa per la stessa fiamma, altrimenti il sistema perde identità.
 
-**La Regola del Vetro Strutturale.** Il `backdrop-filter` è riservato agli elementi di cornice e navigazione (sidebar, chip, badge dell'agente) — mai alle tabelle o alle liste di dati, che restano leggibili su fondo pieno.
+**La Regola dell'Accento Unico.** Il terracotta è l'unico accento cromatico del
+sistema. Non introdurre una seconda famiglia per un modulo diverso (un blu per
+«analytics», un viola per «marketing»): tutta l'enfasi passa da lì, altrimenti
+il sistema perde identità. Le uniche eccezioni sono il sage per il positivo e il
+rosso per il distruttivo, perché comunicano un significato e non un'identità.
+
+**La Regola della Chiamata Crema.** La chiamata all'azione principale di una
+schermata è una **pillola crema** (variant `accent`), non l'accento terracotta.
+Il terracotta segnala *dove sei* e *cosa guardare*; il crema segnala *cosa fare*.
+
+**La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
+il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
+servono a dire di che materiale è fatta una superficie, non a decorare.
+
+**Una nota per chi misura il contrasto.** Le card crema sono dipinte con
+`background-image` (gradiente più texture), non con `background-color`: gli
+strumenti automatici non riescono a leggere il colore di fondo e riportano falsi
+allarmi di contrasto. Quelle superfici vanno verificate a mano.
 
 ## 3. Typography
 

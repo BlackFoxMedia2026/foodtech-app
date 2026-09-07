@@ -18,6 +18,8 @@ Obiettivo: rendere il prodotto sicuro da modificare e da rilasciare.
 - [x] Audit log sulle azioni sensibili
 - [x] Test su permessi, isolamento, fuso, disponibilità
 - [x] Dati demo con date relative a oggi
+- [x] Documenti di design allineati alla palette reale (verde/crema/terracotta)
+- [x] Widget pubblico riportato nell'identità dell'applicazione
 
 ## Phase 1 — Booking OS
 

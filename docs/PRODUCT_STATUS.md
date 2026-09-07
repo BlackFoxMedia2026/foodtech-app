@@ -26,7 +26,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Prenotazioni (CRUD) | LIVE | Creazione, modifica, annullo, dettaglio |
 | Disponibilità / anti-overbooking | LIVE | Unica fonte di verità per sala, API e widget. 45 verifiche automatiche |
 | Calendario | PARTIAL | Navigazione per giorno. Nessuna vista settimana/mese |
-| Widget pubblico | BETA | Funziona e propone solo orari accettabili. Fuori brand; da riportare alla palette dell'app |
+| Widget pubblico | BETA | Funziona e propone solo orari accettabili, ora nell'identità dell'app. Manca la verifica del contatto: il limite di frequenza rallenta un bot, non ferma email e telefono inventati |
 | Walk-in | PARTIAL | Esiste come fonte prenotazione, manca il flusso rapido |
 | Reminder prenotazione | PLANNED | Oggi solo email di conferma alla creazione |
 | Caparra / garanzia carta | PLANNED | Schema pronto (`depositCents`, `depositStatus`, `Payment.stripePaymentId`). Stripe non implementato |
