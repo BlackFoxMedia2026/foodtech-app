@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FloorCanvas, type FloorCanvasHandle } from "./floor-canvas";
 import type { TableStaffMap } from "./table-node";
+import type { TableOperationalStatus } from "@/lib/table-status";
 import { FloorServiceFilter } from "./floor-service-filter";
 
 type RoomWithTables = {
@@ -52,12 +53,14 @@ export function FloorRoomsView({
   service,
   serviceOptions,
   staffByTableId,
+  statusByTableId,
 }: {
   rooms: RoomWithTables[];
   date: string;
   service: string;
   serviceOptions: string[];
   staffByTableId: Record<string, TableStaffMap>;
+  statusByTableId?: Record<string, TableOperationalStatus>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -311,6 +314,7 @@ export function FloorRoomsView({
             width={activeRoom.width}
             height={activeRoom.height}
             staffByTableId={staffByTableId}
+            statusByTableId={statusByTableId}
             date={date}
             service={service}
             onDirtyChange={setDirty}

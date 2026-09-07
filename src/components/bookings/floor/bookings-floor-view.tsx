@@ -253,6 +253,7 @@ export function BookingsFloorView({
         <div className="flex min-h-0 flex-1 flex-col gap-2 sm:flex-row">
           <div className="surface min-h-[320px] flex-1 overflow-hidden rounded-xl sm:min-h-0" style={{ flexBasis: "72%" }}>
             <BookingsFloorCanvas
+              key={activeRoom.id}
               tables={activeRoom.tables}
               bookingsByTableId={bookingsByTableId}
               floorPlanUrl={activeRoom.floorPlanUrl}
