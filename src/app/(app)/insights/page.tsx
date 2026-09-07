@@ -15,6 +15,7 @@ import { getSurveyStats } from "@/server/surveys";
 import { reviewFunnel } from "@/server/reviews";
 import { menuEngineering } from "@/server/menu-engineering";
 import { waitlistReport } from "@/server/waitlist";
+import { debitoGiftCards } from "@/server/gift-cards";
 import { resolveSegment } from "@/server/campaigns";
 import { Button } from "@/components/ui/button";
 import { SlotChart, SourcesChart, WeekdayHeatmap } from "@/components/insights/charts";
@@ -76,7 +77,7 @@ export default async function InsightsPage({
   const ctx = await getActiveVenue();
   const { range, from, to } = computeRange(searchParams);
   const giorni = Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000));
-  const [a, prev, nps, ponteRecensioni, previsione, occupazione, foodCost, assenze, codaAttesa, inattivi] =
+  const [a, prev, nps, ponteRecensioni, previsione, occupazione, foodCost, assenze, codaAttesa, giftCard, inattivi] =
     await Promise.all([
       getAnalytics(ctx.venueId, from, to),
     getPreviousPeriodMetrics(ctx.venueId, from, to),
@@ -92,7 +93,11 @@ export default async function InsightsPage({
     // fotografia di adesso.
     getFoodCost(ctx.venueId, from, to),
     getNoShowReport(ctx.venueId, from, to),
-    waitlistReport(ctx.venueId, from, to),
+      waitlistReport(ctx.venueId, from, to),
+      // Il debito delle gift card **non** dipende dal periodo scelto: è quanto
+      // il locale deve, adesso, a chi ha già pagato. Un debito «degli ultimi
+      // trenta giorni» non vuol dire niente.
+      debitoGiftCards(ctx.venueId),
     // Quanti si potrebbero invitare davvero: con email e consenso, non
     // «quanti clienti ho». È lo stesso segmento che userebbe la campagna.
     resolveSegment(ctx.venueId, { audienceTag: "inattivi" }),
@@ -169,6 +174,16 @@ export default async function InsightsPage({
           hint="Sul totale prenotazioni"
           trend={trendFor(a.cancelRate, prev.cancelRate, { higherIsBetter: false, kind: "rate" })}
         />
+        {giftCard.carte > 0 && (
+          /* Non è un incasso del periodo: è denaro già incassato e non ancora
+             servito, cioè un debito verso i clienti. Sta fra i numeri
+             d'insieme perché è lì che qualcuno lo cerca a fine mese. */
+          <StatCard
+            label="Debito gift card"
+            value={formatCurrency(giftCard.residuoCents, ctx.venue.currency)}
+            hint={`${giftCard.carte} ${giftCard.carte === 1 ? "carta" : "carte"} da onorare — già incassate, cena da servire`}
+          />
+        )}
         <StatCard
           label="Spesa media"
           value={formatCurrency(a.avgSpendCents, ctx.venue.currency)}

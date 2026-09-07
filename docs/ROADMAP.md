@@ -145,6 +145,7 @@ costavano poco e valevano molto.
       → un collegamento tolto viene **spento, non cancellato**: cancellarlo porterebbe via i clic raccolti, e i numeri dell'anno scorso cambierebbero da soli
       → di chi clicca non registriamo niente (né IP né browser): serve a contare, non a profilare
 - [x] **Scheletri di caricamento** sulle sette pagine che ne erano senza (Servizio, Attesa, Menu, Marketing, Campagne, Esperienze, Brigata): hanno la forma vera della pagina, non un rettangolo generico. Uno scheletro che non somiglia a quello che arriva fa saltare il testo sotto gli occhi, ed è peggio di una pagina bianca
+- [x] **Il debito delle gift card fra i numeri d'insieme**: era solo nella sua pagina, e a fine mese lo si cerca in Analytics. Non dipende dal periodo scelto — è quanto il locale deve *adesso* a chi ha già pagato
 - [x] **La lista d'attesa misurata**, in Analytics: quante persone escono dalla coda, quante si siedono, i coperti recuperati, quanto hanno aspettato. Risponde a «tenere una lista serve?», che finora era una questione di impressioni
       → si misura su chi è **uscito** dalla coda: chi aspetta adesso non è né un successo né una perdita
       → sotto cinque righe niente percentuale, e le righe che nessuno ha chiuso si contano a parte: non sono clienti persi, sono un gesto mancato in sala, e mescolarle racconterebbe una serata peggiore di com'è andata
