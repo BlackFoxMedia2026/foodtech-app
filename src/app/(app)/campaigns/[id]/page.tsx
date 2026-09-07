@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getActiveVenue } from "@/lib/tenant";
-import { getCampaign, getCampaignSendProgress, resolveSegment, type SegmentFilterType } from "@/server/campaigns";
+import {
+  FINESTRA_ATTRIBUZIONE_GIORNI,
+  getCampaign,
+  getCampaignAttribution,
+  getCampaignSendProgress,
+  resolveSegment,
+  type SegmentFilterType,
+} from "@/server/campaigns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +37,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
   const stato = CAMPAIGN_STATUS[campaign.status];
   const inCoda = campaign.status === "SENDING" || campaign.status === "FAILED";
   const avanzamento = inCoda ? await getCampaignSendProgress(ctx.venueId, campaign.id) : null;
+  const resa = await getCampaignAttribution(ctx.venueId, campaign.id);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -140,6 +148,11 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
             <CampaignResultsChart
               sentCount={campaign.sentCount}
               openedCount={campaign.openedCount}
+              bookings={resa.bookings}
+              covers={resa.covers}
+              revenueCents={resa.revenueCents}
+              fuoriFinestra={resa.fuoriFinestra}
+              giorniFinestra={FINESTRA_ATTRIBUZIONE_GIORNI}
             />
           </CardContent>
         </Card>

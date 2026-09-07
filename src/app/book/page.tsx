@@ -2,9 +2,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PublicBookingForm } from "@/components/bookings/public-booking-form";
 import { db } from "@/lib/db";
 
-export default async function BookPage(props: { searchParams?: { venue?: string; embed?: string } }) {
+export default async function BookPage(props: {
+  searchParams?: { venue?: string; embed?: string; c?: string };
+}) {
   const venueId = props.searchParams?.venue;
   const isEmbed = props.searchParams?.embed === "1";
+  // `c` è la campagna che ha portato qui questa persona: viaggia nel link
+  // dentro l'email. La verifica che sia di questo locale la fa la route.
+  const campaignId = props.searchParams?.c;
 
   const venue = venueId
     ? await db.venue.findFirst({
@@ -27,6 +32,7 @@ export default async function BookPage(props: { searchParams?: { venue?: string;
           primaryColor={venue.brandAccent ?? undefined}
           phone={venue.phone ?? undefined}
           email={venue.email ?? undefined}
+          campaignId={campaignId}
         />
       </CardContent>
     </Card>

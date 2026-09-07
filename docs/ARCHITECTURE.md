@@ -184,6 +184,32 @@ d'attesa e il walk-in, che stanno accomodando qualcuno adesso — passa da
 Stessa forma di `skipAvailabilityCheck`, che ora richiede anche un motivo
 scritto (`forceReason`) e finisce nel registro come azione distinta.
 
+### Il merito di una campagna si guadagna, non si dichiara
+
+`Booking.campaignId` più `getCampaignAttribution` in `src/server/campaigns.ts`.
+
+Il link dentro l'email si porta dietro la campagna (`/book?venue=…&c=…`), il
+widget lo rimanda al server, e la prenotazione che nasce da quel clic la
+ricorda. Tre vincoli, e ognuno risponde a un modo diverso di mentire con i
+numeri:
+
+- **la campagna nel link si verifica.** Arriva dal mondo esterno: prima di
+  finire in tabella si controlla che sia una campagna di *quel* locale. Un
+  identificativo inventato non attribuisce niente — e non fa fallire la
+  prenotazione, perché un link storto non deve impedire a un cliente di
+  prenotare;
+- **il merito ha una scadenza** (30 giorni). Chi riapre quella email a marzo e
+  prenota non l'ha prenotata per quella email. Senza finestra, il merito di
+  una campagna cresce per sempre: è il modo più comune di far sembrare
+  efficace il marketing;
+- **una disdetta non ha portato nessuno a tavola.** Disdette e assenze
+  restano fuori dal conteggio, come nell'occupazione e nella previsione: la
+  stessa popolazione in tutta l'applicazione.
+
+Il valore in euro è coperti per scontrino medio dichiarato, e si mostra solo
+se quel numero c'è: chiamarlo «incasso» sarebbe la stessa bugia di
+`Guest.totalSpend`.
+
 ### La previsione dice anche quanto fidarsi
 
 `src/server/forecast.ts`.
