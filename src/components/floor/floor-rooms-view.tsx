@@ -350,7 +350,7 @@ export function FloorRoomsView({
           <DialogHeader>
             <DialogTitle>Rinomina sala</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleRename} className="space-y-4">
+          <form onSubmit={handleRename} method="post" className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="rename-room">Nome sala</Label>
               <Input
@@ -379,7 +379,7 @@ export function FloorRoomsView({
           <DialogHeader>
             <DialogTitle>Nuova sala</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateRoom} className="space-y-4">
+          <form onSubmit={handleCreateRoom} method="post" className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="new-room">Nome sala</Label>
               <Input

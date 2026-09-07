@@ -187,7 +187,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={onSubmit} className="space-y-5" noValidate>
+          <form onSubmit={onSubmit} method="post" className="space-y-5" noValidate>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="firstName">Nome</Label>

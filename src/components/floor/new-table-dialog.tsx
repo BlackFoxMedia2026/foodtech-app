@@ -124,7 +124,7 @@ export function NewTableDialog({
             <DialogDescription id="new-table-description">Aggiungi un nuovo tavolo alla {roomName}.</DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={onSubmit} className="space-y-5" noValidate>
+          <form onSubmit={onSubmit} method="post" className="space-y-5" noValidate>
             <div className="space-y-1.5">
               <Label htmlFor="table-label">Nome tavolo</Label>
               <Input

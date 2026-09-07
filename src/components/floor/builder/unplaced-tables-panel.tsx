@@ -49,7 +49,7 @@ export function UnplacedTablesPanel({ builder }: { builder: RoomBuilder }) {
       </div>
 
       {creating && (
-        <form onSubmit={submit} className="flex flex-col gap-1.5 rounded-md border border-border bg-secondary/40 p-2">
+        <form onSubmit={submit} method="post" className="flex flex-col gap-1.5 rounded-md border border-border bg-secondary/40 p-2">
           <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Nome (es. T20)" className="h-7 text-xs" autoFocus />
           <div className="flex gap-1.5">
             <Input value={seats} onChange={(e) => setSeats(e.target.value)} placeholder="Posti" inputMode="numeric" className="h-7 w-16 text-xs" />
