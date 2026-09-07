@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auditActor, fieldDiff, recordAudit } from "@/server/audit";
 import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -21,17 +22,23 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   try {
     const data = Patch.parse(await req.json());
     const updated = await db.table.update({ where: { id: params.id }, data });
+    const diff = fieldDiff(existing, updated);
+    if (diff) await recordAudit(auditActor(ctx, req), "table.update", "table", params.id, diff);
     return NextResponse.json(updated);
   } catch (err) {
     return apiErrorResponse(err);
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const ctx = await requireVenueApi("manage_venue");
   if (!ctx.ok) return ctx.response;
   const existing = await db.table.findFirst({ where: { id: params.id, venueId: ctx.venueId } });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
   await db.table.delete({ where: { id: params.id } });
+  await recordAudit(auditActor(ctx, req), "table.delete", "table", params.id, {
+    tavolo: existing.label,
+    posti: existing.seats,
+  });
   return NextResponse.json({ ok: true });
 }

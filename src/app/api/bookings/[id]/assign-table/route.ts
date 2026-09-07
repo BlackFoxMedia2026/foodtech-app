@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auditActor } from "@/server/audit";
 import { requireVenueApi } from "@/lib/api-auth";
 import { BookingAssignError, assignBookingToTable } from "@/server/booking-floor";
 
@@ -29,7 +30,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   try {
-    const updated = await assignBookingToTable(ctx.venueId, params.id, tableId, { force: !!body?.force });
+    const updated = await assignBookingToTable(ctx.venueId, params.id, tableId, {
+      force: !!body?.force,
+      actor: auditActor(ctx, req),
+    });
     return NextResponse.json(updated);
   } catch (err) {
     if (err instanceof BookingAssignError) {

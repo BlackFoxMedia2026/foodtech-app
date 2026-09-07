@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auditActor } from "@/server/audit";
 import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 
 import { createWaiter, listWaiters } from "@/server/waiters";
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
   if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
-    const created = await createWaiter(ctx.venueId, body);
+    const created = await createWaiter(ctx.venueId, body, auditActor(ctx, req));
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     return apiErrorResponse(err);

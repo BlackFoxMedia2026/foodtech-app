@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auditActor } from "@/server/audit";
 import { requireVenueApi } from "@/lib/api-auth";
 import { db } from "@/lib/db";
 import { deleteBooking, updateBooking } from "@/server/bookings";
@@ -20,18 +21,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
-    const updated = await updateBooking(ctx.venueId, params.id, body);
+    const updated = await updateBooking(ctx.venueId, params.id, body, { actor: auditActor(ctx, req) });
     return NextResponse.json(updated);
   } catch (err) {
     return bookingWriteErrorResponse(err);
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const ctx = await requireVenueApi("manage_bookings");
   if (!ctx.ok) return ctx.response;
   try {
-    await deleteBooking(ctx.venueId, params.id);
+    await deleteBooking(ctx.venueId, params.id, auditActor(ctx, req));
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "not_found" }, { status: 404 });

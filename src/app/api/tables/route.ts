@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auditActor, recordAudit } from "@/server/audit";
 import { requireVenueApi } from "@/lib/api-auth";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -29,6 +30,10 @@ export async function POST(req: Request) {
   try {
     const data = Body.parse(await req.json());
     const created = await db.table.create({ data: { ...data, venueId: ctx.venueId } });
+    await recordAudit(auditActor(ctx, req), "table.create", "table", created.id, {
+      tavolo: created.label,
+      posti: created.seats,
+    });
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {

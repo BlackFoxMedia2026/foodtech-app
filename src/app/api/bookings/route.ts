@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auditActor } from "@/server/audit";
 import { requireVenueApi } from "@/lib/api-auth";
 
 import { createBooking, listBookingsForDay } from "@/server/bookings";
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
-    const created = await createBooking(ctx.venueId, body);
+    const created = await createBooking(ctx.venueId, body, { actor: auditActor(ctx, req) });
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     return bookingWriteErrorResponse(err);

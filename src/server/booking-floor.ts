@@ -1,4 +1,5 @@
 import { Prisma, type Booking, type BookingStatus, type Guest, type Table } from "@prisma/client";
+import { recordAudit, type AuditActor } from "./audit";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay } from "@/lib/utils";
 
@@ -74,10 +75,10 @@ export async function assignBookingToTable(
   venueId: string,
   bookingId: string,
   tableId: string,
-  opts: { force?: boolean } = {},
+  opts: { force?: boolean; actor?: AuditActor } = {},
 ): Promise<FloorBooking> {
   try {
-    return await db.$transaction(
+    const assigned = await db.$transaction(
       async (tx) => {
         const booking = await tx.booking.findFirst({ where: { id: bookingId, venueId, deletedAt: null } });
         if (!booking) throw new BookingAssignError("booking_not_found");
@@ -108,6 +109,19 @@ export async function assignBookingToTable(
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+
+    // Il caso forzato ha un'azione sua: è l'unico modo in cui un tavolo può
+    // accogliere più coperti di quanti ne ha, e chi controlla dopo deve poterlo
+    // cercare senza scorrere tutte le assegnazioni.
+    await recordAudit(
+      opts.actor,
+      opts.force ? "booking.assign_table_forced" : "booking.assign_table",
+      "booking",
+      bookingId,
+      { tavolo: tableId, coperti: assigned.partySize, postiTavolo: assigned.table?.seats ?? null },
+    );
+
+    return assigned;
   } catch (err) {
     if (err instanceof BookingAssignError) throw err;
     // Postgres serialization failure (40001) from a genuinely concurrent

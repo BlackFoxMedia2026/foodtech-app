@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auditActor } from "@/server/audit";
 import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 
 import { getGuest, updateGuest } from "@/server/guests";
@@ -16,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
-    const updated = await updateGuest(ctx.venueId, params.id, body);
+    const updated = await updateGuest(ctx.venueId, params.id, body, auditActor(ctx, req));
     return NextResponse.json(updated);
   } catch (err) {
     return apiErrorResponse(err);
