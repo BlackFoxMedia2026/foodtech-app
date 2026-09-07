@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { esaminaMigrazione, senzaCommenti } from "@/lib/migration-safety";
+import { esaminaMigrazione, senzaCommenti, serraturaOccupata } from "@/lib/migration-safety";
 
 /**
  * Il freno sulle migrazioni delle anteprime.
@@ -107,4 +107,25 @@ describe("le migrazioni di questo repo", () => {
       });
     });
   }
+});
+
+describe("la serratura del database", () => {
+  it("riconosce chi ha trovato occupato, e solo lui", () => {
+    // È l'errore che ha fatto fallire una pubblicazione di produzione con il
+    // database perfettamente in ordine: va aspettato il turno, non abbandonato.
+    expect(
+      serraturaOccupata(
+        "Error: P1002\nThe database server was reached but timed out.\nContext: Timed out trying to acquire a postgres advisory lock"
+      )
+    ).toBe(true);
+    expect(serraturaOccupata("Timed out trying to acquire a postgres advisory lock (SELECT pg_advisory_lock)")).toBe(
+      true
+    );
+  });
+
+  it("una migrazione scritta male non si riprova: deve fallire subito", () => {
+    expect(serraturaOccupata('ERROR: relation "Guest" does not exist')).toBe(false);
+    expect(serraturaOccupata("syntax error at or near ALTAR")).toBe(false);
+    expect(serraturaOccupata("")).toBe(false);
+  });
 });

@@ -94,3 +94,23 @@ deciso che quel dato si può perdere.
 **La soluzione definitiva** resta un database separato per le anteprime (Neon
 sa creare un ramo per ogni richiesta di modifica). Questo è il freno che serve
 finché non c'è.
+
+## E se due pubblicazioni si sovrappongono
+
+`prisma migrate deploy` prende una serratura sul database (un *advisory lock*)
+e dopo dieci secondi rinuncia. Su Vercel due build si sovrappongono spesso —
+l'anteprima di una richiesta e la pubblicazione della stessa fusione — e quella
+che arrivava seconda **faceva fallire il build**. È successo due volte in un
+giorno: la prima ha messo un segno rosso su una richiesta, la seconda ha fatto
+fallire una pubblicazione di produzione con il database perfettamente in
+ordine.
+
+Due correzioni, entrambe nello script:
+
+- **se non c'è niente da applicare, `migrate deploy` non viene chiamato.**
+  Sembra un dettaglio: anche a vuoto quel comando prende la serratura, e due
+  build si bloccavano a vicenda per un lavoro che non c'era;
+- **se la serratura è occupata si aspetta il turno** (cinque tentativi, dodici
+  secondi). La serratura serve proprio a mettere in fila chi migra, e chi è in
+  fila deve attendere. Si riprova **solo** su quell'errore: una migrazione
+  scritta male deve fallire subito e forte.
