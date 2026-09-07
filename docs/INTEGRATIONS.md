@@ -30,6 +30,9 @@ attesa, contratto in scadenza, contratto scaduto.
 confermare o annullare. Passano da `src/server/messaging/send.ts`, che registra
 tutto su `MessageLog` e non manda due volte la stessa cosa.
 
+**Sondaggio dopo la visita:** il giorno dopo, una domanda sola con un link a
+token unico (`src/server/surveys.ts`, cron alle 11:00).
+
 **Manca ancora:** nessuna email su modifica o annullo fatti dallo staff.
 
 ### OpenAI — agente in-app · BETA

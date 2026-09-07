@@ -297,6 +297,7 @@ model Guest {
   payments           Payment[]
   WifiLead           WifiLead[]
   waitlistEntries    WaitlistEntry[]
+  surveys            Survey[]
 
   @@index([venueId, email])
   @@index([venueId, phone])
@@ -338,6 +339,7 @@ model Booking {
   payments          Payment[]
   VoiceBookingDraft VoiceBookingDraft?
   messages          MessageLog[]
+  Survey            Survey?
 
   @@index([venueId, startsAt])
   @@index([venueId, status])
@@ -1363,6 +1365,8 @@ model Survey {
   sentAt         DateTime        @default(now())
   respondedAt    DateTime?
   Venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  booking        Booking?        @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  Guest          Guest?          @relation(fields: [guestId], references: [id], onDelete: SetNull)
   SurveyResponse SurveyResponse?
 
   @@index([venueId, sentAt])

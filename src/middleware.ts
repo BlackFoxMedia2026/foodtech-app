@@ -22,6 +22,11 @@ function ruleFor(req: NextRequest): Guarded | null {
   }
   // L'ospite conferma o annulla dal link del promemoria: severo come la
   // creazione, perché è l'endpoint da cui si potrebbero provare token a caso.
+  // Il sondaggio: severo come le altre azioni pubbliche, perché è l'altro
+  // endpoint da cui si potrebbero provare token a caso.
+  if (pathname === "/api/public/survey") {
+    return { rule: RATE_LIMITS.publicBooking, bucket: "survey", methods: ["POST"] };
+  }
   if (pathname === "/api/public/booking-action") {
     return { rule: RATE_LIMITS.publicBooking, bucket: "booking-action", methods: ["POST"] };
   }

@@ -58,6 +58,7 @@ proprio locale, altrimenti passerebbero anche funzioni rotte che rifiutano tutto
 | `GET /api/public/availability` | 60 / min | Il widget la interroga a ogni cambio di data |
 | `POST /api/auth/callback/*` | 10 / 10 min | Tentativi di accesso |
 | `POST /api/agent/*` | 30 / min | Ogni messaggio costa una chiamata a un modello |
+| `POST /api/public/survey` | 5 / 10 min | La risposta al sondaggio: l'altro endpoint da cui si potrebbero provare token a caso |
 | `POST /api/public/booking-action` | 5 / 10 min | L'ospite conferma o annulla dal promemoria: è l'endpoint da cui si potrebbero provare token a caso |
 | Upload immagini e documenti | 20 / min | |
 
@@ -86,6 +87,14 @@ I promemoria contengono link che confermano o annullano senza account:
 L'azione non parte mai da una GET: i client di posta precaricano i link, e un
 annullamento innescato da un'anteprima è una cena persa senza che nessuno abbia
 cliccato. La pagina mostra, il POST agisce.
+
+## Token dei sondaggi
+
+Diversi dai link dei promemoria: qui il token è **casuale e salvato**
+(`Survey.token`, unico), non firmato. La differenza è voluta — un sondaggio
+vale **una volta sola** e va potuto invalidare, e un token in tabella si
+revoca; una firma no. La risposta è idempotente per costruzione: al secondo
+tentativo il vincolo su `SurveyResponse.surveyId` risponde «già risposto».
 
 ## Registro delle azioni
 

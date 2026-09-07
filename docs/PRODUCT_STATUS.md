@@ -56,7 +56,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Marketing / campagne email | BETA | Funziona via Brevo. I segmenti filtrano su dati veri (contatori riallineati; rimosso il filtro sulla spesa, che leggeva un campo mai aggiornato). L'invio non scala: una chiamata per ospite dentro la richiesta HTTP, serve una coda |
 | QR code | LIVE | |
 | Automazioni | SCHEMA ONLY | |
-| Recensioni / NPS | SCHEMA ONLY | |
+| Recensioni e NPS | LIVE | Il giorno dopo la visita: una domanda sola (0-10). Promotori → link alla recensione pubblica; detrattori → commento privato **e notifica immediata al locale**. Pannello con NPS, distribuzione, andamento a quattro settimane e commenti recenti |
 | Loyalty / coupon / gift card | SCHEMA ONLY | |
 
 ## Nota sui numeri in euro
@@ -99,7 +99,7 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 | Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii |
 | Navigazione mobile | LIVE | Barra in basso con «+» per i gesti rapidi; nessuno scorrimento orizzontale |
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
-| Test | PARTIAL | 195 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo e profilo ospite. Nessun end-to-end sul browser |
+| Test | PARTIAL | 214 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo, profilo ospite e sondaggi. Nessun end-to-end sul browser |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
 

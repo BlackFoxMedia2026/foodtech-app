@@ -53,12 +53,13 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [ ] Segmenti basati direttamente sulle etichette calcolate («manda a chi è a rischio»)
 - [ ] Il valore in euro resta una **stima dichiarata** finché non ci sono ordini o incassi
 
-## Phase 4 — Crescita
+## Phase 4 — Crescita 🔄 in corso
 
-- Motore automazioni (segmento → trigger → condizione → azione → attesa), con coda
-- WhatsApp e SMS come canali
-- Recensioni e NPS
-- Coupon
+- [x] **Recensioni e NPS**: richiesta il giorno dopo la visita, due strade dopo la risposta, notifica immediata sui detrattori, pannello in Analytics
+- [ ] **Motore automazioni** (segmento → trigger → condizione → azione → attesa)
+      → **prima serve una coda**: l'invio campagne fa già una chiamata per ospite dentro la richiesta HTTP e va in timeout con qualche centinaio di destinatari. Un motore di automazioni sopra un'architettura senza lavoro in background sarebbe fragile per costruzione
+- [ ] WhatsApp e SMS come canali (il posto è pronto in `PROVIDERS`, manca il fornitore)
+- [ ] Coupon
 
 ## Phase 5 — Revenue
 
