@@ -3,6 +3,8 @@ import { getActiveVenue } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
 import { listServiceOptions } from "@/server/waiter-assignments";
 import { listStaffAssignmentsForService } from "@/server/staff-assignments";
+import { getTableStatusesForDay } from "@/server/bookings";
+import { startOfDay } from "@/lib/utils";
 import { FloorRoomsView } from "@/components/floor/floor-rooms-view";
 import type { TableStaffMap } from "@/components/floor/table-node";
 
@@ -52,6 +54,18 @@ export default async function FloorPage({
     tables: tables.filter((t) => t.roomId === r.id),
   }));
 
+  const requestedDay = new Date(date);
+  const isToday = date === new Date().toISOString().slice(0, 10);
+  // Viewing a day other than today shouldn't compare bookings against the
+  // real clock — every active booking that day should still read as
+  // PRENOTATO/OCCUPATO instead of collapsing to LIBERO (see table-status.ts).
+  const statusByTableId = await getTableStatusesForDay(
+    ctx.venueId,
+    requestedDay,
+    tables,
+    isToday ? new Date() : startOfDay(requestedDay),
+  );
+
   return (
     <FloorRoomsView
       rooms={roomsWithTables}
@@ -59,6 +73,7 @@ export default async function FloorPage({
       service={service}
       serviceOptions={serviceOptions}
       staffByTableId={staffByTableId}
+      statusByTableId={statusByTableId}
     />
   );
 }

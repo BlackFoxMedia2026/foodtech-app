@@ -33,6 +33,7 @@ export function RoomBuilderOverlay({
   initialHeight,
   allTables,
   onSaved,
+  referenceImageUrl,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,6 +44,11 @@ export function RoomBuilderOverlay({
   initialHeight: number;
   allTables: Table[];
   onSaved: () => void;
+  /** Original uploaded plan to show as a correction reference (brief §8/
+   * §33/§43) — e.g. when the recognition pipeline seeded `initialElements`
+   * and the user opens "Modifica" to correct them, or when it failed
+   * entirely and this is the manual-completion fallback. */
+  referenceImageUrl?: string | null;
 }) {
   const [tooSmall, setTooSmall] = useState(false);
   // Lifted out of ShapeWizard so shape/width/depth survive it being
@@ -125,6 +131,7 @@ export function RoomBuilderOverlay({
           onBack={() => setWizardResult(null)}
           onClose={() => onOpenChange(false)}
           onSaved={onSaved}
+          referenceImageUrl={referenceImageUrl}
         />
       )}
     </div>
@@ -142,6 +149,7 @@ function RoomBuilderShell({
   onBack,
   onClose,
   onSaved,
+  referenceImageUrl,
 }: {
   roomId: string;
   roomName: string;
@@ -153,6 +161,7 @@ function RoomBuilderShell({
   onBack: () => void;
   onClose: () => void;
   onSaved: () => void;
+  referenceImageUrl?: string | null;
 }) {
   const builder = useRoomBuilder({
     roomId,
@@ -202,7 +211,7 @@ function RoomBuilderShell({
           <ElementLibraryPanel builder={builder} category={activeCategory} />
         </div>
         <div className="min-w-0 flex-1">
-          <RoomBuilderCanvas builder={builder} />
+          <RoomBuilderCanvas builder={builder} referenceImageUrl={referenceImageUrl} />
         </div>
         <div
           className={cn(

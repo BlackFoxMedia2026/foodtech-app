@@ -1,25 +1,25 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Table } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Plus, Save, Check, MapIcon, ZoomIn, ZoomOut, Maximize2, MoreHorizontal } from "lucide-react";
+import { Plus, Save, Check, MapIcon, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useRoomCamera, MIN_ZOOM, MAX_ZOOM } from "./use-room-camera";
-import { useViewportGestures } from "./use-viewport-gestures";
-import { TableNode, TABLE_SIZE, type LocalTable, type TableStaffMap } from "./table-node";
+import { TABLE_SIZE, type LocalTable, type TableStaffMap } from "./table-node";
+import { RoomTableNode } from "./operational/room-table-node";
+import { OperationalRoomView } from "./operational/operational-room-view";
 import { ManagePlanDialog } from "./manage-plan-dialog";
 import { AssignStaffDialog } from "./assign-staff-dialog";
 import { NewTableDialog } from "./new-table-dialog";
-import { RoomLayoutRenderer } from "./builder/room-layout-renderer";
-import { parseRoomLayoutElements } from "@/lib/room-layout";
+import { parseRoomLayoutElements, getRoomBounds } from "@/lib/room-layout";
+import type { TableOperationalStatus } from "@/lib/table-status";
 import type { RoomLayoutMode } from "@prisma/client";
 
 type CoverageFilter = "all" | "assigned" | "unassigned";
@@ -41,6 +41,7 @@ export const FloorCanvas = forwardRef<
     width?: number;
     height?: number;
     staffByTableId?: Record<string, TableStaffMap>;
+    statusByTableId?: Record<string, TableOperationalStatus>;
     date?: string;
     service?: string;
     onDirtyChange?: (dirty: boolean) => void;
@@ -56,6 +57,7 @@ export const FloorCanvas = forwardRef<
     width = 1200,
     height = 760,
     staffByTableId,
+    statusByTableId,
     date,
     service,
     onDirtyChange,
@@ -74,67 +76,27 @@ export const FloorCanvas = forwardRef<
   const [menuOpen, setMenuOpen] = useState(false);
   const [assignStaffTableId, setAssignStaffTableId] = useState<string | null>(null);
 
-  const { camera, worldRef, viewportRef, getZoom, panBy, zoomAt, fitRoom, reset100, stepZoom } = useRoomCamera({
-    roomWidth: width,
-    roomHeight: height,
-  });
-  const parsedLayoutElements = parseRoomLayoutElements(roomLayoutElements);
+  const parsedLayoutElements = useMemo(() => parseRoomLayoutElements(roomLayoutElements), [roomLayoutElements]);
+  const roomBounds = useMemo(
+    () =>
+      getRoomBounds(
+        { width, height, activeLayoutMode },
+        parsedLayoutElements,
+        tables.map((t) => ({ x: t.posX, y: t.posY, ...TABLE_SIZE[t.shape] })),
+      ),
+    [width, height, activeLayoutMode, parsedLayoutElements, tables],
+  );
 
   useEffect(() => {
     setMenuOpen(false);
   }, [selectedId]);
 
   const isDirty = tables.some((t) => t.dirty);
-  const lod: "full" | "medium" | "low" = camera.zoom > 0.7 ? "full" : camera.zoom > 0.45 ? "medium" : "low";
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDirty]);
-
-  const onStartDrag = useCallback(
-    (id: string, e: React.PointerEvent) => {
-      const target = e.currentTarget as HTMLElement;
-      target.setPointerCapture(e.pointerId);
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const t = tables.find((x) => x.id === id);
-      if (!t) return;
-      const baseX = t.posX;
-      const baseY = t.posY;
-      const dragZoom = getZoom();
-      const size = TABLE_SIZE[t.shape];
-
-      function move(ev: PointerEvent) {
-        const dx = (ev.clientX - startX) / dragZoom;
-        const dy = (ev.clientY - startY) / dragZoom;
-        setTables((prev) =>
-          prev.map((p) =>
-            p.id === id
-              ? {
-                  ...p,
-                  // Rounded to whole px: the API validates posX/posY as
-                  // integers, and a sub-pixel value here (dx/dy divided by a
-                  // fractional zoom) would otherwise fail that check on save.
-                  posX: Math.round(Math.max(0, Math.min(width - size.w, baseX + dx))),
-                  posY: Math.round(Math.max(0, Math.min(height - size.h, baseY + dy))),
-                  dirty: true,
-                }
-              : p,
-          ),
-        );
-      }
-      function up() {
-        target.removeEventListener("pointermove", move);
-        target.removeEventListener("pointerup", up);
-        target.removeEventListener("pointercancel", up);
-      }
-      target.addEventListener("pointermove", move);
-      target.addEventListener("pointerup", up);
-      target.addEventListener("pointercancel", up);
-    },
-    [tables, width, height, getZoom],
-  );
 
   async function persist() {
     const dirty = tables.filter((t) => t.dirty);
@@ -184,96 +146,61 @@ export const FloorCanvas = forwardRef<
 
   const onSelect = useCallback((id: string) => setSelectedId(id), []);
 
-  const gestures = useViewportGestures({
-    viewportRef,
-    getZoom,
-    panBy,
-    zoomAt,
-    onBackgroundClick: () => setSelectedId(null),
-  });
-
   return (
-    <div
-      ref={viewportRef}
-      className={cn(
-        "relative h-full w-full touch-none select-none overflow-hidden rounded-xl",
-        gestures.isPanning ? "cursor-grabbing" : "cursor-grab",
-      )}
-      onPointerDown={gestures.onPointerDown}
-      onPointerMove={gestures.onPointerMove}
-      onPointerUp={gestures.onPointerUp}
-      onPointerCancel={gestures.onPointerUp}
+    <OperationalRoomView
+      width={width}
+      height={height}
+      roomBounds={roomBounds}
+      floorPlanUrl={floorPlanUrl}
+      activeLayoutMode={activeLayoutMode}
+      roomLayoutElements={parsedLayoutElements}
+      tables={tables}
+      onBackgroundClick={() => setSelectedId(null)}
+      emptyPlanSlot={
+        <>
+          Nessuna piantina caricata.
+          <button type="button" className="font-medium text-accent-strong hover:underline" onClick={() => setManagePlanOpen(true)}>
+            Crea la tua sala
+          </button>
+        </>
+      }
+      renderTable={(t, ctx) => {
+        const isSelected = selectedId === t.id;
+        const staff = staffByTableId?.[t.id];
+        const isAssigned = Boolean(staff?.TABLE_RESPONSIBLE);
+        const matchesFilter =
+          !staffByTableId ||
+          coverageFilter === "all" ||
+          (coverageFilter === "assigned" && isAssigned) ||
+          (coverageFilter === "unassigned" && !isAssigned);
+        return (
+          <RoomTableNode
+            key={t.id}
+            table={t}
+            mode="STAFF"
+            status={statusByTableId?.[t.id]}
+            isSelected={isSelected}
+            matchesFilter={matchesFilter}
+            staff={staff}
+            lod={ctx.lod}
+            onSelect={onSelect}
+            onDelete={deleteTable}
+            menu={
+              isSelected
+                ? {
+                    menuOpen,
+                    onMenuOpenChange: setMenuOpen,
+                    onOpenAssignStaff: (tableId) => {
+                      setMenuOpen(false);
+                      setAssignStaffTableId(tableId);
+                    },
+                  }
+                : undefined
+            }
+          />
+        );
+      }}
     >
-      <div
-        ref={worldRef}
-        className="absolute left-0 top-0 origin-top-left bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.06)_1px,transparent_0)] [background-size:20px_20px]"
-        style={{ width, height, transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}
-      >
-        {activeLayoutMode === "BUILDER" ? (
-          <RoomLayoutRenderer elements={parsedLayoutElements} width={width} height={height} />
-        ) : (
-          floorPlanUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={floorPlanUrl}
-              alt=""
-              className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-60"
-              draggable={false}
-            />
-          )
-        )}
-
-        {activeLayoutMode !== "BUILDER" && !floorPlanUrl && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-            <div
-              className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              Nessuna piantina caricata.
-              <button type="button" className="font-medium text-accent-strong hover:underline" onClick={() => setManagePlanOpen(true)}>
-                Crea la tua sala
-              </button>
-            </div>
-          </div>
-        )}
-
-        {tables.map((t) => {
-          const isSelected = selectedId === t.id;
-          const staff = staffByTableId?.[t.id];
-          const isAssigned = Boolean(staff?.TABLE_RESPONSIBLE);
-          const matchesFilter =
-            !staffByTableId ||
-            coverageFilter === "all" ||
-            (coverageFilter === "assigned" && isAssigned) ||
-            (coverageFilter === "unassigned" && !isAssigned);
-          return (
-            <TableNode
-              key={t.id}
-              table={t}
-              isSelected={isSelected}
-              matchesFilter={matchesFilter}
-              staff={staff}
-              lod={lod}
-              onSelect={onSelect}
-              onDelete={deleteTable}
-              onStartDrag={onStartDrag}
-              menu={
-                isSelected
-                  ? {
-                      menuOpen,
-                      onMenuOpenChange: setMenuOpen,
-                      onOpenAssignStaff: (tableId) => {
-                        setMenuOpen(false);
-                        setAssignStaffTableId(tableId);
-                      },
-                    }
-                  : undefined
-              }
-            />
-          );
-        })}
-      </div>
-
       <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start gap-2">
         {staffByTableId && (
           <div
@@ -348,57 +275,8 @@ export const FloorCanvas = forwardRef<
 
       <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden sm:block">
         <span className="rounded-md border border-border bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground/80 backdrop-blur-sm">
-          Trascina lo sfondo per navigare · trascina un tavolo per spostarlo
+          Trascina lo sfondo per navigare · clicca un tavolo per i dettagli
         </span>
-      </div>
-
-      <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 shadow-lg backdrop-blur-sm">
-        <div
-          className="pointer-events-auto flex items-center gap-1"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
-            onClick={() => stepZoom(-1)}
-            disabled={camera.zoom <= MIN_ZOOM}
-            aria-label="Riduci zoom"
-          >
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <button
-            type="button"
-            className="w-10 text-center text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => reset100()}
-            title="Dimensione reale (100%)"
-          >
-            {Math.round(camera.zoom * 100)}%
-          </button>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
-            onClick={() => stepZoom(1)}
-            disabled={camera.zoom >= MAX_ZOOM}
-            aria-label="Aumenta zoom"
-          >
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
-            onClick={() => fitRoom(true)}
-            aria-label="Adatta alla sala"
-            title="Adatta alla sala"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
       <ManagePlanDialog
@@ -434,6 +312,6 @@ export const FloorCanvas = forwardRef<
         service={service ?? ""}
         onChanged={() => router.refresh()}
       />
-    </div>
+    </OperationalRoomView>
   );
 });

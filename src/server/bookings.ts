@@ -2,6 +2,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
 import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } from "./emails";
+import { deriveTableStatus, type TableOperationalStatus } from "@/lib/table-status";
 import { assertAvailability, OCCUPYING_STATUSES } from "./availability";
 
 export const BookingInput = z.object({
@@ -45,6 +46,34 @@ export async function listBookings(venueId: string, opts: { from?: Date; to?: Da
 
 export async function listBookingsForDay(venueId: string, day: Date) {
   return listBookings(venueId, { from: startOfDay(day), to: endOfDay(day) });
+}
+
+/**
+ * Read-only status derivation for the operational room view — reuses
+ * listBookingsForDay as-is, no new booking business logic. `now` defaults to
+ * the real clock, but callers viewing a day other than today should pass
+ * startOfDay(day) instead so past/future bookings still read as
+ * PRENOTATO/OCCUPATO rather than everything collapsing to LIBERO.
+ */
+export async function getTableStatusesForDay(
+  venueId: string,
+  day: Date,
+  tables: Array<{ id: string; active: boolean }>,
+  now: Date = new Date(),
+) {
+  const bookings = await listBookingsForDay(venueId, day);
+  const byTable = new Map<string, typeof bookings>();
+  for (const b of bookings) {
+    if (!b.tableId) continue;
+    const list = byTable.get(b.tableId);
+    if (list) list.push(b);
+    else byTable.set(b.tableId, [b]);
+  }
+  const result: Record<string, TableOperationalStatus> = {};
+  for (const t of tables) {
+    result[t.id] = deriveTableStatus(t, byTable.get(t.id) ?? [], now);
+  }
+  return result;
 }
 
 function determineBookingStatus(source: string): "CONFIRMED" | "PENDING" {

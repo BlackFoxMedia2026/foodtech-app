@@ -63,6 +63,11 @@ export function ManagePlanDialog({
     setStep("builder");
   }
 
+  // "Vedi originale" reference in the builder (brief §8/§20/§21/§33): a room
+  // that already has an uploaded plan keeps it visible as a faint trace-over
+  // backdrop while the user builds the operational layout by hand.
+  const referenceImageUrl = currentFloorPlanUrl;
+
   return (
     <>
       <Dialog open={open && step === "choice"} onOpenChange={reset}>
@@ -135,6 +140,7 @@ export function ManagePlanDialog({
         initialHeight={roomHeight}
         allTables={allTables}
         onSaved={() => router.refresh()}
+        referenceImageUrl={referenceImageUrl}
       />
     </>
   );

@@ -1,5 +1,20 @@
 import { computeDelta } from "./period-delta";
 
+// Lives here (not in charts.tsx) because charts.tsx is a "use client"
+// module — a Server Component reading a property off a client-module
+// export throws ("Cannot access X on the server"), which crashed the
+// Insights page. Shared by both the server-side generateInsights below and
+// the client SourcesChart.
+export const SOURCE_LABELS: Record<string, string> = {
+  WIDGET: "Widget sito",
+  PHONE: "Telefono",
+  WALK_IN: "Walk-in",
+  GOOGLE: "Google",
+  SOCIAL: "Social",
+  CONCIERGE: "Manuale",
+  EVENT: "Evento",
+};
+
 interface SlotDatum {
   slot: string;
   covers: number;

@@ -1,13 +1,18 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
-import type { Booking, Guest, Table } from "@prisma/client";
+import type { Table } from "@prisma/client";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/utils";
 import { TABLE_SIZE } from "@/components/floor/table-node";
 
-export type FloorBooking = Booking & { guest: Guest | null };
+// Superseded by RoomTableNode (mode="RESERVATIONS") + DroppableRoomTable —
+// this component is no longer rendered anywhere, kept only until its last
+// import (the FloorBooking type, re-exported from the new canonical
+// location below) is migrated off this file too.
+import type { FloorBooking } from "@/components/floor/operational/room-table-node";
+export type { FloorBooking };
 
 const VISUAL_SCALE = 0.72;
 

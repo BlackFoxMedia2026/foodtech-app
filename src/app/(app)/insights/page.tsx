@@ -3,13 +3,13 @@ import { ArrowRight, ArrowUp, ArrowDown } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/overview/stat-card";
 import { Button } from "@/components/ui/button";
-import { SlotChart, SourcesChart, WeekdayHeatmap, SOURCE_LABELS } from "@/components/insights/charts";
+import { SlotChart, SourcesChart, WeekdayHeatmap } from "@/components/insights/charts";
 import { PeriodSelector } from "@/components/insights/period-selector";
 import { ComparisonStat } from "@/components/insights/comparison-stat";
 import { getActiveVenue } from "@/lib/tenant";
 import { getAnalytics, getPreviousPeriodMetrics } from "@/server/analytics";
 import { computeDelta } from "@/lib/period-delta";
-import { generateInsights } from "@/lib/insight-rules";
+import { generateInsights, SOURCE_LABELS } from "@/lib/insight-rules";
 import { formatCurrency, startOfDay, endOfDay, cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";

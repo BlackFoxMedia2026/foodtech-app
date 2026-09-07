@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Check, Maximize2, Redo2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Check, Eye, Maximize2, Redo2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { MIN_ZOOM, MAX_ZOOM } from "../use-room-camera";
 import { useViewportGestures } from "../use-viewport-gestures";
 import { TableNode, TABLE_SIZE } from "../table-node";
@@ -11,8 +11,19 @@ import { boundingBox, formatMeters, isTableRef, isWall } from "@/lib/room-layout
 import { RoomLayoutRenderer } from "./room-layout-renderer";
 import type { RoomBuilder } from "./use-room-builder";
 
-export function RoomBuilderCanvas({ builder }: { builder: RoomBuilder }) {
+export function RoomBuilderCanvas({
+  builder,
+  referenceImageUrl,
+}: {
+  builder: RoomBuilder;
+  /** The originally-uploaded plan, if this room started from an upload
+   * (brief §8/§33/§43) — shown as a faint traceable backdrop while editing,
+   * full-strength on demand via the "Vedi originale" toggle. Never
+   * persisted or mutated here; purely a visual reference. */
+  referenceImageUrl?: string | null;
+}) {
   const [previewPoint, setPreviewPoint] = useState<{ x: number; y: number } | null>(null);
+  const [showOriginal, setShowOriginal] = useState(false);
 
   const gestures = useViewportGestures({
     viewportRef: builder.viewportRef,
@@ -60,63 +71,76 @@ export function RoomBuilderCanvas({ builder }: { builder: RoomBuilder }) {
           transform: `translate(${builder.camera.x}px, ${builder.camera.y}px) scale(${builder.camera.zoom})`,
         }}
       >
-        <RoomLayoutRenderer
-          elements={builder.elements}
-          width={builder.dims.width}
-          height={builder.dims.height}
-          selectedId={builder.selectedId}
-          interactive
-          getZoom={builder.getZoom}
-          onSelect={builder.setSelectedId}
-          onUpdateElement={builder.updateElementLive}
-          onDragStart={builder.beginTransaction}
-          onCommit={builder.endTransaction}
-        />
-
-        {wallBox && (
-          <svg
-            className="pointer-events-none absolute left-0 top-0 overflow-visible"
-            width={builder.dims.width}
-            height={builder.dims.height}
-            aria-hidden
-          >
-            <text
-              x={(wallBox.minX + wallBox.maxX) / 2}
-              y={wallBox.minY - 14}
-              textAnchor="middle"
-              fontSize={12}
-              fill="#905B38"
-              className="select-none font-medium"
-            >
-              {formatMeters(wallBox.maxX - wallBox.minX)}
-            </text>
-            <text
-              x={wallBox.minX - 14}
-              y={(wallBox.minY + wallBox.maxY) / 2}
-              textAnchor="middle"
-              fontSize={12}
-              fill="#905B38"
-              className="select-none font-medium"
-              transform={`rotate(-90 ${wallBox.minX - 14} ${(wallBox.minY + wallBox.maxY) / 2})`}
-            >
-              {formatMeters(wallBox.maxY - wallBox.minY)}
-            </text>
-          </svg>
+        {referenceImageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={referenceImageUrl}
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity"
+            style={{ opacity: showOriginal ? 0.95 : 0.16 }}
+            draggable={false}
+          />
         )}
 
-        {placedTables.map((t) => (
-          <TableNode
-            key={t.id}
-            table={t}
-            isSelected={builder.selectedId === t.id}
-            matchesFilter
-            lod="full"
+        <div className={cn("contents transition-opacity", showOriginal && "pointer-events-none opacity-10")}>
+          <RoomLayoutRenderer
+            elements={builder.elements}
+            width={builder.dims.width}
+            height={builder.dims.height}
+            selectedId={builder.selectedId}
+            interactive
+            getZoom={builder.getZoom}
             onSelect={builder.setSelectedId}
-            onDelete={() => builder.removeTableFromPlan(t.id)}
-            onStartDrag={builder.onStartTableDrag}
-            onStartRotate={builder.onStartTableRotate}
+            onUpdateElement={builder.updateElementLive}
+            onDragStart={builder.beginTransaction}
+            onCommit={builder.endTransaction}
           />
-        ))}
+
+          {wallBox && (
+            <svg
+              className="pointer-events-none absolute left-0 top-0 overflow-visible"
+              width={builder.dims.width}
+              height={builder.dims.height}
+              aria-hidden
+            >
+              <text
+                x={(wallBox.minX + wallBox.maxX) / 2}
+                y={wallBox.minY - 14}
+                textAnchor="middle"
+                fontSize={12}
+                fill="#905B38"
+                className="select-none font-medium"
+              >
+                {formatMeters(wallBox.maxX - wallBox.minX)}
+              </text>
+              <text
+                x={wallBox.minX - 14}
+                y={(wallBox.minY + wallBox.maxY) / 2}
+                textAnchor="middle"
+                fontSize={12}
+                fill="#905B38"
+                className="select-none font-medium"
+                transform={`rotate(-90 ${wallBox.minX - 14} ${(wallBox.minY + wallBox.maxY) / 2})`}
+              >
+                {formatMeters(wallBox.maxY - wallBox.minY)}
+              </text>
+            </svg>
+          )}
+
+          {placedTables.map((t) => (
+            <TableNode
+              key={t.id}
+              table={t}
+              isSelected={builder.selectedId === t.id}
+              matchesFilter
+              lod="full"
+              onSelect={builder.setSelectedId}
+              onDelete={() => builder.removeTableFromPlan(t.id)}
+              onStartDrag={builder.onStartTableDrag}
+              onStartRotate={builder.onStartTableRotate}
+            />
+          ))}
+        </div>
 
         {drawing && (
           <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width={builder.dims.width} height={builder.dims.height}>
@@ -168,6 +192,21 @@ export function RoomBuilderCanvas({ builder }: { builder: RoomBuilder }) {
               <X className="h-3.5 w-3.5" /> Annulla
             </Button>
           </div>
+        </div>
+      )}
+
+      {referenceImageUrl && (
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10">
+          <Button
+            type="button"
+            size="sm"
+            variant={showOriginal ? "accent" : "outline"}
+            className="pointer-events-auto shadow-lg"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => setShowOriginal((v) => !v)}
+          >
+            <Eye className="h-3.5 w-3.5" /> {showOriginal ? "Torna alla piantina" : "Vedi originale"}
+          </Button>
         </div>
       )}
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 export type Camera = { x: number; y: number; zoom: number };
 export type Point = { x: number; y: number };
+export type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 
 export const MIN_ZOOM = 0.2;
 export const MAX_ZOOM = 2.5;
@@ -26,10 +27,6 @@ const STEP_FACTOR = 1.25;
 const UI_SCALE_MIN = 0.85;
 const UI_SCALE_MAX = 1.25;
 
-function clampZoom(zoom: number) {
-  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
-}
-
 function uiScaleFor(zoom: number) {
   return Math.min(UI_SCALE_MAX, Math.max(UI_SCALE_MIN, 1 / zoom));
 }
@@ -38,7 +35,31 @@ function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-export function useRoomCamera({ roomWidth, roomHeight }: { roomWidth: number; roomHeight: number }) {
+export function useRoomCamera({
+  roomWidth,
+  roomHeight,
+  bounds,
+  boundsMargin = WORLD_PADDING,
+  minZoomMode = "fixed",
+  minZoomFixed = MIN_ZOOM,
+  minZoomFactor = 0.9,
+}: {
+  roomWidth: number;
+  roomHeight: number;
+  /** Content bounds to fit/clamp against, in world px. Defaults to the full
+   * room canvas ({0,0,roomWidth,roomHeight}) — i.e. today's behavior. */
+  bounds?: Bounds;
+  /** Pan slack added around `bounds`. Defaults to the historical WORLD_PADDING
+   * so callers that don't pass `bounds` see byte-identical clamping. */
+  boundsMargin?: number;
+  /** "fixed" (default) keeps the global MIN_ZOOM/minZoomFixed — today's
+   * behavior, used by the Room Builder. "relativeToFit" derives the minimum
+   * zoom from this room's own fit zoom (minZoom = fitZoom * minZoomFactor)
+   * so a small room can't be zoomed out into a postage stamp. */
+  minZoomMode?: "fixed" | "relativeToFit";
+  minZoomFixed?: number;
+  minZoomFactor?: number;
+}) {
   const worldRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<Camera>({ x: 0, y: 0, zoom: 1 });
@@ -46,6 +67,14 @@ export function useRoomCamera({ roomWidth, roomHeight }: { roomWidth: number; ro
   const viewportSizeRef = useRef({ width: 0, height: 0 });
   const animFrameRef = useRef<number | null>(null);
   const syncPendingRef = useRef(false);
+  const minZoomRef = useRef(minZoomFixed);
+  const [minZoom, setMinZoom] = useState(minZoomRef.current);
+  const effectiveBounds = useMemo<Bounds>(
+    () => bounds ?? { minX: 0, minY: 0, maxX: roomWidth, maxY: roomHeight },
+    [bounds, roomWidth, roomHeight],
+  );
+
+  const clampZoom = useCallback((zoom: number) => Math.min(MAX_ZOOM, Math.max(minZoomRef.current, zoom)), []);
 
   const applyTransform = useCallback((cam: Camera) => {
     const el = worldRef.current;
@@ -72,10 +101,10 @@ export function useRoomCamera({ roomWidth, roomHeight }: { roomWidth: number; ro
       const { width: vw, height: vh } = viewportSizeRef.current;
       if (!vw || !vh) return { x: cam.x, y: cam.y, zoom };
 
-      const minX0 = -WORLD_PADDING;
-      const minY0 = -WORLD_PADDING;
-      const maxX0 = roomWidth + WORLD_PADDING;
-      const maxY0 = roomHeight + WORLD_PADDING;
+      const minX0 = effectiveBounds.minX - boundsMargin;
+      const minY0 = effectiveBounds.minY - boundsMargin;
+      const maxX0 = effectiveBounds.maxX + boundsMargin;
+      const maxY0 = effectiveBounds.maxY + boundsMargin;
 
       let x = cam.x;
       let y = cam.y;
@@ -92,7 +121,7 @@ export function useRoomCamera({ roomWidth, roomHeight }: { roomWidth: number; ro
 
       return { x, y, zoom };
     },
-    [roomWidth, roomHeight],
+    [effectiveBounds, boundsMargin, clampZoom],
   );
 
   const commit = useCallback(
@@ -131,7 +160,7 @@ export function useRoomCamera({ roomWidth, roomHeight }: { roomWidth: number; ro
       const worldY = (point.y - cur.y) / cur.zoom;
       commit({ x: point.x - newZoom * worldX, y: point.y - newZoom * worldY, zoom: newZoom });
     },
-    [commit, stopAnimation],
+    [commit, stopAnimation, clampZoom],
   );
 
   const animateTo = useCallback(
@@ -161,14 +190,25 @@ export function useRoomCamera({ roomWidth, roomHeight }: { roomWidth: number; ro
   const computeFit = useCallback((): Camera | null => {
     const { width: vw, height: vh } = viewportSizeRef.current;
     if (!vw || !vh) return null;
-    const scale = Math.min(vw / roomWidth, vh / roomHeight) * FIT_MARGIN;
-    const zoom = clampZoom(scale);
+    const boundsWidth = effectiveBounds.maxX - effectiveBounds.minX;
+    const boundsHeight = effectiveBounds.maxY - effectiveBounds.minY;
+    if (boundsWidth <= 0 || boundsHeight <= 0) return null;
+    const rawScale = Math.min(vw / boundsWidth, vh / boundsHeight) * FIT_MARGIN;
+    // Clamped only against MAX_ZOOM here (not the dynamic minZoom, which for
+    // "relativeToFit" is itself derived from this fit — see below).
+    const fitZoom = Math.min(MAX_ZOOM, Math.max(0.001, rawScale));
+    if (minZoomMode === "relativeToFit") {
+      const nextMinZoom = fitZoom * minZoomFactor;
+      minZoomRef.current = nextMinZoom;
+      setMinZoom(nextMinZoom);
+    }
+    const zoom = clampZoom(fitZoom);
     return {
-      x: (vw - roomWidth * zoom) / 2,
-      y: (vh - roomHeight * zoom) / 2,
+      x: (vw - boundsWidth * zoom) / 2 - effectiveBounds.minX * zoom,
+      y: (vh - boundsHeight * zoom) / 2 - effectiveBounds.minY * zoom,
       zoom,
     };
-  }, [roomWidth, roomHeight]);
+  }, [effectiveBounds, minZoomMode, minZoomFactor, clampZoom]);
 
   const fitRoom = useCallback(
     (animate = true) => {
@@ -235,5 +275,6 @@ export function useRoomCamera({ roomWidth, roomHeight }: { roomWidth: number; ro
     fitRoom,
     reset100,
     stepZoom,
+    minZoom,
   };
 }

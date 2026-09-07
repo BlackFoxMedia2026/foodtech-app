@@ -13,18 +13,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { SOURCE_LABELS } from "@/lib/insight-rules";
 
 const PALETTE = ["#8a7510", "#cfad03", "#d9bf3d", "#e6d168", "#f2f0e7", "#e6e3d2", "#c9b139"];
-
-export const SOURCE_LABELS: Record<string, string> = {
-  WIDGET: "Widget sito",
-  PHONE: "Telefono",
-  WALK_IN: "Walk-in",
-  GOOGLE: "Google",
-  SOCIAL: "Social",
-  CONCIERGE: "Manuale",
-  EVENT: "Evento",
-};
 
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (

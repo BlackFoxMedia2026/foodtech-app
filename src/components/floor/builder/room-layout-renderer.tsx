@@ -30,6 +30,12 @@ export type ElementDragKind = "move" | "resize" | "rotate" | "endpoint-start" | 
  * drawn here — they keep rendering via TableNode, driven off the real Table
  * rows, so this component never duplicates table position/name/seats.
  */
+/** Areas that carry technical/back-of-house meaning (plumbing, storage) and
+ * add nothing to service orientation — hidden in the "operational" variant
+ * per brief section 25 ("nascondi... dettagli WC"), still fully editable in
+ * the builder. */
+const OPERATIONAL_HIDDEN_AREAS = new Set(["AREA_WC", "AREA_STORAGE"]);
+
 export function RoomLayoutRenderer({
   elements,
   width,
@@ -41,6 +47,7 @@ export function RoomLayoutRenderer({
   onUpdateElement,
   onDragStart,
   onCommit,
+  variant = "builder",
 }: {
   elements: RoomElement[];
   width: number;
@@ -52,8 +59,16 @@ export function RoomLayoutRenderer({
   onUpdateElement?: (id: string, patch: Partial<RoomElement>) => void;
   onDragStart?: () => void;
   onCommit?: () => void;
+  /** "builder" (default) is today's exact technical rendering, used by the
+   * Room Builder editor. "operational" is the simplified read-only look for
+   * the daily Sala/Prenotazioni view: no dashed technical stroke, WC/
+   * storage areas hidden, a soft drop-shadow for perceived depth. */
+  variant?: "builder" | "operational";
 }) {
   const walls = elements.filter(isWall);
+  const isOperational = variant === "operational";
+  const isClean = isOperational;
+  const areas = elements.filter(isArea).filter((el) => !isOperational || !OPERATIONAL_HIDDEN_AREAS.has(el.type));
 
   const startDrag = useCallback(
     (
@@ -95,12 +110,24 @@ export function RoomLayoutRenderer({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
     >
-      {elements.filter(isArea).map((el) => (
+      {isClean && (
+        <defs>
+          <filter id="room-zone-depth" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.18" />
+          </filter>
+          <filter id="room-wall-depth" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1.5" stdDeviation="1" floodColor="#000000" floodOpacity="0.3" />
+          </filter>
+        </defs>
+      )}
+
+      {areas.map((el) => (
         <AreaShape
           key={el.id}
           el={el}
           selected={selectedId === el.id}
           interactive={interactive}
+          variant={variant}
           onPointerDownBody={(e) =>
             startDrag(e, el.id, "move", (dx, dy) => onUpdateElement?.(el.id, { x: el.x + dx, y: el.y + dy }))
           }
@@ -135,6 +162,7 @@ export function RoomLayoutRenderer({
           el={el}
           selected={selectedId === el.id}
           interactive={interactive}
+          variant={variant}
           onPointerDownBody={(e) =>
             startDrag(e, el.id, "move", (dx, dy) =>
               onUpdateElement?.(el.id, {
@@ -221,45 +249,82 @@ const AREA_STROKE: Record<string, string> = {
   AREA_ENTRANCE: "#8A9F60",
   AREA_TERRACE: "#3D5C34",
 };
+/** The reference mockup draws a room already enclosed by walls with just a
+ * small floor label, never a tinted box — the tint is only worth keeping
+ * (faintly) for zones that DON'T have their own walls, like an open "privé"
+ * corner. Detecting wall-enclosure per area is out of scope here, so this
+ * applies uniformly: a big fill read as a "colored box" at fillOpacity 1,
+ * a bare hint of it at ~0.4. */
+const CLEAN_ZONE_FILL_OPACITY = 0.4;
+const COUNTER_FILL = "#B3814F";
+const COUNTER_STROKE = "#7A5533";
 
 function AreaShape({
   el,
   selected,
   interactive,
+  variant,
   onPointerDownBody,
   onPointerDownResize,
 }: {
   el: AreaElement;
   selected: boolean;
   interactive: boolean;
+  variant: "builder" | "operational";
   onPointerDownBody: (e: React.PointerEvent) => void;
   onPointerDownResize: (e: React.PointerEvent) => void;
 }) {
   const cx = el.x + el.width / 2;
   const cy = el.y + el.height / 2;
+  const isClean = variant === "operational";
+  // A bancone reads as a physical raised counter (brief §17), not a
+  // tinted zone — everything else keeps the discreet floor-label look.
+  const isCounter = el.type === "AREA_BAR" && isClean;
   return (
-    <g transform={`rotate(${el.rotation} ${cx} ${cy})`}>
+    <g transform={`rotate(${el.rotation} ${cx} ${cy})`} filter={isClean ? "url(#room-zone-depth)" : undefined}>
       <rect
         x={el.x}
         y={el.y}
         width={el.width}
         height={el.height}
-        rx={10}
-        fill={AREA_FILL[el.type]}
-        stroke={selected ? "#AF7944" : AREA_STROKE[el.type]}
+        rx={isCounter ? 6 : 10}
+        fill={isCounter ? COUNTER_FILL : AREA_FILL[el.type]}
+        fillOpacity={isClean && !isCounter ? CLEAN_ZONE_FILL_OPACITY : undefined}
+        stroke={selected ? "#AF7944" : isCounter ? COUNTER_STROKE : AREA_STROKE[el.type]}
         strokeWidth={selected ? 2.5 : 1.5}
-        strokeDasharray="6 4"
+        strokeDasharray={isClean ? undefined : "6 4"}
         className={interactive ? "cursor-move" : undefined}
         onPointerDown={interactive ? onPointerDownBody : undefined}
       />
+      {isCounter && (
+        <rect
+          x={el.x + 2}
+          y={el.y + 2}
+          width={el.width - 4}
+          height={Math.min(10, el.height / 4)}
+          rx={4}
+          fill="rgba(255,240,215,0.35)"
+          style={{ pointerEvents: "none" }}
+        />
+      )}
       <text
         x={cx}
         y={cy}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={13}
-        fontWeight={700}
-        fill="#15161a"
+        fontSize={isClean ? 11 : 13}
+        fontWeight={isClean ? 600 : 700}
+        // Operational/preview labels sit on a semi-transparent tint of
+        // their own accent color (AREA_FILL/AREA_STROKE share a hue), so
+        // coloring the text with that same accent — as the builder variant
+        // does — reads as near-invisible (confirmed via screenshot: sage-
+        // on-sage text). A light label + thin dark outline stays legible
+        // over every zone tint without depending on that zone's own color.
+        fill={isClean ? "#F2E7D0" : "#15161a"}
+        stroke={isClean ? "rgba(0,0,0,0.55)" : undefined}
+        strokeWidth={isClean ? 2 : undefined}
+        paintOrder={isClean ? "stroke fill" : undefined}
+        opacity={isClean ? 0.9 : 1}
         className="select-none uppercase tracking-wide"
         style={{ pointerEvents: "none" }}
       >
@@ -333,6 +398,7 @@ function WallShape({
   el,
   selected,
   interactive,
+  variant,
   onPointerDownBody,
   onPointerDownStart,
   onPointerDownEnd,
@@ -340,14 +406,32 @@ function WallShape({
   el: WallElement;
   selected: boolean;
   interactive: boolean;
+  variant: "builder" | "operational";
   onPointerDownBody: (e: React.PointerEvent) => void;
   onPointerDownStart: (e: React.PointerEvent) => void;
   onPointerDownEnd: (e: React.PointerEvent) => void;
 }) {
   const midX = (el.startX + el.endX) / 2;
   const midY = (el.startY + el.endY) / 2;
+  const isClean = variant === "operational";
   return (
     <g>
+      {/* Depth cue for a wall: an offset duplicate line drawn underneath,
+          not an SVG filter — feDropShadow's objectBoundingBox region
+          collapses to nothing on a perfectly axis-aligned <line> (zero
+          width or height bbox), which silently made every wall invisible
+          in Chromium. A plain offset line has no such degenerate case. */}
+      {isClean && (
+        <line
+          x1={el.startX}
+          y1={el.startY + 1.5}
+          x2={el.endX}
+          y2={el.endY + 1.5}
+          stroke="rgba(0,0,0,0.35)"
+          strokeWidth={el.thickness}
+          strokeLinecap="square"
+        />
+      )}
       <line
         x1={el.startX}
         y1={el.startY}
@@ -397,25 +481,26 @@ function OpeningShape({
   onPointerDownBody: (e: React.PointerEvent) => void;
 }) {
   const half = el.width / 2;
+  const accent = selected ? "#AF7944" : kind === "door" ? "#8A9F60" : "#5A6E78";
   return (
     <g transform={`rotate(${el.rotation} ${el.x} ${el.y})`}>
       {/* Gap cut into the wall */}
       <line x1={el.x - half} y1={el.y} x2={el.x + half} y2={el.y} stroke="#e9e6df" strokeWidth={12} />
       {kind === "door" ? (
         <>
-          <line x1={el.x - half} y1={el.y} x2={el.x - half} y2={el.y - el.width} stroke={selected ? "#AF7944" : "#8A9F60"} strokeWidth={2} />
+          <line x1={el.x - half} y1={el.y} x2={el.x - half} y2={el.y - el.width} stroke={accent} strokeWidth={2} />
           <path
             d={`M ${el.x - half} ${el.y - el.width} A ${el.width} ${el.width} 0 0 1 ${el.x - half + el.width} ${el.y}`}
             fill="none"
-            stroke={selected ? "#AF7944" : "#8A9F60"}
+            stroke={accent}
             strokeDasharray="3 3"
             strokeWidth={1}
           />
         </>
       ) : (
         <>
-          <line x1={el.x - half} y1={el.y - 4} x2={el.x + half} y2={el.y - 4} stroke={selected ? "#AF7944" : "#5A6E78"} strokeWidth={2} />
-          <line x1={el.x - half} y1={el.y + 4} x2={el.x + half} y2={el.y + 4} stroke={selected ? "#AF7944" : "#5A6E78"} strokeWidth={2} />
+          <line x1={el.x - half} y1={el.y - 4} x2={el.x + half} y2={el.y - 4} stroke={accent} strokeWidth={2} />
+          <line x1={el.x - half} y1={el.y + 4} x2={el.x + half} y2={el.y + 4} stroke={accent} strokeWidth={2} />
         </>
       )}
       <rect

@@ -448,6 +448,32 @@
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   }
 
+  /* Warm wood table surface for the operational 2.5D view (RoomTableNode)
+     only — kept separate from .table-pearl (used by the Room Builder's own
+     editing-canvas table look, TableNode) so restyling the operational
+     table doesn't also change the builder's internal editing chrome. */
+  .table-wood {
+    background: linear-gradient(150deg, #caa06a 0%, #b3814f 55%, #9c6b3d 100%);
+    box-shadow: 0 4px 14px rgba(45, 24, 6, 0.4), inset 0 1px 0 rgba(255, 224, 179, 0.55);
+  }
+
+  /* Operational Sala floor: the finite, materic surface a room's tables/
+     zones sit on (Sala + Prenotazioni→Mappa), replacing the old "graph
+     paper" dotted background. Warm oak/plank tone (sand/surface-brown
+     family), matching the reference mockup — a first pass used a dark
+     green tile instead; corrected once the visual reference arrived.
+     Deterministic CSS gradients only — no feTurbulence/noise seed, so
+     server and client markup always match (no hydration mismatch). */
+  .room-floor-surface {
+    background-color: #cba876;
+    background-image:
+      radial-gradient(ellipse 120% 90% at 50% 30%, rgba(255, 255, 255, 0.16), transparent 62%),
+      repeating-linear-gradient(90deg, rgba(90, 58, 26, 0.07) 0 2px, transparent 2px 84px),
+      repeating-linear-gradient(0deg, rgba(90, 58, 26, 0.05) 0 1px, transparent 1px 220px),
+      linear-gradient(175deg, #ddc196 0%, #c7a06e 55%, #b78f5c 100%);
+    box-shadow: inset 0 0 2px rgba(60, 38, 15, 0.35), inset 0 0 70px rgba(45, 28, 10, 0.28);
+  }
+
   /* Dashboard card signature: a single netto corner (top-left) against three
      softened ones — kept as one named utility so every dashboard card stays
      pixel-identical instead of drifting via repeated arbitrary values. */

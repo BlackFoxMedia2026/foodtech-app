@@ -186,3 +186,40 @@ export function boundingBox(elements: RoomElement[]) {
   if (!Number.isFinite(minX)) return { minX: 0, minY: 0, maxX: metersToPx(12), maxY: metersToPx(8) };
   return { minX, minY, maxX, maxY };
 }
+
+export type RoomBounds = { minX: number; minY: number; maxX: number; maxY: number };
+
+/**
+ * The operational viewport should hug the room's actual content, not the
+ * raw saved canvas (which is only ever grown, never shrunk — see
+ * boundingBox usage in use-room-builder.ts / server/room-layout.ts). For a
+ * BUILDER room, bounds come from the walls/columns/areas/tables themselves
+ * plus a margin, clamped to the saved canvas. For an IMAGE room (or one with
+ * no structured layout yet) there's no sub-geometry to hug, so the saved
+ * canvas is the only bound available.
+ */
+export function getRoomBounds(
+  room: { width: number; height: number; activeLayoutMode: "IMAGE" | "BUILDER" | null },
+  elements: RoomElement[],
+  tableFootprints: Array<{ x: number; y: number; w: number; h: number }>,
+  opts: { margin?: number } = {},
+): RoomBounds {
+  if (room.activeLayoutMode !== "BUILDER") {
+    return { minX: 0, minY: 0, maxX: room.width, maxY: room.height };
+  }
+  const margin = opts.margin ?? 56;
+  const box = boundingBox(elements);
+  let { minX, minY, maxX, maxY } = box;
+  for (const t of tableFootprints) {
+    minX = Math.min(minX, t.x);
+    minY = Math.min(minY, t.y);
+    maxX = Math.max(maxX, t.x + t.w);
+    maxY = Math.max(maxY, t.y + t.h);
+  }
+  return {
+    minX: Math.max(0, minX - margin),
+    minY: Math.max(0, minY - margin),
+    maxX: Math.min(room.width, maxX + margin),
+    maxY: Math.min(room.height, maxY + margin),
+  };
+}
