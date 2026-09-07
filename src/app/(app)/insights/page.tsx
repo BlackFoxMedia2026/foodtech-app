@@ -6,6 +6,8 @@ import { NpsPanel } from "@/components/surveys/nps-panel";
 import { ForecastPanel } from "@/components/insights/forecast-panel";
 import { FoodCostPanel } from "@/components/insights/food-cost-panel";
 import { getFoodCost } from "@/server/food-cost";
+import { getNoShowReport } from "@/server/no-show";
+import { NoShowPanel } from "@/components/insights/no-show-panel";
 import { getOccupancyByWeekday, getWeekForecast } from "@/server/forecast";
 import { getSurveyStats } from "@/server/surveys";
 import { Button } from "@/components/ui/button";
@@ -67,7 +69,7 @@ export default async function InsightsPage({
 }) {
   const ctx = await getActiveVenue();
   const { range, from, to } = computeRange(searchParams);
-  const [a, prev, nps, previsione, occupazione, foodCost] = await Promise.all([
+  const [a, prev, nps, previsione, occupazione, foodCost, assenze] = await Promise.all([
     getAnalytics(ctx.venueId, from, to),
     getPreviousPeriodMetrics(ctx.venueId, from, to),
     getSurveyStats(ctx.venueId, { days: Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000)) }),
@@ -78,6 +80,7 @@ export default async function InsightsPage({
     // Il costo del cibo segue il periodo scelto: è un rendiconto, non una
     // fotografia di adesso.
     getFoodCost(ctx.venueId, from, to),
+    getNoShowReport(ctx.venueId, from, to),
   ]);
 
   const insights = generateInsights({
@@ -104,6 +107,8 @@ export default async function InsightsPage({
       </header>
 
       <FoodCostPanel report={foodCost} currency={ctx.venue.currency} />
+
+      <NoShowPanel report={assenze} currency={ctx.venue.currency} />
 
       <ForecastPanel giorni={previsione} occupazione={occupazione} />
 
