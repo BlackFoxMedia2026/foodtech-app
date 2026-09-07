@@ -212,6 +212,7 @@ export default async function SettingsPage() {
       <BookingWindowSettings
         windowDays={ctx.venue.bookingWindowDays}
         cutoffMin={ctx.venue.bookingCutoffMin}
+        overbookingPct={ctx.venue.overbookingPct}
         canManage={can(ctx.role, "manage_venue")}
       />
 

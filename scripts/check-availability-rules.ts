@@ -55,6 +55,9 @@ function ctx(over: Partial<AvailabilityContext> = {}): AvailabilityContext {
     // Nessuna finestra: è il locale che non ha dichiarato niente, cioè il
     // caso di partenza di tutti i ristoranti.
     finestra: { windowDays: null, cutoffMin: null },
+    // Nessun overbooking: la capienza dichiarata è il tetto, come per ogni
+    // locale che non ha scelto diversamente.
+    overbookingPct: 0,
     shifts: [lunch, dinner],
     bookings: [],
     table: null,
@@ -474,6 +477,44 @@ const giornoLibero = buildDaySlots(
 );
 const primoLibero = giornoLibero.shifts.flatMap((s) => s.slots).find((s) => s.available);
 check("lo stesso giorno, senza prenotazioni, ha il suo primo orario", primoLibero?.label === "19:00", primoLibero?.label);
+
+/* ------------------------- l'overbooking dichiarato ------------------------ */
+
+const piccolo: ShiftLike = { ...dinner, id: "s-small", capacity: 10 };
+const conCinque = ctx({
+  shifts: [piccolo],
+  bookings: [booking({ id: "occupa", startsAt: SUNDAY_20, partySize: 9, durationMin: 105 })],
+});
+
+const senzaMargine = evaluateAvailability({ startsAt: SUNDAY_20, durationMin: 105, partySize: 3 }, conCinque);
+check("senza margine, la capienza dichiarata è il tetto", !senzaMargine.available);
+check("e nessuno risulta oltre la capienza", senzaMargine.oltreCapienza === false);
+
+const conMargine = evaluateAvailability(
+  { startsAt: SUNDAY_20, durationMin: 105, partySize: 3 },
+  { ...conCinque, overbookingPct: 20 },
+);
+// 10 posti + 20% = 12: nove già impegnati più tre fanno dodici, si accetta.
+check("col margine dichiarato si accetta fino al tetto allargato", conMargine.available);
+check(
+  "e l'esito lo dice: questa prenotazione è oltre la capienza",
+  conMargine.oltreCapienza === true,
+);
+
+const oltreIlMargine = evaluateAvailability(
+  { startsAt: SUNDAY_20, durationMin: 105, partySize: 4 },
+  { ...conCinque, overbookingPct: 20 },
+);
+check("oltre il margine si rifiuta lo stesso", !oltreIlMargine.available);
+
+const dentroLaCapienza = evaluateAvailability(
+  { startsAt: SUNDAY_20, durationMin: 105, partySize: 1 },
+  { ...conCinque, overbookingPct: 20 },
+);
+check(
+  "chi sta dentro la capienza non viene segnato come oltre",
+  dentroLaCapienza.available && dentroLaCapienza.oltreCapienza === false,
+);
 
 /* ---------------------------------- esito ---------------------------------- */
 

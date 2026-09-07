@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 
 /**
- * Le regole di disponibilità hanno già una batteria di 59 controlli, scritta
+ * Le regole di disponibilità hanno già una batteria di 65 controlli, scritta
  * prima che il progetto avesse un test runner: `scripts/check-availability-rules.ts`.
  *
  * Non la riscrivo — funziona e copre casi che sarebbe uno spreco duplicare.
@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
  */
 
 describe("regole di disponibilità (scripts/check-availability-rules.ts)", () => {
-  it("le 59 verifiche passano", () => {
+  it("le 65 verifiche passano", () => {
     const out = execFileSync("npx", ["tsx", "scripts/check-availability-rules.ts"], {
       encoding: "utf8",
       timeout: 120_000,

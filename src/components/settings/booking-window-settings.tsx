@@ -40,21 +40,25 @@ const PREAVVISI = [
 export function BookingWindowSettings({
   windowDays,
   cutoffMin,
+  overbookingPct,
   canManage,
 }: {
   windowDays: number | null;
   cutoffMin: number | null;
+  overbookingPct: number | null;
   canManage: boolean;
 }) {
   const router = useRouter();
   const [giorni, setGiorni] = useState(windowDays != null ? String(windowDays) : "");
   const [preavviso, setPreavviso] = useState(String(cutoffMin ?? 0));
+  const [oltre, setOltre] = useState(overbookingPct != null ? String(overbookingPct) : "");
   const [salvando, setSalvando] = useState(false);
   const [salvato, setSalvato] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const giorniNum = giorni.trim() === "" ? null : Number(giorni);
   const preavvisoNum = Number(preavviso);
+  const oltreNum = oltre.trim() === "" ? 0 : Number(oltre);
 
   async function salva(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -64,7 +68,7 @@ export function BookingWindowSettings({
     const res = await fetch("/api/venue/booking-window", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ windowDays: giorniNum, cutoffMin: preavvisoNum }),
+      body: JSON.stringify({ windowDays: giorniNum, cutoffMin: preavvisoNum, overbookingPct: oltreNum }),
     });
     setSalvando(false);
     if (!res.ok) {
@@ -142,6 +146,32 @@ export function BookingWindowSettings({
             </div>
           </div>
 
+          <div className="space-y-1.5 border-t border-border pt-4">
+            <Label htmlFor="fin-oltre">Quanto puoi accettare oltre la capienza</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="fin-oltre"
+                inputMode="numeric"
+                value={oltre}
+                disabled={!canManage}
+                onChange={(e) => {
+                  setOltre(e.target.value.replace(/[^0-9]/g, ""));
+                  setSalvato(false);
+                }}
+                placeholder="0"
+                className="w-24"
+              />
+              <span className="text-sm text-muted-foreground">% dei coperti del turno</span>
+            </div>
+            <p className="text-xs text-tertiary-foreground">
+              Una quota di prenotazioni non si presenta, e tenere i tavoli vuoti per prudenza costa serate. Su
+              un turno da 90 coperti, il 10% vuol dire accettarne 99. Vale per tutti i canali, anche il
+              telefono: è la capienza vera che sei disposto a vendere, non un trucco del sito. In sala gli
+              orari oltre la capienza dichiarata sono segnati con un puntino — accettare non vuol dire non
+              saperlo.
+            </p>
+          </div>
+
           <p className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span>
@@ -156,6 +186,7 @@ export function BookingWindowSettings({
                 ? "e resta aperto fino all'ultimo minuto"
                 : `e si chiude ${quando.toLowerCase()}`}
               . Fuori da questa finestra il cliente legge che può chiamare, non che è tutto pieno.
+              {oltreNum > 0 && ` Oltre la capienza si accetta fino al ${oltreNum}% in più, su ogni canale.`}
             </span>
           </p>
 
