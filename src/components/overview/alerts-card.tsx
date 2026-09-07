@@ -37,15 +37,21 @@ export function AlertsCard({
             Tutto sotto controllo.
           </p>
         ) : (
+          /* Solo quelli che ci sono davvero: «0 Tavoli da confermare» occupava
+             lo stesso spazio di «2 Allergia segnalata», e un avviso a zero non
+             è un avviso. */
           <ul className="grid grid-cols-2 gap-3">
-            {items.map(({ count, label, icon: Icon, tone }) => (
-              <li key={label} className="flex items-center gap-2.5">
-                <Icon className={cn("h-4 w-4 shrink-0", ICON_TONE[tone])} />
-                <p className="text-sm leading-tight">
-                  <span className="font-mono font-semibold">{count}</span> <span className="text-card-foreground/65">{label}</span>
-                </p>
-              </li>
-            ))}
+            {items
+              .filter((i) => i.count > 0)
+              .map(({ count, label, icon: Icon, tone }) => (
+                <li key={label} className="flex items-center gap-2.5">
+                  <Icon className={cn("h-4 w-4 shrink-0", ICON_TONE[tone])} />
+                  <p className="text-sm leading-tight">
+                    <span className="font-mono font-semibold">{count}</span>{" "}
+                    <span className="text-card-foreground/65">{label}</span>
+                  </p>
+                </li>
+              ))}
           </ul>
         )}
       </CardContent>
