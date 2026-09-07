@@ -49,7 +49,8 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] **Guest Intelligence**: frequenza, abitudini, affidabilità, ritenzione — calcolate dalle prenotazioni
 - [x] **Timeline ospite**, con i soli eventi che esistono davvero
 - [x] **Tag automatici** con il motivo di ognuno; soglie in un posto solo, pronte a diventare configurabili per locale
-- [ ] Segmenti dinamici basati sulle etichette calcolate (oggi i segmenti delle campagne usano criteri propri)
+- [x] I segmenti delle campagne filtrano su dati **veri**: i contatori sono riallineati alle prenotazioni e il filtro sulla spesa (che leggeva un campo mai aggiornato) è stato rimosso
+- [ ] Segmenti basati direttamente sulle etichette calcolate («manda a chi è a rischio»)
 - [ ] Il valore in euro resta una **stima dichiarata** finché non ci sono ordini o incassi
 
 ## Phase 4 — Crescita

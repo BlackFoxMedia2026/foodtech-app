@@ -53,7 +53,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Guest Intelligence | LIVE | Visite, prima/ultima, frequenza, coperti medi, anticipo di prenotazione, tasso disdette e assenze, giorno/fascia/sala/tavolo preferiti, occasioni — **tutto calcolato dalle prenotazioni**. Undici etichette automatiche, ognuna con il motivo |
 | Storia dell'ospite (timeline) | LIVE | Prenotazioni, visite, assenze, disdette, attese, messaggi. Ordini, pagamenti e recensioni compariranno quando esisteranno |
 
-| Marketing / campagne email | BETA | Funziona via Brevo. L'invio non scala: una chiamata per ospite dentro la richiesta HTTP, serve una coda |
+| Marketing / campagne email | BETA | Funziona via Brevo. I segmenti filtrano su dati veri (contatori riallineati; rimosso il filtro sulla spesa, che leggeva un campo mai aggiornato). L'invio non scala: una chiamata per ospite dentro la richiesta HTTP, serve una coda |
 | QR code | LIVE | |
 | Automazioni | SCHEMA ONLY | |
 | Recensioni / NPS | SCHEMA ONLY | |

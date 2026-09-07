@@ -15,12 +15,23 @@ import { PREVIEW_UNSUBSCRIBE_ID, signUnsubscribeToken } from "@/lib/unsubscribe-
 
 const adapter: EmailProviderAdapter = brevoAdapter;
 
+/**
+ * I criteri di un segmento.
+ *
+ * `minTotalSpend` è stato rimosso: filtrava `Guest.totalSpend`, un campo che
+ * nessuna parte del codice aggiorna. Una campagna «alto spendenti» avrebbe
+ * colpito valori messi dal seed, che è peggio di non poterla fare. Tornerà
+ * quando ci saranno ordini o incassi collegati.
+ *
+ * `minTotalVisits`, `inactiveDays` e `minNoShowCount` invece ora sono
+ * affidabili: i contatori vengono riallineati alle prenotazioni vere
+ * (vedi server/guest-intelligence.ts, refreshGuestStats).
+ */
 export const SegmentFilter = z.object({
   tags: z.array(z.string()).optional(),
   loyaltyTier: z.enum(["NEW", "REGULAR", "VIP", "AMBASSADOR"]).optional(),
   minTotalVisits: z.number().int().min(0).optional(),
   inactiveDays: z.number().int().min(0).optional(),
-  minTotalSpend: z.number().min(0).optional(),
   minNoShowCount: z.number().int().min(0).optional(),
   birthdayThisMonth: z.boolean().optional(),
   hasFutureBooking: z.boolean().optional(),
@@ -128,9 +139,6 @@ function buildSegmentWhere(venueId: string, segment: SegmentFilterType): Prisma.
   if (segment.inactiveDays !== undefined) {
     const threshold = new Date(Date.now() - segment.inactiveDays * 24 * 60 * 60 * 1000);
     and.push({ OR: [{ lastVisitAt: { lte: threshold } }, { lastVisitAt: null }] });
-  }
-  if (segment.minTotalSpend !== undefined) {
-    where.totalSpend = { gte: segment.minTotalSpend };
   }
   if (segment.minNoShowCount !== undefined) {
     where.noShowCount = { gte: segment.minNoShowCount };

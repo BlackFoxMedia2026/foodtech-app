@@ -22,7 +22,6 @@ const PRESETS: { label: string; segment: SegmentFilterType }[] = [
   { label: "Clienti nuovi", segment: { loyaltyTier: "NEW" } },
   { label: "Clienti VIP", segment: { loyaltyTier: "VIP" } },
   { label: "Inattivi da 60gg", segment: { inactiveDays: 60 } },
-  { label: "Alto spendenti", segment: { minTotalSpend: 150 } },
 ];
 
 const UNAVAILABLE_FILTERS = [
@@ -166,16 +165,6 @@ export function Step2Recipients() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="minTotalSpend">Spesa totale minima (€)</Label>
-          <Input
-            id="minTotalSpend"
-            type="number"
-            min={0}
-            value={state.segment.minTotalSpend ?? ""}
-            onChange={(e) => updateSegment({ minTotalSpend: e.target.value ? Number(e.target.value) : undefined })}
-          />
-        </div>
 
         <div className="space-y-2">
           <Label htmlFor="minNoShowCount">No-show minimi</Label>

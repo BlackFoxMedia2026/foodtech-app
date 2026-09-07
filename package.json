@@ -15,6 +15,7 @@
     "db:baseline": "prisma migrate resolve --applied 00000000000000_baseline",
     "db:status": "prisma migrate status",
     "db:seed": "tsx prisma/seed.ts",
+    "db:refresh-guests": "tsx scripts/refresh-guest-stats.ts",
     "db:studio": "prisma studio",
     "check:availability": "tsx scripts/check-availability-rules.ts"
   },
