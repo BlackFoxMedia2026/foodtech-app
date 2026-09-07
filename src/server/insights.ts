@@ -139,7 +139,37 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
     (b) => b.guest && (b.guest.loyaltyTier === "VIP" || b.guest.loyaltyTier === "AMBASSADOR"),
   ).length;
 
+  /**
+   * Il momento più affollato della giornata, se c'è.
+   *
+   * Finestra di venti minuti, come nel centro controllo: «trentasette persone
+   * in un'ora» non è un problema, «trentasette in venti minuti» sì. Serve alla
+   * frase del briefing — quella che un direttore direbbe alla brigata prima di
+   * aprire — e non richiede nessun dato nuovo.
+   */
+  const presenti = today.bookings.filter((b) => b.status !== "CANCELLED" && b.status !== "NO_SHOW");
+  let picco: { ora: string; coperti: number } | null = null;
+  for (const b of presenti) {
+    const fine = new Date(b.startsAt.getTime() + 20 * 60_000);
+    const coperti = presenti
+      .filter((x) => x.startsAt >= b.startsAt && x.startsAt < fine)
+      .reduce((n, x) => n + x.partySize, 0);
+    if (!picco || coperti > picco.coperti) {
+      picco = {
+        ora: new Intl.DateTimeFormat("it-IT", {
+          timeZone: fuso,
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(b.startsAt),
+        coperti,
+      };
+    }
+  }
+  // Un «picco» che coincide con l'intera giornata non è un picco.
+  if (picco && (picco.coperti < 6 || picco.coperti === today.totalCovers)) picco = null;
+
   return {
+    picco,
     todayBookings: today.bookings,
     totalCovers: today.totalCovers,
     occupancyPct: today.occupancyPct,

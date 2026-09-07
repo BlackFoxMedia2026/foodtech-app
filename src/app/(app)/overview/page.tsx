@@ -3,9 +3,9 @@ import { Plus, CalendarRange } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TodaySummary } from "@/components/overview/today-summary";
+import { Briefing } from "@/components/overview/briefing";
 import { TodayTimeline } from "@/components/overview/today-timeline";
 import { QuickActions } from "@/components/overview/quick-actions";
-import { AlertsCard } from "@/components/overview/alerts-card";
 import { KpiGrid } from "@/components/overview/kpi-grid";
 import { WeekTrend } from "@/components/overview/week-trend";
 import { getActiveVenue } from "@/lib/tenant";
@@ -34,6 +34,18 @@ export default async function OverviewPage() {
           </Link>
         </Button>
       </header>
+
+      {/* Prima cosa in pagina: la frase che si dice alla brigata prima di
+          aprire. I numeri restano sotto — servono, ma dopo. */}
+      <Briefing
+        coperti={data.totalCovers}
+        occupancyPct={data.occupancyPct}
+        vip={data.alertCounts.vip}
+        compleanni={data.alertCounts.birthdays}
+        allergie={data.alertCounts.allergies}
+        daConfermare={data.alertCounts.pendingConfirmations}
+        picco={data.picco}
+      />
 
       <TodaySummary
         bookingsCount={data.todayBookings.length}
@@ -69,7 +81,6 @@ export default async function OverviewPage() {
 
         <div className="space-y-6">
           <QuickActions />
-          <AlertsCard counts={data.alertCounts} />
           <KpiGrid
             totalCovers={data.totalCovers}
             estimatedRevenueCents={data.estimatedRevenueCents}

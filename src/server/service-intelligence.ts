@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { durataUmana } from "@/lib/durata";
+import { NON_PIU_RITARDO_MIN, durataUmana } from "@/lib/durata";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { findShiftFor, zonedDayAndMinute } from "./availability";
 import { getFloorLive } from "./floor-live";
@@ -62,18 +62,8 @@ const PEAK_WINDOW_MIN = 20;
 /** Ritardo oltre il quale vale la pena chiedersi se è un no-show. */
 export const NO_SHOW_RISK_MIN = 25;
 
-/**
- * Oltre questo ritardo non è più un ritardo.
- *
- * Tre ore: più di un servizio intero. Una prenotazione di pranzo letta a cena
- * non è una persona in ritardo, è una riga che nessuno ha chiuso — e teneva in
- * pagina otto cartelli identici che dicevano «in ritardo di 577 minuti»,
- * seppellendo l'unico avviso che riguardava i venti minuti successivi.
- *
- * Non spariscono: diventano **un solo avviso**, che è la cosa da fare davvero
- * (chiuderle o telefonare), invece di otto che chiedono la stessa cosa.
- */
-export const NON_PIU_RITARDO_MIN = 180;
+// La soglia sta in `lib/durata` perché la usa anche l'interfaccia.
+export { NON_PIU_RITARDO_MIN };
 
 /** Quanti ritardi si mostrano uno per uno prima di raggrupparli. */
 const RITARDI_IN_EVIDENZA = 3;

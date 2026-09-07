@@ -20,3 +20,13 @@ export function durataUmana(minuti: number): string {
   if (resto === 30) return `${parteOre} e mezza`;
   return `${parteOre} e ${resto}`;
 }
+
+/**
+ * Oltre questo ritardo non è più un ritardo.
+ *
+ * Tre ore: più di un servizio intero. Una prenotazione di pranzo letta a cena
+ * non è una persona che sta arrivando, è una riga a cui nessuno ha dato un
+ * esito — e trattarla come un ritardo riempiva il centro controllo di allarmi
+ * su gente che non sarebbe più venuta.
+ */
+export const NON_PIU_RITARDO_MIN = 180;
