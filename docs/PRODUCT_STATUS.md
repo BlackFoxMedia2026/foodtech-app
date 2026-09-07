@@ -58,7 +58,8 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | QR code | LIVE | |
 | Automazioni | LIVE | Tre automazioni, non un costruttore di regole: compleanno, chi non torna da un po', invito a tornare dopo la prima volta. Nascono spente, e prima di accenderle si vede **quante persone toccherebbero oggi** con nomi e motivo. Cinque difese contro l'invio di massa: finestra stretta (accenderle non fa partire un diluvio), una volta per periodo per persona, silenzio di 3 giorni da qualunque nostro messaggio, tetto di 50 al giorno, consenso obbligatorio |
 | Recensioni e NPS | LIVE | Il giorno dopo la visita: una domanda sola (0-10). Promotori → link alla recensione pubblica; detrattori → commento privato **e notifica immediata al locale**. Pannello con NPS, distribuzione, andamento a quattro settimane e commenti recenti |
-| Loyalty / coupon / gift card | SCHEMA ONLY | |
+| Coupon | LIVE | Codice leggibile al telefono, sconto in percentuale o in euro o omaggio, tetti d'uso totali e per cliente, validità, pausa e archivio. Si usano al tavolo dalla scheda della prenotazione, con il motivo scritto quando un codice non vale; l'utilizzo si annulla e il coupon torna disponibile. Due camerieri contemporanei non superano il tetto |
+| Loyalty / gift card | SCHEMA ONLY | |
 
 ## Nota sui numeri in euro
 
@@ -103,7 +104,7 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 | Coda dei lavori | LIVE | `BackgroundJob` su Postgres, smaltita ogni minuto. Presa in carico atomica (due cron sovrapposti non fanno partire due volte lo stesso invio), lavori a lotti che cedono il turno, nuovi tentativi con attese crescenti, ripresa dei lavori interrotti, errori definitivi visibili in Impostazioni con «Riprova» |
 | Navigazione mobile | LIVE | Barra in basso con «+» per i gesti rapidi; nessuno scorrimento orizzontale |
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
-| Test | PARTIAL | 372 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo, profilo ospite, sondaggi, coda dei lavori, invio campagne, automazioni, freno sulle migrazioni, previsione coperti, attribuzione delle campagne, tavolate ed esperienze. Nessun end-to-end sul browser automatizzato (le verifiche dal vivo si fanno a mano, con gli screenshot in `docs/audit-2026-09/`) |
+| Test | PARTIAL | 401 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo, profilo ospite, sondaggi, coda dei lavori, invio campagne, automazioni, freno sulle migrazioni, previsione coperti, attribuzione delle campagne, tavolate, esperienze e coupon. Nessun end-to-end sul browser automatizzato (le verifiche dal vivo si fanno a mano, con gli screenshot in `docs/audit-2026-09/`) |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
 

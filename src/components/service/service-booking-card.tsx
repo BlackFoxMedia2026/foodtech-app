@@ -10,6 +10,7 @@ import {
   CircleUser,
   CreditCard,
   Phone,
+  Ticket,
   Timer,
   UserX,
   UtensilsCrossed,
@@ -20,6 +21,7 @@ import { readApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import type { ServiceBooking } from "@/server/service";
 import { TablePickerDialog } from "@/components/service/table-picker-dialog";
+import { RedeemCouponDialog } from "@/components/coupons/redeem-dialog";
 
 const OCCASIONE: Record<string, string> = {
   BIRTHDAY: "Compleanno",
@@ -52,6 +54,7 @@ export function ServiceBookingCard({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [couponAperto, setCouponAperto] = useState(false);
   const [pickerFor, setPickerFor] = useState<"seat" | "move" | null>(null);
 
   const ora = new Intl.DateTimeFormat("it-IT", {
@@ -247,6 +250,17 @@ export function ServiceBookingCard({
                   <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               )}
+              {canManage && booking.status !== "COMPLETED" && (
+                <button
+                  type="button"
+                  onClick={() => setCouponAperto(true)}
+                  aria-label={`Usa un coupon per ${booking.guestName}`}
+                  title="Usa un coupon"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
+                >
+                  <Ticket className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
               {booking.phone && (
                 <a
                   href={`tel:${booking.phone}`}
@@ -273,6 +287,17 @@ export function ServiceBookingCard({
       </div>
 
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+
+      {couponAperto && (
+        <RedeemCouponDialog
+          open
+          onOpenChange={setCouponAperto}
+          bookingId={booking.id}
+          guestId={booking.guestId}
+          guestName={booking.guestName}
+          onDone={onChanged}
+        />
+      )}
 
       {pickerFor && (
         <TablePickerDialog
