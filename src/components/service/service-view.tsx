@@ -101,7 +101,7 @@ export function ServiceView({
   const c = snapshot.counters;
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="flex flex-col gap-5 animate-fade-in">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">{venueName}</p>
@@ -127,26 +127,45 @@ export function ServiceView({
         </div>
       </header>
 
-      {/* I numeri restano in testa in ogni scheda. */}
-      {/* Tre per riga anche su telefono: sei riquadri in due colonne
-          occupavano mezzo schermo prima di far vedere una sola prenotazione, e
-          durante il servizio le prenotazioni contano più dei numeri. */}
-      <section className="grid grid-cols-3 gap-2 lg:grid-cols-6">
-        <Numero icona={Users} etichetta="In sala" valore={c.copertiPresenti} nota="coperti" />
+      {/* Sul telefono, prima cosa fare e poi quanti: su 844 px di altezza,
+          intestazione più sei riquadri spingevano il primo avviso sotto la
+          piega, e in servizio si scorreva due schermate per sapere cosa fare.
+          Su schermo largo l'ordine resta quello di prima: là ci sta tutto. */}
+      <section className="order-2 grid grid-cols-3 gap-2 lg:order-1 lg:grid-cols-6">
+        <Numero
+          icona={Users}
+          etichetta="In sala"
+          valore={c.copertiPresenti}
+          nota="coperti"
+          className="hidden lg:flex"
+        />
         <Numero
           icona={UtensilsCrossed}
           etichetta="Tavoli"
           valore={`${c.tavoliOccupati}/${c.tavoliTotali}`}
           nota="occupati"
+          className="hidden lg:flex"
         />
         <Numero icona={Clock} etichetta="In arrivo" valore={c.inArrivo} nota={`entro ${window_} min`} />
-        <Numero icona={Timer} etichetta="In ritardo" valore={c.inRitardo} allarme={c.inRitardo > 0} />
+        <Numero
+          icona={Timer}
+          etichetta="In ritardo"
+          valore={c.inRitardo}
+          allarme={c.inRitardo > 0}
+          nota={c.nonArrivate > 0 ? `+${c.nonArrivate} mai arrivate` : undefined}
+        />
         <Numero icona={ListOrdered} etichetta="In attesa" valore={c.personeInAttesa} nota="persone" />
-        <Numero icona={UserCheck} etichetta="Walk-in" valore={c.walkInOggi} nota="oggi" />
+        <Numero
+          icona={UserCheck}
+          etichetta="Walk-in"
+          valore={c.walkInOggi}
+          nota="oggi"
+          className="hidden lg:flex"
+        />
       </section>
 
       {insights.length > 0 && (
-        <section aria-label="Cosa sta per andare storto" className="space-y-2">
+        <section aria-label="Cosa sta per andare storto" className="order-1 space-y-2 lg:order-2">
           <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             Da tenere d&apos;occhio
           </h2>
@@ -155,7 +174,7 @@ export function ServiceView({
       )}
 
       {/* Su telefono: una colonna per volta. */}
-      <div className="flex gap-1 lg:hidden" role="tablist" aria-label="Aree del servizio">
+      <div className="order-3 flex gap-1 lg:hidden" role="tablist" aria-label="Aree del servizio">
         {(
           [
             ["adesso", "Adesso", snapshot.seated.length + snapshot.arrived.length],
@@ -180,7 +199,7 @@ export function ServiceView({
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="order-4 grid gap-4 lg:grid-cols-3">
         {/* ADESSO */}
         <Colonna1
           titolo="Adesso"
@@ -369,18 +388,22 @@ function Numero({
   valore,
   nota,
   allarme = false,
+  className,
 }: {
   icona: typeof Users;
   etichetta: string;
   valore: number | string;
   nota?: string;
   allarme?: boolean;
+  /** Serve a tenerne alcuni fuori dal telefono: là contano le azioni. */
+  className?: string;
 }) {
   return (
     <div
       className={cn(
-        "surface rounded-md border px-2.5 py-2 lg:px-3 lg:py-3",
+        "surface flex flex-col rounded-md border px-2.5 py-2 lg:px-3 lg:py-3",
         allarme ? "border-accent/60" : "border-border",
+        className,
       )}
     >
       <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground lg:gap-1.5 lg:text-[11px] lg:tracking-widest">
