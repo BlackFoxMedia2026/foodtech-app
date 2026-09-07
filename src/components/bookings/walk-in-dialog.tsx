@@ -25,7 +25,10 @@ type FreeTable = {
   roomName: string | null;
 };
 
-type Ricerca = { tables: FreeTable[]; reason: "venue_closed" | "shift_full" | "all_busy" | null };
+type Ricerca = {
+  tables: FreeTable[];
+  reason: "venue_closed" | "shift_full" | "all_busy" | "no_table_that_big" | null;
+};
 
 const MOTIVO: Record<NonNullable<Ricerca["reason"]>, { titolo: string; spiegazione: string }> = {
   venue_closed: {
@@ -42,6 +45,11 @@ const MOTIVO: Record<NonNullable<Ricerca["reason"]>, { titolo: string; spiegazio
     titolo: "Nessun tavolo libero adesso",
     spiegazione:
       "Tutti i tavoli abbastanza grandi sono occupati. Mettili in lista d'attesa: Tavolo ti avvisa appena uno si libera.",
+  },
+  no_table_that_big: {
+    titolo: "Nessun tavolo di questa misura",
+    spiegazione:
+      "Non è che siano occupati: un tavolo così grande non c'è. Per un gruppo del genere si uniscono più tavoli, dalla scheda della prenotazione in Servizio.",
   },
 };
 

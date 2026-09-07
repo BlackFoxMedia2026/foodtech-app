@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { MessageSquareWarning, Settings, LogOut } from "lucide-react";
+import { Settings, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -30,12 +30,6 @@ export function ProfileMenu({ user }: { user: { name?: string | null; email?: st
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
-          <Link href="/reports">
-            <MessageSquareWarning className="h-4 w-4" strokeWidth={2} />
-            Segnalazione
-          </Link>
-        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings">
             <Settings className="h-4 w-4" strokeWidth={2} />

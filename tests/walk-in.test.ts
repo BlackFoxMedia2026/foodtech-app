@@ -63,7 +63,10 @@ describe("tavoli liberi", () => {
   it("un gruppo più grande di ogni tavolo non trova niente", async () => {
     const esito = await findTablesForWalkIn(venueId, 20);
     expect(esito.tables).toHaveLength(0);
-    expect(esito.reason).toBe("all_busy");
+    // Prima qui si diceva `all_busy`, cioè «tutti i tavoli abbastanza grandi
+    // sono occupati»: falso, di quella misura non ne esiste nemmeno uno. Sono
+    // due situazioni con due rimedi diversi — aspettare, o unire i tavoli.
+    expect(esito.reason).toBe("no_table_that_big");
   });
 
   it("la ricerca è la stessa che usa la lista d'attesa", async () => {

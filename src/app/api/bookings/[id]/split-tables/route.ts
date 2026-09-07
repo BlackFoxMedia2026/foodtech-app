@@ -5,24 +5,16 @@ import {
   ASSIGN_ERROR_MESSAGE,
   ASSIGN_ERROR_STATUS,
   BookingAssignError,
-  assignBookingToTable,
+  splitTablesForBooking,
 } from "@/server/booking-floor";
 
+/** Scioglie la tavolata: resta il tavolo principale, gli altri tornano liberi. */
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const ctx = await requireVenueApi("manage_bookings");
   if (!ctx.ok) return ctx.response;
 
-  const body = await req.json().catch(() => null);
-  const tableId = body?.tableId;
-  if (!tableId || typeof tableId !== "string") {
-    return NextResponse.json({ error: "missing_tableId" }, { status: 400 });
-  }
-
   try {
-    const updated = await assignBookingToTable(ctx.venueId, params.id, tableId, {
-      force: !!body?.force,
-      actor: auditActor(ctx, req),
-    });
+    const updated = await splitTablesForBooking(ctx.venueId, params.id, { actor: auditActor(ctx, req) });
     return NextResponse.json(updated);
   } catch (err) {
     if (err instanceof BookingAssignError) {
@@ -31,6 +23,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         { status: ASSIGN_ERROR_STATUS[err.code] },
       );
     }
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    return NextResponse.json({ error: "invalid" }, { status: 400 });
   }
 }
