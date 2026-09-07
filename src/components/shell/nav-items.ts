@@ -1,4 +1,4 @@
-import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Radio, Settings, Sparkles, UserRound } from "lucide-react";
+import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Radio, Settings, Sparkles, UserRound, UtensilsCrossed } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 
 export type NavItem = {
@@ -39,6 +39,7 @@ export const SECONDARY_NAV: NavItem[] = [
   // I camerieri si configurano prima del servizio, non durante: da qui in poi
   // e' lavoro da ufficio, e la barra ha spazio per sei voci, non per sette.
   { href: "/waiters", label: "Camerieri", icon: UserRound },
+  { href: "/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/experiences", label: "Esperienze", icon: Sparkles },
   { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"] },
   { href: "/payments", label: "Pagamenti", icon: CreditCard },

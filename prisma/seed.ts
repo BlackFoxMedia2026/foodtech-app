@@ -137,6 +137,96 @@ async function creaCamerieriDemo(venueId: string) {
   console.log(`→ Creati ${squadra.length} camerieri demo.`);
 }
 
+/**
+ * Un menu demo: senza questo la pagina Menu appare vuota, e una carta vuota
+ * non racconta niente di quello che il modulo sa fare — allergeni, piatti
+ * finiti, margine sul costo.
+ *
+ * I costi ci sono solo su alcuni piatti, di proposito: così si vede la
+ * differenza fra un piatto con il margine calcolato e uno senza, che è la
+ * situazione vera di un locale che sta cominciando a compilarlo.
+ */
+async function creaMenuDemo(venueId: string) {
+  const esistenti = await db.menuCategory.count({ where: { venueId } });
+  if (esistenti > 0) return;
+
+  const carta: {
+    categoria: string;
+    piatti: {
+      name: string;
+      description?: string;
+      priceCents: number;
+      costCents?: number;
+      available?: boolean;
+      allergens?: string[];
+      dietary?: string[];
+    }[];
+  }[] = [
+    {
+      categoria: "Antipasti",
+      piatti: [
+        { name: "Tartare di fassona", description: "Senape antica, tuorlo marinato, pane croccante.", priceCents: 1600, costCents: 450, allergens: ["uova", "senape", "glutine"] },
+        { name: "Vitello tonnato", description: "La ricetta di sempre, con capperi di Pantelleria.", priceCents: 1400, costCents: 380, allergens: ["pesce", "uova"] },
+        { name: "Giardino d'autunno", description: "Verdure di stagione, nocciole, aceto di mele.", priceCents: 1200, allergens: ["frutta_a_guscio"], dietary: ["vegano", "senza_glutine"] },
+      ],
+    },
+    {
+      categoria: "Primi",
+      piatti: [
+        { name: "Tagliatelle al ragù bianco", description: "Tirate a mano, ragù di maiale e vino.", priceCents: 1500, costCents: 380, allergens: ["glutine", "uova", "solfiti"] },
+        { name: "Risotto alla zucca", description: "Zucca mantovana, amaretto, grana 36 mesi.", priceCents: 1600, costCents: 420, allergens: ["latte", "frutta_a_guscio"], dietary: ["vegetariano", "senza_glutine"] },
+        { name: "Spaghetti alle vongole", description: "Vongole veraci, prezzemolo, peperoncino.", priceCents: 1800, allergens: ["glutine", "molluschi"], dietary: ["piccante"] },
+      ],
+    },
+    {
+      categoria: "Secondi",
+      piatti: [
+        { name: "Guancia di manzo al Barolo", description: "Cottura lenta, purea di patate alla vaniglia.", priceCents: 2400, costCents: 780, allergens: ["latte", "solfiti", "sedano"] },
+        { name: "Branzino in crosta di sale", description: "Per due persone, sfilettato al tavolo.", priceCents: 3800, allergens: ["pesce"], dietary: ["senza_glutine"] },
+        // Un piatto finito: nel menu del cliente non compare, e nella carta
+        // interna si legge barrato. È il caso che vale la pena vedere.
+        { name: "Costata di scottona", description: "Un chilo, frollatura 40 giorni.", priceCents: 5200, costCents: 2600, available: false },
+      ],
+    },
+    {
+      categoria: "Dolci",
+      piatti: [
+        { name: "Tiramisù del giorno", priceCents: 800, costCents: 180, allergens: ["glutine", "uova", "latte"] },
+        { name: "Sorbetto al limone", priceCents: 600, costCents: 120, dietary: ["vegano", "senza_glutine", "senza_lattosio"] },
+      ],
+    },
+  ];
+
+  let quantiPiatti = 0;
+  for (const [i, sezione] of carta.entries()) {
+    const categoria = await db.menuCategory.create({
+      data: { venueId, name: sezione.categoria, ordering: i, menuKey: "main" },
+    });
+    for (const [j, piatto] of sezione.piatti.entries()) {
+      const creato = await db.menuItem.create({
+        data: {
+          venueId,
+          categoryId: categoria.id,
+          name: piatto.name,
+          description: piatto.description ?? null,
+          priceCents: piatto.priceCents,
+          available: piatto.available ?? true,
+          allergens: piatto.allergens ?? [],
+          dietary: piatto.dietary ?? [],
+          ordering: j,
+        },
+      });
+      if (piatto.costCents != null) {
+        await db.menuItemCost.create({
+          data: { venueId, menuItemId: creato.id, costCents: piatto.costCents },
+        });
+      }
+      quantiPiatti++;
+    }
+  }
+  console.log(`→ Creato il menu demo: ${carta.length} categorie, ${quantiPiatti} piatti.`);
+}
+
 async function main() {
   const existingOrg = await db.organization.findUnique({
     where: { slug: "casa-aurora" },
@@ -148,6 +238,9 @@ async function main() {
     const venueIds = existingOrg.venues.map((v) => v.id);
     await riallineaDateDemo(venueIds);
     for (const id of venueIds) await creaCamerieriDemo(id);
+    // Anche il menu: chi ha la demo già installata deve vedere la carta senza
+    // dover ricreare tutto da zero.
+    for (const id of venueIds) await creaMenuDemo(id);
     // La spesa media è dichiarata dal locale: se manca, la stima degli
     // incassi non si mostra. Sulla demo va impostata, altrimenti la
     // Panoramica sembra incompleta.
@@ -372,6 +465,8 @@ async function main() {
     }
 
     await creaCamerieriDemo(venue.id);
+
+    await creaMenuDemo(venue.id);
 
     // Campagna esempio
     await db.campaign.create({

@@ -106,7 +106,8 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
 | Liste lunghe | LIVE (ospiti) | Ospiti a pagine da 50 con il totale scritto («da 1 a 50 di 312») e le etichette lette tutte, non su un campione. Le prenotazioni hanno ancora un tetto fisso: sulla giornata è generoso, su intervalli ampi va paginato |
 | Schermata d'errore | LIVE | Un'eccezione non mostra più la pagina grezza di Next: resta la navigazione, c'è «Riprova» e una via d'uscita. Fuori dall'applicazione il messaggio dice che nessuna prenotazione è stata registrata |
-| Test | PARTIAL | 418 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo, profilo ospite, sondaggi, coda dei lavori, invio campagne, automazioni, freno sulle migrazioni, previsione coperti, attribuzione delle campagne, tavolate, esperienze, coupon, omaggi automatici e paginazione. Nessun end-to-end sul browser automatizzato (le verifiche dal vivo si fanno a mano, con gli screenshot in `docs/audit-2026-09/`) |
+| Menu | LIVE | Categorie e piatti con prezzo, descrizione, disponibilità e ordine; allergeni da elenco chiuso (i quattordici obbligatori) e regimi alimentari. Il costo materie prime è facoltativo e dove c'è mostra il **margine vero** — prezzo e costo li dichiara il locale. Menu pubblico su `/m/<locale>` per il QR sul tavolo: solo categorie attive e piatti disponibili, nessun costo |
+| Test | PARTIAL | 441 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala, regole del centro controllo, profilo ospite, sondaggi, coda dei lavori, invio campagne, automazioni, freno sulle migrazioni, previsione coperti, attribuzione delle campagne, tavolate, esperienze, coupon, omaggi automatici, paginazione e menu. Nessun end-to-end sul browser automatizzato (le verifiche dal vivo si fanno a mano, con gli screenshot in `docs/audit-2026-09/`) |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
 
@@ -120,7 +121,7 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 
 ## Non implementato (solo tabelle)
 
-Menu · Ordini · Food cost · POS · Connettori · Centralino e voce · Wi-Fi captive portal · Preordini · Biglietti esperienze · Chat ospiti · Eventi privati e gruppi.
+Ordini · Food cost · POS · Connettori · Centralino e voce · Wi-Fi captive portal · Preordini · Biglietti esperienze · Chat ospiti · Eventi privati e gruppi.
 
 Le **esperienze** ora si creano, si modificano e si pubblicano; **vendere i biglietti** no — serve Stripe, come le caparre. Nel frattempo c'è il campo con il link a dove li vende il locale, e la pagina dice che da qui non si vendono.
 
