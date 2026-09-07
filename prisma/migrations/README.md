@@ -114,3 +114,14 @@ Due correzioni, entrambe nello script:
   secondi). La serratura serve proprio a mettere in fila chi migra, e chi è in
   fila deve attendere. Si riprova **solo** su quell'errore: una migrazione
   scritta male deve fallire subito e forte.
+
+## Le due migrazioni della fedeltà (7 settembre)
+
+`20260907210000_raccolta_punti` aggiunge a `Venue` le due regole della raccolta
+punti; `20260907210500_fedelta_valore_e_indici` aggiunge
+`LoyaltyTransaction.amountCents` — il valore in centesimi di uno sconto in
+punti, fotografato quando si usa — e due indici su `orderId`, per la domanda
+«cosa è stato pagato su questo conto?».
+
+Tutte additive: tre colonne che nascono vuote e due indici. Passano il freno
+delle anteprime senza eccezioni.
