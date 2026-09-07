@@ -30,6 +30,12 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname === "/api/public/booking-action") {
     return { rule: RATE_LIMITS.publicBooking, bucket: "booking-action", methods: ["POST"] };
   }
+  // Il portale Wi-Fi scrive nel CRM: severo come la prenotazione pubblica.
+  // Generoso quanto basta perché un tavolo di sei persone si colleghi tutto
+  // dalla stessa rete, cioè dallo stesso indirizzo.
+  if (pathname === "/api/public/wifi") {
+    return { rule: RATE_LIMITS.publicWifi, bucket: "public-wifi", methods: ["POST"] };
+  }
   if (pathname.startsWith("/api/public/availability")) {
     return { rule: RATE_LIMITS.publicAvailability, bucket: "public-availability" };
   }

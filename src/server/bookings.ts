@@ -4,6 +4,7 @@ import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
 import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } from "./emails";
+import { trovaOCreaOspite } from "./guest-match";
 import { deriveTableStatus, type TableOperationalStatus } from "@/lib/table-status";
 import { assertAvailability, OCCUPYING_STATUSES } from "./availability";
 import { refreshGuestStats } from "./guest-intelligence";
@@ -148,19 +149,16 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
   let guestName = "";
 
   if (!guestId && data.guest?.firstName) {
-    const created = await db.guest.create({
-      data: {
-        venueId,
-        firstName: data.guest.firstName,
-        lastName: data.guest.lastName ?? null,
-        email: data.guest.email ?? null,
-        phone: data.guest.phone ?? null,
-      },
-    });
-    guestId = created.id;
-    guestEmail = created.email;
-    guestPhone = created.phone;
-    guestName = `${created.firstName} ${created.lastName || ""}`.trim();
+    // Non si crea sempre una scheda nuova: **si cerca la persona che c'è
+    // già**, per email o telefono. Prima chi prenotava dal sito per la terza
+    // volta finiva nel CRM per la terza volta, e da oggi tre copie della
+    // stessa persona sono anche tre saldi punti che non si sommano.
+    const { guestId: id } = await trovaOCreaOspite(venueId, data.guest, db);
+    const guest = await db.guest.findUniqueOrThrow({ where: { id } });
+    guestId = guest.id;
+    guestEmail = guest.email;
+    guestPhone = guest.phone;
+    guestName = `${guest.firstName} ${guest.lastName || ""}`.trim();
   } else if (guestId) {
     const guest = await db.guest.findUnique({ where: { id: guestId } });
     if (guest) {
