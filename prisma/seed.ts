@@ -4,6 +4,10 @@ import bcrypt from "bcryptjs";
 
 const db = new PrismaClient();
 
+/** Ampiezza della vetrina dimostrativa attorno a oggi. */
+const PASSATO_GIORNI = 30;
+const FUTURO_GIORNI = 14;
+
 const FIRST = ["Lorenzo", "Giulia", "Matteo", "Sofia", "Andrea", "Camilla", "Tommaso", "Chiara", "Federico", "Alessia", "Marco", "Beatrice", "Riccardo", "Elena", "Davide", "Martina"];
 const LAST = ["Ferri", "Conti", "Greco", "Russo", "Marini", "Bianchi", "De Luca", "Romano", "Esposito", "Ricci", "Galli", "Moretti", "Costa", "Vitale"];
 const NOTES = [
@@ -26,10 +30,105 @@ function setTime(date: Date, h: number, m = 0) {
   return d;
 }
 
+/**
+ * Riporta la vetrina dimostrativa a cavallo di oggi.
+ *
+ * Il seed genera prenotazioni relative al giorno in cui viene eseguito. Girando
+ * una volta sola al primo deploy, la demo pubblica invecchiava: a settembre
+ * mostrava prenotazioni di luglio, quindi ogni schermata diceva zero e chi
+ * apriva il link vedeva un prodotto morto.
+ *
+ * Sposta tutte le date del locale demo dello stesso numero di giorni, così le
+ * distanze fra le prenotazioni — e quindi gli andamenti in Analytics — restano
+ * quelle pensate, e le prenotazioni passate restano passate.
+ */
+async function riallineaDateDemo(venueIds: string[]) {
+  if (venueIds.length === 0) return;
+
+  const ultima = await db.booking.findFirst({
+    where: { venueId: { in: venueIds } },
+    orderBy: { startsAt: "desc" },
+    select: { startsAt: true },
+  });
+  if (!ultima) return;
+
+  const oggi = new Date();
+  oggi.setHours(0, 0, 0, 0);
+  const bersaglio = new Date(oggi);
+  bersaglio.setDate(bersaglio.getDate() + FUTURO_GIORNI);
+
+  const giorni = Math.round((bersaglio.getTime() - ultima.startsAt.getTime()) / 86_400_000);
+  if (giorni === 0) {
+    console.log("→ Le date della demo sono già allineate a oggi.");
+    return;
+  }
+
+  const intervallo = `${giorni} days`;
+  // Prisma non sa scrivere "colonna = colonna + intervallo": qui serve SQL.
+  const pren = await db.$executeRawUnsafe(
+    `UPDATE "Booking" SET "startsAt" = "startsAt" + $1::interval,
+       "arrivedAt" = CASE WHEN "arrivedAt" IS NULL THEN NULL ELSE "arrivedAt" + $1::interval END,
+       "seatedAt" = CASE WHEN "seatedAt" IS NULL THEN NULL ELSE "seatedAt" + $1::interval END,
+       "closedAt" = CASE WHEN "closedAt" IS NULL THEN NULL ELSE "closedAt" + $1::interval END
+     WHERE "venueId" = ANY($2::text[])`,
+    intervallo,
+    venueIds,
+  );
+  await db.$executeRawUnsafe(
+    `UPDATE "Experience" SET "startsAt" = "startsAt" + $1::interval,
+       "endsAt" = CASE WHEN "endsAt" IS NULL THEN NULL ELSE "endsAt" + $1::interval END
+     WHERE "venueId" = ANY($2::text[])`,
+    intervallo,
+    venueIds,
+  );
+
+  console.log(`→ Demo riallineata: ${pren} prenotazioni spostate di ${giorni} giorni.`);
+}
+
+/** Il modulo Camerieri è il più recente e il più curato, e il seed non creava
+ * nemmeno una persona: sulla demo appariva vuoto. */
+async function creaCamerieriDemo(venueId: string) {
+  const esistenti = await db.waiter.count({ where: { venueId } });
+  if (esistenti > 0) return;
+
+  const squadra = [
+    { firstName: "Marco", lastName: "Bellini", primaryRole: "MAITRE" as const, role: "Maître", capabilities: ["MAITRE", "ROOM_SUPERVISOR"] as const },
+    { firstName: "Sara", lastName: "Fontana", primaryRole: "CHEF_DE_RANG" as const, role: "Chef de rang", capabilities: ["TABLE_RESPONSIBLE"] as const },
+    { firstName: "Luca", lastName: "Perini", primaryRole: "CAMERIERE" as const, role: "Cameriere", capabilities: ["TABLE_RESPONSIBLE", "TABLE_SUPPORT"] as const },
+    { firstName: "Elisa", lastName: "Nardi", primaryRole: "SOMMELIER" as const, role: "Sommelier", capabilities: ["SOMMELIER"] as const },
+    { firstName: "Davide", lastName: "Sanna", primaryRole: "RUNNER" as const, role: "Runner", capabilities: ["RUNNER"] as const },
+    { firstName: "Giorgia", lastName: "Milani", primaryRole: "HOST" as const, role: "Host", capabilities: ["HOST"] as const },
+  ];
+
+  for (const [i, persona] of squadra.entries()) {
+    await db.waiter.create({
+      data: {
+        venueId,
+        firstName: persona.firstName,
+        lastName: persona.lastName,
+        role: persona.role,
+        primaryRole: persona.primaryRole,
+        capabilities: [...persona.capabilities],
+        birthday: new Date(Date.UTC(1988 + i, (i * 3) % 12, 5 + i)),
+        phone: `+39 34${i} ${1000000 + i * 111111}`,
+      },
+    });
+  }
+  console.log(`→ Creati ${squadra.length} camerieri demo.`);
+}
+
 async function main() {
-  const existingOrg = await db.organization.findUnique({ where: { slug: "casa-aurora" } });
+  const existingOrg = await db.organization.findUnique({
+    where: { slug: "casa-aurora" },
+    include: { venues: { select: { id: true } } },
+  });
+
   if (existingOrg) {
-    console.log("→ Seed già presente, salto.");
+    // Non ricrea niente, ma non se ne va a mani vuote: rinfresca la vetrina.
+    const venueIds = existingOrg.venues.map((v) => v.id);
+    await riallineaDateDemo(venueIds);
+    for (const id of venueIds) await creaCamerieriDemo(id);
+    console.log("\n✓ Demo aggiornata.");
     return;
   }
 
@@ -164,11 +263,12 @@ async function main() {
 
     const tables = await db.table.findMany({ where: { venueId: venue.id } });
 
-    // Bookings: ultimi 30 giorni + prossimi 14
+    // Prenotazioni: la finestra è centrata su oggi, e riallineaDateDemo la
+    // riporta qui a ogni esecuzione successiva.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    for (let dayOffset = -30; dayOffset <= 14; dayOffset++) {
+    for (let dayOffset = -PASSATO_GIORNI; dayOffset <= FUTURO_GIORNI; dayOffset++) {
       const day = new Date(today);
       day.setDate(today.getDate() + dayOffset);
 
@@ -239,6 +339,8 @@ async function main() {
         },
       });
     }
+
+    await creaCamerieriDemo(venue.id);
 
     // Campagna esempio
     await db.campaign.create({
