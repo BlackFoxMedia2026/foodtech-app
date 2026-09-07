@@ -62,7 +62,9 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
       → la forma scelta: un catalogo chiuso invece di un editor «se questo allora quello». Un editor sembra più potente e in un gestionale per ristoranti resta vuoto; e una regola scritta di fretta scrive a tutti la cosa sbagliata. Quando serviranno automazioni nuove si aggiungono al catalogo, dove si possono ragionare e provare
       → restano fuori, per mancanza di dati: coupon, Wi-Fi, ordini. E resta fuori per scelta la risposta automatica a un voto basso: a chi è uscito insoddisfatto scrive una persona
 - [ ] WhatsApp e SMS come canali (il posto è pronto in `PROVIDERS`, manca il fornitore)
-- [ ] Coupon
+- [x] **Coupon**: codice leggibile al telefono (senza O/0, I/1/L, S/5), tetti d'uso totali e per cliente, validità, pausa e archivio. Si usano **al tavolo**, dalla scheda della prenotazione, e l'utilizzo si può **annullare** — lo sbaglio comune non è la frode, è il tocco di troppo
+      → due camerieri che passano lo stesso codice nello stesso istante non possono superare il tetto: i controlli stanno dentro una transazione serializzabile, come per l'assegnazione dei tavoli
+      → i coupon **non sono ancora legati alle automazioni** (un omaggio automatico per il compleanno): è il prossimo passo naturale, e serve decidere se il codice è unico per persona o condiviso
 
 ## Phase 5 — Revenue 🔄 in corso
 

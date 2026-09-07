@@ -134,6 +134,9 @@ export function apiErrorResponse(err: unknown) {
       "Nessun destinatario: con questi criteri non c'è nessun cliente con email e consenso."
     );
   }
+  if (message === "code_taken") {
+    return apiError(409, "code_taken", "Questo codice è già in uso: scegline un altro.");
+  }
   if (message === "has_tickets") {
     return apiError(
       409,

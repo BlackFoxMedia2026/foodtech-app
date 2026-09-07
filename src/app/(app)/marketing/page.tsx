@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Megaphone, QrCode as QrCodeIcon, Repeat } from "lucide-react";
+import { ChevronRight, Megaphone, QrCode as QrCodeIcon, Repeat, Ticket } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +19,14 @@ const SECTIONS = [
     title: "Automazioni",
     description:
       "Tre messaggi che partono da soli: auguri di compleanno, chi non torna da un po', invito a tornare dopo la prima volta.",
+  },
+  {
+    href: "/marketing/coupons",
+    icon: Ticket,
+    eyebrow: "Coupon",
+    title: "Coupon",
+    description:
+      "Sconti e omaggi con un codice: si creano qui e si segnano come usati al tavolo, dalla scheda della prenotazione.",
   },
   {
     href: "/marketing/qr-codes",

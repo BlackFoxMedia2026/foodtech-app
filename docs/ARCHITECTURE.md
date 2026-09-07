@@ -184,6 +184,36 @@ d'attesa e il walk-in, che stanno accomodando qualcuno adesso — passa da
 Stessa forma di `skipAvailabilityCheck`, che ora richiede anche un motivo
 scritto (`forceReason`) e finisce nel registro come azione distinta.
 
+### Un coupon non si usa più volte di quelle previste
+
+`src/server/coupons.ts`.
+
+La parte difficile di un coupon non è crearlo, è il momento in cui viene usato:
+con il cliente al tavolo che aspetta, serve una risposta in un secondo e
+nessun uso in più di quelli previsti. I controlli stanno **dentro** una
+transazione serializzabile — due camerieri che passano lo stesso codice nello
+stesso istante da due tablet non devono poter superare il tetto, ed è lo stesso
+motivo per cui l'assegnazione dei tavoli è serializzabile. C'è una prova che
+lancia due utilizzi in parallelo e verifica che ne passi uno.
+
+Tre scelte che vale la pena conoscere:
+
+- **la verità sugli utilizzi sono le righe di `CouponRedemption`**, non il
+  contatore `redemptionCount`. Il contatore si aggiorna nella stessa
+  transazione, così chi guarda il database non legge una bugia, ma i controlli
+  contano le righe: in questo progetto i contatori scollegati dai fatti hanno
+  già fatto abbastanza danni;
+- **«scaduto» si calcola dalle date**, non si scrive nello stato: `status` è
+  quello che ha deciso il locale (attivo, in pausa, archiviato), la scadenza
+  dipende dall'orologio. «Esaurito» invece è un fatto compiuto e si può
+  scrivere;
+- **una funzione sola decide e mostra** (`couponUsability`), usata sia
+  dall'elenco sia dal momento dell'uso. Con una distinzione che il primo
+  collaudo dal vivo ha reso necessaria: valutare *in generale* non è come
+  valutare *per una persona*, e nell'elenco — dove un cliente non c'è — i
+  limiti per persona non si possono giudicare. Senza quella distinzione ogni
+  coupon compariva «non valido».
+
 ### Un tavolo non si dà a due gruppi, nemmeno per sbaglio
 
 `assignBookingToTable` e `combineTablesForBooking` in `src/server/booking-floor.ts`.
