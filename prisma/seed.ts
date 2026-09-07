@@ -45,6 +45,26 @@ function setTime(date: Date, h: number, m = 0) {
 async function riallineaDateDemo(venueIds: string[]) {
   if (venueIds.length === 0) return;
 
+  /**
+   * Lo spostamento delle date è una modifica di massa: tocca **tutte** le
+   * prenotazioni del locale. Va bene su un database di prova, dove i dati
+   * sono finti; su quello vero sposterebbe di settimane anche le prenotazioni
+   * inserite a mano durante una dimostrazione.
+   *
+   * Quindi non parte da sola: serve dirlo esplicitamente. Un comando che
+   * modifica migliaia di righe deve essere una scelta, non l'effetto
+   * collaterale di `npm run db:seed`.
+   */
+  if (process.env.SEED_ALLOW_DATE_SHIFT !== "1") {
+    const totale = await db.booking.count({ where: { venueId: { in: venueIds } } });
+    console.log(
+      `→ Trovate ${totale} prenotazioni. NON sposto le date: per farlo esegui\n` +
+        "  SEED_ALLOW_DATE_SHIFT=1 npm run db:seed\n" +
+        "  (da usare solo su un database di prova: sposta tutte le prenotazioni del locale)",
+    );
+    return;
+  }
+
   const ultima = await db.booking.findFirst({
     where: { venueId: { in: venueIds } },
     orderBy: { startsAt: "desc" },

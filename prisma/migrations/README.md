@@ -36,6 +36,23 @@ Il database locale di chi ha scritto la baseline è già a posto.
 Per un database **nuovo e vuoto** invece non serve niente: `migrate deploy` applica la
 baseline e tutto il resto in ordine.
 
+## Il seed non si esegue in produzione
+
+`npm run db:seed` non fa più parte del build. Se lo esegui a mano, sappi che su
+un locale demo già esistente propone di **riallineare le date** di tutte le
+prenotazioni a cavallo di oggi — comodo su un database di prova, disastroso su
+quello vero, dove sposterebbe di settimane anche le prenotazioni inserite a
+mano.
+
+Per questo lo spostamento non parte da solo: va chiesto esplicitamente.
+
+```bash
+SEED_ALLOW_DATE_SHIFT=1 npm run db:seed   # SOLO su un database di prova
+```
+
+Senza quella variabile il seed dice quante prenotazioni ha trovato e non tocca
+niente.
+
 ## Ordine delle migrazioni quando si rinomina o si elimina
 
 Regola: **aggiungere prima del deploy, eliminare dopo.**
