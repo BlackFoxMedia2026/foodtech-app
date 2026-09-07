@@ -652,3 +652,79 @@ export async function getDayAvailability(
 
   return buildDaySlots({ date, partySize, durationMin, now, canale: opts.canale }, { ...context, timezone });
 }
+
+
+/* -------------------------------------------------------------------------- */
+/*  Quando c'è posto, se oggi non ce n'è                                       */
+/* -------------------------------------------------------------------------- */
+
+export type GiornoLibero = {
+  /** Data civile, AAAA-MM-GG. */
+  date: string;
+  /** Come si legge: «venerdì 12 settembre». */
+  label: string;
+  /** Il primo orario libero di quel giorno. */
+  primoOrario: { startsAt: string; label: string };
+};
+
+/** Quanti giorni avanti si guarda, e quante alternative si propongono. */
+const GIORNI_ALTERNATIVE = 21;
+const MAX_ALTERNATIVE = 3;
+
+/**
+ * I primi giorni con posto, dopo quello richiesto.
+ *
+ * Serve alla sola domanda che un cliente si fa davanti a un sabato pieno:
+ * **«e allora quando?»**. Senza una risposta, quella persona chiude la pagina
+ * e cerca un altro ristorante; con una risposta, spesso sposta la cena di un
+ * giorno.
+ *
+ * Il contesto si carica **una volta sola** per tutto l'intervallo e poi si
+ * valutano i giorni in memoria: ventuno letture del database per rispondere a
+ * una domanda sarebbero un modo di rendere lenta la pagina più delicata che
+ * abbiamo.
+ *
+ * Si guarda avanti, mai indietro: proporre ieri non è una proposta.
+ */
+export async function prossimiGiorniLiberi(
+  venueId: string,
+  from: { year: number; month: number; day: number },
+  partySize: number,
+  opts: { durationMin?: number; now?: Date; canale?: Canale; limite?: number } = {},
+): Promise<GiornoLibero[]> {
+  const durationMin = opts.durationMin ?? DEFAULT_DURATION_MIN;
+  const now = opts.now ?? new Date();
+  const limite = opts.limite ?? MAX_ALTERNATIVE;
+
+  const venue = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
+  const timezone = venue?.timezone ?? DEFAULT_TIMEZONE;
+
+  const inizio = zonedTimeToInstant(from, 0, timezone);
+  const fine = new Date(inizio.getTime() + (GIORNI_ALTERNATIVE + 1) * 86_400_000);
+  const context = { ...(await loadAvailabilityContext(venueId, inizio, fine)), timezone };
+
+  const etichetta = new Intl.DateTimeFormat("it-IT", {
+    timeZone: timezone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
+  const trovati: GiornoLibero[] = [];
+  for (let i = 1; i <= GIORNI_ALTERNATIVE && trovati.length < limite; i++) {
+    const istante = new Date(inizio.getTime() + i * 86_400_000);
+    const data = zonedCalendarDate(istante, timezone);
+    const giorno = buildDaySlots({ date: data, partySize, durationMin, now, canale: opts.canale }, context);
+
+    const primo = giorno.shifts.flatMap((s) => s.slots).find((s) => s.available);
+    if (!primo) continue;
+
+    trovati.push({
+      date: giorno.date,
+      label: etichetta.format(new Date(primo.startsAt)),
+      primoOrario: { startsAt: primo.startsAt, label: primo.label },
+    });
+  }
+
+  return trovati;
+}

@@ -235,6 +235,13 @@ export function PublicBookingForm({
             partySize={partySize}
             value={startsAt}
             onChange={setStartsAt}
+            /* Accettare un altro giorno deve costare un tocco: cambia la data
+               e sceglie già l'orario, invece di rimandare al calendario chi ha
+               appena letto che quel giorno è pieno. */
+            onPickDay={(nuovaData, orario) => {
+              setDate(nuovaData);
+              setStartsAt(orario);
+            }}
           />
         </div>
       )}

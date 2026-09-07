@@ -145,6 +145,10 @@ costavano poco e valevano molto.
       → un collegamento tolto viene **spento, non cancellato**: cancellarlo porterebbe via i clic raccolti, e i numeri dell'anno scorso cambierebbero da soli
       → di chi clicca non registriamo niente (né IP né browser): serve a contare, non a profilare
 - [x] **Scheletri di caricamento** sulle sette pagine che ne erano senza (Servizio, Attesa, Menu, Marketing, Campagne, Esperienze, Brigata): hanno la forma vera della pagina, non un rettangolo generico. Uno scheletro che non somiglia a quello che arriva fa saltare il testo sotto gli occhi, ed è peggio di una pagina bianca
+- [x] **«E allora quando?»**: davanti a una giornata piena il widget non dice più solo «non c'è posto», propone i primi tre giorni con posto e l'ora — e toccarne uno cambia data e orario in un colpo
+      → la ricerca parte **solo** quando il giorno scelto è pieno: chi trova posto al primo colpo non paga il conto di una domanda che non ha fatto
+      → tre settimane avanti, con **una sola lettura** del database per tutte: ventuno letture per rispondere a una domanda renderebbero lenta la pagina più delicata che abbiamo
+      → se in tre settimane non c'è niente, si dice: una domanda lasciata in sospeso è peggio di un no
 - [x] **I gruppi grandi non passano da un modulo**: oltre dodici persone il widget smette di chiedere dati e mostra il numero di telefono. Un tavolo così si organizza — due tavoli uniti, a volte un menu concordato — e far compilare tutto per poi scrivere «vi richiamiamo» è il modo di perdere il gruppo e la serata
 - [x] **Finestra di prenotazione online**: con quanto anticipo al massimo, e con quanto preavviso minimo. Le due cose che ogni gestionale serio ha e che qui mancavano
       → **vale solo per il canale pubblico.** Se alle 20:40 squilla il telefono e c'è posto, chi risponde deve poter scrivere quella prenotazione: un software che glielo impedisce viene aggirato con una penna, e da lì in poi la sala e lo schermo non dicono più la stessa cosa

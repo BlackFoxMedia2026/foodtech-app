@@ -239,7 +239,7 @@ Rispetto a CoverManager, SevenRooms, TheFork Manager, Pienissimo:
 
 Da non toccare se non per estenderle:
 
-1. **Il motore di disponibilità** (`availability.ts`, 556 righe) — unica fonte di verità per sala, API e widget, rispetta il fuso del locale, raccoglie *tutti* i motivi di rifiuto, ha 57 verifiche automatiche. È il pezzo migliore del progetto.
+1. **Il motore di disponibilità** (`availability.ts`, 556 righe) — unica fonte di verità per sala, API e widget, rispetta il fuso del locale, raccoglie *tutti* i motivi di rifiuto, ha 59 verifiche automatiche. È il pezzo migliore del progetto.
 2. **L'isolamento fra ristoranti** — implementato correttamente in tutte le route (§4).
 3. **L'assegnazione tavoli con gestione delle collisioni** — lock, 409 con messaggi in chiaro, riprova.
 4. **Il Room Builder e la pianta sala** — zoom, trascinamento, layout salvati, piantina caricabile.
