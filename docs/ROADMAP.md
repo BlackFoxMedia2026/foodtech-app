@@ -98,6 +98,12 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
       → `Order` era pensato per l'asporto (nome e telefono obbligatori, nessun legame con la prenotazione): aggiunto `bookingId` e resi facoltativi i due campi, invece di inventare un nome e un telefono per ogni tavolo
 - [x] **Costo del cibo, il quadro d'insieme**: in Analytics, sul periodo scelto. Materie prime, quello che resta, e la **copertura** — su quanta parte dell'incasso conosciamo il costo. Le percentuali valgono su quella parte e non si estendono al resto: sarebbe una moltiplicazione, non una misura. L'elenco va dal margine più alto al più basso, e risponde con una lista sola a «chi tiene su il conto» e «chi lo affonda»
       → **la catena menu → ordini → costo del cibo è chiusa.** Da qui l'applicazione ha numeri veri dove prima aveva stime
+- [x] **Raccolta punti**: i punti si guadagnano **sui conti chiusi**, non sulle visite né su una spesa stimata — è la ragione per cui questa funzione arriva dopo i conti e non prima. Le due regole (punti per euro, valore di un punto) le dichiara il locale, e senza entrambe la raccolta resta spenta. Si usano come sconto al tavolo; correzione a mano con il motivo obbligatorio
+      → `Guest.loyaltyPoints` era un contatore che nessuno scriveva, come i cinque già smontati. Ora la verità è la somma con il segno delle righe di `LoyaltyTransaction`, e la colonna è una copia aggiornata nella stessa transazione
+      → il valore di uno sconto in punti si **fotografa** quando si usa (`amountCents`), come il prezzo su una riga del conto: cambiare domani quanto vale un punto non riscrive il conto di stasera
+- [x] **Gift card**: si emettono al bancone (serve solo l'importo), si scalano dal conto **anche in più volte** — quello che resta resta sulla carta. Il residuo si calcola dalle righe, non si scala più di quello che c'è, e annullare un utilizzo scrive un movimento negativo che rimette i soldi sulla carta
+      → sul conto, gift card e punti sono **modi di pagare**, non righe: le righe sono quello che è stato mangiato, e serve così com'è al costo del cibo. Sotto il totale compare «da incassare»
+      → una gift card **non è un incasso di oggi**: sposta il momento in cui il denaro è entrato. La Panoramica dice quanta parte dell'incasso di oggi era già pagata, e l'elenco delle carte chiama il residuo col suo nome — un **debito** verso i clienti
 - POS e altri connettori sopra un livello di integrazione astratto
 
 ## Phase 7 — Enterprise

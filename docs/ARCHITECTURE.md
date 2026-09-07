@@ -268,6 +268,76 @@ stessa ragione il confronto con ieri sparisce quando il numero è vero: ieri è
 una stima, e scriverci «▲ 20%» sarebbe un paragone fra due cose diverse
 presentato come una crescita.
 
+### Punti e gift card: due debiti diversi
+
+`src/server/loyalty.ts`, `src/server/gift-cards.ts`.
+
+Sono l'ultima coppia di tabelle che esisteva nello schema senza una riga di
+codice, e portavano con sé i due numeri fasulli di sempre:
+`Guest.loyaltyPoints` e `GiftCard.balanceCents`. Entrambi sono diventati
+**copie**: la verità è la somma con il segno delle righe (`LoyaltyTransaction`
+per i punti, `GiftCardRedemption` per le carte), la colonna si aggiorna nella
+stessa transazione perché chi legge il database non trovi una bugia, e nessun
+controllo si fida della colonna.
+
+**I punti nascono dai conti chiusi**, dentro la stessa transazione che chiude
+il conto. È il motivo per cui la raccolta punti arriva dopo i conti al tavolo e
+non prima: su una spesa stimata avrebbe distribuito premi su cifre inventate.
+Accreditare dopo, in una seconda scrittura, vorrebbe dire che un errore fra le
+due lascia un incasso senza i suoi punti — e nessuno se ne accorge fino al
+reclamo del cliente. La difesa contro il doppio accredito è il conto stesso:
+un solo movimento `EARNED` per `orderId`.
+
+Le **due regole** — quanti punti per euro, quanto vale un punto — le dichiara
+il locale, e valgono solo insieme: metà raccolta farebbe accumulare punti che
+non si possono spendere, o lascerebbe a noi la decisione su quanto vale un
+punto, che è denaro del locale. E il valore di uno sconto **si fotografa**
+quando si usa (`LoyaltyTransaction.amountCents`), esattamente come il prezzo su
+una riga del conto: cambiare domani quanto vale un punto non deve riscrivere il
+conto di stasera.
+
+Cosa **non** c'è, di proposito: la scadenza dei punti. L'enum ha `EXPIRED`, ma
+far scadere i punti è cancellare qualcosa che un cliente considera suo, secondo
+una regola che nessuno qui ha scritto.
+
+Una gift card è una cosa diversa da un coupon: **è denaro già incassato**. Da
+qui tutto il resto — si usa in più volte e il resto resta sulla carta (bruciare
+i 62 € rimasti sarebbe rubarli), non si scala più del residuo, e l'errore dice
+quanto c'è invece di scalare in silenzio quello che trova. Annullare un
+utilizzo non cancella la riga: scrive un **movimento negativo**, come in
+contabilità, e la storia conserva sia lo sbaglio sia la correzione.
+
+Sul conto, punti e gift card **non sono righe**: le righe sono quello che è
+stato mangiato, e servono così come sono al costo del cibo — una riga negativa
+da «sconto» falserebbe l'incasso per piatto e il fuori carta. Sono modi di
+pagare, e stanno sotto il totale insieme alla cifra che interessa al tavolo:
+**da incassare**.
+
+E restano due voci separate perché sono due cose diverse: una gift card sposta
+il momento in cui il denaro è entrato (in cassa c'è andato il giorno in cui è
+stata venduta), uno sconto in punti è incasso a cui il locale rinuncia.
+Sommarle in un unico «sconto» renderebbe impossibile sapere, a fine mese,
+quanto è costata la raccolta punti. Per la stessa ragione la Panoramica dice
+quanta parte dell'incasso di oggi era già pagata, e l'elenco delle carte chiama
+il residuo col suo nome: un debito verso i clienti, non soldi in cassa.
+
+### Il numero del conto non è un conteggio
+
+`src/server/orders.ts`.
+
+`Order.reference` è `YYYYMMDD-NNN` e quel numero era «quanti conti ci sono
+oggi». Sembrava equivalente a «il prossimo» e non lo è: basta cancellare un
+conto perché il conteggio scenda e il candidato successivo ricada su un
+riferimento già assegnato. Il vincolo è unico, quindi non usciva un numero
+doppio — usciva un errore in faccia al cameriere che apre il conto, con il
+tavolo che aspetta. È stato trovato dalla verifica dal vivo, non dalla
+lettura del codice.
+
+Ora si parte dal **più alto già usato più uno**, e se il riferimento risulta
+occupato si riprova col numero dopo: il vincolo è unico su tutta
+l'installazione, e due locali che aprono il loro primo conto della giornata
+nello stesso momento arrivano allo stesso candidato.
+
 ### Gli allergeni non si scrivono a mano
 
 `src/server/menu.ts`.

@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CopyButton } from "@/components/ui/copy-button";
 import { ServiceOrganizationSettings } from "@/components/settings/service-organization-settings";
 import { AvgSpendSettings } from "@/components/settings/avg-spend-settings";
+import { LoyaltySettings } from "@/components/settings/loyalty-settings";
 import { QueuePanel } from "@/components/settings/queue-panel";
 import { jobQueueHealth } from "@/server/jobs/queue";
 import { can } from "@/lib/tenant";
@@ -176,6 +177,21 @@ export default async function SettingsPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Lo scontrino medio era già scritto e importato qui, ma la pagina non
+          lo mostrava: un campo modificabile che nessuno poteva raggiungere.
+          Cioè esattamente la specie di funzione a metà che questo progetto ha
+          il compito di non lasciare in giro. */}
+      <AvgSpendSettings
+        initialCents={ctx.venue.avgSpendCents}
+        canManage={can(ctx.role, "manage_venue")}
+      />
+
+      <LoyaltySettings
+        puntiPerEuro={ctx.venue.loyaltyPointsPerEuro}
+        valorePuntoCents={ctx.venue.loyaltyPointValueCents}
+        canManage={can(ctx.role, "manage_venue")}
+      />
 
       <Card>
         <CardHeader>

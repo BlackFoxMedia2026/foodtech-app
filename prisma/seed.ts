@@ -146,6 +146,54 @@ async function creaCamerieriDemo(venueId: string) {
  * differenza fra un piatto con il margine calcolato e uno senza, che è la
  * situazione vera di un locale che sta cominciando a compilarlo.
  */
+/**
+ * La raccolta punti e due gift card, sulla demo.
+ *
+ * Le regole della raccolta le dichiara il locale, e senza di esse la funzione
+ * resta spenta — giustamente. Sulla demo vanno impostate, altrimenti chi guarda
+ * l'applicazione per la prima volta trova una scheda cliente che dice «la
+ * raccolta è spenta» e non capisce se manca un pezzo.
+ *
+ * Un punto per euro e cinque centesimi il punto: restituisce il 5%, che è la
+ * misura in cui si muove il mestiere.
+ *
+ * Le gift card demo restano **senza utilizzi**: un residuo si crea usandole al
+ * tavolo, e inventare qui degli utilizzi vorrebbe dire scrivere movimenti di
+ * denaro che non sono mai avvenuti.
+ */
+async function creaFedeltaDemo(venueId: string) {
+  await db.venue.update({
+    where: { id: venueId },
+    data: { loyaltyPointsPerEuro: 1, loyaltyPointValueCents: 5 },
+  });
+
+  const gia = await db.giftCard.count({ where: { venueId } });
+  if (gia > 0) return;
+
+  await db.giftCard.createMany({
+    data: [
+      {
+        venueId,
+        code: `REGALO-DEMO${venueId.slice(-4).toUpperCase()}`,
+        initialCents: 10_000,
+        balanceCents: 10_000,
+        recipientName: "Giulia Ferrari",
+        senderName: "Marco Bianchi",
+        message: "Buon anniversario, ci vediamo a cena.",
+        status: "ACTIVE",
+      },
+      {
+        venueId,
+        code: `REGALO-DEMOB${venueId.slice(-3).toUpperCase()}`,
+        initialCents: 5_000,
+        balanceCents: 5_000,
+        status: "ACTIVE",
+      },
+    ],
+    skipDuplicates: true,
+  });
+}
+
 async function creaMenuDemo(venueId: string) {
   const esistenti = await db.menuCategory.count({ where: { venueId } });
   if (esistenti > 0) return;
@@ -241,6 +289,9 @@ async function main() {
     // Anche il menu: chi ha la demo già installata deve vedere la carta senza
     // dover ricreare tutto da zero.
     for (const id of venueIds) await creaMenuDemo(id);
+    // E la raccolta punti: chi ha la demo già installata deve vedere anche
+    // questa senza ricreare niente.
+    for (const id of venueIds) await creaFedeltaDemo(id);
     // La spesa media è dichiarata dal locale: se manca, la stima degli
     // incassi non si mostra. Sulla demo va impostata, altrimenti la
     // Panoramica sembra incompleta.
@@ -467,6 +518,8 @@ async function main() {
     await creaCamerieriDemo(venue.id);
 
     await creaMenuDemo(venue.id);
+
+    await creaFedeltaDemo(venue.id);
 
     // Campagna esempio
     await db.campaign.create({
