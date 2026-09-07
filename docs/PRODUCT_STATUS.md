@@ -35,7 +35,8 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 
 | Modulo | Stato | Note |
 |---|---|---|
-| Sala / pianta tavoli | LIVE | Room Builder, layout salvati, zoom, trascinamento. **Sala Live V2** (stati con icona, unione tavoli, modalità mobile) ancora da fare |
+| Sala / pianta tavoli (configurazione) | LIVE | Room Builder, layout salvati, zoom, trascinamento, assegnazione personale |
+| Sala viva (durante il servizio) | LIVE | Sette stati derivati con colore **e** icona, chi c'è su ogni tavolo con orario e minuti oltre il previsto, tavolate unite mostrate su tutti i tavoli che usano, elenco per stato su telefono al posto di una mappa illeggibile |
 | Assegnazione tavolo a prenotazione | LIVE | Gestione collisioni con lock e 409 |
 | Tavoli (anagrafica) | LIVE | |
 | Camerieri | LIVE | Profili, ricerca, raggruppamento per ruolo |
@@ -84,7 +85,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii |
 | Navigazione mobile | LIVE | Barra in basso con «+» per i gesti rapidi; nessuno scorrimento orizzontale |
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
-| Test | PARTIAL | 134 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati e fotografia del servizio. Nessun end-to-end sul browser |
+| Test | PARTIAL | 153 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio e stati vivi della sala. Nessun end-to-end sul browser |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
 

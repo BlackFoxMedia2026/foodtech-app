@@ -74,6 +74,18 @@ la matrice non verificabile con un test.
 `src/lib/venue-time.ts`; i componenti client leggono il fuso da un contesto montato nel layout
 (`VenueTimeProvider`). Mai `new Date().toISOString()` per ottenere una data: quello è UTC.
 
+### Due piante, due scopi
+
+`/floor` è la pianta con cui si **configura** il locale: disegnare, spostare,
+assegnare il personale. `/service/room` è la sala che si **guarda** durante il
+servizio: chi c'è su ogni tavolo, da quando, quanto manca.
+
+Sono due componenti distinti di proposito. Il renderer del servizio non
+trascina e non salva niente: posiziona i tavoli in percentuale dei limiti del
+disegno, col testo **dentro** il riquadro. Era il difetto della pianta
+precedente in modalità operativa — le pillole appese sotto i tavoli vicini si
+accavallavano fino a coprire i posti.
+
 ### Lo stato del servizio è calcolato, non salvato
 
 `src/server/service.ts` costruisce la fotografia di «cosa sta succedendo

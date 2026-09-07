@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { ServiceSnapshot } from "@/server/service";
 import { ServiceBookingCard } from "@/components/service/service-booking-card";
 import { ServiceWaitlistCard } from "@/components/service/service-waitlist-card";
+import { ServiceSwitch } from "@/components/service/service-switch";
 
 /** Ogni quanto la schermata si riaggiorna da sola. */
 const REFRESH_MS = 30_000;
@@ -43,7 +44,11 @@ export function ServiceView({
   const [window_, setWindow] = useState(60);
   const [colonna, setColonna] = useState<Colonna>("adesso");
   const [aggiornando, setAggiornando] = useState(false);
-  const [ultimo, setUltimo] = useState<Date>(new Date());
+  // Nullo fino al primo aggiornamento: un orologio reso durante il rendering
+  // sul server produce un'ora diversa da quella del browser, React se ne
+  // accorge e sostituisce l'HTML — un errore di idratazione per un dettaglio
+  // che prima del montaggio non ha nemmeno senso mostrare.
+  const [ultimo, setUltimo] = useState<Date | null>(null);
   const inFlight = useRef(false);
 
   const aggiorna = useCallback(
@@ -100,10 +105,13 @@ export function ServiceView({
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-xs text-tertiary-foreground">
-            aggiornato alle{" "}
-            {ultimo.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-          </span>
+          <ServiceSwitch />
+          {ultimo && (
+            <span className="hidden text-xs text-tertiary-foreground sm:inline">
+              aggiornato alle{" "}
+              {ultimo.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+          )}
           <button
             type="button"
             onClick={() => aggiorna()}

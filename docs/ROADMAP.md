@@ -40,7 +40,7 @@ Obiettivo: parità competitiva sul nucleo prenotazioni.
 Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 
 - [x] **Modalità Servizio / reception**: ADESSO / PROSSIMI / ATTESA, per tablet e una mano
-- [ ] Sala Live V2: stati con icona oltre al colore, unione e divisione tavoli, sposta prenotazione, libera tavolo, modalità mobile vera
+- [x] **Sala viva**: sette stati con icona oltre al colore, sposta prenotazione, libera tavolo, elenco per stato su telefono. Le tavolate unite si *leggono* (`combinedTableIds`, rispettato anche dalla disponibilità); **unire e dividere dall'interfaccia** resta da fare
 - [x] Navigazione mobile: barra in basso con «+» centrale (fatta in Phase 1)
 - [ ] Centro controllo servizio: collisioni previste, rischio overbooking, suggerimenti seating
       → i numeri della modalità Servizio sono la base: manca lo strato che li interpreta
