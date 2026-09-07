@@ -71,6 +71,14 @@ model Venue {
   loyaltyPointsPerEuro   Int?
   /// Quanto vale un punto quando si riscatta, in centesimi. Nullo = spenta.
   loyaltyPointValueCents Int?
+  /// Il traguardo: quanti punti servono per il premio, e cos'è il premio.
+  ///
+  /// Uno sconto lineare («100 punti = 5 €») non fa tornare nessuno: è troppo
+  /// piccolo per essere notato. Un traguardo sì — «ti mancano 40 punti alla
+  /// cena omaggio» è la frase che riporta le persone. Nulli = nessun premio,
+  /// e i punti restano solo uno sconto.
+  loyaltyRewardPoints    Int?
+  loyaltyRewardLabel     String?               @db.VarChar(120)
   /// Spesa media per coperto, in centesimi, dichiarata dal locale.
   /// Serve per la stima degli incassi: prima veniva calcolata dalla media di
   /// Guest.totalSpend, un campo che nessuna parte del codice aggiorna — quindi

@@ -98,6 +98,27 @@ export function LoyaltyPanel({
           </div>
         )}
 
+        {saldo.alPremio && (
+          /* «Hai 160 punti» non muove niente. «Ti mancano 40 punti alla cena
+             omaggio» è la frase che fa tornare: è la stessa informazione
+             detta dal lato che interessa al cliente. */
+          <p className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm">
+            {/* Senza pronome: il genere del cliente non lo sappiamo, e
+                indovinarlo su una scheda che il personale legge davanti alla
+                persona è un modo gratuito di sbagliare. */}
+            {saldo.alPremio.mancano === 0 ? (
+              <>
+                Traguardo raggiunto: <strong>{saldo.alPremio.cosa}</strong>.
+              </>
+            ) : (
+              <>
+                Mancano <strong className="tabular-nums">{saldo.alPremio.mancano} punti</strong> per{" "}
+                <strong>{saldo.alPremio.cosa}</strong>.
+              </>
+            )}
+          </p>
+        )}
+
         {apri && (
           <div className="space-y-2 rounded-md border border-border p-3">
             <div className="grid gap-3 sm:grid-cols-[7rem_1fr]">

@@ -208,6 +208,8 @@ export default async function SettingsPage() {
       <LoyaltySettings
         puntiPerEuro={ctx.venue.loyaltyPointsPerEuro}
         valorePuntoCents={ctx.venue.loyaltyPointValueCents}
+        premioPunti={ctx.venue.loyaltyRewardPoints}
+        premioCosa={ctx.venue.loyaltyRewardLabel}
         canManage={can(ctx.role, "manage_venue")}
       />
 

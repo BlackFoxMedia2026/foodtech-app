@@ -46,6 +46,13 @@ export type RegoleFedelta = {
   puntiPerEuro: number;
   /** Quanto vale un punto quando si riscatta, in centesimi. */
   valorePuntoCents: number;
+  /**
+   * Il traguardo, se il locale ne ha messo uno.
+   *
+   * Non serve a calcolare niente: serve a **dirlo**. «Ti mancano 40 punti alla
+   * cena omaggio» è la frase che riporta le persone; «hai 160 punti» non lo è.
+   */
+  premio: { punti: number; cosa: string } | null;
 };
 
 /**
@@ -55,11 +62,23 @@ export type RegoleFedelta = {
  * qualcosa che non si può spendere, e con il valore ma senza i punti non si
  * accumula niente. Mezza raccolta punti è peggio di nessuna.
  */
-export function regoleFedelta(
-  venue: { loyaltyPointsPerEuro: number | null; loyaltyPointValueCents: number | null },
-): RegoleFedelta | null {
+export function regoleFedelta(venue: {
+  loyaltyPointsPerEuro: number | null;
+  loyaltyPointValueCents: number | null;
+  loyaltyRewardPoints?: number | null;
+  loyaltyRewardLabel?: string | null;
+}): RegoleFedelta | null {
   if (!venue.loyaltyPointsPerEuro || !venue.loyaltyPointValueCents) return null;
-  return { puntiPerEuro: venue.loyaltyPointsPerEuro, valorePuntoCents: venue.loyaltyPointValueCents };
+  return {
+    puntiPerEuro: venue.loyaltyPointsPerEuro,
+    valorePuntoCents: venue.loyaltyPointValueCents,
+    // Il premio esiste solo se ci sono **entrambi**: una soglia senza nome è
+    // un numero, un nome senza soglia è una promessa senza condizione.
+    premio:
+      venue.loyaltyRewardPoints && venue.loyaltyRewardLabel
+        ? { punti: venue.loyaltyRewardPoints, cosa: venue.loyaltyRewardLabel }
+        : null,
+  };
 }
 
 export const RegoleInput = z
@@ -67,6 +86,9 @@ export const RegoleInput = z
     /** Vuoto o zero spegne la raccolta. */
     puntiPerEuro: z.union([z.coerce.number().int().min(0).max(1000), z.null()]),
     valorePuntoCents: z.union([z.coerce.number().int().min(0).max(10_000), z.null()]),
+    /** Il traguardo: quanti punti e cosa si vince. Entrambi o nessuno. */
+    premioPunti: z.union([z.coerce.number().int().min(1).max(100_000), z.null()]).optional(),
+    premioCosa: z.union([z.string().trim().max(120), z.null()]).optional(),
   })
   .refine((d) => !d.puntiPerEuro === !d.valorePuntoCents, {
     message: "Servono entrambe le regole: quanti punti per euro e quanto vale un punto.",
@@ -77,13 +99,26 @@ export async function setRegoleFedelta(venueId: string, raw: unknown, opts: { ac
   const data = RegoleInput.parse(raw);
   const spenta = !data.puntiPerEuro || !data.valorePuntoCents;
 
+  // Il premio vale solo con entrambe le parti, e sparisce se la raccolta si
+  // spegne: un traguardo senza punti da accumulare è una promessa vuota.
+  const premioPunti = data.premioPunti ?? null;
+  const premioCosa = data.premioCosa?.trim() || null;
+  const premioValido = !spenta && premioPunti != null && !!premioCosa;
+
   const venue = await db.venue.update({
     where: { id: venueId },
     data: {
       loyaltyPointsPerEuro: spenta ? null : data.puntiPerEuro,
       loyaltyPointValueCents: spenta ? null : data.valorePuntoCents,
+      loyaltyRewardPoints: premioValido ? premioPunti : null,
+      loyaltyRewardLabel: premioValido ? premioCosa : null,
     },
-    select: { loyaltyPointsPerEuro: true, loyaltyPointValueCents: true },
+    select: {
+      loyaltyPointsPerEuro: true,
+      loyaltyPointValueCents: true,
+      loyaltyRewardPoints: true,
+      loyaltyRewardLabel: true,
+    },
   });
 
   await recordAudit(opts.actor, "loyalty.rules_update", "venue", venueId, {
@@ -352,6 +387,8 @@ export async function rettificaPunti(
 export type SaldoFedelta = {
   attiva: boolean;
   punti: number;
+  /** Quanto manca al premio, se il locale ne ha messo uno. */
+  alPremio: { mancano: number; cosa: string; punti: number } | null;
   /** Quanto valgono, se la raccolta è attiva. */
   valoreCents: number | null;
   regole: RegoleFedelta | null;
@@ -363,7 +400,12 @@ export async function getSaldoFedelta(venueId: string, guestId: string): Promise
   const [venue, punti, movimenti] = await Promise.all([
     db.venue.findUnique({
       where: { id: venueId },
-      select: { loyaltyPointsPerEuro: true, loyaltyPointValueCents: true },
+      select: {
+        loyaltyPointsPerEuro: true,
+        loyaltyPointValueCents: true,
+        loyaltyRewardPoints: true,
+        loyaltyRewardLabel: true,
+      },
     }),
     puntiDi(guestId),
     listMovimenti(venueId, guestId),
@@ -373,6 +415,14 @@ export async function getSaldoFedelta(venueId: string, guestId: string): Promise
   return {
     attiva: regole != null,
     punti,
+    alPremio:
+      regole?.premio != null
+        ? {
+            mancano: Math.max(0, regole.premio.punti - punti),
+            cosa: regole.premio.cosa,
+            punti: regole.premio.punti,
+          }
+        : null,
     valoreCents: regole ? valoreInCentesimi(punti, regole) : null,
     regole,
     movimenti,
