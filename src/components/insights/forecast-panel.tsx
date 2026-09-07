@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { CalendarClock, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -34,10 +36,21 @@ function etichettaGiorno(g: DayForecast): string {
 export function ForecastPanel({
   giorni,
   occupazione,
+  inattivi,
 }: {
   giorni: DayForecast[];
   occupazione: WeekdayOccupancy[];
+  /**
+   * Quanti clienti non vengono da un po' e si possono ancora scrivere.
+   * Nullo quando non lo sappiamo: senza, non si propone niente.
+   */
+  inattivi?: number | null;
 }) {
+  // Il primo dell'elenco è già il più vuoto (l'ordine arriva dal server), ma
+  // solo se la sua percentuale è calcolabile: senza capienza dichiarata non
+  // esiste un «più vuoto» da nominare.
+  const giornoPiuVuoto = occupazione.find((r) => r.occupancyPct != null) ?? null;
+
   const conPrevisione = giorni.filter((g) => g.forecastCovers != null);
   const senzaStoria = conPrevisione.length === 0;
 
@@ -117,6 +130,31 @@ export function ForecastPanel({
                 </li>
               ))}
             </ul>
+
+            {/* Da qui in poi il numero diventa un gesto.
+                «Il martedì sei al 54%» non muove niente da solo: muove se
+                accanto c'è chi si può invitare e il pulsante che lo fa. Il
+                segmento non è inventato qui — è la stessa etichetta calcolata
+                che usano le campagne. */}
+            {giornoPiuVuoto && inattivi != null && inattivi > 0 && (
+              <div className="mt-4 border-t border-border pt-3">
+                <p className="text-sm">
+                  Il <strong className="capitalize">{giornoPiuVuoto.label}</strong> è il tuo giorno più vuoto
+                  {giornoPiuVuoto.occupancyPct != null ? ` (${giornoPiuVuoto.occupancyPct}%)` : ""}, e{" "}
+                  <strong>{inattivi}</strong> {inattivi === 1 ? "cliente non viene" : "clienti non vengono"} da un
+                  po&apos;.
+                </p>
+                <Button asChild variant="accent" size="sm" className="mt-2">
+                  <Link
+                    href={`/campaigns/new?segmento=inattivi&nome=${encodeURIComponent(
+                      `Torna a trovarci di ${giornoPiuVuoto.label}`,
+                    )}`}
+                  >
+                    Scrivi a chi non torna
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
