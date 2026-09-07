@@ -113,6 +113,14 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
 - [x] **Cancellazione dei dati di un ospite su richiesta**: `anonymizedAt` era sullo schema e nessuno lo scriveva. Svuota i dati personali nei sette posti dove stanno, dentro una transazione, e **non riscrive i conti** — chi chiede di sparire ha diritto a sparire come persona, non a far sparire una cena servita e pagata
 - POS e altri connettori sopra un livello di integrazione astratto
 
+## Vista settimana (7 settembre 2026)
+
+- [x] **La settimana sui libri**, in Prenotazioni accanto a Elenco e Mappa: sette giorni con coperti, prenotazioni, quante da confermare e quanto è pieno. Si tocca un giorno e si entra in quella serata
+      → tornano **sette totali già sommati**, non l'elenco di sette giorni: una lista di sette giorni andrebbe paginata o troncata, sette totali no
+      → conta la stessa popolazione della previsione (`PRESENTI`, esportata da `forecast.ts`): due schermate che contano persone diverse per lo stesso sabato sono un difetto che questo progetto ha già visto
+      → e la pagina dice in che cosa è diversa dalla previsione, perché due numeri vicini che rispondono a due domande diverse sembrano una contraddizione
+- [ ] Vista mese: per ora no. Su trenta caselle i numeri diventano illeggibili, e la domanda vera («c'è posto sabato?») si fa su una settimana
+
 ## Phase 7 — Enterprise
 
 - Permessi avanzati, multi-locale e multi-brand, SSO, 2FA
