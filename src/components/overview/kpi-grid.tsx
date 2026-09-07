@@ -45,6 +45,7 @@ const SURFACE = {
 export function KpiGrid({
   totalCovers,
   estimatedRevenueCents,
+  incasso,
   currency,
   occupancyPct,
   expectedNoShow,
@@ -52,6 +53,8 @@ export function KpiGrid({
 }: {
   totalCovers: number;
   estimatedRevenueCents: number | null;
+  /** L'incasso vero: `conti: 0` vuol dire «nessun conto chiuso», non «zero euro». */
+  incasso?: { totalCents: number; conti: number } | null;
   currency: string;
   occupancyPct: number;
   expectedNoShow: number;
@@ -69,11 +72,34 @@ export function KpiGrid({
        * coperto. Altrimenti la casella dice cosa manca, invece di riempirsi da
        * sola.
        */
-      label: "Incassi stimati",
-      value: estimatedRevenueCents != null ? formatCurrency(estimatedRevenueCents, currency) : "—",
-      hint: estimatedRevenueCents != null ? undefined : "imposta lo scontrino medio in Impostazioni",
+      /**
+       * Appena qualcuno chiude un conto, questa casella smette di stimare.
+       * Finché nessuno lo fa resta la stima, e si chiama stima: le due cose
+       * non si mescolano, perché sono risposte a due domande diverse.
+       */
+      label: incasso && incasso.conti > 0 ? "Incasso" : "Incassi stimati",
+      value:
+        incasso && incasso.conti > 0
+          ? formatCurrency(incasso.totalCents, currency)
+          : estimatedRevenueCents != null
+            ? formatCurrency(estimatedRevenueCents, currency)
+            : "—",
+      hint:
+        incasso && incasso.conti > 0
+          ? `${incasso.conti} ${incasso.conti === 1 ? "conto chiuso" : "conti chiusi"}`
+          : estimatedRevenueCents != null
+            ? undefined
+            : "imposta lo scontrino medio in Impostazioni",
       icon: Wallet,
-      delta: comparisons.revenue ?? undefined,
+      /**
+       * Nessun confronto quando il numero è l'incasso vero.
+       *
+       * Il confronto con ieri è calcolato sulle **stime**: mettere 38 € veri
+       * contro una stima di ieri e scriverci «▲ 20%» è un paragone fra due
+       * cose diverse presentato come una crescita. Tornerà quando ci saranno
+       * conti chiusi anche nei giorni passati.
+       */
+      delta: incasso && incasso.conti > 0 ? undefined : (comparisons.revenue ?? undefined),
       higherIsBetter: true,
       surface: "brown",
     },

@@ -69,6 +69,8 @@ export type ServiceBooking = {
 export type ServiceSnapshot = {
   now: string;
   timezone: string;
+  /** La valuta del locale: serve al conto del tavolo. */
+  currency: string;
   /** Chi è seduto adesso. */
   seated: ServiceBooking[];
   /** Chi è arrivato e aspetta di essere accomodato. */
@@ -167,7 +169,7 @@ export async function getServiceSnapshot(
   await expireStaleOffers(venueId, now);
 
   const [venue, bookings, tables, waitlist, walkInOggi] = await Promise.all([
-    db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }),
+    db.venue.findUnique({ where: { id: venueId }, select: { timezone: true, currency: true } }),
     loadBookings(venueId, startOfDay(now), endOfDay(now)),
     db.table.findMany({ where: { venueId }, select: { id: true, active: true } }),
     listWaitlist(venueId, { now }),
@@ -217,6 +219,7 @@ export async function getServiceSnapshot(
   return {
     now: now.toISOString(),
     timezone: venue?.timezone ?? "Europe/Rome",
+    currency: venue?.currency ?? "EUR",
     seated,
     arrived,
     late,

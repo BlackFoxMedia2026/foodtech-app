@@ -94,8 +94,9 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
 
 - Loyalty, gift card, Wi-Fi
 - [x] **Menu**: categorie e piatti, allergeni da elenco chiuso, disponibilità, ordine, costo facoltativo con il margine. Più il **menu pubblico** per il QR sul tavolo. Serve a sé, e regge i due passi dopo
-- [ ] **Ordini**: presi al tavolo, collegati alla prenotazione. È il passo che trasforma le stime in euro in incassi veri
-- [ ] **Food cost**: margine per piatto già visibile; manca il quadro d'insieme (quanto rende una serata, quali piatti tengono su il conto). Dipende dagli ordini
+- [x] **Ordini / conto del tavolo**: si apre dalla prenotazione, si cerca un piatto e si tocca. Prezzo fotografato all'ordine, totale dalle righe, fuori carta a mano. Chiuso il conto, la Panoramica smette di stimare e mostra l'**incasso**
+      → `Order` era pensato per l'asporto (nome e telefono obbligatori, nessun legame con la prenotazione): aggiunto `bookingId` e resi facoltativi i due campi, invece di inventare un nome e un telefono per ogni tavolo
+- [ ] **Food cost, il quadro d'insieme**: il margine per piatto c'è, e l'incasso della giornata torna già col costo dei piatti venduti (e con quante righe ne conoscono il costo). Manca la schermata: quanto è rimasto stasera, quali piatti tengono su il conto, quali lo affondano
 - POS e altri connettori sopra un livello di integrazione astratto
 
 ## Phase 7 — Enterprise

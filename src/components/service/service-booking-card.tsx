@@ -10,6 +10,7 @@ import {
   CircleUser,
   CreditCard,
   Phone,
+  Receipt,
   Ticket,
   Timer,
   UserX,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 import type { ServiceBooking } from "@/server/service";
 import { TablePickerDialog } from "@/components/service/table-picker-dialog";
 import { RedeemCouponDialog } from "@/components/coupons/redeem-dialog";
+import { BillDialog } from "@/components/orders/bill-dialog";
 
 const OCCASIONE: Record<string, string> = {
   BIRTHDAY: "Compleanno",
@@ -44,16 +46,19 @@ const OCCASIONE: Record<string, string> = {
 export function ServiceBookingCard({
   booking,
   timezone,
+  currency,
   canManage,
   onChanged,
 }: {
   booking: ServiceBooking;
   timezone: string;
+  currency: string;
   canManage: boolean;
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [contoAperto, setContoAperto] = useState(false);
   const [couponAperto, setCouponAperto] = useState(false);
   const [pickerFor, setPickerFor] = useState<"seat" | "move" | null>(null);
 
@@ -250,6 +255,17 @@ export function ServiceBookingCard({
                   <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               )}
+              {canManage && (booking.status === "SEATED" || booking.status === "ARRIVED") && (
+                <button
+                  type="button"
+                  onClick={() => setContoAperto(true)}
+                  aria-label={`Apri il conto di ${booking.guestName}`}
+                  title="Conto del tavolo"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
+                >
+                  <Receipt className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
               {canManage && booking.status !== "COMPLETED" && (
                 <button
                   type="button"
@@ -287,6 +303,17 @@ export function ServiceBookingCard({
       </div>
 
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+
+      {contoAperto && (
+        <BillDialog
+          open
+          onOpenChange={setContoAperto}
+          bookingId={booking.id}
+          guestName={booking.guestName}
+          currency={currency}
+          onChanged={onChanged}
+        />
+      )}
 
       {couponAperto && (
         <RedeemCouponDialog

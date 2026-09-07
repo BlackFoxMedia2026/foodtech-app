@@ -194,6 +194,7 @@ export function ServiceView({
                   key={b.id}
                   booking={b}
                   timezone={snapshot.timezone}
+                  currency={snapshot.currency}
                   canManage={canManage}
                   onChanged={dopoAzione}
                 />
@@ -208,6 +209,7 @@ export function ServiceView({
                   key={b.id}
                   booking={b}
                   timezone={snapshot.timezone}
+                  currency={snapshot.currency}
                   canManage={canManage}
                   onChanged={dopoAzione}
                 />
@@ -222,6 +224,7 @@ export function ServiceView({
                   key={b.id}
                   booking={b}
                   timezone={snapshot.timezone}
+                  currency={snapshot.currency}
                   canManage={canManage}
                   onChanged={dopoAzione}
                 />
@@ -238,6 +241,7 @@ export function ServiceView({
                     key={b.id}
                     booking={b}
                     timezone={snapshot.timezone}
+                  currency={snapshot.currency}
                     canManage={canManage}
                     onChanged={dopoAzione}
                   />
@@ -286,6 +290,7 @@ export function ServiceView({
                 key={b.id}
                 booking={b}
                 timezone={snapshot.timezone}
+                currency={snapshot.currency}
                 canManage={canManage}
                 onChanged={dopoAzione}
               />
