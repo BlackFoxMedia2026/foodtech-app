@@ -48,17 +48,20 @@ export function BookingsTable({ rows }: { rows: Row[] }) {
   }
 
   return (
+    /* Sette colonne su 390 px non si leggono. Su telefono restano le quattro
+       che servono a riconoscere una prenotazione — ora, chi, quanti, come sta
+       — e spariscono tavolo e provenienza, che si guardano da fermi. */
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <table className="w-full text-sm">
         <thead className="border-b border-border bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground">
           <tr>
-            <th className="px-4 py-3 text-left">Orario</th>
-            <th className="px-4 py-3 text-left">Ospite</th>
-            <th className="px-4 py-3 text-left">Persone</th>
-            <th className="px-4 py-3 text-left">Tavolo</th>
-            <th className="px-4 py-3 text-left">Fonte</th>
-            <th className="px-4 py-3 text-left">Stato</th>
-            <th className="px-4 py-3 text-right">Azioni</th>
+            <th className="px-2 py-3 text-left md:px-4">Orario</th>
+            <th className="px-2 py-3 text-left md:px-4">Ospite</th>
+            <th className="px-2 py-3 text-left md:px-4">Persone</th>
+            <th className="hidden px-4 py-3 text-left md:table-cell">Tavolo</th>
+            <th className="hidden px-4 py-3 text-left md:table-cell">Fonte</th>
+            <th className="px-2 py-3 text-left md:px-4">Stato</th>
+            <th className="px-2 py-3 text-right md:px-4">Azioni</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -70,10 +73,10 @@ export function BookingsTable({ rows }: { rows: Row[] }) {
                 key={b.id}
                 className={`transition-colors ${isPending ? "bg-red-50 hover:bg-red-100" : "hover:bg-secondary/30"}`}
               >
-                <td className="px-4 py-3 font-medium">{formatTime(b.startsAt)}</td>
-                <td className="px-4 py-3">
+                <td className="px-2 py-3 font-medium md:px-4">{formatTime(b.startsAt)}</td>
+                <td className="px-2 py-3 md:px-4">
                   <div className="flex items-center gap-2">
-                    <Avatar className="h-7 w-7">
+                    <Avatar className="hidden h-7 w-7 sm:flex">
                       <AvatarFallback className="text-[10px]">{initials(name)}</AvatarFallback>
                     </Avatar>
                     <div>
@@ -82,11 +85,11 @@ export function BookingsTable({ rows }: { rows: Row[] }) {
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3">{b.partySize}</td>
-                <td className="px-4 py-3 text-muted-foreground">{b.table?.label ?? "—"}</td>
-                <td className="px-4 py-3"><SourceBadge source={b.source} /></td>
-                <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
-                <td className="px-4 py-3">
+                <td className="px-2 py-3 md:px-4">{b.partySize}</td>
+                <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">{b.table?.label ?? "—"}</td>
+                <td className="hidden px-4 py-3 md:table-cell"><SourceBadge source={b.source} /></td>
+                <td className="px-2 py-3 md:px-4"><StatusBadge status={b.status} /></td>
+                <td className="px-2 py-3 md:px-4">
                   <div className="flex items-center justify-end gap-2">
                     {isPending ? (
                       <>
