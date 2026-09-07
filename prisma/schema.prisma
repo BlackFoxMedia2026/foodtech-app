@@ -95,6 +95,19 @@ model Venue {
   wifiPortalLogoUrl      String?
   wifiPortalWelcome      String?               @db.VarChar(500)
   wifiSetupAt            DateTime?
+  /// Il nome della rete e la password che il cliente riceve dopo aver
+  /// lasciato il contatto.
+  ///
+  /// Servono perché il portale funzioni **davvero**: Tavolo non apre la rete —
+  /// quello lo fa il router — e senza una password da mostrare la pagina
+  /// raccoglierebbe un indirizzo email senza dare niente in cambio. È la
+  /// password della rete ospiti, cioè una cosa nata per essere data a
+  /// chiunque entri nel locale.
+  wifiNetworkName        String?               @db.VarChar(64)
+  wifiPassword           String?               @db.VarChar(128)
+  /// Dove mandare la persona dopo: il sito del locale, la carta, oppure
+  /// l'indirizzo con cui il router del locale sblocca la navigazione.
+  wifiRedirectUrl        String?
   calendarToken          String?               @unique
   googlePlaceId          String?
   brevoFolderId          Int?

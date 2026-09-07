@@ -321,6 +321,75 @@ quanto è costata la raccolta punti. Per la stessa ragione la Panoramica dice
 quanta parte dell'incasso di oggi era già pagata, e l'elenco delle carte chiama
 il residuo col suo nome: un debito verso i clienti, non soldi in cassa.
 
+### Uno scambio dichiarato, non una promessa che non possiamo mantenere
+
+`src/server/wifi.ts`.
+
+Il portale Wi-Fi aveva nello schema tutto il contorno — testo di benvenuto,
+note legali, colore, coupon automatico, `WifiLead`, `WifiSession` — e non aveva
+la cosa per cui una persona compila un modulo: **la password**.
+
+**Tavolo non apre la rete.** Lo fa il router del locale, e fingere il contrario
+sarebbe la bugia più grossa possibile in questo modulo: la persona compila,
+noi diciamo «sei online», e lei resta senza internet. Quindi lo scambio è
+scritto in chiaro sulla pagina: lasci un contatto, ricevi il nome della rete e
+la password. Funziona in qualunque locale senza toccare nessun apparato, e chi
+ha un router che sblocca la navigazione da un indirizzo lo mette in
+`wifiRedirectUrl`.
+
+Tre conseguenze:
+
+- **la password non arriva al browser prima del contatto.** `getPortale()` non
+  la restituisce: altrimenti bastava aprire gli strumenti da sviluppatore per
+  leggerla senza compilare niente, e allora tanto valeva scriverla sul menu;
+- **se il locale non ha messo rete e password, la pagina pubblica non
+  esiste** (404). Un modulo che raccoglie indirizzi email senza che nessuno
+  abbia deciso cosa dare in cambio è peggio di una pagina mancante — ed è il
+  modo più rapido di riempire il CRM di `asd@asd.it`;
+- **la password sta in chiaro in tabella e la vede chi compila il modulo**, ed
+  è scritto anche in Impostazioni: è la password della rete ospiti, quella che
+  si darebbe a voce a chi entra. Non quella della rete della cassa.
+
+Il **consenso** è una spunta a parte e non preselezionata, perché un consenso
+preso di nascosto dentro un'altra spunta non è un consenso. Si registra
+sempre, anche quando manca: il valore di un consenso è sapere quando e da dove
+è stato dato, e un rifiuto è un'informazione, non un vuoto. Ma un rifiuto qui
+**non revoca** un consenso dato altrove — chi si era iscritto alla newsletter
+dal sito non deve trovarsi disiscritto per aver saltato una casella mentre
+cercava la rete.
+
+E `WifiSession` resta **vuota di proposito**. Una sessione ha un inizio e una
+fine, e la fine non possiamo osservarla: nessuno ci dice quando un telefono si
+scollega. Righe con `endedAt` sempre nullo e `durationSec` che nessuno calcola
+sarebbero esattamente i contatori mai scritti che questo progetto ha passato
+giorni a togliere dalle pagine. Il momento in cui qualcuno si è collegato lo
+dice già `WifiLead.createdAt`.
+
+### Cercare la persona prima di crearne una copia
+
+`src/server/guest-match.ts`.
+
+`createBooking` creava **sempre** un ospite nuovo: chi prenotava dal sito per
+la terza volta finiva nel CRM per la terza volta. Sul database di sviluppo i
+doppioni non erano ancora comparsi, ma il difetto peggiora da solo — il profilo
+dell'ospite conta le visite di *una* riga, il tetto per cliente dei coupon vale
+per *una* riga, e da oggi anche i punti fedeltà si accumulano su *una* riga.
+Tre copie della stessa persona sono tre saldi che non si sommano, e il cliente
+che chiede «dove sono i miei punti?» ha ragione.
+
+Il riconoscimento è **esatto e prudente**: stessa email (senza distinzione fra
+maiuscole e minuscole) o stesso telefono (senza spazi, punti e trattini),
+dentro lo stesso locale. Niente somiglianza sui nomi: due «Marco Rossi» in un
+ristorante di quartiere sono due persone, e fondere le schede sbagliate è
+peggio che tenerne due — significa mostrare a qualcuno le note riservate di un
+altro.
+
+Su un ospite riconosciuto **si riempiono solo i campi vuoti**. Chi prenota
+scrivendo solo il nome di battesimo non deve cancellare il cognome registrato
+al telefono, e una nota riservata non deve sparire perché qualcuno ha
+ricompilato un modulo: riempire un buco è un miglioramento, riscrivere un dato
+esistente è una perdita.
+
 ### Il numero del conto non è un conteggio
 
 `src/server/orders.ts`.

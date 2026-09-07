@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import Link from "next/link";
-import { Palette } from "lucide-react";
+import { Palette, Wifi } from "lucide-react";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -176,6 +176,24 @@ export default async function SettingsPage() {
             tablesCount={tablesCount}
           />
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Wifi className="h-4 w-4 text-accent" /> Portale Wi-Fi
+            </CardTitle>
+            <CardDescription>
+              {ctx.venue.wifiSetupAt
+                ? `Attivo sulla rete «${ctx.venue.wifiNetworkName}». Chi si collega lascia un contatto.`
+                : "Chiuso: chi si collega lascia un contatto e riceve la password della rete."}
+            </CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/settings/wifi">{ctx.venue.wifiSetupAt ? "Gestisci" : "Configura"}</Link>
+          </Button>
+        </CardHeader>
       </Card>
 
       {/* Lo scontrino medio era già scritto e importato qui, ma la pagina non

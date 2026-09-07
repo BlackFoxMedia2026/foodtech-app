@@ -194,6 +194,37 @@ async function creaFedeltaDemo(venueId: string) {
   });
 }
 
+/**
+ * Il portale Wi-Fi sulla demo.
+ *
+ * Serve una password vera, altrimenti il portale resta chiuso e la pagina
+ * pubblica non esiste — che è il comportamento giusto ma rende invisibile la
+ * funzione a chi guarda la demo. Nessun contatto finto: quelli li lascia chi
+ * apre il portale.
+ */
+async function creaWifiDemo(venueId: string) {
+  // Il nome della rete si ricava da quello del locale: due locali della stessa
+  // demo con la stessa rete «Aurora-Ospiti» erano una svista visibile a
+  // chiunque aprisse il portale del secondo.
+  const venue = await db.venue.findUniqueOrThrow({ where: { id: venueId }, select: { name: true } });
+  const rete = `${venue.name.split(/\s+/)[0]}-Ospiti`;
+
+  await db.venue.update({
+    where: { id: venueId },
+    data: {
+      wifiNetworkName: rete,
+      wifiPassword: "buonacena2026",
+      wifiPortalWelcome: "Benvenuto da noi. Collegati alla rete e resta quanto vuoi.",
+      wifiPortalLegal:
+        "I dati che lasci servono a darti l'accesso alla rete e, solo se lo scegli, a informarti sulle nostre serate. Puoi chiederne la cancellazione in qualsiasi momento scrivendo al locale.",
+      wifiAutoCouponEnabled: true,
+      wifiAutoCouponPercent: 10,
+      wifiAutoCouponDays: 30,
+      wifiSetupAt: new Date(),
+    },
+  });
+}
+
 async function creaMenuDemo(venueId: string) {
   const esistenti = await db.menuCategory.count({ where: { venueId } });
   if (esistenti > 0) return;
@@ -292,6 +323,7 @@ async function main() {
     // E la raccolta punti: chi ha la demo già installata deve vedere anche
     // questa senza ricreare niente.
     for (const id of venueIds) await creaFedeltaDemo(id);
+    for (const id of venueIds) await creaWifiDemo(id);
     // La spesa media è dichiarata dal locale: se manca, la stima degli
     // incassi non si mostra. Sulla demo va impostata, altrimenti la
     // Panoramica sembra incompleta.
@@ -520,6 +552,8 @@ async function main() {
     await creaMenuDemo(venue.id);
 
     await creaFedeltaDemo(venue.id);
+
+    await creaWifiDemo(venue.id);
 
     // Campagna esempio
     await db.campaign.create({

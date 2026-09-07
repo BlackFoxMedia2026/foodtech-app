@@ -118,25 +118,30 @@ resta salvata e l'errore finisce nei log.
 | `GET /api/cron/*` (quattro: `jobs`, `booking-reminders`, `staff-contracts-expiry`, `survey-requests`) | `Authorization: Bearer $CRON_SECRET` | **si rifiutano di partire** se `CRON_SECRET` non è configurato |
 | `POST /api/webhooks/brevo` | token in query | 401 senza token valido |
 | `GET /api/unsubscribe` | token firmato | |
+| `POST /api/public/wifi` | nessuna, per progetto | limite di frequenza (12 in 10 minuti: un tavolo di sei si collega dallo stesso indirizzo); il locale deve avere il portale configurato, altrimenti 409; la password torna **solo** nella risposta a una registrazione riuscita |
 
 ## Cosa resta aperto
 
 Per gravità, non per difficoltà:
 
-1. **Nessuna verifica del contatto sul widget pubblico.** Il limite di frequenza rallenta un
+1. **La password del Wi-Fi sta in chiaro in tabella** (`Venue.wifiPassword`) e la riceve
+   chiunque compili il modulo del portale. È deliberato: è la password della *rete ospiti*,
+   quella che si dà a voce a chi entra nel locale, e in Impostazioni c'è scritto di non usare
+   la rete a cui è collegata la cassa. Resta una cosa da sapere prima di configurarlo.
+2. **Nessuna verifica del contatto sul widget pubblico.** Il limite di frequenza rallenta un
    bot, non lo fermano email e telefono inventati. Serve un captcha o una conferma via link.
-2. **`force: true` su `assign-table`** bypassa il controllo dei posti ed è disponibile a
+3. **`force: true` su `assign-table`** bypassa il controllo dei posti ed è disponibile a
    chiunque abbia `manage_bookings` (quindi anche a `WAITER`), è tracciato ma senza motivo
    obbligatorio. La forzatura in creazione è già passata al modello giusto — motivo
    obbligatorio, azione distinta nel registro (`booking.create_forced`): resta da allineare
    questa.
-3. **Nessun 2FA, nessun recupero password, nessuna scadenza di sessione configurata.**
-4. **Credenziali demo note** (`owner@tavolo.demo`) su un ambiente pubblico.
-5. **I form non hanno `method="post"`**: un invio prima dell'idratazione diventa una GET con i
+4. **Nessun 2FA, nessun recupero password, nessuna scadenza di sessione configurata.**
+5. **Credenziali demo note** (`owner@tavolo.demo`) su un ambiente pubblico.
+6. **I form non hanno `method="post"`**: un invio prima dell'idratazione diventa una GET con i
    campi in query string — su `/sign-in` significa la password nella cronologia e nei log.
-6. **Cancellazioni distruttive** su ospiti, camerieri e tavoli: nessun ripristino possibile,
+7. **Cancellazioni distruttive** su ospiti, camerieri e tavoli: nessun ripristino possibile,
    solo la traccia nel registro.
-7. **Nessuna intestazione di sicurezza** (CSP, HSTS, `X-Frame-Options`). Il middleware è ora il
+8. **Nessuna intestazione di sicurezza** (CSP, HSTS, `X-Frame-Options`). Il middleware è ora il
    posto naturale dove metterle.
 
 ## Se trovi una vulnerabilità

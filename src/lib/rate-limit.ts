@@ -119,6 +119,13 @@ function limite(nome: string, difetto: number): number {
 export const RATE_LIMITS = {
   /** Creazione prenotazione dal widget pubblico: severa, è il bersaglio più esposto. */
   publicBooking: { limit: limite("PUBLIC_BOOKING", 5), windowMs: 10 * 60_000 },
+  /**
+   * Portale Wi-Fi: scrive nel CRM, quindi severo — ma un tavolo di sei
+   * persone si collega tutto dalla stessa rete, e quindi dallo stesso
+   * indirizzo. Cinque tentativi come la prenotazione avrebbero lasciato a
+   * piedi metà del tavolo.
+   */
+  publicWifi: { limit: limite("PUBLIC_WIFI", 12), windowMs: 10 * 60_000 },
   /** Lettura disponibilità: generosa, il widget la interroga a ogni cambio di data. */
   publicAvailability: { limit: limite("PUBLIC_AVAILABILITY", 60), windowMs: 60_000 },
   /** Tentativi di accesso. */
