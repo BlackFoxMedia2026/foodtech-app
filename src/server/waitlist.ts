@@ -164,11 +164,30 @@ export async function addToWaitlist(venueId: string, raw: unknown, actor?: Audit
 /*  Lettura                                                                   */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Oltre questo tempo nessuno sta più aspettando un tavolo.
+ *
+ * Quattro ore: una riga in lista da stamattina, a cena, non è una persona in
+ * attesa — è una riga che nessuno ha chiuso. Tenerla dentro la media
+ * trasformava «attesa media 25 minuti» in «attesa media 538 minuti», e un
+ * numero così non lo legge nessuno due volte.
+ *
+ * Non si chiude da sola: chiudere la riga di qualcuno che magari è ancora al
+ * bancone è peggio che mostrarla. Si dice che c'è, e la decisione resta a chi
+ * è in sala.
+ */
+export const ATTESA_DIMENTICATA_MIN = 240;
+
 export type WaitlistView = WaitlistEntryWithRelations & {
   /** Minuti trascorsi da quando è entrato in lista. */
   waitingMin: number;
   /** Vero quando ha aspettato più della stima: è il momento di dire qualcosa. */
   overdue: boolean;
+  /**
+   * Vero quando è in lista da così tanto che non sta più aspettando.
+   * Resta in elenco, ma non entra nell'attesa media.
+   */
+  dimenticata: boolean;
   /** L'offerta è scaduta ma nessuno l'ha ancora chiusa. */
   offerExpired: boolean;
   isVip: boolean;
@@ -180,6 +199,7 @@ function decorate(entry: WaitlistEntryWithRelations, now: Date): WaitlistView {
     ...entry,
     waitingMin,
     overdue: entry.status === "WAITING" && waitingMin > entry.expectedWaitMin,
+    dimenticata: waitingMin >= ATTESA_DIMENTICATA_MIN,
     offerExpired:
       entry.status === "NOTIFIED" && !!entry.offerExpiresAt && entry.offerExpiresAt.getTime() < now.getTime(),
     isVip: entry.guest?.loyaltyTier === "VIP" || entry.guest?.loyaltyTier === "AMBASSADOR",
@@ -512,14 +532,22 @@ export async function expireStaleOffers(venueId: string, now: Date = new Date())
 /** Numeri per la testa della pagina e, in futuro, per la modalità servizio. */
 export async function waitlistSummary(venueId: string, now: Date = new Date()) {
   const coda = await listWaitlist(venueId, { now });
+
+  // L'attesa media si calcola su chi sta davvero aspettando: una riga di
+  // stamattina rimasta aperta faceva leggere «attesa media 538 min», che è
+  // vero e inutile.
+  const vive = coda.filter((e) => !e.dimenticata);
+
   return {
     inAttesa: coda.filter((e) => e.status === "WAITING").length,
     avvisati: coda.filter((e) => e.status === "NOTIFIED").length,
     confermati: coda.filter((e) => e.status === "CONFIRMED").length,
     personeInCoda: coda.reduce((n, e) => n + e.partySize, 0),
-    attesaMediaMin: coda.length
-      ? Math.round(coda.reduce((n, e) => n + e.waitingMin, 0) / coda.length)
+    attesaMediaMin: vive.length
+      ? Math.round(vive.reduce((n, e) => n + e.waitingMin, 0) / vive.length)
       : 0,
-    inRitardo: coda.filter((e) => e.overdue).length,
+    inRitardo: vive.filter((e) => e.overdue).length,
+    /** Righe che nessuno ha chiuso: da sistemare, non da contare. */
+    dimenticate: coda.filter((e) => e.dimenticata).length,
   };
 }
