@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { NON_PIU_RITARDO_MIN, durataUmana } from "@/lib/durata";
 import { endOfDay, startOfDay } from "@/lib/utils";
-import { findShiftFor, zonedDayAndMinute } from "./availability";
+import { checkAvailability, findShiftFor, zonedDayAndMinute } from "./availability";
 import { getFloorLive } from "./floor-live";
 import { listWaitlist } from "./waitlist";
 
@@ -39,6 +39,7 @@ export type ServiceInsight = {
     | "missed_bookings"
     | "oversized_table"
     | "waitlist_match"
+    | "freed_slot"
     | "shift_over_capacity";
   severity: InsightSeverity;
   title: string;
@@ -69,6 +70,22 @@ export { NON_PIU_RITARDO_MIN };
 const RITARDI_IN_EVIDENZA = 3;
 
 
+/**
+ * Quanto può scostarsi un posto liberato dall'ora che l'ospite aveva chiesto.
+ *
+ * Mezz'ora: chi ha chiesto le 20:30 accetta le 20:00 o le 21:00 e ringrazia;
+ * chi si sente offrire le 22:30 capisce che non lo stiamo ascoltando.
+ */
+const TOLLERANZA_ORARIO_MIN = 30;
+
+/**
+ * Entro quanto deve cadere un posto liberato, per chi non ha chiesto un'ora.
+ *
+ * Chi è in lista senza orario sta aspettando **adesso**, in piedi: un tavolo
+ * fra due ore non è una risposta alla sua attesa.
+ */
+const ATTESA_ACCETTABILE_MIN = 90;
+
 /** Da quanti posti in eccesso un tavolo è «sprecato», se qualcuno aspetta. */
 const OVERSIZED_SPARE_SEATS = 3;
 
@@ -90,7 +107,7 @@ export async function getServiceInsights(
   const now = opts.now ?? new Date();
   const orizzonte = new Date(now.getTime() + HORIZON_MIN * 60_000);
 
-  const [venue, bookings, live, coda, shifts, tables] = await Promise.all([
+  const [venue, bookings, live, coda, shifts, disdette, tables] = await Promise.all([
     db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }),
     db.booking.findMany({
       where: {
@@ -108,12 +125,27 @@ export async function getServiceInsights(
     getFloorLive(venueId, { now }),
     listWaitlist(venueId, { now }),
     db.shift.findMany({ where: { venueId, active: true } }),
+    // Le disdette di oggi per un orario che deve ancora arrivare: sono
+    // l'unica fonte di posti liberi che è anche una **notizia**. Un tavolo
+    // libero da sempre non è successo niente; uno che si libera stasera sì.
+    db.booking.findMany({
+      where: {
+        venueId,
+        deletedAt: null,
+        status: "CANCELLED",
+        startsAt: { gt: now, lte: endOfDay(now) },
+        closedAt: { gte: startOfDay(now) },
+      },
+      include: { guest: { select: { firstName: true, lastName: true } } },
+      orderBy: { startsAt: "asc" },
+      take: 20,
+    }),
     db.table.findMany({ where: { venueId, active: true }, select: { id: true, label: true, seats: true } }),
   ]);
 
   const timezone = venue?.timezone ?? "Europe/Rome";
   const insights: ServiceInsight[] = [];
-  const nome = (b: (typeof bookings)[number]) =>
+  const nome = (b: { guest: { firstName: string; lastName: string | null } | null }) =>
     b.guest ? `${b.guest.firstName}${b.guest.lastName ? ` ${b.guest.lastName}` : ""}` : "Senza nome";
 
   /* ---------------------------------------------------------------------- */
@@ -359,7 +391,53 @@ export async function getServiceInsights(
   }
 
   /* ---------------------------------------------------------------------- */
-  /* 7. Turno oltre la capienza                                             */
+  /* 7. Una disdetta ha liberato un posto, e qualcuno lo aspetta            */
+  /* ---------------------------------------------------------------------- */
+
+  // Il tavolo che si libera all'ultimo è il ricavo che un ristorante perde
+  // più spesso: nessuno ha il tempo di ripescare chi aveva detto di no.
+  //
+  // Tre condizioni prima di proporlo, e sono tutte necessarie:
+  // l'ora deve avere senso per chi aspetta, il posto deve essere **ancora**
+  // libero davvero (nel frattempo può averlo preso qualcun altro), e si dice
+  // una cosa sola: la disdetta più vicina, non l'elenco delle disdette.
+  for (const disdetta of disdette) {
+    const candidato = gruppiInAttesa.find((e) => {
+      if (e.partySize > disdetta.partySize) return false;
+      if (e.desiredAt) {
+        const scarto = Math.abs(disdetta.startsAt.getTime() - e.desiredAt.getTime()) / 60_000;
+        return scarto <= Math.max(e.flexibilityMin, TOLLERANZA_ORARIO_MIN);
+      }
+      // Senza un'ora richiesta, l'attesa è adesso: vale solo un posto vicino.
+      return (disdetta.startsAt.getTime() - now.getTime()) / 60_000 <= ATTESA_ACCETTABILE_MIN;
+    });
+    if (!candidato) continue;
+
+    // La domanda vera non è «c'era una disdetta», è «c'è posto adesso».
+    const esito = await checkAvailability(venueId, {
+      startsAt: disdetta.startsAt,
+      durationMin: disdetta.durationMin,
+      partySize: candidato.partySize,
+    });
+    if (!esito.available) continue;
+
+    const ora = oraLocale(disdetta.startsAt, timezone);
+    insights.push({
+      id: `freed_slot:${disdetta.id}`,
+      kind: "freed_slot",
+      severity: "opportunity",
+      urgenza: Math.max(0, Math.round((disdetta.startsAt.getTime() - now.getTime()) / 60_000)),
+      title: `Alle ${ora} si è liberato un posto per ${disdetta.partySize}`,
+      detail: `${nome(disdetta)} ha disdetto. In lista d'attesa c'è ${candidato.guestName} in ${
+        candidato.partySize
+      }: il posto delle ${ora} è ancora libero.`,
+      action: { label: "Offri il posto", href: "/waitlist" },
+    });
+    break;
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* 8. Turno oltre la capienza                                             */
   /* ---------------------------------------------------------------------- */
 
   const { weekday, minuteOfDay } = zonedDayAndMinute(now, timezone);

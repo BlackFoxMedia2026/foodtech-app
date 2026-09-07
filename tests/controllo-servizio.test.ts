@@ -232,6 +232,174 @@ describe("opportunità", () => {
   });
 });
 
+describe("una disdetta libera un posto", () => {
+  /**
+   * Orologio fissato a mezzogiorno.
+   *
+   * Un posto liberato è per definizione «più tardi, oggi»: girando questi
+   * test alle 23:40, «fra quaranta minuti» cadrebbe domani e l'avviso —
+   * giustamente — non comparirebbe. La prova riguarda la regola, non l'ora in
+   * cui gira.
+   */
+  function mezzogiorno() {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }
+
+  /** Una prenotazione disdetta oggi, per un orario che deve ancora arrivare. */
+  async function disdetta(adesso: Date, minutiDopo: number, partySize = 4) {
+    return db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        partySize,
+        startsAt: new Date(adesso.getTime() + minutiDopo * 60_000),
+        durationMin: 105,
+        status: "CANCELLED",
+        source: "PHONE",
+        closedAt: adesso,
+      },
+    });
+  }
+
+  /** Qualcuno in lista da dieci minuti rispetto all'orologio della prova. */
+  async function inLista(adesso: Date, opts: { partySize: number; desiredAt?: Date; flexibilityMin?: number }) {
+    return db.waitlistEntry.create({
+      data: {
+        venueId,
+        guestName: "Bianchi",
+        partySize: opts.partySize,
+        desiredAt: opts.desiredAt ?? null,
+        flexibilityMin: opts.flexibilityMin ?? 0,
+        createdAt: new Date(adesso.getTime() - 10 * 60_000),
+      },
+    });
+  }
+
+  it("lo dice, con l'ora e chi la aspetta", async () => {
+    await svuota();
+    const adesso = mezzogiorno();
+    await disdetta(adesso, 45, 4);
+    await inLista(adesso, { partySize: 3 });
+
+    const avviso = (await getServiceInsights(venueId, { now: adesso })).find((a) => a.kind === "freed_slot");
+    expect(avviso).toBeDefined();
+    expect(avviso!.severity).toBe("opportunity");
+    // L'ora si legge nel fuso del **locale**: i test girano con TZ=UTC, e
+    // scrivere qui «12:45» sarebbe l'ora del processo, non quella della sala.
+    const oraSala = new Intl.DateTimeFormat("it-IT", {
+      timeZone: "Europe/Rome",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(adesso.getTime() + 45 * 60_000));
+    expect(avviso!.title).toContain(oraSala);
+    expect(avviso!.detail).toContain("Bianchi");
+    expect(avviso!.action?.href).toBe("/waitlist");
+  });
+
+  it("a chi aspetta in piedi non si offre un tavolo fra tre ore", async () => {
+    await svuota();
+    const adesso = mezzogiorno();
+    await disdetta(adesso, 180, 4);
+    await inLista(adesso, { partySize: 3 });
+
+    expect(
+      (await getServiceInsights(venueId, { now: adesso })).find((a) => a.kind === "freed_slot"),
+    ).toBeUndefined();
+  });
+
+  it("ma a chi aveva chiesto proprio quell'ora, sì", async () => {
+    await svuota();
+    const adesso = mezzogiorno();
+    const posto = await disdetta(adesso, 180, 4);
+    await inLista(adesso, { partySize: 3, desiredAt: posto.startsAt });
+
+    expect(
+      (await getServiceInsights(venueId, { now: adesso })).find((a) => a.kind === "freed_slot"),
+    ).toBeDefined();
+  });
+
+  it("chi aveva chiesto un'altra ora resta fuori: non è quello che aveva chiesto", async () => {
+    await svuota();
+    const adesso = mezzogiorno();
+    const posto = await disdetta(adesso, 60, 4);
+    await inLista(adesso, { partySize: 3, desiredAt: new Date(posto.startsAt.getTime() + 120 * 60_000) });
+
+    expect(
+      (await getServiceInsights(venueId, { now: adesso })).find((a) => a.kind === "freed_slot"),
+    ).toBeUndefined();
+  });
+
+  it("un gruppo più grande del posto liberato non ci sta", async () => {
+    await svuota();
+    const adesso = mezzogiorno();
+    await disdetta(adesso, 45, 2);
+    await inLista(adesso, { partySize: 6 });
+
+    expect(
+      (await getServiceInsights(venueId, { now: adesso })).find((a) => a.kind === "freed_slot"),
+    ).toBeUndefined();
+  });
+
+  it("due disdette sono una proposta sola: l'elenco delle disdette non serve a nessuno", async () => {
+    await svuota();
+    const adesso = mezzogiorno();
+    await disdetta(adesso, 30, 4);
+    await disdetta(adesso, 60, 4);
+    await inLista(adesso, { partySize: 3 });
+
+    expect(
+      (await getServiceInsights(venueId, { now: adesso })).filter((a) => a.kind === "freed_slot"),
+    ).toHaveLength(1);
+  });
+
+  it("senza nessuno in lista, una disdetta è solo una disdetta", async () => {
+    await svuota();
+    const adesso = mezzogiorno();
+    await disdetta(adesso, 45, 4);
+
+    expect(
+      (await getServiceInsights(venueId, { now: adesso })).find((a) => a.kind === "freed_slot"),
+    ).toBeUndefined();
+  });
+
+  it("se il turno nel frattempo si è riempito, il posto non è più libero", async () => {
+    await svuota();
+    const adesso = mezzogiorno();
+    const { weekday, minuteOfDay } = zonedDayAndMinute(adesso, "Europe/Rome");
+    await db.shift.create({
+      data: {
+        venueId,
+        name: "Pranzo pieno",
+        weekday,
+        startMinute: minuteOfDay - 60,
+        endMinute: minuteOfDay + 180,
+        capacity: 4,
+      },
+    });
+    await disdetta(adesso, 45, 4);
+    // La capienza è già impegnata da altri: la disdetta non ha liberato niente.
+    await db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        partySize: 4,
+        startsAt: new Date(adesso.getTime() + 45 * 60_000),
+        durationMin: 105,
+        status: "CONFIRMED",
+        source: "PHONE",
+        tableId: t6,
+      },
+    });
+    await inLista(adesso, { partySize: 3 });
+
+    expect(
+      (await getServiceInsights(venueId, { now: adesso })).find((a) => a.kind === "freed_slot"),
+    ).toBeUndefined();
+  });
+});
+
 describe("turno oltre la capienza", () => {
   it("lo segnala, senza dire che è un errore", async () => {
     await svuota();

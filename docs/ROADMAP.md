@@ -43,7 +43,7 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] **Sala viva**: sette stati con icona oltre al colore, sposta prenotazione, libera tavolo, elenco per stato su telefono
 - [x] **Unire e dividere le tavolate dall'interfaccia**: un tocco assegna, due o più uniscono, i posti si sommano sotto gli occhi. Prima `combinedTableIds` si poteva scrivere solo dal database, pur essendo rispettato da tutto il resto
 - [x] Navigazione mobile: barra in basso con «+» centrale (fatta in Phase 1)
-- [x] **Centro controllo servizio**: sette regole deterministiche, ognuna con la sua azione. Restano da aggiungere, quando ci saranno i dati: previsione dei coperti e ottimizzazione dell'occupazione (Phase 5)
+- [x] **Centro controllo servizio**: otto regole deterministiche, ognuna con la sua azione. Restano da aggiungere, quando ci saranno i dati: previsione dei coperti e ottimizzazione dell'occupazione (Phase 5)
 
 ## Phase 3 — Ospiti 🔄 in corso
 
@@ -139,6 +139,7 @@ costavano poco e valevano molto.
 - [x] **Un traguardo nella raccolta punti**: «mancano 40 punti per una bottiglia della casa»
 - [x] **La gift card ferma**: la quarta automazione. Denaro già incassato e cena mai servita: passati i giorni scelti dal locale, chi ha una carta mai toccata riceve il promemoria del credito. Scrive **solo a chi il locale conosce già** — l'indirizzo della carta deve corrispondere a un cliente in archivio con il consenso: una carta comprata da uno sconosciuto per un altro sconosciuto non autorizza nessuna email
       → nasce senza omaggio, e per questa più che per le altre: chi ha già un credito non ha bisogno di uno sconto, e regalarglielo sopra svaluta la carta che ha in mano
+- [x] **Il posto liberato da una disdetta**: quando una prenotazione di oggi salta e in lista d'attesa c'è qualcuno che ci sta, il centro controllo lo dice con l'ora e il nome. Tre condizioni, tutte necessarie: l'ora deve avere senso per chi aspetta (chi ha chiesto le 20:30 non vuole le 22:30; chi aspetta in piedi non vuole un tavolo fra tre ore), il posto deve essere **ancora** libero davvero — nel frattempo può averlo preso qualcun altro — e si dice una disdetta sola, non l'elenco delle disdette
 - [ ] Restano dalla lista UX: dimensione del tavolo per numero di posti sulla mappa, ricerca e filtri nel menu con 100+ piatti, scheletri di caricamento, navigazione per categorie nel menu pubblico
 
 ## Phase 7 — Enterprise

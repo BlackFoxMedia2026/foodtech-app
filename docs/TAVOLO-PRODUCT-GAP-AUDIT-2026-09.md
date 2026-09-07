@@ -44,7 +44,7 @@ Verifiche automatiche: TypeScript pulito, ESLint pulito, nessuna deriva fra sche
 | Prenotazioni (4 canali d'ingresso) | **REAL** | widget, telefono, waitlist, walk-in `[CODE][SCREENSHOT]` |
 | Piantina e assegnazione tavoli | **REAL** | trascinamento, collisioni serializzabili, tavolate `[CODE]` |
 | Sala viva (7 stati) | **REAL** | derivati dai fatti, non da campi `[CODE]` |
-| Centro controllo (7 regole) | **REAL** | deterministico, ogni regola col suo rimedio `[CODE]` |
+| Centro controllo (8 regole) | **REAL** | deterministico, ogni regola col suo rimedio `[CODE]` |
 | Lista d'attesa | **REAL** | offerta con link firmato e scadenza, conversione `[CODE]` |
 | CRM comportamentale | **REAL** | profilo calcolato dalle prenotazioni, etichette con motivo `[CODE]` |
 | Menu + allergeni | **REAL** | 14 allergeni da elenco chiuso, menu pubblico `[CODE]` |
@@ -94,7 +94,7 @@ Recupero di **§9 di `docs/REALITY-CHECK-2026-09.md`** `[PREVIOUS AUDIT]` — l'
 | Caparra / garanzia con carta | CoverManager | «assente — peso **alto**, è la richiesta numero uno contro i no-show» | A | A (schema pronto, zero codice) `[CODE]` | 🔴 **ANCORA MANCANTE** |
 | Waitlist operativa | CoverManager | «schema pronto, zero codice — alto» | B | D/E: posizione, offerta con link firmato e scadenza, conversione, attesa media depurata dalle righe dimenticate `[CODE]` | 🟢 RISOLTO |
 | Promemoria automatici | tutti | «assente — alto» | A | C: motore completo, 24h e 3h, conferma e annullo dal link; **canale spento** `[CODE]` | 🟡 PARZIALE |
-| Modalità servizio / reception | CoverManager | «assente — alto, è il differenziatore possibile» | A | E: Servizio + sala viva a 7 stati + centro controllo a 7 regole `[CODE][SCREENSHOT]` | 🔵 **TAVOLO ORA È MIGLIORE** (§ *Advantages*) |
+| Modalità servizio / reception | CoverManager | «assente — alto, è il differenziatore possibile» | A | E: Servizio + sala viva a 7 stati + centro controllo a 8 regole `[CODE][SCREENSHOT]` | 🔵 **TAVOLO ORA È MIGLIORE** (§ *Advantages*) |
 | CRM con LTV, tag, comportamento | SevenRooms, Pienissimo | «anagrafica sola — alto» | B | D: profilo calcolato, etichette col motivo, cronologia; LTV **stimato e dichiarato tale** `[CODE]` | 🟢 RISOLTO |
 | Automazioni marketing | Pienissimo | «assente — medio-alto» | A | C: tre automazioni con anteprima destinatari e omaggio personale; invio spento `[CODE]` | 🟡 PARZIALE |
 | Recensioni e NPS | CoverManager | «assente — medio» | A | C: NPS e sondaggio completi; **nessun ponte verso Google/TripAdvisor** `[CODE]` | 🟡 PARZIALE |
@@ -174,7 +174,7 @@ Assenti: **booking window e cutoff** configurabili, **overbooking controllato**,
 
 **Stato: E — è l'area più forte del prodotto.** `[CODE][SCREENSHOT]`
 
-Presenti: piantina con sale multiple, tavoli, capienza, unione e divisione, trascinamento, sette stati derivati dai fatti, ritardo, «quasi libero», walk-in, conversione dalla waitlist, centro controllo con sette regole deterministiche, ognuna con il posto dove intervenire.
+Presenti: piantina con sale multiple, tavoli, capienza, unione e divisione, trascinamento, sette stati derivati dai fatti, ritardo, «quasi libero», walk-in, conversione dalla waitlist, centro controllo con otto regole deterministiche, ognuna con il posto dove intervenire — l'ottava, aggiunta dopo questo audit, è **il posto liberato da una disdetta offerto a chi è in lista**.
 
 Alla domanda del brief — *rappresenta solo lo stato o aiuta a decidere?* — la risposta è: **aiuta a decidere**, ed è raro. Il centro controllo non mostra dati, dice cosa sta per andare storto e dove rimediare.
 
@@ -273,7 +273,7 @@ Valutazione delle ricette proposte dal brief. Colonne: impatto, complessità, da
 | NPS promotore → recensione | **alto** | M | ci sono; serve il ponte alle piattaforme | email | sì | ⭐ vedi *Reputation* |
 | Giorno debole | alto | **L** | serve occupazione prevista + segmento compatibile | email | sì | ⭐ candidata forte, ma è **una campagna assistita**, non un'automazione silenziosa |
 | No-show → follow-up | medio | S | ci sono | email | sì | 🟡 delicato: scrivere a chi non si è presentato può irritare |
-| Disdetta → waitlist | **alto** | M | ci sono | in-app | sì | ⭐ **operativa, non marketing**: il tavolo liberato va offerto subito |
+| Disdetta → waitlist | **alto** | M | ci sono | in-app | sì | ✅ **fatta**: è nel centro controllo, non nel marketing — il tavolo liberato va offerto subito |
 | Anniversario, alta frequenza, alto spendente, VIP, cliente perso | medio | S/M | ci sono | email | sì | 🟡 buone, ma sono **varianti di segmento** della stessa automazione: non moltiplicare il catalogo |
 
 `[INFERENCE]` Il catalogo chiuso resta la scelta giusta. Le uniche due da aggiungere davvero erano **gift card inutilizzata** (fatta) e **promotore → recensione**; la terza candidata (**disdetta → waitlist**) non è marketing ma servizio, e va nel centro controllo.
