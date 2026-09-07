@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { TAG_RULES } from "./guest-intelligence";
 import { brevoAdapter } from "@/server/marketing/brevo-adapter";
 import type { EmailProviderAdapter, NormalizedEventType } from "@/server/marketing/email-provider";
 import type { Prisma } from "@prisma/client";
@@ -27,8 +28,35 @@ const adapter: EmailProviderAdapter = brevoAdapter;
  * affidabili: i contatori vengono riallineati alle prenotazioni vere
  * (vedi server/guest-intelligence.ts, refreshGuestStats).
  */
+/**
+ * Le etichette calcolate su cui si può costruire un segmento.
+ *
+ * Sono un sottoinsieme di quelle che compaiono sulla scheda ospite: qui stanno
+ * solo le esprimibili come condizione sul database, perché un segmento deve
+ * risolversi in una query e non nel caricare tutti i clienti per calcolarli uno
+ * per uno. «Viene in gruppo» per esempio richiede la media dei coperti, che non
+ * è una colonna: resta sulla scheda e non fra i segmenti, finché non ci sarà un
+ * valore precalcolato.
+ *
+ * Funzionano perché i contatori sono veri: fino a settembre 2026
+ * `totalVisits`, `lastVisitAt` e `noShowCount` non li aggiornava nessuno.
+ * Vedi server/guest-intelligence.ts.
+ */
+export const AUDIENCE_TAGS = {
+  abituali: "Clienti abituali",
+  a_rischio: "A rischio di perderli",
+  inattivi: "Inattivi",
+  prima_volta: "Venuti una volta sola",
+  assenze: "Con assenze ripetute",
+  mai_venuti: "Mai venuti",
+} as const;
+
+export type AudienceTag = keyof typeof AUDIENCE_TAGS;
+
 export const SegmentFilter = z.object({
   tags: z.array(z.string()).optional(),
+  /** Un'etichetta calcolata: vedi AUDIENCE_TAGS. */
+  audienceTag: z.enum(["abituali", "a_rischio", "inattivi", "prima_volta", "assenze", "mai_venuti"]).optional(),
   loyaltyTier: z.enum(["NEW", "REGULAR", "VIP", "AMBASSADOR"]).optional(),
   minTotalVisits: z.number().int().min(0).optional(),
   inactiveDays: z.number().int().min(0).optional(),
@@ -129,6 +157,40 @@ function buildSegmentWhere(venueId: string, segment: SegmentFilterType): Prisma.
 
   if (segment.tags && segment.tags.length > 0) {
     where.tags = { hasSome: segment.tags };
+  }
+
+  // Le etichette calcolate, tradotte nelle stesse soglie che usa la scheda
+  // ospite (TAG_RULES): un cliente etichettato «a rischio» nella sua scheda
+  // deve finire nel segmento «a rischio», altrimenti sono due verità diverse.
+  if (segment.audienceTag) {
+    const giorni = (n: number) => new Date(Date.now() - n * 86_400_000);
+    const aRischio = giorni(TAG_RULES.atRiskDays);
+    const inattivo = giorni(TAG_RULES.inactiveDays);
+
+    switch (segment.audienceTag) {
+      case "abituali":
+        and.push({ totalVisits: { gte: TAG_RULES.regularVisits }, lastVisitAt: { gt: aRischio } });
+        break;
+      case "a_rischio":
+        // Era abituale e ha smesso, ma non da tanto da essere perso.
+        and.push({
+          totalVisits: { gte: TAG_RULES.regularVisits },
+          lastVisitAt: { lte: aRischio, gt: inattivo },
+        });
+        break;
+      case "inattivi":
+        and.push({ totalVisits: { gt: 0 }, lastVisitAt: { lte: inattivo } });
+        break;
+      case "prima_volta":
+        and.push({ totalVisits: 1 });
+        break;
+      case "assenze":
+        and.push({ noShowCount: { gte: 2 } });
+        break;
+      case "mai_venuti":
+        and.push({ totalVisits: 0 });
+        break;
+    }
   }
   if (segment.loyaltyTier) {
     where.loyaltyTier = segment.loyaltyTier;
