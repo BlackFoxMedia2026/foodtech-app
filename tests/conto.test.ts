@@ -40,6 +40,18 @@ let bookingId = "";
 let categoriaId = "";
 const TZ = "Europe/Rome";
 
+/**
+ * «Oggi» nel fuso del **locale**, non in quello del processo.
+ *
+ * I test girano con TZ=UTC: fra mezzanotte e le due, ora di Roma, la data UTC
+ * è ancora quella di ieri, e la prova chiedeva l'incasso di un giorno diverso
+ * da quello in cui aveva appena chiuso i conti. Passava di giorno e falliva
+ * la notte — che è il difetto peggiore di un test.
+ */
+function oggiInSala() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
+}
+
 const attore = () => ({ userId: "u1", email: "p@test.local", orgId, venueId, ip: null, userAgent: null });
 
 async function prenotazione(venue = venueId) {
@@ -221,7 +233,7 @@ describe("chiudere", () => {
     expect(annullato.status).toBe("CANCELLED");
     expect(await db.order.count({ where: { id: c.id } })).toBe(1);
 
-    const oggi = new Date().toISOString().slice(0, 10);
+    const oggi = oggiInSala();
     expect((await incassoDelGiorno(venueId, oggi, TZ)).conti).toBe(0);
   });
 });
@@ -236,7 +248,7 @@ describe("l'incasso della giornata", () => {
   }
 
   it("nessun conto chiuso non vuol dire zero euro", async () => {
-    const oggi = new Date().toISOString().slice(0, 10);
+    const oggi = oggiInSala();
     const esito = await incassoDelGiorno(venueId, oggi, TZ);
     // È la distinzione che questo progetto ha passato giorni a rimettere a
     // posto: «non lo sappiamo» non è «zero».
@@ -248,7 +260,7 @@ describe("l'incasso della giornata", () => {
   it("somma i conti chiusi della giornata", async () => {
     await contoChiuso(1400, 2);
     await contoChiuso(900);
-    const oggi = new Date().toISOString().slice(0, 10);
+    const oggi = oggiInSala();
     const esito = await incassoDelGiorno(venueId, oggi, TZ);
     expect(esito.conti).toBe(2);
     expect(esito.totalCents).toBe(2 * 1400 + 900);
@@ -257,7 +269,7 @@ describe("l'incasso della giornata", () => {
   it("porta anche il costo, e dice su quante righe lo conosce", async () => {
     await contoChiuso(1400, 2, 350);
     await contoChiuso(900); // senza costo dichiarato
-    const oggi = new Date().toISOString().slice(0, 10);
+    const oggi = oggiInSala();
     const esito = await incassoDelGiorno(venueId, oggi, TZ);
 
     expect(esito.costoCents).toBe(2 * 350);
@@ -269,7 +281,7 @@ describe("l'incasso della giornata", () => {
 
   it("i conti di un altro locale non entrano", async () => {
     await contoChiuso(1400);
-    const oggi = new Date().toISOString().slice(0, 10);
+    const oggi = oggiInSala();
     expect((await incassoDelGiorno(altroVenueId, oggi, TZ)).conti).toBe(0);
   });
 });
