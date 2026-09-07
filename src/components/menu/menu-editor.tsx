@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ExternalLink, Pencil, Plus, Trash2, UtensilsCrossed } from "lucide-react";
+import { ArrowDown, ArrowUp, ExternalLink, Pencil, Plus, Search, Trash2, UtensilsCrossed } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,33 @@ import { MenuItemDialog } from "@/components/menu/menu-item-dialog";
  * Il margine compare solo dove il costo è dichiarato. È l'unico numero in euro
  * di questa applicazione che non è una stima: prezzo e costo li scrive il
  * locale, non li deduciamo noi.
+ *
+ * **Cercare e filtrare compaiono solo quando servono.** Su dodici piatti si
+ * legge tutto; su centoventi, trovare «tagliata» scorrendo è il momento in cui
+ * si smette di tenere aggiornato il menu. E quando un filtro è acceso le
+ * frecce spariscono: riordinare un elenco parziale manderebbe al server un
+ * ordine che non è quello vero.
  */
+
+/** Da quanti piatti in su la ricerca serve più di quanto ingombri. */
+const SOGLIA_RICERCA = 12;
+
+/** Senza accenti e in minuscolo: «purè» si trova scrivendo «pure». */
+function normalizza(t: string): string {
+  return t
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+const FILTRI = [
+  { chiave: "tutti", etichetta: "Tutti" },
+  { chiave: "finiti", etichetta: "Finiti" },
+  { chiave: "senza_costo", etichetta: "Senza costo" },
+  { chiave: "nascosti", etichetta: "Nascosti" },
+] as const;
+
+type Filtro = (typeof FILTRI)[number]["chiave"];
 export function MenuEditor({
   categorie,
   venueSlug,
@@ -44,6 +70,8 @@ export function MenuEditor({
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ricerca, setRicerca] = useState("");
+  const [filtro, setFiltro] = useState<Filtro>("tutti");
 
   async function chiama(chiave: string, url: string, init: RequestInit, fallback: string) {
     setBusy(chiave);
@@ -98,6 +126,31 @@ export function MenuEditor({
 
   const idCategorie = categorie.map((c) => c.id);
 
+  /* ------------------------------------------------------------------ */
+  /*  Cercare e filtrare                                                */
+  /* ------------------------------------------------------------------ */
+
+  const totalePiatti = categorie.reduce((n, c) => n + c.items.length, 0);
+  const cercabile = totalePiatti >= SOGLIA_RICERCA;
+  const q = normalizza(ricerca.trim());
+  const filtrando = q !== "" || filtro !== "tutti";
+
+  function tieni(i: MenuItemView, categoriaAttiva: boolean) {
+    if (q && !normalizza(`${i.name} ${i.description ?? ""}`).includes(q)) return false;
+    if (filtro === "finiti") return !i.available;
+    if (filtro === "senza_costo") return i.marginPct == null;
+    if (filtro === "nascosti") return !categoriaAttiva;
+    return true;
+  }
+
+  const visibili = filtrando
+    ? categorie
+        .map((c) => ({ ...c, items: c.items.filter((i) => tieni(i, c.active)) }))
+        .filter((c) => c.items.length > 0)
+    : categorie;
+
+  const trovati = visibili.reduce((n, c) => n + c.items.length, 0);
+
   return (
     <>
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -117,6 +170,60 @@ export function MenuEditor({
       </header>
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+
+      {cercabile && (
+        <div className="mt-5 space-y-2">
+          <div className="relative max-w-sm">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              value={ricerca}
+              onChange={(e) => setRicerca(e.target.value)}
+              placeholder={`Cerca fra ${totalePiatti} piatti`}
+              aria-label="Cerca un piatto"
+              className="pl-9"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {FILTRI.map((f) => (
+              <button
+                key={f.chiave}
+                type="button"
+                aria-pressed={filtro === f.chiave}
+                onClick={() => setFiltro(f.chiave)}
+                className={`min-h-[36px] rounded-full border px-3 text-sm transition-colors ${
+                  filtro === f.chiave
+                    ? "border-cream bg-cream text-clay-ink"
+                    : "border-border text-muted-foreground hover:bg-current/10"
+                }`}
+              >
+                {f.etichetta}
+              </button>
+            ))}
+            {filtrando && (
+              <span className="text-sm text-muted-foreground">
+                {trovati === 0
+                  ? "Nessun piatto"
+                  : `${trovati} ${trovati === 1 ? "piatto" : "piatti"} su ${totalePiatti}`}
+                {" · "}
+                <button type="button" onClick={() => { setRicerca(""); setFiltro("tutti"); }} className="underline">
+                  mostra tutto
+                </button>
+              </span>
+            )}
+          </div>
+
+          {filtrando && (
+            <p className="text-xs text-tertiary-foreground">
+              Mentre cerchi, l&apos;ordine non si cambia: spostare un piatto in un elenco parziale
+              riscriverebbe l&apos;ordine vero con quello che vedi adesso.
+            </p>
+          )}
+        </div>
+      )}
 
       {categorie.length === 0 ? (
         <div className="mt-6 space-y-4">
@@ -142,7 +249,13 @@ export function MenuEditor({
         </div>
       ) : (
         <div className="mt-6 space-y-4">
-          {categorie.map((c, indiceCategoria) => {
+          {filtrando && visibili.length === 0 && (
+            <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">
+              Nessun piatto con questo nome o in questa condizione.
+            </p>
+          )}
+
+          {visibili.map((c, indiceCategoria) => {
             const idPiatti = c.items.map((i) => i.id);
             return (
               <Card key={c.id}>
@@ -157,6 +270,8 @@ export function MenuEditor({
 
                   {canEdit && (
                     <div className="flex items-center gap-1">
+                      {!filtrando && (
+                      <>
                       <button
                         type="button"
                         aria-label={`Sposta ${c.name} in su`}
@@ -175,6 +290,8 @@ export function MenuEditor({
                       >
                         <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
+                      </>
+                      )}
 
                       <label
                         htmlFor={`cat-attiva-${c.id}`}
@@ -257,6 +374,8 @@ export function MenuEditor({
 
                           {canEdit && (
                             <div className="flex items-center gap-1">
+                              {!filtrando && (
+                              <>
                               <button
                                 type="button"
                                 aria-label={`Sposta ${i.name} in su`}
@@ -275,6 +394,8 @@ export function MenuEditor({
                               >
                                 <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
                               </button>
+                              </>
+                              )}
                               <button
                                 type="button"
                                 aria-label={`Modifica ${i.name}`}
