@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { StatCard } from "@/components/overview/stat-card";
 import { NpsPanel } from "@/components/surveys/nps-panel";
 import { ForecastPanel } from "@/components/insights/forecast-panel";
+import { FoodCostPanel } from "@/components/insights/food-cost-panel";
+import { getFoodCost } from "@/server/food-cost";
 import { getOccupancyByWeekday, getWeekForecast } from "@/server/forecast";
 import { getSurveyStats } from "@/server/surveys";
 import { Button } from "@/components/ui/button";
@@ -65,7 +67,7 @@ export default async function InsightsPage({
 }) {
   const ctx = await getActiveVenue();
   const { range, from, to } = computeRange(searchParams);
-  const [a, prev, nps, previsione, occupazione] = await Promise.all([
+  const [a, prev, nps, previsione, occupazione, foodCost] = await Promise.all([
     getAnalytics(ctx.venueId, from, to),
     getPreviousPeriodMetrics(ctx.venueId, from, to),
     getSurveyStats(ctx.venueId, { days: Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000)) }),
@@ -73,6 +75,9 @@ export default async function InsightsPage({
     // riguarda il passato.
     getWeekForecast(ctx.venueId),
     getOccupancyByWeekday(ctx.venueId),
+    // Il costo del cibo segue il periodo scelto: è un rendiconto, non una
+    // fotografia di adesso.
+    getFoodCost(ctx.venueId, from, to),
   ]);
 
   const insights = generateInsights({
@@ -97,6 +102,8 @@ export default async function InsightsPage({
         </div>
         <PeriodSelector range={range} from={from.toISOString().slice(0, 10)} to={to.toISOString().slice(0, 10)} />
       </header>
+
+      <FoodCostPanel report={foodCost} currency={ctx.venue.currency} />
 
       <ForecastPanel giorni={previsione} occupazione={occupazione} />
 

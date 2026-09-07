@@ -206,6 +206,28 @@ Due conseguenze pratiche:
 Nell'invio di prova il codice è dichiaratamente finto (`CODICE-DI-PROVA`):
 creare un coupon vero per una prova vorrebbe dire regalare qualcosa a nessuno.
 
+### Una percentuale che non si estrapola
+
+`src/server/food-cost.ts`.
+
+La tentazione, in un calcolo di food cost, è estendere: se il costo è
+dichiarato su metà dei piatti venduti, la percentuale «del locale» si ottiene
+moltiplicando quella metà per due. Sarebbe una moltiplicazione, non una
+misura, e un ristoratore che ci crede alza i prezzi sbagliati.
+
+Quindi la percentuale si calcola **solo sulla parte coperta**, e accanto c'è
+scritto quanta parte è coperta: «valgono sui 91 € di cui conosciamo il costo,
+non su tutto l'incasso». I piatti senza costo dichiarato non entrano nel
+calcolo e non spariscono — stanno in un elenco a parte, che è anche la lista
+di cose da completare. Il fuori carta (una riga scritta a mano, senza piatto
+del menu) non può avere un costo, e viene contato come tale invece di essere
+ignorato in silenzio.
+
+E nessuna soglia inventata su cosa sia un margine «buono»: cambia troppo fra
+un antipasto e una bottiglia, e un colore rosso deciso da noi sarebbe un
+giudizio travestito da dato. L'elenco è ordinato dal margine più alto al più
+basso, e questo risponde a due domande con una lista sola.
+
 ### Il prezzo si fotografa quando si ordina
 
 `src/server/orders.ts`.
