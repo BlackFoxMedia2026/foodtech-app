@@ -109,6 +109,7 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
       → `WifiSession` resta **non scritta di proposito**: una sessione ha una fine, e la fine non possiamo vederla. Righe con `endedAt` sempre vuoto sarebbero i contatori mai scritti che abbiamo passato giorni a togliere
 - [x] **Riconoscimento del cliente**: prenotazioni dal sito e contatti dal Wi-Fi cercano la persona che c'è già prima di crearne una copia
       → `createBooking` creava **sempre** un ospite nuovo: chi prenotava dal sito per la terza volta finiva nel CRM per la terza volta. Nessun doppione era ancora comparso, ma con i punti fedeltà tre copie sono tre saldi che non si sommano
+- [x] **Cancellazione dei dati di un ospite su richiesta**: `anonymizedAt` era sullo schema e nessuno lo scriveva. Svuota i dati personali nei sette posti dove stanno, dentro una transazione, e **non riscrive i conti** — chi chiede di sparire ha diritto a sparire come persona, non a far sparire una cena servita e pagata
 - POS e altri connettori sopra un livello di integrazione astratto
 
 ## Phase 7 — Enterprise

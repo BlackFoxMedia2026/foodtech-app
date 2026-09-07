@@ -169,9 +169,35 @@ Per gravità, non per difficoltà:
 7. **Cancellazioni distruttive** su ospiti, camerieri e tavoli: nessun ripristino possibile,
    solo la traccia nel registro.
 
-8. **Cancellazione dei dati di un ospite su richiesta**: `anonymizedAt` esiste sullo schema e
-   il portale Wi-Fi raccoglie contatti, ma non c'è una funzione che esegua la richiesta di
-   cancellazione — oggi si fa a mano sul database.
+8. **Nessuna esportazione dei dati di un ospite.** La cancellazione su richiesta ora c'è; la
+   richiesta di *accesso* ai propri dati si evade ancora a mano. È la metà più facile: gli
+   stessi sette posti, letti invece che svuotati.
+
+## Cancellare i dati di una persona
+
+`src/server/guest-erasure.ts`, dalla scheda del cliente, solo `manage_venue`, motivo scritto
+obbligatorio, registrato con nome e ora.
+
+**Non si cancella la riga dell'ospite**: cancellarla porterebbe via le prenotazioni collegate
+— quindi i coperti, quindi l'incasso — e il locale scoprirebbe a fine mese di aver perso tre
+serate perché una persona ha esercitato un suo diritto. La riga resta, vuota e segnata.
+
+I dati stanno in **sette posti**, non uno, e la funzione li tocca tutti dentro una sola
+transazione:
+
+| Dove | Cosa sparisce | Cosa resta |
+|---|---|---|
+| `Guest` | nome, cognome, email, telefono, compleanno, allergie, note riservate, preferenze, etichette, consenso | visite, spesa, no-show, ultima visita (numeri sull'andamento, non su di lei) |
+| `Booking` | `notes`, `internalNotes` | data, coperti, stato, tavolo |
+| `WifiLead` | nome, email, telefono, IP, dispositivo | che un accesso c'è stato, e quando |
+| `MessageLog` | destinatario, oggetto, anteprima | che è stato inviato e quando (serve a non rimandarlo) |
+| `ConsentLog` | IP, dispositivo | la scelta e la data: è la prova di cosa è stato acconsentito |
+| `SurveyResponse` | il commento scritto di suo pugno | il voto |
+| `Order` | nome, telefono, email, note scritte sul conto | il conto e le sue righe: incasso e costo del cibo |
+
+È **irreversibile**, e viene detto prima: i dati vengono sovrascritti, non spostati in un
+archivio. Prima di confermare, la finestra mostra due elenchi — cosa sparisce e cosa resta —
+perché la paura di chi preme quel pulsante è di cancellare un mese di incassi, e non succede.
 
 ## Se trovi una vulnerabilità
 
