@@ -120,6 +120,24 @@ resta salvata e l'errore finisce nei log.
 | `GET /api/unsubscribe` | token firmato | |
 | `POST /api/public/wifi` | nessuna, per progetto | limite di frequenza (12 in 10 minuti: un tavolo di sei si collega dallo stesso indirizzo); il locale deve avere il portale configurato, altrimenti 409; la password torna **solo** nella risposta a una registrazione riuscita |
 
+## Intestazioni di sicurezza
+
+In `next.config.mjs`, su ogni risposta:
+
+| Intestazione | Valore | Perché |
+|---|---|---|
+| `X-Content-Type-Options` | `nosniff` | un file caricato non diventa uno script perché il browser indovina |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | l'indirizzo di una pagina interna non finisce nei log di terzi |
+| `X-Frame-Options` | `DENY` | nessuno incornicia l'applicazione per rubare clic |
+| `Content-Security-Policy` | `frame-ancestors 'none'` | la stessa cosa detta ai browser moderni |
+| `Strict-Transport-Security` | `max-age=31536000` | un anno di solo HTTPS. Senza `includeSubDomains`: i sottodomini di un dominio del cliente possono servire altro |
+| `Permissions-Policy` | camera, microfono, posizione, pagamenti disattivati | non ci servono, e disattivarli chiude la porta a uno script incorporato |
+
+**Eccezione dichiarata**: `/book`, il widget pubblico, è fatto per stare in un iframe sul sito
+del ristorante. Lì `X-Frame-Options` non si manda e la CSP dice `frame-ancestors *`. Tutte le
+altre intestazioni valgono anche per lui. Applicare `DENY` a tutto avrebbe spento il widget su
+ogni sito cliente, in silenzio.
+
 ## Cosa resta aperto
 
 Per gravità, non per difficoltà:
@@ -130,19 +148,24 @@ Per gravità, non per difficoltà:
    la rete a cui è collegata la cassa. Resta una cosa da sapere prima di configurarlo.
 2. **Nessuna verifica del contatto sul widget pubblico.** Il limite di frequenza rallenta un
    bot, non lo fermano email e telefono inventati. Serve un captcha o una conferma via link.
-3. **`force: true` su `assign-table`** bypassa il controllo dei posti ed è disponibile a
-   chiunque abbia `manage_bookings` (quindi anche a `WAITER`), è tracciato ma senza motivo
-   obbligatorio. La forzatura in creazione è già passata al modello giusto — motivo
-   obbligatorio, azione distinta nel registro (`booking.create_forced`): resta da allineare
-   questa.
+3. **`force: true` su `assign-table` resta disponibile a chiunque abbia `manage_bookings`**
+   (quindi anche a `WAITER`). Il motivo obbligatorio ora c'è — allineato alla creazione
+   forzata e alle tavolate — quindi ogni forzatura ha un perché scritto, un nome e un'ora nel
+   registro. Resta aperto se questo gesto debba essere di un ruolo più alto.
 4. **Nessun 2FA, nessun recupero password, nessuna scadenza di sessione configurata.**
 5. **Credenziali demo note** (`owner@tavolo.demo`) su un ambiente pubblico.
-6. **I form non hanno `method="post"`**: un invio prima dell'idratazione diventa una GET con i
-   campi in query string — su `/sign-in` significa la password nella cronologia e nei log.
+6. **Una `Content-Security-Policy` completa sugli script.** Le intestazioni ci sono
+   (`nosniff`, `Referrer-Policy`, `X-Frame-Options: DENY` con l'eccezione dichiarata di
+   `/book`, HSTS, `Permissions-Policy`), ma la CSP dice solo chi può incorniciare le pagine.
+   Una policy vera sugli script richiede un nonce generato a ogni richiesta e passato per
+   tutto il rendering di Next: scritta a mano oggi, o rompe l'applicazione o contiene
+   `'unsafe-inline'` e non protegge da niente.
 7. **Cancellazioni distruttive** su ospiti, camerieri e tavoli: nessun ripristino possibile,
    solo la traccia nel registro.
-8. **Nessuna intestazione di sicurezza** (CSP, HSTS, `X-Frame-Options`). Il middleware è ora il
-   posto naturale dove metterle.
+
+8. **Cancellazione dei dati di un ospite su richiesta**: `anonymizedAt` esiste sullo schema e
+   il portale Wi-Fi raccoglie contatti, ma non c'è una funzione che esegua la richiesta di
+   cancellazione — oggi si fa a mano sul database.
 
 ## Se trovi una vulnerabilità
 
