@@ -145,6 +145,14 @@ costavano poco e valevano molto.
       → un collegamento tolto viene **spento, non cancellato**: cancellarlo porterebbe via i clic raccolti, e i numeri dell'anno scorso cambierebbero da soli
       → di chi clicca non registriamo niente (né IP né browser): serve a contare, non a profilare
 - [x] **Scheletri di caricamento** sulle sette pagine che ne erano senza (Servizio, Attesa, Menu, Marketing, Campagne, Esperienze, Brigata): hanno la forma vera della pagina, non un rettangolo generico. Uno scheletro che non somiglia a quello che arriva fa saltare il testo sotto gli occhi, ed è peggio di una pagina bianca
+- [x] **I gruppi grandi non passano da un modulo**: oltre dodici persone il widget smette di chiedere dati e mostra il numero di telefono. Un tavolo così si organizza — due tavoli uniti, a volte un menu concordato — e far compilare tutto per poi scrivere «vi richiamiamo» è il modo di perdere il gruppo e la serata
+- [x] **Finestra di prenotazione online**: con quanto anticipo al massimo, e con quanto preavviso minimo. Le due cose che ogni gestionale serio ha e che qui mancavano
+      → **vale solo per il canale pubblico.** Se alle 20:40 squilla il telefono e c'è posto, chi risponde deve poter scrivere quella prenotazione: un software che glielo impedisce viene aggirato con una penna, e da lì in poi la sala e lo schermo non dicono più la stessa cosa
+      → fuori finestra il cliente **non** legge «non ci sono orari»: legge che può chiamare. È la differenza fra un coperto perso e una telefonata
+      → gli orari fuori finestra si tolgono invece di mostrarsi spenti, e il motivo si dice una volta sola sotto l'elenco
+- [x] **Menu engineering**: quanto piace incrociato con quanto rende, senza un dato nuovo. Quattro gruppi con il nome del metodo classico — stelle, cavalli, enigmi, cani — e sotto ognuno la frase che dice cosa farne, perché «cavallo» da solo non dice a nessuno cosa fare lunedì
+      → «rende» è il **margine per piatto**, non la percentuale: un caffè con l'80% di margine lascia in cassa un ventesimo di una bistecca al 40%, e confrontare le percentuali direbbe il contrario di quello che succede davvero
+      → la classifica **si rifiuta di esistere** quando i dati non bastano (meno di 4 piatti o meno di 20 vendite), e un piatto venduto due volte resta fuori invece di diventare un «cane»: dire a un ristoratore di togliere dalla carta qualcosa che non ha mai avuto una possibilità è il modo di fargli perdere soldi con un grafico
 - [x] **La lista UX è chiusa**: le quattro voci rimaste (dimensione del tavolo, ricerca nel menu, scheletri, navigazione del menu pubblico) sono fatte
 
 ## Phase 7 — Enterprise

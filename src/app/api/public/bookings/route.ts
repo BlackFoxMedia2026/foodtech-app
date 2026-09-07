@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       source: "WIDGET" as const,
     };
 
-    const booking = await createBooking(venueId, payload, { campaignId });
+    const booking = await createBooking(venueId, payload, { campaignId, canale: "pubblico" });
     return NextResponse.json(booking, { status: 201 });
   } catch (err) {
     return bookingWriteErrorResponse(err);

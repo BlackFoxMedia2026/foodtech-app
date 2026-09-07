@@ -52,6 +52,9 @@ const table4: AvailabilityContext["table"] = { id: "t4", label: "12", seats: 4, 
 function ctx(over: Partial<AvailabilityContext> = {}): AvailabilityContext {
   return {
     timezone: ROME,
+    // Nessuna finestra: è il locale che non ha dichiarato niente, cioè il
+    // caso di partenza di tutti i ristoranti.
+    finestra: { windowDays: null, cutoffMin: null },
     shifts: [lunch, dinner],
     bookings: [],
     table: null,
@@ -354,6 +357,93 @@ check(
   at2200.available && at2200.seatsLeft === 90,
   `22:00 seatsLeft=${at2200.seatsLeft}`,
 );
+
+/* ------------------------- la finestra di prenotazione ---------------------- */
+
+// Domenica alle 20:00 a Roma. «Adesso» lo passiamo noi: la finestra si misura
+// sul tempo, e un test che dipende dall'orologio del computer non è un test.
+const dueOrePrima = new Date(SUNDAY_20.getTime() - 2 * 3_600_000);
+const dieciMinutiPrima = new Date(SUNDAY_20.getTime() - 10 * 60_000);
+const settantaGiorniPrima = new Date(SUNDAY_20.getTime() - 70 * 86_400_000);
+
+const conFinestra = ctx({ finestra: { windowDays: 60, cutoffMin: 120 } });
+const richiestaBase = { startsAt: SUNDAY_20, durationMin: 105, partySize: 2 };
+
+check(
+  "senza finestra dichiarata, si prenota fino all'ultimo minuto",
+  evaluateAvailability({ ...richiestaBase, canale: "pubblico", now: dieciMinutiPrima }, ctx()).available,
+);
+
+check(
+  "dal locale la finestra non vale: al telefono si accetta anche fra dieci minuti",
+  evaluateAvailability({ ...richiestaBase, canale: "interno", now: dieciMinutiPrima }, conFinestra).available,
+);
+
+check(
+  "senza canale dichiarato vale la regola del locale, non quella del pubblico",
+  evaluateAvailability({ ...richiestaBase, now: dieciMinutiPrima }, conFinestra).available,
+);
+
+const troppoTardi = evaluateAvailability(
+  { ...richiestaBase, canale: "pubblico", now: dieciMinutiPrima },
+  conFinestra,
+);
+check("online, dieci minuti prima è troppo tardi", !troppoTardi.available);
+check(
+  "e il motivo dice di chiamare, non «tutto pieno»",
+  troppoTardi.issues.some((i) => i.code === "TOO_LATE" && /chiamaci/i.test(i.message)),
+  troppoTardi.issues.map((i) => i.message).join(" | "),
+);
+
+check(
+  "online, esattamente al limite del preavviso si prenota ancora",
+  evaluateAvailability({ ...richiestaBase, canale: "pubblico", now: dueOrePrima }, conFinestra).available,
+);
+
+const troppoPresto = evaluateAvailability(
+  { ...richiestaBase, canale: "pubblico", now: settantaGiorniPrima },
+  conFinestra,
+);
+check("online, settanta giorni prima è troppo presto", !troppoPresto.available);
+check(
+  "e il motivo è la finestra, non la capienza",
+  troppoPresto.issues.some((i) => i.code === "TOO_FAR_AHEAD"),
+  troppoPresto.issues.map((i) => i.code).join(" | "),
+);
+
+// Gli orari della giornata: quelli fuori finestra si tolgono, e il motivo si
+// dice una volta sola invece di riempire l'elenco di caselle spente.
+const giornoConTaglio = buildDaySlots(
+  {
+    date: { year: 2026, month: 8, day: 2 },
+    partySize: 2,
+    durationMin: 105,
+    // Le 19:30 di quella domenica: da qui in poi solo le 21:30 e oltre.
+    now: new Date("2026-08-02T17:30:00.000Z"),
+    canale: "pubblico",
+  },
+  ctx({ shifts: [dinner], finestra: { windowDays: null, cutoffMin: 120 } }),
+);
+const orari = giornoConTaglio.shifts[0]?.slots.map((s) => s.label) ?? [];
+check("gli orari dentro il preavviso spariscono", !orari.includes("20:00") && !orari.includes("21:15"), orari.join(" "));
+check("quelli oltre il preavviso restano", orari.includes("21:30"), orari.join(" "));
+check(
+  "e la giornata porta il motivo, una volta sola",
+  giornoConTaglio.nota != null && /chiamaci/i.test(giornoConTaglio.nota),
+  String(giornoConTaglio.nota),
+);
+
+const giornoSenzaFinestra = buildDaySlots(
+  {
+    date: { year: 2026, month: 8, day: 2 },
+    partySize: 2,
+    durationMin: 105,
+    now: new Date("2026-08-02T17:30:00.000Z"),
+    canale: "pubblico",
+  },
+  ctx({ shifts: [dinner] }),
+);
+check("senza finestra la nota non compare", giornoSenzaFinestra.nota === null);
 
 /* ---------------------------------- esito ---------------------------------- */
 

@@ -79,6 +79,10 @@ model Venue {
   /// e i punti restano solo uno sconto.
   loyaltyRewardPoints    Int?
   loyaltyRewardLabel     String?               @db.VarChar(120)
+  /// Quanti giorni prima si può prenotare online. Nullo = nessun limite.
+  bookingWindowDays      Int?
+  /// Quanti minuti prima dell'orario si chiude la prenotazione online. Nullo = fino all'ultimo.
+  bookingCutoffMin       Int?
   /// Spesa media per coperto, in centesimi, dichiarata dal locale.
   /// Serve per la stima degli incassi: prima veniva calcolata dalla media di
   /// Guest.totalSpend, un campo che nessuna parte del codice aggiorna — quindi

@@ -5,12 +5,14 @@ import { StatCard } from "@/components/overview/stat-card";
 import { NpsPanel } from "@/components/surveys/nps-panel";
 import { ForecastPanel } from "@/components/insights/forecast-panel";
 import { FoodCostPanel } from "@/components/insights/food-cost-panel";
+import { MenuEngineeringPanel } from "@/components/insights/menu-engineering-panel";
 import { getFoodCost } from "@/server/food-cost";
 import { getNoShowReport } from "@/server/no-show";
 import { NoShowPanel } from "@/components/insights/no-show-panel";
 import { getOccupancyByWeekday, getWeekForecast } from "@/server/forecast";
 import { getSurveyStats } from "@/server/surveys";
 import { reviewFunnel } from "@/server/reviews";
+import { menuEngineering } from "@/server/menu-engineering";
 import { resolveSegment } from "@/server/campaigns";
 import { Button } from "@/components/ui/button";
 import { SlotChart, SourcesChart, WeekdayHeatmap } from "@/components/insights/charts";
@@ -116,6 +118,12 @@ export default async function InsightsPage({
       </header>
 
       <FoodCostPanel report={foodCost} currency={ctx.venue.currency} />
+
+      {/* Stessa serata, stessi piatti: la classifica si calcola sul rendiconto
+          già letto invece di rifare le stesse letture in un altro modo. */}
+      {foodCost.conti > 0 && (
+        <MenuEngineeringPanel dati={menuEngineering(foodCost)} currency={ctx.venue.currency} />
+      )}
 
       <NoShowPanel report={assenze} currency={ctx.venue.currency} />
 

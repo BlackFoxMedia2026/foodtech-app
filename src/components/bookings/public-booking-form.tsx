@@ -12,6 +12,17 @@ import { AlertCircle, Loader2, Mail, Phone } from "lucide-react";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6,8}$/;
 
+/**
+ * Oltre questo numero, un tavolo non si prenota da un modulo.
+ *
+ * Dodici persone sono il punto in cui una prenotazione smette di essere una
+ * prenotazione e diventa un'organizzazione: due tavoli uniti, un menu
+ * concordato, a volte una sala. Farla passare da qui vorrebbe dire prendere
+ * un impegno che il locale non ha ancora visto, e la telefonata la si fa
+ * comunque — solo dopo, e di corsa.
+ */
+const GRUPPO_GRANDE = 12;
+
 interface PublicBookingFormProps {
   venueId: string;
   venueName: string;
@@ -41,6 +52,8 @@ export function PublicBookingForm({
   // Data e coperti pilotano gli orari proponibili, quindi vivono nello stato.
   const [date, setDate] = useState("");
   const [partySize, setPartySize] = useState(2);
+  /** Vero quando il gruppo è troppo grande per il modulo. */
+  const [gruppoGrande, setGruppoGrande] = useState(false);
   /** Istante ISO scelto: arriva dal server e torna indietro identico. */
   const [startsAt, setStartsAt] = useState<string | null>(null);
 
@@ -159,35 +172,75 @@ export function PublicBookingForm({
           <Label htmlFor="partySize">Numero di persone *</Label>
           <Select
             name="partySize"
-            value={String(partySize)}
-            onValueChange={(v) => setPartySize(Number(v))}
+            value={gruppoGrande ? "tanti" : String(partySize)}
+            onValueChange={(v) => {
+              if (v === "tanti") {
+                setGruppoGrande(true);
+                setStartsAt(null);
+                return;
+              }
+              setGruppoGrande(false);
+              setPartySize(Number(v));
+            }}
             required
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+              {Array.from({ length: GRUPPO_GRANDE }, (_, i) => i + 1).map((n) => (
                 <SelectItem key={n} value={n.toString()}>
                   {n} {n === 1 ? "persona" : "persone"}
                 </SelectItem>
               ))}
+              <SelectItem value="tanti">Più di {GRUPPO_GRANDE}</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Orario *</Label>
-        <SlotPicker
-          venueId={venueId}
-          date={date}
-          partySize={partySize}
-          value={startsAt}
-          onChange={setStartsAt}
-        />
-      </div>
+      {gruppoGrande ? (
+        /* Un gruppo grande non si prenota da un modulo: si organizza. Invece
+           di far compilare tutto per poi scrivere «vi richiamiamo», la strada
+           giusta si dice subito — ed è un numero di telefono, non un errore. */
+        <div className="space-y-2 rounded-md border border-accent/30 bg-accent/10 p-4 text-sm">
+          <p className="font-medium">Per più di {GRUPPO_GRANDE} persone parliamone.</p>
+          <p>
+            Un tavolo così si prepara: due tavoli uniti, a volte un menu concordato. Chiamaci e lo
+            organizziamo insieme — è più veloce di questo modulo.
+          </p>
+          {phone && (
+            <a
+              href={`tel:${phone}`}
+              className="inline-flex min-h-[44px] items-center gap-2 font-medium underline underline-offset-4"
+            >
+              <Phone className="h-4 w-4" aria-hidden="true" /> {phone}
+            </a>
+          )}
+          {!phone && email && (
+            <a
+              href={`mailto:${email}`}
+              className="inline-flex min-h-[44px] items-center gap-2 font-medium underline underline-offset-4"
+            >
+              <Mail className="h-4 w-4" aria-hidden="true" /> {email}
+            </a>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label>Orario *</Label>
+          <SlotPicker
+            venueId={venueId}
+            date={date}
+            partySize={partySize}
+            value={startsAt}
+            onChange={setStartsAt}
+          />
+        </div>
+      )}
 
+      {!gruppoGrande && (
+      <>
       {/* I dati personali vengono dopo la disponibilità, non prima.
           Chiedere nome, email e telefono a chi non sa ancora se c'è un tavolo
           è il modo più rapido di far abbandonare il modulo — e di riempire il
@@ -256,8 +309,12 @@ export function PublicBookingForm({
           "Prenota ora"
         )}
       </Button>
+      </>
+      )}
 
-      {(phone || email) && (
+      {/* Quando il riquadro del gruppo grande mostra già il numero, la riga
+          dei contatti in fondo lo ripeterebbe a due centimetri di distanza. */}
+      {!gruppoGrande && (phone || email) && (
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-sm text-muted-foreground">
           {phone && (
             <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 hover:text-foreground">

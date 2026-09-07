@@ -27,7 +27,9 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 |---|---|---|
 | Panoramica | LIVE | KPI del giorno, timeline, alert da motore a regole |
 | Prenotazioni (CRUD) | LIVE | Creazione, modifica, annullo, dettaglio. Forzatura consapevole con motivo obbligatorio e traccia nel registro |
-| Disponibilità / anti-overbooking | LIVE | Unica fonte di verità per sala, API e widget. 45 verifiche automatiche |
+| Disponibilità / anti-overbooking | LIVE | Unica fonte di verità per sala, API e widget. 57 verifiche automatiche |
+| Gruppi grandi | LIVE | Oltre dodici persone il widget mostra il telefono invece del modulo: un tavolo così si organizza, non si prenota |
+| Finestra di prenotazione | LIVE | Da quanti giorni prima si prenota online, e quanto preavviso serve. **Vale solo per il widget**: al telefono il locale accetta fino all'ultimo minuto. Chi arriva fuori finestra legge che può chiamare, non che è tutto pieno. Nasce senza limiti: chi non dichiara niente continua come prima |
 | Calendario | LIVE (giorno + settimana) | Giorno con elenco e piantina; **settimana** con i sette giorni sui libri — coperti, prenotazioni, quante da confermare e quanto è pieno dove la capienza è dichiarata. Si tocca un giorno e si entra in quella serata. Nessuna vista mese: su trenta caselle i numeri diventano illeggibili e la domanda vera («c'è posto?») si fa su una settimana |
 | Widget pubblico | BETA | Funziona e propone solo orari accettabili, ora nell'identità dell'app. Manca la verifica del contatto: il limite di frequenza rallenta un bot, non ferma email e telefono inventati |
 | Walk-in | LIVE | Persone → tavolo → accomoda, con i soli tavoli davvero liberi. Dal «+» della barra mobile e dalle azioni rapide |
@@ -82,6 +84,7 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 |---|---|---|
 | Analytics | LIVE | Descrittivo: coperti, completamento, no-show, cancellazioni, fonti |
 | Insight / alert | LIVE | Motore a regole |
+| Menu engineering | LIVE | Popolarità × margine sui due dati che c'erano già: stelle, cavalli, enigmi, cani, ognuno con la frase che dice cosa farne. Si classificano solo i piatti col costo dichiarato e venduti almeno 3 volte, e sotto 4 piatti o 20 vendite **non si classifica niente**: «non lo so» è meglio di un'etichetta da «cane» data su due coperti |
 | Recensioni pubbliche | LIVE | Fino a quattro posti dove mandare chi risponde 9 o 10 (Google, TripAdvisor, TheFork…). Chi dà un voto più basso non li vede mai. Il passaggio è contato: in Analytics, «quanti promotori sono andati a scrivere, su quanti». Non contiamo le recensioni scritte — quello lo sa solo la piattaforma, e la pagina lo dice |
 | Occupazione e margine | LIVE | Occupazione media per giorno della settimana, sulle sole settimane in cui il locale ha davvero registrato. Costo del cibo e margine per piatto sui conti chiusi, con la copertura dichiarata. RevPASH (ricavo per posto per ora) non c'è ancora: ha senso su una storia di incassi veri più lunga di qualche serata |
 | Costo delle assenze | LIVE | In Analytics: coperti persi, **quanto valevano** e in che giorni succede. Il valore di un coperto è misurato sui conti chiusi del periodo quando ci sono, altrimenti è lo scontrino medio dichiarato — e allora c'è scritto che è una stima; senza nessuno dei due il valore non si mostra. Le percentuali per giorno compaiono solo sopra le 10 prenotazioni, e «il giorno peggiore» si nomina solo se sta davvero sopra la media. Più i clienti mancati più di una volta, con il collegamento alla scheda |

@@ -43,7 +43,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Locale non trovato." }, { status: 404 });
   }
 
-  const availability = await getDayAvailability(venueId, { year, month, day }, partySize);
+  // Dal widget si prenota dentro la finestra dichiarata dal locale: il
+  // canale è quello che distingue «non si può» da «non da qui».
+  const availability = await getDayAvailability(venueId, { year, month, day }, partySize, {
+    canale: "pubblico",
+  });
 
   return NextResponse.json(availability, {
     // La disponibilità cambia a ogni prenotazione: non va messa in cache.

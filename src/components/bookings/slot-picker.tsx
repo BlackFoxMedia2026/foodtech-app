@@ -18,6 +18,8 @@ type DayAvailability = {
   timezone: string;
   closed: boolean;
   shifts: ShiftSlots[];
+  /** Perché mancano orari, quando a toglierli è la finestra del locale. */
+  nota: string | null;
 };
 
 interface SlotPickerProps {
@@ -113,9 +115,14 @@ export function SlotPicker({ venueId, date, partySize, value, onChange }: SlotPi
       <div className="flex items-start gap-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
         <CalendarOff className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
+          {/* Se a togliere gli orari è stata la finestra del locale, si dice
+              quello: «non ci sono orari» manderebbe via un cliente che al
+              telefono un tavolo lo troverebbe. */}
           {data?.closed
             ? "Il locale è chiuso in questa data. Prova con un altro giorno."
-            : "Per questa data non ci sono più orari disponibili. Prova con un altro giorno."}
+            : data?.nota
+              ? data.nota
+              : "Per questa data non ci sono più orari disponibili. Prova con un altro giorno."}
         </span>
       </div>
     );
