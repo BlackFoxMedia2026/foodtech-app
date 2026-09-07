@@ -123,6 +123,22 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
       → e la pagina dice in che cosa è diversa dalla previsione, perché due numeri vicini che rispondono a due domande diverse sembrano una contraddizione
 - [ ] Vista mese: per ora no. Su trenta caselle i numeri diventano illeggibili, e la domanda vera («c'è posto sabato?») si fa su una settimana
 
+## Dopo gli audit (7-8 settembre 2026)
+
+Correzioni nate dal Product Gap Audit e dall'UX Audit, fatte subito perché
+costavano poco e valevano molto.
+
+- [x] **Il centro controllo non si autoaffoga**: oltre tre ore un ritardo non è un ritardo ma una riga da chiudere, e diventa un avviso solo invece di otto identici. I ritardi veri si mostrano a tre, dal più recente. Il tempo si dice in ore
+- [x] **Su telefono, in Servizio, prima cosa fare e poi quanti**: il primo avviso passa da sotto la piega a 222 px
+- [x] **Il briefing prima del servizio** in Panoramica: «57 coperti · 63% pieno · alle 13:30 ne arrivano 13 insieme», e le sole cose che chiedono attenzione, ognuna con il suo collegamento
+- [x] **Numeri detti una volta sola**: coperti e occupazione non compaiono più due volte nella stessa schermata, e la card degli avvisi duplicati è stata rimossa
+- [x] **Il widget chiede prima il tavolo, poi i dati** — e la data si legge per esteso, perché `mm/dd/yyyy` a un cliente italiano fa prenotare il 9 luglio invece del 7 settembre
+- [x] **Dal giorno vuoto alla campagna, in un tocco**: il segmento è già impostato, il nome suggerito
+- [x] **Marketing con i numeri** invece di sole descrizioni
+- [x] **Coupon con spesa minima e giorni**: le due condizioni che un ristoratore chiede per prime
+- [x] **Un traguardo nella raccolta punti**: «mancano 40 punti per una bottiglia della casa»
+- [ ] Restano dalla lista UX: dimensione del tavolo per numero di posti sulla mappa, tabella prenotazioni su telefono, ricerca e filtri nel menu con 100+ piatti, scheletri di caricamento, navigazione per categorie nel menu pubblico
+
 ## Phase 7 — Enterprise
 
 - Permessi avanzati, multi-locale e multi-brand, SSO, 2FA
