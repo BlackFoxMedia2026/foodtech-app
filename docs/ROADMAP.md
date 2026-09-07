@@ -85,6 +85,9 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
 - [x] **Unire e dividere i tavoli** — vedi Phase 2
 - [x] **Esperienze**: la pagina esisteva in sola lettura con un pulsante «Nuova esperienza» che non faceva niente. Ora si creano, si modificano, si pubblicano. I biglietti **non si vendono da Tavolo** (servono i pagamenti): c'è il link a dove li vende il locale, e la pagina lo dice
 - [x] **Segnalazioni** (`/reports`): pagina vuota raggiungibile dal menu del profilo, che prometteva un canale di assistenza inesistente. Rimossa
+- [x] **Le liste lunghe non mentono più**: gli ospiti sono a pagine con il totale scritto, e le etichette del filtro si leggono tutte
+- [x] **Schermata d'errore**: un'eccezione non mostra più la pagina grezza di Next
+- [ ] Paginare anche le prenotazioni su intervalli ampi (sulla giornata il tetto attuale basta)
 - [ ] Vendita dei biglietti delle esperienze → dipende da Stripe, come le caparre
 
 ## Phase 6 — Ecosistema

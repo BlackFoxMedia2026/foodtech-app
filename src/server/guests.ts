@@ -18,7 +18,10 @@ export const GuestInput = z.object({
   tags: z.array(z.string()).optional(),
 });
 
-export async function listGuests(venueId: string, q?: string, tag?: string) {
+/** Quanti ospiti per pagina. */
+export const OSPITI_PER_PAGINA = 50;
+
+function whereOspiti(venueId: string, q?: string, tag?: string): Prisma.GuestWhereInput {
   const where: Prisma.GuestWhereInput = { venueId };
   if (q) {
     where.OR = [
@@ -31,24 +34,69 @@ export async function listGuests(venueId: string, q?: string, tag?: string) {
   if (tag) {
     where.tags = { has: tag };
   }
-  return db.guest.findMany({
-    where,
-    orderBy: [{ loyaltyTier: "desc" }, { lastVisitAt: "desc" }, { createdAt: "desc" }],
-    take: 200,
-  });
+  return where;
 }
 
-export async function listDistinctTags(venueId: string) {
-  const guests = await db.guest.findMany({
-    where: { venueId },
-    select: { tags: true },
-    take: 500,
+export type PaginaOspiti = {
+  items: Awaited<ReturnType<typeof db.guest.findMany>>;
+  /** Quanti ne esistono in tutto, con questi filtri. */
+  totale: number;
+  pagina: number;
+  pagine: number;
+  perPagina: number;
+};
+
+/**
+ * Gli ospiti, a pagine.
+ *
+ * Prima c'era `take: 200` e nient'altro: un locale con cinquecento clienti ne
+ * vedeva duecento e **non lo sapeva**. Non c'era un messaggio, non c'era un
+ * pulsante: i trecento restanti semplicemente non esistevano, e la ricerca
+ * sembrava rotta a chi cercava qualcuno che era in archivio.
+ *
+ * Un tetto ci vuole comunque — una tabella da diecimila righe non si disegna —
+ * ma va detto: qui torna anche il totale, così la pagina può scrivere «50 di
+ * 312» e offrire il passo successivo.
+ */
+export async function listGuests(
+  venueId: string,
+  opts: { q?: string; tag?: string; pagina?: number; perPagina?: number } = {},
+): Promise<PaginaOspiti> {
+  const perPagina = Math.min(200, Math.max(10, opts.perPagina ?? OSPITI_PER_PAGINA));
+  const where = whereOspiti(venueId, opts.q, opts.tag);
+
+  const totale = await db.guest.count({ where });
+  const pagine = Math.max(1, Math.ceil(totale / perPagina));
+  // Una pagina fuori scala non è un errore: si riporta dentro, come per
+  // un numero di pagina scritto a mano nell'indirizzo.
+  const pagina = Math.min(pagine, Math.max(1, Math.floor(opts.pagina ?? 1)));
+
+  const items = await db.guest.findMany({
+    where,
+    orderBy: [{ loyaltyTier: "desc" }, { lastVisitAt: "desc" }, { createdAt: "desc" }],
+    skip: (pagina - 1) * perPagina,
+    take: perPagina,
   });
-  const tags = new Set<string>();
-  for (const g of guests) {
-    for (const t of g.tags) tags.add(t);
-  }
-  return Array.from(tags).sort((a, b) => a.localeCompare(b));
+
+  return { items, totale, pagina, pagine, perPagina };
+}
+
+/**
+ * Le etichette esistenti, tutte.
+ *
+ * Prima si leggevano i tag dei primi cinquecento ospiti e si univano: oltre
+ * quella soglia un'etichetta usata solo dai clienti più vecchi **spariva dal
+ * filtro**, e chi la cercava concludeva che non esisteva. Una domanda del
+ * genere è una riga di SQL: `unnest` sull'array, distinti, ordinati.
+ */
+export async function listDistinctTags(venueId: string): Promise<string[]> {
+  const righe = await db.$queryRaw<{ tag: string }[]>`
+    select distinct unnest(tags) as tag
+    from "Guest"
+    where "venueId" = ${venueId}
+    order by tag
+  `;
+  return righe.map((r) => r.tag);
 }
 
 export async function getGuest(venueId: string, id: string) {

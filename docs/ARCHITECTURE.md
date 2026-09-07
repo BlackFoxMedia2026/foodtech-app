@@ -282,6 +282,40 @@ Il valore in euro è coperti per scontrino medio dichiarato, e si mostra solo
 se quel numero c'è: chiamarlo «incasso» sarebbe la stessa bugia di
 `Guest.totalSpend`.
 
+### Un tetto che non si vede è una bugia
+
+`listGuests` aveva `take: 200` e nient'altro: un locale con cinquecento
+clienti ne vedeva duecento e **non lo sapeva**. Nessun messaggio, nessun
+pulsante — i trecento restanti semplicemente non esistevano, e chi cercava
+qualcuno che era in archivio concludeva che la ricerca fosse rotta.
+
+Un tetto ci vuole: una tabella da diecimila righe non si disegna. Quello che
+non ci vuole è tacerlo. Ora la funzione torna anche il **totale**, la pagina
+scrive «da 1 a 50 di 312», e una pagina oltre l'ultima riporta all'ultima
+invece di mostrare una schermata vuota che sembra un archivio svuotato.
+
+Stessa storia per le etichette: si leggevano quelle dei primi cinquecento
+ospiti, quindi un'etichetta usata solo dai clienti più vecchi **spariva dal
+filtro**. Una domanda così è una riga di SQL (`unnest` sull'array, distinti,
+ordinati), non un ciclo su un campione.
+
+### Quando qualcosa si rompe, non si perde la navigazione
+
+`src/app/(app)/error.tsx` e `src/app/error.tsx`.
+
+Prima non c'era nessun confine d'errore: un'eccezione dal server mostrava la
+schermata grezza di Next — sfondo bianco, testo inglese, nessuna via d'uscita
+oltre al pulsante del browser. Nel mezzo di un servizio, con un tablet in
+mano, quella schermata vuol dire «il programma è morto».
+
+Ora restano tema e navigazione, c'è un pulsante che riprova senza ricaricare
+tutto (`reset()` rimonta solo la parte caduta) e una via d'uscita verso la
+Panoramica. Il messaggio tecnico non si mostra — a chi serve è nei registri —
+ma il codice dell'errore sì, piccolo, perché è quello che permette di
+ritrovarlo. Fuori dall'applicazione (widget pubblico, link dell'ospite) il
+tono cambia: lì chi legge è un cliente del ristorante, e la cosa importante da
+dirgli è che **nessuna prenotazione è stata registrata**.
+
 ### La previsione dice anche quanto fidarsi
 
 `src/server/forecast.ts`.
@@ -384,10 +418,9 @@ così la notte del cambio d'ora non salta un giorno.
 - **Le campagne programmate restano «programmate».** L'orario lo tiene il fornitore, e
   nessuno riporta indietro il momento in cui è partita davvero: lo stato non diventa mai
   «inviata». Si risolve leggendo le statistiche del fornitore, non con un altro cron.
-- **Nessuna paginazione reale.** Le liste hanno tetti fissi (`take: 200`, `take: 500`): oltre,
-  i dati spariscono in silenzio.
-- **Nessun confine d'errore.** Ci sono 6 `loading.tsx` e zero `error.tsx`: un'eccezione lato
-  server mostra la pagina d'errore grezza di Next.
+- **Le prenotazioni hanno ancora un tetto fisso** (`take: 200` in `listBookings`). Sulla
+  giornata è generoso — duecento prenotazioni in un giorno sono un locale grande — ma su un
+  intervallo ampio i dati spariscono in silenzio come succedeva agli ospiti.
 - **Nessuna cache.** 17 pagine su 25 sono `force-dynamic`, nessun `revalidate`.
 - **Soft delete a metà.** `Booking` e `Payment` hanno `deletedAt`/`deletedBy` ma il codice
   cancella davvero, e le liste non filtrano quei campi. Ospiti, camerieri e tavoli non hanno
