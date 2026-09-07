@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { getActiveVenue } from "@/lib/tenant";
+import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
+
 import { assignTableToWaiter, removeTableAssignment } from "@/server/waiter-assignments";
 
 export async function POST(req: Request) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_staff");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     const updated = await assignTableToWaiter(ctx.venueId, {
@@ -29,7 +31,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_staff");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     await removeTableAssignment(ctx.venueId, {
@@ -39,6 +42,6 @@ export async function DELETE(req: Request) {
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    return apiErrorResponse(err);
   }
 }

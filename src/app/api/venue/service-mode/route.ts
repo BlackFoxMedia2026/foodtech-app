@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
-import { can, getActiveVenue } from "@/lib/tenant";
+import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { setServiceAssignmentMode } from "@/server/venue-settings";
 
 export async function PATCH(req: Request) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_venue")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_venue");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     const updated = await setServiceAssignmentMode(ctx.venueId, body);
     return NextResponse.json(updated);
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    return apiErrorResponse(err);
   }
 }

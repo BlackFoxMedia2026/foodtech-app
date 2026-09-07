@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { requireVenueApi } from "@/lib/api-auth";
 import { get } from "@vercel/blob";
-import { can, getActiveVenue } from "@/lib/tenant";
 import {
   ContractDocumentError,
   deleteContractDocument,
@@ -27,10 +27,8 @@ const ERROR_MESSAGE: Record<ContractDocumentError["code"], string> = {
  * session + tenant + contract ownership + ability, so nothing about the
  * file is reachable just by knowing the contractId (brief section 19). */
 export async function GET(req: Request, { params }: { params: { id: string; contractId: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_contracts")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_contracts");
+  if (!ctx.ok) return ctx.response;
 
   let doc;
   try {
@@ -58,10 +56,8 @@ export async function GET(req: Request, { params }: { params: { id: string; cont
 }
 
 export async function POST(req: Request, { params }: { params: { id: string; contractId: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_contracts")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_contracts");
+  if (!ctx.ok) return ctx.response;
 
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
@@ -81,10 +77,8 @@ export async function POST(req: Request, { params }: { params: { id: string; con
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string; contractId: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_contracts")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_contracts");
+  if (!ctx.ok) return ctx.response;
 
   try {
     await deleteContractDocument(ctx.venueId, params.id, params.contractId);

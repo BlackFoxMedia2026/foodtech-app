@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { readApiError } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type { StaffContractType } from "@prisma/client";
@@ -112,7 +113,7 @@ export function WaiterContractSection({ waiterId, open }: { waiterId: string; op
     });
     setSubmitting(false);
     if (!res.ok) {
-      setFormSubmitError("Impossibile salvare il contratto. Verifica i dati e riprova.");
+      setFormSubmitError(await readApiError(res, "Impossibile salvare il contratto. Verifica i dati e riprova."));
       return;
     }
     setMode("view");

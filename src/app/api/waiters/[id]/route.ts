@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { getActiveVenue } from "@/lib/tenant";
+import { requireVenueApi } from "@/lib/api-auth";
+
 import { deleteWaiter, updateWaiter } from "@/server/waiters";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_staff");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     const updated = await updateWaiter(ctx.venueId, params.id, body);
@@ -16,7 +18,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_staff");
+  if (!ctx.ok) return ctx.response;
   try {
     await deleteWaiter(ctx.venueId, params.id);
     return NextResponse.json({ ok: true });

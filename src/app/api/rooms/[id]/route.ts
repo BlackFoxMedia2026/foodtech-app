@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { can, getActiveVenue } from "@/lib/tenant";
+import { requireVenueApi } from "@/lib/api-auth";
 import { deleteRoom, renameRoom } from "@/server/rooms";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_venue")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_venue");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     const updated = await renameRoom(ctx.venueId, params.id, body);
@@ -19,10 +17,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_venue")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_venue");
+  if (!ctx.ok) return ctx.response;
   try {
     await deleteRoom(ctx.venueId, params.id);
     return NextResponse.json({ ok: true });

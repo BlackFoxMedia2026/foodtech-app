@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { can, getActiveVenue } from "@/lib/tenant";
+import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
+
 import {
   StaffAssignmentError,
   listStaffAssignmentsForTable,
@@ -15,7 +16,8 @@ const ERROR_MESSAGES: Record<StaffAssignmentError["code"], string> = {
 };
 
 export async function GET(req: Request) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
   const url = new URL(req.url);
   const tableId = url.searchParams.get("tableId");
   const date = url.searchParams.get("date");
@@ -28,10 +30,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_staff")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_staff");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     const updated = await upsertTableStaffAssignment(ctx.venueId, body);
@@ -46,10 +46,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_staff")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_staff");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     await removeTableStaffAssignment(ctx.venueId, {
@@ -60,6 +58,6 @@ export async function DELETE(req: Request) {
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    return apiErrorResponse(err);
   }
 }

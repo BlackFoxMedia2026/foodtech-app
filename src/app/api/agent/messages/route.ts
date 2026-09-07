@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { z } from "zod";
-import { getActiveVenue } from "@/lib/tenant";
+
 import { getOrCreateConversation, startNewConversation, getConversation, listMessages } from "@/server/ai/conversation";
 import { runAgentTurn } from "@/server/ai/agent-service";
 import { getUsage } from "@/server/ai/usage-service";
 import type { AgentContext } from "@/server/ai/types";
 
 export async function GET() {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
   const conversation = await getOrCreateConversation(ctx.venueId, ctx.userId);
   const [messages, usage] = await Promise.all([listMessages(conversation.id), getUsage(ctx.venueId)]);
   return NextResponse.json({
@@ -40,13 +42,14 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
 
   let body: z.infer<typeof Body>;
   try {
     body = Body.parse(await req.json());
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    return apiErrorResponse(err);
   }
 
   const conversation = body.newConversation

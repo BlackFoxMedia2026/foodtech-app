@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { getActiveVenue } from "@/lib/tenant";
+import { requireVenueApi } from "@/lib/api-auth";
+
 import { createBooking, listBookingsForDay } from "@/server/bookings";
 import { bookingWriteErrorResponse } from "@/server/booking-errors";
 
 export async function GET(req: Request) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
   const url = new URL(req.url);
   const day = url.searchParams.get("day");
   const target = day ? new Date(day) : new Date();
@@ -13,7 +15,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_bookings");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     const created = await createBooking(ctx.venueId, body);

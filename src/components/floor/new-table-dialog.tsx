@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { readApiError } from "@/lib/api-client";
 import { createPortal } from "react-dom";
 import type { Table, TableShape } from "@prisma/client";
 import { Check, CheckCircle2, Circle, Minus, Plus, RectangleHorizontal, Square } from "lucide-react";
@@ -86,7 +87,7 @@ export function NewTableDialog({
       if (body?.code === "DUPLICATE_LABEL") {
         setFieldErrors({ label: "Esiste già un tavolo con questo nome." });
       } else {
-        setFormError("Impossibile creare il tavolo. Riprova.");
+        setFormError(await readApiError(res, "Impossibile creare il tavolo. Riprova."));
       }
       return;
     }

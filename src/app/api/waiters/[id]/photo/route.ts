@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireVenueApi } from "@/lib/api-auth";
 import { put } from "@vercel/blob";
-import { getActiveVenue } from "@/lib/tenant";
+
 import { updateWaiter } from "@/server/waiters";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_staff");
+  if (!ctx.ok) return ctx.response;
 
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { can, getActiveVenue } from "@/lib/tenant";
+import { requireVenueApi } from "@/lib/api-auth";
 import { db } from "@/lib/db";
 import { deleteBooking, updateBooking } from "@/server/bookings";
 import { bookingWriteErrorResponse } from "@/server/booking-errors";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
   const item = await db.booking.findFirst({
     where: { id: params.id, venueId: ctx.venueId },
     include: { guest: true, table: true, payments: true },
@@ -15,10 +16,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_bookings")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_bookings");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     const updated = await updateBooking(ctx.venueId, params.id, body);
@@ -29,10 +28,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_bookings")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_bookings");
+  if (!ctx.ok) return ctx.response;
   try {
     await deleteBooking(ctx.venueId, params.id);
     return NextResponse.json({ ok: true });

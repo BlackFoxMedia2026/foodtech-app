@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getActiveVenue } from "@/lib/tenant";
 
 const Patch = z.object({
   label: z.string().optional(),
@@ -14,7 +14,8 @@ const Patch = z.object({
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_venue");
+  if (!ctx.ok) return ctx.response;
   const existing = await db.table.findFirst({ where: { id: params.id, venueId: ctx.venueId } });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
   try {
@@ -22,12 +23,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const updated = await db.table.update({ where: { id: params.id }, data });
     return NextResponse.json(updated);
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    return apiErrorResponse(err);
   }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_venue");
+  if (!ctx.ok) return ctx.response;
   const existing = await db.table.findFirst({ where: { id: params.id, venueId: ctx.venueId } });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
   await db.table.delete({ where: { id: params.id } });

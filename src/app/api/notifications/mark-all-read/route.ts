@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { getActiveVenue } from "@/lib/tenant";
+import { requireVenueApi } from "@/lib/api-auth";
+
 import { markAllNotificationsRead } from "@/server/notifications";
 
 export async function POST() {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
   await markAllNotificationsRead(ctx.venueId, ctx.role);
   return NextResponse.json({ ok: true });
 }
