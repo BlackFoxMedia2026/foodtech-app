@@ -9,6 +9,8 @@ type Slot = {
   label: string;
   available: boolean;
   seatsLeft: number | null;
+  /** Dentro il margine oltre la capienza dichiarata dal locale. */
+  oltreCapienza?: boolean;
 };
 
 type ShiftSlots = { shiftId: string; name: string; slots: Slot[] };
@@ -61,6 +63,14 @@ interface SlotPickerProps {
  * è più utile che far sparire la riga senza spiegazioni.
  */
 export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDay }: SlotPickerProps) {
+  /**
+   * In sala si segna quello che è oltre la capienza; al cliente no.
+   *
+   * `venueId` arriva **solo** dal widget pubblico (dallo staff il locale viene
+   * dalla sessione): è già il modo in cui questo componente sa da che parte
+   * del banco si trova.
+   */
+  const segnaOltre = !venueId;
   const [data, setData] = useState<DayAvailability | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,9 +203,11 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
                   disabled={!slot.available}
                   aria-pressed={selected}
                   aria-label={
-                    slot.available
-                      ? `Ore ${slot.label}`
-                      : `Ore ${slot.label}, al completo`
+                    !slot.available
+                      ? `Ore ${slot.label}, al completo`
+                      : segnaOltre && slot.oltreCapienza
+                        ? `Ore ${slot.label}, oltre la capienza dichiarata`
+                        : `Ore ${slot.label}`
                   }
                   onClick={() => onChange(slot.startsAt)}
                   className={cn(
@@ -206,9 +218,22 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
                       : "border-border text-foreground hover:bg-secondary",
                     !slot.available && "cursor-not-allowed border-dashed text-muted-foreground opacity-50 hover:bg-transparent",
                   )}
-                  title={slot.available ? undefined : "Al completo"}
+                  title={
+                    !slot.available
+                      ? "Al completo"
+                      : segnaOltre && slot.oltreCapienza
+                        ? "Oltre la capienza dichiarata: il locale accetta, ma questo posto c'è solo se qualcuno non viene"
+                        : undefined
+                  }
                 >
                   {slot.label}
+                  {/* Il pallino c'è solo in sala: al cliente non si racconta
+                      come il locale gestisce la propria capienza. */}
+                  {segnaOltre && slot.available && slot.oltreCapienza && (
+                    <span className="ml-1 text-accent" aria-hidden="true">
+                      •
+                    </span>
+                  )}
                 </button>
               );
             })}

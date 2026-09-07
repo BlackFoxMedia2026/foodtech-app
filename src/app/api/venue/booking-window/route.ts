@@ -17,6 +17,13 @@ const Body = z.object({
   windowDays: z.union([z.coerce.number().int().min(1).max(730), z.null()]),
   /** Minuti di preavviso minimo. Nullo = fino all'ultimo. */
   cutoffMin: z.union([z.coerce.number().int().min(0).max(10_080), z.null()]),
+  /**
+   * Percentuale accettata oltre la capienza del turno.
+   *
+   * Il tetto a 30 non è arbitrario: oltre, l'overbooking smette di compensare
+   * le assenze e diventa una fila all'ingresso.
+   */
+  overbookingPct: z.union([z.coerce.number().int().min(0).max(30), z.null()]).optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -24,17 +31,22 @@ export async function PATCH(req: Request) {
   if (!ctx.ok) return ctx.response;
 
   try {
-    const { windowDays, cutoffMin } = Body.parse(await req.json());
+    const { windowDays, cutoffMin, overbookingPct } = Body.parse(await req.json());
 
     const updated = await db.venue.update({
       where: { id: ctx.venueId },
-      data: { bookingWindowDays: windowDays, bookingCutoffMin: cutoffMin || null },
-      select: { bookingWindowDays: true, bookingCutoffMin: true },
+      data: {
+        bookingWindowDays: windowDays,
+        bookingCutoffMin: cutoffMin || null,
+        ...(overbookingPct !== undefined && { overbookingPct: overbookingPct || null }),
+      },
+      select: { bookingWindowDays: true, bookingCutoffMin: true, overbookingPct: true },
     });
 
     await recordAudit(auditActor(ctx, req), "venue.booking_window_update", "venue", ctx.venueId, {
       giorniDiAnticipo: windowDays,
       preavvisoMinuti: cutoffMin,
+      oltreLaCapienzaPct: overbookingPct ?? null,
     });
 
     return NextResponse.json(updated);

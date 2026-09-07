@@ -40,7 +40,7 @@ Verifiche automatiche: TypeScript pulito, ESLint pulito, nessuna deriva fra sche
 
 | Area | Stato | Evidenza |
 |---|---|---|
-| Motore disponibilità | **REAL** | 556 righe, unica fonte per sala/API/widget, 59 regole verificate `[CODE][PREVIOUS AUDIT]` |
+| Motore disponibilità | **REAL** | 556 righe, unica fonte per sala/API/widget, 65 regole verificate `[CODE][PREVIOUS AUDIT]` |
 | Prenotazioni (4 canali d'ingresso) | **REAL** | widget, telefono, waitlist, walk-in `[CODE][SCREENSHOT]` |
 | Piantina e assegnazione tavoli | **REAL** | trascinamento, collisioni serializzabili, tavolate `[CODE]` |
 | Sala viva (7 stati) | **REAL** | derivati dai fatti, non da campi `[CODE]` |
@@ -123,7 +123,7 @@ Moduli: *Reservations*, *Multi-Channel Reservations*, *Virtual Waitlist*, *Payme
 
 | Macroarea | Tavolo | CoverManager | Gap |
 |---|---|---|---|
-| Motore prenotazione | **D/E** — disponibilità server-side, turni, durata, capienza, per sala e per tavolo, tavolate, forzatura con motivo tracciato `[CODE]` | dichiarato completo, white-label CSS | 🟡 manca **personalizzazione visiva del widget** e regole avanzate (booking window, cutoff, overbooking controllato) |
+| Motore prenotazione | **D/E** — disponibilità server-side, turni, durata, capienza, per sala e per tavolo, tavolate, forzatura con motivo tracciato `[CODE]`; dopo l'audit anche finestra, cutoff e overbooking dichiarato | dichiarato completo, white-label CSS | 🟢 le regole avanzate ci sono; del widget resta la personalizzazione fine (carattere, copertina) |
 | Alternative automatiche quando non c'è posto | **C** — il motore raccoglie *tutti* i motivi di rifiuto e distingue «nessun tavolo di quella misura» da «tutti occupati» `[CODE]`; non propone slot alternativi al cliente | NON VERIFICATO nel dettaglio | 🟡 |
 | Gruppi grandi / eventi privati | **C** — `isGroup`, `budgetCents` nello schema, esperienze pubblicabili; nessun flusso dedicato `[DATABASE]` | *large events*, biglietti | 🔴 |
 | Waitlist | **D/E** `[CODE]` | *Virtual Waitlist* | 🟢 alla pari; Tavolo ha in più l'esclusione delle righe dimenticate dalla media |
@@ -164,11 +164,13 @@ Moduli: *Agenda digitale*, *Planning dei tavoli* (trascinamento, **integrato con
 
 **Stato: D/E.** `[CODE]`
 
-Presenti e verificati: disponibilità calcolata dal server per sala e per tavolo, turni, capienza, durata, tavolate con controllo di stessa sala e conflitto su *tutti* i tavoli uniti, richieste speciali e note (cliente e interne), occasione, fonte, modifica, disdetta, riconoscimento del cliente per email o telefono, forzatura con **motivo obbligatorio** e azione dedicata nel registro, 59 regole di disponibilità verificate.
+Presenti e verificati: disponibilità calcolata dal server per sala e per tavolo, turni, capienza, durata, tavolate con controllo di stessa sala e conflitto su *tutti* i tavoli uniti, richieste speciali e note (cliente e interne), occasione, fonte, modifica, disdetta, riconoscimento del cliente per email o telefono, forzatura con **motivo obbligatorio** e azione dedicata nel registro, 65 regole di disponibilità verificate.
 
 Fatti subito dopo questo audit: **booking window e cutoff** configurabili (con la distinzione che conta: valgono per il pubblico, non per chi risponde al telefono).
 
-Restano assenti: **overbooking controllato**, **riconferma** (il promemoria chiede conferma ma non c'è una politica di riconferma obbligatoria con scadenza), **personalizzazione visiva del widget**.
+Resta assente la sola **riconferma obbligatoria con scadenza**. L'**overbooking controllato** è stato fatto dopo questo audit: una percentuale dichiarata dal locale, valida su ogni canale, e gli orari dentro il margine segnati **solo in sala** — al cliente non si racconta come il locale gestisce la propria capienza. Quest'ultima resta ferma per un motivo dichiarato: il promemoria che la chiederebbe non parte finché manca la chiave email, e una riconferma che nessuno può dare sarebbe una funzione che non fa niente.
+
+Correzione a questo audit `[CODE]`: la **personalizzazione visiva del widget** era stata segnata come assente, ma il logo del locale e il suo colore d'accento sono già usati dal widget (`brandLogoUrl`, `brandAccent`). Quello che manca davvero è più fine — carattere tipografico, immagine di copertina, colore anche sugli orari scelti — e vale molto meno di come era stato scritto.
 
 ---
 
@@ -473,7 +475,7 @@ CoverManager dichiara *«One CRM, every guest»* con sincronizzazione **in tempo
 |---|---|---|---|---|---|
 | Motore disponibilità server-side | 🟢 | 🟢 | 🟢 | ? | — |
 | Widget prenotazione | 🟡 | 🟢 white-label CSS | 🟢 | ? | P1 |
-| Regole avanzate (cutoff, window, overbooking) | 🔴 | ? | ? | ? | P1 |
+| Regole avanzate (cutoff, window, overbooking) | 🟢 **fatte** | ? | ? | ? | — |
 | Piantina e stati tavolo | 🟢 | 🟢 | 🟢 drag&drop | ? | — |
 | Centro controllo con rimedi | 🔵 | ? | ? | ? | — |
 | Waitlist | 🟢 | 🟢 | ? | ? | — |
@@ -583,7 +585,7 @@ Regge perché nomina i quattro fatti che Tavolo possiede davvero (prenotazione, 
 | 3 | **Nessun collegamento alla cassa** | Senza scontrini la spesa reale, l'LTV e il ROI restano stime | Pienissimo (Zucchetti, Tilby, Zmenu…) | Un connettore su una cassa italiana diffusa | **L** | **P0-P1** |
 | 4 | **Nessun ponte verso le recensioni pubbliche** | La recensione è il primo canale di acquisizione di un ristorante, e Tavolo sa già chi è contento | Pienissimo (richieste recensione) | Promotore → invito a recensire, con instradamento | **M** | **P1** |
 | 5 | **CRM non condiviso fra locali** | Per una catena è il requisito che chiude la trattativa | CoverManager (*One CRM, every guest*) | Cliente, punti e gift card a livello di organizzazione | **L** | **P1** |
-| 6 | **Nessuna regola avanzata di prenotazione** | Finestra, cutoff, overbooking controllato sono richieste standard | NON VERIFICATO in dettaglio | Estensione del motore, che è già l'unica fonte di verità | **M** | **P1** |
+| 6 | ~~Nessuna regola avanzata di prenotazione~~ ✅ **fatta** | Finestra, cutoff e overbooking dichiarato, dentro il motore che era già l'unica fonte di verità | NON VERIFICATO in dettaglio | — | **M** | — |
 | 7 | **Biglietti delle esperienze** | È il margine più alto del ristorante e oggi si perde | CoverManager | Dipende dal gap 1 | **M** dopo il 1 | **P1** |
 | 8 | **Fedeltà senza traguardo** | Uno sconto lineare non fa tornare; un premio a soglia sì | Pienissimo (soglia + scadenza + notifica) | Premi a soglia con notifica | **M** | **P1** |
 | 9 | **Analytics che non arriva all'azione** | «Martedì al 54%» non muove niente senza il pulsante che crea la campagna | — | Ponte fra occupazione, segmento e campagna | **S** | **P1** |
@@ -655,8 +657,8 @@ Voti severi. Per ciascuno: motivazione, riferimento, cosa vale un punto in più.
 
 | Area | Voto | Perché | Cosa vale +1 |
 |---|---|---|---|
-| **Booking** | **7** | Motore solido, 4 canali d'ingresso, forzatura tracciata; mancano cutoff, window, overbooking | Regole avanzate di prenotazione |
-| **Availability** | **9** | Unica fonte di verità server-side, 59 regole verificate, tutti i motivi di rifiuto raccolti, alternative proposte quando il giorno è pieno | Overbooking controllato |
+| **Booking** | **8** | Motore solido, 4 canali d'ingresso, forzatura tracciata, finestra e overbooking dichiarati | Riconferma obbligatoria (aspetta la chiave email) |
+| **Availability** | **9** | Unica fonte di verità server-side, 65 regole verificate, tutti i motivi di rifiuto raccolti, alternative quando il giorno è pieno, margine oltre la capienza dichiarato | — |
 | **Floor management** | **8** | Piantina, tavolate, collisioni serializzabili, 7 stati derivati | Pacing e rotazione misurata |
 | **Service** | **9** | Centro controllo con rimedi: la parte migliore | Turn time previsto per tavolo |
 | **Waitlist** | **8** | Completa, con offerta firmata e attesa depurata | Avviso su un canale vero + suggerimento tavolo |

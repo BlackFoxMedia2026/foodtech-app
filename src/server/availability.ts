@@ -81,6 +81,14 @@ export type AvailabilityResult = {
   /** Contesto utile a chi mostra l'esito: capienza del turno e coperti già impegnati. */
   shift: { id: string; name: string; capacity: number } | null;
   seatsTaken: number;
+  /**
+   * Vero quando questa prenotazione entra **oltre la capienza dichiarata**,
+   * dentro il margine di overbooking che il locale ha scelto.
+   *
+   * Accettabile non vuol dire invisibile: chi in sala vede questo orario deve
+   * sapere che sta vendendo un posto che, se non manca nessuno, non c'è.
+   */
+  oltreCapienza: boolean;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -264,10 +272,24 @@ export type FinestraPrenotazioni = {
   cutoffMin: number | null;
 };
 
+/**
+ * Quanti coperti oltre la capienza il locale accetta, in percentuale.
+ *
+ * È una scelta commerciale legittima e vecchia quanto i ristoranti: una quota
+ * di prenotazioni non si presenta, e chi tiene i tavoli vuoti per prudenza
+ * perde serate. Qui si può fare **solo dichiarandolo**, e con due vincoli:
+ * il margine è un numero scritto dal locale, e chi in sala guarda un orario
+ * dentro il margine lo vede segnato. Un overbooking invisibile è una promessa
+ * che il software fa a nome di qualcun altro.
+ */
+export type Overbooking = number;
+
 export type AvailabilityContext = {
   timezone: string;
   /** La finestra dichiarata dal locale. */
   finestra: FinestraPrenotazioni;
+  /** Il margine oltre la capienza, in percentuale. Zero = nessuno. */
+  overbookingPct: Overbooking;
   /** Turni del locale. Vuoto = nessun vincolo di orario. */
   shifts: ShiftLike[];
   /** Prenotazioni che occupano posti, già ripulite di quelle annullate e cancellate. */
@@ -354,8 +376,14 @@ export function evaluateAvailability(
   // 2. La capienza del turno regge?
   const seatsTaken = relevant.reduce((sum, b) => sum + b.partySize, 0);
 
-  if (shift && seatsTaken + partySize > shift.capacity) {
-    const left = Math.max(0, shift.capacity - seatsTaken);
+  // Il margine dichiarato dal locale: sopra la capienza si può andare solo
+  // fin qui, e solo se qualcuno l'ha scritto in Impostazioni.
+  const margine = shift ? Math.floor((shift.capacity * Math.max(0, context.overbookingPct)) / 100) : 0;
+  const tetto = shift ? shift.capacity + margine : 0;
+  let oltreCapienza = false;
+
+  if (shift && seatsTaken + partySize > tetto) {
+    const left = Math.max(0, tetto - seatsTaken);
     issues.push({
       code: "SHIFT_FULL",
       message:
@@ -363,6 +391,9 @@ export function evaluateAvailability(
           ? `Il servizio ${shift.name} è al completo in questo orario.`
           : `Nel servizio ${shift.name} restano ${left} coperti in questo orario, ne servono ${partySize}.`,
     });
+  } else if (shift && seatsTaken + partySize > shift.capacity) {
+    // Dentro il margine: si accetta, e si dice.
+    oltreCapienza = true;
   }
 
   // 3. Il tavolo scelto regge?
@@ -405,7 +436,13 @@ export function evaluateAvailability(
     }
   }
 
-  return { available: issues.length === 0, issues, shift: shift && { id: shift.id, name: shift.name, capacity: shift.capacity }, seatsTaken };
+  return {
+    available: issues.length === 0,
+    issues,
+    shift: shift && { id: shift.id, name: shift.name, capacity: shift.capacity },
+    seatsTaken,
+    oltreCapienza,
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -447,7 +484,12 @@ export async function loadAvailabilityContext(
   const [venue, shifts, bookings, table, blocks] = await Promise.all([
     db.venue.findUnique({
       where: { id: venueId },
-      select: { timezone: true, bookingWindowDays: true, bookingCutoffMin: true },
+      select: {
+        timezone: true,
+        bookingWindowDays: true,
+        bookingCutoffMin: true,
+        overbookingPct: true,
+      },
     }),
     db.shift.findMany({
       where: { venueId, active: true },
@@ -491,6 +533,7 @@ export async function loadAvailabilityContext(
       windowDays: venue?.bookingWindowDays ?? null,
       cutoffMin: venue?.bookingCutoffMin ?? null,
     },
+    overbookingPct: venue?.overbookingPct ?? 0,
     shifts,
     bookings,
     table,
@@ -531,6 +574,8 @@ export type Slot = {
   available: boolean;
   /** Coperti ancora liberi nel turno, se il turno è noto. */
   seatsLeft: number | null;
+  /** Vero quando questo orario è dentro il margine oltre la capienza. */
+  oltreCapienza: boolean;
 };
 
 export type ShiftSlots = { shiftId: string; name: string; slots: Slot[] };
@@ -615,6 +660,7 @@ export function buildDaySlots(request: DaySlotsRequest, context: AvailabilityCon
         label: timeLabel.format(startsAt),
         available: result.available,
         seatsLeft: result.shift ? Math.max(0, result.shift.capacity - result.seatsTaken) : null,
+        oltreCapienza: result.oltreCapienza,
       });
     }
 
