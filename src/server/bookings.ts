@@ -35,7 +35,27 @@ export const BookingInput = z.object({
 
 export type BookingInputType = z.infer<typeof BookingInput>;
 
-export async function listBookings(venueId: string, opts: { from?: Date; to?: Date; status?: string } = {}) {
+/**
+ * Le prenotazioni di un intervallo.
+ *
+ * `take: 200` fisso e senza totale: era l'ultimo posto in cui una lista di
+ * questa applicazione poteva mentire per omissione. Su una giornata non si
+ * vedeva; su un locale grande con due turni, la duecentunesima prenotazione
+ * spariva senza che niente lo dicesse — e sparivano con lei i suoi coperti da
+ * ogni conto fatto su quella lista.
+ *
+ * Ora il limite si chiede. Chi legge **una giornata** non ne passa nessuno,
+ * perché una giornata è già limitata dalla capienza del locale: è la realtà a
+ * fare da tetto, non un numero scelto da noi. Chi legge un intervallo ampio
+ * passerà `limite` insieme al conteggio del totale, così da non poter troncare
+ * senza dirlo — è la regola già applicata all'elenco degli ospiti. Quel
+ * conteggio non è scritto qui perché non esiste ancora nessuno che legga un
+ * intervallo ampio, e una funzione senza chiamanti è una funzione che marcisce.
+ */
+export async function listBookings(
+  venueId: string,
+  opts: { from?: Date; to?: Date; status?: string; limite?: number } = {},
+) {
   return db.booking.findMany({
     where: {
       venueId,
@@ -44,10 +64,18 @@ export async function listBookings(venueId: string, opts: { from?: Date; to?: Da
     },
     include: { guest: true, table: true },
     orderBy: { startsAt: "asc" },
-    take: 200,
+    ...(opts.limite ? { take: opts.limite } : {}),
   });
 }
 
+/**
+ * Tutte le prenotazioni di una giornata, senza tetto.
+ *
+ * Nessun limite di proposito: la piantina della sala, gli stati dei tavoli e
+ * il conto dei coperti si calcolano da questa lista, e una lista tagliata
+ * darebbe un tavolo per libero mentre è prenotato. Il tetto qui lo mette la
+ * capienza del locale.
+ */
 export async function listBookingsForDay(venueId: string, day: Date) {
   return listBookings(venueId, { from: startOfDay(day), to: endOfDay(day) });
 }
