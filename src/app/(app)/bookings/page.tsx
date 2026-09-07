@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { listBookingsForDay } from "@/server/bookings";
+import { getSettimana } from "@/server/booking-week";
 import { getShiftWindowForDate, getCurrentServiceName } from "@/server/booking-floor";
 import { listRooms } from "@/server/rooms";
 import { listServiceOptions } from "@/server/waiter-assignments";
@@ -21,7 +22,7 @@ export default async function BookingsPage({
   const statusFilter = (searchParams.status as StatusFilter) ?? "all";
   const canManageBookings = can(ctx.role, "manage_bookings");
 
-  const [rows, tables, allTables, rooms, serviceOptions] = await Promise.all([
+  const [rows, tables, allTables, rooms, serviceOptions, settimana] = await Promise.all([
     listBookingsForDay(ctx.venueId, day),
     db.table.findMany({
       where: { venueId: ctx.venueId, active: true },
@@ -31,6 +32,9 @@ export default async function BookingsPage({
     db.table.findMany({ where: { venueId: ctx.venueId }, orderBy: { label: "asc" } }),
     listRooms(ctx.venueId),
     listServiceOptions(ctx.venueId),
+    // Due letture sommate, non l'elenco di sette giorni: la vista settimana
+    // mostra sette totali, e sette totali non hanno bisogno di essere paginati.
+    getSettimana(ctx.venueId, dayString),
   ]);
 
   // Default to whichever service is happening right now (by wall-clock
@@ -79,6 +83,7 @@ export default async function BookingsPage({
       rooms={roomsWithTables}
       shiftWindow={shiftWindow}
       canManageBookings={canManageBookings}
+      settimana={settimana}
     />
   );
 }

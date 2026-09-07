@@ -50,7 +50,14 @@ const QUOTA_SATURA = 0.95;
 const GIORNI_NO_SHOW = 90;
 
 /** Gli stati di chi, a fine serata, è stato un coperto vero. */
-const PRESENTI = ["PENDING", "CONFIRMED", "SEATED", "ARRIVED", "COMPLETED"] as const;
+/**
+ * Chi conta come presente: tutti tranne disdette e assenze.
+ *
+ * Esportato perché la stessa popolazione la usa la vista settimana: se le due
+ * contassero persone diverse, due schermate della stessa applicazione
+ * darebbero due numeri per lo stesso sabato — ed è già successo.
+ */
+export const PRESENTI = ["PENDING", "CONFIRMED", "SEATED", "ARRIVED", "COMPLETED"] as const;
 
 const GIORNI_SETTIMANA = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"] as const;
 

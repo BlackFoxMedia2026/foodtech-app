@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Booking, Guest, RoomLayoutMode, Table } from "@prisma/client";
-import { List, Map as MapIcon } from "lucide-react";
+import { CalendarRange, List, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DayPicker } from "@/components/bookings/day-picker";
 import { NewBookingButton } from "@/components/bookings/new-booking-button";
 import { BookingsTable } from "@/components/bookings/bookings-table";
 import { BookingServiceSelect } from "@/components/bookings/floor/booking-service-select";
 import { BookingsFloorView } from "@/components/bookings/floor/bookings-floor-view";
+import { WeekBoard } from "@/components/bookings/week-board";
+import type { Settimana } from "@/server/booking-week";
 import { cn } from "@/lib/utils";
 
 export type Row = Booking & { guest: Guest | null; table: Table | null };
@@ -39,6 +41,7 @@ export function BookingsPageClient({
   rooms,
   shiftWindow,
   canManageBookings,
+  settimana,
 }: {
   dayString: string;
   statusFilter: StatusFilter;
@@ -51,10 +54,11 @@ export function BookingsPageClient({
   rooms: RoomWithTables[];
   shiftWindow: { start: Date; end: Date } | null;
   canManageBookings: boolean;
+  settimana: Settimana;
 }) {
   // Default stays "Elenco" (brief section 3 — backward compatible); only
   // remembered for the session, no new DB preference (brief section 36).
-  const [view, setView] = useState<"elenco" | "mappa">("elenco");
+  const [view, setView] = useState<"elenco" | "mappa" | "settimana">("elenco");
 
   // The ONE shared dataset both views render from (brief sections 23/24) —
   // Elenco renders it directly, Mappa derives its unassigned/assigned split
@@ -82,10 +86,10 @@ export function BookingsPageClient({
 
   useEffect(() => {
     const stored = sessionStorage.getItem(VIEW_STORAGE_KEY);
-    if (stored === "mappa" || stored === "elenco") setView(stored);
+    if (stored === "mappa" || stored === "elenco" || stored === "settimana") setView(stored);
   }, []);
 
-  function changeView(next: "elenco" | "mappa") {
+  function changeView(next: "elenco" | "mappa" | "settimana") {
     setView(next);
     sessionStorage.setItem(VIEW_STORAGE_KEY, next);
   }
@@ -152,10 +156,22 @@ export function BookingsPageClient({
           >
             <MapIcon className="h-4 w-4" /> Mappa
           </button>
+          <button
+            type="button"
+            onClick={() => changeView("settimana")}
+            className={cn(
+              "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
+              view === "settimana" ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
+            )}
+          >
+            <CalendarRange className="h-4 w-4" /> Settimana
+          </button>
         </div>
       </div>
 
-      {view === "elenco" ? (
+      {view === "settimana" ? (
+        <WeekBoard settimana={settimana} />
+      ) : view === "elenco" ? (
         <BookingsTable rows={rows} />
       ) : (
         <BookingsFloorView
