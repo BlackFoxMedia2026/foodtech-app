@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { CalendarPlus, ListPlus, MoreHorizontal, Plus, UtensilsCrossed, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MOBILE_NAV, PRIMARY_NAV, SECONDARY_NAV, isNavActive } from "@/components/shell/nav-items";
+import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
 
 /**
  * Navigazione da telefono, pensata per il servizio.
@@ -24,6 +25,7 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
   const router = useRouter();
   const [altroOpen, setAltroOpen] = useState(false);
   const [azioniOpen, setAzioniOpen] = useState(false);
+  const [walkInOpen, setWalkInOpen] = useState(false);
 
   const altroAttivo =
     SECONDARY_NAV.some((i) => isNavActive(pathname, i)) ||
@@ -37,6 +39,8 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
 
   return (
     <>
+      <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
+
       {/* Le due tendine condividono lo stesso fondo scurito. */}
       {(altroOpen || azioniOpen) && (
         <button
@@ -72,7 +76,10 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
             icon={UtensilsCrossed}
             label="Accomoda un walk-in"
             hint="Chi entra senza prenotazione"
-            onClick={() => vaiA("/floor")}
+            onClick={() => {
+              setAzioniOpen(false);
+              setWalkInOpen(true);
+            }}
           />
         </div>
       )}

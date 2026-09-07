@@ -27,6 +27,7 @@ export type AuditAction =
   | "booking.delete"
   | "booking.assign_table"
   | "booking.assign_table_forced"
+  | "booking.walk_in"
   | "guest.update"
   | "waiter.create"
   | "waiter.update"

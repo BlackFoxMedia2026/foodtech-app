@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { createBooking } from "./bookings";
 import { checkAvailability, DEFAULT_DURATION_MIN } from "./availability";
+import { findFreeTables, type FreeTableSearch } from "./table-search";
 
 /**
  * Lista d'attesa.
@@ -220,88 +221,33 @@ async function requireEntry(venueId: string, id: string) {
 /*  Tavoli compatibili                                                        */
 /* -------------------------------------------------------------------------- */
 
-export type TableSearchResult = {
-  tables: TableMatch[];
-  /** Perché non c'è niente da proporre. `null` quando ci sono tavoli. */
-  reason: "venue_closed" | "shift_full" | "all_busy" | null;
-};
-
-export type TableMatch = {
-  tableId: string;
-  label: string;
-  seats: number;
-  roomId: string | null;
-  roomName: string | null;
-  /** Vero se è la sala che l'ospite ha chiesto. */
-  matchesPreference: boolean;
-};
+/** Riesportati per non cambiare le firme di chi già li usa. */
+export type { FreeTable as TableMatch, FreeTableSearch as TableSearchResult } from "./table-search";
 
 /**
  * Quali tavoli possono accogliere questa persona **adesso**.
  *
- * Non riscrive le regole: chiede al motore di disponibilità, tavolo per
- * tavolo. Costa una query in più per tavolo, ma è l'unico modo di non avere
- * due verità su cosa sia libero — e i tavoli di un ristorante sono decine,
- * non migliaia.
+ * La ricerca vera sta in `table-search.ts`, condivisa con il walk-in: qui
+ * resta solo la traduzione fra una riga della lista d'attesa e una domanda di
+ * disponibilità — quale orario provare, e quale sala preferisce.
  */
 export async function findTablesForEntry(
   venueId: string,
   entryId: string,
   opts: { now?: Date; durationMin?: number } = {},
-): Promise<TableSearchResult> {
+): Promise<FreeTableSearch> {
   const entry = await requireEntry(venueId, entryId);
   const now = opts.now ?? new Date();
-  const durationMin = opts.durationMin ?? DEFAULT_DURATION_MIN;
 
   // Se ha chiesto un orario futuro si prova quello, altrimenti adesso.
   const startsAt = entry.desiredAt && entry.desiredAt.getTime() > now.getTime() ? entry.desiredAt : now;
 
-  const tables = await db.table.findMany({
-    where: { venueId, active: true, seats: { gte: entry.partySize } },
-    select: { id: true, label: true, seats: true, roomId: true, room: { select: { name: true } } },
-    orderBy: { seats: "asc" },
+  return findFreeTables(venueId, {
+    partySize: entry.partySize,
+    startsAt,
+    durationMin: opts.durationMin,
+    preferredRoomId: entry.preferredRoomId,
   });
-
-  const matches: TableMatch[] = [];
-  let venueClosed = false;
-  let shiftFull = false;
-
-  for (const table of tables) {
-    const result = await checkAvailability(venueId, {
-      startsAt,
-      durationMin,
-      partySize: entry.partySize,
-      tableId: table.id,
-    });
-    if (!result.available) {
-      // Questi due motivi non dipendono dal tavolo: valgono per tutti, e sono
-      // la differenza fra "riprova fra poco" e "siamo chiusi".
-      if (result.issues.some((i) => i.code === "VENUE_CLOSED")) venueClosed = true;
-      if (result.issues.some((i) => i.code === "SHIFT_FULL")) shiftFull = true;
-      continue;
-    }
-    matches.push({
-      tableId: table.id,
-      label: table.label,
-      seats: table.seats,
-      roomId: table.roomId,
-      roomName: table.room?.name ?? null,
-      matchesPreference: !!entry.preferredRoomId && table.roomId === entry.preferredRoomId,
-    });
-  }
-
-  // Prima la sala richiesta, poi il tavolo più piccolo che basta: tenere un
-  // sei posti per due persone è il modo più rapido di riempire la sala e non
-  // avere più posti per il gruppo che arriva dopo.
-  matches.sort((a, b) => {
-    if (a.matchesPreference !== b.matchesPreference) return a.matchesPreference ? -1 : 1;
-    return a.seats - b.seats;
-  });
-
-  const reason: TableSearchResult["reason"] =
-    matches.length > 0 ? null : venueClosed ? "venue_closed" : shiftFull ? "shift_full" : "all_busy";
-
-  return { tables: matches, reason };
 }
 
 /**
