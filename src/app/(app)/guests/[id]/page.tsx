@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Cake, Mail, Phone, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Cake, Download, Mail, Phone, ShieldAlert } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getGuestProfile, getGuestTimeline } from "@/server/guest-intelligence";
@@ -87,6 +87,15 @@ export default async function GuestDetail({ params }: { params: { id: string } }
         <div className="flex flex-wrap items-center gap-2">
           {/* Riservata al manager: cancellare i dati di una persona non è un
               gesto da fare di corsa fra due tavoli. */}
+          {can(ctx.role, "manage_venue") && (
+            <Button asChild variant="outline" size="sm">
+              {/* La richiesta di accesso ai propri dati: si scarica e si gira
+                  a chi l'ha chiesta. */}
+              <a href={`/api/guests/${g.id}/export`} download>
+                <Download className="mr-2 h-3.5 w-3.5" aria-hidden="true" /> Esporta i dati
+              </a>
+            </Button>
+          )}
           {can(ctx.role, "manage_venue") && !g.anonymizedAt && (
             <ErasureDialog guestId={g.id} guestName={name} />
           )}
