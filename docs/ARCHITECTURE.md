@@ -184,6 +184,27 @@ d'attesa e il walk-in, che stanno accomodando qualcuno adesso — passa da
 Stessa forma di `skipAvailabilityCheck`, che ora richiede anche un motivo
 scritto (`forceReason`) e finisce nel registro come azione distinta.
 
+### Le anteprime non possono cancellare dati di produzione
+
+`scripts/migrate-safe.ts` più `src/lib/migration-safety.ts`.
+
+Su Vercel il database è lo stesso per produzione e anteprime, e il build
+esegue le migrazioni: quindi l'anteprima di una richiesta di modifica migrava
+il database di produzione, prima che nessuno avesse fuso niente. Non è un caso
+di scuola — è come le migrazioni delle fasi 0-4 sono finite in produzione,
+scoperto solo controllando prima di pubblicare.
+
+Il confine è tracciato dove sta il pericolo vero: una migrazione che
+**aggiunge** passa anche in anteprima (il codice vecchio la ignora), una che
+**porta via dati** solo su una pubblicazione vera. In anteprima, se fra le
+migrazioni in attesa ce n'è una distruttiva non se ne applica **nessuna** e il
+registro del build lo scrive: l'anteprima gira sullo schema attuale e le parti
+nuove possono rompersi. Un'anteprima rotta si vede, dei dati cancellati no.
+
+Una prova esamina tutte le migrazioni del repo, non solo esempi: la prima
+distruttiva legittima farà fallire i test, e va dichiarata a mano. È attrito
+voluto.
+
 ### Le automazioni sono un catalogo, non un editor
 
 `src/server/automations/catalogue.ts` (cosa esiste) e `engine.ts` (come parte).
@@ -226,6 +247,10 @@ così la notte del cambio d'ora non salta un giorno.
 
 ## Cosa manca, e si sa
 
+- **Il database delle anteprime è ancora quello di produzione.** C'è il freno sulle
+  migrazioni distruttive (sopra), ma il codice di un'anteprima **legge e scrive dati veri**:
+  chi prova una funzione in anteprima sta toccando i clienti del ristorante. La soluzione è
+  un ramo di database per anteprima (Neon lo sa fare); il freno serve finché non c'è.
 - **La coda non ha priorità né limiti per fornitore.** Prende i lavori in ordine di
   scadenza, venticinque per giro: se una campagna grossa è in mezzo, un promemoria aspetta
   qualche minuto. Basta oggi; con più locali serviranno una priorità e un tetto di chiamate

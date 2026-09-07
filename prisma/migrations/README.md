@@ -62,3 +62,35 @@ Regola: **aggiungere prima del deploy, eliminare dopo.**
 3. Migrazione che *elimina* la colonna vecchia
 
 Così in nessun momento il codice in esecuzione si trova davanti una colonna che non c'è più.
+
+## Il freno sulle anteprime
+
+Su Vercel `DATABASE_URL` è la stessa per produzione, anteprime e sviluppo, e il
+build esegue le migrazioni. Il 7 settembre 2026 questo è venuto a galla nel modo
+peggiore possibile: le migrazioni delle fasi 0-4 erano **già tutte in
+produzione** senza che nessuno le avesse pubblicate. Le aveva applicate
+l'anteprima delle richieste di modifica.
+
+È andata bene perché erano tutte additive. Una che cancella una colonna avrebbe
+cancellato dati veri partendo da un ramo mai approvato da nessuno.
+
+Da allora il build non chiama `prisma migrate deploy` direttamente ma
+`npm run db:deploy-safe` (`scripts/migrate-safe.ts`):
+
+- **pubblicazione vera** (`VERCEL_ENV=production`) o **in locale**: applica tutto;
+- **anteprima**: applica solo se tutte le migrazioni in attesa **aggiungono**. Se
+  una porta via dati, non applica niente e lo scrive nel registro del build.
+  L'anteprima si costruisce comunque e gira sullo schema attuale: le parti nuove
+  possono non funzionare, e va bene — un'anteprima rotta si vede, dei dati
+  cancellati no.
+
+Cosa conta come «porta via dati» sta in `src/lib/migration-safety.ts`, con una
+prova che esamina **tutte** le migrazioni del repo: quando arriverà la prima
+distruttiva legittima (il passo 3 della regola qui sopra) la prova fallirà, e
+va dichiarata a mano in `DICHIARATE_DISTRUTTIVE` dentro
+`tests/migrazioni-sicure.test.ts`. È attrito voluto: dichiararla significa aver
+deciso che quel dato si può perdere.
+
+**La soluzione definitiva** resta un database separato per le anteprime (Neon
+sa creare un ramo per ogni richiesta di modifica). Questo è il freno che serve
+finché non c'è.
