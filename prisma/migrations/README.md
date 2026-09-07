@@ -135,3 +135,28 @@ vuote.
 La password sta in chiaro. È la password della **rete ospiti** — quella che si
 dà a voce a chi entra, e che il portale mostra a chiunque compili il modulo —
 non una credenziale del locale. In Impostazioni c'è scritto a chiare lettere.
+
+## La prima migrazione distruttiva (7 settembre)
+
+`20260907230000_via_bookedcount` cancella `Campaign.bookedCount`. È la prima
+migrazione di questo progetto che porta via qualcosa, ed è servita anche da
+collaudo del freno.
+
+Tre cose la rendono sicura, e vanno chieste a ogni prossima migrazione di
+questo tipo:
+
+1. **dentro non c'è un dato vero.** I valori erano o lo zero del default o i
+   numeri finti del seed della demo. Nessuno scriveva quella colonna;
+2. **il codice aveva già smesso di leggerla, in una pubblicazione
+   precedente.** Durante un deploy il codice vecchio serve ancora le richieste
+   mentre le migrazioni sono già applicate: un client Prisma che seleziona una
+   colonna appena cancellata restituisce un errore a un utente. Prima si
+   smette di dichiararla, poi si cancella — mai nello stesso rilascio;
+3. **il freno la riconosce.** `esaminaMigrazione` la marca «cancella una
+   colonna», quindi l'anteprima della richiesta **non** l'applica (il database
+   delle anteprime è quello di produzione) e la applica solo la pubblicazione
+   della fusione.
+
+Fra il passo 1 e il passo 2 il database ha una colonna in più di quelle
+dichiarate nello schema, e `prisma migrate diff` lo segnala. È voluto, e dura
+una pubblicazione.

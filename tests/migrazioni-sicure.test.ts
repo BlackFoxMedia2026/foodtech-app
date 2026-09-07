@@ -79,7 +79,14 @@ describe("le migrazioni di questo repo", () => {
    * aver deciso che quel dato si può perdere e che il codice vecchio non lo
    * usa più. Vedi prisma/migrations/README.md (aggiungi prima, togli dopo).
    */
-  const DICHIARATE_DISTRUTTIVE: string[] = [];
+  const DICHIARATE_DISTRUTTIVE: string[] = [
+    // `Campaign.bookedCount`: colonna morta. Dentro c'erano solo lo zero del
+    // default e i numeri finti del seed della demo — nessuno la scriveva — e
+    // il codice aveva già smesso di dichiararla in una pubblicazione
+    // precedente, così durante il deploy nessun client Prisma ha selezionato
+    // una colonna appena cancellata. Vedi prisma/migrations/README.md.
+    "20260907230000_via_bookedcount",
+  ];
 
   const cartella = join(process.cwd(), "prisma", "migrations");
   const nomi = existsSync(cartella)
