@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { ChevronRight, Gift, Megaphone, QrCode as QrCodeIcon, Repeat, Ticket, Wifi } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { db } from "@/lib/db";
+import { getActiveVenue } from "@/lib/tenant";
+import { listAutomations } from "@/server/automations/engine";
+import { debitoGiftCards } from "@/server/gift-cards";
+import { getWifiStats } from "@/server/wifi";
+import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +59,42 @@ const SECTIONS = [
   },
 ];
 
-export default function MarketingPage() {
+export default async function MarketingPage() {
+  const ctx = await getActiveVenue();
+
+  /**
+   * Cinque card con una descrizione e nessun numero: sembrava un indice, non
+   * un cruscotto. Tutti questi dati esistono già — nessuna colonna nuova,
+   * nessuna tabella nuova: si leggono e si scrivono sulla card.
+   */
+  const [campagne, automazioni, coupon, gift, wifi] = await Promise.all([
+    db.campaign.count({ where: { venueId: ctx.venueId, status: { in: ["SENT", "SCHEDULED", "SENDING"] } } }),
+    listAutomations(ctx.venueId),
+    db.coupon.count({ where: { venueId: ctx.venueId, status: "ACTIVE" } }),
+    debitoGiftCards(ctx.venueId),
+    getWifiStats(ctx.venueId),
+  ]);
+
+  const attive = automazioni.filter((a) => a.active).length;
+
+  const NUMERI: Record<string, string> = {
+    "/campaigns": campagne === 0 ? "nessuna campagna inviata" : `${campagne} inviate o in programma`,
+    "/marketing/automations":
+      attive === 0 ? "tutte spente" : `${attive} attive su ${automazioni.length}`,
+    "/marketing/coupons":
+      coupon === 0 ? "nessun coupon attivo" : `${coupon} ${coupon === 1 ? "attivo" : "attivi"}`,
+    "/marketing/gift-cards":
+      gift.carte === 0
+        ? "nessuna gift card"
+        : `${formatCurrency(gift.residuoCents, ctx.venue.currency)} ancora da spendere`,
+    "/marketing/wifi":
+      wifi.contatti === 0
+        ? "nessun contatto raccolto"
+        : `${wifi.contatti} ${wifi.contatti === 1 ? "contatto" : "contatti"} · ${
+            wifi.conPrenotazione
+          } poi ${wifi.conPrenotazione === 1 ? "venuto" : "venuti"}`,
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <header>
@@ -78,8 +119,11 @@ export default function MarketingPage() {
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-2">
                 <CardDescription>{description}</CardDescription>
+                {NUMERI[href] && (
+                  <p className="text-sm font-medium text-accent-strong">{NUMERI[href]}</p>
+                )}
               </CardContent>
             </Card>
           </Link>

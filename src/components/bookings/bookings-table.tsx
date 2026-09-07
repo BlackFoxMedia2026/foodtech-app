@@ -7,12 +7,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge, SourceBadge } from "@/components/bookings/status-badge";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Check, MoreHorizontal } from "lucide-react";
 import { formatTime, initials } from "@/lib/utils";
 
 type Row = Booking & { guest: Guest | null; table: Table | null };
@@ -106,16 +106,32 @@ export function BookingsTable({ rows }: { rows: Row[] }) {
                         </Button>
                       </>
                     ) : (
-                      <Select value={b.status} onValueChange={(v) => changeStatus(b.id, v)}>
-                        <SelectTrigger className="h-8 w-[140px] text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
+                      /* Era un menu a tendina largo 140 px che ripeteva la
+                         stessa parola già scritta nella colonna Stato: due
+                         elementi per la stessa informazione, su ogni riga.
+                         Ora la colonna Stato si legge, e il cambio è
+                         un'azione — con il nome della persona nell'etichetta,
+                         perché su tredici righe uguali serve sapere quale. */
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Cambia lo stato di ${name}`}
+                            title="Cambia stato"
+                          >
+                            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
                           {STATUS_OPTIONS.map(([k, l]) => (
-                            <SelectItem key={k} value={k}>{l}</SelectItem>
+                            <DropdownMenuItem key={k} onSelect={() => changeStatus(b.id, k)}>
+                              <span className="flex-1">{l}</span>
+                              {b.status === k && <Check className="ml-2 h-3.5 w-3.5" aria-hidden="true" />}
+                            </DropdownMenuItem>
                           ))}
-                        </SelectContent>
-                      </Select>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                     <Button asChild variant="ghost" size="sm">
                       <Link href={`/bookings/${b.id}`}>Apri</Link>
