@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { esaminaMigrazione } from "../src/lib/migration-safety";
+import { esaminaMigrazione, serraturaOccupata } from "../src/lib/migration-safety";
 
 /**
  * Applica le migrazioni, con un freno per le anteprime.
@@ -49,25 +49,75 @@ async function migrazioniApplicate(): Promise<Set<string>> {
   }
 }
 
+/** Quante volte riprovare quando la serratura del database è occupata. */
+const TENTATIVI = 5;
+const ATTESA_MS = 12_000;
+
+/**
+ * Applica le migrazioni, aspettando il proprio turno.
+ *
+ * `prisma migrate deploy` prende una serratura sul database (un *advisory
+ * lock*) e dopo dieci secondi rinuncia. Su Vercel due build si sovrappongono
+ * spesso — l'anteprima di una richiesta e la pubblicazione della stessa
+ * fusione — e quella che arriva seconda **falliva il build**. È successo due
+ * volte in un giorno: la prima ha messo un segno rosso su una richiesta, la
+ * seconda ha fatto fallire una pubblicazione di produzione per un motivo che
+ * non aveva niente a che vedere col codice.
+ *
+ * Aspettare è la risposta giusta: la serratura serve proprio a mettere in fila
+ * chi migra, e chi è in fila deve attendere, non morire. Si riprova solo su
+ * quell'errore: una migrazione scritta male deve fallire subito e forte.
+ */
 function applica() {
-  execFileSync("npx", ["prisma", "migrate", "deploy"], { stdio: "inherit" });
+  for (let tentativo = 1; tentativo <= TENTATIVI; tentativo++) {
+    try {
+      const esito = execFileSync("npx", ["prisma", "migrate", "deploy"], { encoding: "utf8" });
+      console.log(esito.trim());
+      return;
+    } catch (err) {
+      // Tutti e tre insieme: Prisma scrive il motivo su stderr, e leggere solo
+      // stdout significherebbe non riconoscere mai la serratura occupata.
+      const e = err as { stdout?: string; stderr?: string; message?: string };
+      const testo = [e.stdout, e.stderr, e.message].filter(Boolean).join("\n");
+      if (!serraturaOccupata(testo) || tentativo === TENTATIVI) {
+        console.error(testo);
+        throw err;
+      }
+      console.warn(
+        `[migrazioni] il database è occupato da un'altra pubblicazione (tentativo ${tentativo}/${TENTATIVI}): aspetto ${
+          ATTESA_MS / 1000
+        }s.`
+      );
+      // Attesa sincrona: siamo in uno script di build, non c'è nient'altro da fare.
+      execFileSync("sleep", [String(ATTESA_MS / 1000)]);
+    }
+  }
 }
 
 async function main() {
   const ambiente = process.env.VERCEL_ENV;
 
-  // Fuori da Vercel (in locale, o a mano) chi lancia il comando sa cosa sta
-  // facendo: nessun freno.
-  if (!ambiente || ambiente === "production") {
-    applica();
-    return;
-  }
-
   const applicate = await migrazioniApplicate();
   const inAttesa = migrazioniSuDisco().filter((m) => !applicate.has(m));
 
+  /**
+   * Se non c'è niente da applicare non si chiama `migrate deploy`.
+   *
+   * Sembra un dettaglio e non lo è: anche senza niente da fare quel comando
+   * prende la serratura del database, e due build che si sovrappongono si
+   * bloccavano a vicenda per un lavoro che non c'era. È così che una
+   * pubblicazione di produzione è fallita con il database perfettamente in
+   * ordine.
+   */
   if (inAttesa.length === 0) {
     console.log("[migrazioni] niente da applicare.");
+    return;
+  }
+
+  // Fuori da Vercel (in locale, o a mano) e in produzione: si applica tutto.
+  if (!ambiente || ambiente === "production") {
+    console.log(`[migrazioni] ${inAttesa.length} da applicare.`);
+    applica();
     return;
   }
 

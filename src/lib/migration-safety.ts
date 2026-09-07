@@ -41,6 +41,20 @@ const DISTRUTTIVE: { pattern: RegExp; cosa: string }[] = [
   { pattern: /\bRENAME\s+(?:TO|COLUMN)\b/i, cosa: "rinomina" },
 ];
 
+/**
+ * L'errore di chi ha trovato la serratura del database occupata.
+ *
+ * `prisma migrate deploy` prende un *advisory lock* e dopo dieci secondi
+ * rinuncia con `P1002`. Su Vercel due build si sovrappongono spesso, e quella
+ * che arriva seconda faceva fallire la pubblicazione per un motivo che non
+ * aveva niente a che vedere col codice: va aspettato il turno, non abbandonato
+ * il campo. Si riconosce **solo** questo errore, perché una migrazione scritta
+ * male deve fallire subito e forte.
+ */
+export function serraturaOccupata(uscita: string): boolean {
+  return /advisory lock|P1002/i.test(uscita);
+}
+
 /** Via i commenti, così un `-- DROP TABLE` in una nota non fa scattare niente. */
 export function senzaCommenti(sql: string): string {
   return sql
