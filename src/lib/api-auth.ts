@@ -134,6 +134,20 @@ export function apiErrorResponse(err: unknown) {
       "Nessun destinatario: con questi criteri non c'è nessun cliente con email e consenso."
     );
   }
+  if (message === "category_not_empty") {
+    return apiError(
+      409,
+      "category_not_empty",
+      "Questa categoria contiene dei piatti: spostali o disattiva la categoria invece di eliminarla."
+    );
+  }
+  if (message === "item_ordered") {
+    return apiError(
+      409,
+      "item_ordered",
+      "Questo piatto è già stato ordinato: eliminandolo si perderebbe la storia delle sue vendite. Segnalo non disponibile e sparirà dalla carta."
+    );
+  }
   if (message === "code_taken") {
     return apiError(409, "code_taken", "Questo codice è già in uso: scegline un altro.");
   }

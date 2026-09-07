@@ -206,6 +206,37 @@ Due conseguenze pratiche:
 Nell'invio di prova il codice è dichiaratamente finto (`CODICE-DI-PROVA`):
 creare un coupon vero per una prova vorrebbe dire regalare qualcosa a nessuno.
 
+### Gli allergeni non si scrivono a mano
+
+`src/server/menu.ts`.
+
+Sono un elenco chiuso: i quattordici a dichiarazione obbligatoria del
+Regolamento UE 1169/2011, con le loro chiavi. Un campo libero produce
+«glutine», «Glutine», «GLUTINE» e «farina di grano» nella stessa carta, e un
+cliente celiaco non può fidarsi di una ricerca che non trova la parola giusta.
+Stessa forma per i regimi alimentari, che sono un'altra domanda («come si
+mangia») e un altro elenco.
+
+Il menu è il primo anello di **menu → ordini → costo del cibo**, e serve a
+qualcosa da solo: è quello che il cliente legge dal QR sul tavolo. La pagina
+pubblica mostra **solo** categorie attive e piatti disponibili — un piatto
+finito non si legge, così nessuno lo ordina e nessuno resta deluso — e non
+contiene costi né margini, che sono numeri del locale.
+
+Due cose che non si cancellano:
+
+- **una categoria con dei piatti**: la cascata porterebbe via anche quelli;
+- **un piatto già ordinato**: il conto di una serata chiusa sopravvive (la
+  riga d'ordine ha la sua copia di nome e prezzo), ma si perderebbe il
+  collegamento, cioè la storia di quante volte quel piatto è stato venduto —
+  che è precisamente ciò che serve al costo del cibo.
+
+In entrambi i casi il rimedio è disattivare, e il messaggio d'errore lo dice.
+
+E una nota sul margine: dove il costo è dichiarato, il margine è l'unico
+numero in euro di questa applicazione che **non** è una stima. Prezzo e costo
+li scrive il locale; non li deduciamo da nulla.
+
 ### Un coupon non si usa più volte di quelle previste
 
 `src/server/coupons.ts`.

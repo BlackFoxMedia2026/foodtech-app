@@ -93,7 +93,9 @@ Chiuse il 7 settembre 2026, perché una promessa non mantenuta è peggio di una 
 ## Phase 6 — Ecosistema
 
 - Loyalty, gift card, Wi-Fi
-- Menu → ordini → food cost (in quest'ordine: è una catena)
+- [x] **Menu**: categorie e piatti, allergeni da elenco chiuso, disponibilità, ordine, costo facoltativo con il margine. Più il **menu pubblico** per il QR sul tavolo. Serve a sé, e regge i due passi dopo
+- [ ] **Ordini**: presi al tavolo, collegati alla prenotazione. È il passo che trasforma le stime in euro in incassi veri
+- [ ] **Food cost**: margine per piatto già visibile; manca il quadro d'insieme (quanto rende una serata, quali piatti tengono su il conto). Dipende dagli ordini
 - POS e altri connettori sopra un livello di integrazione astratto
 
 ## Phase 7 — Enterprise
