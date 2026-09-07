@@ -406,7 +406,7 @@ Alla domanda «quanto spingersi senza diventare un gestionale di magazzino» `[I
 
 **Stato: D/E.** `[CODE]` Coperti, occupazione, fonti, fasce, giorni, previsione a 7 giorni spiegata, costo del cibo con copertura, costo delle assenze, NPS, attribuzione campagne.
 
-Assenti: RevPASH (**scelta dichiarata**: pochi giorni di incassi veri), rotazione tavoli, conversione della waitlist, ricavo per cameriere, confronto fra locali, ROI della fedeltà, debito gift card nei numeri d'insieme (c'è nella sua pagina).
+Assenti: RevPASH (**scelta dichiarata**: pochi giorni di incassi veri), rotazione tavoli, ricavo per cameriere, confronto fra locali, ROI della fedeltà, debito gift card nei numeri d'insieme (c'è nella sua pagina).
 
 Sul passaggio **DATA → INSIGHT → ACTION** richiesto dal brief: Tavolo è già a INSIGHT in due punti (previsione con la frase che la spiega, centro controllo con il rimedio) e **arriva ad ACTION solo nel centro controllo**. L'esempio del brief — «martedì al 54% → 187 clienti compatibili non vengono da 60 giorni → [CREA CAMPAGNA]» — **è costruibile oggi con i dati esistenti** `[INFERENCE]`: occupazione per giorno ✅, segmento inattivi ✅, creazione campagna ✅. Manca solo il ponte fra le tre. È la singola opportunità con il miglior rapporto valore/sforzo di tutto l'audit.
 

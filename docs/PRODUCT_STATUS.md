@@ -28,6 +28,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Panoramica | LIVE | KPI del giorno, timeline, alert da motore a regole |
 | Prenotazioni (CRUD) | LIVE | Creazione, modifica, annullo, dettaglio. Forzatura consapevole con motivo obbligatorio e traccia nel registro |
 | Disponibilità / anti-overbooking | LIVE | Unica fonte di verità per sala, API e widget. 59 verifiche automatiche |
+| Lista d'attesa misurata | LIVE | Quante persone escono dalla coda, quante si siedono, i **coperti recuperati** e quanto hanno aspettato. Sotto cinque righe niente percentuale; le righe mai chiuse si contano a parte, perché non sono clienti persi ma un gesto mancato in sala |
 | Alternative a un giorno pieno | LIVE | «Il primo posto libero: giovedì 10 alle 12:00». Tre proposte, un tocco per accettarne una. Cercate solo quando servono, in una sola lettura |
 | Gruppi grandi | LIVE | Oltre dodici persone il widget mostra il telefono invece del modulo: un tavolo così si organizza, non si prenota |
 | Finestra di prenotazione | LIVE | Da quanti giorni prima si prenota online, e quanto preavviso serve. **Vale solo per il widget**: al telefono il locale accetta fino all'ultimo minuto. Chi arriva fuori finestra legge che può chiamare, non che è tutto pieno. Nasce senza limiti: chi non dichiara niente continua come prima |

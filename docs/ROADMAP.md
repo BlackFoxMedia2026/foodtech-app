@@ -145,6 +145,9 @@ costavano poco e valevano molto.
       → un collegamento tolto viene **spento, non cancellato**: cancellarlo porterebbe via i clic raccolti, e i numeri dell'anno scorso cambierebbero da soli
       → di chi clicca non registriamo niente (né IP né browser): serve a contare, non a profilare
 - [x] **Scheletri di caricamento** sulle sette pagine che ne erano senza (Servizio, Attesa, Menu, Marketing, Campagne, Esperienze, Brigata): hanno la forma vera della pagina, non un rettangolo generico. Uno scheletro che non somiglia a quello che arriva fa saltare il testo sotto gli occhi, ed è peggio di una pagina bianca
+- [x] **La lista d'attesa misurata**, in Analytics: quante persone escono dalla coda, quante si siedono, i coperti recuperati, quanto hanno aspettato. Risponde a «tenere una lista serve?», che finora era una questione di impressioni
+      → si misura su chi è **uscito** dalla coda: chi aspetta adesso non è né un successo né una perdita
+      → sotto cinque righe niente percentuale, e le righe che nessuno ha chiuso si contano a parte: non sono clienti persi, sono un gesto mancato in sala, e mescolarle racconterebbe una serata peggiore di com'è andata
 - [x] **L'affidabilità raccontata, non punteggiata**: sulla scheda cliente le assenze portano la data dell'ultima. «2 su 12, l'ultima il 5 settembre» dice se è un cliente da richiamare o una cosa vecchia; un 17% da solo non lo dice — ed è il motivo per cui questo progetto non mette un punteggio da 0 a 100
 - [x] **«E allora quando?»**: davanti a una giornata piena il widget non dice più solo «non c'è posto», propone i primi tre giorni con posto e l'ora — e toccarne uno cambia data e orario in un colpo
       → la ricerca parte **solo** quando il giorno scelto è pieno: chi trova posto al primo colpo non paga il conto di una domanda che non ha fatto
