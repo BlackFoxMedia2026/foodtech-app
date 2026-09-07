@@ -9,6 +9,8 @@ import type { ServiceSnapshot } from "@/server/service";
 import { ServiceBookingCard } from "@/components/service/service-booking-card";
 import { ServiceWaitlistCard } from "@/components/service/service-waitlist-card";
 import { ServiceSwitch } from "@/components/service/service-switch";
+import { ServiceInsights } from "@/components/service/service-insights";
+import type { ServiceInsight } from "@/server/service-intelligence";
 
 /** Ogni quanto la schermata si riaggiorna da sola. */
 const REFRESH_MS = 30_000;
@@ -32,10 +34,12 @@ type Colonna = "adesso" | "prossimi" | "attesa";
  */
 export function ServiceView({
   initial,
+  insights,
   venueName,
   canManage,
 }: {
   initial: ServiceSnapshot;
+  insights: ServiceInsight[];
   venueName: string;
   canManage: boolean;
 }) {
@@ -140,6 +144,15 @@ export function ServiceView({
         <Numero icona={ListOrdered} etichetta="In attesa" valore={c.personeInAttesa} nota="persone" />
         <Numero icona={UserCheck} etichetta="Walk-in" valore={c.walkInOggi} nota="oggi" />
       </section>
+
+      {insights.length > 0 && (
+        <section aria-label="Cosa sta per andare storto" className="space-y-2">
+          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            Da tenere d&apos;occhio
+          </h2>
+          <ServiceInsights insights={insights} />
+        </section>
+      )}
 
       {/* Su telefono: una colonna per volta. */}
       <div className="flex gap-1 lg:hidden" role="tablist" aria-label="Aree del servizio">

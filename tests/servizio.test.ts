@@ -103,13 +103,16 @@ describe("chi è in ritardo", () => {
     expect(s.next).toHaveLength(1);
   });
 
-  it("lo diventa superata la tolleranza, e il ritardo è al netto di essa", async () => {
+  it("lo diventa superata la tolleranza, e il ritardo mostrato è quello vero", async () => {
     await svuota();
     await crea({ minutiDaAdesso: -(LATE_GRACE_MIN + 20) });
     const s = await getServiceSnapshot(venueId);
     expect(s.late).toHaveLength(1);
-    expect(s.late[0].lateBy).toBeGreaterThanOrEqual(19);
-    expect(s.late[0].lateBy).toBeLessThanOrEqual(21);
+    // Il ritardo è rispetto all'orario prenotato, non al netto della
+    // tolleranza: quella decide *se* segnalare, non quanto vale. Sottrarla
+    // faceva dire due numeri diversi alla riga e all'avviso accanto.
+    expect(s.late[0].lateBy).toBeGreaterThanOrEqual(LATE_GRACE_MIN + 19);
+    expect(s.late[0].lateBy).toBeLessThanOrEqual(LATE_GRACE_MIN + 21);
   });
 
   it("chi è già arrivato o seduto non è in ritardo, anche se l'orario è passato", async () => {

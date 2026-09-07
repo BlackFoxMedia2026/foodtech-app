@@ -45,7 +45,14 @@ export type ServiceBooking = {
   depositStatus: string;
   /** Minuti da adesso all'orario previsto: negativo = è in ritardo. */
   minutesToArrival: number;
-  /** Minuti di ritardo oltre la tolleranza; 0 se non è in ritardo. */
+  /**
+   * Minuti di ritardo rispetto all'orario prenotato; 0 se non è in ritardo.
+   *
+   * È il ritardo **vero**, non quello al netto della tolleranza: la
+   * tolleranza decide *se* segnalarlo, non quanto vale. Sottrarla faceva
+   * dire «in ritardo di 47 minuti» a una riga e «di 57» all'avviso qui
+   * accanto, per la stessa persona.
+   */
   lateBy: number;
   /** Per chi è già seduto: minuti alla fine prevista. Negativo = oltre. */
   minutesToFree: number | null;
@@ -125,7 +132,7 @@ function toServiceBooking(b: BookingRow, now: Date): ServiceBooking {
     depositCents: b.depositCents,
     depositStatus: b.depositStatus,
     minutesToArrival,
-    lateBy: isLate ? Math.abs(minutesToArrival) - LATE_GRACE_MIN : 0,
+    lateBy: isLate ? Math.abs(minutesToArrival) : 0,
     minutesToFree: b.status === "SEATED" ? Math.round((fine.getTime() - now.getTime()) / 60_000) : null,
     source: b.source,
   };

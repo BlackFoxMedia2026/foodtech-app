@@ -42,8 +42,7 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] **Modalità Servizio / reception**: ADESSO / PROSSIMI / ATTESA, per tablet e una mano
 - [x] **Sala viva**: sette stati con icona oltre al colore, sposta prenotazione, libera tavolo, elenco per stato su telefono. Le tavolate unite si *leggono* (`combinedTableIds`, rispettato anche dalla disponibilità); **unire e dividere dall'interfaccia** resta da fare
 - [x] Navigazione mobile: barra in basso con «+» centrale (fatta in Phase 1)
-- [ ] Centro controllo servizio: collisioni previste, rischio overbooking, suggerimenti seating
-      → i numeri della modalità Servizio sono la base: manca lo strato che li interpreta
+- [x] **Centro controllo servizio**: sette regole deterministiche, ognuna con la sua azione. Restano da aggiungere, quando ci saranno i dati: previsione dei coperti e ottimizzazione dell'occupazione (Phase 5)
 
 ## Phase 3 — Ospiti
 

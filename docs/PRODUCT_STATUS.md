@@ -64,7 +64,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Analytics | LIVE | Descrittivo: coperti, completamento, no-show, cancellazioni, fonti |
 | Insight / alert | LIVE | Motore a regole |
 | Revenue intelligence (RevPASH, occupazione) | PLANNED | |
-| Centro controllo servizio (collisioni, rischi, suggerimenti) | PLANNED | I numeri della modalità Servizio sono la base: manca lo strato che li interpreta |
+| Centro controllo servizio | LIVE | Sette regole deterministiche: picco di arrivi, collisione sul tavolo, arrivi senza tavolo, rischio no-show (con lo storico del cliente), tavolo grande mezzo vuoto mentre una tavolata aspetta, tavolo libero per chi è in coda, turno oltre la capienza. Ognuna con il posto dove andare a sistemarla |
 | Previsione | PLANNED | |
 
 ## Piattaforma
@@ -85,7 +85,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii |
 | Navigazione mobile | LIVE | Barra in basso con «+» per i gesti rapidi; nessuno scorrimento orizzontale |
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
-| Test | PARTIAL | 153 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio e stati vivi della sala. Nessun end-to-end sul browser |
+| Test | PARTIAL | 173 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati, fotografia del servizio stati vivi della sala e le regole del centro controllo. Nessun end-to-end sul browser |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
 

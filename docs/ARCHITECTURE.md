@@ -74,6 +74,22 @@ la matrice non verificabile con un test.
 `src/lib/venue-time.ts`; i componenti client leggono il fuso da un contesto montato nel layout
 (`VenueTimeProvider`). Mai `new Date().toISOString()` per ottenere una data: quello è UTC.
 
+### Gli avvisi sono regole, non un modello
+
+`src/server/service-intelligence.ts` incrocia prenotazioni, tavoli e lista
+d'attesa per dire cosa sta per andare storto. Sette condizioni scritte a mano,
+con soglie in cima al file e fissate da un test.
+
+Deliberatamente **non** un modello generativo: qui i dati sono esatti, e un
+modello aggiungerebbe solo incertezza. Una regola si può leggere, discutere e
+correggere — se un ristoratore dice «questo per me non è un problema», si
+cambia una costante. La stessa scelta che il brief chiede al §17.
+
+La qualità di questo strato si misura sul **silenzio**: un motore che avvisa
+sempre non avvisa mai. Per questo esiste un test che verifica che una sala
+tranquilla non produca niente, e che lo stesso tavolo non venga proposto a tre
+gruppi diversi.
+
 ### Due piante, due scopi
 
 `/floor` è la pianta con cui si **configura** il locale: disegnare, spostare,
