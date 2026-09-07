@@ -239,21 +239,39 @@ describe("turno oltre la capienza", () => {
     // i test girano con TZ=UTC di proposito, e usare getHours() qui creava un
     // turno spostato di due ore che non conteneva "adesso". Il motore usa il
     // fuso del ristorante, ed è giusto così.
+    // Orologio fissato a mezzogiorno, non «adesso»: eseguito alle 23:50, la
+    // fine del turno si schiacciava sulle 23:59 e la prenotazione di venti
+    // minuti dopo cadeva nel giorno seguente — il test passava di giorno e
+    // falliva la notte. La prova riguarda un turno pieno, non l'ora in cui gira.
     const adesso = new Date();
+    adesso.setHours(12, 0, 0, 0);
     const { weekday, minuteOfDay } = zonedDayAndMinute(adesso, "Europe/Rome");
     await db.shift.create({
       data: {
         venueId,
         name: "Prova",
         weekday,
-        startMinute: Math.max(0, minuteOfDay - 60),
-        endMinute: Math.min(24 * 60 - 1, minuteOfDay + 120),
+        startMinute: minuteOfDay - 60,
+        endMinute: minuteOfDay + 120,
         capacity: 4,
       },
     });
-    await prenota({ minutiDaAdesso: 20, partySize: 6, tableId: t6 });
+    await db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        partySize: 6,
+        startsAt: new Date(adesso.getTime() + 20 * 60_000),
+        durationMin: 105,
+        status: "CONFIRMED",
+        source: "PHONE",
+        tableId: t6,
+      },
+    });
 
-    const avviso = (await getServiceInsights(venueId)).find((a) => a.kind === "shift_over_capacity");
+    const avviso = (await getServiceInsights(venueId, { now: adesso })).find(
+      (a) => a.kind === "shift_over_capacity",
+    );
     expect(avviso).toBeDefined();
     // Può essere voluto — qualcuno ha forzato — e il testo lo riconosce.
     expect(avviso!.detail).toContain("Può essere voluto");
