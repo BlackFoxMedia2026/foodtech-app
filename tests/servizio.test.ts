@@ -37,6 +37,17 @@ function oggiAlle(ore: number, minuti = 0): Date {
   return d;
 }
 
+/**
+ * L'orologio della prova, fermo a mezzogiorno.
+ *
+ * La fotografia del servizio guarda **la giornata di oggi**. Girando questi
+ * test a mezzanotte e mezza, «fra ottanta minuti» cadeva nel giorno dopo e
+ * spariva dalla finestra: il test passava di giorno e falliva la notte, che è
+ * il difetto peggiore di un test. Le prove riguardano le finestre, non l'ora
+ * in cui girano.
+ */
+const ADESSO = oggiAlle(12);
+
 async function crea(opts: {
   minutiDaAdesso: number;
   status?: "CONFIRMED" | "PENDING" | "ARRIVED" | "SEATED" | "NO_SHOW" | "CANCELLED" | "COMPLETED";
@@ -50,7 +61,7 @@ async function crea(opts: {
       venueId,
       guestId: opts.vip ? vipId : guestId,
       partySize: opts.partySize ?? 2,
-      startsAt: new Date(Date.now() + opts.minutiDaAdesso * 60_000),
+      startsAt: new Date(ADESSO.getTime() + opts.minutiDaAdesso * 60_000),
       durationMin: opts.durationMin ?? 105,
       status: opts.status ?? "CONFIRMED",
       source: "PHONE",
@@ -97,7 +108,7 @@ describe("chi è in ritardo", () => {
   it("non lo è dentro la tolleranza", async () => {
     await svuota();
     await crea({ minutiDaAdesso: -(LATE_GRACE_MIN - 2) });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.late).toHaveLength(0);
     // Resta fra i prossimi arrivi: sta arrivando, non è un problema.
     expect(s.next).toHaveLength(1);
@@ -106,7 +117,7 @@ describe("chi è in ritardo", () => {
   it("lo diventa superata la tolleranza, e il ritardo mostrato è quello vero", async () => {
     await svuota();
     await crea({ minutiDaAdesso: -(LATE_GRACE_MIN + 20) });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.late).toHaveLength(1);
     // Il ritardo è rispetto all'orario prenotato, non al netto della
     // tolleranza: quella decide *se* segnalare, non quanto vale. Sottrarla
@@ -119,7 +130,7 @@ describe("chi è in ritardo", () => {
     await svuota();
     await crea({ minutiDaAdesso: -60, status: "ARRIVED" });
     await crea({ minutiDaAdesso: -60, status: "SEATED", tableId: tavolo4 });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.late).toHaveLength(0);
     expect(s.arrived).toHaveLength(1);
     expect(s.seated).toHaveLength(1);
@@ -129,7 +140,7 @@ describe("chi è in ritardo", () => {
     await svuota();
     await crea({ minutiDaAdesso: -20, partySize: 2 });
     await crea({ minutiDaAdesso: -90, partySize: 5 });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.late.map((b) => b.partySize)).toEqual([5, 2]);
   });
 });
@@ -141,23 +152,23 @@ describe("i prossimi arrivi", () => {
     await crea({ minutiDaAdesso: 50 });
     await crea({ minutiDaAdesso: 80 });
 
-    expect((await getServiceSnapshot(venueId, { nextWindowMin: 30 })).next).toHaveLength(1);
-    expect((await getServiceSnapshot(venueId, { nextWindowMin: 60 })).next).toHaveLength(2);
-    expect((await getServiceSnapshot(venueId, { nextWindowMin: 90 })).next).toHaveLength(3);
+    expect((await getServiceSnapshot(venueId, { now: ADESSO, nextWindowMin: 30 })).next).toHaveLength(1);
+    expect((await getServiceSnapshot(venueId, { now: ADESSO, nextWindowMin: 60 })).next).toHaveLength(2);
+    expect((await getServiceSnapshot(venueId, { now: ADESSO, nextWindowMin: 90 })).next).toHaveLength(3);
   });
 
   it("sono ordinati per orario, il primo che arriva in cima", async () => {
     await svuota();
     await crea({ minutiDaAdesso: 50, partySize: 5 });
     await crea({ minutiDaAdesso: 20, partySize: 2 });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.next.map((b) => b.partySize)).toEqual([2, 5]);
   });
 
   it("le annullate non compaiono da nessuna parte", async () => {
     await svuota();
     await crea({ minutiDaAdesso: 30, status: "CANCELLED" });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.next).toHaveLength(0);
     expect(s.late).toHaveLength(0);
     expect(s.counters.copertiPrevisti).toBe(0);
@@ -167,7 +178,7 @@ describe("i prossimi arrivi", () => {
     await svuota();
     await crea({ minutiDaAdesso: 30, partySize: 4 });
     await crea({ minutiDaAdesso: 30, partySize: 6, status: "NO_SHOW" });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.counters.copertiPrevisti).toBe(4);
   });
 });
@@ -177,7 +188,7 @@ describe("i tavoli che stanno per liberarsi", () => {
     await svuota();
     // Iniziata 100 minuti fa, durata 105: finisce fra 5 minuti.
     await crea({ minutiDaAdesso: -100, durationMin: 105, status: "SEATED", tableId: tavolo4 });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.freeingSoon).toHaveLength(1);
     expect(s.freeingSoon[0].minutesToFree).toBeLessThanOrEqual(FREEING_SOON_MIN);
   });
@@ -185,7 +196,7 @@ describe("i tavoli che stanno per liberarsi", () => {
   it("chi si è appena seduto non è in chiusura", async () => {
     await svuota();
     await crea({ minutiDaAdesso: -5, durationMin: 105, status: "SEATED", tableId: tavolo4 });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.freeingSoon).toHaveLength(0);
     expect(s.seated).toHaveLength(1);
   });
@@ -193,7 +204,7 @@ describe("i tavoli che stanno per liberarsi", () => {
   it("chi è oltre il tempo previsto ha un valore negativo, non sparisce", async () => {
     await svuota();
     await crea({ minutiDaAdesso: -180, durationMin: 105, status: "SEATED", tableId: tavolo4 });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.freeingSoon).toHaveLength(1);
     expect(s.freeingSoon[0].minutesToFree).toBeLessThan(0);
   });
@@ -206,7 +217,7 @@ describe("i numeri in testa", () => {
     await crea({ minutiDaAdesso: -20, status: "SEATED", partySize: 2, tableId: tavolo2 });
     await crea({ minutiDaAdesso: 40, partySize: 6 });
 
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.counters.copertiPresenti).toBe(6);
     expect(s.counters.tavoliOccupati).toBe(2);
     expect(s.counters.tavoliLiberi).toBe(0); // il locale di prova ha due tavoli
@@ -217,7 +228,7 @@ describe("i numeri in testa", () => {
     await svuota();
     await crea({ minutiDaAdesso: -30, status: "SEATED", partySize: 2, tableId: tavolo4 });
     await crea({ minutiDaAdesso: -20, status: "SEATED", partySize: 2, tableId: tavolo4 });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.counters.tavoliOccupati).toBe(1);
     expect(s.counters.copertiPresenti).toBe(4);
   });
@@ -230,7 +241,7 @@ describe("i numeri in testa", () => {
     await db.booking.create({
       data: { venueId, partySize: 2, startsAt: oggiAlle(14), status: "CANCELLED", source: "WALK_IN" },
     });
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.counters.walkInOggi).toBe(1);
   });
 });
@@ -243,7 +254,7 @@ describe("le informazioni che servono in sala", () => {
         venueId,
         guestId,
         partySize: 2,
-        startsAt: new Date(Date.now() + 30 * 60_000),
+        startsAt: new Date(ADESSO.getTime() + 30 * 60_000),
         status: "CONFIRMED",
         source: "PHONE",
         tableId: tavolo2,
@@ -252,7 +263,7 @@ describe("le informazioni che servono in sala", () => {
         notes: "vicino alla finestra",
       },
     });
-    const [riga] = (await getServiceSnapshot(venueId)).next;
+    const [riga] = (await getServiceSnapshot(venueId, { now: ADESSO })).next;
     expect(riga.allergies).toBe("Glutine");
     expect(riga.tableLabel).toBe("S2");
     expect(riga.occasion).toBe("BIRTHDAY");
@@ -264,16 +275,16 @@ describe("le informazioni che servono in sala", () => {
   it("segnala i VIP", async () => {
     await svuota();
     await crea({ minutiDaAdesso: 30, vip: true });
-    const [riga] = (await getServiceSnapshot(venueId)).next;
+    const [riga] = (await getServiceSnapshot(venueId, { now: ADESSO })).next;
     expect(riga.isVip).toBe(true);
   });
 
   it("chi non ha una scheda ospite non rompe la riga", async () => {
     await svuota();
     await db.booking.create({
-      data: { venueId, partySize: 2, startsAt: new Date(Date.now() + 30 * 60_000), status: "CONFIRMED", source: "WALK_IN" },
+      data: { venueId, partySize: 2, startsAt: new Date(ADESSO.getTime() + 30 * 60_000), status: "CONFIRMED", source: "WALK_IN" },
     });
-    const [riga] = (await getServiceSnapshot(venueId)).next;
+    const [riga] = (await getServiceSnapshot(venueId, { now: ADESSO })).next;
     expect(riga.guestName).toBe("Senza nome");
     expect(riga.guestId).toBeNull();
   });
@@ -289,10 +300,10 @@ describe("isolamento", () => {
       data: { orgId: org.id, name: `${PREFISSO}altro`, slug: `${PREFISSO}a${Date.now()}` },
     });
     await db.booking.create({
-      data: { venueId: altro.id, partySize: 8, startsAt: new Date(Date.now() + 20 * 60_000), status: "SEATED", source: "PHONE" },
+      data: { venueId: altro.id, partySize: 8, startsAt: new Date(ADESSO.getTime() + 20 * 60_000), status: "SEATED", source: "PHONE" },
     });
 
-    const s = await getServiceSnapshot(venueId);
+    const s = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(s.seated).toHaveLength(0);
     expect(s.counters.copertiPresenti).toBe(0);
   });
@@ -308,7 +319,7 @@ describe("in ritardo e mai arrivato sono due cose diverse", () => {
     await crea({ minutiDaAdesso: -420 });
     await crea({ minutiDaAdesso: -600 });
 
-    const snap = await getServiceSnapshot(venueId);
+    const snap = await getServiceSnapshot(venueId, { now: ADESSO });
     expect(snap.counters.inRitardo).toBe(2);
     expect(snap.counters.nonArrivate).toBe(3);
     // E l'elenco «in ritardo» non contiene le tre di pranzo.
