@@ -145,6 +145,9 @@ costavano poco e valevano molto.
       → un collegamento tolto viene **spento, non cancellato**: cancellarlo porterebbe via i clic raccolti, e i numeri dell'anno scorso cambierebbero da soli
       → di chi clicca non registriamo niente (né IP né browser): serve a contare, non a profilare
 - [x] **Scheletri di caricamento** sulle sette pagine che ne erano senza (Servizio, Attesa, Menu, Marketing, Campagne, Esperienze, Brigata): hanno la forma vera della pagina, non un rettangolo generico. Uno scheletro che non somiglia a quello che arriva fa saltare il testo sotto gli occhi, ed è peggio di una pagina bianca
+- [x] **Menu engineering**: quanto piace incrociato con quanto rende, senza un dato nuovo. Quattro gruppi con il nome del metodo classico — stelle, cavalli, enigmi, cani — e sotto ognuno la frase che dice cosa farne, perché «cavallo» da solo non dice a nessuno cosa fare lunedì
+      → «rende» è il **margine per piatto**, non la percentuale: un caffè con l'80% di margine lascia in cassa un ventesimo di una bistecca al 40%, e confrontare le percentuali direbbe il contrario di quello che succede davvero
+      → la classifica **si rifiuta di esistere** quando i dati non bastano (meno di 4 piatti o meno di 20 vendite), e un piatto venduto due volte resta fuori invece di diventare un «cane»: dire a un ristoratore di togliere dalla carta qualcosa che non ha mai avuto una possibilità è il modo di fargli perdere soldi con un grafico
 - [x] **La lista UX è chiusa**: le quattro voci rimaste (dimensione del tavolo, ricerca nel menu, scheletri, navigazione del menu pubblico) sono fatte
 
 ## Phase 7 — Enterprise

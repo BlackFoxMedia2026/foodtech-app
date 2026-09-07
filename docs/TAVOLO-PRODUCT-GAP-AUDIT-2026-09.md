@@ -394,7 +394,7 @@ Priorità: **P2**, e solo la parte di riconoscimento chiamante.
 
 **Stato: D/E.** `[CODE]` Categorie, piatti, prezzo, descrizione, disponibilità, ordine, allergeni da elenco chiuso (14), regimi alimentari, costo materie prime facoltativo, margine per piatto, menu pubblico con QR, elenco per margine.
 
-Assenti: menu multipli per servizio, varianti e aggiunte, popolarità incrociata col margine (**menu engineering**: stelle, cavalli, enigmi, cani), ordinazione dal QR.
+Assenti: menu multipli per servizio, varianti e aggiunte, ordinazione dal QR. Il **menu engineering** (stelle, cavalli, enigmi, cani) è stato fatto subito dopo questo audit, ed è in Analytics accanto al costo del cibo.
 
 Alla domanda «quanto spingersi senza diventare un gestionale di magazzino» `[INFERENCE]`: il confine giusto è **il piatto, non l'ingrediente**. Costo del piatto sì, distinta base e giacenze no. Il passo successivo utile è il menu engineering, che non richiede nessun dato nuovo — solo di incrociare i due che ci sono già.
 
@@ -598,7 +598,7 @@ Dieci cose che nascono **dall'unione** dei pezzi che Tavolo ha già, e che nessu
 3. **Costo delle assenze → caparra mirata.** Tavolo è l'unico che sa *quanto* costano le assenze **in euro misurati**: può proporre la caparra solo dove serve, invece di applicarla a tutti. Quando arriveranno i pagamenti, è il modo giusto di introdurli. **M**.
 4. **Gift card inutilizzata → invito a tornare.** Denaro già incassato, cena non ancora servita: l'automazione con il ritorno più alto e il costo più basso. **S**.
 5. **Tavolo Connect.** Wi-Fi → contatto → consenso → prenotazione, misurato fino alla prenotazione. Con i pagamenti, anche fino al fatturato. **S** (è quasi tutto fatto).
-6. **Menu engineering senza dati nuovi.** Popolarità × margine sui due dati già presenti: stelle, cavalli, enigmi, cani. **S**.
+6. **Menu engineering senza dati nuovi.** ✅ **Fatto.** Popolarità × margine sui due dati già presenti: stelle, cavalli, enigmi, cani — e il rifiuto di classificare quando le vendite non bastano.
 7. **Il promotore che diventa recensione.** Chi ha dato 9-10 riceve l'invito a recensire; chi ha dato meno riceve una persona. **M**.
 8. **Disdetta → offerta immediata alla waitlist.** Il tavolo liberato all'ultimo è ricavo perso: oggi nessuno lo riempie automaticamente. **M**.
 9. **La scheda cliente al telefono che squilla.** Solo caller ID, nessuna AI: metà del valore di un centralino intelligente a un decimo del costo. **M**.
