@@ -4,12 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && (tsx prisma/seed.ts || true) && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:baseline": "prisma migrate resolve --applied 00000000000000_baseline",
+    "db:status": "prisma migrate status",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "check:availability": "tsx scripts/check-availability-rules.ts"

@@ -233,6 +233,8 @@ model TableBlock {
   reason   String?
   table    Table    @relation(fields: [tableId], references: [id], onDelete: Cascade)
   venue    Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([tableId, startsAt, endsAt])
 }
 
 model Shift {
@@ -246,6 +248,8 @@ model Shift {
   slotMinutes Int     @default(15)
   active      Boolean @default(true)
   venue       Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, weekday, active])
 }
 
 model Guest {
@@ -387,6 +391,8 @@ model Campaign {
   createdAt      DateTime        @default(now())
   venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
   MessageLog     MessageLog[]
+
+  @@index([venueId, status, createdAt])
 }
 
 enum QrCodeCategory {
@@ -469,7 +475,7 @@ model Payment {
 }
 
 model ApiToken {
-  id           String    @id
+  id           String    @id @default(cuid())
   venueId      String
   name         String    @db.VarChar(120)
   prefix       String    @unique @db.VarChar(16)
@@ -486,7 +492,7 @@ model ApiToken {
 }
 
 model AuditLog {
-  id           String       @id
+  id           String       @id @default(cuid())
   venueId      String?
   orgId        String
   actorId      String?
@@ -507,7 +513,7 @@ model AuditLog {
 }
 
 model AutomationRun {
-  id                 String              @id
+  id                 String              @id @default(cuid())
   workflowId         String
   venueId            String
   trigger            AutomationTrigger
@@ -526,7 +532,7 @@ model AutomationRun {
 }
 
 model AutomationWorkflow {
-  id            String            @id
+  id            String            @id @default(cuid())
   venueId       String
   name          String
   description   String?
@@ -536,7 +542,7 @@ model AutomationWorkflow {
   actions       Json
   delayMinutes  Int               @default(0)
   createdAt     DateTime          @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime          @updatedAt
   createdBy     String?
   AutomationRun AutomationRun[]
   Venue         Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
@@ -545,7 +551,7 @@ model AutomationWorkflow {
 }
 
 model BookingEvent {
-  id        String           @id
+  id        String           @id @default(cuid())
   bookingId String
   kind      BookingEventKind
   message   String?
@@ -558,19 +564,19 @@ model BookingEvent {
 }
 
 model BookingPreorder {
-  id                  String                @id
+  id                  String                @id @default(cuid())
   bookingId           String                @unique
   status              PreorderStatus        @default(DRAFT)
   totalCents          Int                   @default(0)
   notes               String?               @db.VarChar(500)
   createdAt           DateTime              @default(now())
-  updatedAt           DateTime
+  updatedAt           DateTime              @updatedAt
   Booking             Booking               @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   BookingPreorderItem BookingPreorderItem[]
 }
 
 model BookingPreorderItem {
-  id              String          @id
+  id              String          @id @default(cuid())
   preorderId      String
   menuItemId      String?
   name            String
@@ -583,7 +589,7 @@ model BookingPreorderItem {
 }
 
 model CallLog {
-  id                String             @id
+  id                String             @id @default(cuid())
   venueId           String
   fromNumber        String
   toNumber          String?
@@ -604,7 +610,7 @@ model CallLog {
 }
 
 model ChatMessage {
-  id          String      @id
+  id          String      @id @default(cuid())
   sessionId   String
   role        ChatRole
   text        String
@@ -617,7 +623,7 @@ model ChatMessage {
 }
 
 model ChatSession {
-  id             String        @id
+  id             String        @id @default(cuid())
   venueId        String
   source         ChatSource    @default(WEB)
   guestId        String?
@@ -633,7 +639,7 @@ model ChatSession {
   draftNotes     String?
   language       String        @default("it")
   createdAt      DateTime      @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime      @updatedAt
   ChatMessage    ChatMessage[]
   Venue          Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
@@ -641,7 +647,7 @@ model ChatSession {
 }
 
 model Connector {
-  id             String           @id
+  id             String           @id @default(cuid())
   venueId        String
   kind           ConnectorKind
   label          String?
@@ -652,7 +658,7 @@ model Connector {
   lastSyncAt     DateTime?
   lastError      String?
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime         @updatedAt
   Venue          Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
   ConnectorEvent ConnectorEvent[]
 
@@ -661,7 +667,7 @@ model Connector {
 }
 
 model ConnectorEvent {
-  id          String               @id
+  id          String               @id @default(cuid())
   connectorId String
   venueId     String
   direction   ConnectorDirection
@@ -678,7 +684,7 @@ model ConnectorEvent {
 }
 
 model ConsentLog {
-  id        String         @id
+  id        String         @id @default(cuid())
   venueId   String
   guestId   String?
   leadId    String?
@@ -696,7 +702,7 @@ model ConsentLog {
 }
 
 model CostEntry {
-  id          String       @id
+  id          String       @id @default(cuid())
   venueId     String
   category    CostCategory
   label       String
@@ -712,7 +718,7 @@ model CostEntry {
 }
 
 model Coupon {
-  id               String             @id
+  id               String             @id @default(cuid())
   venueId          String
   code             String             @unique
   name             String
@@ -730,7 +736,7 @@ model Coupon {
   segment          Json?
   redemptionCount  Int                @default(0)
   createdAt        DateTime           @default(now())
-  updatedAt        DateTime
+  updatedAt        DateTime           @updatedAt
   Guest            Guest?             @relation(fields: [guestId], references: [id])
   Venue            Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
   CouponRedemption CouponRedemption[]
@@ -740,7 +746,7 @@ model Coupon {
 }
 
 model CouponRedemption {
-  id          String    @id
+  id          String    @id @default(cuid())
   couponId    String
   venueId     String
   guestId     String?
@@ -764,7 +770,7 @@ model CouponRedemption {
 }
 
 model ExchangeRate {
-  id        String   @id
+  id        String   @id @default(cuid())
   from      String   @db.VarChar(3)
   to        String   @db.VarChar(3)
   rate      Decimal  @db.Decimal(12, 6)
@@ -775,7 +781,7 @@ model ExchangeRate {
 }
 
 model FloorDecor {
-  id        String    @id
+  id        String    @id @default(cuid())
   venueId   String
   roomId    String?
   kind      DecorKind
@@ -794,7 +800,7 @@ model FloorDecor {
 }
 
 model GiftCard {
-  id                 String               @id
+  id                 String               @id @default(cuid())
   venueId            String
   code               String               @unique
   initialCents       Int
@@ -808,7 +814,7 @@ model GiftCard {
   expiresAt          DateTime?
   stripePaymentId    String?
   createdAt          DateTime             @default(now())
-  updatedAt          DateTime
+  updatedAt          DateTime             @updatedAt
   createdBy          String?
   Venue              Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
   GiftCardRedemption GiftCardRedemption[]
@@ -817,7 +823,7 @@ model GiftCard {
 }
 
 model GiftCardRedemption {
-  id          String   @id
+  id          String   @id @default(cuid())
   giftCardId  String
   amountCents Int
   bookingId   String?
@@ -831,7 +837,7 @@ model GiftCardRedemption {
 }
 
 model LoyaltyTransaction {
-  id        String         @id
+  id        String         @id @default(cuid())
   guestId   String
   venueId   String
   kind      LoyaltyTxnKind
@@ -848,7 +854,7 @@ model LoyaltyTransaction {
 }
 
 model MenuCategory {
-  id        String     @id
+  id        String     @id @default(cuid())
   venueId   String
   name      String
   ordering  Int        @default(0)
@@ -862,7 +868,7 @@ model MenuCategory {
 }
 
 model MenuItem {
-  id           String       @id
+  id           String       @id @default(cuid())
   categoryId   String
   venueId      String
   name         String
@@ -883,18 +889,18 @@ model MenuItem {
 }
 
 model MenuItemCost {
-  id         String   @id
+  id         String   @id @default(cuid())
   venueId    String
   menuItemId String   @unique
   costCents  Int      @default(0)
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
   Venue      Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@index([venueId])
 }
 
 model MenuScan {
-  id               String         @id
+  id               String         @id @default(cuid())
   venueId          String
   menuKey          String         @default("main")
   source           MenuScanSource @default(QR)
@@ -911,7 +917,7 @@ model MenuScan {
 }
 
 model MessageLog {
-  id            String         @id
+  id            String         @id @default(cuid())
   venueId       String
   campaignId    String?
   workflowRunId String?
@@ -941,7 +947,7 @@ model MessageLog {
 }
 
 model MessageTemplate {
-  id        String           @id
+  id        String           @id @default(cuid())
   venueId   String
   name      String
   channel   CampaignChannel  @default(EMAIL)
@@ -949,7 +955,7 @@ model MessageTemplate {
   body      String
   category  TemplateCategory @default(GENERIC)
   createdAt DateTime         @default(now())
-  updatedAt DateTime
+  updatedAt DateTime         @updatedAt
   Venue     Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@unique([venueId, name])
@@ -957,7 +963,7 @@ model MessageTemplate {
 }
 
 model MissedCall {
-  id             String    @id
+  id             String    @id @default(cuid())
   venueId        String
   fromNumber     String
   attempts       Int       @default(1)
@@ -970,7 +976,7 @@ model MissedCall {
 }
 
 model Notification {
-  id        String           @id
+  id        String           @id @default(cuid())
   venueId   String
   kind      NotificationKind
   title     String           @db.VarChar(160)
@@ -986,7 +992,7 @@ model Notification {
 }
 
 model Order {
-  id            String        @id
+  id            String        @id @default(cuid())
   reference     String        @unique
   venueId       String
   guestId       String?
@@ -1003,7 +1009,7 @@ model Order {
   notes         String?
   stripeId      String?
   createdAt     DateTime      @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime      @updatedAt
   preparedAt    DateTime?
   readyAt       DateTime?
   completedAt   DateTime?
@@ -1018,7 +1024,7 @@ model Order {
 }
 
 model OrderItem {
-  id         String    @id
+  id         String    @id @default(cuid())
   orderId    String
   menuItemId String?
   name       String
@@ -1032,7 +1038,7 @@ model OrderItem {
 }
 
 model POSConnector {
-  id            String             @id
+  id            String             @id @default(cuid())
   venueId       String
   kind          POSConnectorKind
   label         String?
@@ -1043,7 +1049,7 @@ model POSConnector {
   lastSyncAt    DateTime?
   lastError     String?
   createdAt     DateTime           @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime           @updatedAt
   Venue         Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
   POSEvent      POSEvent[]
 
@@ -1052,7 +1058,7 @@ model POSConnector {
 }
 
 model POSEvent {
-  id             String         @id
+  id             String         @id @default(cuid())
   posConnectorId String
   venueId        String
   externalRef    String?
@@ -1071,7 +1077,7 @@ model POSEvent {
 }
 
 model Review {
-  id           String       @id
+  id           String       @id @default(cuid())
   venueId      String
   source       ReviewSource
   externalRef  String?
@@ -1091,7 +1097,7 @@ model Review {
 }
 
 model ReviewLink {
-  id              String            @id
+  id              String            @id @default(cuid())
   venueId         String
   platform        ReviewPlatform
   label           String?
@@ -1106,7 +1112,7 @@ model ReviewLink {
 }
 
 model ReviewLinkClick {
-  id         String     @id
+  id         String     @id @default(cuid())
   linkId     String
   venueId    String
   surveyId   String?
@@ -1154,7 +1160,7 @@ enum WaiterStatus {
 // end date. "Current" contract is picked at query time (see
 // src/lib/staff-contracts.ts), never stored — status/label included.
 model StaffContract {
-  id              String                   @id @default(cuid())
+  id              String                  @id @default(cuid())
   venueId         String
   waiterId        String
   contractType    StaffContractType
@@ -1162,11 +1168,11 @@ model StaffContract {
   endDate         DateTime?
   weeklyHours     Float?
   contractualRole String?
-  notes           String?                  @db.VarChar(2000)
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-  venue           Venue                    @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  waiter          Waiter                   @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  notes           String?                 @db.VarChar(2000)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  venue           Venue                   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter          Waiter                  @relation(fields: [waiterId], references: [id], onDelete: Cascade)
   reminders       StaffContractReminder[]
   document        ContractDocument?
 
@@ -1318,7 +1324,7 @@ model StaffAssignment {
 }
 
 model StaffShift {
-  id          String   @id
+  id          String   @id @default(cuid())
   venueId     String
   staffName   String
   role        String?
@@ -1333,7 +1339,7 @@ model StaffShift {
 }
 
 model Survey {
-  id             String          @id
+  id             String          @id @default(cuid())
   token          String          @unique
   venueId        String
   bookingId      String?         @unique
@@ -1347,7 +1353,7 @@ model Survey {
 }
 
 model SurveyResponse {
-  id        String    @id
+  id        String    @id @default(cuid())
   surveyId  String    @unique
   npsScore  Int
   sentiment Sentiment
@@ -1360,7 +1366,7 @@ model SurveyResponse {
 }
 
 model VoiceBookingDraft {
-  id            String      @id
+  id            String      @id @default(cuid())
   venueId       String
   callerName    String?
   phone         String?
@@ -1372,7 +1378,7 @@ model VoiceBookingDraft {
   bookingId     String?     @unique
   reviewedBy    String?
   createdAt     DateTime    @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime    @updatedAt
   CallLog       CallLog?
   Booking       Booking?    @relation(fields: [bookingId], references: [id])
 
@@ -1380,7 +1386,7 @@ model VoiceBookingDraft {
 }
 
 model WaitlistEntry {
-  id                 String         @id
+  id                 String         @id @default(cuid())
   venueId            String
   guestId            String?
   guestName          String
@@ -1395,7 +1401,7 @@ model WaitlistEntry {
   position           Int            @default(0)
   notes              String?
   createdAt          DateTime       @default(now())
-  updatedAt          DateTime
+  updatedAt          DateTime       @updatedAt
   confirmedAt        DateTime?
   convertedBookingId String?
   declinedAt         DateTime?
@@ -1408,7 +1414,7 @@ model WaitlistEntry {
 }
 
 model WifiLead {
-  id               String        @id
+  id               String        @id @default(cuid())
   venueId          String
   guestId          String?
   name             String
@@ -1430,7 +1436,7 @@ model WifiLead {
 }
 
 model WifiSession {
-  id          String    @id
+  id          String    @id @default(cuid())
   leadId      String
   venueId     String
   startedAt   DateTime  @default(now())
