@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function DayPicker({ value }: { value: string }) {
+  const today = useVenueToday();
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -42,7 +44,7 @@ export function DayPicker({ value }: { value: string }) {
       <Button size="icon" variant="ghost" onClick={() => shift(1)} aria-label="Giorno successivo">
         <ChevronRight className="h-4 w-4" />
       </Button>
-      <Button size="sm" variant="subtle" onClick={() => go(new Date().toISOString().slice(0, 10))}>
+      <Button size="sm" variant="subtle" onClick={() => go(today)}>
         Oggi
       </Button>
     </div>

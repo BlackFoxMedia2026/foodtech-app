@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { auditActor, recordAudit } from "@/server/audit";
+import { requireVenueApi } from "@/lib/api-auth";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getActiveVenue } from "@/lib/tenant";
 
 const Body = z.object({
   label: z.string().min(1),
@@ -14,7 +15,8 @@ const Body = z.object({
 });
 
 export async function GET() {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
   const tables = await db.table.findMany({
     where: { venueId: ctx.venueId },
     orderBy: { label: "asc" },
@@ -23,10 +25,15 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_venue");
+  if (!ctx.ok) return ctx.response;
   try {
     const data = Body.parse(await req.json());
     const created = await db.table.create({ data: { ...data, venueId: ctx.venueId } });
+    await recordAudit(auditActor(ctx, req), "table.create", "table", created.id, {
+      tavolo: created.label,
+      posti: created.seats,
+    });
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {

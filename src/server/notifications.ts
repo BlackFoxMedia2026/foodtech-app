@@ -1,6 +1,6 @@
 import type { NotificationKind, Prisma, StaffRole } from "@prisma/client";
 import { db } from "@/lib/db";
-import { can, type Ability } from "@/lib/tenant";
+import { can, type Ability } from "@/lib/abilities";
 
 /** Some notification kinds carry data more sensitive than plain venue
  * membership should expose (e.g. contract data) — gate them behind the same

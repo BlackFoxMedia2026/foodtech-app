@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { StaffCapability, StaffPrimaryRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { staffPrimaryRoleLabel } from "@/lib/staff-roles";
@@ -54,23 +55,36 @@ export async function getWaiter(venueId: string, id: string) {
   return db.waiter.findFirst({ where: { id, venueId } });
 }
 
-export async function createWaiter(venueId: string, raw: unknown) {
+export async function createWaiter(venueId: string, raw: unknown, actor?: AuditActor) {
   const data = WaiterInput.parse(raw);
   const role = resolveRole(data);
   if (!role) throw new Error("role_required");
-  return db.waiter.create({ data: { venueId, ...data, role } });
+  const created = await db.waiter.create({ data: { venueId, ...data, role } });
+  await recordAudit(actor, "waiter.create", "waiter", created.id, {
+    cameriere: `${created.firstName} ${created.lastName}`,
+    ruolo: created.role,
+  });
+  return created;
 }
 
-export async function updateWaiter(venueId: string, id: string, raw: unknown) {
+export async function updateWaiter(venueId: string, id: string, raw: unknown, actor?: AuditActor) {
   const data = WaiterUpdateInput.parse(raw);
   const existing = await db.waiter.findFirst({ where: { id, venueId } });
   if (!existing) throw new Error("not_found");
   const role = data.role ?? (data.primaryRole ? staffPrimaryRoleLabel(data.primaryRole) : undefined);
-  return db.waiter.update({ where: { id }, data: { ...data, ...(role ? { role } : {}) } });
+  const updated = await db.waiter.update({ where: { id }, data: { ...data, ...(role ? { role } : {}) } });
+  const diff = fieldDiff(existing, updated);
+  if (diff) await recordAudit(actor, "waiter.update", "waiter", id, diff);
+  return updated;
 }
 
-export async function deleteWaiter(venueId: string, id: string) {
+export async function deleteWaiter(venueId: string, id: string, actor?: AuditActor) {
   const existing = await db.waiter.findFirst({ where: { id, venueId } });
   if (!existing) throw new Error("not_found");
-  return db.waiter.delete({ where: { id } });
+  const deleted = await db.waiter.delete({ where: { id } });
+  await recordAudit(actor, "waiter.delete", "waiter", id, {
+    cameriere: `${existing.firstName} ${existing.lastName}`,
+    ruolo: existing.role,
+  });
+  return deleted;
 }

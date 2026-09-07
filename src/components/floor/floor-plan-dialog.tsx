@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { readApiError } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { FileImage, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,7 @@ export function FloorPlanDialog({
     const res = await fetch(`/api/rooms/${roomId}/floor-plan`, { method: "POST", body: fd });
     setUploading(false);
     if (!res.ok) {
-      setError("Caricamento piantina non riuscito. Riprova.");
+      setError(await readApiError(res, "Caricamento piantina non riuscito. Riprova."));
       return;
     }
     reset();
@@ -65,7 +66,7 @@ export function FloorPlanDialog({
     const res = await fetch(`/api/rooms/${roomId}/floor-plan`, { method: "DELETE" });
     setRemoving(false);
     if (!res.ok) {
-      setError("Impossibile rimuovere la piantina. Riprova.");
+      setError(await readApiError(res, "Impossibile rimuovere la piantina. Riprova."));
       return;
     }
     reset();

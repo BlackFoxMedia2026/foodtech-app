@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, CheckCircle2 } from "lucide-react";
@@ -38,7 +39,7 @@ export function AssignServiceDialog({
   disabled?: boolean;
 }) {
   const router = useRouter();
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useVenueToday();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(today);
   const [service, setService] = useState(serviceOptions[0] ?? "");

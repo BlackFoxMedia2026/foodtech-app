@@ -4,8 +4,24 @@
   "framework": "nextjs",
   "crons": [
     {
+      "path": "/api/cron/jobs",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/staff-contracts-expiry",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/booking-reminders",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/survey-requests",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/automations",
+      "schedule": "0 10 * * *"
     }
   ]
 }

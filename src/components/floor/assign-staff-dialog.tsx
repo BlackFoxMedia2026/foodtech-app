@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { readApiError } from "@/lib/api-client";
 import type { StaffCapability } from "@prisma/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -121,7 +122,7 @@ export function AssignStaffDialog({
     });
     setSavingRole(null);
     if (!res.ok) {
-      setActionError("Impossibile rimuovere l'assegnazione. Riprova.");
+      setActionError(await readApiError(res, "Impossibile rimuovere l'assegnazione. Riprova."));
       return;
     }
     setExpandedRole(null);

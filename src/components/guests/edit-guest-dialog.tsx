@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readApiError } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,7 @@ export function EditGuestDialog({ guest }: { guest: EditableGuest }) {
     });
     setSubmitting(false);
     if (!res.ok) {
-      setError("Impossibile salvare. Verifica i dati.");
+      setError(await readApiError(res, "Impossibile salvare. Verifica i dati."));
       return;
     }
     router.refresh();

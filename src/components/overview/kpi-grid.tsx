@@ -6,7 +6,10 @@ type Kpi = {
   label: string;
   value: string;
   icon: React.ComponentType<{ className?: string }>;
-  delta: number;
+  /** Assente quando non c'è un confronto possibile (dato mancante). */
+  delta?: number;
+  /** Cosa manca, quando il valore non c'è: meglio dirlo che lasciare un trattino muto. */
+  hint?: string;
   /** How the delta should read: for most KPIs higher is better, for no-show lower is better. */
   higherIsBetter: boolean;
   /** Render the delta as a raw count ("↓ 1") instead of a percentage. */
@@ -48,19 +51,29 @@ export function KpiGrid({
   comparisons,
 }: {
   totalCovers: number;
-  estimatedRevenueCents: number;
+  estimatedRevenueCents: number | null;
   currency: string;
   occupancyPct: number;
   expectedNoShow: number;
-  comparisons: { covers: number; revenue: number; occupancy: number; noShow: number };
+  comparisons: { covers: number; revenue: number | null; occupancy: number; noShow: number };
 }) {
   const kpis: Kpi[] = [
     { label: "Coperti", value: String(totalCovers), icon: Users, delta: comparisons.covers, higherIsBetter: true, surface: "green" },
     {
+      /**
+       * Prima questa cifra era la media di `Guest.totalSpend` — un campo che
+       * nessuno aggiornava, riempito dal seed — moltiplicata per i coperti:
+       * un numero inventato in cima alla Panoramica.
+       *
+       * Ora la stima esiste solo se il locale ha dichiarato la spesa media per
+       * coperto. Altrimenti la casella dice cosa manca, invece di riempirsi da
+       * sola.
+       */
       label: "Incassi stimati",
-      value: formatCurrency(estimatedRevenueCents, currency),
+      value: estimatedRevenueCents != null ? formatCurrency(estimatedRevenueCents, currency) : "—",
+      hint: estimatedRevenueCents != null ? undefined : "imposta la spesa media per coperto",
       icon: Wallet,
-      delta: comparisons.revenue,
+      delta: comparisons.revenue ?? undefined,
       higherIsBetter: true,
       surface: "brown",
     },
@@ -89,9 +102,9 @@ export function KpiGrid({
         <CardTitle>KPI principali</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3">
-        {kpis.map(({ label, value, icon: Icon, delta, higherIsBetter, isCount, surface }) => {
-          const positive = higherIsBetter ? delta >= 0 : delta <= 0;
-          const magnitude = Math.abs(delta);
+        {kpis.map(({ label, value, icon: Icon, delta, hint, higherIsBetter, isCount, surface }) => {
+          const positive = delta != null && (higherIsBetter ? delta >= 0 : delta <= 0);
+          const magnitude = delta != null ? Math.abs(delta) : 0;
           const s = SURFACE[surface];
           return (
             <div key={label} className={cn("card-notch p-3", s.container)}>
@@ -100,7 +113,8 @@ export function KpiGrid({
                 <p className="text-xs uppercase tracking-wider">{label}</p>
               </div>
               <p className={cn("mt-1.5 font-mono text-xl font-semibold", s.value)}>{value}</p>
-              {delta !== 0 && (
+              {hint && <p className={cn("mt-1 text-[11px] leading-tight", s.iconLabel)}>{hint}</p>}
+              {delta != null && delta !== 0 && (
                 <p className={cn("mt-1 font-mono text-xs font-medium", positive ? s.positive : s.negative)}>
                   {delta > 0 ? "▲" : "▼"} {magnitude}
                   {isCount ? "" : "%"} vs ieri

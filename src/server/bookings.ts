@@ -1,9 +1,12 @@
 import { z } from "zod";
+import type { BookingStatus } from "@prisma/client";
+import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
 import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } from "./emails";
 import { deriveTableStatus, type TableOperationalStatus } from "@/lib/table-status";
 import { assertAvailability, OCCUPYING_STATUSES } from "./availability";
+import { refreshGuestStats } from "./guest-intelligence";
 
 export const BookingInput = z.object({
   guestId: z.string().optional().nullable(),
@@ -92,7 +95,31 @@ function determineBookingStatus(source: string): "CONFIRMED" | "PENDING" {
  * (tavolo condiviso, gruppo sistemato a mano). Non è raggiungibile dai canali pubblici:
  * va passato esplicitamente da codice server.
  */
-export type BookingWriteOptions = { skipAvailabilityCheck?: boolean };
+export type BookingWriteOptions = {
+  skipAvailabilityCheck?: boolean;
+  actor?: AuditActor;
+  /**
+   * Stato iniziale imposto da chi chiama, **solo da codice server**.
+   *
+   * Il campo `status` di `BookingInput` non viene usato in creazione di
+   * proposito: lo stato dipende dal canale (vedi determineBookingStatus), e
+   * accettarlo dal corpo della richiesta permetterebbe a una prenotazione dal
+   * widget pubblico di dichiararsi già confermata. Chi accomoda qualcuno dalla
+   * lista d'attesa, invece, sa che quella persona è seduta adesso: passa da
+   * qui, che non è raggiungibile da nessun canale pubblico.
+   */
+  status?: BookingStatus;
+  /**
+   * Motivo della forzatura, obbligatorio quando `skipAvailabilityCheck` è
+   * attivo su richiesta di una persona.
+   *
+   * Esiste perché la scorciatoia senza motivo diventa la scorciatoia di
+   * sempre: chiedere una riga di spiegazione è quel tanto di attrito che
+   * distingue «lo faccio perché serve» da «lo faccio perché è più veloce». E
+   * finisce nel registro, con nome e ora.
+   */
+  forceReason?: string;
+};
 
 export async function createBooking(venueId: string, raw: unknown, opts: BookingWriteOptions = {}) {
   const data = BookingInput.parse(raw);
@@ -134,7 +161,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
     }
   }
 
-  const status = determineBookingStatus(data.source);
+  const status = opts.status ?? determineBookingStatus(data.source);
 
   const booking = await db.booking.create({
     data: {
@@ -150,9 +177,28 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       notes: data.notes ?? null,
       internalNotes: data.internalNotes ?? null,
       depositCents: data.depositCents,
+      // Se nasce già arrivata o seduta, l'orologio parte adesso: senza questi
+      // istanti la Sala non saprebbe da quanto quel tavolo è occupato.
+      arrivedAt: status === "ARRIVED" || status === "SEATED" ? new Date() : null,
+      seatedAt: status === "SEATED" ? new Date() : null,
     },
     include: { guest: true, table: true, venue: true },
   });
+
+  await recordAudit(
+    opts.actor,
+    opts.forceReason ? "booking.create_forced" : "booking.create",
+    "booking",
+    booking.id,
+    {
+      quando: booking.startsAt.toISOString(),
+      coperti: booking.partySize,
+      fonte: booking.source,
+      stato: booking.status,
+      tavolo: booking.tableId,
+      ...(opts.forceReason ? { motivoForzatura: opts.forceReason } : {}),
+    },
+  );
 
   const bookingTime = formatTime(booking.startsAt);
 
@@ -226,7 +272,7 @@ export async function updateBooking(
     });
   }
 
-  return db.booking.update({
+  const updated = await db.booking.update({
     where: { id },
     data: {
       partySize: data.partySize ?? undefined,
@@ -247,10 +293,47 @@ export async function updateBooking(
     },
     include: { guest: true, table: true },
   });
+
+  // I contatori sulla scheda ospite (visite, assenze, ultima visita) esistevano
+  // e nessuno li scriveva. Questi tre stati sono i momenti in cui la storia di
+  // un cliente cambia davvero, quindi è qui che vanno riallineati.
+  if (
+    updated.guestId &&
+    data.status &&
+    data.status !== existing.status &&
+    ["COMPLETED", "NO_SHOW", "CANCELLED", "SEATED"].includes(data.status)
+  ) {
+    await refreshGuestStats(updated.guestId);
+  }
+
+  const diff = fieldDiff(existing, updated);
+  if (diff) {
+    // Annullare non è "modificare": chi legge il registro cerca le
+    // cancellazioni, e non deve trovarle nascoste fra i cambi di nota.
+    const action = updated.status === "CANCELLED" && existing.status !== "CANCELLED"
+      ? "booking.cancel"
+      : "booking.update";
+    await recordAudit(opts.actor, action, "booking", id, diff);
+  }
+
+  return updated;
 }
 
-export async function deleteBooking(venueId: string, id: string) {
-  const existing = await db.booking.findFirst({ where: { id, venueId } });
+export async function deleteBooking(venueId: string, id: string, actor?: AuditActor) {
+  const existing = await db.booking.findFirst({ where: { id, venueId }, include: { guest: true } });
   if (!existing) throw new Error("not_found");
-  return db.booking.delete({ where: { id } });
+  const deleted = await db.booking.delete({ where: { id } });
+  // La cancellazione è definitiva (Booking ha i campi per il soft delete ma le
+  // liste non li filtrano ancora): il registro è l'unico posto in cui resta
+  // traccia di cosa c'era.
+  await recordAudit(actor, "booking.delete", "booking", id, {
+    prenotazione: {
+      quando: existing.startsAt.toISOString(),
+      coperti: existing.partySize,
+      stato: existing.status,
+      tavolo: existing.tableId,
+      ospite: existing.guest ? `${existing.guest.firstName} ${existing.guest.lastName}` : null,
+    },
+  });
+  return deleted;
 }

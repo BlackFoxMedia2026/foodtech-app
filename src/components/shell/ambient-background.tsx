@@ -1,4 +1,11 @@
 /**
+ * ⚠️ EREDITÀ, NON PIÙ USATO (settembre 2026). Questi strati animati sono
+ * gialli su nero: la palette precedente. Erano l'unico punto in cui quella
+ * identità sopravviveva, e stavano sul widget pubblico — cioè sull'unica
+ * pagina che vede il cliente del ristorante, che quindi vedeva un brand
+ * diverso da quello dell'applicazione. Il file resta perché è materiale di
+ * design commissionato: da eliminare quando la squadra conferma.
+ *
  * Ambient page background — exact markup/CSS as provided by design, kept
  * unmodified (values, colors, timing). Centralized here so the three
  * animated layers aren't duplicated across every page that uses it.

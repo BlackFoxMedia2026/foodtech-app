@@ -12,6 +12,7 @@ export type AgentPageContext = {
 export type AgentContext = {
   venueId: string;
   venueName: string;
+  venueTimezone: string;
   role: StaffRole;
   userId: string;
   page?: AgentPageContext;

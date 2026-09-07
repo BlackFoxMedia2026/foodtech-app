@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getActiveVenue } from "@/lib/tenant";
+
 import { actionExecutors } from "@/server/ai/action-executors";
 import { getConversation } from "@/server/ai/conversation";
 
@@ -12,7 +13,8 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
 
   try {
     const body = Body.parse(await req.json());
@@ -27,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await executor(
-      { venueId: ctx.venueId, venueName: ctx.venue.name, role: ctx.role, userId: ctx.userId },
+      { venueId: ctx.venueId, venueName: ctx.venue.name, venueTimezone: ctx.venue.timezone, role: ctx.role, userId: ctx.userId },
       body.params,
     );
 
@@ -46,6 +48,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid" }, { status: 400 });
+    return apiErrorResponse(err);
   }
 }

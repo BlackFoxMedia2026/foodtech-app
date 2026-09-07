@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getActiveVenue } from "@/lib/tenant";
+import { requireVenueApi } from "@/lib/api-auth";
+
 import { AssignmentConflictError, listAssignmentsForDate, upsertWaiterAssignment } from "@/server/waiter-assignments";
 
 function joinItalianList(items: string[]) {
@@ -20,7 +21,8 @@ function formatConflictMessage(conflicts: { waiterName: string; tableLabels: str
 }
 
 export async function GET(req: Request) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
   const url = new URL(req.url);
   const dateParam = url.searchParams.get("date");
   const date = dateParam ? new Date(dateParam) : new Date();
@@ -29,7 +31,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi("manage_staff");
+  if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
     const created = await upsertWaiterAssignment(ctx.venueId, body);

@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PublicBookingForm } from "@/components/bookings/public-booking-form";
-import { AmbientBackground } from "@/components/shell/ambient-background";
 import { db } from "@/lib/db";
 
 export default async function BookPage(props: { searchParams?: { venue?: string; embed?: string } }) {
@@ -42,9 +41,7 @@ export default async function BookPage(props: { searchParams?: { venue?: string;
   }
 
   return (
-    <div className="dark relative z-0 min-h-screen overflow-hidden bg-background p-4 text-foreground">
-      <AmbientBackground />
-
+    <div className="relative z-0 min-h-screen overflow-hidden bg-background p-4 text-foreground">
       <div className="relative z-10 mx-auto max-w-2xl space-y-6 py-8">
         <div className="text-center space-y-2">
           <h1 className="text-display text-4xl font-bold">Prenota con noi</h1>

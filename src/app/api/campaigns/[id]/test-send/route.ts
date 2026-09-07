@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireVenueApi } from "@/lib/api-auth";
 import { z } from "zod";
-import { can, getActiveVenue } from "@/lib/tenant";
 import { sendTestEmail } from "@/server/campaigns";
 
 const Body = z.object({ to: z.string().email() });
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "edit_marketing")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("edit_marketing");
+  if (!ctx.ok) return ctx.response;
   try {
     const { to } = Body.parse(await req.json());
     await sendTestEmail(ctx.venueId, params.id, to);

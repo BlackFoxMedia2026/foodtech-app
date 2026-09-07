@@ -22,7 +22,7 @@ L'unico gestionale davvero tutto-in-uno per gruppi hospitality multi-locale: sos
 
 ## Brand Personality
 
-Caldo, premium, affidabile. La palette scura ambra/rame ("ember") e i pannelli liquid-glass già presenti nel codice sono l'identità corretta da consolidare: un gestionale che trasmette la qualità e il calore dell'ospitalità che rappresenta, non la freddezza di un tool enterprise.
+Caldo, premium, affidabile. L'identità da consolidare è quella oggi nel codice: **verde bosco profondo, crema, terracotta** — il colore di una sala a luci basse. Un gestionale che trasmette la qualità e il calore dell'ospitalità che rappresenta, non la freddezza di un tool enterprise. (Fino a settembre 2026 questa riga descriveva una palette ambra/rame «ember» che l'applicazione aveva già abbandonato; vedi la nota in DESIGN.md.)
 
 ## Anti-references
 
@@ -32,7 +32,7 @@ Gestionali generici da enterprise B2B: tabelle dense, grigie, senza personalità
 
 Chiarezza operativa prima della decorazione: ogni schermata serve il lavoro di coordinare la sala — velocità per lo staff, visione per il manager.
 
-Calore senza sacrificare la densità: l'identità ember/glass deve reggere anche nelle viste dense di dati (tabelle, liste), non solo in hero e superfici decorative.
+Calore senza sacrificare la densità: l'identità verde/crema deve reggere anche nelle viste dense di dati (tabelle, liste), non solo nei riquadri di testa e nelle superfici decorative.
 
 Un solo strumento, non cinque: ogni funzionalità rinforza il posizionamento tutto-in-uno multi-locale; niente deve sembrare aggiunto a parte.
 

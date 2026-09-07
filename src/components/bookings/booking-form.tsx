@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
+import { readApiError } from "@/lib/api-client";
+import { SlotPicker } from "@/components/bookings/slot-picker";
+import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +14,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 type TableOpt = { id: string; label: string; seats: number };
 
+/**
+ * Il form che usa lo staff, di solito al telefono con il cliente in linea.
+ *
+ * Fino a oggi aveva un campo ora libero: il widget pubblico proponeva solo gli
+ * orari accettabili (da luglio), qui invece il conflitto si scopriva dopo aver
+ * premuto "Crea prenotazione" e ricevuto un 409 — con il cliente in attesa.
+ * Ora gli orari sono gli stessi che vede un cliente sul sito.
+ *
+ * E resta la via d'uscita: quando il locale **decide** di accettare comunque —
+ * un tavolo condiviso, un gruppo sistemato a mano, un cliente che non si dice
+ * no — si forza, ma con un motivo scritto che finisce nel registro. Il codice
+ * per farlo (`skipAvailabilityCheck`) era predisposto da luglio e non aveva
+ * interfaccia: senza motivo obbligatorio sarebbe diventata la scorciatoia per
+ * saltare sempre il controllo.
+ */
 export function BookingForm({
   tables,
   onClose,
@@ -20,14 +39,30 @@ export function BookingForm({
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [date, setDate] = useState("");
+  const [partySize, setPartySize] = useState(2);
+  const [slot, setSlot] = useState<string | null>(null);
+  const [forceOpen, setForceOpen] = useState(false);
+  const [forceReason, setForceReason] = useState("");
+  const [manualTime, setManualTime] = useState("20:00");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const date = fd.get("date") as string;
-    const time = fd.get("time") as string;
+
+    // Senza forzatura l'orario è uno di quelli proposti (già un istante
+    // assoluto); forzando è quello scritto a mano.
+    const startsAt = forceOpen
+      ? new Date(`${date}T${manualTime}`).toISOString()
+      : slot;
+
+    if (!startsAt) {
+      setSubmitting(false);
+      setError("Scegli un orario fra quelli disponibili.");
+      return;
+    }
 
     const payload = {
       guest: {
@@ -36,13 +71,14 @@ export function BookingForm({
         email: fd.get("email"),
         phone: fd.get("phone"),
       },
-      partySize: Number(fd.get("partySize")),
-      startsAt: new Date(`${date}T${time}`).toISOString(),
+      partySize,
+      startsAt,
       durationMin: Number(fd.get("durationMin") || 105),
       tableId: (fd.get("tableId") as string) || null,
       source: fd.get("source"),
       occasion: fd.get("occasion") || null,
       notes: fd.get("notes") || null,
+      ...(forceOpen ? { force: { reason: forceReason.trim() } } : {}),
     };
 
     const res = await fetch("/api/bookings", {
@@ -54,15 +90,15 @@ export function BookingForm({
     if (!res.ok) {
       // Il server spiega già perché ha rifiutato — locale chiuso, servizio pieno,
       // tavolo occupato. Mostrarlo tale e quale è più utile di un messaggio generico.
-      const data = await res.json().catch(() => null);
-      setError(data?.error || "Impossibile salvare. Verifica i dati.");
+      setError(await readApiError(res, "Non siamo riusciti a salvare la prenotazione. Riprova."));
       return;
     }
     router.refresh();
     onClose?.();
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = useVenueToday();
+  const giorno = date || today;
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -85,19 +121,95 @@ export function BookingForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="date">Data</Label>
-          <Input id="date" name="date" type="date" defaultValue={today} required />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="time">Ora</Label>
-          <Input id="time" name="time" type="time" defaultValue="20:00" required />
+          <Input
+            id="date"
+            name="date"
+            type="date"
+            value={giorno}
+            onChange={(e) => {
+              setDate(e.target.value);
+              setSlot(null);
+            }}
+            required
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="partySize">Persone</Label>
-          <Input id="partySize" name="partySize" type="number" min={1} max={50} defaultValue={2} required />
+          <Input
+            id="partySize"
+            name="partySize"
+            type="number"
+            min={1}
+            max={50}
+            value={partySize}
+            onChange={(e) => {
+              setPartySize(Math.min(50, Math.max(1, Number(e.target.value) || 1)));
+              setSlot(null);
+            }}
+            required
+          />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Orario</Label>
+        {forceOpen ? (
+          <div className="space-y-1.5">
+            <Input
+              id="time"
+              type="time"
+              value={manualTime}
+              onChange={(e) => setManualTime(e.target.value)}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              Con la forzatura attiva l&apos;orario è libero: il controllo di disponibilità non viene
+              eseguito.
+            </p>
+          </div>
+        ) : (
+          <SlotPicker date={giorno} partySize={partySize} value={slot} onChange={setSlot} />
+        )}
+      </div>
+
+      <div className="rounded-md border border-border p-3">
+        <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+          <input
+            type="checkbox"
+            checked={forceOpen}
+            onChange={(e) => {
+              setForceOpen(e.target.checked);
+              if (!e.target.checked) setForceReason("");
+            }}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-current"
+          />
+          <span>
+            <span className="flex items-center gap-1.5 font-medium">
+              <AlertTriangle className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+              Accetta comunque, oltre i limiti
+            </span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Salta il controllo su orari, capienza e tavolo. Serve un motivo, e resta scritto nel
+              registro con il tuo nome.
+            </span>
+          </span>
+        </label>
+
+        {forceOpen && (
+          <div className="mt-3 space-y-1.5">
+            <Label htmlFor="forceReason">Motivo della forzatura</Label>
+            <Input
+              id="forceReason"
+              value={forceReason}
+              onChange={(e) => setForceReason(e.target.value)}
+              placeholder="Es. tavolo condiviso concordato col cliente"
+              required
+            />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -166,8 +278,14 @@ export function BookingForm({
             Annulla
           </Button>
         )}
-        <Button type="submit" variant="accent" disabled={submitting}>
-          {submitting ? "Salvataggio…" : "Crea prenotazione"}
+        <Button
+          type="submit"
+          variant="accent"
+          disabled={
+            submitting || (forceOpen ? forceReason.trim().length < 3 : !slot)
+          }
+        >
+          {submitting ? "Salvataggio…" : forceOpen ? "Forza e crea" : "Crea prenotazione"}
         </Button>
       </div>
     </form>

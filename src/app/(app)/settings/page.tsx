@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CopyButton } from "@/components/ui/copy-button";
 import { ServiceOrganizationSettings } from "@/components/settings/service-organization-settings";
+import { AvgSpendSettings } from "@/components/settings/avg-spend-settings";
+import { QueuePanel } from "@/components/settings/queue-panel";
+import { jobQueueHealth } from "@/server/jobs/queue";
+import { can } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
 import { initials } from "@/lib/utils";
 
@@ -24,7 +28,7 @@ const ROLE_LABELS = {
 
 export default async function SettingsPage() {
   const ctx = await getActiveVenue();
-  const [venues, members, shifts, rooms, tablesCount] = await Promise.all([
+  const [venues, members, shifts, rooms, tablesCount, queueHealth] = await Promise.all([
     db.venue.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: "asc" } }),
     db.venueMembership.findMany({
       where: { venueId: ctx.venueId },
@@ -36,6 +40,7 @@ export default async function SettingsPage() {
     }),
     listRooms(ctx.venueId),
     db.table.count({ where: { venueId: ctx.venueId, active: true } }),
+    jobQueueHealth(ctx.venueId),
   ]);
 
   const hdrs = headers();
@@ -146,6 +151,19 @@ export default async function SettingsPage() {
           <p className="text-xs text-muted-foreground">
             Verifica basata sulla presenza della chiave API. Non verifica la validità del dominio mittente.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Invii in corso</CardTitle>
+          <CardDescription>
+            Messaggi agli ospiti e campagne non partono dentro la richiesta del browser: vengono messi in coda e
+            consegnati entro un minuto. Qui si vede cosa è in attesa e cosa non è riuscito.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <QueuePanel health={queueHealth} />
         </CardContent>
       </Card>
 

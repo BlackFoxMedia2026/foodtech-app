@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readApiError } from "@/lib/api-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DoorOpen, LayoutGrid, Pencil, Plus, Trash2, X, Check } from "lucide-react";
@@ -44,7 +45,7 @@ export function ServiceOrganizationSettings({
     });
     setSwitching(false);
     if (!res.ok) {
-      setError("Impossibile aggiornare l'organizzazione del servizio.");
+      setError(await readApiError(res, "Impossibile aggiornare l'organizzazione del servizio."));
       return;
     }
     setMode(next);
@@ -66,7 +67,7 @@ export function ServiceOrganizationSettings({
     });
     setAdding(false);
     if (!res.ok) {
-      setError("Impossibile aggiungere la sala.");
+      setError(await readApiError(res, "Impossibile aggiungere la sala."));
       return;
     }
     const created = await res.json();
@@ -85,7 +86,7 @@ export function ServiceOrganizationSettings({
       headers: { "content-type": "application/json" },
     });
     if (!res.ok) {
-      setError("Impossibile rinominare la sala.");
+      setError(await readApiError(res, "Impossibile rinominare la sala."));
       return;
     }
     setRooms((prev) => prev.map((r) => (r.id === id ? { ...r, name } : r)));

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { requireVenueApi } from "@/lib/api-auth";
 import { put, del } from "@vercel/blob";
-import { can, getActiveVenue } from "@/lib/tenant";
 import { db } from "@/lib/db";
 import { setRoomFloorPlan } from "@/server/rooms";
 
@@ -8,10 +8,8 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_venue")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_venue");
+  if (!ctx.ok) return ctx.response;
 
   const room = await db.room.findFirst({ where: { id: params.id, venueId: ctx.venueId } });
   if (!room) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -43,10 +41,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_venue")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_venue");
+  if (!ctx.ok) return ctx.response;
 
   const room = await db.room.findFirst({ where: { id: params.id, venueId: ctx.venueId } });
   if (!room) return NextResponse.json({ error: "not_found" }, { status: 404 });

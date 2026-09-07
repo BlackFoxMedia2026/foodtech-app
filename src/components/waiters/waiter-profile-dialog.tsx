@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
+import { readApiError } from "@/lib/api-client";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Camera, CheckCircle2, Trash2 } from "lucide-react";
@@ -78,7 +80,7 @@ export function WaiterProfileDialog({
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useVenueToday();
   const age = useMemo(() => calculateAge(birthday), [birthday]);
   const fullName = `${waiter.firstName} ${waiter.lastName}`;
 
@@ -118,7 +120,7 @@ export function WaiterProfileDialog({
     const res = await fetch(`/api/waiters/${waiter.id}/photo`, { method: "POST", body: fd });
     setUploadingPhoto(false);
     if (!res.ok) {
-      setPhotoError("Caricamento foto non riuscito. Riprova.");
+      setPhotoError(await readApiError(res, "Caricamento foto non riuscito. Riprova."));
       return;
     }
     const updated = await res.json();
@@ -165,7 +167,7 @@ export function WaiterProfileDialog({
     setSubmitting(false);
 
     if (!res.ok) {
-      setFormError("Impossibile salvare le modifiche. Verifica i dati e riprova.");
+      setFormError(await readApiError(res, "Impossibile salvare le modifiche. Verifica i dati e riprova."));
       return;
     }
 
@@ -182,7 +184,7 @@ export function WaiterProfileDialog({
     const res = await fetch(`/api/waiters/${waiter.id}`, { method: "DELETE" });
     setDeleting(false);
     if (!res.ok) {
-      setDeleteError("Impossibile eliminare il profilo. Riprova.");
+      setDeleteError(await readApiError(res, "Impossibile eliminare il profilo. Riprova."));
       return;
     }
     setOpen(false);

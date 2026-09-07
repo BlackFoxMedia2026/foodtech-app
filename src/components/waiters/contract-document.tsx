@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { readApiError } from "@/lib/api-client";
 import { Download, Eye, FileText, Image as ImageIcon, MoreHorizontal, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -102,7 +103,7 @@ export function ContractDocument({
     const res = await fetch(baseUrl, { method: "DELETE" });
     setDeleting(false);
     if (!res.ok) {
-      setError("Impossibile eliminare il documento. Riprova.");
+      setError(await readApiError(res, "Impossibile eliminare il documento. Riprova."));
       return;
     }
     setConfirmingDelete(false);

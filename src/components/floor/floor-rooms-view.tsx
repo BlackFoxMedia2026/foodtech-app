@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { readApiError } from "@/lib/api-client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Table } from "@prisma/client";
 import { ChevronLeft, ChevronRight, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
@@ -157,7 +158,7 @@ export function FloorRoomsView({
     });
     setRenameSubmitting(false);
     if (!res.ok) {
-      setRenameError("Impossibile rinominare la sala. Riprova.");
+      setRenameError(await readApiError(res, "Impossibile rinominare la sala. Riprova."));
       return;
     }
     setRenameOpen(false);
@@ -180,7 +181,7 @@ export function FloorRoomsView({
     });
     setNewRoomSubmitting(false);
     if (!res.ok) {
-      setNewRoomError("Impossibile creare la sala. Riprova.");
+      setNewRoomError(await readApiError(res, "Impossibile creare la sala. Riprova."));
       return;
     }
     const created = await res.json();

@@ -18,14 +18,27 @@ import { useWizardDispatch, useWizardState } from "./wizard-context";
 // impostabili tramite i filtri dettagliati più sotto (es. no-show,
 // prenotazione futura/cancellata, clienti ricorrenti, altre soglie di
 // giorni di inattività).
+/**
+ * I gruppi pronti, con le stesse soglie della scheda ospite.
+ *
+ * Sono le etichette calcolate (`AUDIENCE_TAGS`): un cliente etichettato «a
+ * rischio» sulla sua scheda finisce nel segmento «a rischio». Prima le voci
+ * erano tre e due si basavano su `loyaltyTier`, che è un'assegnazione manuale
+ * — quindi «clienti nuovi» non voleva dire «venuti una volta», voleva dire
+ * «a cui nessuno ha ancora cambiato il livello».
+ */
 const PRESETS: { label: string; segment: SegmentFilterType }[] = [
-  { label: "Clienti nuovi", segment: { loyaltyTier: "NEW" } },
+  { label: "Abituali", segment: { audienceTag: "abituali" } },
+  { label: "A rischio", segment: { audienceTag: "a_rischio" } },
+  { label: "Inattivi", segment: { audienceTag: "inattivi" } },
+  { label: "Venuti una volta", segment: { audienceTag: "prima_volta" } },
   { label: "Clienti VIP", segment: { loyaltyTier: "VIP" } },
-  { label: "Inattivi da 60gg", segment: { inactiveDays: 60 } },
-  { label: "Alto spendenti", segment: { minTotalSpend: 150 } },
+  { label: "Compleanno questo mese", segment: { birthdayThisMonth: true } },
 ];
 
 const UNAVAILABLE_FILTERS = [
+  "Spesa del cliente (servono ordini o incassi collegati)",
+  "Coperti medi per visita",
   "Fascia oraria specifica (pranzo/cena)",
   "Giorno della settimana",
   "Canale di acquisizione (sito, Google, Instagram, walk-in)",
@@ -166,16 +179,6 @@ export function Step2Recipients() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="minTotalSpend">Spesa totale minima (€)</Label>
-          <Input
-            id="minTotalSpend"
-            type="number"
-            min={0}
-            value={state.segment.minTotalSpend ?? ""}
-            onChange={(e) => updateSegment({ minTotalSpend: e.target.value ? Number(e.target.value) : undefined })}
-          />
-        </div>
 
         <div className="space-y-2">
           <Label htmlFor="minNoShowCount">No-show minimi</Label>

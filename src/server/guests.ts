@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 
@@ -86,9 +87,12 @@ export async function createGuest(venueId: string, raw: unknown) {
   });
 }
 
-export async function updateGuest(venueId: string, id: string, raw: unknown) {
+export async function updateGuest(venueId: string, id: string, raw: unknown, actor?: AuditActor) {
   const data = GuestInput.partial().parse(raw);
   const existing = await db.guest.findFirst({ where: { id, venueId } });
   if (!existing) throw new Error("not_found");
-  return db.guest.update({ where: { id }, data });
+  const updated = await db.guest.update({ where: { id }, data });
+  const diff = fieldDiff(existing, updated);
+  if (diff) await recordAudit(actor, "guest.update", "guest", id, diff);
+  return updated;
 }

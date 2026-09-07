@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { can, getActiveVenue } from "@/lib/tenant";
+import { auditActor } from "@/server/audit";
+import { requireVenueApi } from "@/lib/api-auth";
 import { BookingAssignError, assignBookingToTable } from "@/server/booking-floor";
 
 const ERROR_STATUS: Record<BookingAssignError["code"], number> = {
@@ -19,10 +20,8 @@ const ERROR_MESSAGE: Record<BookingAssignError["code"], string> = {
 };
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
-  if (!can(ctx.role, "manage_bookings")) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const ctx = await requireVenueApi("manage_bookings");
+  if (!ctx.ok) return ctx.response;
 
   const body = await req.json().catch(() => null);
   const tableId = body?.tableId;
@@ -31,7 +30,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   try {
-    const updated = await assignBookingToTable(ctx.venueId, params.id, tableId, { force: !!body?.force });
+    const updated = await assignBookingToTable(ctx.venueId, params.id, tableId, {
+      force: !!body?.force,
+      actor: auditActor(ctx, req),
+    });
     return NextResponse.json(updated);
   } catch (err) {
     if (err instanceof BookingAssignError) {

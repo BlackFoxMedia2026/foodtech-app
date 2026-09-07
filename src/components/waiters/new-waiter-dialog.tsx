@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
+import { readApiError } from "@/lib/api-client";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Plus } from "lucide-react";
@@ -56,7 +58,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
   const [contractForm, setContractForm] = useState(EMPTY_CONTRACT_FORM);
   const [contractErrors, setContractErrors] = useState<ContractFormErrors>({});
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useVenueToday();
   const age = useMemo(() => calculateAge(birthday), [birthday]);
 
   function handlePrimaryRoleChange(next: StaffPrimaryRole) {
@@ -123,7 +125,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
 
     if (!res.ok) {
       setSubmitting(false);
-      setFormError("Impossibile salvare il cameriere. Verifica i dati e riprova.");
+      setFormError(await readApiError(res, "Impossibile salvare il cameriere. Verifica i dati e riprova."));
       return;
     }
 
@@ -137,7 +139,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
       });
       if (!contractRes.ok) {
         setSubmitting(false);
-        setFormError("Cameriere registrato, ma il contratto non è stato salvato. Aggiungilo dal profilo.");
+        setFormError(await readApiError(contractRes, "Cameriere registrato, ma il contratto non è stato salvato. Aggiungilo dal profilo."));
         return;
       }
     }

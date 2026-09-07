@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { TAG_RULES } from "./guest-intelligence";
 import { brevoAdapter } from "@/server/marketing/brevo-adapter";
 import type { EmailProviderAdapter, NormalizedEventType } from "@/server/marketing/email-provider";
 import type { Prisma } from "@prisma/client";
@@ -12,15 +13,55 @@ import {
   toBrevoMergeTags,
 } from "@/lib/campaign-blocks-compiler";
 import { PREVIEW_UNSUBSCRIBE_ID, signUnsubscribeToken } from "@/lib/unsubscribe-token";
+import { enqueueJob, type JobOutcome, type JobRef } from "@/server/jobs/queue";
+import { createNotification } from "@/server/notifications";
 
 const adapter: EmailProviderAdapter = brevoAdapter;
 
+/**
+ * I criteri di un segmento.
+ *
+ * `minTotalSpend` è stato rimosso: filtrava `Guest.totalSpend`, un campo che
+ * nessuna parte del codice aggiorna. Una campagna «alto spendenti» avrebbe
+ * colpito valori messi dal seed, che è peggio di non poterla fare. Tornerà
+ * quando ci saranno ordini o incassi collegati.
+ *
+ * `minTotalVisits`, `inactiveDays` e `minNoShowCount` invece ora sono
+ * affidabili: i contatori vengono riallineati alle prenotazioni vere
+ * (vedi server/guest-intelligence.ts, refreshGuestStats).
+ */
+/**
+ * Le etichette calcolate su cui si può costruire un segmento.
+ *
+ * Sono un sottoinsieme di quelle che compaiono sulla scheda ospite: qui stanno
+ * solo le esprimibili come condizione sul database, perché un segmento deve
+ * risolversi in una query e non nel caricare tutti i clienti per calcolarli uno
+ * per uno. «Viene in gruppo» per esempio richiede la media dei coperti, che non
+ * è una colonna: resta sulla scheda e non fra i segmenti, finché non ci sarà un
+ * valore precalcolato.
+ *
+ * Funzionano perché i contatori sono veri: fino a settembre 2026
+ * `totalVisits`, `lastVisitAt` e `noShowCount` non li aggiornava nessuno.
+ * Vedi server/guest-intelligence.ts.
+ */
+export const AUDIENCE_TAGS = {
+  abituali: "Clienti abituali",
+  a_rischio: "A rischio di perderli",
+  inattivi: "Inattivi",
+  prima_volta: "Venuti una volta sola",
+  assenze: "Con assenze ripetute",
+  mai_venuti: "Mai venuti",
+} as const;
+
+export type AudienceTag = keyof typeof AUDIENCE_TAGS;
+
 export const SegmentFilter = z.object({
   tags: z.array(z.string()).optional(),
+  /** Un'etichetta calcolata: vedi AUDIENCE_TAGS. */
+  audienceTag: z.enum(["abituali", "a_rischio", "inattivi", "prima_volta", "assenze", "mai_venuti"]).optional(),
   loyaltyTier: z.enum(["NEW", "REGULAR", "VIP", "AMBASSADOR"]).optional(),
   minTotalVisits: z.number().int().min(0).optional(),
   inactiveDays: z.number().int().min(0).optional(),
-  minTotalSpend: z.number().min(0).optional(),
   minNoShowCount: z.number().int().min(0).optional(),
   birthdayThisMonth: z.boolean().optional(),
   hasFutureBooking: z.boolean().optional(),
@@ -119,6 +160,40 @@ function buildSegmentWhere(venueId: string, segment: SegmentFilterType): Prisma.
   if (segment.tags && segment.tags.length > 0) {
     where.tags = { hasSome: segment.tags };
   }
+
+  // Le etichette calcolate, tradotte nelle stesse soglie che usa la scheda
+  // ospite (TAG_RULES): un cliente etichettato «a rischio» nella sua scheda
+  // deve finire nel segmento «a rischio», altrimenti sono due verità diverse.
+  if (segment.audienceTag) {
+    const giorni = (n: number) => new Date(Date.now() - n * 86_400_000);
+    const aRischio = giorni(TAG_RULES.atRiskDays);
+    const inattivo = giorni(TAG_RULES.inactiveDays);
+
+    switch (segment.audienceTag) {
+      case "abituali":
+        and.push({ totalVisits: { gte: TAG_RULES.regularVisits }, lastVisitAt: { gt: aRischio } });
+        break;
+      case "a_rischio":
+        // Era abituale e ha smesso, ma non da tanto da essere perso.
+        and.push({
+          totalVisits: { gte: TAG_RULES.regularVisits },
+          lastVisitAt: { lte: aRischio, gt: inattivo },
+        });
+        break;
+      case "inattivi":
+        and.push({ totalVisits: { gt: 0 }, lastVisitAt: { lte: inattivo } });
+        break;
+      case "prima_volta":
+        and.push({ totalVisits: 1 });
+        break;
+      case "assenze":
+        and.push({ noShowCount: { gte: 2 } });
+        break;
+      case "mai_venuti":
+        and.push({ totalVisits: 0 });
+        break;
+    }
+  }
   if (segment.loyaltyTier) {
     where.loyaltyTier = segment.loyaltyTier;
   }
@@ -128,9 +203,6 @@ function buildSegmentWhere(venueId: string, segment: SegmentFilterType): Prisma.
   if (segment.inactiveDays !== undefined) {
     const threshold = new Date(Date.now() - segment.inactiveDays * 24 * 60 * 60 * 1000);
     and.push({ OR: [{ lastVisitAt: { lte: threshold } }, { lastVisitAt: null }] });
-  }
-  if (segment.minTotalSpend !== undefined) {
-    where.totalSpend = { gte: segment.minTotalSpend };
   }
   if (segment.minNoShowCount !== undefined) {
     where.noShowCount = { gte: segment.minNoShowCount };
@@ -207,6 +279,46 @@ export async function previewSegment(venueId: string, segment: SegmentFilterType
   return { totalMatchingFilters, excludedNoEmail, excludedNoConsent, finalRecipients };
 }
 
+/**
+ * L'invio di una campagna non sta dentro una richiesta HTTP.
+ *
+ * Prima ci stava: `prepareRecipients` chiamava Brevo una volta per ogni
+ * destinatario dentro il clic del ristoratore. Con trenta clienti funzionava,
+ * con trecento la richiesta scadeva a metà — parte dei contatti sincronizzati,
+ * nessun invio partito, nessun errore mostrato, e la campagna ferma in uno
+ * stato che nessuno sapeva leggere.
+ *
+ * Ora il clic mette in coda un lavoro e risponde subito. Il lavoro sincronizza
+ * i contatti **a lotti**, cedendo il turno fra un lotto e l'altro, e solo
+ * quando ha finito consegna la campagna al fornitore.
+ */
+
+/** Quanti contatti si sincronizzano per giro. */
+const LOTTO_CONTATTI = 25;
+
+export const CampaignSendPayload = z.object({
+  venueId: z.string(),
+  campaignId: z.string(),
+  /**
+   * L'indirizzo pubblico dell'applicazione, catturato quando il ristoratore
+   * clicca. Il lavoro girerà dentro la richiesta del cron, dove l'host non è
+   * quello da cui è arrivata la richiesta: i link dentro l'email si
+   * costruiscono con questo, non con quello che si trova al momento.
+   */
+  origin: z.string(),
+  /** Quando programmare l'invio presso il fornitore, se programmato. */
+  at: z.string().optional(),
+  /** Da quando i contatti sincronizzati valgono come sincronizzati. */
+  enqueuedAt: z.string(),
+  /**
+   * Dove è arrivato il lavoro. Serve a una cosa sola, ma decisiva: se il
+   * processo muore **dopo** aver detto al fornitore di inviare, al giro dopo
+   * non si reinvia alla cieca.
+   */
+  step: z.enum(["sync", "handoff"]).optional(),
+});
+export type CampaignSendPayloadType = z.infer<typeof CampaignSendPayload>;
+
 async function requireDraftCampaign(venueId: string, campaignId: string) {
   const campaign = await db.campaign.findFirst({ where: { id: campaignId, venueId } });
   if (!campaign) throw new Error("not_found");
@@ -214,26 +326,47 @@ async function requireDraftCampaign(venueId: string, campaignId: string) {
   return campaign;
 }
 
-async function prepareRecipients(venueId: string, campaignId: string) {
+/**
+ * Mette in coda l'invio. Restituisce la campagna nello stato nuovo, così
+ * l'interfaccia può dire «in invio» invece di «inviata» — che sarebbe una
+ * bugia finché il lavoro non è finito.
+ */
+async function queueCampaign(venueId: string, campaignId: string, at?: Date) {
   const campaign = await requireDraftCampaign(venueId, campaignId);
   const segment = (campaign.segment as SegmentFilterType | null) ?? {};
-  const guests = await resolveSegment(venueId, segment);
+  const { finalRecipients } = await previewSegment(venueId, segment);
+  if (finalRecipients === 0) throw new Error("no_recipients");
 
-  for (const guest of guests) {
-    const ref = await adapter.syncContact(guest);
-    await db.guestProviderLink.upsert({
-      where: { guestId_provider: { guestId: guest.id, provider: "brevo" } },
-      create: {
-        venueId,
-        guestId: guest.id,
-        provider: "brevo",
-        providerContactId: ref.providerContactId,
-      },
-      update: { providerContactId: ref.providerContactId, syncedAt: new Date() },
-    });
-  }
+  const payload: CampaignSendPayloadType = {
+    venueId,
+    campaignId,
+    origin: getRequestOrigin(),
+    enqueuedAt: new Date().toISOString(),
+    step: "sync",
+    ...(at && { at: at.toISOString() }),
+  };
 
-  return { campaign, guests };
+  await enqueueJob({
+    kind: "campaign.send",
+    venueId,
+    payload,
+    // Due clic sul pulsante non fanno partire due invii.
+    dedupeKey: chiaveLavoro(campaignId),
+    maxAttempts: 3,
+  });
+
+  return db.campaign.update({
+    where: { id: campaign.id },
+    data: at ? { status: "SCHEDULED", scheduledAt: at } : { status: "SENDING" },
+  });
+}
+
+export function sendCampaignNow(venueId: string, campaignId: string) {
+  return queueCampaign(venueId, campaignId);
+}
+
+export function scheduleCampaign(venueId: string, campaignId: string, at: Date) {
+  return queueCampaign(venueId, campaignId, at);
 }
 
 async function createMessageLogs(campaignId: string, venueId: string, guests: { id: string; email: string | null }[]) {
@@ -258,9 +391,8 @@ async function createMessageLogs(campaignId: string, venueId: string, guests: { 
  * sintassi di merge-tag di Brevo, che li risolverà lui stesso al momento dell'invio
  * reale usando gli attributi contatto sincronizzati in syncContact/createContact.
  */
-async function compileHtmlForBrevoSend(venueId: string, body: string): Promise<string> {
+async function compileHtmlForBrevoSend(venueId: string, body: string, origin: string): Promise<string> {
   const venue = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
-  const origin = getRequestOrigin();
   const withGlobals = resolveGlobalVariables(body, {
     restaurantName: venue.name,
     bookingLink: `${origin}/book?venue=${venueId}`,
@@ -268,49 +400,216 @@ async function compileHtmlForBrevoSend(venueId: string, body: string): Promise<s
   return toBrevoMergeTags(withGlobals, origin);
 }
 
-export async function sendCampaignNow(venueId: string, campaignId: string) {
-  const { campaign, guests } = await prepareRecipients(venueId, campaignId);
-  const htmlContent = await compileHtmlForBrevoSend(venueId, campaign.body || "");
-
-  const ref = await adapter.createCampaign(campaign, {
-    htmlContent,
-    recipientEmails: guests.map((g) => g.email!).filter(Boolean),
-  });
-  await adapter.sendCampaign(ref.providerId);
-  await createMessageLogs(campaign.id, venueId, guests);
-
-  return db.campaign.update({
-    where: { id: campaign.id },
-    data: {
-      status: "SENT",
-      providerId: ref.providerId,
-      providerListId: ref.providerListId,
-      sentCount: guests.length,
-    },
+async function segnaNonRiuscita(campaignId: string, venueId: string, nome: string, motivo: string) {
+  await db.campaign.update({ where: { id: campaignId }, data: { status: "FAILED" } });
+  await createNotification(venueId, {
+    kind: "AUTOMATION_FAILED",
+    title: `Campagna non inviata: ${nome}`,
+    body: motivo,
+    link: `/campaigns/${campaignId}`,
   });
 }
 
-export async function scheduleCampaign(venueId: string, campaignId: string, at: Date) {
-  const { campaign, guests } = await prepareRecipients(venueId, campaignId);
-  const htmlContent = await compileHtmlForBrevoSend(venueId, campaign.body || "");
+/** La chiave del lavoro di invio di una campagna: una sola, per campagna. */
+function chiaveLavoro(campaignId: string) {
+  return `campaign.send:${campaignId}`;
+}
 
-  const ref = await adapter.createCampaign(campaign, {
-    htmlContent,
-    recipientEmails: guests.map((g) => g.email!).filter(Boolean),
-  });
-  await adapter.scheduleCampaign(ref.providerId, at);
-  await createMessageLogs(campaign.id, venueId, guests);
+export type CampaignSendProgress = {
+  status: "PENDING" | "RUNNING" | "DONE" | "FAILED";
+  /** Quanti destinatari sono già stati preparati presso il fornitore. */
+  preparati: number;
+  totale: number;
+  tentativi: number;
+  ultimoErrore: string | null;
+  jobId: string;
+};
 
-  return db.campaign.update({
-    where: { id: campaign.id },
-    data: {
-      status: "SCHEDULED",
-      scheduledAt: at,
-      providerId: ref.providerId,
-      providerListId: ref.providerListId,
-      sentCount: guests.length,
-    },
+/**
+ * A che punto è l'invio.
+ *
+ * Serve perché «in invio» da solo non basta: dopo due minuti chi guarda vuole
+ * sapere se sta succedendo qualcosa. Il numero viene dai contatti davvero
+ * sincronizzati, non da una percentuale finta.
+ */
+export async function getCampaignSendProgress(
+  venueId: string,
+  campaignId: string
+): Promise<CampaignSendProgress | null> {
+  const job = await db.backgroundJob.findUnique({ where: { dedupeKey: chiaveLavoro(campaignId) } });
+  if (!job || job.venueId !== venueId) return null;
+
+  const payload = CampaignSendPayload.safeParse(job.payload);
+  const campaign = await db.campaign.findFirst({ where: { id: campaignId, venueId } });
+  const segment = (campaign?.segment as SegmentFilterType | null) ?? {};
+  const guests = await resolveSegment(venueId, segment);
+
+  const preparati = payload.success
+    ? await db.guestProviderLink.count({
+        where: {
+          venueId,
+          provider: "brevo",
+          guestId: { in: guests.map((g) => g.id) },
+          syncedAt: { gte: new Date(payload.data.enqueuedAt) },
+        },
+      })
+    : 0;
+
+  return {
+    status: job.status,
+    preparati: job.status === "DONE" ? guests.length : preparati,
+    totale: guests.length,
+    tentativi: job.attempts,
+    ultimoErrore: job.lastError,
+    jobId: job.id,
+  };
+}
+
+/**
+ * Riprova un invio non riuscito.
+ *
+ * Con un limite non negoziabile: se la campagna era già stata consegnata al
+ * fornitore (`providerId` valorizzato) non si riprova da qui. Riprovare
+ * significherebbe rischiare di scrivere due volte agli stessi clienti, e
+ * quello è un danno che non si annulla.
+ */
+export async function retryCampaignSend(venueId: string, campaignId: string) {
+  const campaign = await db.campaign.findFirst({ where: { id: campaignId, venueId } });
+  if (!campaign) throw new Error("not_found");
+  if (campaign.status !== "FAILED") throw new Error("conflict");
+  if (campaign.providerId) throw new Error("campaign_already_handed_over");
+
+  const payload: CampaignSendPayloadType = {
+    venueId,
+    campaignId,
+    origin: getRequestOrigin(),
+    enqueuedAt: new Date().toISOString(),
+    step: "sync",
+    ...(campaign.scheduledAt && campaign.scheduledAt > new Date() && { at: campaign.scheduledAt.toISOString() }),
+  };
+
+  await enqueueJob({
+    kind: "campaign.send",
+    venueId,
+    payload,
+    dedupeKey: chiaveLavoro(campaignId),
+    maxAttempts: 3,
   });
+
+  return db.campaign.update({ where: { id: campaignId }, data: { status: "SENDING" } });
+}
+
+/**
+ * Il lavoro vero. Lo esegue la coda, e può essere interrotto in qualunque
+ * momento: ogni passaggio riparte da dove serve.
+ *
+ * - i contatti già sincronizzati **durante questo lavoro** non si
+ *   risincronizzano (è la ragione per cui il momento di messa in coda sta nel
+ *   payload);
+ * - la campagna presso il fornitore si crea una volta sola: se
+ *   `providerId` c'è già, si riusa;
+ * - se il processo muore dopo aver dato l'ordine di invio, al giro dopo la
+ *   campagna finisce in «non riuscita» con scritto perché — mai un secondo
+ *   invio alla cieca a clienti veri.
+ */
+export async function runCampaignSendJob(raw: unknown, job: JobRef): Promise<JobOutcome> {
+  const payload = CampaignSendPayload.parse(raw);
+  const { venueId, campaignId } = payload;
+
+  const campaign = await db.campaign.findFirst({ where: { id: campaignId, venueId } });
+  if (!campaign) return { done: true };
+  // Chi ha già concluso, o è stato archiviato, non si tocca.
+  if (campaign.status !== "SENDING" && campaign.status !== "SCHEDULED") return { done: true };
+
+  if (payload.step === "handoff") {
+    await segnaNonRiuscita(
+      campaignId,
+      venueId,
+      campaign.name,
+      "L'invio era già stato avviato presso il fornitore quando il lavoro si è interrotto. " +
+        "Non lo ripetiamo per non scrivere due volte agli stessi clienti: controlla lo stato su Brevo."
+    );
+    return { done: true };
+  }
+
+  try {
+    const segment = (campaign.segment as SegmentFilterType | null) ?? {};
+    const guests = await resolveSegment(venueId, segment);
+    if (guests.length === 0) {
+      await segnaNonRiuscita(campaignId, venueId, campaign.name, "Nessun destinatario valido al momento dell'invio.");
+      return { done: true };
+    }
+
+    const daQuando = new Date(payload.enqueuedAt);
+    const giaSincronizzati = new Set(
+      (
+        await db.guestProviderLink.findMany({
+          where: {
+            venueId,
+            provider: "brevo",
+            guestId: { in: guests.map((g) => g.id) },
+            syncedAt: { gte: daQuando },
+          },
+          select: { guestId: true },
+        })
+      ).map((l) => l.guestId)
+    );
+
+    const restanti = guests.filter((g) => !giaSincronizzati.has(g.id));
+    for (const guest of restanti.slice(0, LOTTO_CONTATTI)) {
+      const ref = await adapter.syncContact(guest);
+      await db.guestProviderLink.upsert({
+        where: { guestId_provider: { guestId: guest.id, provider: "brevo" } },
+        create: { venueId, guestId: guest.id, provider: "brevo", providerContactId: ref.providerContactId },
+        update: { providerContactId: ref.providerContactId, syncedAt: new Date() },
+      });
+    }
+
+    if (restanti.length > LOTTO_CONTATTI) {
+      // Ancora contatti da sincronizzare: si cede il turno.
+      return { again: true };
+    }
+
+    const htmlContent = await compileHtmlForBrevoSend(venueId, campaign.body || "", payload.origin);
+    const recipientEmails = guests.map((g) => g.email!).filter(Boolean);
+
+    // La campagna presso il fornitore si crea una volta sola.
+    let providerId = campaign.providerId;
+    let providerListId = campaign.providerListId;
+    if (!providerId) {
+      const ref = await adapter.createCampaign(campaign, { htmlContent, recipientEmails });
+      providerId = ref.providerId;
+      providerListId = ref.providerListId;
+      await db.campaign.update({ where: { id: campaignId }, data: { providerId, providerListId } });
+    }
+
+    // Da qui in poi un'interruzione non deve produrre un secondo invio.
+    await db.backgroundJob.update({
+      where: { id: job.id },
+      data: { payload: { ...payload, step: "handoff" } as Prisma.InputJsonValue },
+    });
+
+    const at = payload.at ? new Date(payload.at) : null;
+    if (at) await adapter.scheduleCampaign(providerId, at);
+    else await adapter.sendCampaign(providerId);
+
+    await createMessageLogs(campaignId, venueId, guests);
+    await db.campaign.update({
+      where: { id: campaignId },
+      data: {
+        status: at ? "SCHEDULED" : "SENT",
+        sentCount: recipientEmails.length,
+      },
+    });
+
+    return { done: true };
+  } catch (err) {
+    if (job.attempts >= job.maxAttempts) {
+      const motivo = err instanceof Error ? err.message : "errore sconosciuto";
+      await segnaNonRiuscita(campaignId, venueId, campaign.name, `Tentativi esauriti. Ultimo errore: ${motivo}`);
+    }
+    throw err;
+  }
 }
 
 /**

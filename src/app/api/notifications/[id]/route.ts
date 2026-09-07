@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { getActiveVenue } from "@/lib/tenant";
+import { requireVenueApi } from "@/lib/api-auth";
+
 import { markNotificationRead } from "@/server/notifications";
 
 export async function PATCH(_req: Request, { params }: { params: { id: string } }) {
-  const ctx = await getActiveVenue();
+  const ctx = await requireVenueApi();
+  if (!ctx.ok) return ctx.response;
   try {
     const updated = await markNotificationRead(ctx.venueId, ctx.role, params.id);
     return NextResponse.json(updated);
