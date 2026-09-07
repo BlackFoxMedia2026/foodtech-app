@@ -2,6 +2,7 @@ import { Fraunces, Inter, Space_Mono } from "next/font/google";
 import { Header } from "@/components/shell/header";
 import { BrandSetupDialog } from "@/components/settings/brand-setup-dialog";
 import { can, getActiveVenue } from "@/lib/tenant";
+import { VenueTimeProvider } from "@/components/shell/venue-time-provider";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const display = Fraunces({
@@ -29,7 +30,9 @@ export default async function AppShell({ children }: { children: React.ReactNode
         venues={venueList}
         activeVenueId={ctx.venueId}
       />
-      <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-8">{children}</main>
+      <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-8">
+        <VenueTimeProvider timezone={ctx.venue.timezone}>{children}</VenueTimeProvider>
+      </main>
       {showBrandSetup && <BrandSetupDialog initialName={ctx.venue.name} />}
     </div>
   );

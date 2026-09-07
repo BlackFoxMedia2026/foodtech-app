@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { readApiError } from "@/lib/api-client";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -57,7 +58,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
   const [contractForm, setContractForm] = useState(EMPTY_CONTRACT_FORM);
   const [contractErrors, setContractErrors] = useState<ContractFormErrors>({});
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useVenueToday();
   const age = useMemo(() => calculateAge(birthday), [birthday]);
 
   function handlePrimaryRoleChange(next: StaffPrimaryRole) {

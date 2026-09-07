@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { todayInVenue } from "@/lib/venue-time";
 import { getActiveVenue } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
 import { listServiceOptions } from "@/server/waiter-assignments";
@@ -26,7 +27,7 @@ export default async function FloorPage({
     listServiceOptions(ctx.venueId),
   ]);
 
-  const date = searchParams.date ?? new Date().toISOString().slice(0, 10);
+  const date = searchParams.date ?? todayInVenue(ctx.venue.timezone);
   const service = searchParams.service ?? serviceOptions[0] ?? "";
 
   const staffByTableId: Record<string, TableStaffMap> = {};

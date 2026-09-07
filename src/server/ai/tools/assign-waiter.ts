@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { todayInVenue } from "@/lib/venue-time";
 import { listWaiters } from "@/server/waiters";
 import { listServiceOptions } from "@/server/waiter-assignments";
 import type { Tool } from "../types";
@@ -65,7 +66,7 @@ export const assignWaiterTool: Tool = {
       return { text: "Non ho capito quali tavoli assegnare — prova a indicarli per numero, es. \"dal 4 al 9\"." };
     }
 
-    const date = ctx.page?.date ?? new Date().toISOString().slice(0, 10);
+    const date = ctx.page?.date ?? todayInVenue(ctx.venueTimezone);
     const service = ctx.page?.service ?? serviceOptions[0] ?? "Servizio";
     const tableLabels = matchedTables.map((t) => t.label).join(", ");
 

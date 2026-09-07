@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,7 +63,7 @@ export function BookingForm({
     onClose?.();
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = useVenueToday();
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">

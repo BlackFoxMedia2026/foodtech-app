@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await executor(
-      { venueId: ctx.venueId, venueName: ctx.venue.name, role: ctx.role, userId: ctx.userId },
+      { venueId: ctx.venueId, venueName: ctx.venue.name, venueTimezone: ctx.venue.timezone, role: ctx.role, userId: ctx.userId },
       body.params,
     );
 

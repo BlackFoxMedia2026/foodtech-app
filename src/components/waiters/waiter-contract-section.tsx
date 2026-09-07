@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { readApiError } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
@@ -43,6 +44,7 @@ function toDates(c: Contract) {
 }
 
 export function WaiterContractSection({ waiterId, open }: { waiterId: string; open: boolean }) {
+  const today = useVenueToday();
   const router = useRouter();
   const [contracts, setContracts] = useState<Contract[] | null>(null);
   const [mode, setMode] = useState<"view" | "edit" | "create">("view");
@@ -89,7 +91,7 @@ export function WaiterContractSection({ waiterId, open }: { waiterId: string; op
   }
 
   function startCreate() {
-    setFormValues({ ...EMPTY_CONTRACT_FORM, startDate: new Date().toISOString().slice(0, 10) });
+    setFormValues({ ...EMPTY_CONTRACT_FORM, startDate: today });
     setFormErrors({});
     setFormSubmitError(null);
     setMode("create");

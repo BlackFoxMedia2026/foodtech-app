@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { readApiError } from "@/lib/api-client";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -79,7 +80,7 @@ export function WaiterProfileDialog({
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useVenueToday();
   const age = useMemo(() => calculateAge(birthday), [birthday]);
   const fullName = `${waiter.firstName} ${waiter.lastName}`;
 

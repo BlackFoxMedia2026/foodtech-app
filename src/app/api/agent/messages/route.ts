@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
   const agentCtx: AgentContext = {
     venueId: ctx.venueId,
     venueName: ctx.venue.name,
+    venueTimezone: ctx.venue.timezone,
     role: ctx.role,
     userId: ctx.userId,
     page: body.page,
