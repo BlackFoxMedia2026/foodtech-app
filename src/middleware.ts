@@ -20,6 +20,11 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname === "/api/public/bookings") {
     return { rule: RATE_LIMITS.publicBooking, bucket: "public-booking", methods: ["POST"] };
   }
+  // L'ospite conferma o annulla dal link del promemoria: severo come la
+  // creazione, perché è l'endpoint da cui si potrebbero provare token a caso.
+  if (pathname === "/api/public/booking-action") {
+    return { rule: RATE_LIMITS.publicBooking, bucket: "booking-action", methods: ["POST"] };
+  }
   if (pathname.startsWith("/api/public/availability")) {
     return { rule: RATE_LIMITS.publicAvailability, bucket: "public-availability" };
   }

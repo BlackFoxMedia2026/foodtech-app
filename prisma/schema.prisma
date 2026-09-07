@@ -166,25 +166,25 @@ model VenueMembership {
 }
 
 model Room {
-  id                String             @id @default(cuid())
-  venueId           String
-  name              String
-  width             Int                @default(1200)
-  height            Int                @default(800)
-  ordering          Int                @default(0)
-  floorPlanUrl      String?
-  activeLayoutMode  RoomLayoutMode?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @default(now()) @updatedAt
-  FloorDecor        FloorDecor[]
-  venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  tables            Table[]
-  waiterAssignments WaiterAssignment[]
-  staffAssignments  StaffAssignment[]
-  roomLayout        RoomLayout?
+  id                  String             @id @default(cuid())
+  venueId             String
+  name                String
+  width               Int                @default(1200)
+  height              Int                @default(800)
+  ordering            Int                @default(0)
+  floorPlanUrl        String?
+  activeLayoutMode    RoomLayoutMode?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @default(now()) @updatedAt
+  FloorDecor          FloorDecor[]
+  venue               Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tables              Table[]
+  waiterAssignments   WaiterAssignment[]
+  staffAssignments    StaffAssignment[]
+  roomLayout          RoomLayout?
+  waitlistPreferences WaitlistEntry[]
 
   @@index([venueId, ordering])
-  waitlistPreferences WaitlistEntry[]
 }
 
 // Structured "Crea la tua sala" builder layout — additive/optional alongside
@@ -291,11 +291,11 @@ model Guest {
   Order              Order[]
   payments           Payment[]
   WifiLead           WifiLead[]
+  waitlistEntries    WaitlistEntry[]
 
   @@index([venueId, email])
   @@index([venueId, phone])
   @@index([venueId, lastName])
-  waitlistEntries  WaitlistEntry[]
 }
 
 model Booking {
@@ -332,6 +332,7 @@ model Booking {
   BookingPreorder   BookingPreorder?
   payments          Payment[]
   VoiceBookingDraft VoiceBookingDraft?
+  messages          MessageLog[]
 
   @@index([venueId, startsAt])
   @@index([venueId, status])
@@ -924,6 +925,12 @@ model MessageLog {
   campaignId    String?
   workflowRunId String?
   guestId       String?
+  /// La prenotazione a cui il messaggio si riferisce: serve per non mandare
+  /// due volte lo stesso promemoria.
+  bookingId     String?
+  /// Che messaggio è: booking.confirmation, booking.reminder_24h, ...
+  /// Insieme a bookingId è la chiave con cui si evita il doppio invio.
+  kind          String?        @db.VarChar(40)
   channel       MessageChannel
   toAddress     String
   subject       String?
@@ -940,12 +947,14 @@ model MessageLog {
   Campaign      Campaign?      @relation(fields: [campaignId], references: [id])
   Guest         Guest?         @relation(fields: [guestId], references: [id])
   Venue         Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  booking       Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   AutomationRun AutomationRun? @relation(fields: [workflowRunId], references: [id])
 
   @@index([campaignId])
   @@index([guestId, channel])
   @@index([venueId, createdAt])
   @@index([venueId, deletedAt])
+  @@index([bookingId, kind])
 }
 
 model MessageTemplate {

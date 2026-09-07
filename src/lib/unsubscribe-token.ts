@@ -10,6 +10,8 @@ const SECRET = process.env.NEXTAUTH_SECRET ?? "";
 export const PREVIEW_UNSUBSCRIBE_ID = "preview";
 
 function sign(value: string): string {
+  // Come per i link ospite: senza segreto la firma non protegge nulla.
+  if (!SECRET) throw new Error("NEXTAUTH_SECRET non configurato: impossibile firmare i token");
   return createHmac("sha256", SECRET).update(value).digest("hex").slice(0, 32);
 }
 
@@ -23,7 +25,12 @@ export function verifyUnsubscribeToken(token: string): string | null {
   if (separatorIndex <= 0) return null;
   const guestId = token.slice(0, separatorIndex);
   const signature = token.slice(separatorIndex + 1);
-  const expected = sign(guestId);
+  let expected: string;
+  try {
+    expected = sign(guestId);
+  } catch {
+    return null;
+  }
   if (expected.length !== signature.length) return null;
   return timingSafeEqual(Buffer.from(expected), Buffer.from(signature)) ? guestId : null;
 }
