@@ -432,7 +432,15 @@ model Campaign {
   providerListId Int?
   sentCount      Int             @default(0)
   openedCount    Int             @default(0)
-  bookedCount    Int             @default(0)
+  /// `bookedCount` è stato tolto da qui e **non ancora dal database**, di
+  /// proposito: durante una pubblicazione il codice vecchio serve ancora le
+  /// richieste mentre le migrazioni sono già applicate, e una colonna
+  /// cancellata sotto i piedi di un client Prisma che la seleziona è un errore
+  /// in faccia a un utente. Prima si smette di dichiararla (questa
+  /// pubblicazione), poi si cancella (la prossima).
+  /// Nessuno la scriveva: mostrava zero prenotazioni generate su ogni
+  /// campagna, cioè una bocciatura inventata. Il merito vero ora si calcola
+  /// da `Booking.campaignId`.
   createdAt      DateTime        @default(now())
   venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
   MessageLog     MessageLog[]
