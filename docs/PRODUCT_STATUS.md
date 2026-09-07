@@ -2,7 +2,7 @@
 
 Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso commit che cambia lo stato di un modulo.
 
-**Aggiornato:** 7 settembre 2026 · commit di riferimento `c6a1a82` + Phase 0
+**Aggiornato:** 7 settembre 2026 · commit di riferimento `c6a1a82` + Phase 0 + Phase 1 (parziale)
 
 ## Come si legge
 
@@ -23,13 +23,13 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Modulo | Stato | Note |
 |---|---|---|
 | Panoramica | LIVE | KPI del giorno, timeline, alert da motore a regole |
-| Prenotazioni (CRUD) | LIVE | Creazione, modifica, annullo, dettaglio |
+| Prenotazioni (CRUD) | LIVE | Creazione, modifica, annullo, dettaglio. Forzatura consapevole con motivo obbligatorio e traccia nel registro |
 | Disponibilità / anti-overbooking | LIVE | Unica fonte di verità per sala, API e widget. 45 verifiche automatiche |
-| Calendario | PARTIAL | Navigazione per giorno. Nessuna vista settimana/mese |
+| Calendario | PARTIAL | Navigazione per giorno, con gli orari disponibili nel form dello staff. Nessuna vista settimana/mese |
 | Widget pubblico | BETA | Funziona e propone solo orari accettabili, ora nell'identità dell'app. Manca la verifica del contatto: il limite di frequenza rallenta un bot, non ferma email e telefono inventati |
-| Walk-in | PARTIAL | Esiste come fonte prenotazione, manca il flusso rapido |
-| Reminder prenotazione | PLANNED | Oggi solo email di conferma alla creazione |
-| Caparra / garanzia carta | PLANNED | Schema pronto (`depositCents`, `depositStatus`, `Payment.stripePaymentId`). Stripe non implementato |
+| Walk-in | LIVE | Persone → tavolo → accomoda, con i soli tavoli davvero liberi. Dal «+» della barra mobile e dalle azioni rapide |
+| Reminder prenotazione | LIVE (email) | 24 ore e 3 ore prima, con conferma e annullo dal link. SMS e WhatsApp: il posto è pronto in `PROVIDERS`, i fornitori no — vedi PLANNED sotto |
+| Caparra / garanzia carta | PLANNED | Schema pronto (`depositCents`, `depositStatus`, `Payment.stripePaymentId`). Stripe non implementato: **servono le chiavi di test** per farlo e verificarlo davvero |
 
 ## Sala e servizio
 
@@ -42,7 +42,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Contratti staff + promemoria scadenza | LIVE | Cron protetto, email, notifiche in-app |
 | Assegnazioni cameriere ↔ tavolo | LIVE | |
 | Modalità Servizio / reception | PLANNED | NOW / NEXT / ATTESE. È la prossima priorità di prodotto |
-| Waitlist | SCHEMA ONLY | Schema completo (offerta, token, scadenza, conversione), zero codice |
+| Waitlist | LIVE | Coda in ordine di arrivo, offerta con scadenza, conversione in prenotazione seduta, suggerimento dei tavoli compatibili. Il messaggio all'ospite è ancora a voce: l'invio automatico dell'offerta arriva con i canali SMS/WhatsApp |
 
 ## Ospiti e crescita
 
@@ -80,10 +80,20 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Migrazioni versionate | LIVE | `prisma migrate deploy` al deploy |
 | Branding | LIVE | |
 | Notifiche in-app | LIVE | Filtrate per ruolo |
+| Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii |
+| Navigazione mobile | LIVE | Barra in basso con «+» per i gesti rapidi; nessuno scorrimento orizzontale |
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
-| Test | PARTIAL | Vitest su permessi, isolamento, fuso, disponibilità. Nessun end-to-end |
+| Test | PARTIAL | 116 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria e link firmati. Nessun end-to-end sul browser |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
+
+## Canali di messaggio
+
+| Canale | Stato | Note |
+|---|---|---|
+| Email | LIVE | Resend. Senza chiave i messaggi non partono e chi chiama lo sa |
+| SMS | PLANNED | Il posto è pronto in `PROVIDERS`; manca il fornitore. Nessuna interfaccia lo offre |
+| WhatsApp | PLANNED | Come sopra |
 
 ## Non implementato (solo tabelle)
 

@@ -58,18 +58,44 @@ proprio locale, altrimenti passerebbero anche funzioni rotte che rifiutano tutto
 | `GET /api/public/availability` | 60 / min | Il widget la interroga a ogni cambio di data |
 | `POST /api/auth/callback/*` | 10 / 10 min | Tentativi di accesso |
 | `POST /api/agent/*` | 30 / min | Ogni messaggio costa una chiamata a un modello |
+| `POST /api/public/booking-action` | 5 / 10 min | L'ospite conferma o annulla dal promemoria: è l'endpoint da cui si potrebbero provare token a caso |
 | Upload immagini e documenti | 20 / min | |
+
+I valori sono tarabili da variabile d'ambiente (`RATE_LIMIT_LOGIN`, …): il
+difetto è quello di produzione, l'override serve per tarare sotto traffico
+reale senza rilasciare e per non bloccare le prove automatiche in locale.
 
 Conteggio per IP (primo indirizzo di `x-forwarded-for`). **Limite noto:** il conteggio sta in
 memoria del processo, quindi su Vercel vale per istanza. `RateLimitStore` è un'interfaccia:
 passare a Redis è una riga, il giorno in cui il traffico lo richiede.
 
+## Link firmati per gli ospiti
+
+I promemoria contengono link che confermano o annullano senza account:
+`src/lib/booking-token.ts`. Tre proprietà:
+
+- **Firmati** con `NEXTAUTH_SECRET`: un identificativo indovinato non basta ad
+  annullare la cena di un altro.
+- **Legati all'azione**: il link per confermare non serve ad annullare, perché
+  l'azione è dentro la firma.
+- **Rumorosi in caso di errore di configurazione**: senza segreto la firma
+  sarebbe una formalità, quindi `sign()` solleva un errore invece di produrre
+  un token indovinabile. Stessa correzione applicata al token di
+  disiscrizione, che aveva lo stesso difetto.
+
+L'azione non parte mai da una GET: i client di posta precaricano i link, e un
+annullamento innescato da un'anteprima è una cena persa senza che nessuno abbia
+cliccato. La pagina mostra, il POST agisce.
+
 ## Registro delle azioni
 
 `src/server/audit.ts` scrive su `AuditLog`: attore, email, azione, entità, differenza dei soli
 campi cambiati, IP, dispositivo. Coperte: prenotazioni (creazione, modifica, annullo,
-cancellazione), assegnazione tavolo — **con azione distinta quando è forzata** —, camerieri,
-tavoli, ospiti, sale, contratti, brand, modalità di servizio.
+cancellazione, walk-in, creazione forzata con il motivo), assegnazione tavolo — **con azione
+distinta quando è forzata** —, lista d'attesa (ingresso, avviso, uscita, accomodamento),
+camerieri, tavoli, ospiti, sale, contratti, brand, modalità di servizio, e le azioni compiute
+dall'ospite dal link del promemoria (registrate con attore `guest`, senza utente interno:
+è esattamente l'informazione utile).
 
 Registrare non può far fallire l'operazione: se la scrittura va in errore, la prenotazione
 resta salvata e l'errore finisce nei log.
@@ -91,9 +117,10 @@ Per gravità, non per difficoltà:
 1. **Nessuna verifica del contatto sul widget pubblico.** Il limite di frequenza rallenta un
    bot, non lo fermano email e telefono inventati. Serve un captcha o una conferma via link.
 2. **`force: true` su `assign-table`** bypassa il controllo dei posti ed è disponibile a
-   chiunque abbia `manage_bookings` (quindi anche a `WAITER`). Ora è tracciato, ma non è
-   ristretto e nessuna interfaccia lo usa: va deciso se diventa un pulsante con motivazione
-   obbligatoria o se sparisce.
+   chiunque abbia `manage_bookings` (quindi anche a `WAITER`), è tracciato ma senza motivo
+   obbligatorio. La forzatura in creazione è già passata al modello giusto — motivo
+   obbligatorio, azione distinta nel registro (`booking.create_forced`): resta da allineare
+   questa.
 3. **Nessun 2FA, nessun recupero password, nessuna scadenza di sessione configurata.**
 4. **Credenziali demo note** (`owner@tavolo.demo`) su un ambiente pubblico.
 5. **I form non hanno `method="post"`**: un invio prima dell'idratazione diventa una GET con i

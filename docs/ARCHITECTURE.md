@@ -17,6 +17,7 @@ src/components/…       115 componenti, per area funzionale
 src/server/…           logica di dominio, 21 moduli — l'unico posto che parla col database
 src/lib/…              infrastruttura condivisa (sessione, permessi, fuso, limiti, database)
 src/middleware.ts      limite di frequenza, prima di tutto il resto
+src/app/b/[token]/     la pagina dell'ospite: conferma o annulla dal promemoria
 prisma/                schema (72 modelli) e migrazioni versionate
 tests/                 56 verifiche
 ```
@@ -72,6 +73,32 @@ la matrice non verificabile con un test.
 `Venue.timezone` (`Europe/Rome` per difetto). Ogni calcolo di «oggi» passa da
 `src/lib/venue-time.ts`; i componenti client leggono il fuso da un contesto montato nel layout
 (`VenueTimeProvider`). Mai `new Date().toISOString()` per ottenere una data: quello è UTC.
+
+### Una sola risposta a «quali tavoli sono liberi»
+
+`src/server/table-search.ts` risponde a «quali tavoli possono accogliere N
+persone a quest'ora». La usano la lista d'attesa e il walk-in, e la useranno i
+suggerimenti di seating. Non contiene regole proprie: interroga il motore di
+disponibilità tavolo per tavolo. Costa una query per tavolo — decine, non
+migliaia — e in cambio non può sfasarsi dalle regole vere.
+
+### Un solo punto d'uscita per i messaggi
+
+`src/server/messaging/send.ts`. Registra su `MessageLog` prima di inviare, così
+un processo interrotto lascia comunque la traccia del tentativo; `bookingId` +
+`kind` impediscono il doppio invio. I canali stanno in `PROVIDERS`: aggiungerne
+uno non tocca il resto, e finché non c'è il fornitore chi chiama riceve
+`no_channel` invece di un silenzio.
+
+### Lo stato di una prenotazione lo decide il canale, non il client
+
+`BookingInput.status` **non** viene usato in creazione: lo stato dipende dalla
+fonte (`determineBookingStatus`), altrimenti una prenotazione dal widget
+pubblico potrebbe dichiararsi già confermata. Chi sa di più — la lista
+d'attesa e il walk-in, che stanno accomodando qualcuno adesso — passa da
+`BookingWriteOptions.status`, che non è raggiungibile da nessuna richiesta.
+Stessa forma di `skipAvailabilityCheck`, che ora richiede anche un motivo
+scritto (`forceReason`) e finisce nel registro come azione distinta.
 
 ### Le date pure restano stringhe
 

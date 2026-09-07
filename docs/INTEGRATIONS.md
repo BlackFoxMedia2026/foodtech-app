@@ -25,7 +25,12 @@ attesa, contratto in scadenza, contratto scaduto.
 
 **Chiavi:** `RESEND_API_KEY`, `RESEND_FROM`. Senza chiave scrive in console e non fallisce.
 
-**Manca:** nessun promemoria prima del servizio (24h/3h), nessuna email su modifica o annullo.
+**Promemoria:** dal 7 settembre 2026 partono 24 ore e 3 ore prima del servizio
+(`src/server/reminders.ts`, cron ogni 15 minuti), con link firmati per
+confermare o annullare. Passano da `src/server/messaging/send.ts`, che registra
+tutto su `MessageLog` e non manda due volte la stessa cosa.
+
+**Manca ancora:** nessuna email su modifica o annullo fatti dallo staff.
 
 ### OpenAI — agente in-app · BETA
 
@@ -57,7 +62,7 @@ Una sola pianificazione, in `vercel.json`: `/api/cron/staff-contracts-expiry` og
 | **Connettori generici** | `Connector`, `ConnectorEvent` | tutto |
 | **Centralino / voce** | `CallLog`, `MissedCall`, `VoiceBookingDraft` | tutto |
 | **Wi-Fi captive portal** | `WifiLead`, `WifiSession` | tutto |
-| **WhatsApp / SMS** | `MessageLog.channel`, `CampaignChannel` | nessun fornitore collegato |
+| **WhatsApp / SMS** | il posto in `PROVIDERS` con la firma giusta (`src/server/messaging/send.ts`) | il fornitore. Aggiungerlo non tocca nient'altro; finché non c'è, chi chiama riceve `no_channel` e nessuna interfaccia li offre |
 | **Reserve with Google** | `BookingSource.GOOGLE` | tutto |
 
 ## Come si aggiunge un'integrazione

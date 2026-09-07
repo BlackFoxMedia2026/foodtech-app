@@ -21,15 +21,19 @@ Obiettivo: rendere il prodotto sicuro da modificare e da rilasciare.
 - [x] Documenti di design allineati alla palette reale (verde/crema/terracotta)
 - [x] Widget pubblico riportato nell'identità dell'applicazione
 
-## Phase 1 — Booking OS
+## Phase 1 — Booking OS 🔄 in corso
 
 Obiettivo: parità competitiva sul nucleo prenotazioni.
 
-- Stripe: caparra, preautorizzazione, pagamento pieno; policy per esperienza, giorno, fascia, coperti; rimborsi e addebito no-show
-- Waitlist operativa: stati, offerta con scadenza, conversione, suggerimento quando si libera capienza compatibile
-- Walk-in rapido
-- Promemoria (email; poi SMS e WhatsApp) con conferma/modifica/annullo dal cliente
-- Disponibilità anche nel form interno + forzatura consapevole tracciata
+- [x] Waitlist operativa: stati, offerta con scadenza, conversione, suggerimento dei tavoli compatibili
+- [x] Walk-in rapido
+- [x] Promemoria email 24h e 3h, con conferma e annullo dal link firmato
+- [x] Disponibilità anche nel form interno + forzatura consapevole tracciata
+- [x] Navigazione mobile operativa (anticipata dalla Phase 2: il decimo elemento in barra l'ha resa urgente)
+- [ ] **Stripe: caparra, preautorizzazione, pagamento pieno**; policy per esperienza, giorno, fascia, coperti; rimborsi e addebito no-show
+      → **bloccato**: servono le chiavi di test Stripe. Senza, il codice si scriverebbe ma non si potrebbe verificare, e una integrazione di pagamento non verificata è peggio di nessuna
+- [ ] SMS e WhatsApp come canali dei promemoria e delle offerte della lista d'attesa
+      → il posto è pronto in `PROVIDERS` (`src/server/messaging/send.ts`): manca il fornitore
 
 ## Phase 2 — Servizio
 
@@ -37,7 +41,7 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 
 - Modalità Servizio / reception: NOW / NEXT / ATTESE, per tablet e una mano
 - Sala Live V2: stati con icona oltre al colore, unione e divisione tavoli, sposta prenotazione, libera tavolo, modalità mobile vera
-- Navigazione mobile: barra in basso OGGI / SALA / OSPITI / ALTRO con «+» centrale
+- [x] Navigazione mobile: barra in basso con «+» centrale (fatta in Phase 1)
 - Centro controllo servizio: collisioni previste, rischio overbooking, suggerimenti seating
 
 ## Phase 3 — Ospiti
