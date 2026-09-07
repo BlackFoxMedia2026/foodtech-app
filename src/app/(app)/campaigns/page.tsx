@@ -56,10 +56,11 @@ export default async function CampaignsPage() {
                   </CardTitle>
                   {c.subject && <p className="text-sm text-muted-foreground">{c.subject}</p>}
                 </CardHeader>
-                <CardContent className="grid grid-cols-3 gap-3 text-sm">
+                {/* «Prenotazioni» leggeva un campo che nessuno scrive: era
+                    uno zero su ogni campagna, cioè una bocciatura inventata. */}
+                <CardContent className="grid grid-cols-2 gap-3 text-sm">
                   <Metric label="Inviate" value={c.sentCount} />
                   <Metric label="Aperte" value={`${openRate}%`} />
-                  <Metric label="Prenotazioni" value={c.bookedCount} />
                 </CardContent>
               </Card>
             </Link>
