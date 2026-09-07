@@ -52,7 +52,7 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] **Tag automatici** con il motivo di ognuno; soglie in un posto solo, pronte a diventare configurabili per locale
 - [x] I segmenti delle campagne filtrano su dati **veri**: i contatori sono riallineati alle prenotazioni e il filtro sulla spesa (che leggeva un campo mai aggiornato) è stato rimosso
 - [x] Segmenti basati direttamente sulle etichette calcolate («manda a chi è a rischio»)
-- [ ] Il valore in euro resta una **stima dichiarata** finché non ci sono ordini o incassi
+- [x] Il valore in euro era una **stima dichiarata**; dai conti al tavolo (Phase 6) le serate con un conto chiuso portano il numero vero, e le due cose non si mescolano né si sommano
 
 ## Phase 4 — Crescita 🔄 in corso
 
@@ -74,7 +74,7 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] Tolto `bookedCount` dai risultati di campagna: nessuno lo scriveva, quindi ogni campagna mostrava zero prenotazioni generate — una bocciatura inventata
 - [x] **ROI delle campagne**: il link dentro l'email si porta dietro la campagna, e la prenotazione che nasce da quel clic la ricorda (`Booking.campaignId`). Il merito vale per 30 giorni dall'invio, senza disdette e assenze; il valore in euro è la stima sullo scontrino medio, detta stima. La campagna nel link viene **verificata** lato server: un identificativo inventato non attribuisce niente e non impedisce la prenotazione
 - [ ] `Campaign.bookedCount` è una **colonna morta**: nessuno la scrive e nessuno la legge più. Da eliminare con una migrazione distruttiva dichiarata (vedi prisma/migrations/README.md)
-- [ ] RevPASH (ricavo per posto a sedere per ora): la capienza c'è, i ricavi sono una stima dichiarata. Ha senso quando ci saranno incassi veri
+- [ ] RevPASH (ricavo per posto a sedere per ora): ora i ricavi veri ci sono, ma su qualche serata. Ha senso quando la storia degli incassi copre qualche settimana, altrimenti è un numero preciso calcolato su niente
 - [ ] Previsione dei ricavi: è la previsione dei coperti per lo scontrino medio. Facile da mostrare, e per questo pericolosa — meglio dopo gli incassi reali
 - [ ] Intelligenza no-show oltre il singolo tavolo (il rischio per prenotazione c'è già nel centro controllo)
 

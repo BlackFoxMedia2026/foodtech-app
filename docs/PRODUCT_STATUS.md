@@ -79,9 +79,9 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 |---|---|---|
 | Analytics | LIVE | Descrittivo: coperti, completamento, no-show, cancellazioni, fonti |
 | Insight / alert | LIVE | Motore a regole |
-| Revenue intelligence (RevPASH, occupazione) | PLANNED | |
+| Occupazione e margine | LIVE | Occupazione media per giorno della settimana, sulle sole settimane in cui il locale ha davvero registrato. Costo del cibo e margine per piatto sui conti chiusi, con la copertura dichiarata. RevPASH (ricavo per posto per ora) non c'è ancora: ha senso su una storia di incassi veri più lunga di qualche serata |
 | Centro controllo servizio | LIVE | Sette regole deterministiche: picco di arrivi, collisione sul tavolo, arrivi senza tavolo, rischio no-show (con lo storico del cliente), tavolo grande mezzo vuoto mentre una tavolata aspetta, tavolo libero per chi è in coda, turno oltre la capienza. Ognuna con il posto dove andare a sistemarla |
-| Previsione | PLANNED | |
+| Previsione coperti | LIVE | Sette giorni avanti col modello degli alberghi, con la frase che spiega ogni numero e le assenze attese sottratte. Dove la storia non basta non si prevede. La previsione **dei ricavi** resta fuori: sarebbe i coperti previsti per lo scontrino medio, cioè una stima moltiplicata per una stima |
 
 ## Piattaforma
 
