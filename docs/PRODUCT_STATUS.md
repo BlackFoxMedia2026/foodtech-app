@@ -27,7 +27,8 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 |---|---|---|
 | Panoramica | LIVE | KPI del giorno, timeline, alert da motore a regole |
 | Prenotazioni (CRUD) | LIVE | Creazione, modifica, annullo, dettaglio. Forzatura consapevole con motivo obbligatorio e traccia nel registro |
-| Disponibilità / anti-overbooking | LIVE | Unica fonte di verità per sala, API e widget. 45 verifiche automatiche |
+| Disponibilità / anti-overbooking | LIVE | Unica fonte di verità per sala, API e widget. 57 verifiche automatiche |
+| Finestra di prenotazione | LIVE | Da quanti giorni prima si prenota online, e quanto preavviso serve. **Vale solo per il widget**: al telefono il locale accetta fino all'ultimo minuto. Chi arriva fuori finestra legge che può chiamare, non che è tutto pieno. Nasce senza limiti: chi non dichiara niente continua come prima |
 | Calendario | LIVE (giorno + settimana) | Giorno con elenco e piantina; **settimana** con i sette giorni sui libri — coperti, prenotazioni, quante da confermare e quanto è pieno dove la capienza è dichiarata. Si tocca un giorno e si entra in quella serata. Nessuna vista mese: su trenta caselle i numeri diventano illeggibili e la domanda vera («c'è posto?») si fa su una settimana |
 | Widget pubblico | BETA | Funziona e propone solo orari accettabili, ora nell'identità dell'app. Manca la verifica del contatto: il limite di frequenza rallenta un bot, non ferma email e telefono inventati |
 | Walk-in | LIVE | Persone → tavolo → accomoda, con i soli tavoli davvero liberi. Dal «+» della barra mobile e dalle azioni rapide |

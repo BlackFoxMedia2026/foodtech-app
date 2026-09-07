@@ -35,6 +35,8 @@ export const DEFAULT_TIMEZONE = "Europe/Rome";
  */
 
 export type AvailabilityIssueCode =
+  | "TOO_FAR_AHEAD"
+  | "TOO_LATE"
   | "VENUE_CLOSED"
   | "SHIFT_FULL"
   | "TABLE_NOT_FOUND"
@@ -49,6 +51,17 @@ export type AvailabilityIssue = {
   message: string;
 };
 
+/**
+ * Da dove arriva la richiesta.
+ *
+ * La distinzione esiste per una ragione sola, e va detta chiara: **la finestra
+ * di prenotazione vale per il pubblico, non per il locale**. Se alle 20:40
+ * squilla il telefono e c'è posto, chi risponde deve poter scrivere quella
+ * prenotazione — un software che glielo impedisce viene aggirato con una
+ * penna, e da lì in poi la sala e lo schermo non dicono più la stessa cosa.
+ */
+export type Canale = "pubblico" | "interno";
+
 export type AvailabilityRequest = {
   startsAt: Date;
   durationMin: number;
@@ -56,6 +69,10 @@ export type AvailabilityRequest = {
   tableId?: string | null;
   /** Da valorizzare quando si sposta una prenotazione esistente: non deve scontrarsi con se stessa. */
   excludeBookingId?: string | null;
+  /** Da dove arriva: solo il canale pubblico rispetta la finestra. */
+  canale?: Canale;
+  /** Adesso, per misurare la finestra. Esplicito, per restare verificabile. */
+  now?: Date;
 };
 
 export type AvailabilityResult = {
@@ -234,8 +251,23 @@ export type BlockLike = {
   endsAt: Date;
 };
 
+/**
+ * Da quanto in anticipo, e fino a quando, si prenota online.
+ *
+ * Nullo vuol dire «nessun limite», che è il comportamento di sempre: un locale
+ * che non ha chiesto niente non si ritrova regole nuove.
+ */
+export type FinestraPrenotazioni = {
+  /** Quanti giorni prima al massimo. */
+  windowDays: number | null;
+  /** Quanti minuti prima dell'orario si chiude. */
+  cutoffMin: number | null;
+};
+
 export type AvailabilityContext = {
   timezone: string;
+  /** La finestra dichiarata dal locale. */
+  finestra: FinestraPrenotazioni;
   /** Turni del locale. Vuoto = nessun vincolo di orario. */
   shifts: ShiftLike[];
   /** Prenotazioni che occupano posti, già ripulite di quelle annullate e cancellate. */
@@ -256,12 +288,49 @@ function bookingUsesTable(booking: BookingLike, tableId: string): boolean {
  * Raccoglie tutti i motivi di rifiuto invece di fermarsi al primo, così chi prenota
  * capisce in un colpo solo cosa non torna.
  */
+/** «90 minuti», «2 ore», «un giorno»: come lo direbbe una persona. */
+function descriviAnticipo(minuti: number): string {
+  if (minuti < 60) return `${minuti} minuti`;
+  if (minuti % (24 * 60) === 0) {
+    const giorni = minuti / (24 * 60);
+    return giorni === 1 ? "un giorno" : `${giorni} giorni`;
+  }
+  const ore = Math.round((minuti / 60) * 10) / 10;
+  return ore === 1 ? "un'ora" : `${String(ore).replace(".", ",")} ore`;
+}
+
 export function evaluateAvailability(
   request: AvailabilityRequest,
   context: AvailabilityContext,
 ): AvailabilityResult {
   const issues: AvailabilityIssue[] = [];
   const { startsAt, durationMin, partySize } = request;
+
+  // 0. La finestra: quanto in anticipo, e fino a quando. Solo per il pubblico.
+  if (request.canale === "pubblico") {
+    const now = request.now ?? new Date();
+    const { windowDays, cutoffMin } = context.finestra;
+    const minutiDaAdesso = (startsAt.getTime() - now.getTime()) / 60_000;
+
+    if (windowDays != null && minutiDaAdesso > windowDays * 24 * 60) {
+      issues.push({
+        code: "TOO_FAR_AHEAD",
+        message:
+          windowDays === 1
+            ? "Online si prenota al massimo per domani. Per più avanti, chiamaci."
+            : `Online si prenota fino a ${windowDays} giorni prima. Per più avanti, chiamaci.`,
+      });
+    }
+
+    if (cutoffMin != null && minutiDaAdesso < cutoffMin) {
+      // Non è un «no»: è un «non da qui». Chi ha fame stasera deve sapere
+      // che il tavolo può esserci lo stesso, basta chiedere a voce.
+      issues.push({
+        code: "TOO_LATE",
+        message: `Online si prenota fino a ${descriviAnticipo(cutoffMin)} prima. Per stasera, chiamaci: il posto potrebbe esserci.`,
+      });
+    }
+  }
 
   const relevant = context.bookings.filter(
     (b) => b.id !== request.excludeBookingId && overlaps(startsAt, durationMin, b.startsAt, b.durationMin),
@@ -376,7 +445,10 @@ export async function loadAvailabilityContext(
   const windowTo = new Date(to.getTime() + WINDOW_MARGIN_MS);
 
   const [venue, shifts, bookings, table, blocks] = await Promise.all([
-    db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }),
+    db.venue.findUnique({
+      where: { id: venueId },
+      select: { timezone: true, bookingWindowDays: true, bookingCutoffMin: true },
+    }),
     db.shift.findMany({
       where: { venueId, active: true },
       select: {
@@ -415,6 +487,10 @@ export async function loadAvailabilityContext(
 
   return {
     timezone: venue?.timezone ?? DEFAULT_TIMEZONE,
+    finestra: {
+      windowDays: venue?.bookingWindowDays ?? null,
+      cutoffMin: venue?.bookingCutoffMin ?? null,
+    },
     shifts,
     bookings,
     table,
@@ -466,6 +542,14 @@ export type DayAvailability = {
   /** Vero quando in quel giorno non c'è alcun servizio. */
   closed: boolean;
   shifts: ShiftSlots[];
+  /**
+   * Perché mancano orari, quando a toglierli è stata la finestra del locale.
+   *
+   * Senza questa riga il cliente legge «non ci sono orari» e se ne va, mentre
+   * la verità è «non da qui, ma al telefono sì». È la differenza fra un
+   * coperto perso e una telefonata.
+   */
+  nota: string | null;
 };
 
 export type DaySlotsRequest = {
@@ -475,6 +559,8 @@ export type DaySlotsRequest = {
   durationMin: number;
   /** Adesso, per scartare gli orari già passati. Esplicito per restare verificabile. */
   now: Date;
+  /** Da dove si sta guardando: solo il pubblico rispetta la finestra. */
+  canale?: Canale;
 };
 
 /**
@@ -484,7 +570,10 @@ export type DaySlotsRequest = {
  * orario in memoria, così mostrare una giornata costa una sola lettura del database.
  */
 export function buildDaySlots(request: DaySlotsRequest, context: AvailabilityContext): DayAvailability {
-  const { date, partySize, durationMin, now } = request;
+  const { date, partySize, durationMin, now, canale } = request;
+  // Il primo motivo della finestra che toglie un orario: si dice quello, non
+  // se ne accumulano quattro uguali.
+  let nota: string | null = null;
   const isoDate = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
 
   // Il giorno della settimana della data civile, indipendente dal fuso.
@@ -511,7 +600,15 @@ export function buildDaySlots(request: DaySlotsRequest, context: AvailabilityCon
       // Un orario già passato non è prenotabile, e non serve nemmeno mostrarlo.
       if (startsAt.getTime() <= now.getTime()) continue;
 
-      const result = evaluateAvailability({ startsAt, durationMin, partySize }, context);
+      const result = evaluateAvailability({ startsAt, durationMin, partySize, canale, now }, context);
+
+      // Un orario fuori dalla finestra non si mostra spento: si toglie, e il
+      // motivo si dice una volta sola sotto l'elenco.
+      const fuoriFinestra = result.issues.find((i) => i.code === "TOO_LATE" || i.code === "TOO_FAR_AHEAD");
+      if (fuoriFinestra) {
+        nota ??= fuoriFinestra.message;
+        continue;
+      }
 
       slots.push({
         startsAt: startsAt.toISOString(),
@@ -529,6 +626,7 @@ export function buildDaySlots(request: DaySlotsRequest, context: AvailabilityCon
     timezone: context.timezone,
     closed: dayShifts.length === 0,
     shifts: shifts.filter((s) => s.slots.length > 0),
+    nota,
   };
 }
 
@@ -537,7 +635,7 @@ export async function getDayAvailability(
   venueId: string,
   date: { year: number; month: number; day: number },
   partySize: number,
-  opts: { durationMin?: number; now?: Date } = {},
+  opts: { durationMin?: number; now?: Date; canale?: Canale } = {},
 ): Promise<DayAvailability> {
   const durationMin = opts.durationMin ?? DEFAULT_DURATION_MIN;
   const now = opts.now ?? new Date();
@@ -552,5 +650,5 @@ export async function getDayAvailability(
 
   const context = await loadAvailabilityContext(venueId, dayStart, dayEnd);
 
-  return buildDaySlots({ date, partySize, durationMin, now }, { ...context, timezone });
+  return buildDaySlots({ date, partySize, durationMin, now, canale: opts.canale }, { ...context, timezone });
 }

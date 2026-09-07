@@ -12,6 +12,7 @@ import { ServiceOrganizationSettings } from "@/components/settings/service-organ
 import { AvgSpendSettings } from "@/components/settings/avg-spend-settings";
 import { LoyaltySettings } from "@/components/settings/loyalty-settings";
 import { ReviewLinksSettings } from "@/components/settings/review-links-settings";
+import { BookingWindowSettings } from "@/components/settings/booking-window-settings";
 import { QueuePanel } from "@/components/settings/queue-panel";
 import { jobQueueHealth } from "@/server/jobs/queue";
 import { can } from "@/lib/tenant";
@@ -205,6 +206,12 @@ export default async function SettingsPage() {
           il compito di non lasciare in giro. */}
       <AvgSpendSettings
         initialCents={ctx.venue.avgSpendCents}
+        canManage={can(ctx.role, "manage_venue")}
+      />
+
+      <BookingWindowSettings
+        windowDays={ctx.venue.bookingWindowDays}
+        cutoffMin={ctx.venue.bookingCutoffMin}
         canManage={can(ctx.role, "manage_venue")}
       />
 

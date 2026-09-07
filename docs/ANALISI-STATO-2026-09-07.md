@@ -67,7 +67,7 @@ Non sono principi astratti: sono le regole con cui è stato deciso ogni singolo 
 
 Quattro strade d'ingresso: a mano dallo staff, dal widget pubblico incorporabile in qualsiasi sito, dalla lista d'attesa convertita, dal walk-in.
 
-- **Disponibilità calcolata dal server**, mai dal browser: turni, capienza, durata, tavoli. 45 regole verificate in un test dedicato.
+- **Disponibilità calcolata dal server**, mai dal browser: turni, capienza, durata, tavoli. 57 regole verificate in un test dedicato.
 - **Tre viste**: elenco del giorno, piantina della sala con trascinamento, e **settimana** (sette giorni con coperti, prenotazioni, quante da confermare e quanto è pieno).
 - **Forzatura tracciata**: si può accettare oltre orari, capienza o posti del tavolo, ma serve **un motivo scritto**, l'azione ha un nome suo nel registro (`booking.create_forced`, `booking.assign_table_forced`) e il motivo ci finisce dentro. Quattro percorsi dell'interfaccia lo facevano senza motivo: corretto oggi.
 - **Tavolate**: due o più tavoli uniti per un gruppo, con controllo che siano uniti nella stessa sala e che il conflitto veda *tutti* i tavoli della tavolata — prima il secondo tavolo risultava libero e si poteva assegnare a due gruppi.
@@ -208,7 +208,7 @@ I dati personali di un cliente stanno in **sette posti**, non uno: scheda, note 
 
 ## 8. Qualità: l'audit del 7 settembre
 
-**562 test in 36 file**, tutti verdi. Coprono permessi, isolamento fra locali, fusi orari, limiti di frequenza, registro azioni, disponibilità (45 regole), lista d'attesa, walk-in, forzature, promemoria, link firmati, sala viva, centro controllo, profilo cliente, sondaggi, coda dei lavori, invio campagne, automazioni, freno sulle migrazioni, previsione, attribuzione, tavolate, esperienze, coupon, omaggi automatici, paginazione, menu, conto del tavolo, costo del cibo, punti, gift card, numerazione dei conti, portale Wi-Fi, riconoscimento del cliente, motivo obbligatorio sulle forzature, cancellazione ed esportazione dati, settimana, costo delle assenze.
+**562 test in 36 file**, tutti verdi. Coprono permessi, isolamento fra locali, fusi orari, limiti di frequenza, registro azioni, disponibilità (57 regole), lista d'attesa, walk-in, forzature, promemoria, link firmati, sala viva, centro controllo, profilo cliente, sondaggi, coda dei lavori, invio campagne, automazioni, freno sulle migrazioni, previsione, attribuzione, tavolate, esperienze, coupon, omaggi automatici, paginazione, menu, conto del tavolo, costo del cibo, punti, gift card, numerazione dei conti, portale Wi-Fi, riconoscimento del cliente, motivo obbligatorio sulle forzature, cancellazione ed esportazione dati, settimana, costo delle assenze.
 
 **Verifiche automatiche:** TypeScript pulito, ESLint pulito, nessuna deriva fra schema dichiarato e database.
 

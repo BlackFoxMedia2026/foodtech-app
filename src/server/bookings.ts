@@ -6,7 +6,7 @@ import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
 import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } from "./emails";
 import { trovaOCreaOspite } from "./guest-match";
 import { deriveTableStatus, type TableOperationalStatus } from "@/lib/table-status";
-import { assertAvailability, OCCUPYING_STATUSES } from "./availability";
+import { assertAvailability, OCCUPYING_STATUSES, type Canale } from "./availability";
 import { refreshGuestStats } from "./guest-intelligence";
 
 export const BookingInput = z.object({
@@ -126,6 +126,14 @@ function determineBookingStatus(source: string): "CONFIRMED" | "PENDING" {
  */
 export type BookingWriteOptions = {
   skipAvailabilityCheck?: boolean;
+  /**
+   * Da dove arriva la prenotazione.
+   *
+   * Solo `"pubblico"` rispetta la finestra dichiarata dal locale: chi risponde
+   * al telefono alle 20:40 deve poter scrivere quella prenotazione, o smetterà
+   * di scriverla del tutto.
+   */
+  canale?: Canale;
   actor?: AuditActor;
   /**
    * Stato iniziale imposto da chi chiama, **solo da codice server**.
@@ -168,6 +176,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       durationMin: data.durationMin,
       partySize: data.partySize,
       tableId: data.tableId ?? null,
+      canale: opts.canale,
     });
   }
 
