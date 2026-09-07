@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { readApiError } from "@/lib/api-client";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { MenuCategoryView } from "@/server/menu";
-import type { OrderView } from "@/server/orders";
+import type { ContoChiuso, OrderView } from "@/server/orders";
+import { BillPayments } from "@/components/orders/bill-payments";
 
 /**
  * Il conto del tavolo.
@@ -32,6 +33,11 @@ import type { OrderView } from "@/server/orders";
  * Il totale è la somma delle righe, e cambia sotto gli occhi a ogni tocco. Il
  * conto si chiude quando le persone pagano: da quel momento quel totale è un
  * **incasso**, e finisce nei numeri della giornata.
+ *
+ * Gift card e punti fedeltà non entrano fra le righe: le righe sono quello che
+ * è stato mangiato, e serve così com'è al calcolo del costo del cibo. Sono
+ * **modi di pagare**, e stanno sotto il totale insieme alla cifra che conta per
+ * chi sta al tavolo: quanto resta da incassare.
  */
 export function BillDialog({
   open,
@@ -53,11 +59,14 @@ export function BillDialog({
   const [cerca, setCerca] = useState("");
   const [inCorso, setInCorso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Cosa è appena successo chiudendo: i punti si annunciano, non si scoprono. */
+  const [chiuso, setChiuso] = useState<ContoChiuso | null>(null);
 
   useEffect(() => {
     if (!open) return;
     let annullato = false;
     setError(null);
+    setChiuso(null);
 
     (async () => {
       const [c, m] = await Promise.all([
@@ -135,16 +144,24 @@ export function BillDialog({
     );
 
   async function chiudi() {
-    const esito = await chiama(
-      "chiudi",
-      `/api/orders/${conto!.id}/close`,
-      { method: "POST" },
-      "Non siamo riusciti a chiudere il conto.",
-    );
-    if (esito) onOpenChange(false);
+    setInCorso("chiudi");
+    setError(null);
+    const res = await fetch(`/api/orders/${conto!.id}/close`, { method: "POST" });
+    setInCorso(null);
+    if (!res.ok) {
+      setError(await readApiError(res, "Non siamo riusciti a chiudere il conto."));
+      return;
+    }
+    // Non si chiude la finestra di colpo: se il cliente ha guadagnato dei
+    // punti, il cameriere deve poterglielo dire prima che si alzi da tavola.
+    const esito: ContoChiuso = await res.json();
+    setConto(esito);
+    setChiuso(esito);
+    onChanged();
   }
 
   const totale = conto?.totalCents ?? 0;
+  const pagamenti = conto?.pagamenti;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -215,10 +232,70 @@ export function BillDialog({
               </ul>
             )}
 
-            <div className="flex items-baseline justify-between border-t border-border pt-3">
-              <span className="text-sm text-muted-foreground">Totale</span>
-              <span className="text-display text-2xl tabular-nums">{formatCurrency(totale, currency)}</span>
+            <div className="space-y-1 border-t border-border pt-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm text-muted-foreground">Totale</span>
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    pagamenti && pagamenti.daIncassareCents !== totale
+                      ? "text-base"
+                      : "text-display text-2xl",
+                  )}
+                >
+                  {formatCurrency(totale, currency)}
+                </span>
+              </div>
+
+              {pagamenti && pagamenti.giftCardCents > 0 && (
+                <div className="flex items-baseline justify-between text-sm">
+                  <span className="text-muted-foreground">Gift card</span>
+                  <span className="tabular-nums text-sage">
+                    −{formatCurrency(pagamenti.giftCardCents, currency)}
+                  </span>
+                </div>
+              )}
+
+              {pagamenti && pagamenti.puntiCents > 0 && (
+                <div className="flex items-baseline justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Punti fedeltà{pagamenti.punti > 0 ? ` (${pagamenti.punti})` : ""}
+                  </span>
+                  <span className="tabular-nums text-sage">
+                    −{formatCurrency(pagamenti.puntiCents, currency)}
+                  </span>
+                </div>
+              )}
+
+              {pagamenti && pagamenti.daIncassareCents !== totale && (
+                <div className="flex items-baseline justify-between border-t border-border pt-2">
+                  <span className="text-sm text-muted-foreground">Da incassare</span>
+                  <span className="text-display text-2xl tabular-nums">
+                    {formatCurrency(pagamenti.daIncassareCents, currency)}
+                  </span>
+                </div>
+              )}
             </div>
+
+            {chiuso && (
+              <div className="rounded-md border border-sage/40 bg-sage/10 p-3 text-sm">
+                <p className="font-medium">Conto chiuso, {formatCurrency(totale, currency)}.</p>
+                {chiuso.puntiAccreditati ? (
+                  <p className="mt-1">
+                    {guestName} ha guadagnato{" "}
+                    <strong className="tabular-nums">
+                      {chiuso.puntiAccreditati.punti}{" "}
+                      {chiuso.puntiAccreditati.punti === 1 ? "punto" : "punti"}
+                    </strong>{" "}
+                    · saldo {chiuso.puntiAccreditati.saldo}. Diglielo.
+                  </p>
+                ) : null}
+              </div>
+            )}
+
+            {conto.aperto && conto.righe.length > 0 && (
+              <BillPayments conto={conto} currency={currency} onChanged={setConto} />
+            )}
 
             {/* La ricerca: il gesto vero */}
             {conto.aperto && (
@@ -283,8 +360,12 @@ export function BillDialog({
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={inCorso !== null}>
-            Chiudi la finestra
+          <Button
+            variant={chiuso ? "accent" : "ghost"}
+            onClick={() => onOpenChange(false)}
+            disabled={inCorso !== null}
+          >
+            {chiuso ? "Fine" : "Chiudi la finestra"}
           </Button>
           {conto?.aperto && (
             <>
@@ -303,7 +384,11 @@ export function BillDialog({
                 Annulla il conto
               </Button>
               <Button variant="accent" onClick={chiudi} disabled={inCorso !== null || conto.righe.length === 0}>
-                {inCorso === "chiudi" ? "Un istante…" : `Incassa ${formatCurrency(totale, currency)}`}
+                {inCorso === "chiudi"
+                  ? "Un istante…"
+                  : conto.pagamenti.daIncassareCents === 0 && totale > 0
+                    ? "Chiudi il conto"
+                    : `Incassa ${formatCurrency(conto.pagamenti.daIncassareCents, currency)}`}
               </Button>
             </>
           )}

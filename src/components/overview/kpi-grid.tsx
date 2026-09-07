@@ -54,7 +54,14 @@ export function KpiGrid({
   totalCovers: number;
   estimatedRevenueCents: number | null;
   /** L'incasso vero: `conti: 0` vuol dire «nessun conto chiuso», non «zero euro». */
-  incasso?: { totalCents: number; conti: number } | null;
+  incasso?: {
+    totalCents: number;
+    conti: number;
+    /** Già pagato con gift card: denaro entrato prima di oggi. */
+    giftCardCents?: number;
+    /** Scontato coi punti: incasso a cui il locale ha rinunciato. */
+    scontiPuntiCents?: number;
+  } | null;
   currency: string;
   occupancyPct: number;
   expectedNoShow: number;
@@ -86,7 +93,17 @@ export function KpiGrid({
             : "—",
       hint:
         incasso && incasso.conti > 0
-          ? `${incasso.conti} ${incasso.conti === 1 ? "conto chiuso" : "conti chiusi"}`
+          ? [
+              `${incasso.conti} ${incasso.conti === 1 ? "conto chiuso" : "conti chiusi"}`,
+              // Se una parte del conto era già pagata (gift card) o non è mai
+              // stata pagata (punti), il totale servito e quello entrato in
+              // cassa oggi non coincidono, e va detto qui: è la differenza fra
+              // sapere come va il locale e non tornare con la cassa.
+              incasso.giftCardCents ? `${formatCurrency(incasso.giftCardCents, currency)} da gift card` : null,
+              incasso.scontiPuntiCents ? `${formatCurrency(incasso.scontiPuntiCents, currency)} in punti` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")
           : estimatedRevenueCents != null
             ? undefined
             : "imposta lo scontrino medio in Impostazioni",

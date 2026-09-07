@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Megaphone, QrCode as QrCodeIcon, Repeat, Ticket } from "lucide-react";
+import { ChevronRight, Gift, Megaphone, QrCode as QrCodeIcon, Repeat, Ticket } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,14 @@ const SECTIONS = [
     title: "Coupon",
     description:
       "Sconti e omaggi con un codice: si creano qui e si segnano come usati al tavolo, dalla scheda della prenotazione.",
+  },
+  {
+    href: "/marketing/gift-cards",
+    icon: Gift,
+    eyebrow: "Gift card",
+    title: "Gift card",
+    description:
+      "Cene pagate in anticipo: si vendono al bancone e si scalano dal conto al tavolo, anche in più volte.",
   },
   {
     href: "/marketing/qr-codes",

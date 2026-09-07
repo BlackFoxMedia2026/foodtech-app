@@ -11,7 +11,9 @@ import { LoyaltyPill } from "@/components/guests/loyalty-pill";
 import { EditGuestDialog } from "@/components/guests/edit-guest-dialog";
 import { TagEditor } from "@/components/guests/tag-editor";
 import { StatusBadge } from "@/components/bookings/status-badge";
-import { getActiveVenue } from "@/lib/tenant";
+import { can, getActiveVenue } from "@/lib/tenant";
+import { getSaldoFedelta } from "@/server/loyalty";
+import { LoyaltyPanel } from "@/components/guests/loyalty-panel";
 import { getGuest } from "@/server/guests";
 import { formatCurrency, formatDate, formatDateTime, initials } from "@/lib/utils";
 
@@ -43,9 +45,10 @@ export default async function GuestDetail({ params }: { params: { id: string } }
   const g = await getGuest(ctx.venueId, params.id);
   if (!g) notFound();
 
-  const [profile, timeline] = await Promise.all([
+  const [profile, timeline, saldo] = await Promise.all([
     getGuestProfile(ctx.venueId, params.id),
     getGuestTimeline(ctx.venueId, params.id),
+    getSaldoFedelta(ctx.venueId, params.id),
   ]);
 
   const name = `${g.firstName} ${g.lastName ?? ""}`.trim();
@@ -127,6 +130,14 @@ export default async function GuestDetail({ params }: { params: { id: string } }
 
         <div className="space-y-6">
           {profile && <GuestProfilePanel profile={profile} currency={ctx.venue.currency} />}
+
+          <LoyaltyPanel
+            guestId={g.id}
+            guestName={g.firstName}
+            saldo={saldo}
+            currency={ctx.venue.currency}
+            canAdjust={can(ctx.role, "manage_venue")}
+          />
 
           <GuestTimeline events={timeline} />
 
