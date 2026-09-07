@@ -3,40 +3,31 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Sparkles, UserRound } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 import { Agent } from "@/components/agent/agent";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PRIMARY_NAV, SECONDARY_NAV, isNavActive } from "@/components/shell/nav-items";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
 import { NotificationBell } from "./notification-bell";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  /** Percorsi aggiuntivi che contano come "attivo" per questa voce anche se l'href non corrisponde — es. Marketing resta evidenziata dentro /campaigns/*, rimasto al suo path per non rompere il wizard esistente. */
-  matchPrefixes?: string[];
-};
-
-const NAV_ITEMS: NavItem[] = [
-  { href: "/overview", label: "Panoramica", icon: LayoutDashboard },
-  { href: "/bookings", label: "Prenotazioni", icon: CalendarRange },
-  { href: "/floor", label: "Sala", icon: DiningTableIcon },
-  { href: "/waitlist", label: "Attesa", icon: ListOrdered },
-  { href: "/waiters", label: "Camerieri", icon: UserRound },
-  { href: "/guests", label: "Ospiti", icon: TuxedoGuestIcon },
-  { href: "/experiences", label: "Esperienze", icon: Sparkles },
-  { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"] },
-  { href: "/payments", label: "Pagamenti", icon: CreditCard },
-  { href: "/insights", label: "Analytics", icon: LineChart },
-];
-
-function isActive(pathname: string, item: NavItem) {
-  if (pathname === item.href || pathname.startsWith(`${item.href}/`)) return true;
-  return item.matchPrefixes?.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ?? false;
-}
-
+/**
+ * La barra in alto è la navigazione **da scrivania**: su telefono le voci
+ * spariscono e il loro posto lo prende la barra in basso
+ * (`MobileNav`), che sta sotto il pollice.
+ *
+ * Prima tutte le voci stavano in una fila con scorrimento orizzontale: a
+ * 390 px se ne vedeva **una su nove**, e niente lo suggeriva. Con la lista
+ * d'attesa siamo passati a dieci voci e la fila non ci stava più nemmeno a
+ * 1440 px. Da qui le due scelte: sei voci operative in barra, il resto sotto
+ * «Altro».
+ */
 export function Header({
   user,
   venues,
@@ -60,10 +51,12 @@ export function Header({
   }, []);
 
   useLayoutEffect(() => {
-    const activeItem = NAV_ITEMS.find((item) => isActive(pathname, item));
+    const activeItem = PRIMARY_NAV.find((item) => isNavActive(pathname, item));
     const el = activeItem ? itemRefs.current.get(activeItem.href) : undefined;
     setIndicator(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
   }, [pathname]);
+
+  const secondaryActive = SECONDARY_NAV.some((item) => isNavActive(pathname, item));
 
   return (
     <header className="relative z-10 bg-background">
@@ -72,8 +65,12 @@ export function Header({
           <VenueSwitcher venues={venues} activeId={activeVenueId} />
         </div>
 
-        <nav aria-label="Navigazione principale" className="nav-scroll min-w-0 flex-1 overflow-x-auto">
-          <div className="relative mx-auto flex w-max items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
+        {/* Su telefono la navigazione sta in basso: qui non si scorre più niente. */}
+        <nav
+          aria-label="Navigazione principale"
+          className="hidden min-w-0 flex-1 justify-center md:flex"
+        >
+          <div className="relative flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
             {indicator && (
               <div
                 aria-hidden="true"
@@ -85,9 +82,10 @@ export function Header({
                 }}
               />
             )}
-            {NAV_ITEMS.map((item) => {
+
+            {PRIMARY_NAV.map((item) => {
               const Icon = item.icon;
-              const active = isActive(pathname, item);
+              const active = isNavActive(pathname, item);
               return (
                 <Link
                   key={item.href}
@@ -97,20 +95,60 @@ export function Header({
                     if (el) itemRefs.current.set(item.href, el);
                     else itemRefs.current.delete(item.href);
                   }}
+                  title={item.label}
                   className={cn(
-                    "relative z-10 flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
+                    // Sotto lg restano le sole icone: a 768 e 1024 px sei
+                    // etichette più "Altro" non ci stavano, e una barra che
+                    // scorre di lato è una barra che nasconde metà prodotto.
+                    // 44 px di altezza minima perché su tablet si tocca.
+                    "relative z-10 flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors lg:min-w-0 lg:justify-start lg:px-3.5",
                     active ? "text-forest" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
+                  <span className="hidden xl:inline">{item.label}</span>
+                  <span className="hidden lg:inline xl:hidden">{item.shortLabel ?? item.label}</span>
+                  <span className="sr-only lg:hidden">{item.label}</span>
                 </Link>
               );
             })}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  "relative z-10 flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors lg:px-3.5",
+                  secondaryActive
+                    ? "bg-cream text-forest"
+                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+                )}
+              >
+                Altro
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {SECONDARY_NAV.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem key={item.href} asChild>
+                      <Link
+                        href={item.href}
+                        aria-current={isNavActive(pathname, item) ? "page" : undefined}
+                        className="flex items-center gap-2"
+                      >
+                        <Icon className="h-4 w-4" aria-hidden="true" />
+                        {item.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        {/* Su telefono il gruppo di destra si allarga per riempire lo spazio
+            lasciato libero dalla navigazione. */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <Agent />
           <NotificationBell />
           <ProfileMenu user={user} />

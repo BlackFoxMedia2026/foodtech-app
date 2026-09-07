@@ -99,16 +99,32 @@ export function clientKey(headers: Headers): string {
   return headers.get("x-real-ip")?.trim() || "unknown";
 }
 
-/** Regole applicate dal middleware. Un minuto = 60_000. */
+/**
+ * Regole applicate dal middleware, con la possibilità di tararle da variabile
+ * d'ambiente.
+ *
+ * Il valore per difetto è quello che vogliamo in produzione. L'override
+ * esiste per due motivi concreti: tarare un limite sotto traffico reale senza
+ * rilasciare codice, e non farsi bloccare dalle prove automatiche in locale —
+ * dieci accessi in dieci minuti li esaurisce una sola sessione di test, e un
+ * limite che ostacola lo sviluppo è un limite che qualcuno finisce per
+ * rimuovere del tutto.
+ */
+function limite(nome: string, difetto: number): number {
+  const raw = process.env[`RATE_LIMIT_${nome}`];
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : difetto;
+}
+
 export const RATE_LIMITS = {
   /** Creazione prenotazione dal widget pubblico: severa, è il bersaglio più esposto. */
-  publicBooking: { limit: 5, windowMs: 10 * 60_000 },
+  publicBooking: { limit: limite("PUBLIC_BOOKING", 5), windowMs: 10 * 60_000 },
   /** Lettura disponibilità: generosa, il widget la interroga a ogni cambio di data. */
-  publicAvailability: { limit: 60, windowMs: 60_000 },
+  publicAvailability: { limit: limite("PUBLIC_AVAILABILITY", 60), windowMs: 60_000 },
   /** Tentativi di accesso. */
-  login: { limit: 10, windowMs: 10 * 60_000 },
+  login: { limit: limite("LOGIN", 10), windowMs: 10 * 60_000 },
   /** Agente AI: ogni messaggio costa una chiamata a un modello. */
-  agent: { limit: 30, windowMs: 60_000 },
+  agent: { limit: limite("AGENT", 30), windowMs: 60_000 },
   /** Caricamento immagini e documenti. */
-  upload: { limit: 20, windowMs: 60_000 },
+  upload: { limit: limite("UPLOAD", 20), windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitRule>;
