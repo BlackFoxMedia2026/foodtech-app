@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay } from "@/lib/utils";
+import { dateKeyInVenue } from "@/lib/venue-time";
+import { incassoDelGiorno } from "./orders";
 
 function isSameCalendarDay(a: Date, b: Date) {
   return a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -122,6 +124,11 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
   const todayCovers = trend[trend.length - 1]?.covers ?? today.totalCovers;
   const weekComparisonPct = pctChange(todayCovers, lastWeekAvgCovers);
 
+  // L'incasso vero della giornata: la somma dei conti chiusi.
+  const venueFuso = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
+  const fuso = venueFuso?.timezone ?? "Europe/Rome";
+  const incassoOggi = await incassoDelGiorno(venueId, dateKeyInVenue(day, fuso), fuso);
+
   // Alert operativi di oggi, contati dai dati reali della giornata
   const birthdays = today.bookings.filter(
     (b) => b.occasion === "BIRTHDAY" || (b.guest?.birthday && isSameCalendarDay(b.guest.birthday, day)),
@@ -139,6 +146,16 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
     capacity: today.capacity,
     serviceName: today.service?.name ?? null,
     estimatedRevenueCents: today.revenueCents,
+    /**
+     * L'incasso vero, quando c'è.
+     *
+     * Da qui in poi la Panoramica smette di stimare **appena qualcuno chiude
+     * un conto**: finché nessuno lo fa, resta la stima dichiarata (coperti per
+     * scontrino medio) e si chiama stima. Le due cose non si sommano e non si
+     * mescolano — sono risposte a due domande diverse, e confonderle
+     * riporterebbe il numero inventato da cui siamo partiti.
+     */
+    incasso: incassoOggi,
     expectedNoShow,
     comparisons: {
       covers: pctChange(today.totalCovers, prev.totalCovers),

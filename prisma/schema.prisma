@@ -344,6 +344,7 @@ model Booking {
   /// zero su ogni campagna.
   campaignId        String?
   Campaign          Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  orders            Order[]
   guest             Guest?             @relation(fields: [guestId], references: [id])
   table             Table?             @relation(fields: [tableId], references: [id])
   venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
@@ -1035,11 +1036,21 @@ model Order {
   reference     String        @unique
   venueId       String
   guestId       String?
+  /// La prenotazione a cui questo conto appartiene, quando è un conto al
+  /// tavolo. Mancava: c'era solo `tableLabel`, una stringa, quindi il conto
+  /// non si poteva ricondurre alla serata di nessuno — e sono i coperti di
+  /// una prenotazione a trasformare un totale in un incasso attribuibile.
+  bookingId     String?
   kind          OrderKind     @default(TAKEAWAY)
   status        OrderStatus   @default(RECEIVED)
   paymentStatus PaymentStatus @default(PENDING)
-  customerName  String
-  phone         String
+  /// Obbligatori per l'asporto e la consegna, senza senso per un conto al
+  /// tavolo: lì il cliente è la prenotazione. Erano `NOT NULL`, e l'unico modo
+  /// di aprire un conto al tavolo sarebbe stato inventare un nome e un
+  /// telefono — cioè scrivere dati finti, che è quello che questo progetto
+  /// passa il tempo a togliere.
+  customerName  String?
+  phone         String?
   email         String?
   address       String?
   scheduledAt   DateTime
@@ -1056,10 +1067,12 @@ model Order {
   tableLabel    String?       @db.VarChar(40)
   Guest         Guest?        @relation(fields: [guestId], references: [id])
   Venue         Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  booking       Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   OrderItem     OrderItem[]
 
   @@index([venueId, createdAt])
   @@index([venueId, status, scheduledAt])
+  @@index([bookingId])
 }
 
 model OrderItem {

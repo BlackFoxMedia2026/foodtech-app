@@ -206,6 +206,46 @@ Due conseguenze pratiche:
 Nell'invio di prova il codice è dichiaratamente finto (`CODICE-DI-PROVA`):
 creare un coupon vero per una prova vorrebbe dire regalare qualcosa a nessuno.
 
+### Il prezzo si fotografa quando si ordina
+
+`src/server/orders.ts`.
+
+La riga del conto porta **nome e prezzo copiati dal menu in quel momento**
+(`OrderItem.name`, `priceCents`). Alzare il prezzo di un piatto domani non
+deve riscrivere il conto di ieri, e un conto che cambia da solo dopo essere
+stato pagato è un problema contabile, non un dettaglio.
+
+Il **totale si ricalcola dalle righe** dentro la stessa transazione che le
+cambia. `Order.totalCents` resta aggiornato perché chi legge il database non
+trovi un numero falso, ma la verità sono le righe: è la stessa disciplina dei
+coupon e dei contatori degli ospiti.
+
+Tre decisioni che restano scritte:
+
+- **un conto solo per tavolo.** Due camerieri che premono «conto» sullo stesso
+  tavolo si ritrovano nello stesso conto; altrimenti a fine serata ci sono due
+  totali e nessuno sa quale sia quello giusto;
+- **un conto vuoto non si chiude.** Sarebbe un incasso da zero euro in mezzo
+  ai dati veri, indistinguibile da un tavolo che non ha consumato niente. Se
+  era uno sbaglio, si annulla — e l'annullato resta in tabella;
+- **il fuori carta si scrive a mano.** Costringere a inventare un piatto nel
+  menu per batterlo sul conto vorrebbe dire sporcare la carta che legge il
+  cliente.
+
+`Order` era modellato per l'asporto: `customerName` e `phone` obbligatori,
+nessun legame con la prenotazione. Per un conto al tavolo il cliente **è** la
+prenotazione, e l'unico modo di aprirne uno sarebbe stato scrivere un nome e un
+telefono finti. Aggiunto `bookingId`, resi facoltativi quei due campi: rendere
+una colonna facoltativa non porta via niente a nessuno.
+
+**E qui l'applicazione smette di stimare.** Appena un conto si chiude, la
+Panoramica mostra l'incasso vero al posto della stima, e cambia anche
+l'etichetta: «Incasso» invece di «Incassi stimati». Le due cifre non si
+sommano e non si mescolano — sono risposte a due domande diverse. Per la
+stessa ragione il confronto con ieri sparisce quando il numero è vero: ieri è
+una stima, e scriverci «▲ 20%» sarebbe un paragone fra due cose diverse
+presentato come una crescita.
+
 ### Gli allergeni non si scrivono a mano
 
 `src/server/menu.ts`.

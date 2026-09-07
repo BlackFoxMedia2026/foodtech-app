@@ -73,6 +73,7 @@ export default async function OverviewPage() {
           <KpiGrid
             totalCovers={data.totalCovers}
             estimatedRevenueCents={data.estimatedRevenueCents}
+            incasso={data.incasso}
             currency={ctx.venue.currency}
             occupancyPct={data.occupancyPct}
             expectedNoShow={data.expectedNoShow}
