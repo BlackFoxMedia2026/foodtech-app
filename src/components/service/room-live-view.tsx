@@ -312,6 +312,20 @@ export function RoomLiveView({
   );
 }
 
+/**
+ * Quanto è largo un tavolo sulla mappa, secondo i posti.
+ *
+ * Prima erano tutti larghi uguale, e una mappa in cui il due posti e il dieci
+ * posti sono identici non è una mappa: è un elenco disposto male. La
+ * larghezza cresce con i posti, ma **non in proporzione esatta** — dentro il
+ * riquadro ci sta il nome di chi è seduto, e un due posti largo la metà lo
+ * taglierebbe a metà parola. Serve a ordinare il colpo d'occhio, non a
+ * misurare la sala in scala.
+ */
+function larghezzaTavolo(seats: number): number {
+  return Math.min(100 + seats * 7, 170);
+}
+
 /** Un tavolo sulla mappa. */
 function TavoloMappa({
   table,
@@ -363,7 +377,7 @@ function TavoloMappa({
       style={{
         left: `${(table.posX / bounds.w) * 100}%`,
         top: `${(table.posY / bounds.h) * 100}%`,
-        width: `${(118 / bounds.w) * 100}%`,
+        width: `${(larghezzaTavolo(table.seats) / bounds.w) * 100}%`,
         minHeight: `${(58 / bounds.h) * 100}%`,
       }}
     >

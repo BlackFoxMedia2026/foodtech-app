@@ -31,16 +31,39 @@ export const TABLE_SIZE: Record<TableShape, { w: number; h: number }> = {
  * hit-testing in floor-canvas.tsx key off it directly). The rendered shape is
  * drawn smaller and centered inside that footprint, so the hit area is
  * naturally a bit larger than what's visible without any extra math.
+ *
+ * Quanto più piccolo, però, **dipende dai posti**: su una piantina un due
+ * posti e un dieci posti disegnati identici tolgono alla mappa la sola cosa
+ * per cui la si guarda, cioè capire la sala con un colpo d'occhio. La forma
+ * dice se è tondo o rettangolare, la dimensione dice quanta gente ci sta.
+ *
+ * L'impronta resta quella di prima **di proposito**: cambiare l'area di
+ * trascinamento sposterebbe i tavoli già disposti da chi ha costruito la sua
+ * sala, e nessuno ha chiesto che la sua sala cambi da sola.
  */
-const VISUAL_SCALE = 0.72;
+const SCALA_PER_POSTI: readonly { finoA: number; scala: number }[] = [
+  { finoA: 2, scala: 0.62 },
+  { finoA: 4, scala: 0.74 },
+  { finoA: 6, scala: 0.86 },
+  { finoA: 8, scala: 0.94 },
+];
+const SCALA_MASSIMA = 1;
 
-function visualSize(shape: TableShape) {
+export function visualSize(shape: TableShape, seats: number) {
   const s = TABLE_SIZE[shape];
+  const scala = SCALA_PER_POSTI.find((r) => seats <= r.finoA)?.scala ?? SCALA_MASSIMA;
   return {
-    w: Math.round(s.w * VISUAL_SCALE),
-    h: Math.round(s.h * VISUAL_SCALE),
+    w: Math.round(s.w * scala),
+    h: Math.round(s.h * scala),
   };
 }
+
+/**
+ * «2 posti» dentro un cerchio da cinquanta pixel esce dai bordi: sotto una
+ * certa larghezza si scrive «2p», che è la stessa cosa detta come la dice chi
+ * lavora in sala.
+ */
+export const LARGHEZZA_PER_PAROLA = 64;
 
 export type TableLod = "full" | "medium" | "low";
 
@@ -87,7 +110,7 @@ export const TableNode = memo(function TableNode({
   menu?: MenuProps;
 }) {
   const size = TABLE_SIZE[t.shape];
-  const visual = visualSize(t.shape);
+  const visual = visualSize(t.shape, t.seats);
 
   // TABLE_ASSIGNABLE_CAPABILITIES is already in priority order (Responsabile
   // tavolo first) — the primary name shown on the node follows that same
@@ -163,7 +186,11 @@ export const TableNode = memo(function TableNode({
             style={{ transform: "scale(var(--ui-scale, 1))" }}
           >
             <span className="text-display text-sm font-semibold">{t.label}</span>
-            {lod === "full" && <span className="text-xs opacity-80">{t.seats} posti</span>}
+            {lod === "full" && (
+              <span className="text-xs opacity-80">
+                {visual.w >= LARGHEZZA_PER_PAROLA ? `${t.seats} posti` : `${t.seats}p`}
+              </span>
+            )}
           </div>
 
           {lod === "low" && (

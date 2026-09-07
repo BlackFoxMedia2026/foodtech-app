@@ -275,10 +275,19 @@ async function creaMenuDemo(venueId: string) {
       ],
     },
     {
+      categoria: "Contorni",
+      piatti: [
+        { name: "Patate al forno al rosmarino", priceCents: 600, costCents: 120, dietary: ["vegano", "senza_glutine"] },
+        { name: "Cicoria ripassata", description: "Aglio, olio, peperoncino.", priceCents: 600, dietary: ["vegano", "senza_glutine", "piccante"] },
+        { name: "Purè di patate alla vaniglia", priceCents: 700, costCents: 150, allergens: ["latte"], dietary: ["vegetariano", "senza_glutine"] },
+      ],
+    },
+    {
       categoria: "Dolci",
       piatti: [
         { name: "Tiramisù del giorno", priceCents: 800, costCents: 180, allergens: ["glutine", "uova", "latte"] },
         { name: "Sorbetto al limone", priceCents: 600, costCents: 120, dietary: ["vegano", "senza_glutine", "senza_lattosio"] },
+        { name: "Bonet piemontese", description: "Cacao, amaretti, rum.", priceCents: 800, allergens: ["uova", "latte", "frutta_a_guscio", "solfiti"] },
       ],
     },
   ];

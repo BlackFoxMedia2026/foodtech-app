@@ -144,7 +144,8 @@ costavano poco e valevano molto.
       → si conta chi **arriva alla porta**, non chi scrive: se la recensione sia stata scritta lo sa solo la piattaforma, e la pagina lo dice invece di lasciarlo credere
       → un collegamento tolto viene **spento, non cancellato**: cancellarlo porterebbe via i clic raccolti, e i numeri dell'anno scorso cambierebbero da soli
       → di chi clicca non registriamo niente (né IP né browser): serve a contare, non a profilare
-- [ ] Restano dalla lista UX: dimensione del tavolo per numero di posti sulla mappa, ricerca e filtri nel menu con 100+ piatti, scheletri di caricamento, navigazione per categorie nel menu pubblico
+- [x] **Scheletri di caricamento** sulle sette pagine che ne erano senza (Servizio, Attesa, Menu, Marketing, Campagne, Esperienze, Brigata): hanno la forma vera della pagina, non un rettangolo generico. Uno scheletro che non somiglia a quello che arriva fa saltare il testo sotto gli occhi, ed è peggio di una pagina bianca
+- [x] **La lista UX è chiusa**: le quattro voci rimaste (dimensione del tavolo, ricerca nel menu, scheletri, navigazione del menu pubblico) sono fatte
 
 ## Phase 7 — Enterprise
 

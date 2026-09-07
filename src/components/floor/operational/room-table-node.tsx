@@ -12,18 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TABLE_ASSIGNABLE_CAPABILITIES, TABLE_ROLE_LABELS } from "@/lib/staff-roles";
 import { TABLE_ROLE_ICONS } from "@/components/floor/staff-role-icons";
-import { TABLE_SIZE, type LocalTable, type TableStaffMap, type TableLod } from "@/components/floor/table-node";
+import { LARGHEZZA_PER_PAROLA, TABLE_SIZE, visualSize, type LocalTable, type TableStaffMap, type TableLod } from "@/components/floor/table-node";
 import type { TableOperationalStatus } from "@/lib/table-status";
 
 export type RoomTableMode = "STAFF" | "RESERVATIONS" | "READONLY";
 export type FloorBooking = Booking & { guest: Guest | null };
-
-const VISUAL_SCALE = 0.72;
-
-function visualSize(shape: Table["shape"]) {
-  const s = TABLE_SIZE[shape];
-  return { w: Math.round(s.w * VISUAL_SCALE), h: Math.round(s.h * VISUAL_SCALE) };
-}
 
 /** Perceived "thickness" of the table object — the bottom edge slab that
  * reads as depth (brief section 29: 4-8px), scaled a little by footprint so
@@ -159,7 +152,7 @@ export const RoomTableNode = memo(
     ref,
   ) {
     const size = TABLE_SIZE[t.shape];
-    const visual = visualSize(t.shape);
+    const visual = visualSize(t.shape, t.seats);
     const rounding = SHAPE_ROUNDING[t.shape];
     const depth = EDGE_DEPTH[t.shape];
 
@@ -315,7 +308,11 @@ export const RoomTableNode = memo(
               style={{ transform: "scale(var(--ui-scale, 1))" }}
             >
               <span className="text-display text-sm font-semibold">{t.label}</span>
-              {lod === "full" && <span className="text-xs opacity-80">{t.seats} posti</span>}
+              {lod === "full" && (
+                <span className="text-xs opacity-80">
+                  {visual.w >= LARGHEZZA_PER_PAROLA ? `${t.seats} posti` : `${t.seats}p`}
+                </span>
+              )}
             </div>
 
             {lod === "low" && (
