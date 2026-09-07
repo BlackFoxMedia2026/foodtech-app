@@ -35,14 +35,15 @@ Obiettivo: parità competitiva sul nucleo prenotazioni.
 - [ ] SMS e WhatsApp come canali dei promemoria e delle offerte della lista d'attesa
       → il posto è pronto in `PROVIDERS` (`src/server/messaging/send.ts`): manca il fornitore
 
-## Phase 2 — Servizio
+## Phase 2 — Servizio 🔄 in corso
 
 Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 
-- Modalità Servizio / reception: NOW / NEXT / ATTESE, per tablet e una mano
-- Sala Live V2: stati con icona oltre al colore, unione e divisione tavoli, sposta prenotazione, libera tavolo, modalità mobile vera
+- [x] **Modalità Servizio / reception**: ADESSO / PROSSIMI / ATTESA, per tablet e una mano
+- [ ] Sala Live V2: stati con icona oltre al colore, unione e divisione tavoli, sposta prenotazione, libera tavolo, modalità mobile vera
 - [x] Navigazione mobile: barra in basso con «+» centrale (fatta in Phase 1)
-- Centro controllo servizio: collisioni previste, rischio overbooking, suggerimenti seating
+- [ ] Centro controllo servizio: collisioni previste, rischio overbooking, suggerimenti seating
+      → i numeri della modalità Servizio sono la base: manca lo strato che li interpreta
 
 ## Phase 3 — Ospiti
 

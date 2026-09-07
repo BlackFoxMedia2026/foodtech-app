@@ -2,7 +2,7 @@
 
 Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso commit che cambia lo stato di un modulo.
 
-**Aggiornato:** 7 settembre 2026 · commit di riferimento `c6a1a82` + Phase 0 + Phase 1 (parziale)
+**Aggiornato:** 7 settembre 2026 · commit di riferimento `c6a1a82` + Phase 0 + Phase 1 (parziale) + Phase 2 (in corso)
 
 ## Come si legge
 
@@ -35,13 +35,13 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 
 | Modulo | Stato | Note |
 |---|---|---|
-| Sala / pianta tavoli | LIVE | Room Builder, layout salvati, zoom, trascinamento |
+| Sala / pianta tavoli | LIVE | Room Builder, layout salvati, zoom, trascinamento. **Sala Live V2** (stati con icona, unione tavoli, modalità mobile) ancora da fare |
 | Assegnazione tavolo a prenotazione | LIVE | Gestione collisioni con lock e 409 |
 | Tavoli (anagrafica) | LIVE | |
 | Camerieri | LIVE | Profili, ricerca, raggruppamento per ruolo |
 | Contratti staff + promemoria scadenza | LIVE | Cron protetto, email, notifiche in-app |
 | Assegnazioni cameriere ↔ tavolo | LIVE | |
-| Modalità Servizio / reception | PLANNED | NOW / NEXT / ATTESE. È la prossima priorità di prodotto |
+| Modalità Servizio / reception | LIVE | ADESSO / PROSSIMI / ATTESA su una schermata, aggiornata da sola ogni 30 secondi. Tre colonne su tablet, tre schede su telefono. Azioni in un tocco: arrivato, accomoda, no-show, libera tavolo, cambia tavolo, chiama, apri scheda |
 | Waitlist | LIVE | Coda in ordine di arrivo, offerta con scadenza, conversione in prenotazione seduta, suggerimento dei tavoli compatibili. Il messaggio all'ospite è ancora a voce: l'invio automatico dell'offerta arriva con i canali SMS/WhatsApp |
 
 ## Ospiti e crescita
@@ -63,6 +63,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Analytics | LIVE | Descrittivo: coperti, completamento, no-show, cancellazioni, fonti |
 | Insight / alert | LIVE | Motore a regole |
 | Revenue intelligence (RevPASH, occupazione) | PLANNED | |
+| Centro controllo servizio (collisioni, rischi, suggerimenti) | PLANNED | I numeri della modalità Servizio sono la base: manca lo strato che li interpreta |
 | Previsione | PLANNED | |
 
 ## Piattaforma
@@ -83,7 +84,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii |
 | Navigazione mobile | LIVE | Barra in basso con «+» per i gesti rapidi; nessuno scorrimento orizzontale |
 | Agente AI | BETA | 8 strumenti, guardia permessi, quota mensile. Richiede `OPENAI_API_KEY`. Non proattivo |
-| Test | PARTIAL | 116 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria e link firmati. Nessun end-to-end sul browser |
+| Test | PARTIAL | 134 verifiche: permessi, isolamento, fuso, limiti, registro, disponibilità, waitlist, walk-in, forzatura, promemoria, link firmati e fotografia del servizio. Nessun end-to-end sul browser |
 | Multi-brand / catene | PLANNED | `Organization` esiste, gestione no |
 | API pubbliche / webhook in uscita / SSO | PLANNED | |
 

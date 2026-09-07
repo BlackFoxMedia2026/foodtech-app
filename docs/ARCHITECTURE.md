@@ -74,6 +74,18 @@ la matrice non verificabile con un test.
 `src/lib/venue-time.ts`; i componenti client leggono il fuso da un contesto montato nel layout
 (`VenueTimeProvider`). Mai `new Date().toISOString()` per ottenere una data: quello è UTC.
 
+### Lo stato del servizio è calcolato, non salvato
+
+`src/server/service.ts` costruisce la fotografia di «cosa sta succedendo
+adesso» **derivando tutto dall'ora**: «in ritardo» è una prenotazione confermata
+il cui orario è passato oltre la tolleranza, «da liberare» è una seduta la cui
+durata prevista è scaduta. Nessuna colonna nuova nel database.
+
+Uno stato calcolato non può andare fuori sincrono con la realtà; una colonna
+sì — basta un aggiornamento che non passa dal posto giusto. Il costo è che i
+confini (tolleranza, soglie) vanno fissati da un test, perché un errore di
+segno qui dichiara assente un ospite che sta parcheggiando.
+
 ### Una sola risposta a «quali tavoli sono liberi»
 
 `src/server/table-search.ts` risponde a «quali tavoli possono accogliere N

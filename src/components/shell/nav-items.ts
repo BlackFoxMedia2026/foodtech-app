@@ -1,4 +1,4 @@
-import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Settings, Sparkles, UserRound } from "lucide-react";
+import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Radio, Settings, Sparkles, UserRound } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 
 export type NavItem = {
@@ -28,14 +28,17 @@ export type NavItem = {
  */
 export const PRIMARY_NAV: NavItem[] = [
   { href: "/overview", label: "Panoramica", shortLabel: "Oggi", icon: LayoutDashboard },
+  { href: "/service", label: "Servizio", shortLabel: "Ora", icon: Radio },
   { href: "/bookings", label: "Prenotazioni", shortLabel: "Prenota", icon: CalendarRange },
   { href: "/floor", label: "Sala", shortLabel: "Sala", icon: DiningTableIcon },
   { href: "/waitlist", label: "Attesa", shortLabel: "Attesa", icon: ListOrdered },
-  { href: "/waiters", label: "Camerieri", shortLabel: "Team", icon: UserRound },
   { href: "/guests", label: "Ospiti", shortLabel: "Ospiti", icon: TuxedoGuestIcon },
 ];
 
 export const SECONDARY_NAV: NavItem[] = [
+  // I camerieri si configurano prima del servizio, non durante: da qui in poi
+  // e' lavoro da ufficio, e la barra ha spazio per sei voci, non per sette.
+  { href: "/waiters", label: "Camerieri", icon: UserRound },
   { href: "/experiences", label: "Esperienze", icon: Sparkles },
   { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"] },
   { href: "/payments", label: "Pagamenti", icon: CreditCard },
@@ -48,9 +51,9 @@ export const ALL_NAV = [...PRIMARY_NAV, ...SECONDARY_NAV];
 /** Le quattro voci della barra in basso su telefono: la quarta è «Altro». */
 export const MOBILE_NAV: NavItem[] = [
   PRIMARY_NAV[0], // Oggi
-  PRIMARY_NAV[2], // Sala
-  PRIMARY_NAV[3], // Attesa
-  PRIMARY_NAV[5], // Ospiti
+  PRIMARY_NAV[1], // Servizio — durante il servizio è la schermata madre
+  PRIMARY_NAV[3], // Sala
+  PRIMARY_NAV[4], // Attesa
 ];
 
 export function isNavActive(pathname: string, item: NavItem) {
