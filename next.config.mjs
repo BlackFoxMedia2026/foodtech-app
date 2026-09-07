@@ -38,17 +38,25 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Tutto tranne `/book`: il widget di prenotazione è fatto per stare
-        // dentro un iframe sul sito del ristorante, e `X-Frame-Options: DENY`
-        // lo spegnerebbe in silenzio su ogni sito cliente. Escluderlo qui è
-        // più sicuro che allentare la regola per tutti.
-        source: "/((?!book$|book/).*)",
+        // Tutto tranne le due pagine fatte per stare in un iframe sul sito del
+        // ristorante: il widget di prenotazione e il menu pubblico.
+        // `X-Frame-Options: DENY` le spegnerebbe in silenzio su ogni sito
+        // cliente. Escluderle qui è più sicuro che allentare la regola per
+        // tutti.
+        //
+        // Il portale Wi-Fi resta protetto: è un modulo che raccoglie un
+        // contatto, quindi incorniciabile vuol dire ingannabile, e nessun
+        // router ha bisogno di metterlo in una cornice — lo apre come pagina.
+        source: "/((?!book$|book/|m/).*)",
         headers: sicurezza,
       },
       {
-        // Widget pubblico: incorporabile da qualsiasi sito, per progetto.
-        // Le altre intestazioni valgono anche qui — solo quelle sui frame no.
-        source: "/book/:path*",
+        // Le due pagine pubbliche incorporabili, per progetto. Le altre
+        // intestazioni valgono anche per loro: solo quelle sui frame no.
+        // Sono pagine di sola lettura o con un modulo che scrive solo una
+        // prenotazione, quindi non c'è un'azione privilegiata da rubare con
+        // un clic.
+        source: "/:percorso(book|m)/:resto*",
         headers: [
           ...sicurezza.filter((h) => h.key !== "X-Frame-Options" && h.key !== "Content-Security-Policy"),
           { key: "Content-Security-Policy", value: "frame-ancestors *;" },

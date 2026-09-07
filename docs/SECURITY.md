@@ -133,10 +133,16 @@ In `next.config.mjs`, su ogni risposta:
 | `Strict-Transport-Security` | `max-age=31536000` | un anno di solo HTTPS. Senza `includeSubDomains`: i sottodomini di un dominio del cliente possono servire altro |
 | `Permissions-Policy` | camera, microfono, posizione, pagamenti disattivati | non ci servono, e disattivarli chiude la porta a uno script incorporato |
 
-**Eccezione dichiarata**: `/book`, il widget pubblico, è fatto per stare in un iframe sul sito
-del ristorante. Lì `X-Frame-Options` non si manda e la CSP dice `frame-ancestors *`. Tutte le
-altre intestazioni valgono anche per lui. Applicare `DENY` a tutto avrebbe spento il widget su
-ogni sito cliente, in silenzio.
+**Eccezioni dichiarate**: `/book` (il widget di prenotazione) e `/m/<locale>` (il menu
+pubblico) sono fatti per stare in un iframe sul sito del ristorante. Lì `X-Frame-Options` non
+si manda e la CSP dice `frame-ancestors *`; tutte le altre intestazioni valgono anche per
+loro. Applicare `DENY` a tutto avrebbe spento il widget e il menu su ogni sito cliente, in
+silenzio.
+
+Sono pagine di sola lettura, o con un modulo che al massimo scrive una prenotazione: non c'è
+un'azione privilegiata da rubare con un clic. Il **portale Wi-Fi resta protetto** proprio per
+la differenza opposta — è un modulo che raccoglie un contatto, quindi incorniciabile vuol dire
+ingannabile, e nessun router ha bisogno di metterlo in una cornice: lo apre come pagina.
 
 ## Cosa resta aperto
 
