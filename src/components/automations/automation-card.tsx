@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Users } from "lucide-react";
+import { Gift, Mail, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { readApiError } from "@/lib/api-client";
@@ -34,8 +35,41 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
   const [esito, setEsito] = useState<string | null>(null);
   const [apriTesto, setApriTesto] = useState(false);
 
+  // L'omaggio: assente finché il locale non lo mette.
+  const [conOmaggio, setConOmaggio] = useState(!!automation.coupon);
+  const [tipo, setTipo] = useState<"PERCENT" | "FIXED" | "FREE_ITEM" | "MENU_OFFER">(
+    automation.coupon?.kind ?? "PERCENT",
+  );
+  const [valore, setValore] = useState(
+    automation.coupon?.kind === "FIXED"
+      ? String((automation.coupon.value ?? 0) / 100)
+      : String(automation.coupon?.value ?? 10),
+  );
+  const [omaggio, setOmaggio] = useState(automation.coupon?.freeItem ?? "");
+  const [giorniValidita, setGiorniValidita] = useState(String(automation.coupon?.giorniValidita ?? 30));
+
+  const conValore = tipo === "PERCENT" || tipo === "FIXED";
+  const conOggetto = tipo === "FREE_ITEM" || tipo === "MENU_OFFER";
+
+  /** L'omaggio come lo aspetta il server, o `null` per toglierlo. */
+  function omaggioDaSalvare() {
+    if (!conOmaggio) return null;
+    return {
+      kind: tipo,
+      ...(conValore
+        ? { value: tipo === "PERCENT" ? Number(valore) : Math.round(Number(valore.replace(",", ".")) * 100) }
+        : {}),
+      ...(conOggetto ? { freeItem: omaggio.trim() } : {}),
+      giorniValidita: Number(giorniValidita) || 30,
+    };
+  }
+
+  const omaggioAttuale = JSON.stringify(automation.coupon ?? null);
   const modificato =
-    giorni !== String(automation.giorni) || subject !== automation.subject || intro !== automation.intro;
+    giorni !== String(automation.giorni) ||
+    subject !== automation.subject ||
+    intro !== automation.intro ||
+    JSON.stringify(omaggioDaSalvare()) !== omaggioAttuale;
 
   async function salva(corpo: Record<string, unknown>, quale: "switch" | "salva") {
     setInCorso(quale);
@@ -190,13 +224,99 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
           </div>
         )}
 
+        <div className="rounded-md border border-border p-3">
+          <label htmlFor={`omaggio-${automation.key}`} className="flex min-h-[44px] cursor-pointer items-center gap-2">
+            <Switch
+              id={`omaggio-${automation.key}`}
+              checked={conOmaggio}
+              disabled={!canEdit}
+              onCheckedChange={setConOmaggio}
+            />
+            <span className="flex items-center gap-1.5 text-sm font-medium">
+              <Gift className="h-4 w-4 text-accent" aria-hidden="true" /> Allega un omaggio
+            </span>
+          </label>
+
+          {conOmaggio ? (
+            <div className="mt-2 space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor={`omaggio-tipo-${automation.key}`}>Cosa dà</Label>
+                  <Select value={tipo} onValueChange={(v) => setTipo(v as typeof tipo)} disabled={!canEdit}>
+                    <SelectTrigger id={`omaggio-tipo-${automation.key}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PERCENT">Percentuale</SelectItem>
+                      <SelectItem value="FIXED">Sconto in euro</SelectItem>
+                      <SelectItem value="FREE_ITEM">Qualcosa in omaggio</SelectItem>
+                      <SelectItem value="MENU_OFFER">Offerta dedicata</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {conValore && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`omaggio-valore-${automation.key}`}>
+                      {tipo === "PERCENT" ? "Percentuale" : "Euro"}
+                    </Label>
+                    <Input
+                      id={`omaggio-valore-${automation.key}`}
+                      inputMode="decimal"
+                      value={valore}
+                      disabled={!canEdit}
+                      onChange={(e) => setValore(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {conOggetto && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`omaggio-cosa-${automation.key}`}>Cosa si offre</Label>
+                    <Input
+                      id={`omaggio-cosa-${automation.key}`}
+                      value={omaggio}
+                      disabled={!canEdit}
+                      onChange={(e) => setOmaggio(e.target.value)}
+                      placeholder="Es. il dolce"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor={`omaggio-giorni-${automation.key}`}>Valido per (giorni)</Label>
+                  <Input
+                    id={`omaggio-giorni-${automation.key}`}
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={giorniValidita}
+                    disabled={!canEdit}
+                    onChange={(e) => setGiorniValidita(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-tertiary-foreground">
+                Ogni persona riceve un <strong>codice suo</strong>, valido una volta e intestato a lei: un codice
+                uguale per tutti si gira agli amici e diventa uno sconto che non hai deciso. Il codice finisce
+                dentro il messaggio, e si usa al tavolo come gli altri coupon.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Il messaggio parte senza regali. Se ne alleghi uno, ogni persona riceve un codice personale.
+            </p>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           {canEdit && (
             <Button
               variant="accent"
               size="sm"
               disabled={!modificato || inCorso !== null}
-              onClick={() => salva({ giorni: Number(giorni), subject, intro }, "salva")}
+              onClick={() => salva({ giorni: Number(giorni), subject, intro, coupon: omaggioDaSalvare() }, "salva")}
             >
               {inCorso === "salva" ? "Un istante…" : "Salva"}
             </Button>

@@ -8,6 +8,7 @@ import {
   sendMessage,
 } from "@/server/messaging/send";
 import { enqueueJob } from "@/server/jobs/queue";
+import { createCoupon, descriviCoupon } from "@/server/coupons";
 import {
   AUTOMATIONS,
   automationKind,
@@ -17,6 +18,7 @@ import {
   TETTO_PER_ESECUZIONE,
   type AutomationActions,
   type AutomationConditions,
+  type AutomationCoupon,
   type AutomationDefinition,
   type AutomationKey,
   type AutomationRecipient,
@@ -59,7 +61,62 @@ function testoDi(def: AutomationDefinition, wf: AutomationWorkflow | null): Auto
   return {
     subject: actions?.subject?.trim() || def.defaults.subject,
     intro: actions?.intro?.trim() || def.defaults.intro,
+    coupon: actions?.coupon ?? null,
   };
+}
+
+/**
+ * Il coupon personale per questa persona.
+ *
+ * Uno per persona, intestato a lei: un codice condiviso in un'email di
+ * compleanno finisce girato agli amici, e il locale si ritrova a pagare una
+ * promozione che non ha deciso.
+ *
+ * Se ne esiste già uno non usato della stessa automazione, si riusa. Il
+ * divieto di ripetizione dei messaggi rende il caso raro, ma «raro» non è
+ * «impossibile» e due coupon per lo stesso regalo sono uno sconto doppio.
+ */
+async function couponPerOspite(
+  venueId: string,
+  def: AutomationDefinition,
+  config: AutomationCoupon,
+  guestId: string,
+  nomeAutomazione: string,
+): Promise<{ code: string; descrizione: string; validUntil: Date } | null> {
+  const esistente = await db.coupon.findFirst({
+    where: {
+      venueId,
+      guestId,
+      category: def.couponCategory,
+      status: "ACTIVE",
+      OR: [{ validUntil: null }, { validUntil: { gt: new Date() } }],
+      CouponRedemption: { none: { deletedAt: null } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (esistente) {
+    return {
+      code: esistente.code,
+      descrizione: descriviCoupon(esistente),
+      validUntil: esistente.validUntil ?? new Date(Date.now() + config.giorniValidita * 86_400_000),
+    };
+  }
+
+  const validUntil = new Date(Date.now() + config.giorniValidita * 86_400_000);
+  const creato = await createCoupon(venueId, {
+    name: nomeAutomazione,
+    kind: config.kind,
+    ...(config.value !== undefined ? { value: config.value } : {}),
+    ...(config.freeItem ? { freeItem: config.freeItem } : {}),
+    category: def.couponCategory,
+    validUntil: validUntil.toISOString(),
+    // Una persona, un uso: è tutto il senso di un codice personale.
+    maxRedemptions: 1,
+    maxPerGuest: 1,
+    guestId,
+  });
+
+  return { code: creato.code, descrizione: descriviCoupon(creato), validUntil };
 }
 
 /**
@@ -135,11 +192,30 @@ export async function resolveDestinatari(
 /*  Il messaggio                                                              */
 /* -------------------------------------------------------------------------- */
 
-function corpo(opts: { guestName: string; venueName: string; intro: string; url: string; venuePhone: string | null }) {
+function corpo(opts: {
+  guestName: string;
+  venueName: string;
+  intro: string;
+  url: string;
+  venuePhone: string | null;
+  coupon?: { code: string; descrizione: string; validUntil: Date } | null;
+}) {
+  const scadenza = opts.coupon
+    ? new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long" }).format(opts.coupon.validUntil)
+    : "";
   return `
     <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #2F1F11; max-width: 520px;">
       <p style="font-size:16px;">Ciao ${opts.guestName},</p>
       <p style="font-size:16px;">${opts.intro}</p>
+      ${
+        opts.coupon
+          ? `<div style="border:1px solid #d8c9ae;border-radius:12px;padding:16px;margin:16px 0;text-align:center;">
+               <p style="margin:0 0 6px;font-size:15px;">${opts.coupon.descrizione}</p>
+               <p style="margin:0;font-size:22px;letter-spacing:2px;font-weight:600;">${opts.coupon.code}</p>
+               <p style="margin:8px 0 0;font-size:13px;color:#6b5a45;">Valido fino al ${scadenza}, solo per te.</p>
+             </div>`
+          : ""
+      }
       <p>
         <a href="${opts.url}"
            style="display:inline-block;background:#0F2920;color:#F2E7D0;text-decoration:none;padding:12px 20px;border-radius:999px;font-size:15px;">
@@ -230,7 +306,29 @@ export async function runAutomation(
 
   const daFare = pronti.slice(0, limite);
   let inCoda = 0;
+  let couponCreati = 0;
   for (const destinatario of daFare) {
+    /**
+     * L'omaggio si prepara **prima** del messaggio.
+     *
+     * Se non riesce, quella persona si salta: un'email che promette un regalo
+     * con un codice che non esiste è peggio di nessuna email, e al tavolo la
+     * discussione la fa il cameriere.
+     */
+    let coupon: Awaited<ReturnType<typeof couponPerOspite>> = null;
+    if (testo.coupon) {
+      try {
+        coupon = await couponPerOspite(venueId, def, testo.coupon, destinatario.guestId, def.name);
+        if (coupon) couponCreati += 1;
+      } catch (err) {
+        console.error("[automazioni] coupon non creato, salto questa persona", {
+          key,
+          ospite: destinatario.guestId,
+        }, err);
+        continue;
+      }
+    }
+
     const esito = await enqueueMessage({
       venueId,
       venueName: venue.name,
@@ -246,6 +344,7 @@ export async function runAutomation(
         intro: testo.intro,
         url,
         venuePhone: venue.phone,
+        coupon,
       }),
       preview: `${def.name} — ${destinatario.reason}`,
     });
@@ -262,7 +361,7 @@ export async function runAutomation(
       // l'esecuzione ha fatto una parte del lavoro e va detto.
       status: inCoda === daFare.length && rimandati === 0 ? "SUCCEEDED" : "PARTIAL",
       finishedAt: new Date(),
-      result: { inCoda, scartati, rimandati } as Prisma.InputJsonValue,
+      result: { inCoda, scartati, rimandati, couponCreati } as Prisma.InputJsonValue,
     },
   });
 
@@ -314,6 +413,8 @@ export type AutomationView = {
   giorni: number;
   subject: string;
   intro: string;
+  /** L'omaggio allegato, se il locale ne ha messo uno. */
+  coupon: AutomationCoupon | null;
   /** Quante persone toccherebbe oggi, con tutte le difese già applicate. */
   toccherebbeOggi: number;
   /** Fino a tre esempi, col motivo: rende il numero controllabile. */
@@ -359,6 +460,7 @@ export async function listAutomations(venueId: string, now: Date = new Date()): 
       giorni,
       subject: testo.subject,
       intro: testo.intro,
+      coupon: testo.coupon ?? null,
       toccherebbeOggi: pronti.length,
       esempi: pronti.slice(0, 3).map((p) => ({ nome: p.firstName, reason: p.reason })),
       scartati,
@@ -400,6 +502,19 @@ export async function sendAutomationTest(venueId: string, key: AutomationKey, to
       intro: testo.intro,
       url: `${base}/book?venue=${venueId}`,
       venuePhone: venue.phone,
+      // Nella prova il codice non esiste, e si vede: creare un coupon vero
+      // per un invio di prova vorrebbe dire regalare qualcosa a nessuno.
+      coupon: testo.coupon
+        ? {
+            code: "CODICE-DI-PROVA",
+            descrizione: descriviCoupon({
+              kind: testo.coupon.kind,
+              value: testo.coupon.value ?? 0,
+              freeItem: testo.coupon.freeItem ?? null,
+            }),
+            validUntil: new Date(Date.now() + testo.coupon.giorniValidita * 86_400_000),
+          }
+        : null,
     }),
     preview: `Prova di «${def.name}»`,
   });
@@ -416,6 +531,12 @@ export type AutomationUpdate = {
   giorni?: number;
   subject?: string;
   intro?: string;
+  /**
+   * L'omaggio: un oggetto per metterlo, `null` per toglierlo, assente per
+   * lasciarlo come è. Servono tutti tre: togliere un regalo deve essere un
+   * gesto possibile e distinguibile dal «non l'ho toccato».
+   */
+  coupon?: AutomationCoupon | null;
 };
 
 export async function updateAutomation(venueId: string, key: AutomationKey, input: AutomationUpdate) {
@@ -437,6 +558,7 @@ export async function updateAutomation(venueId: string, key: AutomationKey, inpu
       actions: {
         subject: input.subject?.trim() || testoAttuale.subject,
         intro: input.intro?.trim() || testoAttuale.intro,
+        coupon: input.coupon === undefined ? testoAttuale.coupon ?? null : input.coupon,
       } as unknown as Prisma.InputJsonValue,
     },
   });

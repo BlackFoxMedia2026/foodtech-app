@@ -58,10 +58,32 @@ export type AutomationConditions = {
   giorni?: number;
 };
 
+/**
+ * L'omaggio che un'automazione può portarsi dietro.
+ *
+ * **Un codice per persona, non uno condiviso.** Un omaggio di compleanno con
+ * un codice unico per tutti si gira agli amici e diventa uno sconto generico
+ * che il locale non ha deciso: il coupon nasce intestato a quella persona
+ * (`Coupon.guestId`), vale una volta e scade.
+ *
+ * Nasce assente: un'automazione che regala qualcosa senza che nessuno l'abbia
+ * chiesto è il modo più rapido di far perdere soldi a un ristorante.
+ */
+export type AutomationCoupon = {
+  kind: "PERCENT" | "FIXED" | "FREE_ITEM" | "MENU_OFFER";
+  /** Percentuale o centesimi, secondo il tipo. */
+  value?: number;
+  freeItem?: string | null;
+  /** Per quanti giorni vale, da quando parte il messaggio. */
+  giorniValidita: number;
+};
+
 export type AutomationActions = {
   subject: string;
   /** Il paragrafo scritto dal locale, dentro il nostro modello. */
   intro: string;
+  /** L'omaggio, se il locale ne ha messo uno. */
+  coupon?: AutomationCoupon | null;
 };
 
 export type AutomationDefinition = {
@@ -76,6 +98,8 @@ export type AutomationDefinition = {
   defaults: AutomationActions;
   /** Ogni quanti giorni la stessa persona può ricevere questa automazione. */
   cooldownDays: number;
+  /** La categoria con cui nasce il coupon di questa automazione. */
+  couponCategory: "BIRTHDAY" | "WINBACK" | "NEW_CUSTOMER";
   audience(venueId: string, giorni: number, now: Date): Promise<AutomationRecipient[]>;
 };
 
@@ -152,6 +176,7 @@ export const AUTOMATIONS: Record<AutomationKey, AutomationDefinition> = {
         "Il tuo compleanno si avvicina e ci farebbe piacere festeggiarlo con te. Se vuoi, teniamo da parte il tavolo che preferisci.",
     },
     cooldownDays: 300,
+    couponCategory: "BIRTHDAY",
     async audience(venueId, giorni, now) {
       // Le date di nascita non si filtrano in una query portabile (servirebbe
       // EXTRACT su mese e giorno): si prendono gli ospiti con una data di
@@ -197,6 +222,7 @@ export const AUTOMATIONS: Record<AutomationKey, AutomationDefinition> = {
         "È passato un po' dall'ultima volta che ci siamo visti. Se ti va di tornare, siamo qui: basta un messaggio e ti troviamo posto.",
     },
     cooldownDays: 365,
+    couponCategory: "WINBACK",
     async audience(venueId, giorni, now) {
       // Solo chi ha **appena** superato la soglia. «Tutti quelli che non
       // vengono da sessanta giorni», il primo giorno, sarebbe mezza rubrica.
@@ -239,6 +265,7 @@ export const AUTOMATIONS: Record<AutomationKey, AutomationDefinition> = {
         "Ci ha fatto piacere averti con noi. Se ti è piaciuto, la prossima volta ci organizziamo meglio: dicci quando vieni e ti teniamo il tavolo.",
     },
     cooldownDays: 365,
+    couponCategory: "NEW_CUSTOMER",
     async audience(venueId, giorni, now) {
       const fine = piuGiorni(now, -giorni);
       const inizio = piuGiorni(fine, -FINESTRA_GIORNI);
