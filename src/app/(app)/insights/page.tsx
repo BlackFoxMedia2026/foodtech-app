@@ -7,6 +7,7 @@ import { ForecastPanel } from "@/components/insights/forecast-panel";
 import { FoodCostPanel } from "@/components/insights/food-cost-panel";
 import { MenuEngineeringPanel } from "@/components/insights/menu-engineering-panel";
 import { WaitlistPanel } from "@/components/insights/waitlist-panel";
+import { RotazionePanel } from "@/components/insights/rotazione-panel";
 import { getFoodCost } from "@/server/food-cost";
 import { getNoShowReport } from "@/server/no-show";
 import { NoShowPanel } from "@/components/insights/no-show-panel";
@@ -16,6 +17,7 @@ import { reviewFunnel } from "@/server/reviews";
 import { menuEngineering } from "@/server/menu-engineering";
 import { waitlistReport } from "@/server/waitlist";
 import { debitoGiftCards } from "@/server/gift-cards";
+import { rotazioneTavoli } from "@/server/rotazione";
 import { resolveSegment } from "@/server/campaigns";
 import { Button } from "@/components/ui/button";
 import { SlotChart, SourcesChart, WeekdayHeatmap } from "@/components/insights/charts";
@@ -77,7 +79,7 @@ export default async function InsightsPage({
   const ctx = await getActiveVenue();
   const { range, from, to } = computeRange(searchParams);
   const giorni = Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000));
-  const [a, prev, nps, ponteRecensioni, previsione, occupazione, foodCost, assenze, codaAttesa, giftCard, inattivi] =
+  const [a, prev, nps, ponteRecensioni, previsione, occupazione, foodCost, assenze, codaAttesa, giftCard, rotazione, inattivi] =
     await Promise.all([
       getAnalytics(ctx.venueId, from, to),
     getPreviousPeriodMetrics(ctx.venueId, from, to),
@@ -98,6 +100,7 @@ export default async function InsightsPage({
       // il locale deve, adesso, a chi ha già pagato. Un debito «degli ultimi
       // trenta giorni» non vuol dire niente.
       debitoGiftCards(ctx.venueId),
+      rotazioneTavoli(ctx.venueId, from, to),
     // Quanti si potrebbero invitare davvero: con email e consenso, non
     // «quanti clienti ho». È lo stesso segmento che userebbe la campagna.
     resolveSegment(ctx.venueId, { audienceTag: "inattivi" }),
@@ -135,6 +138,8 @@ export default async function InsightsPage({
       )}
 
       <NoShowPanel report={assenze} currency={ctx.venue.currency} />
+
+      <RotazionePanel report={rotazione} />
 
       <WaitlistPanel report={codaAttesa} />
 
