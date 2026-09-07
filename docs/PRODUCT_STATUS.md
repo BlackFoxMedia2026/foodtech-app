@@ -1,5 +1,8 @@
 # Stato del prodotto
 
+> Per una lettura d'insieme, sezione per sezione, con l'audit visivo di ogni pagina:
+> [`docs/ANALISI-STATO-2026-09-07.md`](ANALISI-STATO-2026-09-07.md) e `docs/audit-2026-09/audit-completo/`.
+
 Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso commit che cambia lo stato di un modulo.
 
 **Aggiornato:** 7 settembre 2026 · commit di riferimento `c6a1a82` + Phase 0 + Phase 1 + Phase 2 + Phase 3 + Phase 4 (in corso)

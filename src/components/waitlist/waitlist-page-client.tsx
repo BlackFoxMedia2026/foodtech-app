@@ -13,8 +13,11 @@ export type WaitlistSummary = {
   avvisati: number;
   confermati: number;
   personeInCoda: number;
+  /** Calcolata su chi sta davvero aspettando, non sulle righe dimenticate. */
   attesaMediaMin: number;
   inRitardo: number;
+  /** Righe in lista da più di quattro ore: da chiudere, non da contare. */
+  dimenticate: number;
 };
 
 export function WaitlistPageClient({
@@ -42,6 +45,15 @@ export function WaitlistPageClient({
               {summary.personeInCoda} {summary.personeInCoda === 1 ? "persona" : "persone"} in coda
               {summary.attesaMediaMin > 0 && ` · attesa media ${summary.attesaMediaMin} min`}
               {summary.inRitardo > 0 && ` · ${summary.inRitardo} oltre la stima`}
+            </p>
+          )}
+          {summary.dimenticate > 0 && (
+            /* Una riga aperta da stamattina non è una persona che aspetta: è
+               una riga da chiudere. Fuori dalla media, e detta qui. */
+            <p className="mt-1 text-sm text-accent-strong">
+              {summary.dimenticate === 1
+                ? "Una persona è in lista da più di quattro ore: se non è più qui, chiudi la riga."
+                : `${summary.dimenticate} persone sono in lista da più di quattro ore: se non sono più qui, chiudi le righe.`}
             </p>
           )}
         </div>
