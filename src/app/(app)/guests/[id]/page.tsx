@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/bookings/status-badge";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { getSaldoFedelta } from "@/server/loyalty";
 import { LoyaltyPanel } from "@/components/guests/loyalty-panel";
+import { ErasureDialog } from "@/components/guests/erasure-dialog";
 import { getGuest } from "@/server/guests";
 import { formatCurrency, formatDate, formatDateTime, initials } from "@/lib/utils";
 
@@ -69,6 +70,11 @@ export default async function GuestDetail({ params }: { params: { id: string } }
             <h1 className="text-display text-3xl">{name}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <LoyaltyPill tier={g.loyaltyTier} />
+              {g.anonymizedAt && (
+                <Badge tone="neutral" className="text-muted-foreground">
+                  dati cancellati su richiesta
+                </Badge>
+              )}
               {g.allergies && (
                 <Badge tone="danger" className="badge-dot">{g.allergies}</Badge>
               )}
@@ -78,7 +84,13 @@ export default async function GuestDetail({ params }: { params: { id: string } }
             </div>
           </div>
         </div>
-        <EditGuestDialog
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Riservata al manager: cancellare i dati di una persona non è un
+              gesto da fare di corsa fra due tavoli. */}
+          {can(ctx.role, "manage_venue") && !g.anonymizedAt && (
+            <ErasureDialog guestId={g.id} guestName={name} />
+          )}
+          <EditGuestDialog
           guest={{
             id: g.id,
             firstName: g.firstName,
@@ -93,6 +105,7 @@ export default async function GuestDetail({ params }: { params: { id: string } }
             preferences: g.preferences,
           }}
         />
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.6fr]">

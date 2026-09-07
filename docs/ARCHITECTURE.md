@@ -390,6 +390,39 @@ al telefono, e una nota riservata non deve sparire perché qualcuno ha
 ricompilato un modulo: riempire un buco è un miglioramento, riscrivere un dato
 esistente è una perdita.
 
+### Cancellare una persona senza cancellare un mese di incassi
+
+`src/server/guest-erasure.ts`.
+
+La richiesta di cancellazione è l'unica operazione di questa applicazione che
+non si può annullare, e per questo è anche l'unica dove la parte difficile non
+è farla: è **non farne troppa**.
+
+Due tentazioni sbagliate, entrambe scartate. La prima è cancellare la riga
+dell'ospite: si porterebbe dietro le prenotazioni collegate, quindi i coperti,
+quindi l'incasso — e il locale scoprirebbe a fine mese di aver perso tre serate
+perché una persona ha esercitato un suo diritto. La seconda è svuotare solo la
+scheda: i dati personali stanno in **sette posti** (scheda, note delle
+prenotazioni, contatti dal Wi-Fi con l'IP, destinatari e testi dei messaggi, IP
+dei consensi, commenti dei sondaggi, nome scritto sui conti), e una
+cancellazione che ne pulisce uno è una conferma falsa data a chi l'ha chiesta.
+
+Quindi: la riga resta, vuota e segnata (`anonymizedAt`, `anonymizedBy`), i sette
+posti si ripuliscono **in una sola transazione**, e la linea di taglio è
+questa — via tutto ciò che identifica o descrive la persona, restano i numeri
+che descrivono il locale. Coperti, date, conti chiusi e le loro righe, punti,
+voti dei sondaggi: quello che serve a sapere com'è andato un mese.
+
+Due righe si conservano per una ragione precisa, non per pigrizia:
+`MessageLog` tiene che un messaggio è stato inviato e quando (senza,
+il promemoria ripartirebbe), e `ConsentLog` tiene la scelta e la data, perché è
+la prova di cosa è stato acconsentito — spariscono l'indirizzo e il
+dispositivo, che sono dati sulla persona e non sulla scelta.
+
+E la finestra di conferma non chiede «sei sicuro?»: mostra due elenchi, cosa
+sparisce e cosa resta. Il secondo è quello che serve davvero, perché la paura di
+chi preme quel pulsante è di far sparire i conti.
+
 ### Il numero del conto non è un conteggio
 
 `src/server/orders.ts`.
