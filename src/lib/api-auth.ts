@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { resolveActiveVenue, can, type ActiveVenueContext, type Ability } from "./tenant";
+import { resolveActiveVenue, type ActiveVenueContext } from "./tenant";
+import { can, type Ability } from "./abilities";
 
 /**
  * Punto unico da cui passano autenticazione, locale attivo e permessi delle

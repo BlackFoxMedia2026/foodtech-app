@@ -1,5 +1,5 @@
 import type { StaffRole } from "@prisma/client";
-import { can, type Ability } from "@/lib/tenant";
+import { can, type Ability } from "@/lib/abilities";
 
 export class PermissionDeniedError extends Error {
   constructor(public ability: Ability) {

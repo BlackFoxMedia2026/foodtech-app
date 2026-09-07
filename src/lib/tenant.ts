@@ -80,26 +80,10 @@ export const getActiveVenue = cache(async function getActiveVenue() {
   return resolved.context;
 });
 
-export type Ability =
-  | "manage_org"
-  | "manage_venue"
-  | "manage_bookings"
-  | "view_revenue"
-  | "edit_marketing"
-  | "manage_staff"
-  | "manage_contracts";
-
-const matrix: Record<StaffRole, Ability[]> = {
-  MANAGER: ["manage_venue", "manage_bookings", "view_revenue", "edit_marketing", "manage_staff", "manage_contracts"],
-  RECEPTION: ["manage_bookings"],
-  WAITER: ["manage_bookings"],
-  MARKETING: ["edit_marketing", "view_revenue"],
-  READ_ONLY: [],
-};
-
-export function can(role: StaffRole, ability: Ability) {
-  return matrix[role]?.includes(ability) ?? false;
-}
+// I permessi vivono in abilities.ts (nessuna dipendenza da React, così sono
+// verificabili con un test); qui restano ri-esportati perché mezzo progetto
+// li importa da "@/lib/tenant".
+export { can, type Ability } from "./abilities";
 
 export function setActiveVenueCookie(venueId: string) {
   cookies().set(VENUE_COOKIE, venueId, { path: "/", httpOnly: false, sameSite: "lax" });
