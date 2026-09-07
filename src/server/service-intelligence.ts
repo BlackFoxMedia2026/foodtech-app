@@ -1,8 +1,12 @@
 import { db } from "@/lib/db";
+import { NON_PIU_RITARDO_MIN, durataUmana } from "@/lib/durata";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { findShiftFor, zonedDayAndMinute } from "./availability";
 import { getFloorLive } from "./floor-live";
 import { listWaitlist } from "./waitlist";
+
+// Ri-esportata: il centro controllo è il posto dove ci si aspetta di trovarla.
+export { durataUmana };
 
 /**
  * Il centro controllo del servizio: non «quanti coperti ho», ma **cosa sta per
@@ -32,6 +36,7 @@ export type ServiceInsight = {
     | "table_collision"
     | "no_table_assigned"
     | "no_show_risk"
+    | "missed_bookings"
     | "oversized_table"
     | "waitlist_match"
     | "shift_over_capacity";
@@ -40,6 +45,14 @@ export type ServiceInsight = {
   detail: string;
   /** Dove si va per agire. */
   action?: { label: string; href: string };
+  /**
+   * Fra quanti minuti questo avviso conta davvero. Zero = adesso.
+   *
+   * Serve a ordinare **dentro** la stessa gravità: fra otto ritardi, quello di
+   * venti minuti si recupera con una telefonata, quello di sette ore no. Prima
+   * l'ordine era quello di lettura delle prenotazioni, cioè nessun ordine.
+   */
+  urgenza: number;
 };
 
 /** Da quanti coperti in venti minuti un arrivo diventa un picco da segnalare. */
@@ -48,6 +61,13 @@ const PEAK_WINDOW_MIN = 20;
 
 /** Ritardo oltre il quale vale la pena chiedersi se è un no-show. */
 export const NO_SHOW_RISK_MIN = 25;
+
+// La soglia sta in `lib/durata` perché la usa anche l'interfaccia.
+export { NON_PIU_RITARDO_MIN };
+
+/** Quanti ritardi si mostrano uno per uno prima di raggrupparli. */
+const RITARDI_IN_EVIDENZA = 3;
+
 
 /** Da quanti posti in eccesso un tavolo è «sprecato», se qualcuno aspetta. */
 const OVERSIZED_SPARE_SEATS = 3;
@@ -125,6 +145,8 @@ export async function getServiceInsights(
       id: `arrival_peak:${peggiore.da.toISOString()}`,
       kind: "arrival_peak",
       severity: "warning",
+      // Quanto manca: un picco fra dieci minuti viene prima di uno fra un'ora.
+      urgenza: Math.max(0, Math.round((peggiore.da.getTime() - now.getTime()) / 60_000)),
       title: `Picco alle ${oraLocale(peggiore.da, timezone)}`,
       detail: `Fra le ${oraLocale(peggiore.da, timezone)} e le ${oraLocale(peggiore.a, timezone)} arrivano ${
         peggiore.covers
@@ -156,11 +178,12 @@ export async function getServiceInsights(
       insights.push({
         id: `table_collision:${prossima.id}`,
         kind: "table_collision",
+        urgenza: Math.max(0, Math.round((prossima.startsAt.getTime() - now.getTime()) / 60_000)),
         severity: "warning",
         title: `${prossima.table?.label ?? "Tavolo"} rischia di non liberarsi`,
         detail: `${nome(prossima)} arriva alle ${oraLocale(prossima.startsAt, timezone)} sul ${
           prossima.table?.label ?? "tavolo"
-        }, dove ${occupante.guestName} è seduto fino a circa le ${oraLocale(finePrevista, timezone)} — ${ritardoAtteso} minuti oltre. Sposta uno dei due o preparati a farli attendere.`,
+        }, dove ${occupante.guestName} è seduto fino a circa le ${oraLocale(finePrevista, timezone)} — ${durataUmana(ritardoAtteso)} oltre. Sposta uno dei due o preparati a farli attendere.`,
         action: { label: "Apri la sala", href: "/service/room" },
       });
     }
@@ -177,6 +200,8 @@ export async function getServiceInsights(
       id: `no_table_assigned:${senzaTavolo.length}`,
       kind: "no_table_assigned",
       severity: senzaTavolo.length > liberi ? "warning" : "info",
+      // Da fare adesso: assegnare prima che arrivino.
+      urgenza: 0,
       title: `${senzaTavolo.length} ${
         senzaTavolo.length === 1 ? "arrivo" : "arrivi"
       } senza tavolo assegnato`,
@@ -192,17 +217,39 @@ export async function getServiceInsights(
   /* 4. Rischio no-show                                                     */
   /* ---------------------------------------------------------------------- */
 
+  /**
+   * Due categorie diverse, non una.
+   *
+   * Chi è in ritardo **dentro** il servizio si recupera con una telefonata: un
+   * avviso a testa, i più recenti per primi, perché sono quelli su cui la
+   * telefonata funziona ancora.
+   *
+   * Chi manca da più di tre ore non è in ritardo: è una prenotazione da
+   * chiudere. Otto cartelli identici che lo dicevano uno per uno rendevano
+   * illeggibile la pagina — adesso è un avviso solo, con l'azione giusta.
+   */
+  const inRitardo: { b: (typeof bookings)[number]; ritardo: number }[] = [];
+  const nonArrivate: typeof bookings = [];
+
   for (const b of bookings) {
     if (b.status !== "CONFIRMED" && b.status !== "PENDING") continue;
     const ritardo = Math.round((now.getTime() - b.startsAt.getTime()) / 60_000);
     if (ritardo < NO_SHOW_RISK_MIN) continue;
+    if (ritardo >= NON_PIU_RITARDO_MIN) nonArrivate.push(b);
+    else inRitardo.push({ b, ritardo });
+  }
 
+  // I più recenti per primi: sono quelli su cui si può ancora fare qualcosa.
+  inRitardo.sort((x, y) => x.ritardo - y.ritardo);
+
+  for (const { b, ritardo } of inRitardo.slice(0, RITARDI_IN_EVIDENZA)) {
     const storici = b.guest?.noShowCount ?? 0;
     insights.push({
       id: `no_show_risk:${b.id}`,
       kind: "no_show_risk",
       severity: "warning",
-      title: `${nome(b)} in ritardo di ${ritardo} minuti`,
+      urgenza: ritardo,
+      title: `${nome(b)} in ritardo di ${durataUmana(ritardo)}`,
       detail:
         storici > 0
           ? `${b.partySize} ${b.partySize === 1 ? "persona" : "persone"} attese alle ${oraLocale(
@@ -217,11 +264,48 @@ export async function getServiceInsights(
     });
   }
 
+  // Gli altri ritardi, se sono più di quelli mostrati: una riga sola.
+  const restanti = inRitardo.length - RITARDI_IN_EVIDENZA;
+  if (restanti > 0) {
+    insights.push({
+      id: "no_show_risk:altri",
+      kind: "no_show_risk",
+      severity: "warning",
+      urgenza: inRitardo[RITARDI_IN_EVIDENZA].ritardo,
+      title:
+        restanti === 1 ? "Un'altra prenotazione in ritardo" : `Altre ${restanti} prenotazioni in ritardo`,
+      detail: `Oltre a quelle qui sopra. Le trovi tutte nell'elenco del servizio, dalla più recente.`,
+      action: { label: "Apri il servizio", href: "/service" },
+    });
+  }
+
+  if (nonArrivate.length > 0) {
+    const coperti = nonArrivate.reduce((n, b) => n + b.partySize, 0);
+    insights.push({
+      id: "missed_bookings",
+      kind: "missed_bookings",
+      severity: "opportunity",
+      // Non urgente: nessuno arriva più. È lavoro di chiusura, non di servizio.
+      urgenza: 10_000,
+      title:
+        nonArrivate.length === 1
+          ? "Una prenotazione non è mai arrivata"
+          : `${nonArrivate.length} prenotazioni non sono mai arrivate`,
+      detail: `${coperti} ${coperti === 1 ? "coperto" : "coperti"} attesi da più di ${durataUmana(
+        NON_PIU_RITARDO_MIN,
+      )}: non è più un ritardo. Segnale come assenti o annullale, così i numeri della giornata restano veri.`,
+      action: { label: "Vedi le prenotazioni", href: "/bookings" },
+    });
+  }
+
   /* ---------------------------------------------------------------------- */
   /* 5. Tavoli grandi occupati da pochi, mentre qualcuno aspetta            */
   /* ---------------------------------------------------------------------- */
 
-  const gruppiInAttesa = coda.filter((e) => e.status !== "SEATED");
+  // Chi risulta in lista da mezza giornata non sta aspettando un tavolo: è una
+  // riga che nessuno ha chiuso (vedi `ATTESA_DIMENTICATA_MIN`). Proporgli un
+  // tavolo è un consiglio sbagliato dato con sicurezza.
+  const gruppiInAttesa = coda.filter((e) => e.status !== "SEATED" && !e.dimenticata);
   const maxAttesa = gruppiInAttesa.length > 0 ? Math.max(...gruppiInAttesa.map((e) => e.partySize)) : 0;
 
   if (maxAttesa > 0) {
@@ -239,6 +323,7 @@ export async function getServiceInsights(
         id: `oversized_table:${t.id}`,
         kind: "oversized_table",
         severity: "opportunity",
+        urgenza: 0,
         title: `${t.label} da ${t.seats} posti con ${info.current.partySize} persone`,
         detail: `In lista d'attesa c'è ${candidato.guestName} in ${candidato.partySize}, che su questo tavolo ci starebbe. Se ${info.current.guestName} può spostarsi su un tavolo più piccolo, liberi il posto giusto.`,
         action: { label: "Apri la sala", href: "/service/room" },
@@ -260,10 +345,12 @@ export async function getServiceInsights(
       id: `waitlist_match:${e.id}`,
       kind: "waitlist_match",
       severity: "opportunity",
+      // Il tavolo è libero adesso: aspettare lo spreca.
+      urgenza: 0,
       title: `${compatibile.label} è libero per ${e.guestName}`,
-      detail: `${e.partySize} ${e.partySize === 1 ? "persona" : "persone"} in attesa da ${
-        e.waitingMin
-      } minuti, e il ${compatibile.label} (${compatibile.seats} posti) è libero adesso.`,
+      detail: `${e.partySize} ${e.partySize === 1 ? "persona" : "persone"} in attesa da ${durataUmana(
+        e.waitingMin,
+      )}, e il ${compatibile.label} (${compatibile.seats} posti) è libero adesso.`,
       action: { label: "Accomoda dalla lista", href: "/service" },
     });
     // Una proposta per volta: proporre lo stesso tavolo a tre gruppi diversi
@@ -289,6 +376,7 @@ export async function getServiceInsights(
         id: `shift_over_capacity:${turno.id}`,
         kind: "shift_over_capacity",
         severity: "warning",
+        urgenza: 60,
         title: `${turno.name}: ${copertiTurno} coperti su ${turno.capacity} di capienza`,
         detail: `Il turno è oltre la capienza dichiarata di ${
           copertiTurno - turno.capacity
@@ -298,7 +386,12 @@ export async function getServiceInsights(
     }
   }
 
-  return insights.sort((a, b) => ORDINE[a.severity] - ORDINE[b.severity]);
+  // Prima la gravità, poi **quanto manca**: fra due avvisi altrettanto gravi
+  // conta quale dei due riguarda i prossimi minuti. Prima l'ordine dentro la
+  // stessa gravità era quello di lettura delle prenotazioni, cioè nessuno.
+  return insights.sort(
+    (a, b) => ORDINE[a.severity] - ORDINE[b.severity] || a.urgenza - b.urgenza,
+  );
 }
 
 /**

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { NON_PIU_RITARDO_MIN } from "./service-intelligence";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { listWaitlist, expireStaleOffers, type WaitlistView } from "./waitlist";
 
@@ -89,6 +90,7 @@ export type ServiceSnapshot = {
     tavoliTotali: number;
     inArrivo: number;
     inRitardo: number;
+    nonArrivate: number;
     inAttesa: number;
     personeInAttesa: number;
     walkInOggi: number;
@@ -199,7 +201,14 @@ export async function getServiceSnapshot(
 
   const seated = tutte.filter((b) => b.status === "SEATED");
   const arrived = tutte.filter((b) => b.status === "ARRIVED");
-  const late = tutte.filter((b) => b.lateBy > 0).sort((a, b) => b.lateBy - a.lateBy);
+  // «In ritardo» e «non è mai arrivato» sono due cose diverse, e il numero in
+  // testa deve dire la prima. Oltre la soglia (tre ore, più di un servizio)
+  // una prenotazione non è una persona che sta arrivando: è una riga da
+  // chiudere, e il centro controllo la raggruppa in un avviso solo.
+  const late = tutte
+    .filter((b) => b.lateBy > 0 && b.lateBy < NON_PIU_RITARDO_MIN)
+    .sort((a, b) => b.lateBy - a.lateBy);
+  const nonArrivate = tutte.filter((b) => b.lateBy >= NON_PIU_RITARDO_MIN);
   const next = tutte
     .filter(
       (b) =>
@@ -233,6 +242,8 @@ export async function getServiceSnapshot(
       tavoliTotali: attivi,
       inArrivo: next.length,
       inRitardo: late.length,
+      /** Attese da più di tre ore: non sono ritardi, sono righe da chiudere. */
+      nonArrivate: nonArrivate.length,
       inAttesa: waitlist.length,
       personeInAttesa: waitlist.reduce((n, e) => n + e.partySize, 0),
       walkInOggi,

@@ -130,27 +130,6 @@ export function PublicBookingForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="firstName">Nome *</Label>
-          <Input id="firstName" name="firstName" required placeholder="Mario" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="lastName">Cognome</Label>
-          <Input id="lastName" name="lastName" placeholder="Rossi" />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="email">Email *</Label>
-        <Input id="email" name="email" type="email" required placeholder="mario@example.com" />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="phone">Telefono *</Label>
-        <Input id="phone" name="phone" type="tel" required placeholder="+39 06 1234 5678" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
           <Label htmlFor="date">Data *</Label>
           <Input
             id="date"
@@ -161,6 +140,20 @@ export function PublicBookingForm({
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+          {/* Il campo data nativo si mostra nel formato della lingua del
+              browser: a un cliente italiano appariva `mm/dd/yyyy`, e chi
+              scrive 07/09 pensando al 7 settembre prenotava il 9 luglio.
+              Il campo resta (funziona e si usa col calendario del telefono),
+              ma sotto c'è scritta la data per esteso, senza ambiguità. */}
+          {date && (
+            <p className="text-xs text-muted-foreground">
+              {new Date(`${date}T12:00:00`).toLocaleDateString("it-IT", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="partySize">Numero di persone *</Label>
@@ -193,6 +186,36 @@ export function PublicBookingForm({
           value={startsAt}
           onChange={setStartsAt}
         />
+      </div>
+
+      {/* I dati personali vengono dopo la disponibilità, non prima.
+          Chiedere nome, email e telefono a chi non sa ancora se c'è un tavolo
+          è il modo più rapido di far abbandonare il modulo — e di riempire il
+          CRM di indirizzi inventati. */}
+      <div className="border-t border-border pt-5">
+        <p className="text-sm font-medium">I tuoi dati</p>
+        <p className="text-xs text-muted-foreground">Servono a confermarti il tavolo.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="firstName">Nome *</Label>
+          <Input id="firstName" name="firstName" required placeholder="Mario" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="lastName">Cognome</Label>
+          <Input id="lastName" name="lastName" placeholder="Rossi" />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="email">Email *</Label>
+        <Input id="email" name="email" type="email" required placeholder="mario@example.com" />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="phone">Telefono *</Label>
+        <Input id="phone" name="phone" type="tel" required placeholder="+39 06 1234 5678" />
       </div>
 
       <div className="space-y-2">

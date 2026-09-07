@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NON_PIU_RITARDO_MIN } from "@/lib/durata";
 import type { Booking, Guest, Table } from "@prisma/client";
 import { ChevronRight } from "lucide-react";
 import { cn, formatTime } from "@/lib/utils";
@@ -22,6 +23,10 @@ function getStatusDisplay(booking: Row, now: Date): { label: string; tone: Tone 
     case "PENDING":
       return { label: "Da confermare", tone: "warn" };
     case "CONFIRMED":
+      // Oltre tre ore non è più un ritardo: è una prenotazione a cui nessuno
+      // ha dato un esito. Chiamarla «in ritardo» a fine giornata riempiva la
+      // timeline di rosso su gente che non sarebbe più arrivata.
+      if (minutesUntil <= -NON_PIU_RITARDO_MIN) return { label: "Non arrivata", tone: "neutral" };
       if (minutesUntil <= 0) return { label: "In ritardo", tone: "negative" };
       if (minutesUntil <= 60) return { label: `Arrivo tra ${minutesUntil} min`, tone: "warn" };
       return { label: "Confermato", tone: "positive" };

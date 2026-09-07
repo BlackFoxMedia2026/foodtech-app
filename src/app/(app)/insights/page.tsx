@@ -10,6 +10,7 @@ import { getNoShowReport } from "@/server/no-show";
 import { NoShowPanel } from "@/components/insights/no-show-panel";
 import { getOccupancyByWeekday, getWeekForecast } from "@/server/forecast";
 import { getSurveyStats } from "@/server/surveys";
+import { resolveSegment } from "@/server/campaigns";
 import { Button } from "@/components/ui/button";
 import { SlotChart, SourcesChart, WeekdayHeatmap } from "@/components/insights/charts";
 import { PeriodSelector } from "@/components/insights/period-selector";
@@ -69,7 +70,7 @@ export default async function InsightsPage({
 }) {
   const ctx = await getActiveVenue();
   const { range, from, to } = computeRange(searchParams);
-  const [a, prev, nps, previsione, occupazione, foodCost, assenze] = await Promise.all([
+  const [a, prev, nps, previsione, occupazione, foodCost, assenze, inattivi] = await Promise.all([
     getAnalytics(ctx.venueId, from, to),
     getPreviousPeriodMetrics(ctx.venueId, from, to),
     getSurveyStats(ctx.venueId, { days: Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000)) }),
@@ -81,6 +82,9 @@ export default async function InsightsPage({
     // fotografia di adesso.
     getFoodCost(ctx.venueId, from, to),
     getNoShowReport(ctx.venueId, from, to),
+    // Quanti si potrebbero invitare davvero: con email e consenso, non
+    // «quanti clienti ho». È lo stesso segmento che userebbe la campagna.
+    resolveSegment(ctx.venueId, { audienceTag: "inattivi" }),
   ]);
 
   const insights = generateInsights({
@@ -110,7 +114,7 @@ export default async function InsightsPage({
 
       <NoShowPanel report={assenze} currency={ctx.venue.currency} />
 
-      <ForecastPanel giorni={previsione} occupazione={occupazione} />
+      <ForecastPanel giorni={previsione} occupazione={occupazione} inattivi={inattivi.length} />
 
       <NpsPanel stats={nps} />
 

@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { readApiError } from "@/lib/api-client";
+import { durataUmana } from "@/lib/durata";
 import { cn } from "@/lib/utils";
 import { TABLE_LIVE_HINTS, TABLE_LIVE_LABELS, type TableLiveStatus } from "@/lib/table-status";
 import { LIVE_STATUS_ORDER, type FloorLive, type TableLiveInfo } from "@/server/floor-live";
@@ -49,8 +50,15 @@ export type RoomOption = { id: string; name: string };
  * screen reader.
  */
 const STILE: Record<TableLiveStatus, { icona: typeof CircleDot; classe: string; testo: string }> = {
-  LIBERO: { icona: CircleDot, classe: "border-border bg-secondary/40 text-muted-foreground", testo: "text-muted-foreground" },
-  PRENOTATO: { icona: Clock, classe: "border-border-strong bg-secondary text-foreground", testo: "text-foreground" },
+  /**
+   * Libero e Prenotato erano lo stesso verde a due opacità (40% e 100%) con
+   * due bordi appena diversi: sulla mappa si distinguevano **solo leggendo la
+   * parola**, ed è la coppia più frequente della sala. Ora libero è un buco
+   * nel pavimento — nessun riempimento — e prenotato porta un velo chiaro:
+   * «questo tavolo è di qualcuno, anche se adesso è vuoto».
+   */
+  LIBERO: { icona: CircleDot, classe: "border-dashed border-border/70 bg-transparent text-muted-foreground", testo: "text-muted-foreground" },
+  PRENOTATO: { icona: Clock, classe: "border-cream/40 bg-cream/12 text-foreground", testo: "text-foreground" },
   IN_ARRIVO: { icona: Sparkles, classe: "border-sage bg-sage/25 text-foreground", testo: "text-foreground" },
   OCCUPATO: { icona: UtensilsCrossed, classe: "border-surface-brown bg-surface-brown text-cream", testo: "text-cream" },
   CONTO: { icona: Receipt, classe: "border-accent bg-accent/80 text-cream", testo: "text-cream" },
@@ -370,7 +378,8 @@ function TavoloMappa({
           <span className="w-full truncate text-[11px] leading-tight">{corrente.guestName}</span>
           <span className="flex w-full items-center gap-1 text-[10px] leading-tight opacity-80">
             {ora} · {corrente.partySize}p
-            {oltre && <span className="font-semibold">+{Math.abs(corrente.minutesToFree!)}′</span>}
+            {/* «+397′» è esatto e illeggibile: sopra l'ora si dice in ore. */}
+            {oltre && <span className="font-semibold">+{durataUmana(Math.abs(corrente.minutesToFree!))}</span>}
             {corrente.combinedWith.length > 0 && <Link2 className="h-2.5 w-2.5" aria-hidden="true" />}
             {corrente.allergies && <AlertTriangle className="h-2.5 w-2.5" aria-hidden="true" />}
           </span>
@@ -463,8 +472,8 @@ function TavoloRiga({
                   {" · "}
                   <span className={cn(corrente.minutesToFree < 0 && "text-accent")}>
                     {corrente.minutesToFree >= 0
-                      ? `libero fra ~${corrente.minutesToFree} min`
-                      : `oltre di ${Math.abs(corrente.minutesToFree)} min`}
+                      ? `libero fra ~${durataUmana(corrente.minutesToFree)}`
+                      : `oltre di ${durataUmana(Math.abs(corrente.minutesToFree))}`}
                   </span>
                 </>
               )}
@@ -472,8 +481,8 @@ function TavoloRiga({
                 <>
                   {" · "}
                   {corrente.minutesToArrival >= 0
-                    ? `fra ${corrente.minutesToArrival} min`
-                    : `in ritardo di ${Math.abs(corrente.minutesToArrival)} min`}
+                    ? `fra ${durataUmana(corrente.minutesToArrival)}`
+                    : `in ritardo di ${durataUmana(Math.abs(corrente.minutesToArrival))}`}
                 </>
               )}
             </p>

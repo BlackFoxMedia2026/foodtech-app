@@ -1,4 +1,4 @@
-import { Users, Wallet, Percent, UserX } from "lucide-react";
+import { Wallet, UserX } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -68,7 +68,7 @@ export function KpiGrid({
   comparisons: { covers: number; revenue: number | null; occupancy: number; noShow: number };
 }) {
   const kpis: Kpi[] = [
-    { label: "Coperti", value: String(totalCovers), icon: Users, delta: comparisons.covers, higherIsBetter: true, surface: "green" },
+
     {
       /**
        * Prima questa cifra era la media di `Guest.totalSpend` — un campo che
@@ -121,14 +121,6 @@ export function KpiGrid({
       surface: "brown",
     },
     {
-      label: "Occupazione",
-      value: `${occupancyPct}%`,
-      icon: Percent,
-      delta: comparisons.occupancy,
-      higherIsBetter: true,
-      surface: "cream",
-    },
-    {
       label: "No show",
       value: String(expectedNoShow),
       icon: UserX,
@@ -142,7 +134,10 @@ export function KpiGrid({
   return (
     <Card className="card-notch">
       <CardHeader>
-        <CardTitle>KPI principali</CardTitle>
+        {/* Coperti e occupazione stavano qui **e** nei riquadri in cima alla
+            pagina: gli stessi due numeri, due componenti, due linguaggi
+            visivi. Qui restano i due che in cima non ci sono. */}
+        <CardTitle>Soldi e assenze</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3">
         {kpis.map(({ label, value, icon: Icon, delta, hint, higherIsBetter, isCount, surface }) => {

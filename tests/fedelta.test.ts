@@ -106,7 +106,7 @@ describe("le regole", () => {
   });
 
   it("convertono punti ed euro senza regalare niente", () => {
-    const regole = { puntiPerEuro: 1, valorePuntoCents: 5 };
+    const regole = { puntiPerEuro: 1, valorePuntoCents: 5, premio: null };
     expect(valoreInCentesimi(40, regole)).toBe(200);
     // Per scontare 12 centesimi servono 3 punti, non 2: la differenza la
     // pagherebbe il locale.
@@ -261,5 +261,56 @@ describe("l'incasso della giornata", () => {
     expect(incasso.scontiPuntiCents).toBe(200);
     expect(incasso.incassatoCents).toBe(8800);
     expect(incasso.conti).toBe(2);
+  });
+});
+
+describe("il traguardo", () => {
+  it("esiste solo con soglia e nome insieme", async () => {
+    // Una soglia senza nome è un numero; un nome senza soglia è una promessa
+    // senza condizione. Nessuno dei due da solo crea un premio.
+    await setRegoleFedelta(venueId, { puntiPerEuro: 1, valorePuntoCents: 5, premioPunti: 200 });
+    let saldo = await getSaldoFedelta(venueId, guestId);
+    expect(saldo.alPremio).toBeNull();
+
+    await setRegoleFedelta(venueId, {
+      puntiPerEuro: 1,
+      valorePuntoCents: 5,
+      premioPunti: 200,
+      premioCosa: "Cena per due",
+    });
+    saldo = await getSaldoFedelta(venueId, guestId);
+    expect(saldo.alPremio).toEqual({ mancano: 200, cosa: "Cena per due", punti: 200 });
+  });
+
+  it("dice quanto manca, e non scende sotto zero", async () => {
+    await setRegoleFedelta(venueId, {
+      puntiPerEuro: 1,
+      valorePuntoCents: 5,
+      premioPunti: 100,
+      premioCosa: "Bottiglia della casa",
+    });
+
+    await contoChiuso(4); // 60,00 € → 60 punti
+    let saldo = await getSaldoFedelta(venueId, guestId);
+    expect(saldo.alPremio?.mancano).toBe(40);
+
+    await rettificaPunti(venueId, { guestId, punti: 80, reason: "prova" });
+    saldo = await getSaldoFedelta(venueId, guestId);
+    // 140 punti su 100: il traguardo è superato, non «meno 40».
+    expect(saldo.alPremio?.mancano).toBe(0);
+  });
+
+  it("sparisce se la raccolta si spegne", async () => {
+    await setRegoleFedelta(venueId, {
+      puntiPerEuro: 1,
+      valorePuntoCents: 5,
+      premioPunti: 100,
+      premioCosa: "Bottiglia",
+    });
+    await setRegoleFedelta(venueId, { puntiPerEuro: null, valorePuntoCents: null });
+
+    const saldo = await getSaldoFedelta(venueId, guestId);
+    expect(saldo.attiva).toBe(false);
+    expect(saldo.alPremio).toBeNull();
   });
 });

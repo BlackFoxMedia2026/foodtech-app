@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BellRing, Star, Timer, UtensilsCrossed, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
+import { durataUmana } from "@/lib/durata";
 import { cn } from "@/lib/utils";
 import { SeatFromWaitlistDialog } from "@/components/waitlist/seat-from-waitlist-dialog";
 
@@ -74,7 +75,7 @@ export function ServiceWaitlistCard({
             )}
           >
             <Timer className="h-3 w-3" aria-hidden="true" />
-            {entry.waitingMin === 0 ? "appena entrato" : `da ${entry.waitingMin} min`}
+            {entry.waitingMin === 0 ? "appena entrato" : `da ${durataUmana(entry.waitingMin)}`}
           </p>
         </div>
 

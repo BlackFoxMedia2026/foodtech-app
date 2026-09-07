@@ -58,6 +58,10 @@ export const CouponInput = z
     maxPerGuest: z.coerce.number().int().min(1).max(100).optional(),
     /** Riservato a un cliente preciso. */
     guestId: z.string().optional().nullable(),
+    /** Spesa minima del conto, in centesimi. */
+    minSpendCents: z.coerce.number().int().min(0).max(1_000_00).optional().nullable(),
+    /** Giorni della settimana in cui vale (0 = domenica). Vuoto = tutti. */
+    validWeekdays: z.array(z.coerce.number().int().min(0).max(6)).max(7).optional(),
   })
   .refine((d) => !(d.validFrom && d.validUntil) || d.validUntil > d.validFrom, {
     message: "La fine della validità deve venire dopo l'inizio",
@@ -145,6 +149,8 @@ export async function createCoupon(venueId: string, raw: unknown, opts: { actor?
       maxRedemptions: data.maxRedemptions ?? null,
       maxPerGuest: data.maxPerGuest ?? 1,
       guestId: data.guestId ?? null,
+      minSpendCents: data.minSpendCents ?? null,
+      validWeekdays: data.validWeekdays ?? [],
       status: "ACTIVE",
     },
   });
@@ -185,7 +191,9 @@ export type NonValido =
   | "exhausted"
   | "wrong_guest"
   | "guest_limit"
-  | "guest_unknown";
+  | "guest_unknown"
+  | "wrong_day"
+  | "below_min_spend";
 
 /** Perché un coupon non si può usare, detto in italiano. */
 export const MOTIVO_NON_VALIDO: Record<NonValido, string> = {
@@ -197,6 +205,8 @@ export const MOTIVO_NON_VALIDO: Record<NonValido, string> = {
   wrong_guest: "Questo coupon è riservato a un altro cliente.",
   guest_limit: "Questo cliente ha già usato il coupon tutte le volte previste.",
   guest_unknown: "Per questo coupon serve sapere chi lo sta usando: la prenotazione non ha un cliente collegato.",
+  wrong_day: "Questo coupon non vale oggi.",
+  below_min_spend: "Il conto non arriva alla spesa minima prevista da questo coupon.",
 };
 
 export type Usabilita = { usable: true } | { usable: false; reason: NonValido };
@@ -214,7 +224,17 @@ export type Usabilita = { usable: true } | { usable: false; reason: NonValido };
  * ricordarsi di aggiornarlo.
  */
 export function couponUsability(
-  coupon: Pick<Coupon, "status" | "validFrom" | "validUntil" | "maxRedemptions" | "maxPerGuest" | "guestId">,
+  coupon: Pick<
+    Coupon,
+    | "status"
+    | "validFrom"
+    | "validUntil"
+    | "maxRedemptions"
+    | "maxPerGuest"
+    | "guestId"
+    | "minSpendCents"
+    | "validWeekdays"
+  >,
   contesto: {
     now: Date;
     usiTotali: number;
@@ -233,6 +253,15 @@ export function couponUsability(
      * controllare.
      */
     ospite?: { guestId: string | null; usi: number };
+    /**
+     * Il conto su cui si sta usando, se c'è.
+     *
+     * Assente vuol dire «giudizio generale», come per l'ospite: nell'elenco
+     * non c'è un conto, e bocciare un coupon perché non conosciamo una spesa
+     * che nessuno ha ancora fatto sarebbe il difetto del tetto per cliente,
+     * ripetuto.
+     */
+    conto?: { totaleCents: number };
   },
 ): Usabilita {
   if (coupon.status === "PAUSED") return { usable: false, reason: "paused" };
@@ -241,6 +270,21 @@ export function couponUsability(
   if (coupon.validUntil && contesto.now > coupon.validUntil) return { usable: false, reason: "expired" };
   if (coupon.maxRedemptions != null && contesto.usiTotali >= coupon.maxRedemptions) {
     return { usable: false, reason: "exhausted" };
+  }
+
+  // Il giorno si sa sempre: è oggi.
+  //
+  // `?? []` non è difensivismo inutile: una riga scritta prima che la colonna
+  // esistesse, o una lettura parziale, arriva qui senza quel campo — e una
+  // pagina che elenca coupon non deve andare in bianco per un valore mancante.
+  const giorniValidi = coupon.validWeekdays ?? [];
+  if (giorniValidi.length > 0 && !giorniValidi.includes(contesto.now.getDay())) {
+    return { usable: false, reason: "wrong_day" };
+  }
+
+  // La spesa minima si può giudicare solo con un conto davanti.
+  if (coupon.minSpendCents != null && contesto.conto && contesto.conto.totaleCents < coupon.minSpendCents) {
+    return { usable: false, reason: "below_min_spend" };
   }
 
   // Da qui in giù si parla del singolo cliente: senza sapere per chi, non c'è
@@ -293,6 +337,9 @@ export type CouponView = {
   validUntil: Date | null;
   maxRedemptions: number | null;
   maxPerGuest: number;
+  /** Le due condizioni, se ci sono: servono a leggerle senza aprire nulla. */
+  minSpendCents: number | null;
+  validWeekdays: number[];
   guestName: string | null;
   /** Le righe vere, non il contatore. */
   usi: number;
@@ -338,6 +385,8 @@ export async function listCoupons(
       validUntil: c.validUntil,
       maxRedemptions: c.maxRedemptions,
       maxPerGuest: c.maxPerGuest,
+      minSpendCents: c.minSpendCents,
+      validWeekdays: c.validWeekdays,
       guestName: c.Guest ? `${c.Guest.firstName}${c.Guest.lastName ? ` ${c.Guest.lastName}` : ""}` : null,
       usi,
       restanti: c.maxRedemptions != null ? Math.max(0, c.maxRedemptions - usi) : null,
@@ -413,10 +462,23 @@ export async function redeemCoupon(venueId: string, input: RedeemInput, opts: { 
           : Promise.resolve(0),
       ]);
 
+      // Il conto aperto di quella prenotazione, se c'è: senza, la spesa
+      // minima non si può giudicare e non si giudica.
+      const contoAperto = input.bookingId
+        ? await tx.order.findFirst({
+            where: { venueId, bookingId: input.bookingId, status: { in: ["RECEIVED", "PREPARING", "READY"] } },
+            select: { OrderItem: { select: { priceCents: true, quantity: true } } },
+          })
+        : null;
+      const totaleConto = contoAperto
+        ? contoAperto.OrderItem.reduce((n, r) => n + r.priceCents * r.quantity, 0)
+        : null;
+
       const valido = couponUsability(coupon, {
         now: new Date(),
         usiTotali,
         ospite: { guestId: input.guestId ?? null, usi: usiDelCliente },
+        ...(totaleConto != null ? { conto: { totaleCents: totaleConto } } : {}),
       });
       if (!valido.usable) throw new CouponError(valido.reason);
 

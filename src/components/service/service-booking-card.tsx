@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
+import { durataUmana } from "@/lib/durata";
 import { cn } from "@/lib/utils";
 import type { ServiceBooking } from "@/server/service";
 import { TablePickerDialog } from "@/components/service/table-picker-dialog";
@@ -144,15 +145,15 @@ export function ServiceBookingCard({
                 {" · "}
                 <span className={cn((booking.minutesToFree ?? 0) <= 0 && "text-accent")}>
                   {booking.minutesToFree > 0
-                    ? `libero fra ~${booking.minutesToFree} min`
-                    : `oltre di ${Math.abs(booking.minutesToFree)} min`}
+                    ? `libero fra ~${durataUmana(booking.minutesToFree)}`
+                    : `oltre di ${durataUmana(Math.abs(booking.minutesToFree))}`}
                 </span>
               </>
             )}
             {booking.lateBy > 0 && (
               <>
                 {" · "}
-                <span className="text-accent">in ritardo di {booking.lateBy} min</span>
+                <span className="text-accent">in ritardo di {durataUmana(booking.lateBy)}</span>
               </>
             )}
             {booking.status !== "SEATED" &&

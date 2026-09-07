@@ -28,10 +28,14 @@ import { readApiError } from "@/lib/api-client";
 export function LoyaltySettings({
   puntiPerEuro,
   valorePuntoCents,
+  premioPunti,
+  premioCosa,
   canManage,
 }: {
   puntiPerEuro: number | null;
   valorePuntoCents: number | null;
+  premioPunti: number | null;
+  premioCosa: string | null;
   canManage: boolean;
 }) {
   const router = useRouter();
@@ -40,6 +44,8 @@ export function LoyaltySettings({
   const [salvando, setSalvando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [salvato, setSalvato] = useState(false);
+  const [premio, setPremio] = useState(premioPunti != null ? String(premioPunti) : "");
+  const [cosa, setCosa] = useState(premioCosa ?? "");
 
   const puntiNum = Number(punti.replace(",", ".")) || 0;
   const valoreCents = Math.round((Number(valore.replace(",", ".")) || 0) * 100);
@@ -68,6 +74,8 @@ export function LoyaltySettings({
       body: JSON.stringify({
         puntiPerEuro: puntiNum > 0 ? Math.round(puntiNum) : null,
         valorePuntoCents: valoreCents > 0 ? valoreCents : null,
+        premioPunti: premio.trim() ? Number(premio) : null,
+        premioCosa: cosa.trim() || null,
       }),
     });
     setSalvando(false);
@@ -140,6 +148,51 @@ export function LoyaltySettings({
               Senza entrambi i numeri la raccolta punti resta spenta, e nessun cliente accumula niente. Sono due
               decisioni tue: quanto premi la fedeltà e quanto ti costa.
             </p>
+          )}
+
+          {/* Il traguardo. Uno sconto lineare è troppo piccolo per essere
+              notato: «ti mancano 40 punti alla cena omaggio» è la frase che
+              riporta le persone. Il premio lo decide il locale — non sappiamo
+              cosa può permettersi di regalare. */}
+          {attiva && (
+            <div className="rounded-md border border-border p-3">
+              <p className="text-sm font-medium">Un traguardo, se vuoi</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Facoltativo. Senza, i punti restano solo uno sconto.
+              </p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-[8rem_1fr]">
+                <div className="space-y-1.5">
+                  <Label htmlFor="l-premio">Punti</Label>
+                  <Input
+                    id="l-premio"
+                    inputMode="numeric"
+                    value={premio}
+                    onChange={(e) => setPremio(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="Es. 200"
+                    disabled={!canManage}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="l-cosa">Cosa si vince</Label>
+                  <Input
+                    id="l-cosa"
+                    value={cosa}
+                    onChange={(e) => setCosa(e.target.value)}
+                    placeholder="Es. una bottiglia della casa"
+                    disabled={!canManage}
+                  />
+                </div>
+              </div>
+              {premio.trim() && cosa.trim() && valoreCents > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Ci si arriva spendendo circa{" "}
+                  <strong className="tabular-nums">
+                    {Math.round(Number(premio) / (puntiNum || 1))} €
+                  </strong>
+                  , e il premio ti costa quello che vale «{cosa.trim()}».
+                </p>
+              )}
+            </div>
           )}
 
           {canManage && (

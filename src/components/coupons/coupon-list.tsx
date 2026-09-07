@@ -31,6 +31,17 @@ const CATEGORIA: Record<string, string> = {
  * da interpretare. Il codice si copia con un tocco, perché il gesto vero è
  * dettarlo o incollarlo in una campagna.
  */
+/** Una parola sola per lo stato, che è quello che entra in un'etichetta. */
+const ETICHETTA_STATO: Partial<Record<CouponView["stato"], string>> = {
+  paused: "In pausa",
+  archived: "Archiviato",
+  not_yet_valid: "Non ancora",
+  expired: "Scaduto",
+  exhausted: "Esaurito",
+  wrong_day: "Non oggi",
+  below_min_spend: "Sotto il minimo",
+};
+
 export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: boolean }) {
   const router = useRouter();
   const [nuovo, setNuovo] = useState(false);
@@ -97,7 +108,12 @@ export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: b
               <Card key={c.id} className="flex flex-col">
                 <CardHeader className="gap-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={attivo ? "success" : "neutral"}>{attivo ? "Valido" : "Non valido"}</Badge>
+                    {/* «Non valido» su un coupon che vale solo il martedì,
+                        letto di lunedì, sembra un difetto: non lo è, e la
+                        parola giusta è un'altra. */}
+                    <Badge tone={attivo ? "success" : "neutral"}>
+                      {attivo ? "Valido" : ETICHETTA_STATO[c.stato] ?? "Non valido"}
+                    </Badge>
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">
                       {CATEGORIA[c.category] ?? c.category}
                     </span>
@@ -127,6 +143,15 @@ export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: b
                     </li>
                     <li>
                       Massimo {c.maxPerGuest} {c.maxPerGuest === 1 ? "volta" : "volte"} per cliente
+                      {c.minSpendCents != null &&
+                        ` · da ${(c.minSpendCents / 100).toLocaleString("it-IT", {
+                          style: "currency",
+                          currency: "EUR",
+                        })} di conto`}
+                      {(c.validWeekdays ?? []).length > 0 &&
+                        ` · solo ${(c.validWeekdays ?? [])
+                          .map((g) => ["dom", "lun", "mar", "mer", "gio", "ven", "sab"][g])
+                          .join(", ")}`}
                     </li>
                     {c.validUntil && (
                       <li>

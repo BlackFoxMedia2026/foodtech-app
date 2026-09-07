@@ -297,3 +297,21 @@ describe("isolamento", () => {
     expect(s.counters.copertiPresenti).toBe(0);
   });
 });
+
+describe("in ritardo e mai arrivato sono due cose diverse", () => {
+  it("il numero in testa conta solo chi può ancora arrivare", async () => {
+    await svuota();
+    // Due in ritardo vero, tre che non si vedranno più.
+    await crea({ minutiDaAdesso: -40 });
+    await crea({ minutiDaAdesso: -90 });
+    await crea({ minutiDaAdesso: -300 });
+    await crea({ minutiDaAdesso: -420 });
+    await crea({ minutiDaAdesso: -600 });
+
+    const snap = await getServiceSnapshot(venueId);
+    expect(snap.counters.inRitardo).toBe(2);
+    expect(snap.counters.nonArrivate).toBe(3);
+    // E l'elenco «in ritardo» non contiene le tre di pranzo.
+    expect(snap.late).toHaveLength(2);
+  });
+});

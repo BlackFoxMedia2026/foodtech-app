@@ -71,6 +71,14 @@ model Venue {
   loyaltyPointsPerEuro   Int?
   /// Quanto vale un punto quando si riscatta, in centesimi. Nullo = spenta.
   loyaltyPointValueCents Int?
+  /// Il traguardo: quanti punti servono per il premio, e cos'è il premio.
+  ///
+  /// Uno sconto lineare («100 punti = 5 €») non fa tornare nessuno: è troppo
+  /// piccolo per essere notato. Un traguardo sì — «ti mancano 40 punti alla
+  /// cena omaggio» è la frase che riporta le persone. Nulli = nessun premio,
+  /// e i punti restano solo uno sconto.
+  loyaltyRewardPoints    Int?
+  loyaltyRewardLabel     String?               @db.VarChar(120)
   /// Spesa media per coperto, in centesimi, dichiarata dal locale.
   /// Serve per la stima degli incassi: prima veniva calcolata dalla media di
   /// Guest.totalSpend, un campo che nessuna parte del codice aggiorna — quindi
@@ -789,6 +797,16 @@ model Coupon {
   validUntil       DateTime?
   maxRedemptions   Int?
   maxPerGuest      Int                @default(1)
+  /// Spesa minima del conto perché il coupon valga, in centesimi.
+  ///
+  /// «Vale da 40 € in su» è la prima regola che un ristoratore chiede: senza,
+  /// uno sconto del 20% su un caffè è uno sconto che nessuno voleva fare.
+  minSpendCents    Int?
+  /// I giorni della settimana in cui vale (0 = domenica). Vuoto = tutti.
+  ///
+  /// «Solo il martedì» è il modo in cui un coupon riempie i giorni deboli
+  /// invece di regalare sconti nel weekend, che è già pieno.
+  validWeekdays    Int[]              @default([])
   guestId          String?
   segment          Json?
   redemptionCount  Int                @default(0)

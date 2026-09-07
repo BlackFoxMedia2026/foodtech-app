@@ -164,7 +164,14 @@ async function creaCamerieriDemo(venueId: string) {
 async function creaFedeltaDemo(venueId: string) {
   await db.venue.update({
     where: { id: venueId },
-    data: { loyaltyPointsPerEuro: 1, loyaltyPointValueCents: 5 },
+    data: {
+      loyaltyPointsPerEuro: 1,
+      loyaltyPointValueCents: 5,
+      // Un traguardo: si arriva a 200 punti spendendo 200 €, cioè in tre o
+      // quattro cene. Senza, i punti restano uno sconto che nessuno insegue.
+      loyaltyRewardPoints: 200,
+      loyaltyRewardLabel: "una bottiglia della casa",
+    },
   });
 
   const gia = await db.giftCard.count({ where: { venueId } });

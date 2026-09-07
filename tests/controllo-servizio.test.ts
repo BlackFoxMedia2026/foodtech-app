@@ -239,21 +239,39 @@ describe("turno oltre la capienza", () => {
     // i test girano con TZ=UTC di proposito, e usare getHours() qui creava un
     // turno spostato di due ore che non conteneva "adesso". Il motore usa il
     // fuso del ristorante, ed è giusto così.
+    // Orologio fissato a mezzogiorno, non «adesso»: eseguito alle 23:50, la
+    // fine del turno si schiacciava sulle 23:59 e la prenotazione di venti
+    // minuti dopo cadeva nel giorno seguente — il test passava di giorno e
+    // falliva la notte. La prova riguarda un turno pieno, non l'ora in cui gira.
     const adesso = new Date();
+    adesso.setHours(12, 0, 0, 0);
     const { weekday, minuteOfDay } = zonedDayAndMinute(adesso, "Europe/Rome");
     await db.shift.create({
       data: {
         venueId,
         name: "Prova",
         weekday,
-        startMinute: Math.max(0, minuteOfDay - 60),
-        endMinute: Math.min(24 * 60 - 1, minuteOfDay + 120),
+        startMinute: minuteOfDay - 60,
+        endMinute: minuteOfDay + 120,
         capacity: 4,
       },
     });
-    await prenota({ minutiDaAdesso: 20, partySize: 6, tableId: t6 });
+    await db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        partySize: 6,
+        startsAt: new Date(adesso.getTime() + 20 * 60_000),
+        durationMin: 105,
+        status: "CONFIRMED",
+        source: "PHONE",
+        tableId: t6,
+      },
+    });
 
-    const avviso = (await getServiceInsights(venueId)).find((a) => a.kind === "shift_over_capacity");
+    const avviso = (await getServiceInsights(venueId, { now: adesso })).find(
+      (a) => a.kind === "shift_over_capacity",
+    );
     expect(avviso).toBeDefined();
     // Può essere voluto — qualcuno ha forzato — e il testo lo riconosce.
     expect(avviso!.detail).toContain("Può essere voluto");
@@ -316,5 +334,65 @@ describe("ordine e quantità", () => {
     });
 
     expect(await getServiceInsights(venueId)).toEqual([]);
+  });
+});
+
+describe("il centro controllo non si autoaffoga", () => {
+  it("dice il tempo in ore, non in minuti illeggibili", async () => {
+    const { durataUmana } = await import("@/server/service-intelligence");
+    expect(durataUmana(35)).toBe("35 minuti");
+    expect(durataUmana(1)).toBe("1 minuto");
+    expect(durataUmana(60)).toBe("1 ora");
+    expect(durataUmana(90)).toBe("1 ora e mezza");
+    expect(durataUmana(142)).toBe("2 ore e 22");
+    // Il numero che ha fatto nascere questa correzione.
+    expect(durataUmana(577)).toBe("9 ore e 37");
+  });
+
+  it("raggruppa le prenotazioni mai arrivate invece di gridare otto volte", async () => {
+    await svuota();
+    // Otto prenotazioni di pranzo, lette a cena: nessuna è «in ritardo».
+    for (let i = 0; i < 8; i++) {
+      await prenota({ minutiDaAdesso: -(300 + i * 20), partySize: 2 });
+    }
+    // E una in ritardo vero, di mezz'ora: questa si recupera con una telefonata.
+    await prenota({ minutiDaAdesso: -30, partySize: 4 });
+
+    const insights = await getServiceInsights(venueId);
+    const ritardi = insights.filter((i) => i.kind === "no_show_risk");
+    const mancate = insights.filter((i) => i.kind === "missed_bookings");
+
+    // Un solo avviso per le otto mai arrivate…
+    expect(mancate).toHaveLength(1);
+    expect(mancate[0].title).toContain("8 prenotazioni");
+    expect(mancate[0].detail).toContain("16 coperti");
+    // …e il ritardo vero resta singolo e leggibile.
+    expect(ritardi).toHaveLength(1);
+    expect(ritardi[0].title).toContain("30 minuti");
+  });
+
+  it("mette per primo il ritardo più recente, non il più vecchio", async () => {
+    await svuota();
+    await prenota({ minutiDaAdesso: -120 });
+    await prenota({ minutiDaAdesso: -40 });
+
+    const insights = await getServiceInsights(venueId);
+    const ritardi = insights.filter((i) => i.kind === "no_show_risk");
+    expect(ritardi).toHaveLength(2);
+    // Su quello di quaranta minuti la telefonata funziona ancora.
+    expect(ritardi[0].urgenza).toBeLessThan(ritardi[1].urgenza);
+    expect(ritardi[0].title).toContain("40 minuti");
+  });
+
+  it("non chiama «ritardo» un'assenza di nove ore", async () => {
+    await svuota();
+    await prenota({ minutiDaAdesso: -577 });
+
+    const insights = await getServiceInsights(venueId);
+    expect(insights.filter((i) => i.kind === "no_show_risk")).toHaveLength(0);
+    const mancate = insights.find((i) => i.kind === "missed_bookings");
+    expect(mancate?.title).toContain("Una prenotazione");
+    // E non è urgente: nessuno sta più arrivando.
+    expect(mancate?.severity).not.toBe("warning");
   });
 });
