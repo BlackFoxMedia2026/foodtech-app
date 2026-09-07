@@ -14,7 +14,23 @@ export const dynamic = "force-dynamic";
  *
  * Gli allergeni si scrivono per esteso, non come sigle o simboli: un cliente
  * allergico non deve interpretare una legenda.
+ *
+ * Le categorie in cima restano attaccate allo schermo: su un telefono, «dove
+ * sono i dolci?» si risolve con un tocco invece che con dieci scorrimenti.
+ * Sono **collegamenti**, non un componente interattivo: funzionano prima che
+ * la pagina finisca di caricarsi, e chi non vede bene può usarli con la
+ * tastiera come qualunque altro link.
  */
+
+/** Un ancoraggio leggibile e stabile, dal nome della categoria. */
+function ancora(nome: string): string {
+  return `cat-${nome
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")}`;
+}
 export default async function MenuPubblicoPage({
   params,
   searchParams,
@@ -36,13 +52,36 @@ export default async function MenuPubblicoPage({
           <h1 className="text-display text-3xl">{menu.venueName}</h1>
         </header>
 
+        {menu.categorie.length > 1 && (
+          <nav
+            aria-label="Vai a una portata"
+            className="sticky top-0 -mx-4 border-b border-border bg-background/95 px-4 py-2 backdrop-blur"
+          >
+            <ul className="flex gap-2 overflow-x-auto pb-1">
+              {menu.categorie.map((c) => (
+                <li key={c.name}>
+                  <a
+                    href={`#${ancora(c.name)}`}
+                    className="inline-flex min-h-[36px] items-center whitespace-nowrap rounded-full border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-current/10"
+                  >
+                    {c.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+
         {menu.categorie.length === 0 ? (
           <p className="rounded-md border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
             Il menu non è ancora disponibile. Chiedi al personale.
           </p>
         ) : (
           menu.categorie.map((c) => (
-            <section key={c.name} className="space-y-3">
+            /* `scroll-mt` tiene il titolo sotto la barra appiccicata: senza,
+               toccare «Dolci» porta il titolo esattamente dove la barra lo
+               copre. */
+            <section key={c.name} id={ancora(c.name)} className="scroll-mt-16 space-y-3">
               <h2 className="text-display text-xl">{c.name}</h2>
               <ul className="divide-y divide-border">
                 {c.items.map((i) => (
