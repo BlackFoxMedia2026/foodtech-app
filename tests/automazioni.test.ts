@@ -91,6 +91,11 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.messageLog.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
+  // I coupon si accumulano fra le prove: senza questa pulizia una prova
+  // legge il codice creato dalla precedente e sembra che il messaggio sia
+  // sbagliato.
+  await db.couponRedemption.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
+  await db.coupon.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
   await db.booking.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
   await db.guest.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
   await db.backgroundJob.deleteMany({ where: { venueId: { in: [venueId, altroVenueId] } } });
@@ -405,5 +410,102 @@ describe("il lavoro pianificato", () => {
     const lavori = await db.backgroundJob.findMany({ where: { venueId, kind: "automation.run" } });
     expect(lavori).toHaveLength(1);
     expect(lavori[0].dedupeKey).toContain("2026-09-07");
+  });
+});
+
+describe("l'omaggio allegato a un'automazione", () => {
+  async function candidato(nome = "Regalata") {
+    return ospite(nome, { totalVisits: 3, lastVisitAt: piu(-61) });
+  }
+
+  it("nasce assente: un'automazione non regala niente se nessuno l'ha chiesto", async () => {
+    const viste = await listAutomations(venueId, ORA);
+    expect(viste.every((v) => v.coupon === null)).toBe(true);
+  });
+
+  it("ogni persona riceve un codice suo, intestato a lei e valido una volta", async () => {
+    const a = await candidato("Prima");
+    const b = await candidato("Seconda");
+    await updateAutomation(venueId, "non_torna", {
+      active: true,
+      giorni: 60,
+      coupon: { kind: "PERCENT", value: 20, giorniValidita: 30 },
+    });
+
+    const esito = await runAutomation(venueId, "non_torna", { now: ORA });
+    expect(esito.inCoda).toBe(2);
+
+    const coupon = await db.coupon.findMany({ where: { venueId }, orderBy: { createdAt: "asc" } });
+    expect(coupon).toHaveLength(2);
+    // Un codice condiviso si gira agli amici: questi sono due codici diversi,
+    // ognuno intestato a una persona e usabile una volta.
+    expect(coupon[0].code).not.toBe(coupon[1].code);
+    expect(coupon.map((c) => c.guestId).sort()).toEqual([a.id, b.id].sort());
+    expect(coupon.every((c) => c.maxRedemptions === 1 && c.maxPerGuest === 1)).toBe(true);
+    expect(coupon.every((c) => c.category === "WINBACK")).toBe(true);
+    expect(coupon.every((c) => c.validUntil && c.validUntil > ORA)).toBe(true);
+  });
+
+  it("il codice finisce dentro il messaggio", async () => {
+    await candidato();
+    await updateAutomation(venueId, "non_torna", {
+      active: true,
+      giorni: 60,
+      coupon: { kind: "FREE_ITEM", freeItem: "il dolce", giorniValidita: 15 },
+    });
+    await runAutomation(venueId, "non_torna", { now: ORA });
+
+    const g = await db.guest.findFirstOrThrow({ where: { venueId, firstName: "Regalata" } });
+    const coupon = await db.coupon.findFirstOrThrow({ where: { venueId, guestId: g.id } });
+    const lavoro = await db.backgroundJob.findFirstOrThrow({ where: { venueId, kind: "message.send" } });
+    const payload = lavoro.payload as { body: string };
+    expect(payload.body).toContain(coupon.code);
+    expect(payload.body).toContain("il dolce in omaggio");
+    expect(payload.body).toContain("solo per te");
+  });
+
+  it("senza omaggio il messaggio non contiene nessun codice", async () => {
+    await candidato();
+    await updateAutomation(venueId, "non_torna", { active: true, giorni: 60, coupon: null });
+    await runAutomation(venueId, "non_torna", { now: ORA });
+
+    expect(await db.coupon.count({ where: { venueId } })).toBe(0);
+    const lavoro = await db.backgroundJob.findFirstOrThrow({ where: { venueId, kind: "message.send" } });
+    expect((lavoro.payload as { body: string }).body).not.toContain("solo per te");
+  });
+
+  it("togliere l'omaggio è un gesto possibile", async () => {
+    await updateAutomation(venueId, "non_torna", {
+      coupon: { kind: "PERCENT", value: 20, giorniValidita: 30 },
+    });
+    let vista = (await listAutomations(venueId, ORA)).find((a) => a.key === "non_torna")!;
+    expect(vista.coupon?.value).toBe(20);
+
+    // Assente vuol dire «non l'ho toccato», `null` vuol dire «toglilo».
+    await updateAutomation(venueId, "non_torna", { giorni: 70 });
+    vista = (await listAutomations(venueId, ORA)).find((a) => a.key === "non_torna")!;
+    expect(vista.coupon?.value).toBe(20);
+
+    await updateAutomation(venueId, "non_torna", { coupon: null });
+    vista = (await listAutomations(venueId, ORA)).find((a) => a.key === "non_torna")!;
+    expect(vista.coupon).toBeNull();
+  });
+
+  it("una seconda esecuzione non regala un secondo coupon alla stessa persona", async () => {
+    const g = await candidato();
+    await updateAutomation(venueId, "non_torna", {
+      active: true,
+      giorni: 60,
+      coupon: { kind: "PERCENT", value: 20, giorniValidita: 30 },
+    });
+    await runAutomation(venueId, "non_torna", { now: ORA });
+    expect(await db.coupon.count({ where: { venueId, guestId: g.id } })).toBe(1);
+
+    // Il divieto di ripetizione dei messaggi già la ferma, ma anche forzando
+    // il caso il coupon esistente si riusa invece di raddoppiare lo sconto.
+    await db.messageLog.deleteMany({ where: { venueId } });
+    await db.backgroundJob.deleteMany({ where: { venueId } });
+    await runAutomation(venueId, "non_torna", { now: ORA });
+    expect(await db.coupon.count({ where: { venueId, guestId: g.id } })).toBe(1);
   });
 });

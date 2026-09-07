@@ -184,6 +184,28 @@ d'attesa e il walk-in, che stanno accomodando qualcuno adesso — passa da
 Stessa forma di `skipAvailabilityCheck`, che ora richiede anche un motivo
 scritto (`forceReason`) e finisce nel registro come azione distinta.
 
+### Un regalo automatico è intestato, non condiviso
+
+Quando un'automazione allega un omaggio, per ogni destinatario nasce un coupon
+**suo**: `Coupon.guestId` valorizzato, un solo uso, con una scadenza. La
+scelta fra codice personale e codice unico per tutti non è una preferenza:
+un codice condiviso dentro un'email di compleanno viene girato agli amici, e
+il ristorante si ritrova a pagare una promozione che non ha deciso. Il costo è
+una riga di coupon per destinatario — cinquanta compleanni al mese fanno
+seicento righe l'anno, che non sono un problema.
+
+Due conseguenze pratiche:
+
+- **il coupon si prepara prima del messaggio.** Se non riesce, quella persona
+  si salta: un'email che promette un regalo con un codice che non esiste è
+  peggio di nessuna email;
+- **un coupon già attivo e non usato si riusa** invece di crearne un secondo.
+  Il divieto di ripetizione dei messaggi rende il caso raro, ma «raro» non è
+  «impossibile» e due coupon per lo stesso regalo sono uno sconto doppio.
+
+Nell'invio di prova il codice è dichiaratamente finto (`CODICE-DI-PROVA`):
+creare un coupon vero per una prova vorrebbe dire regalare qualcosa a nessuno.
+
 ### Un coupon non si usa più volte di quelle previste
 
 `src/server/coupons.ts`.

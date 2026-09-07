@@ -5,7 +5,7 @@ import { auditActor } from "@/server/audit";
 import { CouponError, MOTIVO_NON_VALIDO, redeemCoupon } from "@/server/coupons";
 
 const Body = z.object({
-  code: z.string().trim().min(1, "Scrivi il codice del coupon").max(24),
+  code: z.string().trim().min(1, "Scrivi il codice del coupon").max(24, "Questo codice è troppo lungo per essere un coupon"),
   guestId: z.string().optional().nullable(),
   bookingId: z.string().optional().nullable(),
   amountCents: z.coerce.number().int().min(0).max(10_000_00).optional().nullable(),
