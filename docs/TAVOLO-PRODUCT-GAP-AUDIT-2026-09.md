@@ -168,7 +168,7 @@ Presenti e verificati: disponibilità calcolata dal server per sala e per tavolo
 
 Fatti subito dopo questo audit: **booking window e cutoff** configurabili (con la distinzione che conta: valgono per il pubblico, non per chi risponde al telefono).
 
-Restano assenti: **overbooking controllato**, **proposta automatica di alternative** al cliente, **flusso gruppi grandi**, **riconferma** (il promemoria chiede conferma ma non c'è una politica di riconferma obbligatoria con scadenza), **personalizzazione visiva del widget**.
+Restano assenti: **overbooking controllato**, **proposta automatica di alternative** al cliente, **riconferma** (il promemoria chiede conferma ma non c'è una politica di riconferma obbligatoria con scadenza), **personalizzazione visiva del widget**.
 
 ---
 
