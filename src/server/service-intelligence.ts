@@ -86,6 +86,9 @@ const TOLLERANZA_ORARIO_MIN = 30;
  */
 const ATTESA_ACCETTABILE_MIN = 90;
 
+/** Quante volte al massimo si verifica un posto liberato, per pagina. */
+const MAX_VERIFICHE_POSTO = 5;
+
 /** Da quanti posti in eccesso un tavolo è «sprecato», se qualcuno aspetta. */
 const OVERSIZED_SPARE_SEATS = 3;
 
@@ -401,7 +404,13 @@ export async function getServiceInsights(
   // l'ora deve avere senso per chi aspetta, il posto deve essere **ancora**
   // libero davvero (nel frattempo può averlo preso qualcun altro), e si dice
   // una cosa sola: la disdetta più vicina, non l'elenco delle disdette.
+  // Quante volte al massimo si chiede al database «c'è ancora posto?»: ogni
+  // domanda costa una lettura, e venti disdette in una serata storta
+  // renderebbero lenta la pagina che deve aprirsi in fretta.
+  let verifiche = 0;
+
   for (const disdetta of disdette) {
+    if (verifiche >= MAX_VERIFICHE_POSTO) break;
     const candidato = gruppiInAttesa.find((e) => {
       if (e.partySize > disdetta.partySize) return false;
       if (e.desiredAt) {
@@ -414,6 +423,7 @@ export async function getServiceInsights(
     if (!candidato) continue;
 
     // La domanda vera non è «c'era una disdetta», è «c'è posto adesso».
+    verifiche += 1;
     const esito = await checkAvailability(venueId, {
       startsAt: disdetta.startsAt,
       durationMin: disdetta.durationMin,

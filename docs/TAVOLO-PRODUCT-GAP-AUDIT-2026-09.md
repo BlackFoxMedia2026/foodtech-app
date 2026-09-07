@@ -168,7 +168,9 @@ Presenti e verificati: disponibilità calcolata dal server per sala e per tavolo
 
 Fatti subito dopo questo audit: **booking window e cutoff** configurabili (con la distinzione che conta: valgono per il pubblico, non per chi risponde al telefono).
 
-Restano assenti: **overbooking controllato**, **riconferma** (il promemoria chiede conferma ma non c'è una politica di riconferma obbligatoria con scadenza), **personalizzazione visiva del widget**.
+Restano assenti: **overbooking controllato** e **riconferma obbligatoria con scadenza**. Quest'ultima resta ferma per un motivo dichiarato: il promemoria che la chiederebbe non parte finché manca la chiave email, e una riconferma che nessuno può dare sarebbe una funzione che non fa niente.
+
+Correzione a questo audit `[CODE]`: la **personalizzazione visiva del widget** era stata segnata come assente, ma il logo del locale e il suo colore d'accento sono già usati dal widget (`brandLogoUrl`, `brandAccent`). Quello che manca davvero è più fine — carattere tipografico, immagine di copertina, colore anche sugli orari scelti — e vale molto meno di come era stato scritto.
 
 ---
 
