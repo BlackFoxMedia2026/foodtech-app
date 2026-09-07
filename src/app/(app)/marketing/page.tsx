@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Gift, Megaphone, QrCode as QrCodeIcon, Repeat, Ticket } from "lucide-react";
+import { ChevronRight, Gift, Megaphone, QrCode as QrCodeIcon, Repeat, Ticket, Wifi } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,14 @@ const SECTIONS = [
     title: "Gift card",
     description:
       "Cene pagate in anticipo: si vendono al bancone e si scalano dal conto al tavolo, anche in più volte.",
+  },
+  {
+    href: "/marketing/wifi",
+    icon: Wifi,
+    eyebrow: "Wi-Fi",
+    title: "Wi-Fi",
+    description:
+      "Chi si collega lascia un contatto e riceve la password. Con lo sconto per farlo tornare, se lo vuoi.",
   },
   {
     href: "/marketing/qr-codes",
