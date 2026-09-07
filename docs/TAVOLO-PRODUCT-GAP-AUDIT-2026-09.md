@@ -258,7 +258,7 @@ Rispetto a Pienissimo `[COMPETITOR SOURCE]`, che dichiara SMS + email + WhatsApp
 
 **Stato: C, con una filosofia che va difesa.** `[CODE]`
 
-Tre automazioni: compleanno, chi non torna da un po', invito a tornare dopo la prima visita. Nascono spente, mostrano **quante persone toccherebbero e chi, prima** di essere accese, possono allegare un omaggio personale (codice intestato, valido una volta, con scadenza).
+Quattro automazioni: compleanno, chi non torna da un po', invito a tornare dopo la prima visita e — aggiunta subito dopo questo audit — **gift card ferma**. Nascono spente, mostrano **quante persone toccherebbero e chi, prima** di essere accese, possono allegare un omaggio personale (codice intestato, valido una volta, con scadenza).
 
 Valutazione delle ricette proposte dal brief. Colonne: impatto, complessità, dati necessari, canale, misurabilità.
 
@@ -268,7 +268,7 @@ Valutazione delle ricette proposte dal brief. Colonne: impatto, complessità, da
 | Inattivo 30/60/90 | alto | S | ci sono | email | sì | ✅ fatta a una soglia; **le tre soglie sono una scelta del locale**, non tre automazioni |
 | Prima visita → seconda | alto | S | ci sono | email | sì | ✅ **già fatta** |
 | Punti in scadenza | medio | M | **mancano**: i punti non scadono per scelta | email | sì | ⛔ incoerente con la decisione presa sui punti |
-| Gift card inutilizzata | **alto** | S | ci sono `[CODE]` | email | sì | ⭐ **la più forte fra le nuove**: è denaro già incassato che torna a tavola |
+| Gift card inutilizzata | **alto** | S | ci sono `[CODE]` | email | sì | ✅ **fatta**: era la più forte fra le nuove — denaro già incassato che torna a tavola |
 | NPS detrattore | alto | S | ci sono | — | sì | ⛔ **scelta esplicita: risponde una persona**. Da mantenere |
 | NPS promotore → recensione | **alto** | M | ci sono; serve il ponte alle piattaforme | email | sì | ⭐ vedi *Reputation* |
 | Giorno debole | alto | **L** | serve occupazione prevista + segmento compatibile | email | sì | ⭐ candidata forte, ma è **una campagna assistita**, non un'automazione silenziosa |
@@ -276,7 +276,7 @@ Valutazione delle ricette proposte dal brief. Colonne: impatto, complessità, da
 | Disdetta → waitlist | **alto** | M | ci sono | in-app | sì | ⭐ **operativa, non marketing**: il tavolo liberato va offerto subito |
 | Anniversario, alta frequenza, alto spendente, VIP, cliente perso | medio | S/M | ci sono | email | sì | 🟡 buone, ma sono **varianti di segmento** della stessa automazione: non moltiplicare il catalogo |
 
-`[INFERENCE]` Il catalogo chiuso resta la scelta giusta. Le uniche due da aggiungere davvero sono **gift card inutilizzata** e **promotore → recensione**; la terza candidata (**disdetta → waitlist**) non è marketing ma servizio, e va nel centro controllo.
+`[INFERENCE]` Il catalogo chiuso resta la scelta giusta. Le uniche due da aggiungere davvero erano **gift card inutilizzata** (fatta) e **promotore → recensione**; la terza candidata (**disdetta → waitlist**) non è marketing ma servizio, e va nel centro controllo.
 
 ---
 

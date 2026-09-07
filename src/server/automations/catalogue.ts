@@ -8,7 +8,7 @@ import { TAG_RULES } from "@/server/guest-intelligence";
  * Un editor «se questo allora quello» sembra più potente, e in un gestionale
  * per ristoranti non viene usato: chi apre alle 19 non ha il tempo di
  * progettare un diagramma, e una regola scritta di fretta scrive a tutti la
- * cosa sbagliata. Tre automazioni che partono davvero valgono più di un
+ * cosa sbagliata. Quattro automazioni che partono davvero valgono più di un
  * editor che fa tutto e resta vuoto.
  *
  * Ogni automazione qui dentro ha tre cose che la rendono onesta:
@@ -23,13 +23,13 @@ import { TAG_RULES } from "@/server/guest-intelligence";
  * - **un solo numero regolabile**, quello che conta. Il resto sono decisioni
  *   già prese, e sono scritte qui.
  *
- * Cosa **non** c'è, e perché: automazioni su coupon, Wi-Fi e ordini (non
- * esistono quei dati), e la risposta automatica a un voto basso — a chi è
- * uscito insoddisfatto deve scrivere una persona, e la notifica immediata c'è
- * già (vedi server/surveys.ts).
+ * Cosa **non** c'è, e perché: automazioni su coupon e Wi-Fi (sono canali di
+ * ingresso, non momenti in cui scrivere), e la risposta automatica a un voto
+ * basso — a chi è uscito insoddisfatto deve scrivere una persona, e la
+ * notifica immediata c'è già (vedi server/surveys.ts).
  */
 
-export const AUTOMATION_KEYS = ["compleanno", "non_torna", "invito_ritorno"] as const;
+export const AUTOMATION_KEYS = ["compleanno", "non_torna", "invito_ritorno", "gift_card_ferma"] as const;
 export type AutomationKey = (typeof AUTOMATION_KEYS)[number];
 
 /**
@@ -99,7 +99,7 @@ export type AutomationDefinition = {
   /** Ogni quanti giorni la stessa persona può ricevere questa automazione. */
   cooldownDays: number;
   /** La categoria con cui nasce il coupon di questa automazione. */
-  couponCategory: "BIRTHDAY" | "WINBACK" | "NEW_CUSTOMER";
+  couponCategory: "BIRTHDAY" | "WINBACK" | "NEW_CUSTOMER" | "GENERIC";
   audience(venueId: string, giorni: number, now: Date): Promise<AutomationRecipient[]>;
 };
 
@@ -297,6 +297,90 @@ export const AUTOMATIONS: Record<AutomationKey, AutomationDefinition> = {
           firstName: b.guest.firstName,
           email: b.guest.email,
           reason: `prima visita ${giorniFa(now, giorniDiCalendario(b.closedAt!, now))}`,
+        });
+      }
+      return destinatari;
+    },
+  },
+
+  /**
+   * La gift card ferma.
+   *
+   * È l'automazione con il ritorno più alto e il costo più basso di tutte:
+   * quel denaro **è già stato incassato**, la cena no. Ricordarlo non è una
+   * promozione, è dire a qualcuno che ha un credito che si è dimenticato.
+   *
+   * Si scrive solo a chi il locale conosce già come cliente (stessa email) e
+   * ha dato il consenso: una gift card comprata da uno sconosciuto per un
+   * altro sconosciuto non ci autorizza a scrivere a nessuno dei due.
+   */
+  gift_card_ferma: {
+    key: "gift_card_ferma",
+    trigger: "CUSTOM",
+    name: "Gift card ferma",
+    promise: "Ricorda a chi ha una gift card non ancora usata che ha un credito da spendere.",
+    why: "È l'unico messaggio che non chiede niente: quei soldi sono già stati incassati, e la cena deve ancora essere servita. Chi la usa porta quasi sempre qualcuno con sé.",
+    knob: {
+      label: "Dopo quanti giorni dall'emissione",
+      hint: "Trenta giorni: il tempo perché un regalo smetta di essere una sorpresa e cominci a essere dimenticato.",
+      min: 7,
+      max: 365,
+      default: 30,
+    },
+    defaults: {
+      subject: "Hai ancora un tavolo che ti aspetta",
+      intro:
+        "Ti hanno regalato una cena da noi e non l'hai ancora usata: il credito è sempre lì. Dicci quando ti fa comodo e ti teniamo il posto.",
+    },
+    cooldownDays: 90,
+    // Nasce senza omaggio, come le altre, e qui ha una ragione in più: chi ha
+    // già un credito non ha bisogno di uno sconto, e regalarglielo sopra
+    // svaluta la gift card che ha in mano. Se il locale lo allega lo stesso,
+    // il coupon nasce generico: non è un compleanno né un recupero.
+    couponCategory: "GENERIC",
+    async audience(venueId, giorni, now) {
+      const soglia = piuGiorni(now, -giorni);
+
+      const carte = await db.giftCard.findMany({
+        where: {
+          venueId,
+          status: "ACTIVE",
+          recipientEmail: { not: null },
+          createdAt: { lte: soglia },
+          // Mai usata: una carta già intaccata non è dimenticata.
+          GiftCardRedemption: { none: {} },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+        select: { recipientEmail: true, initialCents: true, createdAt: true },
+        orderBy: { createdAt: "asc" },
+      });
+      if (carte.length === 0) return [];
+
+      // Solo chi il locale conosce già e ci ha dato il consenso.
+      const ospiti = await db.guest.findMany({
+        where: {
+          venueId,
+          ...RAGGIUNGIBILE,
+          email: { in: carte.map((c) => c.recipientEmail!.toLowerCase()), mode: "insensitive" },
+        },
+        select: SELEZIONE_OSPITE,
+      });
+      const perEmail = new Map(ospiti.map((g) => [g.email!.toLowerCase(), g]));
+
+      const visti = new Set<string>();
+      const destinatari: AutomationRecipient[] = [];
+      for (const c of carte) {
+        const g = perEmail.get(c.recipientEmail!.toLowerCase());
+        if (!g || visti.has(g.id)) continue;
+        visti.add(g.id);
+        destinatari.push({
+          guestId: g.id,
+          firstName: g.firstName,
+          email: g.email!,
+          reason: `gift card da ${(c.initialCents / 100).toFixed(2).replace(".", ",")} € mai usata, ${giorniFa(
+            now,
+            giorniDiCalendario(c.createdAt, now),
+          )}`,
         });
       }
       return destinatari;

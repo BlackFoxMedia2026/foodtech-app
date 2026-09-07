@@ -137,7 +137,9 @@ costavano poco e valevano molto.
 - [x] **Marketing con i numeri** invece di sole descrizioni
 - [x] **Coupon con spesa minima e giorni**: le due condizioni che un ristoratore chiede per prime
 - [x] **Un traguardo nella raccolta punti**: «mancano 40 punti per una bottiglia della casa»
-- [ ] Restano dalla lista UX: dimensione del tavolo per numero di posti sulla mappa, tabella prenotazioni su telefono, ricerca e filtri nel menu con 100+ piatti, scheletri di caricamento, navigazione per categorie nel menu pubblico
+- [x] **La gift card ferma**: la quarta automazione. Denaro già incassato e cena mai servita: passati i giorni scelti dal locale, chi ha una carta mai toccata riceve il promemoria del credito. Scrive **solo a chi il locale conosce già** — l'indirizzo della carta deve corrispondere a un cliente in archivio con il consenso: una carta comprata da uno sconosciuto per un altro sconosciuto non autorizza nessuna email
+      → nasce senza omaggio, e per questa più che per le altre: chi ha già un credito non ha bisogno di uno sconto, e regalarglielo sopra svaluta la carta che ha in mano
+- [ ] Restano dalla lista UX: dimensione del tavolo per numero di posti sulla mappa, ricerca e filtri nel menu con 100+ piatti, scheletri di caricamento, navigazione per categorie nel menu pubblico
 
 ## Phase 7 — Enterprise
 

@@ -130,7 +130,9 @@ export function GiftCardDialog({ open, onOpenChange }: { open: boolean; onOpenCh
               placeholder="Facoltativa"
             />
             <p className="text-xs text-tertiary-foreground">
-              La segniamo per averla: l&apos;invio automatico della gift card per email non è attivo.
+              Se è l&apos;indirizzo di un cliente che già conosciamo, l&apos;automazione «gift card ferma» potrà
+              ricordargli il credito quando resta lì troppo a lungo. L&apos;invio della gift card per email non è
+              attivo.
             </p>
           </div>
 
