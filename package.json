@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && npm run db:deploy-safe && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -17,7 +17,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:refresh-guests": "tsx scripts/refresh-guest-stats.ts",
     "db:studio": "prisma studio",
-    "check:availability": "tsx scripts/check-availability-rules.ts"
+    "check:availability": "tsx scripts/check-availability-rules.ts",
+    "db:deploy-safe": "tsx scripts/migrate-safe.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
