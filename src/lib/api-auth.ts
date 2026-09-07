@@ -93,6 +93,21 @@ export function apiErrorResponse(err: unknown) {
     return apiError(422, "validation_failed", "Alcuni campi non sono validi.", err.flatten());
   }
 
+  // Gli errori di dominio portano un codice: qui diventa lo status giusto,
+  // senza che questo file debba conoscere i moduli che li sollevano.
+  const code = err instanceof Error && "code" in err ? String((err as { code?: unknown }).code) : "";
+  const perCodice: Record<string, number> = {
+    not_found: 404,
+    no_table: 404,
+    invalid_transition: 409,
+    already_closed: 409,
+    conflict: 409,
+  };
+  if (code && perCodice[code]) {
+    return apiError(perCodice[code], code, err instanceof Error ? err.message : "Operazione non possibile.",
+      "detail" in (err as object) ? (err as { detail?: unknown }).detail : undefined);
+  }
+
   const message = err instanceof Error ? err.message : "";
 
   if (message === "not_found") {

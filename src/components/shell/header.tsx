@@ -3,15 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  CalendarRange,
-  UserRound,
-  Megaphone,
-  Sparkles,
-  CreditCard,
-  LineChart,
-} from "lucide-react";
+import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Sparkles, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 import { Agent } from "@/components/agent/agent";
@@ -31,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/overview", label: "Panoramica", icon: LayoutDashboard },
   { href: "/bookings", label: "Prenotazioni", icon: CalendarRange },
   { href: "/floor", label: "Sala", icon: DiningTableIcon },
+  { href: "/waitlist", label: "Attesa", icon: ListOrdered },
   { href: "/waiters", label: "Camerieri", icon: UserRound },
   { href: "/guests", label: "Ospiti", icon: TuxedoGuestIcon },
   { href: "/experiences", label: "Esperienze", icon: Sparkles },

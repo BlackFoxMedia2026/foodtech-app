@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { BookingStatus } from "@prisma/client";
 import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
@@ -93,7 +94,21 @@ function determineBookingStatus(source: string): "CONFIRMED" | "PENDING" {
  * (tavolo condiviso, gruppo sistemato a mano). Non è raggiungibile dai canali pubblici:
  * va passato esplicitamente da codice server.
  */
-export type BookingWriteOptions = { skipAvailabilityCheck?: boolean; actor?: AuditActor };
+export type BookingWriteOptions = {
+  skipAvailabilityCheck?: boolean;
+  actor?: AuditActor;
+  /**
+   * Stato iniziale imposto da chi chiama, **solo da codice server**.
+   *
+   * Il campo `status` di `BookingInput` non viene usato in creazione di
+   * proposito: lo stato dipende dal canale (vedi determineBookingStatus), e
+   * accettarlo dal corpo della richiesta permetterebbe a una prenotazione dal
+   * widget pubblico di dichiararsi già confermata. Chi accomoda qualcuno dalla
+   * lista d'attesa, invece, sa che quella persona è seduta adesso: passa da
+   * qui, che non è raggiungibile da nessun canale pubblico.
+   */
+  status?: BookingStatus;
+};
 
 export async function createBooking(venueId: string, raw: unknown, opts: BookingWriteOptions = {}) {
   const data = BookingInput.parse(raw);
@@ -135,7 +150,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
     }
   }
 
-  const status = determineBookingStatus(data.source);
+  const status = opts.status ?? determineBookingStatus(data.source);
 
   const booking = await db.booking.create({
     data: {
@@ -151,6 +166,10 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       notes: data.notes ?? null,
       internalNotes: data.internalNotes ?? null,
       depositCents: data.depositCents,
+      // Se nasce già arrivata o seduta, l'orologio parte adesso: senza questi
+      // istanti la Sala non saprebbe da quanto quel tavolo è occupato.
+      arrivedAt: status === "ARRIVED" || status === "SEATED" ? new Date() : null,
+      seatedAt: status === "SEATED" ? new Date() : null,
     },
     include: { guest: true, table: true, venue: true },
   });

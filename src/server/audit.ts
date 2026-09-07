@@ -40,6 +40,12 @@ export type AuditAction =
   | "contract.delete"
   | "venue.brand_update"
   | "venue.service_mode_update"
+  | "waitlist.add"
+  | "waitlist.update"
+  | "waitlist.notify"
+  | "waitlist.confirm"
+  | "waitlist.close"
+  | "waitlist.seat"
   | "campaign.send"
   | "payment.refund";
 

@@ -184,6 +184,7 @@ model Room {
   roomLayout        RoomLayout?
 
   @@index([venueId, ordering])
+  waitlistPreferences WaitlistEntry[]
 }
 
 // Structured "Crea la tua sala" builder layout — additive/optional alongside
@@ -294,6 +295,7 @@ model Guest {
   @@index([venueId, email])
   @@index([venueId, phone])
   @@index([venueId, lastName])
+  waitlistEntries  WaitlistEntry[]
 }
 
 model Booking {
@@ -1394,6 +1396,12 @@ model WaitlistEntry {
   email              String?
   partySize          Int
   expectedWaitMin    Int            @default(20)
+  /// Orario a cui l'ospite vorrebbe sedersi. Nullo = il prima possibile.
+  desiredAt          DateTime?
+  /// Quanti minuti oltre desiredAt è disposto ad aspettare.
+  flexibilityMin     Int            @default(0)
+  /// Preferenza di sala, quando l'ospite la esprime.
+  preferredRoomId    String?
   status             WaitlistStatus @default(WAITING)
   notifiedAt         DateTime?
   seatedAt           DateTime?
@@ -1409,6 +1417,8 @@ model WaitlistEntry {
   offerSentVia       String?        @db.VarChar(20)
   offerToken         String?        @unique
   Venue              Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest              Guest?         @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  preferredRoom      Room?          @relation(fields: [preferredRoomId], references: [id], onDelete: SetNull)
 
   @@index([venueId, status, createdAt])
 }
@@ -1910,6 +1920,7 @@ enum WaitlistStatus {
   CONFIRMED
   EXPIRED
   DECLINED
+  LEFT
 }
 
 // --- Agente AI (in-app assistant, distinct from the guest-facing
