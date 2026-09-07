@@ -82,6 +82,29 @@ describe("cos'è una visita", () => {
     expect(p.cancellations).toBe(1);
     expect(p.noShows).toBe(1);
     expect(Math.round(p.noShowRate * 100)).toBe(33);
+    expect(p.lastNoShowAt).toBe(giorniPrima(10).toISOString());
+  });
+
+  it("dell'assenza si tiene la data più recente, non la prima", () => {
+    // Due assenze di due anni fa non sono lo stesso cliente di due assenze in
+    // un mese, e una percentuale da sola non distingue i due casi.
+    const p = computeGuestProfile(
+      OSPITE,
+      [
+        pren({ startsAt: giorniPrima(400), status: "NO_SHOW" }),
+        pren({ startsAt: giorniPrima(12), status: "NO_SHOW" }),
+      ],
+      { now: ORA },
+    );
+    expect(p.noShows).toBe(2);
+    expect(p.lastNoShowAt).toBe(giorniPrima(12).toISOString());
+  });
+
+  it("chi non è mai mancato non ha una data da mostrare", () => {
+    const p = computeGuestProfile(OSPITE, [pren({ startsAt: giorniPrima(5), status: "COMPLETED" })], {
+      now: ORA,
+    });
+    expect(p.lastNoShowAt).toBeNull();
   });
 
   it("senza prenotazioni non inventa niente", () => {

@@ -91,10 +91,17 @@ export function GuestProfilePanel({
             nota={`${p.cancellations} su ${p.totalBookings}`}
             allarme={p.cancellationRate >= 0.3 && p.totalBookings >= 3}
           />
+          {/* Non un punteggio di affidabilità: i fatti, con la data. «2 su 11,
+              l'ultima il 4 agosto» dice a chi legge se è un cliente da
+              richiamare o una cosa vecchia — un 18% da solo non lo dice. */}
           <Dato
             etichetta="Assenze"
             valore={`${Math.round(p.noShowRate * 100)}%`}
-            nota={`${p.noShows} su ${p.totalBookings}`}
+            nota={
+              p.noShows > 0 && p.lastNoShowAt
+                ? `${p.noShows} su ${p.totalBookings} · l'ultima il ${formatDate(new Date(p.lastNoShowAt))}`
+                : `${p.noShows} su ${p.totalBookings}`
+            }
             allarme={p.noShows >= 2}
           />
         </CardContent>

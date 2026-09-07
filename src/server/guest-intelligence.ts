@@ -81,6 +81,8 @@ export type GuestProfile = {
   totalBookings: number;
   cancellations: number;
   noShows: number;
+  /** L'ultima volta che non si è presentato: nulla se non è mai successo. */
+  lastNoShowAt: string | null;
   cancellationRate: number;
   noShowRate: number;
   preferredWeekday: { weekday: number; label: string; share: number } | null;
@@ -161,7 +163,15 @@ export function computeGuestProfile(
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
   const cancellate = bookings.filter((b) => b.status === "CANCELLED").length;
-  const assenze = bookings.filter((b) => b.status === "NO_SHOW").length;
+  const noShow = bookings.filter((b) => b.status === "NO_SHOW");
+  const assenze = noShow.length;
+  // **Quando** è successo conta quanto quante volte: due assenze di due anni
+  // fa non sono lo stesso cliente di due assenze in un mese, e una percentuale
+  // da sola non distingue i due casi.
+  const ultimaAssenza = noShow.reduce<Date | null>(
+    (piuRecente, b) => (!piuRecente || b.startsAt > piuRecente ? b.startsAt : piuRecente),
+    null,
+  );
 
   const prima = visite[0]?.startsAt ?? null;
   const ultima = visite.at(-1)?.startsAt ?? null;
@@ -218,6 +228,7 @@ export function computeGuestProfile(
     totalBookings: bookings.length,
     cancellations: cancellate,
     noShows: assenze,
+    lastNoShowAt: ultimaAssenza?.toISOString() ?? null,
     cancellationRate: bookings.length ? cancellate / bookings.length : 0,
     noShowRate: bookings.length ? assenze / bookings.length : 0,
     preferredWeekday:

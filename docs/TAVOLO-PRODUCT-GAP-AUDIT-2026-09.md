@@ -604,7 +604,7 @@ Dieci cose che nascono **dall'unione** dei pezzi che Tavolo ha già, e che nessu
 7. **Il promotore che diventa recensione.** Chi ha dato 9-10 riceve l'invito a recensire; chi ha dato meno riceve una persona. **M**.
 8. **Disdetta → offerta immediata alla waitlist.** Il tavolo liberato all'ultimo è ricavo perso: oggi nessuno lo riempie automaticamente. **M**.
 9. **La scheda cliente al telefono che squilla.** Solo caller ID, nessuna AI: metà del valore di un centralino intelligente a un decimo del costo. **M**.
-10. **L'affidabilità raccontata, non punteggiata.** Non «62/100», ma «3 assenze su 11, l'ultima il 4 agosto»: coerente con la regola della casa, e più utile di un numero. **S**.
+10. **L'affidabilità raccontata, non punteggiata.** ✅ **Fatta.** Non «62/100», ma «2 su 12, l'ultima il 5 settembre»: sulla scheda cliente e nel centro controllo, dove il ritardo di chi ha già mancato vale una telefonata.
 
 ---
 
