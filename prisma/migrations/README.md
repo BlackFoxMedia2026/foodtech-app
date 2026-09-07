@@ -125,3 +125,13 @@ punti, fotografato quando si usa — e due indici su `orderId`, per la domanda
 
 Tutte additive: tre colonne che nascono vuote e due indici. Passano il freno
 delle anteprime senza eccezioni.
+
+## Il portale Wi-Fi (7 settembre)
+
+`20260907220000_portale_wifi` aggiunge a `Venue` il nome della rete, la
+password e l'indirizzo a cui rimandare dopo. Additiva: tre colonne che nascono
+vuote.
+
+La password sta in chiaro. È la password della **rete ospiti** — quella che si
+dà a voce a chi entra, e che il portale mostra a chiunque compili il modulo —
+non una credenziale del locale. In Impostazioni c'è scritto a chiare lettere.
