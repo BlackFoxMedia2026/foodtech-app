@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, CalendarOff } from "lucide-react";
+import { ArrowRight, Loader2, CalendarOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Slot = {
@@ -22,6 +22,12 @@ type DayAvailability = {
   nota: string | null;
 };
 
+type GiornoLibero = {
+  date: string;
+  label: string;
+  primoOrario: { startsAt: string; label: string };
+};
+
 interface SlotPickerProps {
   /** Presente solo dal widget pubblico: dallo staff il locale arriva dalla
    * sessione, e passarlo dal client sarebbe un modo di leggere la
@@ -33,6 +39,15 @@ interface SlotPickerProps {
   /** Istante ISO dell'orario scelto. */
   value: string | null;
   onChange: (startsAt: string | null) => void;
+  /**
+   * Cosa fare quando il cliente accetta un altro giorno.
+   *
+   * Passandolo, davanti a una giornata piena compare la risposta alla sola
+   * domanda che quella persona si sta facendo — «e allora quando?». Senza,
+   * il selettore si comporta come prima: in sala quella domanda si risponde
+   * guardando il calendario, non con un bottone.
+   */
+  onPickDay?: (date: string, startsAt: string) => void;
 }
 
 /**
@@ -45,10 +60,11 @@ interface SlotPickerProps {
  * Gli orari al completo restano visibili ma disattivati: dire "quello non si può"
  * è più utile che far sparire la riga senza spiegazioni.
  */
-export function SlotPicker({ venueId, date, partySize, value, onChange }: SlotPickerProps) {
+export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDay }: SlotPickerProps) {
   const [data, setData] = useState<DayAvailability | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alternative, setAlternative] = useState<GiornoLibero[] | null>(null);
 
   useEffect(() => {
     if (!date) {
@@ -59,6 +75,7 @@ export function SlotPicker({ venueId, date, partySize, value, onChange }: SlotPi
     const controller = new AbortController();
     setLoading(true);
     setError(null);
+    setAlternative(null);
 
     const params = new URLSearchParams({ date, partySize: String(partySize) });
     if (venueId) params.set("venue", venueId);
@@ -77,6 +94,21 @@ export function SlotPicker({ venueId, date, partySize, value, onChange }: SlotPi
         // numero di persone — la selezione va annullata invece di restare appesa.
         const stillThere = body.shifts.some((s) => s.slots.some((x) => x.startsAt === value && x.available));
         if (value && !stillThere) onChange(null);
+
+        // «E allora quando?» si chiede solo davanti a una giornata piena: chi
+        // trova posto al primo colpo non paga il conto di una ricerca che non
+        // gli serve.
+        const nienteLibero = body.shifts.every((s) => s.slots.every((x) => !x.available));
+        if (!onPickDay || !venueId || !nienteLibero) return;
+
+        const q = new URLSearchParams({ venue: venueId, date, partySize: String(partySize) });
+        fetch(`/api/public/availability/alternatives?${q}`, { signal: controller.signal })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((alt) => setAlternative(alt?.giorni ?? []))
+          .catch(() => {
+            /* Le alternative sono un aiuto: se non arrivano, la pagina resta
+               quella di prima invece di mostrare un errore in più. */
+          });
       })
       .catch((err) => {
         if (err.name === "AbortError") return;
@@ -112,18 +144,21 @@ export function SlotPicker({ venueId, date, partySize, value, onChange }: SlotPi
 
   if (!data || data.closed || data.shifts.length === 0) {
     return (
-      <div className="flex items-start gap-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-        <CalendarOff className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>
-          {/* Se a togliere gli orari è stata la finestra del locale, si dice
-              quello: «non ci sono orari» manderebbe via un cliente che al
-              telefono un tavolo lo troverebbe. */}
-          {data?.closed
-            ? "Il locale è chiuso in questa data. Prova con un altro giorno."
-            : data?.nota
-              ? data.nota
-              : "Per questa data non ci sono più orari disponibili. Prova con un altro giorno."}
-        </span>
+      <div className="space-y-3">
+        <div className="flex items-start gap-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+          <CalendarOff className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            {/* Se a togliere gli orari è stata la finestra del locale, si dice
+                quello: «non ci sono orari» manderebbe via un cliente che al
+                telefono un tavolo lo troverebbe. */}
+            {data?.closed
+              ? "Il locale è chiuso in questa data."
+              : data?.nota
+                ? data.nota
+                : "Per questa data non ci sono più orari disponibili."}
+          </span>
+        </div>
+        <Alternative giorni={alternative} onPickDay={onPickDay} />
       </div>
     );
   }
@@ -133,10 +168,12 @@ export function SlotPicker({ venueId, date, partySize, value, onChange }: SlotPi
   return (
     <div className="space-y-4">
       {nothingFree && (
-        <p className="text-sm text-muted-foreground">
-          Per {partySize} {partySize === 1 ? "persona" : "persone"} non c&apos;è posto in questa data.
-          Prova a cambiare giorno o a ridurre il numero di persone.
-        </p>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Per {partySize} {partySize === 1 ? "persona" : "persone"} non c&apos;è posto in questa data.
+          </p>
+          <Alternative giorni={alternative} onPickDay={onPickDay} />
+        </div>
       )}
 
       {data.shifts.map((shift) => (
@@ -178,6 +215,57 @@ export function SlotPicker({ venueId, date, partySize, value, onChange }: SlotPi
           </div>
         </fieldset>
       ))}
+    </div>
+  );
+}
+
+/**
+ * «E allora quando?».
+ *
+ * È la sola domanda che una persona si fa davanti a un sabato pieno, e senza
+ * una risposta chiude la pagina e cerca un altro ristorante. Con una risposta,
+ * spesso sposta la cena di un giorno.
+ *
+ * Si mostrano i primi giorni con posto, non un calendario: tre proposte si
+ * leggono, trenta caselle no. E se non c'è niente nelle prossime settimane, si
+ * dice — invece di lasciare la domanda in sospeso.
+ */
+function Alternative({
+  giorni,
+  onPickDay,
+}: {
+  giorni: GiornoLibero[] | null;
+  onPickDay?: (date: string, startsAt: string) => void;
+}) {
+  if (!onPickDay || giorni === null) return null;
+
+  if (giorni.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Nelle prossime tre settimane non troviamo posto per questo numero di persone. Chiamaci: a volte si
+        libera qualcosa che qui non si vede.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">Il primo posto libero</p>
+      <div className="flex flex-wrap gap-2">
+        {giorni.map((g) => (
+          <button
+            key={g.date}
+            type="button"
+            onClick={() => onPickDay(g.date, g.primoOrario.startsAt)}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-border px-3 text-sm transition-colors hover:bg-secondary"
+          >
+            <span>
+              {g.label} alle <strong>{g.primoOrario.label}</strong>
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

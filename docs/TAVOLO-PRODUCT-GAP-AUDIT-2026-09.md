@@ -40,7 +40,7 @@ Verifiche automatiche: TypeScript pulito, ESLint pulito, nessuna deriva fra sche
 
 | Area | Stato | Evidenza |
 |---|---|---|
-| Motore disponibilità | **REAL** | 556 righe, unica fonte per sala/API/widget, 57 regole verificate `[CODE][PREVIOUS AUDIT]` |
+| Motore disponibilità | **REAL** | 556 righe, unica fonte per sala/API/widget, 59 regole verificate `[CODE][PREVIOUS AUDIT]` |
 | Prenotazioni (4 canali d'ingresso) | **REAL** | widget, telefono, waitlist, walk-in `[CODE][SCREENSHOT]` |
 | Piantina e assegnazione tavoli | **REAL** | trascinamento, collisioni serializzabili, tavolate `[CODE]` |
 | Sala viva (7 stati) | **REAL** | derivati dai fatti, non da campi `[CODE]` |
@@ -164,11 +164,11 @@ Moduli: *Agenda digitale*, *Planning dei tavoli* (trascinamento, **integrato con
 
 **Stato: D/E.** `[CODE]`
 
-Presenti e verificati: disponibilità calcolata dal server per sala e per tavolo, turni, capienza, durata, tavolate con controllo di stessa sala e conflitto su *tutti* i tavoli uniti, richieste speciali e note (cliente e interne), occasione, fonte, modifica, disdetta, riconoscimento del cliente per email o telefono, forzatura con **motivo obbligatorio** e azione dedicata nel registro, 57 regole di disponibilità verificate.
+Presenti e verificati: disponibilità calcolata dal server per sala e per tavolo, turni, capienza, durata, tavolate con controllo di stessa sala e conflitto su *tutti* i tavoli uniti, richieste speciali e note (cliente e interne), occasione, fonte, modifica, disdetta, riconoscimento del cliente per email o telefono, forzatura con **motivo obbligatorio** e azione dedicata nel registro, 59 regole di disponibilità verificate.
 
 Fatti subito dopo questo audit: **booking window e cutoff** configurabili (con la distinzione che conta: valgono per il pubblico, non per chi risponde al telefono).
 
-Restano assenti: **overbooking controllato**, **proposta automatica di alternative** al cliente, **riconferma** (il promemoria chiede conferma ma non c'è una politica di riconferma obbligatoria con scadenza), **personalizzazione visiva del widget**.
+Restano assenti: **overbooking controllato**, **riconferma** (il promemoria chiede conferma ma non c'è una politica di riconferma obbligatoria con scadenza), **personalizzazione visiva del widget**.
 
 ---
 
@@ -604,7 +604,7 @@ Dieci cose che nascono **dall'unione** dei pezzi che Tavolo ha già, e che nessu
 7. **Il promotore che diventa recensione.** Chi ha dato 9-10 riceve l'invito a recensire; chi ha dato meno riceve una persona. **M**.
 8. **Disdetta → offerta immediata alla waitlist.** Il tavolo liberato all'ultimo è ricavo perso: oggi nessuno lo riempie automaticamente. **M**.
 9. **La scheda cliente al telefono che squilla.** Solo caller ID, nessuna AI: metà del valore di un centralino intelligente a un decimo del costo. **M**.
-10. **L'affidabilità raccontata, non punteggiata.** Non «62/100», ma «3 assenze su 11, l'ultima il 4 agosto»: coerente con la regola della casa, e più utile di un numero. **S**.
+10. **L'affidabilità raccontata, non punteggiata.** ✅ **Fatta.** Non «62/100», ma «2 su 12, l'ultima il 5 settembre»: sulla scheda cliente e nel centro controllo, dove il ritardo di chi ha già mancato vale una telefonata.
 
 ---
 
@@ -656,7 +656,7 @@ Voti severi. Per ciascuno: motivazione, riferimento, cosa vale un punto in più.
 | Area | Voto | Perché | Cosa vale +1 |
 |---|---|---|---|
 | **Booking** | **7** | Motore solido, 4 canali d'ingresso, forzatura tracciata; mancano cutoff, window, overbooking | Regole avanzate di prenotazione |
-| **Availability** | **9** | Unica fonte di verità server-side, 57 regole verificate, tutti i motivi di rifiuto raccolti | Proposta di alternative al cliente |
+| **Availability** | **9** | Unica fonte di verità server-side, 59 regole verificate, tutti i motivi di rifiuto raccolti, alternative proposte quando il giorno è pieno | Overbooking controllato |
 | **Floor management** | **8** | Piantina, tavolate, collisioni serializzabili, 7 stati derivati | Pacing e rotazione misurata |
 | **Service** | **9** | Centro controllo con rimedi: la parte migliore | Turn time previsto per tavolo |
 | **Waitlist** | **8** | Completa, con offerta firmata e attesa depurata | Avviso su un canale vero + suggerimento tavolo |

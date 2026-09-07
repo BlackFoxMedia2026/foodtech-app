@@ -445,6 +445,36 @@ const giornoSenzaFinestra = buildDaySlots(
 );
 check("senza finestra la nota non compare", giornoSenzaFinestra.nota === null);
 
+/* ------------------------- le alternative a un giorno pieno ----------------- */
+
+// `prossimiGiorniLiberi` legge dal database, quindi qui si verifica il pezzo
+// puro su cui poggia: che un giorno pieno non offra orari, e che lo stesso
+// giorno con la capienza libera li offra. Se questa distinzione regge, la
+// ricerca dei giorni successivi è un ciclo su di essa.
+const lunedi: ShiftLike = { ...dinner, id: "s-lun", weekday: 1 };
+const giornoPieno = buildDaySlots(
+  { date: { year: 2026, month: 8, day: 3 }, partySize: 4, durationMin: 105, now: new Date("2026-08-03T06:00:00.000Z") },
+  ctx({
+    shifts: [lunedi],
+    bookings: [
+      booking({ id: "p1", startsAt: new Date("2026-08-03T17:00:00.000Z"), partySize: 90, durationMin: 105 }),
+      booking({ id: "p2", startsAt: new Date("2026-08-03T18:45:00.000Z"), partySize: 90, durationMin: 105 }),
+      booking({ id: "p3", startsAt: new Date("2026-08-03T20:30:00.000Z"), partySize: 90, durationMin: 105 }),
+    ],
+  }),
+);
+check(
+  "una giornata piena non ha nemmeno un orario libero",
+  giornoPieno.shifts.flatMap((s) => s.slots).every((s) => !s.available),
+);
+
+const giornoLibero = buildDaySlots(
+  { date: { year: 2026, month: 8, day: 3 }, partySize: 4, durationMin: 105, now: new Date("2026-08-03T06:00:00.000Z") },
+  ctx({ shifts: [lunedi] }),
+);
+const primoLibero = giornoLibero.shifts.flatMap((s) => s.slots).find((s) => s.available);
+check("lo stesso giorno, senza prenotazioni, ha il suo primo orario", primoLibero?.label === "19:00", primoLibero?.label);
+
 /* ---------------------------------- esito ---------------------------------- */
 
 console.log(`\n  ${passed} verifiche superate`);
