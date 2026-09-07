@@ -4,8 +4,8 @@
   "url": "/overview",
   "titolo": "Panoramica: la giornata in un colpo d'occhio",
   "http": 200,
-  "ms": 4441,
-  "caratteri": 1610,
+  "ms": 4494,
+  "caratteri": 1609,
   "errori": []
  },
  {
@@ -13,8 +13,8 @@
   "url": "/service",
   "titolo": "Servizio: chi arriva, chi è a tavola, cosa fare adesso",
   "http": 200,
-  "ms": 4247,
-  "caratteri": 3219,
+  "ms": 4190,
+  "caratteri": 982,
   "errori": []
  },
  {
@@ -22,8 +22,8 @@
   "url": "/service/room",
   "titolo": "Sala viva: stato di ogni tavolo in tempo reale",
   "http": 200,
-  "ms": 4158,
-  "caratteri": 470,
+  "ms": 4093,
+  "caratteri": 393,
   "errori": []
  },
  {
@@ -31,8 +31,8 @@
   "url": "/bookings",
   "titolo": "Prenotazioni: elenco del giorno",
   "http": 200,
-  "ms": 4184,
-  "caratteri": 1364,
+  "ms": 4361,
+  "caratteri": 1404,
   "errori": []
  },
  {
@@ -40,8 +40,8 @@
   "url": "/bookings?vista=settimana",
   "titolo": "Prenotazioni: la settimana sui libri",
   "http": 200,
-  "ms": 3847,
-  "caratteri": 1364,
+  "ms": 3853,
+  "caratteri": 1404,
   "errori": []
  },
  {
@@ -49,8 +49,8 @@
   "url": "/bookings/new",
   "titolo": "Nuova prenotazione a mano",
   "http": 200,
-  "ms": 4015,
-  "caratteri": 781,
+  "ms": 4064,
+  "caratteri": 938,
   "errori": []
  },
  {
@@ -58,8 +58,8 @@
   "url": "/floor",
   "titolo": "Sala: piantina e tavoli",
   "http": 200,
-  "ms": 4285,
-  "caratteri": 783,
+  "ms": 4141,
+  "caratteri": 713,
   "errori": []
  },
  {
@@ -67,8 +67,8 @@
   "url": "/waitlist",
   "titolo": "Lista d'attesa",
   "http": 200,
-  "ms": 4029,
-  "caratteri": 400,
+  "ms": 4077,
+  "caratteri": 587,
   "errori": []
  },
  {
@@ -76,7 +76,7 @@
   "url": "/guests",
   "titolo": "CRM ospiti, a pagine",
   "http": 200,
-  "ms": 4077,
+  "ms": 4031,
   "caratteri": 5377,
   "errori": []
  },
@@ -85,8 +85,8 @@
   "url": "/guests/cms94qrk90018yzl2w68ytdi4",
   "titolo": "Scheda ospite: profilo calcolato, punti, esporta/cancella dati",
   "http": 200,
-  "ms": 4429,
-  "caratteri": 2405,
+  "ms": 4317,
+  "caratteri": 2454,
   "errori": []
  },
  {
@@ -94,8 +94,8 @@
   "url": "/insights",
   "titolo": "Analytics: costo del cibo, assenze, previsione, NPS",
   "http": 200,
-  "ms": 4099,
-  "caratteri": 6706,
+  "ms": 4287,
+  "caratteri": 8243,
   "errori": []
  },
  {
@@ -103,8 +103,8 @@
   "url": "/menu",
   "titolo": "Menu: categorie, piatti, allergeni, costo e margine",
   "http": 200,
-  "ms": 4185,
-  "caratteri": 1694,
+  "ms": 4121,
+  "caratteri": 2135,
   "errori": []
  },
  {
@@ -112,8 +112,8 @@
   "url": "/marketing",
   "titolo": "Marketing: le cinque sezioni",
   "http": 200,
-  "ms": 4172,
-  "caratteri": 912,
+  "ms": 4149,
+  "caratteri": 1018,
   "errori": []
  },
  {
@@ -121,7 +121,7 @@
   "url": "/campaigns",
   "titolo": "Campagne email",
   "http": 200,
-  "ms": 4107,
+  "ms": 4051,
   "caratteri": 349,
   "errori": []
  },
@@ -130,8 +130,8 @@
   "url": "/marketing/automations",
   "titolo": "Automazioni: catalogo chiuso di tre",
   "http": 200,
-  "ms": 4375,
-  "caratteri": 2919,
+  "ms": 4105,
+  "caratteri": 3619,
   "errori": []
  },
  {
@@ -139,8 +139,8 @@
   "url": "/marketing/coupons",
   "titolo": "Coupon",
   "http": 200,
-  "ms": 4166,
-  "caratteri": 759,
+  "ms": 4168,
+  "caratteri": 941,
   "errori": []
  },
  {
@@ -148,8 +148,8 @@
   "url": "/marketing/gift-cards",
   "titolo": "Gift card: il residuo è un debito",
   "http": 200,
-  "ms": 4082,
-  "caratteri": 910,
+  "ms": 4078,
+  "caratteri": 1036,
   "errori": []
  },
  {
@@ -157,8 +157,8 @@
   "url": "/marketing/wifi",
   "titolo": "Wi-Fi: contatti e quanti hanno poi prenotato",
   "http": 200,
-  "ms": 4198,
-  "caratteri": 606,
+  "ms": 4163,
+  "caratteri": 615,
   "errori": []
  },
  {
@@ -166,7 +166,7 @@
   "url": "/marketing/qr-codes",
   "titolo": "QR code",
   "http": 200,
-  "ms": 4314,
+  "ms": 4160,
   "caratteri": 279,
   "errori": []
  },
@@ -175,7 +175,7 @@
   "url": "/experiences",
   "titolo": "Esperienze",
   "http": 200,
-  "ms": 4320,
+  "ms": 4164,
   "caratteri": 468,
   "errori": []
  },
@@ -184,7 +184,7 @@
   "url": "/waiters",
   "titolo": "Camerieri e contratti",
   "http": 200,
-  "ms": 4837,
+  "ms": 4692,
   "caratteri": 545,
   "errori": []
  },
@@ -193,8 +193,8 @@
   "url": "/payments",
   "titolo": "Pagamenti: schema pronto, Stripe non collegato",
   "http": 200,
-  "ms": 4080,
-  "caratteri": 206,
+  "ms": 4186,
+  "caratteri": 462,
   "errori": []
  },
  {
@@ -202,8 +202,8 @@
   "url": "/settings",
   "titolo": "Impostazioni: scontrino medio, raccolta punti, coda, turni",
   "http": 200,
-  "ms": 4138,
-  "caratteri": 2529,
+  "ms": 4136,
+  "caratteri": 3888,
   "errori": []
  },
  {
@@ -211,7 +211,7 @@
   "url": "/settings/brand",
   "titolo": "Brand: logo, colori, dati pubblici",
   "http": 200,
-  "ms": 4163,
+  "ms": 4202,
   "caratteri": 736,
   "errori": []
  },
@@ -220,7 +220,7 @@
   "url": "/settings/wifi",
   "titolo": "Portale Wi-Fi: rete, password, sconto",
   "http": 200,
-  "ms": 4087,
+  "ms": 4116,
   "caratteri": 1363,
   "errori": []
  },

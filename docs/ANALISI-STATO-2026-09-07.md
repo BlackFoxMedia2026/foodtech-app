@@ -1,6 +1,6 @@
 # Tavolo — dove siamo, sezione per sezione
 
-**Data:** 7 settembre 2026 · **Repository:** `BlackFoxMedia2026/foodtech-app` · **Produzione:** foodtech-app.vercel.app
+**Data:** 8 settembre 2026 (aggiornato dopo i due audit della notte) · **Repository:** `BlackFoxMedia2026/foodtech-app` · **Produzione:** foodtech-app.vercel.app
 
 Questo documento è scritto per essere letto da chi non ha accesso al codice e deve capire lo stato reale del prodotto: cosa funziona per intero, cosa funziona a metà, cosa non esiste, e — soprattutto — **perché** ogni cosa è così. È autoconsistente: non serve aprire il repository per seguirlo.
 
@@ -37,9 +37,66 @@ Multi-locale per costruzione: un'organizzazione può avere più ristoranti, ogni
 | Pagamenti | schema pronto, **non implementati** |
 | Lavori pianificati | 5 cron Vercel |
 
-**Numeri, oggi:** 37 pagine · 104 rotte API · 118 moduli lato server (~25.600 righe) · 161 componenti · **562 test in 36 file** · 14 migrazioni · 73 modelli di dati e 64 enumerazioni · 85 commit nella sola giornata del 7 settembre.
+**Numeri, oggi:** 37 pagine · 107 rotte API · 111 moduli fra `server/` e `lib/` (~18.200 righe) · 165 componenti · **622 test in 38 file** · 16 migrazioni · 73 modelli di dati e 64 enumerazioni.
+
+I conteggi sono quelli che si ottengono contando i file: `find src/app -name page.tsx`, `find src/app/api -name route.ts`, e così via. Un numero che non si può rifare contando non serve a nessuno.
 
 I cinque lavori pianificati: smaltimento della coda ogni minuto, promemoria ogni 15 minuti, scadenze contratti alle 6:00, richieste di sondaggio alle 11:00, automazioni alle 10:00. **Tutti si rifiutano di partire se `CRON_SECRET` non è configurato** — un endpoint che scrive ai clienti e risponde a chiunque non è un endpoint.
+
+---
+
+## 2-bis. Cosa è cambiato nella notte fra il 7 e l'8 settembre
+
+Due campagne di audit — una sul prodotto (confronto con CoverManager e
+Pienissimo), una sull'interfaccia — hanno prodotto un elenco di cose da fare.
+Sono state fatte tutte quelle che non dipendono da una chiave o da un
+fornitore. In ordine di valore:
+
+1. **La gift card ferma** — quarta automazione. Denaro già incassato e cena mai
+   servita: passati i giorni scelti dal locale, chi ha una carta mai toccata
+   riceve il promemoria. Scrive **solo** a chi il locale conosce già e ha dato
+   il consenso.
+2. **Il posto liberato da una disdetta** — ottava regola del centro controllo.
+   Quando una prenotazione di oggi salta e in lista d'attesa c'è chi ci sta, lo
+   dice con l'ora e il nome — dopo aver verificato che il posto sia **ancora**
+   libero davvero.
+3. **Il ponte verso le recensioni pubbliche, misurato.** Fino a quattro posti
+   dove mandare chi risponde 9 o 10; il collegamento passa da una porta che
+   conta il passaggio; in Analytics: «1 promotore è andato a scrivere una
+   recensione, su 2». Si conta chi arriva alla porta, non chi scrive — e la
+   pagina lo dice.
+4. **Menu engineering** — stelle, cavalli, enigmi, cani, senza nessun dato
+   nuovo. «Rende» è il margine per piatto, non la percentuale. Sotto tre
+   vendite un piatto resta fuori, e sotto quattro piatti o venti vendite non si
+   classifica niente.
+5. **La finestra di prenotazione** — da quanti giorni prima si prenota online e
+   quanto preavviso serve. Vale **solo per il canale pubblico**: al telefono si
+   accetta fino all'ultimo minuto, altrimenti chi risponde aggira il software
+   con una penna.
+6. **«E allora quando?»** — davanti a un giorno pieno il widget propone i primi
+   tre giorni con posto, e toccarne uno cambia data e orario in un colpo.
+7. **I gruppi grandi** — oltre dodici persone il widget mostra il telefono
+   invece del modulo.
+8. **La lista d'attesa misurata** — coperti recuperati, conversione, attesa
+   media. Risponde a «tenere una coda serve?», che era una questione di
+   impressioni.
+9. **L'affidabilità raccontata** — «2 su 12, l'ultima il 5 settembre» invece di
+   un punteggio da 0 a 100.
+10. **Il debito delle gift card** fra i numeri d'insieme.
+11. **Interfaccia**: il centro controllo non si autoaffoga più (nove avvisi
+    identici diventano uno), il briefing prima del servizio in Panoramica,
+    numeri detti una volta sola, il widget che chiede prima il tavolo e poi i
+    dati con la data scritta per esteso, coupon con spesa minima e giorni
+    validi, un traguardo nella raccolta punti, ricerca e filtri nel menu, le
+    portate in cima al menu pubblico, i tavoli disegnati in scala sui posti, e
+    gli scheletri di caricamento sulle sette pagine che ne erano senza.
+12. **Tre test che passavano di giorno e fallivano la notte** — misuravano il
+    tempo con l'orologio del computer invece che con uno passato a mano.
+
+Restano fuori, e per un motivo dichiarato: la **riconferma obbligatoria** (il
+promemoria che la chiederebbe non parte finché manca la chiave email: sarebbe
+una funzione che non fa niente), l'**overbooking controllato** e la
+**personalizzazione visiva del widget**.
 
 ---
 
@@ -227,7 +284,7 @@ I dati personali di un cliente stanno in **sette posti**, non uno: scheda, note 
 
 ---
 
-## 9. Lo schema promette più del prodotto: 24 tabelle su 73 senza una riga di codice
+## 9. Lo schema promette più del prodotto: 22 tabelle su 73 senza una riga di codice
 
 È il dato più utile per capire dove siamo, e va letto senza allarme: il database è stato disegnato guardando lontano, e il prodotto è arrivato dietro. Oggi **24 modelli su 73 non sono toccati da nessuna riga di codice**. Classificati:
 
@@ -287,7 +344,7 @@ I dati personali di un cliente stanno in **sette posti**, non uno: scheda, note 
 ## 12. Come verificare tutto questo senza fidarsi
 
 ```bash
-npm test                    # 562 verifiche
+npm test                    # 622 verifiche
 npx tsc --noEmit            # tipi
 npx next lint --dir src     # stile e regole
 npx prisma migrate status   # migrazioni allineate
@@ -302,4 +359,4 @@ Documenti tenuti allineati al codice, non alle intenzioni: `docs/PRODUCT_STATUS.
 
 ## In una riga
 
-Tavolo copre per intero il ciclo prenotazione → servizio → conto → margine → ritorno del cliente, con 562 verifiche e una disciplina esplicita sul non mostrare numeri che nessuno scrive. Quello che manca dipende quasi tutto da tre cose che non sono codice: un fornitore di pagamenti, una chiave email, e una cassa con cui parlare.
+Tavolo copre per intero il ciclo prenotazione → servizio → conto → margine → ritorno del cliente, con 622 verifiche e una disciplina esplicita sul non mostrare numeri che nessuno scrive. Quello che manca dipende quasi tutto da tre cose che non sono codice: un fornitore di pagamenti, una chiave email, e una cassa con cui parlare.
