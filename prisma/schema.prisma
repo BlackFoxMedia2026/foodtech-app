@@ -57,103 +57,111 @@ model OrgMembership {
 }
 
 model Venue {
-  id                    String                @id @default(cuid())
-  orgId                 String
-  name                  String
-  slug                  String
-  kind                  VenueKind             @default(RESTAURANT)
-  timezone              String                @default("Europe/Rome")
+  id                     String                @id @default(cuid())
+  orgId                  String
+  name                   String
+  slug                   String
+  kind                   VenueKind             @default(RESTAURANT)
+  timezone               String                @default("Europe/Rome")
+  /// Quanti punti fedeltà per ogni euro speso. Nullo = raccolta punti spenta.
+  ///
+  /// Sta qui e non in una costante perché è una decisione commerciale del
+  /// locale, e perché una raccolta punti accesa da sola — senza che nessuno
+  /// abbia deciso quanto vale un punto — regalerebbe sconti a caso.
+  loyaltyPointsPerEuro   Int?
+  /// Quanto vale un punto quando si riscatta, in centesimi. Nullo = spenta.
+  loyaltyPointValueCents Int?
   /// Spesa media per coperto, in centesimi, dichiarata dal locale.
   /// Serve per la stima degli incassi: prima veniva calcolata dalla media di
   /// Guest.totalSpend, un campo che nessuna parte del codice aggiorna — quindi
   /// la stima era finzione presentata come dato.
-  avgSpendCents         Int?
-  currency              String                @default("EUR")
-  address               String?
-  city                  String?
-  country               String?
-  phone                 String?
-  email                 String?
-  coverImage            String?
-  active                Boolean               @default(true)
-  createdAt             DateTime              @default(now())
-  depositPerPersonCents Int                   @default(2000)
-  depositThreshold      Int                   @default(8)
-  wifiAutoCouponDays    Int                   @default(30)
-  wifiAutoCouponEnabled Boolean               @default(false)
-  wifiAutoCouponPercent Int                   @default(10)
-  wifiPortalAccent      String?               @db.VarChar(9)
-  wifiPortalLegal       String?               @db.VarChar(2000)
-  wifiPortalLogoUrl     String?
-  wifiPortalWelcome     String?               @db.VarChar(500)
-  wifiSetupAt           DateTime?
-  calendarToken         String?               @unique
-  googlePlaceId         String?
-  brevoFolderId         Int?
-  brandAccent           String?               @db.VarChar(9)
-  brandFootnote         String?               @db.VarChar(280)
-  brandLogoUrl          String?
-  brandSecondaryColor   String?               @db.VarChar(9)
-  brandBackgroundColor  String?               @db.VarChar(9)
-  brandTypography       BrandTypography?
-  websiteUrl            String?
-  instagramUrl          String?
-  facebookUrl           String?
-  googleBusinessUrl     String?
-  onboardingStatus      BrandOnboardingStatus @default(NOT_STARTED)
-  onboardingCompletedAt DateTime?
-  onboardingSkippedAt   DateTime?
-  serviceAssignmentMode ServiceAssignmentMode @default(ROOMS)
-  agentConversations    AgentConversation[]
-  agentUsages           AgentUsage[]
-  ApiToken              ApiToken[]
-  AutomationWorkflow    AutomationWorkflow[]
-  BackgroundJob         BackgroundJob[]
-  bookings              Booking[]
-  CallLog               CallLog[]
-  campaigns             Campaign[]
-  ChatSession           ChatSession[]
-  Connector             Connector[]
-  ConsentLog            ConsentLog[]
-  CostEntry             CostEntry[]
-  Coupon                Coupon[]
-  CouponRedemption      CouponRedemption[]
-  experiences           Experience[]
-  FloorDecor            FloorDecor[]
-  GiftCard              GiftCard[]
-  guests                Guest[]
-  GuestProviderLink     GuestProviderLink[]
-  MenuCategory          MenuCategory[]
-  MenuItem              MenuItem[]
-  MenuItemCost          MenuItemCost[]
-  MenuScan              MenuScan[]
-  MessageLog            MessageLog[]
-  MessageTemplate       MessageTemplate[]
-  MissedCall            MissedCall[]
-  Notification          Notification[]
-  Order                 Order[]
-  POSConnector          POSConnector[]
-  payments              Payment[]
-  QrCode                QrCode[]
-  Review                Review[]
-  ReviewLink            ReviewLink[]
-  ReviewLinkClick       ReviewLinkClick[]
-  rooms                 Room[]
-  shifts                Shift[]
-  StaffShift            StaffShift[]
-  Survey                Survey[]
-  tables                Table[]
-  blocks                TableBlock[]
-  org                   Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  WaitlistEntry         WaitlistEntry[]
-  WifiLead              WifiLead[]
-  WifiSession           WifiSession[]
-  members               VenueMembership[]
-  waiters               Waiter[]
-  waiterAssignments     WaiterAssignment[]
-  staffAssignments      StaffAssignment[]
-  staffContracts        StaffContract[]
-  contractDocuments     ContractDocument[]
+  avgSpendCents          Int?
+  currency               String                @default("EUR")
+  address                String?
+  city                   String?
+  country                String?
+  phone                  String?
+  email                  String?
+  coverImage             String?
+  active                 Boolean               @default(true)
+  createdAt              DateTime              @default(now())
+  depositPerPersonCents  Int                   @default(2000)
+  depositThreshold       Int                   @default(8)
+  wifiAutoCouponDays     Int                   @default(30)
+  wifiAutoCouponEnabled  Boolean               @default(false)
+  wifiAutoCouponPercent  Int                   @default(10)
+  wifiPortalAccent       String?               @db.VarChar(9)
+  wifiPortalLegal        String?               @db.VarChar(2000)
+  wifiPortalLogoUrl      String?
+  wifiPortalWelcome      String?               @db.VarChar(500)
+  wifiSetupAt            DateTime?
+  calendarToken          String?               @unique
+  googlePlaceId          String?
+  brevoFolderId          Int?
+  brandAccent            String?               @db.VarChar(9)
+  brandFootnote          String?               @db.VarChar(280)
+  brandLogoUrl           String?
+  brandSecondaryColor    String?               @db.VarChar(9)
+  brandBackgroundColor   String?               @db.VarChar(9)
+  brandTypography        BrandTypography?
+  websiteUrl             String?
+  instagramUrl           String?
+  facebookUrl            String?
+  googleBusinessUrl      String?
+  onboardingStatus       BrandOnboardingStatus @default(NOT_STARTED)
+  onboardingCompletedAt  DateTime?
+  onboardingSkippedAt    DateTime?
+  serviceAssignmentMode  ServiceAssignmentMode @default(ROOMS)
+  agentConversations     AgentConversation[]
+  agentUsages            AgentUsage[]
+  ApiToken               ApiToken[]
+  AutomationWorkflow     AutomationWorkflow[]
+  BackgroundJob          BackgroundJob[]
+  bookings               Booking[]
+  CallLog                CallLog[]
+  campaigns              Campaign[]
+  ChatSession            ChatSession[]
+  Connector              Connector[]
+  ConsentLog             ConsentLog[]
+  CostEntry              CostEntry[]
+  Coupon                 Coupon[]
+  CouponRedemption       CouponRedemption[]
+  experiences            Experience[]
+  FloorDecor             FloorDecor[]
+  GiftCard               GiftCard[]
+  guests                 Guest[]
+  GuestProviderLink      GuestProviderLink[]
+  MenuCategory           MenuCategory[]
+  MenuItem               MenuItem[]
+  MenuItemCost           MenuItemCost[]
+  MenuScan               MenuScan[]
+  MessageLog             MessageLog[]
+  MessageTemplate        MessageTemplate[]
+  MissedCall             MissedCall[]
+  Notification           Notification[]
+  Order                  Order[]
+  POSConnector           POSConnector[]
+  payments               Payment[]
+  QrCode                 QrCode[]
+  Review                 Review[]
+  ReviewLink             ReviewLink[]
+  ReviewLinkClick        ReviewLinkClick[]
+  rooms                  Room[]
+  shifts                 Shift[]
+  StaffShift             StaffShift[]
+  Survey                 Survey[]
+  tables                 Table[]
+  blocks                 TableBlock[]
+  org                    Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  WaitlistEntry          WaitlistEntry[]
+  WifiLead               WifiLead[]
+  WifiSession            WifiSession[]
+  members                VenueMembership[]
+  waiters                Waiter[]
+  waiterAssignments      WaiterAssignment[]
+  staffAssignments       StaffAssignment[]
+  staffContracts         StaffContract[]
+  contractDocuments      ContractDocument[]
 
   @@unique([orgId, slug])
 }
@@ -866,23 +874,30 @@ model GiftCardRedemption {
   GiftCard    GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
 
   @@index([giftCardId, createdAt])
+  @@index([orderId])
 }
 
 model LoyaltyTransaction {
-  id        String         @id @default(cuid())
-  guestId   String
-  venueId   String
-  kind      LoyaltyTxnKind
-  points    Int
-  reason    String?        @db.VarChar(200)
-  bookingId String?
-  orderId   String?
-  createdBy String?
-  createdAt DateTime       @default(now())
-  Guest     Guest          @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  id          String         @id @default(cuid())
+  guestId     String
+  venueId     String
+  kind        LoyaltyTxnKind
+  points      Int
+  /// Quanto valevano quei punti in centesimi, **al momento in cui sono stati
+  /// usati**. È la stessa fotografia che `OrderItem` fa del prezzo: se domani
+  /// il locale decide che un punto vale il doppio, lo sconto di stasera non
+  /// deve cambiare valore sul conto di stasera.
+  amountCents Int?
+  reason      String?        @db.VarChar(200)
+  bookingId   String?
+  orderId     String?
+  createdBy   String?
+  createdAt   DateTime       @default(now())
+  Guest       Guest          @relation(fields: [guestId], references: [id], onDelete: Cascade)
 
   @@index([guestId, createdAt])
   @@index([venueId, createdAt])
+  @@index([orderId])
 }
 
 model MenuCategory {

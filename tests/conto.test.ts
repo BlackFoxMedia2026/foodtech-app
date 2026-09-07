@@ -273,3 +273,33 @@ describe("l'incasso della giornata", () => {
     expect((await incassoDelGiorno(altroVenueId, oggi, TZ)).conti).toBe(0);
   });
 });
+
+describe("il numero del conto", () => {
+  it("non ricade su uno già usato dopo che un conto è stato cancellato", async () => {
+    // Il numero era «quanti conti ci sono oggi»: cancellare un conto faceva
+    // scendere il conteggio, e il conto successivo nasceva con un riferimento
+    // già preso. `Order.reference` è unico, quindi non usciva un numero
+    // doppio: usciva un errore in faccia a chi apre il conto.
+    const primo = await openOrderForBooking(venueId, bookingId, { actor: attore() });
+    const secondaPrenotazione = (await prenotazione()).id;
+    const secondo = await openOrderForBooking(venueId, secondaPrenotazione, { actor: attore() });
+    expect(secondo.reference).not.toBe(primo.reference);
+
+    await db.order.delete({ where: { id: secondo.id } });
+
+    const terzaPrenotazione = (await prenotazione()).id;
+    const terzo = await openOrderForBooking(venueId, terzaPrenotazione, { actor: attore() });
+    expect(terzo.reference).not.toBe(primo.reference);
+    // Il numero riparte dal più alto già usato, quindi il buco non si riempie.
+    expect(terzo.reference).toBe(secondo.reference);
+  });
+
+  it("dà numeri diversi a due locali che aprono il loro primo conto oggi", async () => {
+    // Il vincolo di unicità è su tutta l'installazione: senza un tentativo
+    // col numero dopo, il secondo locale non riuscirebbe ad aprire niente.
+    const qui = await openOrderForBooking(venueId, bookingId, { actor: attore() });
+    const laBooking = await prenotazione(altroVenueId);
+    const la = await openOrderForBooking(altroVenueId, laBooking.id);
+    expect(la.reference).not.toBe(qui.reference);
+  });
+});
