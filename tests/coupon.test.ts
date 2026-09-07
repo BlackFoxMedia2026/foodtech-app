@@ -123,6 +123,8 @@ describe("vale o non vale", () => {
     maxRedemptions: null,
     maxPerGuest: 1,
     guestId: null,
+    minSpendCents: null,
+    validWeekdays: [] as number[],
     ...extra,
   });
 
@@ -177,6 +179,40 @@ describe("vale o non vale", () => {
       reason: "guest_unknown",
     });
   });
+
+  // --- le due condizioni nuove ---
+it("vale solo nei giorni scelti", () => {
+  // 2026-09-08 è un martedì (giorno 2).
+  const martedi = new Date("2026-09-08T20:00:00");
+  const soloMartedi = coupon({ validWeekdays: [2] });
+
+  expect(couponUsability(soloMartedi, { now: martedi, usiTotali: 0 })).toEqual({ usable: true });
+
+  const mercoledi = new Date("2026-09-09T20:00:00");
+  expect(couponUsability(soloMartedi, { now: mercoledi, usiTotali: 0 })).toEqual({
+    usable: false,
+    reason: "wrong_day",
+  });
+
+  // Nessun giorno scelto vuol dire tutti: è il comportamento di sempre.
+  expect(couponUsability(coupon({}), { now: mercoledi, usiTotali: 0 })).toEqual({ usable: true });
+});
+
+it("vale da una spesa minima in su, e solo se c'è un conto da guardare", () => {
+  const da40 = coupon({ minSpendCents: 4_000 });
+
+  // Nell'elenco non c'è nessun conto: non si boccia per una spesa che
+  // nessuno ha ancora fatto. È lo stesso errore del tetto per cliente.
+  expect(couponUsability(da40, { now: oggi, usiTotali: 0 })).toEqual({ usable: true });
+
+  expect(couponUsability(da40, { now: oggi, usiTotali: 0, conto: { totaleCents: 2_500 } })).toEqual({
+    usable: false,
+    reason: "below_min_spend",
+  });
+  expect(couponUsability(da40, { now: oggi, usiTotali: 0, conto: { totaleCents: 4_000 } })).toEqual({
+    usable: true,
+  });
+});
 });
 
 describe("l'uso al tavolo", () => {
@@ -323,3 +359,4 @@ describe("l'elenco", () => {
     expect((await listCoupons(venueId)).some((x) => x.code === "ALTRUI-3")).toBe(false);
   });
 });
+

@@ -789,6 +789,16 @@ model Coupon {
   validUntil       DateTime?
   maxRedemptions   Int?
   maxPerGuest      Int                @default(1)
+  /// Spesa minima del conto perché il coupon valga, in centesimi.
+  ///
+  /// «Vale da 40 € in su» è la prima regola che un ristoratore chiede: senza,
+  /// uno sconto del 20% su un caffè è uno sconto che nessuno voleva fare.
+  minSpendCents    Int?
+  /// I giorni della settimana in cui vale (0 = domenica). Vuoto = tutti.
+  ///
+  /// «Solo il martedì» è il modo in cui un coupon riempie i giorni deboli
+  /// invece di regalare sconti nel weekend, che è già pieno.
+  validWeekdays    Int[]              @default([])
   guestId          String?
   segment          Json?
   redemptionCount  Int                @default(0)

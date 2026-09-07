@@ -42,6 +42,8 @@ export function CouponDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const [validUntil, setValidUntil] = useState("");
   const [maxRedemptions, setMaxRedemptions] = useState("");
   const [maxPerGuest, setMaxPerGuest] = useState("1");
+  const [minSpend, setMinSpend] = useState("");
+  const [giorni, setGiorni] = useState<number[]>([]);
   const [inCorso, setInCorso] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +69,8 @@ export function CouponDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         ...(validUntil ? { validUntil: new Date(validUntil).toISOString() } : {}),
         ...(maxRedemptions.trim() ? { maxRedemptions: Number(maxRedemptions) } : {}),
         maxPerGuest: Number(maxPerGuest) || 1,
+        ...(minSpend.trim() ? { minSpendCents: Math.round(Number(minSpend.replace(",", ".")) * 100) } : {}),
+        ...(giorni.length > 0 ? { validWeekdays: giorni } : {}),
       }),
     });
 
@@ -174,6 +178,51 @@ export function CouponDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                 value={maxPerGuest}
                 onChange={(e) => setMaxPerGuest(e.target.value)}
               />
+            </div>
+          </div>
+
+          {/* Le due condizioni che un ristoratore chiede per prime, e che fino
+              a ieri non c'erano: senza la prima uno sconto del 20% si applica
+              anche a un caffè, senza la seconda un coupon nato per riempire il
+              martedì viene speso di sabato, che era già pieno. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="c-minimo">Vale da (euro di conto)</Label>
+              <Input
+                id="c-minimo"
+                inputMode="decimal"
+                value={minSpend}
+                onChange={(e) => setMinSpend(e.target.value)}
+                placeholder="nessun minimo"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Giorni in cui vale</Label>
+              <div className="flex flex-wrap gap-1">
+                {["dom", "lun", "mar", "mer", "gio", "ven", "sab"].map((g, i) => {
+                  const scelto = giorni.includes(i);
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      aria-pressed={scelto}
+                      onClick={() =>
+                        setGiorni((prima) =>
+                          prima.includes(i) ? prima.filter((x) => x !== i) : [...prima, i],
+                        )
+                      }
+                      className={`min-h-[36px] rounded-full border px-2.5 text-xs capitalize transition-colors ${
+                        scelto ? "border-accent bg-accent/20 text-foreground" : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-tertiary-foreground">
+                Nessuno selezionato: vale tutti i giorni.
+              </p>
             </div>
           </div>
 
