@@ -140,7 +140,6 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
             <CampaignResultsChart
               sentCount={campaign.sentCount}
               openedCount={campaign.openedCount}
-              bookedCount={campaign.bookedCount}
             />
           </CardContent>
         </Card>

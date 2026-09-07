@@ -3,6 +3,8 @@ import { ArrowRight, ArrowUp, ArrowDown } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/overview/stat-card";
 import { NpsPanel } from "@/components/surveys/nps-panel";
+import { ForecastPanel } from "@/components/insights/forecast-panel";
+import { getOccupancyByWeekday, getWeekForecast } from "@/server/forecast";
 import { getSurveyStats } from "@/server/surveys";
 import { Button } from "@/components/ui/button";
 import { SlotChart, SourcesChart, WeekdayHeatmap } from "@/components/insights/charts";
@@ -63,10 +65,14 @@ export default async function InsightsPage({
 }) {
   const ctx = await getActiveVenue();
   const { range, from, to } = computeRange(searchParams);
-  const [a, prev, nps] = await Promise.all([
+  const [a, prev, nps, previsione, occupazione] = await Promise.all([
     getAnalytics(ctx.venueId, from, to),
     getPreviousPeriodMetrics(ctx.venueId, from, to),
     getSurveyStats(ctx.venueId, { days: Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000)) }),
+    // La previsione guarda avanti: non dipende dal periodo selezionato, che
+    // riguarda il passato.
+    getWeekForecast(ctx.venueId),
+    getOccupancyByWeekday(ctx.venueId),
   ]);
 
   const insights = generateInsights({
@@ -91,6 +97,8 @@ export default async function InsightsPage({
         </div>
         <PeriodSelector range={range} from={from.toISOString().slice(0, 10)} to={to.toISOString().slice(0, 10)} />
       </header>
+
+      <ForecastPanel giorni={previsione} occupazione={occupazione} />
 
       <NpsPanel stats={nps} />
 

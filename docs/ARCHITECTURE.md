@@ -184,6 +184,34 @@ d'attesa e il walk-in, che stanno accomodando qualcuno adesso — passa da
 Stessa forma di `skipAvailabilityCheck`, che ora richiede anche un motivo
 scritto (`forceReason`) e finisce nel registro come azione distinta.
 
+### La previsione dice anche quanto fidarsi
+
+`src/server/forecast.ts`.
+
+Il modello è quello degli alberghi, e sta in una riga: **a tre giorni dal
+servizio, di solito hai già il 60% dei coperti finali** — quindi se oggi ne hai
+42, la sera finirà intorno a 70. Non serve niente di più complicato, e
+soprattutto niente che non si possa raccontare a un ristoratore: un numero di
+cui non capisci la provenienza o lo ignori o ci compri la spesa.
+
+Tre freni sulla falsa precisione:
+
+- **si confrontano giorni comparabili**: un sabato con i sabati. In un
+  ristorante il giorno della settimana spiega quasi tutto;
+- **sotto quattro giorni comparabili non si prevede**, e la schermata lo dice.
+  Con due o tre il numero c'è ma è dichiarato debole;
+- **non si divide per una quota minuscola**: a dieci giorni dal servizio il
+  libro può essere al 3%, e dividere per 0,03 amplifica il rumore. Sotto una
+  soglia si passa alla mediana storica di quel giorno, dicendolo.
+
+E due cose imparate guardando i numeri veri invece del codice: quando la quota
+già prenotata è vicina a uno, dire «hai già il 100% dei coperti finali» sembra
+un errore del programma — vuol dire «da te si prenota in anticipo», e va detto
+così. E le medie storiche vanno calcolate **solo sulle settimane in cui il
+locale ha davvero registrato qualcosa**: dividere per otto settimane quando ce
+ne sono quattro di dati dimezzava l'occupazione, e le due tabelle della stessa
+schermata si contraddicevano.
+
 ### Le anteprime non possono cancellare dati di produzione
 
 `scripts/migrate-safe.ts` più `src/lib/migration-safety.ts`.

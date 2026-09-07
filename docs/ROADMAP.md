@@ -63,11 +63,15 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [ ] WhatsApp e SMS come canali (il posto è pronto in `PROVIDERS`, manca il fornitore)
 - [ ] Coupon
 
-## Phase 5 — Revenue
+## Phase 5 — Revenue 🔄 in corso
 
-- Occupazione, RevPASH, spesa media, ROI campagne
-- Previsione coperti e ricavi
-- Intelligenza no-show
+- [x] **Occupazione vera** per giorno della settimana, sulle sole settimane in cui il locale ha davvero registrato: prima le medie si dividevano per otto settimane anche quando ce n'erano quattro di dati, e le quattro vuote dimezzavano il risultato
+- [x] **Previsione coperti a sette giorni**, col modello degli alberghi: si confronta ogni giorno con gli stessi giorni della settimana e si guarda quanto era già prenotato alla stessa distanza dal servizio. Ogni numero porta la sua frase, le assenze attese sono sottratte, e dove la storia non basta **non si prevede**
+- [x] Tolto `bookedCount` dai risultati di campagna: nessuno lo scriveva, quindi ogni campagna mostrava zero prenotazioni generate — una bocciatura inventata
+- [ ] **ROI delle campagne**: serve l'**attribuzione**. Il link dentro l'email deve portarsi dietro la campagna e la prenotazione che nasce da quel clic deve ricordarsene (una colonna su `Booking`, il parametro nel link, il widget pubblico che lo registra). Senza, il ritorno di una campagna è un numero inventato
+- [ ] RevPASH (ricavo per posto a sedere per ora): la capienza c'è, i ricavi sono una stima dichiarata. Ha senso quando ci saranno incassi veri
+- [ ] Previsione dei ricavi: è la previsione dei coperti per lo scontrino medio. Facile da mostrare, e per questo pericolosa — meglio dopo gli incassi reali
+- [ ] Intelligenza no-show oltre il singolo tavolo (il rischio per prenotazione c'è già nel centro controllo)
 
 ## Phase 6 — Ecosistema
 
