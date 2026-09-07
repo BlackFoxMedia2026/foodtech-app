@@ -8,7 +8,10 @@ export async function GET(req: Request) {
   if (!ctx.ok) return ctx.response;
   const url = new URL(req.url);
   const q = url.searchParams.get("q") ?? undefined;
-  const data = await listGuests(ctx.venueId, q);
+  const pagina = Number(url.searchParams.get("pagina")) || 1;
+  // Si risponde con la pagina **e** il totale: un client che riceve solo
+  // cinquanta righe deve poter sapere che ce ne sono trecento.
+  const data = await listGuests(ctx.venueId, { q, pagina });
   return NextResponse.json(data);
 }
 
