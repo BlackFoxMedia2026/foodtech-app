@@ -74,10 +74,12 @@ Obiettivo: «un ristorante può tenere Tavolo aperto per tutto il servizio».
 - [x] Tolto `bookedCount` dai risultati di campagna: nessuno lo scriveva, quindi ogni campagna mostrava zero prenotazioni generate — una bocciatura inventata
 - [x] **ROI delle campagne**: il link dentro l'email si porta dietro la campagna, e la prenotazione che nasce da quel clic la ricorda (`Booking.campaignId`). Il merito vale per 30 giorni dall'invio, senza disdette e assenze; il valore in euro è la stima sullo scontrino medio, detta stima. La campagna nel link viene **verificata** lato server: un identificativo inventato non attribuisce niente e non impedisce la prenotazione
 - [x] **Le campagne programmate non dicono più «partirà»** un giorno dopo che l'ora è passata: consegnato l'ordine al fornitore, l'esito non ci torna indietro, e adesso c'è scritto quello — «consegnata al fornitore», con il rimando al suo pannello. Nessuno stato inventato: si guarda l'orologio
-- [~] `Campaign.bookedCount` è una **colonna morta**: il codice ha smesso di dichiararla (fatto), la migrazione che la elimina arriva **dopo** questa pubblicazione — durante un deploy il codice vecchio serve ancora le richieste, e una colonna cancellata sotto un client Prisma che la seleziona è un errore in faccia a un utente
+- [x] `Campaign.bookedCount` **cancellata**, in due pubblicazioni separate: prima il codice ha smesso di dichiararla, poi la migrazione l'ha eliminata. È la prima migrazione distruttiva del progetto, dichiarata in `DICHIARATE_DISTRUTTIVE` (il test fallisce senza quella riga), e la prima volta che il freno delle anteprime si è visto all'opera su un caso vero
 - [ ] RevPASH (ricavo per posto a sedere per ora): ora i ricavi veri ci sono, ma su qualche serata. Ha senso quando la storia degli incassi copre qualche settimana, altrimenti è un numero preciso calcolato su niente
 - [ ] Previsione dei ricavi: è la previsione dei coperti per lo scontrino medio. Facile da mostrare, e per questo pericolosa — meglio dopo gli incassi reali
-- [ ] Intelligenza no-show oltre il singolo tavolo (il rischio per prenotazione c'è già nel centro controllo)
+- [x] **Quanto costano le assenze**: coperti persi, valore, giorni in cui succede, clienti che ripetono. Il rischio della singola prenotazione c'era già nel centro controllo; mancava la domanda che si fa il proprietario a fine mese
+      → il valore di un coperto perso è **misurato sui conti chiusi** quando ce ne sono, e solo altrimenti è lo scontrino medio dichiarato, detto stima. Senza nessuno dei due non si mostra: inventare un prezzo per un coperto perso è il modo più rapido di far prendere una decisione sbagliata
+      → nessuna percentuale sotto le 10 prenotazioni, e «il giorno peggiore» si nomina solo se sta davvero sopra la media — altrimenti è il primo dell'elenco travestito da diagnosi
 
 ## Funzioni che sembravano finite e non lo erano
 
