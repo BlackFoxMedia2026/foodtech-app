@@ -551,3 +551,81 @@ export async function waitlistSummary(venueId: string, now: Date = new Date()) {
     dimenticate: coda.filter((e) => e.dimenticata).length,
   };
 }
+
+
+/* -------------------------------------------------------------------------- */
+/*  La lista d'attesa, misurata                                               */
+/* -------------------------------------------------------------------------- */
+
+export type WaitlistReport = {
+  /** Righe chiuse nel periodo: è la popolazione su cui si misura. */
+  chiuse: number;
+  sedute: number;
+  andateVia: number;
+  /** Quota di chi si è seduto. Nulla quando le righe sono troppo poche. */
+  conversione: number | null;
+  /** Coperti che si sono seduti passando dalla lista. */
+  copertiRecuperati: number;
+  /** Attesa media di chi poi si è seduto, in minuti. Nulla se non risulta. */
+  attesaMediaMin: number | null;
+  /** Righe rimaste aperte oltre ogni ragionevolezza: da sistemare, non da contare. */
+  maiChiuse: number;
+};
+
+/**
+ * Quante persone in coda finiscono davvero a tavola.
+ *
+ * È la risposta a «tenere una lista d'attesa serve?», e senza di essa la
+ * risposta la dà l'impressione di chi era in sala quella sera.
+ *
+ * Tre precisazioni che la rendono onesta:
+ *
+ * - **si misura su chi è uscito dalla coda**, non su chi ci sta ancora: una
+ *   persona che aspetta adesso non è né un successo né una perdita;
+ * - **sotto un minimo non si dà una percentuale.** Tre righe non fanno un
+ *   tasso di conversione, fanno tre righe;
+ * - **le righe che nessuno ha chiuso si contano a parte.** Non sono clienti
+ *   persi: sono un gesto mancato in sala, e mescolarle ai persi
+ *   racconterebbe una serata peggiore di com'è andata.
+ */
+const MINIMO_PER_PERCENTUALE = 5;
+
+export async function waitlistReport(
+  venueId: string,
+  from: Date,
+  to: Date,
+  now: Date = new Date(),
+): Promise<WaitlistReport> {
+  const [chiuse, aperte] = await Promise.all([
+    db.waitlistEntry.findMany({
+      where: {
+        venueId,
+        status: { in: [...CLOSED_WAITLIST_STATUSES] },
+        updatedAt: { gte: from, lte: to },
+      },
+      select: { status: true, partySize: true, createdAt: true, seatedAt: true },
+    }),
+    db.waitlistEntry.count({
+      where: {
+        venueId,
+        status: { in: [...ACTIVE_WAITLIST_STATUSES] },
+        createdAt: { gte: from, lte: to, lt: new Date(now.getTime() - ATTESA_DIMENTICATA_MIN * 60_000) },
+      },
+    }),
+  ]);
+
+  const sedute = chiuse.filter((e) => e.status === "SEATED");
+  const attese = sedute
+    .filter((e) => e.seatedAt)
+    .map((e) => Math.max(0, Math.round((e.seatedAt!.getTime() - e.createdAt.getTime()) / 60_000)));
+
+  return {
+    chiuse: chiuse.length,
+    sedute: sedute.length,
+    andateVia: chiuse.length - sedute.length,
+    conversione: chiuse.length >= MINIMO_PER_PERCENTUALE ? sedute.length / chiuse.length : null,
+    copertiRecuperati: sedute.reduce((n, e) => n + e.partySize, 0),
+    attesaMediaMin: attese.length ? Math.round(attese.reduce((a, b) => a + b, 0) / attese.length) : null,
+    maiChiuse: aperte,
+  };
+}

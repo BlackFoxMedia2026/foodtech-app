@@ -10,6 +10,7 @@ import {
   notifyWaitlistEntry,
   seatWaitlistEntry,
   suggestEntriesForTable,
+  waitlistReport,
   waitlistSummary,
   WaitlistError,
 } from "@/server/waitlist";
@@ -256,5 +257,100 @@ describe("isolamento fra locali", () => {
 
     const riletto = await db.waitlistEntry.findUnique({ where: { id: suo.id } });
     expect(riletto?.status).toBe("WAITING");
+  });
+});
+
+
+describe("la lista d'attesa, misurata", () => {
+  const DA = new Date(Date.now() - 30 * 86_400_000);
+  const A = new Date(Date.now() + 86_400_000);
+
+  /** Una riga già chiusa, scritta direttamente: qui si misura, non si transita. */
+  async function chiusa(status: "SEATED" | "LEFT" | "CANCELLED", partySize: number, attesaMin?: number) {
+    const creata = new Date(Date.now() - (attesaMin ?? 20) * 60_000);
+    return db.waitlistEntry.create({
+      data: {
+        venueId,
+        guestName: `${PREFISSO}${status}`,
+        partySize,
+        status,
+        createdAt: creata,
+        seatedAt: status === "SEATED" ? new Date() : null,
+      },
+    });
+  }
+
+  async function svuotaCoda() {
+    await db.waitlistEntry.deleteMany({ where: { venueId } });
+  }
+
+  it("conta chi si è seduto e chi se n'è andato, e i coperti recuperati", async () => {
+    await svuotaCoda();
+    await chiusa("SEATED", 4);
+    await chiusa("SEATED", 2);
+    await chiusa("LEFT", 3);
+    await chiusa("CANCELLED", 2);
+    await chiusa("LEFT", 2);
+
+    const r = await waitlistReport(venueId, DA, A);
+    expect(r.chiuse).toBe(5);
+    expect(r.sedute).toBe(2);
+    expect(r.andateVia).toBe(3);
+    // I coperti recuperati sono persone che senza la lista sarebbero andate
+    // altrove: è il numero per cui questa funzione esiste.
+    expect(r.copertiRecuperati).toBe(6);
+    expect(Math.round((r.conversione ?? 0) * 100)).toBe(40);
+  });
+
+  it("sotto cinque righe non dà una percentuale: tre righe non fanno un tasso", async () => {
+    await svuotaCoda();
+    await chiusa("SEATED", 2);
+    await chiusa("LEFT", 2);
+
+    const r = await waitlistReport(venueId, DA, A);
+    expect(r.chiuse).toBe(2);
+    expect(r.conversione).toBeNull();
+  });
+
+  it("l'attesa media riguarda solo chi si è seduto davvero", async () => {
+    await svuotaCoda();
+    await chiusa("SEATED", 2, 10);
+    await chiusa("SEATED", 2, 30);
+    // Chi se n'è andato dopo cinque ore non deve gonfiare l'attesa di chi si è
+    // seduto: sono due domande diverse.
+    await chiusa("LEFT", 2, 300);
+    await chiusa("LEFT", 2, 300);
+    await chiusa("LEFT", 2, 300);
+
+    const r = await waitlistReport(venueId, DA, A);
+    expect(r.attesaMediaMin).toBe(20);
+  });
+
+  it("chi sta ancora aspettando non è né un successo né una perdita", async () => {
+    await svuotaCoda();
+    await addToWaitlist(venueId, { guestName: "In coda adesso", partySize: 2 });
+
+    const r = await waitlistReport(venueId, DA, A);
+    expect(r.chiuse).toBe(0);
+    expect(r.sedute).toBe(0);
+    expect(r.andateVia).toBe(0);
+    expect(r.maiChiuse).toBe(0);
+  });
+
+  it("le righe che nessuno ha chiuso si contano a parte, non fra i persi", async () => {
+    await svuotaCoda();
+    await db.waitlistEntry.create({
+      data: {
+        venueId,
+        guestName: "Dimenticata",
+        partySize: 2,
+        status: "WAITING",
+        createdAt: new Date(Date.now() - 8 * 3_600_000),
+      },
+    });
+
+    const r = await waitlistReport(venueId, DA, A);
+    expect(r.maiChiuse).toBe(1);
+    expect(r.andateVia).toBe(0);
   });
 });

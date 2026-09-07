@@ -36,6 +36,21 @@ let assenteId = "";
 let t2 = "";
 let t6 = "";
 
+/**
+ * L'orologio delle prove, fermo a mezzogiorno.
+ *
+ * Il centro controllo guarda **la giornata di oggi**. Girando questi test
+ * all'una e mezza di notte, «fra trenta minuti» cadeva nel giorno dopo e
+ * spariva dal quadro: passavano di giorno e fallivano la notte, che è il
+ * difetto peggiore di un test. Le prove riguardano le regole, non l'ora in
+ * cui girano.
+ */
+const ADESSO = (() => {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  return d;
+})();
+
 async function prenota(opts: {
   minutiDaAdesso: number;
   partySize?: number;
@@ -49,7 +64,7 @@ async function prenota(opts: {
       venueId,
       guestId: opts.guest ?? guestId,
       partySize: opts.partySize ?? 2,
-      startsAt: new Date(Date.now() + opts.minutiDaAdesso * 60_000),
+      startsAt: new Date(ADESSO.getTime() + opts.minutiDaAdesso * 60_000),
       durationMin: opts.durationMin ?? 105,
       status: opts.status ?? "CONFIRMED",
       source: "PHONE",
@@ -90,14 +105,14 @@ async function svuota() {
 describe("silenzio quando va tutto bene", () => {
   it("una sala vuota non produce nessun avviso", async () => {
     await svuota();
-    expect(await getServiceInsights(venueId)).toEqual([]);
+    expect(await getServiceInsights(venueId, { now: ADESSO })).toEqual([]);
   });
 
   it("due arrivi distribuiti e un tavolo assegnato non allarmano nessuno", async () => {
     await svuota();
     await prenota({ minutiDaAdesso: 30, partySize: 2, tableId: t2 });
     await prenota({ minutiDaAdesso: 75, partySize: 2, tableId: t6 });
-    const avvisi = await getServiceInsights(venueId);
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
     expect(avvisi.filter((a) => a.severity === "warning")).toEqual([]);
   });
 });
@@ -110,7 +125,7 @@ describe("picco di arrivi", () => {
     await prenota({ minutiDaAdesso: 35, partySize: 6, tableId: t6 });
     await prenota({ minutiDaAdesso: 40, partySize: 4, tableId: t2 });
 
-    const picco = (await getServiceInsights(venueId)).find((a) => a.kind === "arrival_peak");
+    const picco = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "arrival_peak");
     expect(picco).toBeDefined();
     expect(picco!.severity).toBe("warning");
     expect(picco!.detail).toContain("16 persone");
@@ -123,7 +138,7 @@ describe("picco di arrivi", () => {
     await prenota({ minutiDaAdesso: 50, partySize: 6, tableId: t6 });
     await prenota({ minutiDaAdesso: 80, partySize: 4, tableId: t2 });
 
-    const picco = (await getServiceInsights(venueId)).find((a) => a.kind === "arrival_peak");
+    const picco = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "arrival_peak");
     expect(picco).toBeUndefined();
   });
 
@@ -141,7 +156,7 @@ describe("collisione sul tavolo", () => {
     // Il prossimo arriva sullo stesso tavolo fra 20 minuti.
     await prenota({ minutiDaAdesso: 20, tableId: t6, partySize: 4 });
 
-    const collisione = (await getServiceInsights(venueId)).find((a) => a.kind === "table_collision");
+    const collisione = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "table_collision");
     expect(collisione).toBeDefined();
     expect(collisione!.severity).toBe("warning");
     expect(collisione!.title).toContain("C6");
@@ -154,7 +169,7 @@ describe("collisione sul tavolo", () => {
     await prenota({ minutiDaAdesso: -100, durationMin: 105, status: "SEATED", tableId: t6 });
     await prenota({ minutiDaAdesso: 60, tableId: t6 });
 
-    const collisione = (await getServiceInsights(venueId)).find((a) => a.kind === "table_collision");
+    const collisione = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "table_collision");
     expect(collisione).toBeUndefined();
   });
 });
@@ -163,7 +178,7 @@ describe("rischio no-show", () => {
   it("avvisa dopo la soglia di ritardo", async () => {
     await svuota();
     await prenota({ minutiDaAdesso: -(NO_SHOW_RISK_MIN + 10), tableId: t2 });
-    const avviso = (await getServiceInsights(venueId)).find((a) => a.kind === "no_show_risk");
+    const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "no_show_risk");
     expect(avviso).toBeDefined();
     expect(avviso!.title).toContain("in ritardo di");
   });
@@ -171,13 +186,13 @@ describe("rischio no-show", () => {
   it("non avvisa per un ritardo breve", async () => {
     await svuota();
     await prenota({ minutiDaAdesso: -(NO_SHOW_RISK_MIN - 10), tableId: t2 });
-    expect((await getServiceInsights(venueId)).find((a) => a.kind === "no_show_risk")).toBeUndefined();
+    expect((await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "no_show_risk")).toBeUndefined();
   });
 
   it("usa lo storico del cliente per dire cosa fare", async () => {
     await svuota();
     await prenota({ minutiDaAdesso: -(NO_SHOW_RISK_MIN + 5), tableId: t2, guest: assenteId });
-    const avviso = (await getServiceInsights(venueId)).find((a) => a.kind === "no_show_risk");
+    const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "no_show_risk");
     // Chi ha già due assenze merita una telefonata prima di liberare il tavolo:
     // il consiglio cambia in base al dato, non è una frase fissa.
     expect(avviso!.detail).toContain("2 assenze");
@@ -187,7 +202,7 @@ describe("rischio no-show", () => {
   it("chi è già arrivato non è a rischio, anche se in ritardo", async () => {
     await svuota();
     await prenota({ minutiDaAdesso: -60, status: "ARRIVED", tableId: t2 });
-    expect((await getServiceInsights(venueId)).find((a) => a.kind === "no_show_risk")).toBeUndefined();
+    expect((await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "no_show_risk")).toBeUndefined();
   });
 });
 
@@ -196,7 +211,7 @@ describe("opportunità", () => {
     await svuota();
     await addToWaitlist(venueId, { guestName: "Coppia Attesa", partySize: 2 });
 
-    const avviso = (await getServiceInsights(venueId)).find((a) => a.kind === "waitlist_match");
+    const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "waitlist_match");
     expect(avviso).toBeDefined();
     expect(avviso!.severity).toBe("opportunity");
     expect(avviso!.detail).toContain("in attesa");
@@ -207,7 +222,7 @@ describe("opportunità", () => {
     for (const nome of ["Primo", "Secondo", "Terzo"]) {
       await addToWaitlist(venueId, { guestName: nome, partySize: 2 });
     }
-    const abbinamenti = (await getServiceInsights(venueId)).filter((a) => a.kind === "waitlist_match");
+    const abbinamenti = (await getServiceInsights(venueId, { now: ADESSO })).filter((a) => a.kind === "waitlist_match");
     // Proporre lo stesso tavolo a tre gruppi trasformerebbe un aiuto in rumore.
     expect(abbinamenti).toHaveLength(1);
   });
@@ -219,7 +234,7 @@ describe("opportunità", () => {
     // …e in coda c'è un gruppo da sei, che ci starebbe.
     await addToWaitlist(venueId, { guestName: "Tavolata", partySize: 6 });
 
-    const avviso = (await getServiceInsights(venueId)).find((a) => a.kind === "oversized_table");
+    const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "oversized_table");
     expect(avviso).toBeDefined();
     expect(avviso!.severity).toBe("opportunity");
     expect(avviso!.title).toContain("C6");
@@ -228,7 +243,7 @@ describe("opportunità", () => {
   it("senza nessuno in attesa, un tavolo grande mezzo vuoto non è un problema", async () => {
     await svuota();
     await prenota({ minutiDaAdesso: -20, status: "SEATED", tableId: t6, partySize: 2 });
-    expect((await getServiceInsights(venueId)).find((a) => a.kind === "oversized_table")).toBeUndefined();
+    expect((await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "oversized_table")).toBeUndefined();
   });
 });
 
@@ -452,7 +467,7 @@ describe("ordine e quantità", () => {
     await prenota({ minutiDaAdesso: -(NO_SHOW_RISK_MIN + 5), tableId: t2 });
     await addToWaitlist(venueId, { guestName: "Attesa", partySize: 2 });
 
-    const avvisi = await getServiceInsights(venueId);
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
     const primoOpportunity = avvisi.findIndex((a) => a.severity === "opportunity");
     const ultimoWarning = avvisi.map((a) => a.severity).lastIndexOf("warning");
     expect(ultimoWarning).toBeLessThan(primoOpportunity);
@@ -465,7 +480,7 @@ describe("ordine e quantità", () => {
     await prenota({ minutiDaAdesso: -(NO_SHOW_RISK_MIN + 5), tableId: t2 });
     await addToWaitlist(venueId, { guestName: "Attesa", partySize: 2 });
 
-    const tre = await getTopServiceInsights(venueId);
+    const tre = await getTopServiceInsights(venueId, { now: ADESSO });
     expect(tre.length).toBeLessThanOrEqual(3);
   });
 
@@ -473,8 +488,8 @@ describe("ordine e quantità", () => {
     await svuota();
     await prenota({ minutiDaAdesso: -(NO_SHOW_RISK_MIN + 5), tableId: t2 });
 
-    const primo = await getServiceInsights(venueId);
-    const secondo = await getServiceInsights(venueId);
+    const primo = await getServiceInsights(venueId, { now: ADESSO });
+    const secondo = await getServiceInsights(venueId, { now: ADESSO });
     // Stabile fra due letture: senza questo la lista ballerebbe a ogni
     // aggiornamento automatico.
     expect(primo.map((a) => a.id)).toEqual(secondo.map((a) => a.id));
@@ -494,14 +509,14 @@ describe("ordine e quantità", () => {
       data: {
         venueId: altro.id,
         partySize: 2,
-        startsAt: new Date(Date.now() - 90 * 60_000),
+        startsAt: new Date(ADESSO.getTime() - 90 * 60_000),
         status: "CONFIRMED",
         source: "PHONE",
         tableId: suoTavolo.id,
       },
     });
 
-    expect(await getServiceInsights(venueId)).toEqual([]);
+    expect(await getServiceInsights(venueId, { now: ADESSO })).toEqual([]);
   });
 });
 
@@ -526,7 +541,7 @@ describe("il centro controllo non si autoaffoga", () => {
     // E una in ritardo vero, di mezz'ora: questa si recupera con una telefonata.
     await prenota({ minutiDaAdesso: -30, partySize: 4 });
 
-    const insights = await getServiceInsights(venueId);
+    const insights = await getServiceInsights(venueId, { now: ADESSO });
     const ritardi = insights.filter((i) => i.kind === "no_show_risk");
     const mancate = insights.filter((i) => i.kind === "missed_bookings");
 
@@ -544,7 +559,7 @@ describe("il centro controllo non si autoaffoga", () => {
     await prenota({ minutiDaAdesso: -120 });
     await prenota({ minutiDaAdesso: -40 });
 
-    const insights = await getServiceInsights(venueId);
+    const insights = await getServiceInsights(venueId, { now: ADESSO });
     const ritardi = insights.filter((i) => i.kind === "no_show_risk");
     expect(ritardi).toHaveLength(2);
     // Su quello di quaranta minuti la telefonata funziona ancora.
@@ -556,7 +571,7 @@ describe("il centro controllo non si autoaffoga", () => {
     await svuota();
     await prenota({ minutiDaAdesso: -577 });
 
-    const insights = await getServiceInsights(venueId);
+    const insights = await getServiceInsights(venueId, { now: ADESSO });
     expect(insights.filter((i) => i.kind === "no_show_risk")).toHaveLength(0);
     const mancate = insights.find((i) => i.kind === "missed_bookings");
     expect(mancate?.title).toContain("Una prenotazione");
