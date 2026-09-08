@@ -1,6 +1,6 @@
 # Sicurezza
 
-Stato al 7 settembre 2026, dopo la Phase 0.
+Stato all'8 settembre 2026.
 
 ## Come è protetta una richiesta
 
@@ -158,7 +158,20 @@ Per gravità, non per difficoltà:
    (quindi anche a `WAITER`). Il motivo obbligatorio ora c'è — allineato alla creazione
    forzata e alle tavolate — quindi ogni forzatura ha un perché scritto, un nome e un'ora nel
    registro. Resta aperto se questo gesto debba essere di un ruolo più alto.
-4. **Nessun 2FA, nessun recupero password, nessuna scadenza di sessione configurata.**
+4. **Nessun 2FA e nessun recupero password.** La scadenza della sessione invece ora è
+   dichiarata: **sette giorni**, con rinnovo silenzioso ogni ventiquattr'ore di uso
+   (`src/lib/auth.ts`). Prima valeva il valore per difetto di NextAuth — trenta giorni — su
+   token che non si possono revocare. Sette giorni è un compromesso dichiarato: in un
+   ristorante il dispositivo è condiviso e chi apre il servizio non deve trovare la schermata
+   d'accesso ogni sera, ma un mese è troppo per una cosa che non si può richiamare indietro.
+   La **revoca vera** resta aperta: richiede le sessioni sul database o una versione del token
+   confrontata a ogni richiesta.
+4-bis. **Non si può dare accesso a una persona del team, né toglierlo.** `VenueMembership` la
+   scrive solo il seed: in tutto il prodotto non esiste una rotta che la crei o la cancelli.
+   Non è un buco di sicurezza in senso stretto — chi non ha un locale non vede niente, e il
+   controllo si rifà a ogni richiesta — ma è il motivo per cui oggi un ristorante non può dare
+   l'accesso al suo maître, e per cui la matrice dei ruoli qui sopra è più teorica di quanto
+   sembri.
 5. **Credenziali demo note** (`owner@tavolo.demo`) su un ambiente pubblico.
 6. **Una `Content-Security-Policy` completa sugli script.** Le intestazioni ci sono
    (`nosniff`, `Referrer-Policy`, `X-Frame-Options: DENY` con l'eccezione dichiarata di
