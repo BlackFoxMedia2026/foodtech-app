@@ -7,6 +7,13 @@ import { getPeriodRevenueTool } from "./tools/analytics";
 import { navigateTool } from "./tools/navigation";
 import { assignWaiterTool } from "./tools/assign-waiter";
 import { getExpiringContractsTool } from "./tools/contracts";
+import {
+  chiNonTornaTool,
+  chiRischiaAssenzaTool,
+  giornoPeggioreTool,
+  piattiCheRendonoMenoTool,
+  tavoliLunghiTool,
+} from "./tools/domande-operative";
 
 export const toolRegistry: Record<string, Tool> = {
   get_today_reservations: getTodayReservationsTool,
@@ -19,4 +26,12 @@ export const toolRegistry: Record<string, Tool> = {
   navigate_to_section: navigateTool,
   assign_waiter: assignWaiterTool,
   get_expiring_contracts: getExpiringContractsTool,
+  // Le cinque domande operative del §56: chi rischia di mancare, quali tavoli
+  // vanno lunghi, chi non torna, quali piatti rendono meno, qual è il giorno
+  // peggiore. Tutte su dati che esistono già.
+  chi_rischia_assenza: chiRischiaAssenzaTool,
+  tavoli_lunghi: tavoliLunghiTool,
+  chi_non_torna: chiNonTornaTool,
+  piatti_che_rendono_meno: piattiCheRendonoMenoTool,
+  giorno_peggiore: giornoPeggioreTool,
 };

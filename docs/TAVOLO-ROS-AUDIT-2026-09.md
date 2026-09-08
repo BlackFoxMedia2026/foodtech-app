@@ -44,6 +44,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | P2-6 · menu admin da telefono | ✅ **chiuso**: da quattro pulsanti a icona per piatto a un solo «⋯» con le azioni scritte. Ci è entrata anche **«segna come finito»**, che è il gesto più frequente durante il servizio e prima richiedeva di aprire la scheda del piatto. Da tablet in su la fila di pulsanti resta: col mouse funziona meglio del menù |
 | P2-8 · deduplica e unione ospiti | ✅ **chiuso**: le coppie con la stessa email o lo stesso telefono si propongono, **nessuna unione è automatica**, e l'unione la può fare solo un Manager. Niente si perde: tutto si sposta, note e allergie si uniscono, i contatori si ricalcolano dalle righe. Una revoca di consenso più recente vince su un consenso più vecchio, e una scheda anonimizzata non si unisce mai |
 | P1-9 · cifratura della password Wi-Fi | ✅ **chiuso**: AES-256-GCM con chiave da `CHIAVE_CIFRATURA`. Non può essere un'impronta — il portale la consegna a chi lascia un contatto — quindi si mette sotto chiave. Senza chiave resta in chiaro **con l'etichetta**, e la schermata lo dice. Nel farlo è emerso che il freno delle migrazioni chiamava distruttivo anche diventare `text`: adesso distingue |
+| 16 · le domande operative dell'agente | ✅ **chiuso**: le cinque domande del §56 sono cinque strumenti deterministici sui dati che esistevano già. Nessun modello: dove la misura non basta la risposta dice **cosa manca** invece di stimare, e ogni numero porta la sua base |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -70,7 +71,7 @@ In ordine di gravità reale, non di comodità.
 | 13 | **Nessuna difesa anti-abuso sul widget oltre al limite di frequenza** | Nessun honeypot, nessuna idempotenza, nessun riconoscimento del doppione, nessuna verifica del contatto: email e telefono inventati passano | `[CODE]` `src/app/api/public/bookings/route.ts` |
 | 14 | **23 modelli su 73 non hanno una riga di codice** | Era 24 ieri, ne sono stati chiusi due (`ReviewLink`, `ReviewLinkClick`). Restano fra gli altri `Connector`, `POSConnector`, `POSEvent`, `CallLog`, `MissedCall`, `VoiceBookingDraft`, `ChatSession`, `Review`, `Ticket`, `ApiToken`, `StaffShift`, `MessageTemplate` | `[DATABASE]` conteggio rifatto stanotte |
 | 15 | **L'email è spenta in produzione** | Promemoria, sondaggi, automazioni e campagne sono pronti e non partono. Il prodotto lo dichiara invece di finto-inviare, ma metà del *Growth OS* è ferma per una chiave | `[CODE]` `src/server/messaging/*` |
-| 16 | **L'agente AI non risponde a nessuna delle domande del §56** | Esiste, ed è ben fatto (10 intenti deterministici, quota mensile, conferma sulle azioni). Ma non sa dire chi rischia di non presentarsi, quali tavoli stanno andando lunghi, chi non torna, quali piatti rendono meno, qual è il giorno peggiore — cioè le domande operative | `[CODE]` `src/server/ai/intent-router.ts` |
+| ~~16~~ | ~~**L'agente AI non risponde a nessuna delle domande del §56**~~ — **chiuso l'8 settembre** | Esiste, ed è ben fatto (10 intenti deterministici, quota mensile, conferma sulle azioni). Ma non sa dire chi rischia di non presentarsi, quali tavoli stanno andando lunghi, chi non torna, quali piatti rendono meno, qual è il giorno peggiore — cioè le domande operative | `[CODE]` `src/server/ai/intent-router.ts` |
 | 17 | **Il riconoscimento degli intenti è a espressioni regolari sull'italiano** | «come siamo messi stasera?» non corrisponde a nessuna regola e finisce nella quota esterna. Fragile per costruzione, e la fragilità la paga la quota | `[CODE]` `src/server/ai/intent-router.ts` |
 | 18 | **Nessuna deduplica ospiti a posteriori, né merge** | Il riconoscimento all'ingresso c'è (email/telefono) ed è stato messo stanotte, ma i doppioni già in archivio non si possono unire: una scheda sbagliata resta sbagliata | `[CODE]` `src/server/guest-match.ts` |
 | 19 | **Nessuna cache, e ogni pagina interroga il database a ogni caricamento** | Oggi sostenibile e in parte voluto (sala e servizio devono essere freschi). Con dieci locali attivi va guardato, e va guardato **prima** che diventi un incendio | `[INFERENCE]` architettura RSC senza livello di cache |
@@ -205,7 +206,7 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Test end-to-end | **MISSING** | §80 |
 | Seed realistico | **EXISTS** | Ripulito dalle assurdità (577′, 536′, tutti VIP) |
 | AI: agente con quota, conferme, permessi | **EXISTS** | 10 intenti, 1 azione |
-| AI: le domande operative del §56 | **MISSING** | |
+| AI: le domande operative del §56 | **EXISTS** | Fatte tutte e cinque l'8 settembre, come strumenti deterministici: chi rischia di mancare, quali tavoli vanno lunghi, chi non torna, quali piatti rendono meno, qual è il giorno peggiore. Dove la misura non basta, la risposta è che non basta |
 | AI: insight proattivi | **PARTIAL** | Esistono, ma **fuori** dall'agente: sono le otto regole del centro controllo. È probabilmente il posto giusto |
 | Voice booking | **MISSING** | `VoiceBookingDraft` senza codice. §60 chiede il progetto, non l'implementazione |
 
@@ -441,7 +442,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 
 | # | Cosa | Impatto | Compl. | Dipendenze | Rischio |
 |---|---|---|---|---|---|
-| P4-1 | **Le domande del §56 dentro l'agente**, come strumenti sui dati che già esistono | 4 | M | nessuna | basso |
+| ~~P4-1~~ | ~~**Le domande del §56 dentro l'agente**, come strumenti sui dati che già esistono~~ — **fatto l'8 settembre** | 4 | M | nessuna | basso |
 | P4-2 | **Caparra suggerita e spiegata** (§13) | 4 | M | P1-1 | medio |
 | P4-3 | **Insight proattivi dell'agente** sopra le regole esistenti | 3 | M | P4-1 | medio |
 | P4-4 | **Voice booking**: progetto, non implementazione (§60) | 3 | L | fornitore voce | alto |
