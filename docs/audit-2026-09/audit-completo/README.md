@@ -107,3 +107,4 @@ veniva fatta.
 | `35-debito-giftcard.png` | Il debito delle gift card fra i numeri d'insieme |
 | `36`–`37` | L'overbooking dichiarato: il margine in Impostazioni, e l'orario segnato «oltre la capienza» **solo in sala** |
 | `38-rotazione.png` | Quanto stanno a tavola: 1 ora e 56 misurate contro 1 ora e 45 impostate, e cosa farne |
+| `40-mobile-*.png` | Le quattro pagine cambiate stanotte, dal telefono (390 px): Impostazioni, Analytics, Automazioni, Menu — zero scorrimento orizzontale su tutte |
