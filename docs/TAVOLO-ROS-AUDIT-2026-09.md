@@ -37,6 +37,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | 6 · gestione del team | ✅ **chiuso**: invito con link da consegnare, ruoli assegnabili, rimozione, e le due difese contro il chiudersi fuori. Era «riscritto dopo verifica»: non è «`authorize` non controlla l'utente attivo», è che **non si può dare accesso a nessuno**. Vedi 5-bis |
 | P2-1 · sala viva completa | ✅ **chiuso**: il conto aperto sul tavolo (col numero di righe, perché «conto vuoto» e «zero euro» sono due fatti diversi), la previsione di liberazione contata **da quando si sono seduti** e con la durata misurata qui quando ce n'è abbastanza, e chi arriva dopo su quel tavolo — anche mentre è occupato, con l'avviso «non fa in tempo». Trovato e corretto un difetto: la previsione partiva dall'orario prenotato, quindi un tavolo seduto in ritardo risultava libero mentre leggevano il menu |
 | P2-3 · durata contestuale | ✅ **chiuso**: il motore non vende più tutto con 105 minuti. La durata si misura per gruppo, fascia e tipo di giorno, con una scala che si allarga quando i campioni non bastano e finisce sulla predefinita dichiarandolo. Proposta nel modulo con la frase che dice su cosa poggia; **una durata scritta a mano resta quella** |
+| P2-4 · cosa sapere di questo ospite | ✅ **chiuso**: allergia, occasione, nota scritta dal personale, preferenze, chi è, assenze — al massimo quattro righe, in ordine di urgenza, con la fonte in ogni riga e **lo stesso aspetto in tutte le schermate**. Il tetto non taglia mai un avviso: dal vivo si è visto sparire «una volta non si è presentato» per far posto a «non ama la musica alta» |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -138,7 +139,7 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Allergie, note riservate, occasioni | **EXISTS** | |
 | Consenso separato da quello operativo, con prova | **EXISTS** | |
 | Export e cancellazione su richiesta | **EXISTS** | Sette posti in una transazione, i conti non si toccano |
-| Sintesi «cosa sapere di questo ospite» | **PARTIAL** | I pezzi ci sono (tag + profilo); manca la **riga unica** nel servizio e in sala (§18) |
+| Sintesi «cosa sapere di questo ospite» | **EXISTS** | Fatta l'8 settembre: quattro righe al massimo, in ordine di urgenza, uguali in Servizio, Sala e prenotazione. Gli avvisi non si tagliano mai |
 | Riconoscimento all'ingresso (email/telefono) | **EXISTS** | |
 | Deduplica a posteriori e merge controllato | **MISSING** | §19 |
 | Valore economico dell'ospite | **PARTIAL** | Solo dai conti chiusi su Tavolo; senza POS resta parziale — ed è dichiarato |
@@ -410,7 +411,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | ~~P2-1~~ | ~~**Sala viva completa** (§6): conto, previsione di liberazione, prossima prenotazione sul tavolo~~ — **fatto l'8 settembre** | 5 | M | nessuna | basso |
 | P2-2 | **Avviso → problema/motivo/impatto/azione** e due regole nuove (tavolo che sta per liberarsi, tavolo oltre la durata) | 4 | M | nessuna | basso |
 | ~~P2-3~~ | ~~**Durata contestuale** nel motore (§15), solo con campioni sufficienti~~ — **fatto l'8 settembre** | 5 | M | rotazione (fatta) | medio |
-| P2-4 | **«Cosa sapere di questo ospite»** dove serve: servizio, sala, prenotazione | 4 | S | nessuna | basso |
+| ~~P2-4~~ | ~~**«Cosa sapere di questo ospite»** dove serve: servizio, sala, prenotazione~~ — **fatto l'8 settembre** | 4 | S | nessuna | basso |
 | P2-5 | **Executive summary mobile** per Analytics (§28) | 4 | M | nessuna | basso |
 | P2-6 | **Menu mobile admin** con menu contestuale (§21) | 3 | S | nessuna | basso |
 | P2-7 | **Impostazioni raggruppate** + «Altro» raggruppato (§3) | 3 | S | nessuna | basso |

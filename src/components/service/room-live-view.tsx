@@ -20,7 +20,9 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { readApiError } from "@/lib/api-client";
 import { durataUmana } from "@/lib/durata";
+import { frasePrevisione } from "@/lib/liberazione";
 import { cn, formatCurrency } from "@/lib/utils";
+import { CosaSapere } from "@/components/guests/cosa-sapere";
 import { TABLE_LIVE_HINTS, TABLE_LIVE_LABELS, type TableLiveStatus } from "@/lib/table-status";
 import { LIVE_STATUS_ORDER, type FloorLive, type TableLiveInfo } from "@/server/floor-live";
 import { ServiceSwitch } from "@/components/service/service-switch";
@@ -37,34 +39,6 @@ function oraLocale(iso: string, timezone: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(iso));
-}
-
-/**
- * «Libero verso le 22:30», e da dove viene quel 22:30.
- *
- * L'ora si dice per intero perché è quella che si confronta con l'orario di
- * chi sta arrivando: «fra un'ora e venti» costringe chi legge a fare una
- * somma mentre ha un cliente davanti. E si dice **su cosa poggia**: una
- * previsione basata su duecento cene misurate qui autorizza a promettere un
- * tavolo; quella basata sui 105 minuti di default no.
- */
-function frasePrevisione(
-  liberoVerso: NonNullable<Corrente["liberoVerso"]>,
-  timezone: string,
-): { testo: string; dettaglio: string } {
-  const ora = oraLocale(liberoVerso.fine, timezone);
-
-  const testo =
-    liberoVerso.minuti >= 0
-      ? `libero verso ${ora}`
-      : `oltre di ${durataUmana(Math.abs(liberoVerso.minuti))}`;
-
-  const dettaglio =
-    liberoVerso.fonte === "MISURATO"
-      ? `Durata misurata in questo locale: ${durataUmana(liberoVerso.durataMin)}, su ${liberoVerso.misurate} cene chiuse.`
-      : `Durata prevista sulla prenotazione: ${durataUmana(liberoVerso.durataMin)}. Non ci sono ancora abbastanza cene misurate per dire di più.`;
-
-  return { testo, dettaglio };
 }
 
 /**
@@ -664,12 +638,13 @@ function TavoloRiga({
             </p>
           )}
 
-          {corrente?.allergies && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-accent">
-              <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-              {corrente.allergies}
-            </p>
-          )}
+          {/*
+            Cosa sapere di chi è a questo tavolo: l'allergia stava già qui da
+            sola, ora è la prima riga di un elenco che dice anche l'occasione,
+            la nota scritta dal personale e chi è. Lo stesso componente della
+            modalità Servizio.
+          */}
+          {corrente && <CosaSapere righe={corrente.daSapere} className="mt-1" />}
           {corrente && corrente.combinedWith.length > 0 && (
             <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
               <Link2 className="h-3 w-3" aria-hidden="true" />

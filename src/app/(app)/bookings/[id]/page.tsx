@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, SourceBadge } from "@/components/bookings/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { cosaSapere, etichettaOccasione } from "@/lib/cosa-sapere";
+import { CosaSapere } from "@/components/guests/cosa-sapere";
 
 export default async function BookingDetail({ params }: { params: { id: string } }) {
   const ctx = await getActiveVenue();
@@ -50,7 +52,8 @@ export default async function BookingDetail({ params }: { params: { id: string }
             <Info icon={Users} label="Persone" value={String(item.partySize)} />
             <Info icon={Clock} label="Durata" value={`${item.durationMin} min`} />
             <Info label="Tavolo" value={item.table?.label ?? "Da assegnare"} />
-            <Info label="Occasione" value={item.occasion ?? "—"} />
+            {/* «BIRTHDAY» è come lo scrive il database, non come si dice. */}
+            <Info label="Occasione" value={etichettaOccasione(item.occasion) ?? "—"} />
             {item.depositCents > 0 && (
               <Info label="Caparra" value={formatCurrency(item.depositCents, ctx.venue.currency)} />
             )}
@@ -78,8 +81,28 @@ export default async function BookingDetail({ params }: { params: { id: string }
               <div className="flex flex-wrap gap-2">
                 <Badge tone="gold">{item.guest.loyaltyTier}</Badge>
                 <Badge tone="neutral">{item.guest.totalVisits} visite</Badge>
-                {item.guest.allergies && <Badge tone="danger">{item.guest.allergies}</Badge>}
               </div>
+            )}
+
+            {/*
+              Cosa sapere di questa persona, come in Servizio e in Sala.
+              L'allergia era una pillola rossa fra le altre: adesso è la prima
+              riga di un elenco, con la stessa forma che ha nelle schermate
+              dove si lavora.
+            */}
+            {item.guest && (
+              <CosaSapere
+                disposizione="colonna"
+                righe={cosaSapere({
+                  allergies: item.guest.allergies,
+                  privateNotes: item.guest.privateNotes,
+                  preferences: item.guest.preferences,
+                  visits: item.guest.totalVisits,
+                  noShows: item.guest.noShowCount,
+                  loyaltyTier: item.guest.loyaltyTier,
+                  occasion: item.occasion,
+                })}
+              />
             )}
             {item.guest && (
               <Button asChild variant="outline" size="sm">

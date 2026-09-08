@@ -3,9 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  AlertTriangle,
   ArrowLeftRight,
-  Cake,
   Check,
   CircleUser,
   CreditCard,
@@ -19,21 +17,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
+import { CosaSapere } from "@/components/guests/cosa-sapere";
 import { durataUmana } from "@/lib/durata";
+import { frasePrevisione } from "@/lib/liberazione";
 import { cn } from "@/lib/utils";
 import type { ServiceBooking } from "@/server/service";
 import { TablePickerDialog } from "@/components/service/table-picker-dialog";
 import { RedeemCouponDialog } from "@/components/coupons/redeem-dialog";
 import { BillDialog } from "@/components/orders/bill-dialog";
-
-const OCCASIONE: Record<string, string> = {
-  BIRTHDAY: "Compleanno",
-  ANNIVERSARY: "Anniversario",
-  BUSINESS: "Lavoro",
-  DATE: "Romantica",
-  CELEBRATION: "Celebrazione",
-  OTHER: "Occasione",
-};
 
 /**
  * Una riga della modalità Servizio.
@@ -140,13 +131,14 @@ export function ServiceBookingCard({
 
           <p className="mt-1 text-sm text-muted-foreground">
             {booking.partySize} {booking.partySize === 1 ? "persona" : "persone"}
-            {booking.status === "SEATED" && booking.minutesToFree !== null && (
+            {booking.liberoVerso && (
               <>
                 {" · "}
-                <span className={cn((booking.minutesToFree ?? 0) <= 0 && "text-accent")}>
-                  {booking.minutesToFree > 0
-                    ? `libero fra ~${durataUmana(booking.minutesToFree)}`
-                    : `oltre di ${durataUmana(Math.abs(booking.minutesToFree))}`}
+                <span
+                  className={cn(booking.liberoVerso.minuti <= 0 && "text-accent")}
+                  title={frasePrevisione(booking.liberoVerso, timezone).dettaglio}
+                >
+                  {frasePrevisione(booking.liberoVerso, timezone).testo}
                 </span>
               </>
             )}
@@ -161,20 +153,16 @@ export function ServiceBookingCard({
               booking.minutesToArrival > 0 && <> · fra {booking.minutesToArrival} min</>}
           </p>
 
-          {(booking.allergies || booking.occasion || booking.notes || booking.depositCents > 0) && (
+          {/*
+            Allergie e occasione stavano qui come due pillole fra le altre.
+            Adesso sono le prime due righe di «cosa sapere», che è lo stesso
+            elenco che si legge in Sala: una persona deve leggersi uguale in
+            tutte le schermate, o la seconda volta non la si guarda.
+          */}
+          <CosaSapere righe={booking.daSapere} className="mt-1.5" />
+
+          {(booking.notes || booking.depositCents > 0) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-              {booking.allergies && (
-                <span className="flex items-center gap-1 text-accent">
-                  <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                  {booking.allergies}
-                </span>
-              )}
-              {booking.occasion && (
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <Cake className="h-3 w-3" aria-hidden="true" />
-                  {OCCASIONE[booking.occasion] ?? booking.occasion}
-                </span>
-              )}
               {booking.depositCents > 0 && (
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <CreditCard className="h-3 w-3" aria-hidden="true" />
