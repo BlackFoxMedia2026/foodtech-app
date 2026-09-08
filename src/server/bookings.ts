@@ -135,6 +135,14 @@ export type BookingWriteOptions = {
    * di scriverla del tutto.
    */
   canale?: Canale;
+  /**
+   * La chiave del tentativo, dal widget.
+   *
+   * Finisce sulla riga e ha un indice unico: due richieste con la stessa
+   * chiave non possono diventare due prenotazioni, e il secondo tentativo lo
+   * scopre dal database invece che da un controllo che non le vede entrambe.
+   */
+  idempotencyKey?: string | null;
   actor?: AuditActor;
   /**
    * Stato iniziale imposto da chi chiama, **solo da codice server**.
@@ -223,6 +231,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       notes: data.notes ?? null,
       internalNotes: data.internalNotes ?? null,
       depositCents: data.depositCents,
+      idempotencyKey: opts.idempotencyKey ?? null,
       // Se nasce già arrivata o seduta, l'orologio parte adesso: senza questi
       // istanti la Sala non saprebbe da quanto quel tavolo è occupato.
       arrivedAt: status === "ARRIVED" || status === "SEATED" ? new Date() : null,

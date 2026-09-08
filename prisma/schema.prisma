@@ -407,6 +407,14 @@ model Booking {
   /// Prima c'era `Campaign.bookedCount`, che nessuno scriveva e che mostrava
   /// zero su ogni campagna.
   campaignId        String?
+  /// La chiave che il widget genera per **un** tentativo di prenotazione.
+  ///
+  /// Serve a una cosa sola: un cliente che tocca «Prenota» due volte sulla
+  /// rete del ristorante deve prenotare una volta. Alla seconda chiamata con
+  /// la stessa chiave si restituisce la prenotazione già creata invece di
+  /// farne un'altra — e l'unicità la garantisce il database, non un controllo
+  /// che due richieste in parallelo si scambierebbero senza vedersi.
+  idempotencyKey    String?            @unique
   Campaign          Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   orders            Order[]
   guest             Guest?             @relation(fields: [guestId], references: [id])
