@@ -34,6 +34,7 @@ La prima volta serve il browser: `npx playwright install chromium`.
 | `02-dalla-coda-al-tavolo.spec.ts` | Aggiunta in lista d'attesa → accomodata a un tavolo → **diventa una prenotazione vera**, non una riga chiusa |
 | `03-gift-card-a-meta.spec.ts` | Emissione da 100 € → walk-in → conto → cinque euro scalati → restano dieci da incassare → **95 € sulla carta**, per un'altra volta |
 | `04-dal-voto-alla-recensione.spec.ts` | Voto 10 → invito alla recensione → il collegamento passa dalla porta che **conta** il passaggio → il numero compare in Analytics. E, per la strada opposta: voto 4 → si chiede cosa non è andato **in privato**, e nessun invito pubblico |
+| `05-invitare-una-persona.spec.ts` | Il manager invita → copia il link → chi lo riceve (in una finestra che non ha mai visto Tavolo) vede dove entra e con che ruolo → scegli la password → **entra davvero** → non può invitare nessuno (403 anche via API) → il manager le toglie l'accesso. Più: sul proprio ruolo non si agisce |
 
 ## Quali mancano, e perché
 

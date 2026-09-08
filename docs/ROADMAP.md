@@ -183,7 +183,7 @@ costavano poco e valevano molto.
       → chi ha già un accesso a Tavolo **non se ne fa un secondo**: gli si aggiunge il locale, e la sua password non si tocca
       → le due difese contro il chiudersi fuori stanno **sul server**, non nell'interfaccia: su di sé non si agisce (né togliersi l'accesso né abbassarsi il ruolo), e l'ultimo manager non si tocca — senza manager nessuno potrebbe più invitare nessuno e il locale diventerebbe inaccessibile per sempre
       → provato dal vivo per intero, compresa la cosa che conta: la persona invitata **entra davvero**, e una reception che prova a invitare via API riceve 403
-- [x] **Quattro percorsi end-to-end verdi in 11 secondi** (P0-2 chiuso per la parte che si può chiudere): dal sito al cliente, dalla coda al tavolo, la gift card usata a metà, e il voto che diventa recensione (con la strada opposta: voto basso → nessun invito pubblico)
+- [x] **Cinque percorsi end-to-end verdi in 26 secondi** (P0-2 chiuso per la parte che si può chiudere): dal sito al cliente, dalla coda al tavolo, la gift card usata a metà, e il voto che diventa recensione (con la strada opposta: voto basso → nessun invito pubblico)
       → rilanciandoli scattava il limite di frequenza sull'endpoint pubblico: la soluzione non è stata allentare i limiti — una prova con difese diverse da quelle vere non verifica il prodotto vero — ma presentarsi come un cliente nuovo a ogni esecuzione, che è quello che fa un proxy
 - [ ] Resta un percorso del §80: **campagna → clic → attribuzione** (il meccanismo ha i suoi test; il percorso passa dalla finestra più lunga del prodotto). Il quinto — caparra→disdetta→rimborso — **non si può scrivere**: i pagamenti non esistono, e scriverlo con dati finti darebbe una copertura inventata
 
