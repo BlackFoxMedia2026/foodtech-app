@@ -43,7 +43,8 @@ export type ServiceInsight = {
     | "freed_slot"
     | "shift_over_capacity"
     | "table_freeing_soon"
-    | "table_overdue";
+    | "table_overdue"
+    | "rotation_slipping";
   severity: InsightSeverity;
   /** **Il problema**, in una riga: cosa sta succedendo. */
   title: string;
@@ -120,6 +121,25 @@ const OVERSIZED_SPARE_SEATS = 3;
 const HORIZON_MIN = 90;
 
 /**
+ * Quante cene chiuse servono, **stasera**, per dire qualcosa su stasera.
+ *
+ * Tre: sotto, è l'aneddoto di due tavoli. È lo stesso ragionamento del
+ * minimo di dieci per la durata del locale, con il numero adattato al fatto
+ * che una serata non può averne cento.
+ */
+export const MINIMO_CENE_STASERA = 3;
+
+/**
+ * Di quanto le cene di stasera devono scostarsi dal solito perché sia una
+ * notizia.
+ *
+ * Venti minuti su una cena: sotto, è la differenza fra un martedì e un altro
+ * martedì. Sopra, il secondo giro di tavoli slitta — ed è quello che il turno
+ * successivo pagherà.
+ */
+export const SCOSTAMENTO_ROTAZIONE_MIN = 20;
+
+/**
  * Entro quanto un tavolo «sta per liberarsi».
  *
  * Un quarto d'ora: il tempo di avvisare chi aspetta e di preparare il tavolo.
@@ -152,7 +172,7 @@ export async function getServiceInsights(
   const now = opts.now ?? new Date();
   const orizzonte = new Date(now.getTime() + HORIZON_MIN * 60_000);
 
-  const [venue, bookings, live, coda, shifts, disdette, tables] = await Promise.all([
+  const [venue, bookings, live, coda, shifts, disdette, tables, chiuseStasera] = await Promise.all([
     db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }),
     db.booking.findMany({
       where: {
@@ -186,6 +206,22 @@ export async function getServiceInsights(
       take: 20,
     }),
     db.table.findMany({ where: { venueId, active: true }, select: { id: true, label: true, seats: true } }),
+    /**
+     * Le cene **già chiuse** di oggi: sono l'unica misura di quanto si sta a
+     * tavola *stasera*. Le prenotazioni ancora sedute non dicono niente —
+     * una cena in corso da un'ora può durarne due o quattro, e contarla
+     * darebbe un numero che scende da solo col passare del servizio.
+     */
+    db.booking.findMany({
+      where: {
+        venueId,
+        deletedAt: null,
+        startsAt: { gte: startOfDay(now), lte: endOfDay(now) },
+        seatedAt: { not: null },
+        closedAt: { not: null },
+      },
+      select: { seatedAt: true, closedAt: true },
+    }),
   ]);
 
   const timezone = venue?.timezone ?? "Europe/Rome";
@@ -653,7 +689,78 @@ export async function getServiceInsights(
   }
 
   /* ---------------------------------------------------------------------- */
-  /* 10. Turno oltre la capienza                                            */
+  /* 10. La rotazione sta slittando                                         */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * Stasera si sta a tavola più del solito, e il secondo giro slitta.
+   *
+   * È diverso dalle due regole sui tavoli: quelle guardano **un** tavolo,
+   * questa guarda **il servizio**. Un tavolo oltre la durata è un caso; sei
+   * tavoli che durano mezz'ora più del solito sono una serata che finirà in
+   * ritardo, e chi accoglie può ancora fare qualcosa — avvisare chi arriva,
+   * spostare qualcuno, smettere di promettere orari.
+   *
+   * Tre condizioni, e servono tutte:
+   *
+   * - **il locale sa quanto durano le sue cene** (almeno dieci misurate:
+   *   `live.durata`). Senza quella, «più del solito» non ha un solito;
+   * - **stasera ci sono almeno tre cene chiuse.** Sotto, è l'aneddoto di due
+   *   tavoli, e un avviso costruito su due tavoli è rumore;
+   * - **c'è una conseguenza**: qualcuno che arriva o qualcuno che aspetta. È
+   *   la stessa regola di «oltre la durata»: un servizio lento con la sala
+   *   mezza vuota non è un problema, è una serata tranquilla.
+   */
+  const durateStasera = chiuseStasera
+    .map((b) => Math.round((b.closedAt!.getTime() - b.seatedAt!.getTime()) / 60_000))
+    .filter((m) => m > 0)
+    .sort((a, b) => a - b);
+
+  if (live.durata && durateStasera.length >= MINIMO_CENE_STASERA) {
+    const meta = Math.floor(durateStasera.length / 2);
+    const medianaStasera =
+      durateStasera.length % 2 === 1
+        ? durateStasera[meta]
+        : Math.round((durateStasera[meta - 1] + durateStasera[meta]) / 2);
+    const scarto = medianaStasera - live.durata.medianaMin;
+
+    // Chi paga il ritardo: chi arriva nei prossimi novanta minuti, o chi
+    // aspetta in piedi. Se non c'è nessuno dei due, non si dice niente.
+    const inArrivoDopo = inArrivo.length;
+    const chiAspetta = gruppiInAttesa.length;
+
+    if (scarto >= SCOSTAMENTO_ROTAZIONE_MIN && (inArrivoDopo > 0 || chiAspetta > 0)) {
+      const conseguenza =
+        inArrivoDopo > 0
+          ? `${inArrivoDopo} ${
+              inArrivoDopo === 1 ? "prenotazione arriva" : "prenotazioni arrivano"
+            } entro ${durataUmana(HORIZON_MIN)}: con questo ritmo ${
+              inArrivoDopo === 1 ? "trova" : "trovano"
+            } il tavolo ancora occupato, e l'attesa comincia all'ingresso.`
+          : `${chiAspetta} ${
+              chiAspetta === 1 ? "gruppo aspetta" : "gruppi aspettano"
+            } in lista: ogni cena che dura mezz'ora in più è mezz'ora in più della loro attesa.`;
+
+      insights.push({
+        id: `rotation_slipping:${medianaStasera}`,
+        kind: "rotation_slipping",
+        severity: "warning",
+        // Non è un problema fra venti minuti: è già in corso.
+        urgenza: 0,
+        title: `Stasera le cene durano ${durataUmana(scarto)} più del solito`,
+        motivo: `Le ${durateStasera.length} cene già chiuse stasera sono durate ${durataUmana(
+          medianaStasera,
+        )}, contro ${durataUmana(live.durata.medianaMin)} misurati su ${
+          live.durata.misurate
+        } cene di questo locale.`,
+        impatto: conseguenza,
+        action: { label: "Vedi gli arrivi", href: "/service" },
+      });
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* 11. Turno oltre la capienza                                            */
   /* ---------------------------------------------------------------------- */
 
   const { weekday, minuteOfDay } = zonedDayAndMinute(now, timezone);

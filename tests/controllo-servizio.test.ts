@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import {
+  MINIMO_CENE_STASERA,
   NO_SHOW_RISK_MIN,
   PEAK_COVERS,
+  SCOSTAMENTO_ROTAZIONE_MIN,
   getServiceInsights,
   getTopServiceInsights,
 } from "@/server/service-intelligence";
@@ -760,5 +762,132 @@ describe("un tavolo oltre la durata", () => {
     await inCoda("Gruppo Alberti", 5);
     const avvisi = await getServiceInsights(venueId, { now: ADESSO });
     expect(avvisi.find((a) => a.kind === "table_overdue")).toBeUndefined();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*  La rotazione che slitta                                                   */
+/* -------------------------------------------------------------------------- */
+
+describe("stasera si sta a tavola più del solito", () => {
+  /**
+   * Serve una storia: dieci cene chiuse nelle settimane scorse da 100
+   * minuti, che diventano «il solito» di questo locale.
+   */
+  async function storiaDelLocale(durataMin: number, quante = 12) {
+    for (let i = 1; i <= quante; i++) {
+      const inizio = new Date(ADESSO.getTime() - i * 2 * 86_400_000);
+      await db.booking.create({
+        data: {
+          venueId,
+          guestId,
+          partySize: 2,
+          startsAt: inizio,
+          durationMin: 105,
+          status: "COMPLETED",
+          source: "PHONE",
+          seatedAt: inizio,
+          closedAt: new Date(inizio.getTime() + durataMin * 60_000),
+        },
+      });
+    }
+  }
+
+  /** Cene chiuse **oggi**, quelle su cui si misura la serata. */
+  async function ceneDiStasera(durataMin: number, quante: number) {
+    for (let i = 0; i < quante; i++) {
+      const inizio = new Date(ADESSO.getTime() - (300 + i * 10) * 60_000);
+      await db.booking.create({
+        data: {
+          venueId,
+          guestId,
+          partySize: 2,
+          startsAt: inizio,
+          durationMin: 105,
+          status: "COMPLETED",
+          source: "PHONE",
+          seatedAt: inizio,
+          closedAt: new Date(inizio.getTime() + durataMin * 60_000),
+        },
+      });
+    }
+  }
+
+  it("lo dice, col confronto e con chi lo pagherà", async () => {
+    await svuota();
+    await storiaDelLocale(100);
+    await ceneDiStasera(150, 4);
+    // Qualcuno che arriva: senza conseguenza non si dice niente.
+    await prenota({ minutiDaAdesso: 45, partySize: 4 });
+
+    const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find(
+      (a) => a.kind === "rotation_slipping",
+    );
+    expect(avviso).toBeTruthy();
+    expect(avviso!.severity).toBe("warning");
+    expect(avviso!.title).toContain("più del solito");
+    // Il motivo porta i due numeri e su quante cene poggiano.
+    expect(avviso!.motivo).toContain("4 cene già chiuse");
+    /**
+     * «Su quante cene» comprende anche quelle di stasera: la durata tipica
+     * del locale è la mediana degli ultimi novanta giorni, e oggi è uno di
+     * quei giorni. È giusto così — il confronto è fra stasera e l'abitudine,
+     * e l'abitudine non si sospende quando si guarda.
+     */
+    expect(avviso!.motivo).toMatch(/contro .* misurati su \d+ cene di questo locale/);
+    expect(avviso!.impatto).toContain("prenotazione arriva");
+  });
+
+  it("con la sala che si svuota non è un problema: è una serata tranquilla", async () => {
+    // Nessuno in arrivo e nessuno in attesa: il servizio lento non fa male a
+    // nessuno, e alzare la gente sarebbe il consiglio peggiore.
+    await svuota();
+    await storiaDelLocale(100);
+    await ceneDiStasera(150, 4);
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "rotation_slipping")).toBeUndefined();
+  });
+
+  it("due cene chiuse non sono una serata", async () => {
+    await svuota();
+    await storiaDelLocale(100);
+    await ceneDiStasera(180, MINIMO_CENE_STASERA - 1);
+    await prenota({ minutiDaAdesso: 45 });
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "rotation_slipping")).toBeUndefined();
+  });
+
+  it("senza un «solito» misurato non si dice «più del solito»", async () => {
+    // Il locale non ha ancora dieci cene misurate: non esiste un termine di
+    // confronto, e inventarne uno sarebbe la cosa peggiore.
+    await svuota();
+    await storiaDelLocale(100, 4);
+    await ceneDiStasera(180, 5);
+    await prenota({ minutiDaAdesso: 45 });
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "rotation_slipping")).toBeUndefined();
+  });
+
+  it("un quarto d'ora in più è la differenza fra due martedì, non una notizia", async () => {
+    await svuota();
+    await storiaDelLocale(100);
+    await ceneDiStasera(100 + SCOSTAMENTO_ROTAZIONE_MIN - 5, 5);
+    await prenota({ minutiDaAdesso: 45 });
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "rotation_slipping")).toBeUndefined();
+  });
+
+  it("una serata più veloce del solito non è un avviso", async () => {
+    await svuota();
+    await storiaDelLocale(150);
+    await ceneDiStasera(90, 5);
+    await prenota({ minutiDaAdesso: 45 });
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "rotation_slipping")).toBeUndefined();
   });
 });

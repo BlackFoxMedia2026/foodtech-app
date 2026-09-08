@@ -127,6 +127,13 @@ model Venue {
   /// oltre duecento. È `text` e non un `VarChar` più larga perché diventare
   /// `text` è l'unico cambio di tipo che non può restringere niente — e il
   /// freno delle migrazioni lo sa (vedi `lib/migration-safety`).
+  /// Da quante persone una prenotazione online diventa una telefonata.
+  ///
+  /// Era una costante nel modulo pubblico (dodici), e dodici va bene per una
+  /// trattoria e non per una sala che fa banchetti: il punto in cui una
+  /// prenotazione «diventa un'organizzazione» lo sa il locale, non noi.
+  largePartyFrom         Int                   @default(12)
+
   wifiPassword           String?
   /// Dove mandare la persona dopo: il sito del locale, la carta, oppure
   /// l'indirizzo con cui il router del locale sblocca la navigazione.
