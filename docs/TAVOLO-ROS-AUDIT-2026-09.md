@@ -31,6 +31,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | 8 · centro notifiche muto | ✅ **chiuso**: da quattro categorie a otto, con la regola scritta nel modulo (si notifica solo ciò che nessun'altra schermata già mostra) |
 | 9 · N+1 nel motore automazioni | ✅ **chiuso**: due letture per tutta la platea, e un test che conta le letture |
 | 5 · sessione senza scadenza | 🟡 **mitigato**: la durata è dichiarata (sette giorni, rinnovo ogni ventiquattr'ore) invece dei trenta giorni per difetto. La revoca vera resta in roadmap |
+| 7 · nessuna osservabilità | 🟡 **fatta la parte senza fornitore**: log strutturati, i cinque cron con un `try` e la durata, la coda che distingue riprovato da arreso. Resta la scelta del fornitore e il primo allarme |
 | 10 · pagamenti | 🟡 **progettato**: `docs/PROGETTO-PAGAMENTI.md` — livello agnostico, cinque policy, sette regole, sei decisioni in attesa. Nessuna riga di codice, per scelta |
 | 6 · gestione del team | ✅ **chiuso**: invito con link da consegnare, ruoli assegnabili, rimozione, e le due difese contro il chiudersi fuori. Era «riscritto dopo verifica»: non è «`authorize` non controlla l'utente attivo», è che **non si può dare accesso a nessuno**. Vedi 5-bis |
 | tutte le altre | aperte, nell'ordine della roadmap |

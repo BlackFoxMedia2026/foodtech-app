@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { eseguiCron } from "@/lib/cron";
 import { runStaffContractExpiryCheck } from "@/server/staff-contracts-cron";
 
 /**
@@ -10,15 +10,5 @@ import { runStaffContractExpiryCheck } from "@/server/staff-contracts-cron";
  * stranger who finds the URL.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    console.error("[cron] CRON_SECRET not configured — refusing to run staff-contracts-expiry");
-    return NextResponse.json({ error: "cron_not_configured" }, { status: 500 });
-  }
-  if (req.headers.get("authorization") !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  const result = await runStaffContractExpiryCheck();
-  return NextResponse.json(result);
+  return eseguiCron("staff-contracts-expiry", req, () => runStaffContractExpiryCheck());
 }
