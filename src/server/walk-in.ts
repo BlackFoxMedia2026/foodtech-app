@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import type { AuditActor } from "./audit";
 import { recordAudit } from "./audit";
 import { createBooking } from "./bookings";
-import { DEFAULT_DURATION_MIN } from "./availability";
 import { findFreeTables, type FreeTableSearch } from "./table-search";
 
 /**
@@ -74,7 +73,9 @@ export async function seatWalkIn(venueId: string, raw: unknown, actor?: AuditAct
         : undefined,
       partySize: data.partySize,
       startsAt: now,
-      durationMin: data.durationMin ?? DEFAULT_DURATION_MIN,
+      // Senza una durata scelta decide `createBooking` con la misura del
+      // locale: un walk-in a pranzo non sta a tavola come uno del sabato sera.
+      durationMin: data.durationMin,
       tableId: data.tableId,
       source: "WALK_IN",
       notes: data.notes || null,

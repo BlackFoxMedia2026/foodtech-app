@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { DEFAULT_TIMEZONE } from "./availability";
+import { DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
 import type { DurataTipica } from "@/lib/liberazione";
 
 /**
@@ -107,7 +107,7 @@ export async function rotazioneTavoli(venueId: string, from: Date, to: Date): Pr
     }),
   ]);
 
-  const timezone = venue?.timezone ?? DEFAULT_TIMEZONE;
+  const timezone = venue?.timezone ?? DEFAULT_VENUE_TIMEZONE;
   // Il giorno di servizio è quello in cui la prenotazione **comincia**, letto
   // nel fuso del locale: una cena che finisce dopo mezzanotte appartiene alla
   // serata in cui è cominciata, non a quella dopo.
@@ -184,6 +184,10 @@ export async function durataTipicaSeduta(
       startsAt: { gte: from, lte: now },
     },
     select: { tableId: true, seatedAt: true, closedAt: true, durationMin: true, startsAt: true },
+    // Come per la durata contestuale: le più recenti, con un tetto, perché
+    // questa lettura sta su una pagina che si ricarica ogni trenta secondi.
+    orderBy: { startsAt: "desc" },
+    take: 2_000,
   });
 
   return durataTipica(

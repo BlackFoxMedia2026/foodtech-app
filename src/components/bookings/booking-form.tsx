@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { readApiError } from "@/lib/api-client";
 import { SlotPicker } from "@/components/bookings/slot-picker";
@@ -46,6 +46,48 @@ export function BookingForm({
   const [forceReason, setForceReason] = useState("");
   const [manualTime, setManualTime] = useState("20:00");
 
+  /**
+   * La durata proposta, e da dove viene.
+   *
+   * Il campo partiva da 105 minuti per tutti. Adesso il locale sa quanto si
+   * sta a tavola qui — per gruppi come questo, in questa fascia, in un giorno
+   * come questo — e la propone già scritta con la frase che spiega su cosa
+   * poggia. **Proposta, non imposta**: appena qualcuno la cambia a mano non
+   * si sovrascrive più, perché chi è al telefono può sapere che quella
+   * tavolata festeggia una laurea, e una statistica no.
+   */
+  const [durata, setDurata] = useState(105);
+  const [durataNota, setDurataNota] = useState<string | null>(null);
+  const [durataToccata, setDurataToccata] = useState(false);
+
+  const quando = forceOpen ? (date && manualTime ? `${date}T${manualTime}` : null) : slot;
+
+  useEffect(() => {
+    if (durataToccata || !quando) return;
+    const istante = new Date(quando);
+    if (Number.isNaN(istante.getTime())) return;
+
+    let vivo = true;
+    const params = new URLSearchParams({
+      partySize: String(partySize),
+      startsAt: istante.toISOString(),
+    });
+    fetch(`/api/bookings/durata?${params}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!vivo || !d) return;
+        setDurata(d.durataMin);
+        setDurataNota(d.spiegazione);
+      })
+      .catch(() => {
+        // Se non arriva, resta il valore che c'è: una proposta mancata non
+        // deve impedire di prenotare.
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [quando, partySize, durataToccata]);
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
@@ -73,7 +115,7 @@ export function BookingForm({
       },
       partySize,
       startsAt,
-      durationMin: Number(fd.get("durationMin") || 105),
+      durationMin: Number(fd.get("durationMin") || durata),
       tableId: (fd.get("tableId") as string) || null,
       source: fd.get("source"),
       occasion: fd.get("occasion") || null,
@@ -230,9 +272,29 @@ export function BookingForm({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="durationMin">Durata (min)</Label>
-          <Input id="durationMin" name="durationMin" type="number" min={15} max={480} defaultValue={105} />
+          <Input
+            id="durationMin"
+            name="durationMin"
+            type="number"
+            min={15}
+            max={480}
+            value={durata}
+            onChange={(e) => {
+              setDurataToccata(true);
+              setDurata(Number(e.target.value));
+            }}
+          />
         </div>
       </div>
+
+      {durataNota && !durataToccata && (
+        <p className="text-xs text-tertiary-foreground">Durata proposta: {durataNota}</p>
+      )}
+      {durataToccata && (
+        <p className="text-xs text-tertiary-foreground">
+          Durata scelta a mano: resta questa, la misura del locale non la corregge.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">

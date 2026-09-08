@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { DURATA_PREDEFINITA_MIN } from "@/lib/durata";
+import { DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
+import { prontuarioDurate } from "./durata-consigliata";
 
 /**
  * Controllo di disponibilità: unica fonte di verità su "questa prenotazione si può accettare?".
@@ -30,8 +32,12 @@ export const OCCUPYING_STATUSES = ["CONFIRMED", "PENDING", "ARRIVED", "SEATED"] 
  */
 export const DEFAULT_DURATION_MIN = DURATA_PREDEFINITA_MIN;
 
-/** Fuso usato se il locale non ne ha uno configurato, allineato al valore dello schema. */
-export const DEFAULT_TIMEZONE = "Europe/Rome";
+/**
+ * Fuso usato se il locale non ne ha uno configurato, allineato al valore
+ * dello schema. Come la durata predefinita, il valore vive in `lib`: qui si
+ * rimanda, così non esistono due costanti che un giorno divergono.
+ */
+export const DEFAULT_TIMEZONE = DEFAULT_VENUE_TIMEZONE;
 
 /**
  * `COMPLETED`, `CANCELLED` e `NO_SHOW` non occupano: il tavolo è tornato libero.
@@ -611,6 +617,15 @@ export type DaySlotsRequest = {
   now: Date;
   /** Da dove si sta guardando: solo il pubblico rispetta la finestra. */
   canale?: Canale;
+  /**
+   * Quanto dura una cena **a quell'ora**, quando il locale l'ha misurato.
+   *
+   * Serve perché una giornata contiene pranzo e cena, e non durano lo stesso:
+   * con un solo numero per tutta la giornata il motore vende male due volte.
+   * Quando non c'è, vale `durationMin` per tutti gli orari — che è come
+   * funzionava prima, quindi nessuna verifica esistente cambia risposta.
+   */
+  durataPer?: (istante: Date) => number;
 };
 
 /**
@@ -620,7 +635,7 @@ export type DaySlotsRequest = {
  * orario in memoria, così mostrare una giornata costa una sola lettura del database.
  */
 export function buildDaySlots(request: DaySlotsRequest, context: AvailabilityContext): DayAvailability {
-  const { date, partySize, durationMin, now, canale } = request;
+  const { date, partySize, durationMin, now, canale, durataPer } = request;
   // Il primo motivo della finestra che toglie un orario: si dice quello, non
   // se ne accumulano quattro uguali.
   let nota: string | null = null;
@@ -650,7 +665,14 @@ export function buildDaySlots(request: DaySlotsRequest, context: AvailabilityCon
       // Un orario già passato non è prenotabile, e non serve nemmeno mostrarlo.
       if (startsAt.getTime() <= now.getTime()) continue;
 
-      const result = evaluateAvailability({ startsAt, durationMin, partySize, canale, now }, context);
+      // La durata di **questo** orario: a pranzo si sta meno che a cena, e il
+      // motore deve vendere di conseguenza.
+      const durataQui = durataPer ? durataPer(startsAt) : durationMin;
+
+      const result = evaluateAvailability(
+        { startsAt, durationMin: durataQui, partySize, canale, now },
+        context,
+      );
 
       // Un orario fuori dalla finestra non si mostra spento: si toglie, e il
       // motivo si dice una volta sola sotto l'elenco.
@@ -696,12 +718,27 @@ export async function getDayAvailability(
   const venue = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
   const timezone = venue?.timezone ?? DEFAULT_TIMEZONE;
 
+  /**
+   * Quanto dura una cena qui, orario per orario.
+   *
+   * Si prepara **solo** se nessuno ha imposto una durata: quando chi chiama
+   * dice «calcolami gli orari per una prenotazione da 180 minuti», quella
+   * durata è una decisione e non si corregge con una statistica.
+   */
+  const prontuario = opts.durationMin ? null : await prontuarioDurate(venueId, { now, timezone });
+  const durataPer = prontuario
+    ? (istante: Date) => prontuario.per({ partySize, startsAt: istante }).durataMin
+    : undefined;
+
   const dayStart = zonedTimeToInstant(date, 0, timezone);
   const dayEnd = zonedTimeToInstant(date, 24 * 60, timezone);
 
   const context = await loadAvailabilityContext(venueId, dayStart, dayEnd);
 
-  return buildDaySlots({ date, partySize, durationMin, now, canale: opts.canale }, { ...context, timezone });
+  return buildDaySlots(
+    { date, partySize, durationMin, now, canale: opts.canale, durataPer },
+    { ...context, timezone },
+  );
 }
 
 
@@ -750,6 +787,14 @@ export async function prossimiGiorniLiberi(
   const venue = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
   const timezone = venue?.timezone ?? DEFAULT_TIMEZONE;
 
+  // Le alternative si calcolano con la stessa durata con cui si prenoterà:
+  // proporre un sabato sera con la durata di un pranzo sarebbe proporre un
+  // tavolo che poi non c'è.
+  const prontuario = opts.durationMin ? null : await prontuarioDurate(venueId, { now, timezone });
+  const durataPer = prontuario
+    ? (istante: Date) => prontuario.per({ partySize, startsAt: istante }).durataMin
+    : undefined;
+
   const inizio = zonedTimeToInstant(from, 0, timezone);
   const fine = new Date(inizio.getTime() + (GIORNI_ALTERNATIVE + 1) * 86_400_000);
   const context = { ...(await loadAvailabilityContext(venueId, inizio, fine)), timezone };
@@ -765,7 +810,10 @@ export async function prossimiGiorniLiberi(
   for (let i = 1; i <= GIORNI_ALTERNATIVE && trovati.length < limite; i++) {
     const istante = new Date(inizio.getTime() + i * 86_400_000);
     const data = zonedCalendarDate(istante, timezone);
-    const giorno = buildDaySlots({ date: data, partySize, durationMin, now, canale: opts.canale }, context);
+    const giorno = buildDaySlots(
+      { date: data, partySize, durationMin, now, canale: opts.canale, durataPer },
+      context,
+    );
 
     const primo = giorno.shifts.flatMap((s) => s.slots).find((s) => s.available);
     if (!primo) continue;

@@ -7,6 +7,7 @@ import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } fro
 import { trovaOCreaOspite } from "./guest-match";
 import { deriveTableStatus, type TableOperationalStatus } from "@/lib/table-status";
 import { assertAvailability, OCCUPYING_STATUSES, type Canale } from "./availability";
+import { durataConsigliata } from "./durata-consigliata";
 import { createNotification } from "./notifications";
 import { refreshGuestStats } from "./guest-intelligence";
 
@@ -22,7 +23,14 @@ export const BookingInput = z.object({
     .optional(),
   partySize: z.coerce.number().int().min(1).max(50),
   startsAt: z.coerce.date(),
-  durationMin: z.coerce.number().int().min(15).max(480).default(105),
+  /**
+   * Facoltativa **di proposito**: quando non arriva, la durata la propone la
+   * misura del locale (`durataConsigliata`) invece di un 105 fisso uguale per
+   * la coppia di martedì a pranzo e per gli otto del sabato sera. Era
+   * `.default(105)`, e con un valore per difetto non si può distinguere «non
+   * l'ha scelta nessuno» da «l'hanno scelta uguale al default».
+   */
+  durationMin: z.coerce.number().int().min(15).max(480).optional(),
   tableId: z.string().optional().nullable(),
   status: z
     .enum(["CONFIRMED", "PENDING", "ARRIVED", "SEATED", "COMPLETED", "CANCELLED", "NO_SHOW"])
@@ -179,10 +187,18 @@ export type BookingWriteOptions = {
 export async function createBooking(venueId: string, raw: unknown, opts: BookingWriteOptions = {}) {
   const data = BookingInput.parse(raw);
 
+  // La durata: quella scritta se qualcuno l'ha scelta, altrimenti quella
+  // misurata per **questo** contesto (gruppo, fascia, tipo di giorno). Si
+  // decide qui, prima del controllo di disponibilità, perché è la durata che
+  // decide se questa prenotazione ci sta.
+  const durationMin =
+    data.durationMin ??
+    (await durataConsigliata(venueId, { partySize: data.partySize, startsAt: data.startsAt })).durataMin;
+
   if (!opts.skipAvailabilityCheck) {
     await assertAvailability(venueId, {
       startsAt: data.startsAt,
-      durationMin: data.durationMin,
+      durationMin,
       partySize: data.partySize,
       tableId: data.tableId ?? null,
       canale: opts.canale,
@@ -223,7 +239,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       tableId: data.tableId || null,
       partySize: data.partySize,
       startsAt: data.startsAt,
-      durationMin: data.durationMin,
+      durationMin,
       status,
       source: data.source,
       occasion: data.occasion ?? null,
