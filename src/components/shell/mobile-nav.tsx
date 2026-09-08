@@ -5,7 +5,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CalendarPlus, ListPlus, MoreHorizontal, Plus, UtensilsCrossed, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MOBILE_NAV, PRIMARY_NAV, SECONDARY_NAV, isNavActive } from "@/components/shell/nav-items";
+import {
+  MOBILE_NAV,
+  PRIMARY_NAV,
+  SECONDARY_NAV,
+  isNavActive,
+  secondarioPerGruppo,
+} from "@/components/shell/nav-items";
 import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
 
 /**
@@ -89,28 +95,48 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
           aria-label="Altre sezioni"
           className="fixed inset-x-3 bottom-24 z-50 overflow-hidden rounded-md border border-border bg-popover shadow-xl md:hidden"
         >
-          <ul className="divide-y divide-border">
-            {[...PRIMARY_NAV.filter((i) => !MOBILE_NAV.includes(i)), ...SECONDARY_NAV].map((item) => {
-              const Icon = item.icon;
-              const active = isNavActive(pathname, item);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={() => setAltroOpen(false)}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex min-h-[52px] items-center gap-3 px-4 text-sm",
-                      active ? "bg-current/10 font-medium text-foreground" : "text-muted-foreground",
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          {/*
+            Raggruppato come su scrivania: «durante il servizio» sono le voci
+            principali che non stanno nella barra in basso, poi il locale, la
+            crescita, il sistema. Undici voci di fila su un telefono sono un
+            elenco che si scorre; a gruppi si trovano.
+          */}
+          <div className="max-h-[60vh] overflow-y-auto">
+            {[
+              { label: "Durante il servizio", voci: PRIMARY_NAV.filter((i) => !MOBILE_NAV.includes(i)) },
+              ...secondarioPerGruppo(),
+            ]
+              .filter((g) => g.voci.length > 0)
+              .map((gruppo) => (
+                <div key={gruppo.label}>
+                  <p className="bg-secondary/60 px-4 py-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {gruppo.label}
+                  </p>
+                  <ul className="divide-y divide-border">
+                    {gruppo.voci.map((item) => {
+                      const Icon = item.icon;
+                      const active = isNavActive(pathname, item);
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            onClick={() => setAltroOpen(false)}
+                            aria-current={active ? "page" : undefined}
+                            className={cn(
+                              "flex min-h-[52px] items-center gap-3 px-4 text-sm",
+                              active ? "bg-current/10 font-medium text-foreground" : "text-muted-foreground",
+                            )}
+                          >
+                            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            {item.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+          </div>
         </nav>
       )}
 

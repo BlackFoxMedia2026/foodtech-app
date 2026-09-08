@@ -11,7 +11,25 @@ export type NavItem = {
    * — es. Marketing resta evidenziata dentro /campaigns/*, rimasto al suo path per
    * non rompere il wizard esistente. */
   matchPrefixes?: string[];
+  /**
+   * Il gruppo dentro «Altro».
+   *
+   * Sette voci in fila, tutte con la stessa importanza, si leggono una per
+   * una fino a trovare quella giusta. Divise in tre gruppetti con
+   * un'etichetta, l'occhio salta direttamente alla parte che c'entra: «il
+   * locale» sono le cose da configurare, «crescita» quelle da guardare,
+   * «sistema» quelle che non riguardano il ristorante.
+   */
+  gruppo?: GruppoSecondario;
 };
+
+export type GruppoSecondario = "locale" | "crescita" | "sistema";
+
+export const GRUPPI_SECONDARI: { key: GruppoSecondario; label: string }[] = [
+  { key: "locale", label: "Il locale" },
+  { key: "crescita", label: "Crescita" },
+  { key: "sistema", label: "Sistema" },
+];
 
 /**
  * Le voci in due gruppi, e il criterio è una domanda sola: **serve mentre il
@@ -38,13 +56,13 @@ export const PRIMARY_NAV: NavItem[] = [
 export const SECONDARY_NAV: NavItem[] = [
   // I camerieri si configurano prima del servizio, non durante: da qui in poi
   // e' lavoro da ufficio, e la barra ha spazio per sei voci, non per sette.
-  { href: "/waiters", label: "Camerieri", icon: UserRound },
-  { href: "/menu", label: "Menu", icon: UtensilsCrossed },
-  { href: "/experiences", label: "Esperienze", icon: Sparkles },
-  { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"] },
-  { href: "/payments", label: "Pagamenti", icon: CreditCard },
-  { href: "/insights", label: "Analytics", icon: LineChart },
-  { href: "/settings", label: "Impostazioni", icon: Settings },
+  { href: "/waiters", label: "Camerieri", icon: UserRound, gruppo: "locale" },
+  { href: "/menu", label: "Menu", icon: UtensilsCrossed, gruppo: "locale" },
+  { href: "/experiences", label: "Esperienze", icon: Sparkles, gruppo: "locale" },
+  { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"], gruppo: "crescita" },
+  { href: "/insights", label: "Analytics", icon: LineChart, gruppo: "crescita" },
+  { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "sistema" },
+  { href: "/settings", label: "Impostazioni", icon: Settings, gruppo: "sistema" },
 ];
 
 export const ALL_NAV = [...PRIMARY_NAV, ...SECONDARY_NAV];
@@ -60,4 +78,12 @@ export const MOBILE_NAV: NavItem[] = [
 export function isNavActive(pathname: string, item: NavItem) {
   if (pathname === item.href || pathname.startsWith(`${item.href}/`)) return true;
   return item.matchPrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false;
+}
+
+/** Le voci di «Altro», raggruppate e nell'ordine dei gruppi. */
+export function secondarioPerGruppo(): { label: string; voci: NavItem[] }[] {
+  return GRUPPI_SECONDARI.map((g) => ({
+    label: g.label,
+    voci: SECONDARY_NAV.filter((v) => v.gruppo === g.key),
+  })).filter((g) => g.voci.length > 0);
 }

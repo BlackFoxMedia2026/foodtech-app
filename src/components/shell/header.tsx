@@ -10,9 +10,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PRIMARY_NAV, SECONDARY_NAV, isNavActive } from "@/components/shell/nav-items";
+import {
+  PRIMARY_NAV,
+  SECONDARY_NAV,
+  isNavActive,
+  secondarioPerGruppo,
+} from "@/components/shell/nav-items";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
 import { NotificationBell } from "./notification-bell";
@@ -126,21 +133,35 @@ export function Header({
                 <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                {SECONDARY_NAV.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <DropdownMenuItem key={item.href} asChild>
-                      <Link
-                        href={item.href}
-                        aria-current={isNavActive(pathname, item) ? "page" : undefined}
-                        className="flex items-center gap-2"
-                      >
-                        <Icon className="h-4 w-4" aria-hidden="true" />
-                        {item.label}
-                      </Link>
-                    </DropdownMenuItem>
-                  );
-                })}
+                {/*
+                  Sette voci in fila si leggono una per una. In tre gruppetti
+                  con l'etichetta, l'occhio salta alla parte che c'entra: le
+                  cose da configurare, quelle da guardare, quelle che non
+                  riguardano il ristorante.
+                */}
+                {secondarioPerGruppo().map((gruppo, i) => (
+                  <div key={gruppo.label}>
+                    {i > 0 && <DropdownMenuSeparator />}
+                    <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {gruppo.label}
+                    </DropdownMenuLabel>
+                    {gruppo.voci.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <DropdownMenuItem key={item.href} asChild>
+                          <Link
+                            href={item.href}
+                            aria-current={isNavActive(pathname, item) ? "page" : undefined}
+                            className="flex items-center gap-2"
+                          >
+                            <Icon className="h-4 w-4" aria-hidden="true" />
+                            {item.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </div>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
