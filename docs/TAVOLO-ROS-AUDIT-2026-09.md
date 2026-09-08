@@ -35,6 +35,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | 7 · nessuna osservabilità | 🟡 **fatta la parte senza fornitore**: log strutturati, i cinque cron con un `try` e la durata, la coda che distingue riprovato da arreso. Resta la scelta del fornitore e il primo allarme |
 | 10 · pagamenti | 🟡 **progettato**: `docs/PROGETTO-PAGAMENTI.md` — livello agnostico, cinque policy, sette regole, sei decisioni in attesa. Nessuna riga di codice, per scelta |
 | 6 · gestione del team | ✅ **chiuso**: invito con link da consegnare, ruoli assegnabili, rimozione, e le due difese contro il chiudersi fuori. Era «riscritto dopo verifica»: non è «`authorize` non controlla l'utente attivo», è che **non si può dare accesso a nessuno**. Vedi 5-bis |
+| P2-1 · sala viva completa | ✅ **chiuso**: il conto aperto sul tavolo (col numero di righe, perché «conto vuoto» e «zero euro» sono due fatti diversi), la previsione di liberazione contata **da quando si sono seduti** e con la durata misurata qui quando ce n'è abbastanza, e chi arriva dopo su quel tavolo — anche mentre è occupato, con l'avviso «non fa in tempo». Trovato e corretto un difetto: la previsione partiva dall'orario prenotato, quindi un tavolo seduto in ritardo risultava libero mentre leggevano il menu |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -117,7 +118,7 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | — tavoli oltre la durata prevista | **PARTIAL** | Si vede sul tavolo («+2 ore»), non è una regola del centro controllo |
 | — ritardo nella rotazione | **MISSING** | Ora misurabile: vedi *Rotazione* |
 | Sala viva | **EXISTS** | Stato, ospite, coperti, orario, ritardo, allergie, tavolate |
-| Sala viva: conto sul tavolo, previsione di liberazione, prossima prenotazione | **PARTIAL** | Il §6 chiede tutte e tre sulla mappa: oggi c'è il ritardo, non l'importo né il «prossimo» |
+| Sala viva: conto sul tavolo, previsione di liberazione, prossima prenotazione | **EXISTS** | Fatte tutte e tre (8 set). La previsione dice anche su cosa poggia: durata misurata qui, o durata prevista sulla prenotazione |
 | Tavoli in scala sui posti | **EXISTS** | Fatto stanotte |
 | Floor plan editor | **EXISTS** | Drag & drop, forme, capienza, rotazione, unione, piantina di sfondo |
 | Conto al tavolo | **EXISTS** | Prezzo fotografato, totale dalle righe, un conto per tavolo |
@@ -218,7 +219,7 @@ master prompt:
 2. **Impostazioni è una colonna di tredici schede.** Stanotte gliene ho
    aggiunte tre. Vanno raggruppate (Locale · Prenotazioni · Marketing ·
    Sistema) con un indice in cima, come il menu pubblico.
-3. **La sala non dice tutto quello che potrebbe** (§6): manca l'importo del
+3. ~~**La sala non dice tutto quello che potrebbe** (§6)~~ — chiuso l'8 settembre. Restava: manca l'importo del
    conto e la prossima prenotazione sul riquadro del tavolo.
 4. **La Panoramica è già una mission control** (briefing + tre avvisi), ma
    l'avviso non ha ancora la forma completa del §4:
@@ -405,7 +406,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 
 | # | Cosa | Impatto | Compl. | Dipendenze | Rischio |
 |---|---|---|---|---|---|
-| P2-1 | **Sala viva completa** (§6): conto, previsione di liberazione, prossima prenotazione sul tavolo | 5 | M | nessuna | basso |
+| ~~P2-1~~ | ~~**Sala viva completa** (§6): conto, previsione di liberazione, prossima prenotazione sul tavolo~~ — **fatto l'8 settembre** | 5 | M | nessuna | basso |
 | P2-2 | **Avviso → problema/motivo/impatto/azione** e due regole nuove (tavolo che sta per liberarsi, tavolo oltre la durata) | 4 | M | nessuna | basso |
 | P2-3 | **Durata contestuale** nel motore (§15), solo con campioni sufficienti | 5 | M | rotazione (fatta) | medio |
 | P2-4 | **«Cosa sapere di questo ospite»** dove serve: servizio, sala, prenotazione | 4 | S | nessuna | basso |

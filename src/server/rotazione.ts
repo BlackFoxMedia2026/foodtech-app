@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { DEFAULT_TIMEZONE } from "./availability";
+import type { DurataTipica } from "@/lib/liberazione";
 
 /**
  * Quanto stanno a tavola, e quante volte gira un tavolo.
@@ -116,6 +117,80 @@ export async function rotazioneTavoli(venueId: string, from: Date, to: Date): Pr
     bookings.map((b) => ({
       tableId: b.tableId,
       giorno: giornoDi.format(b.startsAt),
+      seatedAt: b.seatedAt!,
+      closedAt: b.closedAt,
+      durationMin: b.durationMin,
+    })),
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  La durata tipica: quella che la sala usa per prevedere                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Quanti giorni indietro si guarda per sapere quanto durano le cene qui.
+ *
+ * Tre mesi: abbastanza per avere numeri, poco perché siano ancora di questo
+ * locale. Un anno intero mescolerebbe il menu di adesso con quello di
+ * febbraio e le cene di agosto con quelle di novembre.
+ */
+export const GIORNI_DI_MISURA = 90;
+
+/**
+ * La parte pura. **Mediana e non media**, e per un motivo che si vede in
+ * sala: un conto rimasto aperto fino alla chiusura del locale conta come una
+ * cena di sei ore, e con la media una sola dimenticanza sposta la previsione
+ * di tutti i tavoli. La mediana la ignora.
+ *
+ * Sotto `MINIMO_MISURATE` non torna niente: la previsione tornerà a dire
+ * «previsto» invece di «misurato», che è la risposta onesta.
+ */
+export function durataTipica(righe: RigaSeduta[]): DurataTipica | null {
+  const durate = righe
+    .filter((r) => r.closedAt && r.closedAt.getTime() > r.seatedAt.getTime())
+    .map((r) => Math.round((r.closedAt!.getTime() - r.seatedAt.getTime()) / 60_000))
+    .sort((a, b) => a - b);
+
+  if (durate.length < MINIMO_MISURATE) return null;
+
+  const meta = Math.floor(durate.length / 2);
+  const medianaMin =
+    durate.length % 2 === 1 ? durate[meta] : Math.round((durate[meta - 1] + durate[meta]) / 2);
+
+  return { medianaMin, misurate: durate.length };
+}
+
+/**
+ * La durata tipica di questo locale, letta dal database.
+ *
+ * Una lettura sola per pagina: la chiamano la sala viva e la fotografia del
+ * servizio, che si ricaricano ogni trenta secondi.
+ */
+export async function durataTipicaSeduta(
+  venueId: string,
+  opts: { now?: Date; giorni?: number } = {},
+): Promise<DurataTipica | null> {
+  const now = opts.now ?? new Date();
+  const giorni = opts.giorni ?? GIORNI_DI_MISURA;
+  const from = new Date(now.getTime() - giorni * 24 * 3_600_000);
+
+  const bookings = await db.booking.findMany({
+    where: {
+      venueId,
+      deletedAt: null,
+      seatedAt: { not: null },
+      closedAt: { not: null },
+      startsAt: { gte: from, lte: now },
+    },
+    select: { tableId: true, seatedAt: true, closedAt: true, durationMin: true, startsAt: true },
+  });
+
+  return durataTipica(
+    bookings.map((b) => ({
+      tableId: b.tableId,
+      // Il giorno di servizio non serve alla durata: serve ai giri.
+      giorno: "",
       seatedAt: b.seatedAt!,
       closedAt: b.closedAt,
       durationMin: b.durationMin,

@@ -46,6 +46,7 @@ Questo file dice **cosa esiste davvero** in Tavolo. Va aggiornato nello stesso c
 | Sala / pianta tavoli (configurazione) | LIVE | Room Builder, layout salvati, zoom, trascinamento, assegnazione personale |
 | Tavolate (unire e dividere) | LIVE | Dal selettore tavoli del Servizio: un tocco assegna, due o più uniscono, i posti si sommano e se non bastano serve un motivo scritto. Vincoli: stessa sala, solo tavoli dichiarati unibili, nessuno occupato in quella fascia. Dividere libera gli altri tavoli |
 | Sala viva (durante il servizio) | LIVE | Sette stati derivati con colore **e** icona, chi c'è su ogni tavolo con orario e minuti oltre il previsto, tavolate unite mostrate su tutti i tavoli che usano, elenco per stato su telefono al posto di una mappa illeggibile |
+| Sul tavolo: conto, liberazione, prossimo | LIVE | Il conto aperto con totale e numero di righe («conto aperto, nulla battuto» quando non è stato battuto niente), **quando si libera** contato da quando si sono seduti e con la durata misurata nel locale quando ce ne sono almeno dieci cene chiuse, e chi arriva dopo su quel tavolo con l'avviso «non fa in tempo». La fonte della previsione è dichiarata una volta per schermata |
 | Assegnazione tavolo a prenotazione | LIVE | Gestione collisioni con lock e 409 |
 | Tavoli (anagrafica) | LIVE | |
 | Camerieri | LIVE | Profili, ricerca, raggruppamento per ruolo |
