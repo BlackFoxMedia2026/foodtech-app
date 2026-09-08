@@ -8,6 +8,7 @@ export function leggiVenue(): {
   orgId: string;
   surveyToken: string;
   surveyTokenBasso: string;
+  campaignId: string;
 } {
   return JSON.parse(readFileSync("tests/e2e/.auth/venue.json", "utf8"));
 }

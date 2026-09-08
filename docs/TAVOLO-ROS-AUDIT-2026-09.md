@@ -27,7 +27,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 
 | Voce | Stato |
 |---|---|
-| 4 · zero test end-to-end | ✅ **chiuso per quattro percorsi su cinque**: harness in repo (`npm run test:e2e`), verdi in 11 secondi. Resta campagna→attribuzione; caparra→rimborso non si può scrivere senza pagamenti |
+| 4 · zero test end-to-end | ✅ **chiuso per cinque percorsi su cinque** (8 set): harness in repo (`npm run test:e2e`), **nove prove verdi in 27 secondi**. Il sesto — caparra→rimborso — non si può scrivere senza pagamenti |
 | 8 · centro notifiche muto | ✅ **chiuso**: da quattro categorie a otto, con la regola scritta nel modulo (si notifica solo ciò che nessun'altra schermata già mostra) |
 | 9 · N+1 nel motore automazioni | ✅ **chiuso**: due letture per tutta la platea, e un test che conta le letture |
 | 5 · sessione senza scadenza | 🟡 **mitigato**: la durata è dichiarata (sette giorni, rinnovo ogni ventiquattr'ore) invece dei trenta giorni per difetto. La revoca vera resta in roadmap |
