@@ -73,6 +73,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | §60 · il progetto della prenotazione al telefono | ✅ **scritto**: `docs/PROGETTO-VOCE.md`. Il prompt chiede il progetto e non l'implementazione, e non l'avevo scritto: tre strade in ordine di costo (non perdere la chiamata → la segretaria che scrive → l'agente che risponde), le regole che valgono per tutte, e cinque decisioni tue. Zero righe di codice |
 | soglia dei gruppi numerosi | ✅ **chiuso**: era una costante (dodici), ora è un'impostazione del locale. Dodici va bene per una trattoria e non per una sala che fa banchetti |
 | ritardo nella rotazione | ✅ **chiuso**: l'undicesima regola del centro controllo. Le cene chiuse **di stasera** contro la mediana del locale, con almeno tre cene chiuse e almeno una conseguenza — un servizio lento con la sala mezza vuota non è un problema |
+| audit UX/UI · direzione visiva + roadmap | ✅ **chiusa** l'8 settembre: la direzione **C — Premium Control Room** applicata alle quattro schermate dove si lavora (Servizio, Sala, Attesa, Conto), e le quattro voci rimaste della roadmap di redesign — un solo vocabolario di navigazione, modulo prenotazione a due livelli, componente tabella unico, segno per stima/misura. Guardandole dal vivo sono usciti quattro difetti che nessun test poteva prendere: «in attesa da 937 min», «2 in attesa» accanto a «9 persone», una riga in sospeso dipinta con un rosso da tema chiaro, e gli importi diversi fra server e browser. Resta il P3 (card, densità, tablet) |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---

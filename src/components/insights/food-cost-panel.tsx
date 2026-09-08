@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/utils";
 import type { FoodCostReport } from "@/server/food-cost";
+import { Base } from "@/components/ui/base-del-numero";
 
 /**
  * Quanto è rimasto, e per merito di cosa.
@@ -66,17 +67,23 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-md border border-border p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Materie prime</p>
-                <p className="mt-1 text-display text-2xl tabular-nums">{euro(report.costoCents)}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{euro(report.costoCents)}</p>
                 <p className="text-xs text-muted-foreground">{report.foodCostPct}% del venduto coperto</p>
               </div>
               <div className="rounded-md border border-border p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Resta</p>
-                <p className="mt-1 text-display text-2xl tabular-nums text-accent">{euro(report.margineCents)}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-accent">{euro(report.margineCents)}</p>
                 <p className="text-xs text-muted-foreground">{100 - report.foodCostPct}% del venduto coperto</p>
               </div>
               <div className="rounded-md border border-border p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Su quanto</p>
-                <p className="mt-1 text-display text-2xl tabular-nums">{report.coperturaPct}%</p>
+                <p className="mt-1 flex items-center gap-1.5 text-2xl font-semibold tabular-nums">
+                  {report.coperturaPct}%
+                  <Base
+                    base="misurato"
+                    dettaglio={`Il ${report.coperturaPct}% dell'incasso ha un costo dichiarato: il food cost è calcolato solo su quella parte, non su tutta la carta.`}
+                  />
+                </p>
                 <p className="text-xs text-muted-foreground">dell&apos;incasso ha un costo dichiarato</p>
               </div>
             </div>

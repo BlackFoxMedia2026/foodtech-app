@@ -153,11 +153,10 @@ export function BookingForm({
           <Label htmlFor="lastName">Cognome</Label>
           <Input id="lastName" name="lastName" placeholder="Ferri" />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" placeholder="ospite@email.com" />
-        </div>
-        <div className="space-y-1.5">
+        {/* Il telefono prende la riga intera: al telefono è il campo più
+            importante dopo il nome, e da quando l'email è nel secondo livello
+            questa metà era un buco. */}
+        <div className="col-span-2 space-y-1.5">
           <Label htmlFor="phone">Telefono</Label>
           <Input id="phone" name="phone" placeholder="+39 …" />
         </div>
@@ -254,6 +253,38 @@ export function BookingForm({
         )}
       </div>
 
+      {/*
+        Il secondo livello.
+
+        Al telefono servono cinque cose — nome, telefono, quando, quanti — e
+        se ne vedevano nove: l'audit visivo ha stimato 20-30 secondi contro i
+        10 possibili, e trenta secondi con un cliente in linea sono lunghi.
+        Email, tavolo, durata, fonte, occasione e note **non spariscono**: si
+        aprono, e restano dentro lo stesso `<form>` — quindi si inviano
+        comunque, aperte o chiuse.
+
+        `<details>` e non uno stato React: funziona senza JavaScript, con la
+        tastiera, e il browser ricorda l'apertura durante la compilazione.
+        Chi prende cinque prenotazioni di fila lo apre una volta e resta
+        aperto.
+      */}
+      <details className="rounded-md border border-border">
+        <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium">
+          Altri dettagli
+          <span className="ml-2 font-normal text-tertiary-foreground">
+            email, tavolo, durata, fonte, occasione, note
+          </span>
+        </summary>
+
+        <div className="space-y-5 border-t border-border p-3">
+      <div className="space-y-1.5">
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" name="email" type="email" placeholder="ospite@email.com" />
+        <p className="text-xs text-tertiary-foreground">
+          Serve solo per la conferma scritta e il promemoria: al telefono il numero basta.
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label>Tavolo</Label>
@@ -331,6 +362,8 @@ export function BookingForm({
         <Label htmlFor="notes">Note</Label>
         <Textarea id="notes" name="notes" placeholder="Allergie, preferenze, richieste speciali…" />
       </div>
+        </div>
+      </details>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

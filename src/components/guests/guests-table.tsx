@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoyaltyPill } from "./loyalty-pill";
 import { formatCurrency, formatDate, initials } from "@/lib/utils";
+import { Corpo, Riga, RigaVuota, Tabella, Td, Testa, Th } from "@/components/ui/table";
 
 const ALL_TAGS = "__all__";
 
@@ -58,31 +59,24 @@ export function GuestsTable({ rows, availableTags }: { rows: Guest[]; availableT
         )}
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 text-left">Ospite</th>
-              <th className="px-4 py-3 text-left">Contatti</th>
-              <th className="px-4 py-3 text-left">Visite</th>
-              <th className="px-4 py-3 text-left">Spesa totale</th>
-              <th className="px-4 py-3 text-left">Ultima visita</th>
-              <th className="px-4 py-3 text-left">Fedeltà</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                  Nessun ospite trovato.
-                </td>
-              </tr>
-            )}
+      {/* La stessa tabella delle prenotazioni, densità comoda: qui si legge,
+          non si lavora durante il servizio. */}
+      <Tabella>
+        <Testa>
+          <Th>Ospite</Th>
+          <Th>Contatti</Th>
+          <Th>Visite</Th>
+          <Th>Spesa totale</Th>
+          <Th>Ultima visita</Th>
+          <Th>Fedeltà</Th>
+        </Testa>
+        <Corpo>
+            {rows.length === 0 && <RigaVuota colonne={6}>Nessun ospite trovato.</RigaVuota>}
             {rows.map((g) => {
               const name = `${g.firstName} ${g.lastName ?? ""}`.trim();
               return (
-                <tr key={g.id} className="cursor-pointer transition-colors hover:bg-secondary/30">
-                  <td className="px-4 py-3">
+                <Riga key={g.id} className="cursor-pointer">
+                  <Td>
                     <Link href={`/guests/${g.id}`} className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
                         <AvatarFallback>{initials(name)}</AvatarFallback>
@@ -94,25 +88,24 @@ export function GuestsTable({ rows, availableTags }: { rows: Guest[]; availableT
                         )}
                       </div>
                     </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </Td>
+                  <Td className="text-muted-foreground">
                     <p>{g.email ?? "—"}</p>
                     <p className="text-xs">{g.phone ?? ""}</p>
-                  </td>
-                  <td className="px-4 py-3">{g.totalVisits}</td>
-                  <td className="px-4 py-3">
+                  </Td>
+                  <Td className="tabular-nums">{g.totalVisits}</Td>
+                  <Td className="tabular-nums">
                     {formatCurrency(Math.round(Number(g.totalSpend) * 100))}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </Td>
+                  <Td className="text-muted-foreground tabular-nums">
                     {g.lastVisitAt ? formatDate(g.lastVisitAt) : "—"}
-                  </td>
-                  <td className="px-4 py-3"><LoyaltyPill tier={g.loyaltyTier} /></td>
-                </tr>
+                  </Td>
+                  <Td><LoyaltyPill tier={g.loyaltyTier} /></Td>
+                </Riga>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+        </Corpo>
+      </Tabella>
     </div>
   );
 }

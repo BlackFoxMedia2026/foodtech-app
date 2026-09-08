@@ -613,10 +613,37 @@ chiamava «Oggi» e il Servizio «Ora». Erano più belli e creavano due
 vocabolari — chi imparava il prodotto su un tablet cercava «Servizio» e
 trovava «Ora». Un nome per funzione su tutti gli schermi.
 
-Restano aperte tre voci della roadmap — **divulgazione progressiva** nel
-modulo prenotazione, **componente tabella unico**, **segno visivo per
-stima/misura** — e il P3 (consolidamento delle card, scala di densità,
-modalità tablet).
+**Le ultime tre voci della roadmap, chiuse l'8 settembre:**
+
+- **divulgazione progressiva** nel modulo prenotazione. Al telefono servono
+  cinque cose — nome, telefono, quando, quanti — e se ne vedevano nove: email,
+  tavolo, durata, fonte, occasione e note sono in un secondo livello che si
+  apre, dentro lo stesso `<form>`, quindi si inviano comunque. Misurato: i
+  cinque campi essenziali si compilano in **2,6 secondi** di interazione, e la
+  pagina non scorre più;
+- **componente tabella unico**. Le due tabelle vere erano scritte due volte
+  con markup quasi identico e dettagli diversi — e nelle prenotazioni una
+  riga in sospeso era dipinta con `bg-red-50`, un rosso da tema chiaro che su
+  fondo verde diventa una banda quasi bianca. Non si vedeva perché la demo non
+  ha quasi mai prenotazioni in sospeso: **è il difetto che due copie
+  producono sempre, nel caso che nessuno guarda**. Ora una tabella sola, con
+  due densità scelte dalla schermata (non dall'utente) e una riga «da
+  decidere» che è un bordo e un velo dell'accento;
+- **segno visivo per stima/misura**. Un segno solo per tutto il prodotto
+  (`Base`) accanto ai numeri che poggiano su qualcosa: *misurato* dove il dato
+  sta nelle righe, *stima* dove c'è di mezzo un valore dichiarato, e il
+  dettaglio a portata di puntatore. Le didascalie restano: il segno le
+  riassume, perché chi guarda un numero non legge la didascalia.
+
+E un difetto trovato dalla console mentre si guardava la pagina Ospiti: gli
+importi erano **`1118,00 €` sul server e `1.118,00 €` nel browser** — due
+versioni di CLDR che non concordano sul raggruppamento delle migliaia in
+italiano. Era un *hydration mismatch*: React buttava via l'HTML del server per
+quella cella e il numero cambiava fra il primo disegno e il secondo. Adesso il
+raggruppamento è dichiarato.
+
+Resta il P3: consolidamento delle card, scala di densità applicata al resto,
+modalità tablet.
 
 ---
 

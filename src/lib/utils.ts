@@ -5,8 +5,27 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Un importo in euro, **uguale sul server e nel browser**.
+ *
+ * `useGrouping: true` non è un vezzo tipografico: senza, per l'italiano le
+ * cifre a quattro posizioni seguono `minimumGroupingDigits`, che vale 2 —
+ * quindi 1118 diventa «1118,00 €» dove il CLDR di Node dice così e
+ * «1.118,00 €» dove quello del browser dice altro. Il risultato era un
+ * *hydration mismatch* in Ospiti: React buttava via l'HTML del server per
+ * quella cella, e il numero cambiava sotto gli occhi fra il primo disegno e
+ * il secondo. Trovato l'8 settembre guardando la console della pagina Ospiti.
+ *
+ * Con il raggruppamento dichiarato i due ambienti dicono la stessa cosa, e
+ * per gli importi di un ristorante — dove le migliaia contano — è anche la
+ * forma giusta.
+ */
 export function formatCurrency(cents: number, currency = "EUR", locale = "it-IT") {
-  return new Intl.NumberFormat(locale, { style: "currency", currency }).format(cents / 100);
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    useGrouping: true,
+  }).format(cents / 100);
 }
 
 export function formatDateTime(date: Date | string, locale = "it-IT") {
