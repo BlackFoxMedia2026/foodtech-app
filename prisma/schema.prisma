@@ -2153,6 +2153,15 @@ model BackgroundJob {
   /// due clic sul pulsante «invia» non fanno partire due campagne.
   dedupeKey String? @unique
 
+  /// Quanto conta arrivare prima. Numero piccolo = prima.
+  ///
+  /// Senza priorità la coda era in ordine di orario, e quattrocento email di
+  /// una campagna messe in coda alle 20:00 stavano davanti alla conferma di
+  /// una prenotazione arrivata alle 20:01: il cliente aspettava il suo
+  /// messaggio dietro una spedizione pubblicitaria. Le due cose hanno urgenze
+  /// diverse, e ora l'ordine lo dice (vedi `PRIORITA_PER_TIPO`).
+  priority    Int                 @default(100)
+
   status      BackgroundJobStatus @default(PENDING)
   /// Da quando è eseguibile: adesso per il lavoro immediato, più tardi per
   /// quello programmato o per un nuovo tentativo dopo un errore.
@@ -2171,7 +2180,7 @@ model BackgroundJob {
 
   venue Venue? @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
-  @@index([status, runAt])
+  @@index([status, priority, runAt])
   @@index([venueId, kind, createdAt])
 }
 
