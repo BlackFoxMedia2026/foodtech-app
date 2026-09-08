@@ -19,6 +19,23 @@ che manchi. Preferisco dirlo.
 
 ---
 
+## Stato dei lavori — aggiornato l'8 settembre, mattina
+
+Questo documento resta la fotografia del momento in cui è stato scritto: la
+tabella qui sotto **non** viene riscritta ogni volta che si chiude una voce,
+altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
+
+| Voce | Stato |
+|---|---|
+| 4 · zero test end-to-end | ✅ **chiuso per quattro percorsi su cinque**: harness in repo (`npm run test:e2e`), verdi in 11 secondi. Resta campagna→attribuzione; caparra→rimborso non si può scrivere senza pagamenti |
+| 8 · centro notifiche muto | ✅ **chiuso**: da quattro categorie a otto, con la regola scritta nel modulo (si notifica solo ciò che nessun'altra schermata già mostra) |
+| 9 · N+1 nel motore automazioni | ✅ **chiuso**: due letture per tutta la platea, e un test che conta le letture |
+| 5 · sessione senza scadenza | 🟡 **mitigato**: la durata è dichiarata (sette giorni, rinnovo ogni ventiquattr'ore) invece dei trenta giorni per difetto. La revoca vera resta in roadmap |
+| 6 · gestione del team | 🔴 **riscritto dopo verifica**: non è «`authorize` non controlla l'utente attivo», è che **non si può dare accesso a nessuno**. Vedi 5-bis |
+| tutte le altre | aperte, nell'ordine della roadmap |
+
+---
+
 # A. EXECUTIVE AUDIT — i venti problemi che contano
 
 In ordine di gravità reale, non di comodità.
@@ -30,7 +47,8 @@ In ordine di gravità reale, non di comodità.
 | 3 | **Il limite di frequenza vive nella memoria del processo** | Su Vercel ogni istanza ha il suo conteggio: con tre istanze, tre volte le richieste. È la differenza fra un freno e un freno vero, e riguarda login e widget pubblico | `[CODE]` `src/lib/rate-limit.ts` (documentato nel file) |
 | 4 | **Zero test end-to-end nel repository** | I 631 test coprono i moduli; nessuno percorre *prenoto → arrivo → conto → CRM*. Ogni collaudo dei percorsi è stato fatto a mano da me con Playwright, fuori dal repo: domani nessuno lo rifà | `[CODE]` niente `playwright.config`, `tests/` sono tutti Vitest |
 | 5 | **La sessione non scade e non si può revocare** | JWT con la durata di default (30 giorni), nessuna invalidazione: un dispositivo perso resta dentro un mese. E `model Session` esiste ma non viene mai scritto | `[CODE]` `src/lib/auth.ts` |
-| 6 | **`authorize()` non controlla che l'utente sia ancora attivo** | Non esiste un modo di disattivare una persona: togliergli l'appartenenza al locale lo lascia comunque autenticato | `[CODE]` `src/lib/auth.ts` |
+| 5-bis | **Correzione a questo audit** (verificata dopo averlo scritto): «`authorize()` non controlla che l'utente sia attivo» era **più grave di com'è**. L'accesso ai dati non passa dall'autenticazione ma dall'appartenenza al locale, ricontrollata a ogni richiesta (`resolveActiveVenue`): chi non ha più un locale può autenticarsi e non vede niente — viene mandato all'onboarding. Aggiungere una colonna `User.active` che nessuno scriverebbe sarebbe stato l'ennesimo campo morto | `[CODE]` `src/lib/tenant.ts` |
+| 6 | **Non si può aggiungere né togliere una persona dal team** | `VenueMembership` viene scritta **solo dal seed**: in tutto il prodotto non esiste una rotta che la crei o la cancelli. Un ristorante che compra Tavolo non può dare l'accesso al suo maître. I cinque ruoli e le sette abilità esistono e funzionano — ma non c'è modo di assegnarli `[CODE]` |
 | 7 | **Nessuna osservabilità** | Zero error tracking, zero log strutturati, zero allarmi sui cron falliti. Se stanotte una automazione fosse esplosa in produzione, lo scopriremmo da un cliente | `[CODE]` nessun Sentry/equivalente in `package.json` |
 | 8 | **Il centro notifiche è quasi muto: 4 categorie su 20 vengono scritte** | Scritte: voto basso, automazione fallita, contratto in scadenza/scaduto. Mai scritte: prenotazione creata, prenotazione annullata, waitlist accettata, gift card usata, contatto dal Wi-Fi, VIP senza tavolo. La campanella è quasi sempre vuota | `[CODE]` conteggio su tutte le 20 voci di `NotificationKind` |
 | 9 | **N+1 nel motore automazioni: due query per candidato** | Aprire *Automazioni* con 300 clienti raggiungibili costa oltre mille viaggi al database. Oggi la demo ha 121 clienti e non si nota; con un locale vero è la pagina più lenta del prodotto | `[CODE]` `src/server/automations/engine.ts:175-186` |
@@ -157,7 +175,8 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Ospiti/punti/gift card condivisi fra locali | **MISSING** | Tre strade in `NOTA-CRM-FRA-LOCALI.md`, decisione aperta |
 | Reporting di gruppo | **MISSING** | §46 |
 | Brand / white label sulle pagine guest | **EXISTS** | Logo e colore su widget, menu, Wi-Fi, sondaggio |
-| Ruoli e permessi | **PARTIAL** | 5 ruoli, 7 abilità; mancano `booking.force` e la granularità del §48 |
+| Ruoli e permessi | **PARTIAL** | 5 ruoli, 7 abilità, applicati dappertutto; mancano `booking.force` e la granularità del §48 |
+| Gestione del team (invito, ruolo, rimozione) | **MISSING** | `VenueMembership` la scrive solo il seed: nessuna rotta la crea o la cancella. È il buco più grosso della piattaforma dopo i pagamenti |
 | Audit sulle azioni sensibili | **EXISTS** | 40+ azioni tipizzate |
 | Coda lavori su Postgres + 5 cron | **EXISTS** | |
 | Coda: priorità, dead-letter, limite per fornitore | **MISSING** | §72 |
@@ -363,6 +382,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | P0-6 | **N+1 automazioni** → due query aggregate | 3 | S | nessuna | basso |
 | P0-7 | **Recupero password + verifica email** | 4 | M | **chiave email** | basso |
 | P0-8 | **Architettura pagamenti** (livello agnostico + modello delle policy), senza fornitore | 5 | M | nessuna per il progetto | medio |
+| P0-9 | **Gestione del team**: dare accesso a una persona, cambiarle ruolo, togliergliela. **Non serve l'email**: il manager crea l'accesso e consegna a voce una password provvisoria, oppure copia un link d'invito — come già si fa col QR e col Wi-Fi | 5 | M | una decisione tua su quale dei due | medio |
 
 ## P1 — COMPLETEZZA COMMERCIALE
 
