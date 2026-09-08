@@ -19,7 +19,31 @@ che manchi. Preferisco dirlo.
 
 ---
 
-## Stato dei lavori — aggiornato l'8 settembre, mattina
+## Stato dei lavori — aggiornato l'8 settembre, pomeriggio
+
+**Dove siamo: la roadmap che non dipende da nessuno è finita**, tranne una
+voce (il *realtime push* su sala e servizio, P4-5) e le cose che aspettano una
+tua decisione o una chiave. Tredici cantieri chiusi e pubblicati l'8
+settembre — dalle difese del widget alla coda dei lavori — con 834 test
+unitari e 9 percorsi end-to-end verdi.
+
+**Cosa aspetta te**, in ordine di quanto sblocca:
+
+| Cosa | Quanto ci vuole | Cosa sblocca |
+|---|---|---|
+| **Una chiave email** (Brevo o Resend) su Vercel | dieci minuti | promemoria, sondaggi, automazioni, riconferma, recupero password, metà del *Growth OS* |
+| **`CHIAVE_CIFRATURA`** su Vercel (`openssl rand -base64 32`) | un minuto | la password del Wi-Fi smette di stare in chiaro nel database |
+| **Un fornitore di error tracking** (Sentry o simile) | dieci minuti | il primo allarme su `coda.lavoro_arreso` e `cron.*.non_riuscito`: da «lo scopriamo da un cliente» a «lo sappiamo prima» |
+| **Un ramo di database per le anteprime** (console Neon) | dieci minuti | le anteprime smettono di poter toccare la produzione, e il freno delle migrazioni diventa una rete e non l'unica difesa |
+| **Le sei decisioni sui pagamenti** (`docs/PROGETTO-PAGAMENTI.md`) | una conversazione | caparre, gift card online, biglietti per le esperienze |
+| **Quando finisce la giornata di un ristorante** | una risposta | P2-9, e diciannove punti del codice che oggi usano la mezzanotte UTC |
+| **Chi può forzare un tavolo** | una risposta | P1-8, il permesso granulare |
+| **Le credenziali demo pubbliche** (`owner@tavolo.demo`) | una risposta | oggi funzionano in produzione: va deciso, non lasciato per inerzia |
+| **Il cliente fra più locali** (`docs/NOTA-CRM-FRA-LOCALI.md`) | una scelta fra tre | P3-3 |
+
+---
+
+## Cosa era aperto il 7 settembre
 
 Questo documento resta la fotografia del momento in cui è stato scritto: la
 tabella qui sotto **non** viene riscritta ogni volta che si chiude una voce,
@@ -391,14 +415,14 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | # | Cosa | Impatto | Compl. | Dipendenze | Rischio |
 |---|---|---|---|---|---|
 | P0-1 | **Ramo di database per le anteprime** (Neon) + `regions: ["fra1"]` | 5 | S | accesso console Neon → **tuo** | basso |
-| P0-2 | **Test end-to-end in repo**: i cinque flussi del §80 | 5 | M | nessuna | basso |
+| ~~P0-2~~ | ~~**Test end-to-end in repo**: i cinque flussi del §80~~ — **fatto**: cinque su cinque l'8 settembre (il sesto richiede i pagamenti) | 5 | M | nessuna | basso |
 | P0-3 | **Osservabilità minima**: error tracking, log strutturati, allarme sui cron falliti | 5 | S | scelta del fornitore | basso |
-| P0-4 | **Sessione**: scadenza dichiarata, `authorize` che controlla l'utente attivo, revocazione | 4 | S | nessuna | basso |
-| P0-5 | **Widget hardening**: idempotenza, honeypot, doppioni, limite di frequenza su store condiviso | 4 | M | uno store (Upstash o tabella) | medio |
-| P0-6 | **N+1 automazioni** → due query aggregate | 3 | S | nessuna | basso |
+| P0-4 | **Sessione**: scadenza dichiarata (**fatta**), `authorize` che controlla l'utente attivo (**rivisto: non serviva**, l'accesso è già verificato a ogni richiesta), revoca (**resta**) | 4 | S | nessuna | basso |
+| ~~P0-5~~ | ~~**Widget hardening**~~ — **fatte tre su quattro** l'8 settembre: idempotenza, doppione identico, campo trappola. Resta la verifica del contatto (serve un fornitore) e il limite di frequenza su store condiviso | 4 | M | uno store (Upstash o tabella) | medio |
+| ~~P0-6~~ | ~~**N+1 automazioni** → due query aggregate~~ — **fatto** | 3 | S | nessuna | basso |
 | P0-7 | **Recupero password + verifica email** | 4 | M | **chiave email** | basso |
-| P0-8 | **Architettura pagamenti** (livello agnostico + modello delle policy), senza fornitore | 5 | M | nessuna per il progetto | medio |
-| P0-9 | **Gestione del team**: dare accesso a una persona, cambiarle ruolo, togliergliela. **Non serve l'email**: il manager crea l'accesso e consegna a voce una password provvisoria, oppure copia un link d'invito — come già si fa col QR e col Wi-Fi | 5 | M | una decisione tua su quale dei due | medio |
+| P0-8 | **Architettura pagamenti** (livello agnostico + modello delle policy), senza fornitore — **progettata** in `docs/PROGETTO-PAGAMENTI.md`, sei decisioni in attesa | 5 | M | nessuna per il progetto | medio |
+| ~~P0-9~~ | ~~**Gestione del team**: dare accesso, cambiare ruolo, togliere l'accesso~~ — **fatto**: invito con link da consegnare a voce, senza email. Con le due difese contro il chiudersi fuori | 5 | M | — | medio |
 
 ## P1 — COMPLETEZZA COMMERCIALE
 
@@ -409,7 +433,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | P1-3 | **Email in produzione** e sblocco di promemoria/sondaggi/automazioni | 5 | S | chiave | basso |
 | P1-4 | **Riconferma obbligatoria con scadenza** | 4 | M | P1-3 | medio |
 | P1-5 | **WhatsApp** (conferma, promemoria, tavolo pronto) | 4 | M | fornitore | medio |
-| P1-6 | **Notifiche che esistono davvero**: le cinque categorie che contano | 3 | S | nessuna | basso |
+| ~~P1-6~~ | ~~**Notifiche che esistono davvero**~~ — **fatto**: da quattro categorie a otto | 3 | S | nessuna | basso |
 | P1-7 | **2FA** (i campi ci sono già) | 3 | M | P0-7 | basso |
 | P1-8 | **Permesso `booking.force`** e granularità del §48 | 3 | S | decisione tua su chi forza | basso |
 | ~~P1-9~~ | ~~**Cifratura credenziali Wi-Fi**~~ — **fatto l'8 settembre** | 3 | S | nessuna | basso |
