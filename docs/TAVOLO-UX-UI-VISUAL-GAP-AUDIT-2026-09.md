@@ -596,12 +596,27 @@ cosa si è misurato:
 | Avvisi visibili su telefono | 2 | 3 |
 | Serif nei numeri operativi | ore, KPI, etichette dei tavoli | nessuno |
 
-Il resto della direzione C — Attesa e Conto — e le quattro voci ancora aperte
-della roadmap (**un solo vocabolario di navigazione**, **divulgazione
-progressiva** nel modulo prenotazione, **componente tabella unico**, **segno
-visivo per stima/misura**) aspettano una parola su questa prova: estendere o
-tornare indietro. Il P3 (consolidamento delle card, scala di densità, modalità
-tablet) resta aperto per scelta.
+**Direzione C estesa ad Attesa e Conto** (approvata l'8 settembre): stessa
+intestazione compatta, stessa fascia densa per i numeri, e la cifra del conto
+in sans semibold tabellare — la cifra più grande del prodotto, che si legge al
+tavolo con una mano. Il titolo del conto resta in serif: porta il nome
+dell'ospite, e si legge una volta all'apertura.
+
+Guardando l'Attesa dal vivo sono usciti due difetti che nessuno screenshot
+precedente aveva mostrato: «in attesa da **937 min**» (il terzo principio dice
+ore, e qui era rimasto scoperto: ora è «15 ore e 39») e «**2** in attesa»
+accanto a «**9** persone in coda» — due numeri veri che si leggevano come una
+contraddizione. Adesso la fascia dice «gruppi in attesa».
+
+**Un solo vocabolario di navigazione** (fatto): sul telefono la Panoramica si
+chiamava «Oggi» e il Servizio «Ora». Erano più belli e creavano due
+vocabolari — chi imparava il prodotto su un tablet cercava «Servizio» e
+trovava «Ora». Un nome per funzione su tutti gli schermi.
+
+Restano aperte tre voci della roadmap — **divulgazione progressiva** nel
+modulo prenotazione, **componente tabella unico**, **segno visivo per
+stima/misura** — e il P3 (consolidamento delle card, scala di densità,
+modalità tablet).
 
 ---
 

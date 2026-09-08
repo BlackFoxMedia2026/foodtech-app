@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
 import { SeatFromWaitlistDialog } from "@/components/waitlist/seat-from-waitlist-dialog";
 import { cn } from "@/lib/utils";
+import { durataUmana } from "@/lib/durata";
 
 export type WaitlistRowEntry = {
   id: string;
@@ -104,8 +105,16 @@ export function WaitlistRow({
               )}
             >
               <Timer className="h-3 w-3" aria-hidden="true" />
-              {entry.waitingMin === 0 ? "appena entrato" : `in attesa da ${entry.waitingMin} min`}
-              {entry.overdue && ` · oltre la stima di ${entry.expectedWaitMin} min`}
+              {/*
+                In ore, non in minuti: «in attesa da 937 min» era esatto e
+                illeggibile, e nessuno converte a mente mentre ha una persona
+                davanti. È il terzo dei sette principi dell'audit visivo, e
+                qui era rimasto scoperto.
+              */}
+              {entry.waitingMin === 0
+                ? "appena entrato"
+                : `in attesa da ${durataUmana(entry.waitingMin)}`}
+              {entry.overdue && ` · oltre la stima di ${durataUmana(entry.expectedWaitMin)}`}
               {entry.status === "NOTIFIED" && entry.offerExpiresAt && (
                 <> · tavolo tenuto fino alle {ora(entry.offerExpiresAt)}</>
               )}

@@ -5,7 +5,16 @@ export type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  /** Etichetta corta per la barra in basso su telefono, dove lo spazio è quello che è. */
+  /**
+   * Etichetta più corta per la barra in basso, **solo quando è la stessa
+   * parola abbreviata**.
+   *
+   * Prima qui c'erano nomi diversi: la Panoramica si chiamava «Oggi» e il
+   * Servizio «Ora». Erano più belli e creavano **due vocabolari** — chi
+   * imparava il prodotto su un tablet e poi lo usava sul telefono cercava
+   * «Servizio» e trovava «Ora». Un nome per funzione, su tutti gli schermi:
+   * lo dice l'audit visivo, ed è la cosa che costa meno di tutte.
+   */
   shortLabel?: string;
   /** Percorsi aggiuntivi che contano come "attivo" anche se l'href non corrisponde
    * — es. Marketing resta evidenziata dentro /campaigns/*, rimasto al suo path per
@@ -45,12 +54,12 @@ export const GRUPPI_SECONDARI: { key: GruppoSecondario; label: string }[] = [
  * dell'agente.
  */
 export const PRIMARY_NAV: NavItem[] = [
-  { href: "/overview", label: "Panoramica", shortLabel: "Oggi", icon: LayoutDashboard },
-  { href: "/service", label: "Servizio", shortLabel: "Ora", icon: Radio },
-  { href: "/bookings", label: "Prenotazioni", shortLabel: "Prenota", icon: CalendarRange },
-  { href: "/floor", label: "Sala", shortLabel: "Sala", icon: DiningTableIcon },
-  { href: "/waitlist", label: "Attesa", shortLabel: "Attesa", icon: ListOrdered },
-  { href: "/guests", label: "Ospiti", shortLabel: "Ospiti", icon: TuxedoGuestIcon },
+  { href: "/overview", label: "Panoramica", icon: LayoutDashboard },
+  { href: "/service", label: "Servizio", icon: Radio },
+  { href: "/bookings", label: "Prenotazioni", shortLabel: "Prenot.", icon: CalendarRange },
+  { href: "/floor", label: "Sala", icon: DiningTableIcon },
+  { href: "/waitlist", label: "Attesa", icon: ListOrdered },
+  { href: "/guests", label: "Ospiti", icon: TuxedoGuestIcon },
 ];
 
 export const SECONDARY_NAV: NavItem[] = [
