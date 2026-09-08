@@ -12,12 +12,14 @@ import { ServiceOrganizationSettings } from "@/components/settings/service-organ
 import { AvgSpendSettings } from "@/components/settings/avg-spend-settings";
 import { LoyaltySettings } from "@/components/settings/loyalty-settings";
 import { ReviewLinksSettings } from "@/components/settings/review-links-settings";
+import { TeamSettings } from "@/components/settings/team-settings";
 import { BookingWindowSettings } from "@/components/settings/booking-window-settings";
 import { QueuePanel } from "@/components/settings/queue-panel";
 import { jobQueueHealth } from "@/server/jobs/queue";
 import { can } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
 import { listReviewLinks } from "@/server/reviews";
+import { listInviti, listTeam } from "@/server/team";
 import { initials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +34,20 @@ const ROLE_LABELS = {
 
 export default async function SettingsPage() {
   const ctx = await getActiveVenue();
-  const [venues, members, shifts, rooms, tablesCount, queueHealth, reviewLinks] = await Promise.all([
+
+  // L'indirizzo pubblico di questa installazione serve due volte: nel codice
+  // da incollare sul sito del locale, e nei link d'invito al team.
+  const hdrs = headers();
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
+  const proto = hdrs.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const baseUrl = `${proto}://${host}`;
+
+  const [venues, team, inviti, shifts, rooms, tablesCount, queueHealth, reviewLinks] = await Promise.all([
     db.venue.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: "asc" } }),
-    db.venueMembership.findMany({
-      where: { venueId: ctx.venueId },
-      include: { user: true },
-    }),
+    listTeam(ctx.venueId, ctx.userId),
+    // Gli inviti aperti col link già composto: serve l'indirizzo pubblico di
+    // questa installazione, che solo il server conosce.
+    can(ctx.role, "manage_venue") ? listInviti(ctx.venueId, baseUrl) : Promise.resolve([]),
     db.shift.findMany({
       where: { venueId: ctx.venueId, weekday: 0 },
       orderBy: { startMinute: "asc" },
@@ -48,10 +58,7 @@ export default async function SettingsPage() {
     listReviewLinks(ctx.venueId),
   ]);
 
-  const hdrs = headers();
-  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
-  const proto = hdrs.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const embedSrc = `${proto}://${host}/book?venue=${ctx.venueId}&embed=1`;
+  const embedSrc = `${baseUrl}/book?venue=${ctx.venueId}&embed=1`;
   const embedSnippet = `<iframe src="${embedSrc}" width="480" height="820" style="border:0;max-width:100%" title="Prenota un tavolo"></iframe>`;
 
   return (
@@ -103,26 +110,7 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Team</CardTitle>
-            <CardDescription>Accessi al locale corrente</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {members.map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-md border p-3 text-sm">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8"><AvatarFallback>{initials(m.user.name ?? m.user.email)}</AvatarFallback></Avatar>
-                  <div>
-                    <p className="font-medium">{m.user.name ?? m.user.email}</p>
-                    <p className="text-xs text-muted-foreground">{m.user.email}</p>
-                  </div>
-                </div>
-                <Badge tone="neutral">{ROLE_LABELS[m.role]}</Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <TeamSettings membri={team} inviti={inviti} canManage={can(ctx.role, "manage_venue")} />
       </div>
 
       <Card>

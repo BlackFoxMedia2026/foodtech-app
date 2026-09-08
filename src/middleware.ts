@@ -27,6 +27,12 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname === "/api/public/survey") {
     return { rule: RATE_LIMITS.publicBooking, bucket: "survey", methods: ["POST"] };
   }
+  // Accettare un invito: severo come le altre azioni pubbliche, perché è
+  // l'endpoint da cui si potrebbero provare segreti a caso per entrare nel
+  // team di qualcun altro.
+  if (pathname === "/api/public/invite") {
+    return { rule: RATE_LIMITS.publicBooking, bucket: "invite", methods: ["POST"] };
+  }
   if (pathname === "/api/public/booking-action") {
     return { rule: RATE_LIMITS.publicBooking, bucket: "booking-action", methods: ["POST"] };
   }
