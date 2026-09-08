@@ -7,6 +7,7 @@ import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } fro
 import { trovaOCreaOspite } from "./guest-match";
 import { deriveTableStatus, type TableOperationalStatus } from "@/lib/table-status";
 import { assertAvailability, OCCUPYING_STATUSES, type Canale } from "./availability";
+import { createNotification } from "./notifications";
 import { refreshGuestStats } from "./guest-intelligence";
 
 export const BookingInput = z.object({
@@ -281,7 +282,54 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
     }
   }
 
+  /**
+   * La campanella suona per una prenotazione che **aspetta una decisione**.
+   *
+   * Solo per quelle che nascono in attesa, cioè quelle arrivate da fuori: una
+   * prenotazione scritta al telefono da chi è in sala non ha bisogno di
+   * annunciarsi alla persona che l'ha appena scritta.
+   *
+   * L'email al proprietario qui sopra fa una cosa diversa e non basta: non
+   * parte senza la chiave del fornitore, e chi lavora guarda lo schermo, non
+   * la casella.
+   */
+  if (status === "PENDING") {
+    await createNotification(venueId, {
+      kind: "BOOKING_CREATED",
+      title: `${guestName || "Qualcuno"} ha prenotato per ${booking.partySize}`,
+      body: `${formatDayAndTime(booking.startsAt)} · arrivata da ${fonteUmana(booking.source)}. Aspetta la tua conferma.`,
+      link: "/bookings?status=pending",
+      meta: { bookingId: booking.id },
+    });
+  }
+
   return booking;
+}
+
+/**
+ * «giovedì 11 alle 20:30»: come lo direbbe una persona.
+ *
+ * Un solo formattatore con giorno e ora insieme scrive «giovedì 11, 20:30»,
+ * che in italiano non lo dice nessuno. Due formattatori e la parola in mezzo.
+ */
+function formatDayAndTime(quando: Date): string {
+  const giorno = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric" }).format(quando);
+  const ora = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" }).format(quando);
+  return `${giorno} alle ${ora}`;
+}
+
+/** Il canale, con il nome che usa chi lavora in sala. */
+function fonteUmana(source: string): string {
+  const nomi: Record<string, string> = {
+    WIDGET: "sito",
+    PHONE: "telefono",
+    WALK_IN: "walk-in",
+    GOOGLE: "Google",
+    SOCIAL: "social",
+    EMAIL: "email",
+    PARTNER: "un partner",
+  };
+  return nomi[source] ?? source.toLowerCase();
 }
 
 export async function updateBooking(
@@ -359,6 +407,34 @@ export async function updateBooking(
       ? "booking.cancel"
       : "booking.update";
     await recordAudit(opts.actor, action, "booking", id, diff);
+  }
+
+  /**
+   * Una disdetta si annuncia solo se riguarda **le prossime quarantott'ore**.
+   *
+   * Quella per il mese prossimo non cambia niente a nessuno oggi; quella per
+   * stasera è un tavolo da rivendere — e il centro controllo, se in lista
+   * d'attesa c'è qualcuno che ci sta, lo dice già con il nome. Qui serve per
+   * chi non sta guardando quella schermata.
+   */
+  if (
+    updated.status === "CANCELLED" &&
+    existing.status !== "CANCELLED" &&
+    updated.startsAt.getTime() - Date.now() < 48 * 3_600_000 &&
+    updated.startsAt.getTime() > Date.now()
+  ) {
+    const chi = updated.guest
+      ? `${updated.guest.firstName}${updated.guest.lastName ? ` ${updated.guest.lastName}` : ""}`
+      : "Una prenotazione";
+    await createNotification(venueId, {
+      kind: "BOOKING_CANCELLED",
+      title: `${chi} ha disdetto: ${updated.partySize} coperti liberi`,
+      body: `Erano attesi ${formatDayAndTime(updated.startsAt)}${
+        updated.table ? ` al ${updated.table.label}` : ""
+      }.`,
+      link: "/service",
+      meta: { bookingId: updated.id },
+    });
   }
 
   return updated;

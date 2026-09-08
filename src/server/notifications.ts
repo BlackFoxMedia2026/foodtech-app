@@ -11,6 +11,28 @@ const KIND_ABILITY: Partial<Record<NotificationKind, Ability>> = {
   STAFF_CONTRACT_EXPIRED: "manage_contracts",
 };
 
+/**
+ * Quali categorie vengono scritte davvero, e perché non tutte.
+ *
+ * `NotificationKind` ne dichiara venti; per mesi ne sono state scritte
+ * **quattro**, e la campanella era quasi sempre vuota. La regola che decide se
+ * una categoria vale una notifica è questa, e vale più dell'elenco:
+ *
+ * > si notifica solo ciò che **nessun'altra schermata già mostra**, e solo
+ * > quando una persona può farci qualcosa.
+ *
+ * Quindi **sì** a: una prenotazione che arriva dal sito e aspetta una
+ * decisione, una disdetta per le prossime quarantott'ore, un contatto nuovo
+ * dal Wi-Fi, una gift card usata (è denaro che si muove), un voto basso, una
+ * automazione fallita, un contratto in scadenza.
+ *
+ * E **no** a: «VIP senza tavolo», «tavolo che aspetta», «picco di arrivi» —
+ * il centro controllo li dice meglio, in ordine di urgenza e col rimedio
+ * accanto: due posti che dicono la stessa cosa sono un posto in cui uno dei
+ * due invecchia. No anche a POS, connettori, chat e chiamate perse: quelle
+ * funzioni non esistono, e una categoria pronta per una funzione assente è
+ * una promessa scritta nel database.
+ */
 export async function createNotification(
   venueId: string,
   input: { kind: NotificationKind; title: string; body?: string; link?: string; meta?: Prisma.InputJsonValue },

@@ -318,6 +318,53 @@ export async function alreadySentToGuest(guestId: string, kind: string, entroGio
 }
 
 /**
+ * Gli stessi due controlli, ma **per un elenco di persone in una lettura sola**.
+ *
+ * Le versioni per singolo ospite qui sopra sono giuste quando la domanda
+ * riguarda una persona (un promemoria, un sondaggio). Le automazioni invece
+ * partono da una platea: chiedere due volte al database per ognuno dei
+ * trecento clienti raggiungibili voleva dire seicento viaggi per **aprire una
+ * pagina**, e quattro automazioni ne facevano duemilaquattrocento. Nessuno
+ * l'aveva notato perché la demo ha centoventuno clienti.
+ *
+ * Il conto non cambia: cambia quante volte lo si chiede.
+ */
+export async function alreadySentToGuests(
+  guestIds: string[],
+  kind: string,
+  entroGiorni: number,
+): Promise<Set<string>> {
+  if (guestIds.length === 0) return new Set();
+  const da = new Date(Date.now() - entroGiorni * 86_400_000);
+  const righe = await db.messageLog.findMany({
+    where: {
+      guestId: { in: guestIds },
+      kind,
+      createdAt: { gte: da },
+      status: { in: ["QUEUED", "SENT", "DELIVERED"] },
+    },
+    select: { guestId: true },
+    distinct: ["guestId"],
+  });
+  return new Set(righe.map((r) => r.guestId).filter((id): id is string => !!id));
+}
+
+/** L'ultimo messaggio ricevuto da ciascuno, in una lettura sola. */
+export async function lastMessagesToGuests(guestIds: string[]): Promise<Map<string, Date>> {
+  if (guestIds.length === 0) return new Map();
+  const righe = await db.messageLog.groupBy({
+    by: ["guestId"],
+    where: { guestId: { in: guestIds }, status: { in: ["QUEUED", "SENT", "DELIVERED"] } },
+    _max: { createdAt: true },
+  });
+  const mappa = new Map<string, Date>();
+  for (const r of righe) {
+    if (r.guestId && r._max.createdAt) mappa.set(r.guestId, r._max.createdAt);
+  }
+  return mappa;
+}
+
+/**
  * Quando è l'ultima volta che abbiamo scritto a questa persona, per qualunque
  * motivo. Le automazioni la usano per stare zitte: un ospite che ieri ha
  * ricevuto la richiesta di parere non deve trovarsi oggi un invito a tornare.

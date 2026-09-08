@@ -1,10 +1,10 @@
 import type { AutomationWorkflow, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
-  alreadySentToGuest,
+  alreadySentToGuests,
   channelAvailable,
   enqueueMessage,
-  lastMessageToGuest,
+  lastMessagesToGuests,
   sendMessage,
 } from "@/server/messaging/send";
 import { enqueueJob } from "@/server/jobs/queue";
@@ -172,12 +172,22 @@ export async function resolveDestinatari(
   const scartati: Scarti = { silenzio: 0, giaRicevuto: 0 };
   const pronti: AutomationRecipient[] = [];
 
+  // Le due difese si chiedono **una volta per tutta la platea**, non una volta
+  // per persona: con trecento candidati erano seicento viaggi al database per
+  // aprire una pagina. Il risultato è identico — cambia quante volte lo si
+  // chiede — e il test lo verifica contando le letture.
+  const ids = candidati.map((c) => c.guestId);
+  const [giaRicevuto, ultimoMessaggio] = await Promise.all([
+    alreadySentToGuests(ids, kind, def.cooldownDays),
+    lastMessagesToGuests(ids),
+  ]);
+
   for (const c of candidati) {
-    if (await alreadySentToGuest(c.guestId, kind, def.cooldownDays)) {
+    if (giaRicevuto.has(c.guestId)) {
       scartati.giaRicevuto += 1;
       continue;
     }
-    const ultimo = await lastMessageToGuest(c.guestId);
+    const ultimo = ultimoMessaggio.get(c.guestId);
     if (ultimo && now.getTime() - ultimo.getTime() < SILENZIO_GIORNI * 86_400_000) {
       scartati.silenzio += 1;
       continue;
