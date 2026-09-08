@@ -50,13 +50,35 @@ export function ServiceInsights({
     );
   }
 
+  /**
+   * Gli urgenti pesano, gli altri no.
+   *
+   * Prima erano tutti riquadri identici: «Riccardo in ritardo di 48 minuti» e
+   * «una prenotazione non è mai arrivata» — la prima è una telefonata da
+   * fare adesso, la seconda è lavoro di chiusura — avevano lo stesso fondo,
+   * lo stesso bordo e la stessa altezza. Cinque cartelli uguali si leggono
+   * come nessun cartello, ed è quello che l'audit visivo ha misurato dando 4
+   * a questa schermata.
+   *
+   * Adesso: **i warning per esteso e con il fondo**, tutto il resto in una
+   * riga con il «perché» dietro un dettaglio che si apre. Nessuna delle
+   * quattro parti si perde — problema, motivo, impatto e azione ci sono
+   * ancora tutte — ma solo l'urgente occupa lo spazio di un urgente.
+   */
+  const urgenti = insights.filter((i) => i.severity === "warning");
+  const altri = insights.filter((i) => i.severity !== "warning");
+
   return (
-    <ul className={cn("grid gap-2", !compact && "lg:grid-cols-2")}>
-      {insights.map((i) => {
+    <div className="space-y-2">
+      <ul className={cn("grid gap-2", !compact && urgenti.length > 1 && "lg:grid-cols-2")}>
+      {urgenti.map((i) => {
         const stile = STILE[i.severity];
         const Icona = stile.icona;
         return (
-          <li key={i.id} className={cn("surface rounded-md border p-3", stile.classe)}>
+          <li
+            key={i.id}
+            className={cn("surface rounded-md border p-2.5 lg:p-3", stile.classe, "bg-accent/[0.07]")}
+          >
             <div className="flex items-start gap-2.5">
               <Icona className={cn("mt-0.5 h-4 w-4 shrink-0", stile.icona_classe)} aria-hidden="true" />
               <div className="min-w-0">
@@ -68,11 +90,27 @@ export function ServiceInsights({
                   alzarsi, e per questo non è grigia come il motivo.
                 */}
                 <p className="font-medium leading-snug">{i.title}</p>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{i.motivo}</p>
+
+                {/*
+                  Il motivo su schermo largo si legge; su un telefono da 390
+                  px diventa tre righe, e con quattro ritardi sono quattro
+                  schermate da scorrere prima di arrivare al lavoro. Su
+                  telefono va dietro «perché»: **lo stesso testo**, non un
+                  riassunto — e resta a un tocco, non a una schermata.
+                */}
+                <p className="mt-1 hidden text-sm leading-relaxed text-muted-foreground lg:block">
+                  {i.motivo}
+                </p>
+
                 <p className="mt-1.5 text-sm leading-relaxed">
                   <span className={cn("font-medium", stile.icona_classe)}>{PREFISSO[i.severity]}</span>{" "}
                   {i.impatto}
                 </p>
+
+                <details className="mt-1 text-xs text-muted-foreground lg:hidden">
+                  <summary className="cursor-pointer list-none underline-offset-4">perché</summary>
+                  <p className="mt-1 leading-relaxed">{i.motivo}</p>
+                </details>
                 {i.action && (
                   <Link
                     href={i.action.href}
@@ -87,6 +125,54 @@ export function ServiceInsights({
           </li>
         );
       })}
-    </ul>
+      </ul>
+
+      {altri.length > 0 && (
+        <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
+          {altri.map((i) => {
+            const stile = STILE[i.severity];
+            const Icona = stile.icona;
+            return (
+              <li key={i.id} className="px-3 py-2">
+                <div className="flex items-start gap-2.5">
+                  <Icona
+                    className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", stile.icona_classe)}
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm leading-snug">
+                      <span className="font-medium">{i.title}</span>{" "}
+                      <span className="text-muted-foreground">— {i.impatto}</span>
+                    </p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3">
+                      {/*
+                        Il motivo non sparisce: si apre. `<details>` è nativo,
+                        funziona senza JavaScript e con la tastiera, e non
+                        aggiunge un componente al sistema per una riga.
+                      */}
+                      <details className="text-xs text-muted-foreground">
+                        <summary className="cursor-pointer list-none underline-offset-4 hover:underline">
+                          perché
+                        </summary>
+                        <p className="mt-1 leading-relaxed">{i.motivo}</p>
+                      </details>
+                      {i.action && (
+                        <Link
+                          href={i.action.href}
+                          className="inline-flex items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
+                        >
+                          {i.action.label}
+                          <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }

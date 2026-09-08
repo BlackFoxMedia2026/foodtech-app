@@ -112,7 +112,9 @@ export function ServiceBookingCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-display text-lg tabular-nums">{ora}</span>
+            {/* Sans e tabellare: l'ora è il dato che si confronta con
+                l'orologio, non un titolo. */}
+            <span className="text-base font-semibold tabular-nums">{ora}</span>
             <span className="truncate font-medium">{booking.guestName}</span>
             {booking.isVip && (
               <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[11px]">VIP</span>
