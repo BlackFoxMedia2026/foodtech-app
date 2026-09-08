@@ -24,7 +24,7 @@ L'analisi che accompagna questi screenshot è in [`docs/ANALISI-STATO-2026-09-07
 | `08-attesa.png` | Lista d'attesa con posizione, stima e offerte |
 | `09-ospiti.png` | CRM a pagine, con il totale scritto |
 | `10-scheda-ospite.png` | Profilo calcolato dalle prenotazioni, punti fedeltà, esporta e cancella dati |
-| `11-analytics.png` | Costo del cibo, **menu engineering**, costo delle assenze, **lista d'attesa misurata**, previsione coperti, NPS con il **ponte alle recensioni**, debito gift card |
+| `11-analytics.png` | Costo del cibo, **menu engineering**, costo delle assenze, **quanto stanno a tavola** (durata misurata contro durata impostata), **lista d'attesa misurata**, previsione coperti, NPS con il **ponte alle recensioni**, debito gift card |
 | `12-menu.png` | Categorie e piatti, allergeni da elenco chiuso, costo e margine, **ricerca e filtri** oltre i dodici piatti |
 | `13-marketing.png` | Le cinque sezioni: campagne, automazioni, coupon, gift card, Wi-Fi, QR |
 | `14-campagne.png` | Campagne con esito e attribuzione; «Consegnata al fornitore» sulle programmate scadute |
@@ -36,7 +36,7 @@ L'analisi che accompagna questi screenshot è in [`docs/ANALISI-STATO-2026-09-07
 | `20-esperienze.png` | Esperienze pubblicate; i biglietti non si vendono da Tavolo e la pagina lo dice |
 | `21-camerieri.png` | Personale, ruoli, contratti e scadenze |
 | `22-pagamenti.png` | Pagamenti registrati: caparre, ticket, rimborsi — e la riga che dice che i conti al tavolo non passano da qui |
-| `23-impostazioni.png` | Scontrino medio, raccolta punti, **finestra di prenotazione**, **recensioni pubbliche**, portale Wi-Fi, coda dei lavori, turni |
+| `23-impostazioni.png` | Scontrino medio, raccolta punti, **finestra di prenotazione e overbooking dichiarato**, **recensioni pubbliche**, portale Wi-Fi, coda dei lavori, turni |
 | `24-impostazioni-brand.png` | Logo, colori, dati pubblici del locale |
 | `25-impostazioni-wifi.png` | Rete, password, testi e sconto automatico del portale |
 
@@ -105,3 +105,5 @@ veniva fatta.
 | `33-assenze-raccontate.png` | «2 su 12 · l'ultima il 5 settembre»: i fatti, non un punteggio |
 | `34-coda-misurata.png` | La lista d'attesa misurata: coperti recuperati, non impressioni |
 | `35-debito-giftcard.png` | Il debito delle gift card fra i numeri d'insieme |
+| `36`–`37` | L'overbooking dichiarato: il margine in Impostazioni, e l'orario segnato «oltre la capienza» **solo in sala** |
+| `38-rotazione.png` | Quanto stanno a tavola: 1 ora e 56 misurate contro 1 ora e 45 impostate, e cosa farne |
