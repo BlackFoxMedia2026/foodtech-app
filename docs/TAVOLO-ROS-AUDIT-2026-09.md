@@ -45,6 +45,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | P2-8 · deduplica e unione ospiti | ✅ **chiuso**: le coppie con la stessa email o lo stesso telefono si propongono, **nessuna unione è automatica**, e l'unione la può fare solo un Manager. Niente si perde: tutto si sposta, note e allergie si uniscono, i contatori si ricalcolano dalle righe. Una revoca di consenso più recente vince su un consenso più vecchio, e una scheda anonimizzata non si unisce mai |
 | P1-9 · cifratura della password Wi-Fi | ✅ **chiuso**: AES-256-GCM con chiave da `CHIAVE_CIFRATURA`. Non può essere un'impronta — il portale la consegna a chi lascia un contatto — quindi si mette sotto chiave. Senza chiave resta in chiaro **con l'etichetta**, e la schermata lo dice. Nel farlo è emerso che il freno delle migrazioni chiamava distruttivo anche diventare `text`: adesso distingue |
 | 16 · le domande operative dell'agente | ✅ **chiuso**: le cinque domande del §56 sono cinque strumenti deterministici sui dati che esistevano già. Nessun modello: dove la misura non basta la risposta dice **cosa manca** invece di stimare, e ogni numero porta la sua base |
+| P3-6 · coda: priorità, quote, storia | ✅ **chiuso**: tre livelli di priorità (chi aspetta adesso, lavoro del locale, spedizioni), una quota per fornitore che vale sia come limite verso Brevo sia come garanzia che una campagna non occupi tutto il giro, e la storia dei lavori conclusi che si tiene due settimane — mentre **i non riusciti non si toccano mai**. È il lavoro che serviva prima di accendere l'email |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -436,7 +437,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | P3-3 | **Cliente fra più locali** | 4 | L | decisione (nota già scritta) | alto |
 | P3-4 | **Recensioni importate** e risposta | 3 | L | API piattaforme | medio |
 | P3-5 | **Biglietti per le esperienze** | 3 | M | P1-1 | medio |
-| P3-6 | **Coda: priorità, dead-letter, limiti per fornitore** | 3 | M | nessuna | basso |
+| ~~P3-6~~ | ~~**Coda: priorità, dead-letter, limiti per fornitore**~~ — **fatto l'8 settembre** | 3 | M | nessuna | basso |
 
 ## P4 — INTELLIGENZA
 

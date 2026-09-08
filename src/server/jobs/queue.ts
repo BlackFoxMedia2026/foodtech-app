@@ -1,4 +1,4 @@
-import { logAttenzione, logErrore } from "@/lib/observability";
+import { logAttenzione, logErrore, logEvento } from "@/lib/observability";
 import type { BackgroundJob, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
@@ -55,6 +55,73 @@ export const LOTTO_PREDEFINITO = 25;
  */
 export const BUDGET_MS_PREDEFINITO = 25_000;
 
+/* -------------------------------------------------------------------------- */
+/*  Priorità e quote                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Quanto conta arrivare prima, per tipo di lavoro.
+ *
+ * Senza questa tabella la coda era in ordine di orario, e quattrocento email
+ * di una campagna messe in coda alle 20:00 stavano davanti alla **conferma di
+ * una prenotazione** arrivata alle 20:01. Non è un dettaglio di
+ * prestazioni: è un cliente che aspetta la sua email dietro una spedizione
+ * pubblicitaria, e che intanto non sa se ha un tavolo.
+ *
+ * Tre livelli, e il criterio è **chi sta aspettando**:
+ *
+ * - **10 — qualcuno aspetta adesso.** Un messaggio a un ospite: conferma,
+ *   promemoria, «il tavolo è pronto». Se non arriva subito non serve più;
+ * - **50 — lavoro del locale.** Le automazioni: capiscono chi tocca oggi e
+ *   mettono in coda i messaggi. Vanno fatte oggi, non in questo minuto;
+ * - **100 — spedizioni.** Le campagne: partono quando la coda ha spazio, e
+ *   nessuno le sta aspettando col telefono in mano.
+ */
+export const PRIORITA_PER_TIPO: Record<string, number> = {
+  "message.send": 10,
+  "automation.run": 50,
+  "campaign.send": 100,
+};
+
+/** La priorità di un lavoro che non è in tabella: in mezzo, mai davanti. */
+export const PRIORITA_PREDEFINITA = 100;
+
+export function prioritaDi(kind: string): number {
+  return PRIORITA_PER_TIPO[kind] ?? PRIORITA_PREDEFINITA;
+}
+
+/**
+ * Quanti lavori dello stesso gruppo si possono fare in un giro.
+ *
+ * Serve a due cose diverse che hanno la stessa soluzione:
+ *
+ * - **il fornitore ha dei limiti.** Brevo accetta un certo numero di
+ *   chiamate al minuto: mandargliene duecento in venticinque secondi
+ *   significa farsi rifiutare le ultime, e un rifiuto del fornitore diventa
+ *   un tentativo bruciato per un messaggio che non aveva niente di storto;
+ * - **una spedizione non deve occupare tutta la coda.** Anche con le
+ *   priorità, un lotto pieno di campagne lascerebbe zero spazio a un
+ *   messaggio che arriva *durante* il giro. Con la quota, un giro non è mai
+ *   tutto di uno stesso gruppo.
+ *
+ * Il gruppo è il fornitore, non il tipo: `message.send` e `campaign.send`
+ * passano dalla stessa porta e vanno contati insieme.
+ */
+export const GRUPPO_PER_TIPO: Record<string, string> = {
+  "message.send": "email",
+  "campaign.send": "email",
+};
+
+export const QUOTA_PER_GRUPPO: Record<string, number> = {
+  // Venti invii per giro, un giro al minuto: 1.200 all'ora, dentro i limiti
+  // di qualunque fornitore, e con spazio per tutto il resto.
+  email: 20,
+};
+
+export function gruppoDi(kind: string): string | null {
+  return GRUPPO_PER_TIPO[kind] ?? null;
+}
+
 export type JobOutcome =
   /** Finito. */
   | { done: true }
@@ -76,6 +143,13 @@ export type EnqueueInput = {
   dedupeKey?: string | null;
   runAt?: Date;
   maxAttempts?: number;
+  /**
+   * Quanto conta arrivare prima. Quando non si dice, la decide il tipo
+   * (`PRIORITA_PER_TIPO`): chi mette in coda non deve ricordarsela, e due
+   * punti del codice che accodano lo stesso tipo non possono dargli due
+   * urgenze diverse.
+   */
+  priority?: number;
 };
 
 export type EnqueueResult = {
@@ -100,6 +174,7 @@ export async function enqueueJob(input: EnqueueInput): Promise<EnqueueResult> {
     venueId: input.venueId ?? null,
     dedupeKey: input.dedupeKey ?? null,
     runAt: input.runAt ?? new Date(),
+    priority: input.priority ?? prioritaDi(input.kind),
     ...(input.maxAttempts !== undefined && { maxAttempts: input.maxAttempts }),
   };
 
@@ -165,6 +240,8 @@ function prossimaAttesaMs(attempts: number): number {
 }
 
 export type RunSummary = {
+  /** Lavori lasciati in coda perché il gruppo aveva finito la sua quota. */
+  rinviatiPerQuota: number;
   claimed: number;
   done: number;
   requeued: number;
@@ -199,6 +276,7 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
   const trascorso = options.elapsedMs ?? (() => Date.now() - avvio);
 
   const summary: RunSummary = {
+    rinviatiPerQuota: 0,
     claimed: 0,
     done: 0,
     requeued: 0,
@@ -208,17 +286,41 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
     budgetExhausted: false,
   };
 
+  /**
+   * Prima la priorità, poi l'orario.
+   *
+   * Si prende qualche candidato in più del lotto (`limit`) perché le quote
+   * per gruppo possono scartarne alcuni: senza margine, un lotto tutto di
+   * campagne lascerebbe il giro mezzo vuoto pur avendo altri lavori pronti.
+   */
   const candidati = await db.backgroundJob.findMany({
     where: { status: "PENDING", runAt: { lte: now } },
-    orderBy: { runAt: "asc" },
-    take: limit,
-    select: { id: true },
+    orderBy: [{ priority: "asc" }, { runAt: "asc" }],
+    take: limit * 3,
+    select: { id: true, kind: true },
   });
 
-  for (const { id } of candidati) {
+  /** Quanti ne ho già fatti per gruppo in questo giro. */
+  const fattiPerGruppo = new Map<string, number>();
+
+  for (const { id, kind } of candidati) {
+    if (summary.claimed >= limit) break;
     if (trascorso() >= budgetMs) {
       summary.budgetExhausted = true;
       break;
+    }
+
+    // La quota del fornitore: superata, il lavoro resta in coda per il giro
+    // dopo. Non è un errore e non consuma tentativi — non è successo niente.
+    const gruppo = gruppoDi(kind);
+    if (gruppo) {
+      const quota = QUOTA_PER_GRUPPO[gruppo];
+      const fatti = fattiPerGruppo.get(gruppo) ?? 0;
+      if (quota !== undefined && fatti >= quota) {
+        summary.rinviatiPerQuota += 1;
+        continue;
+      }
+      fattiPerGruppo.set(gruppo, fatti + 1);
     }
 
     const job = await claimJob(id, new Date());
@@ -330,6 +432,44 @@ export async function jobQueueHealth(venueId: string) {
     }),
   ]);
   return { inAttesa, inCorso, nonRiusciti, ultimiErrori };
+}
+
+/**
+ * Quanti giorni si tengono i lavori conclusi.
+ *
+ * Due settimane: abbastanza per rispondere a «è partito quel promemoria?»
+ * guardando la coda, e poco perché la tabella non cresca per sempre. Ogni
+ * messaggio a un ospite è una riga: un locale che manda cento messaggi al
+ * giorno ne accumula trentaseimila in un anno, e la coda si legge a ogni
+ * minuto.
+ */
+export const GIORNI_DI_STORIA = 14;
+
+/**
+ * Toglie dalla coda i lavori **conclusi** più vecchi della storia che
+ * teniamo.
+ *
+ * I lavori **non riusciti non si toccano mai**, per la stessa ragione per cui
+ * restano in tabella invece di sparire: un invio che non è andato è una cosa
+ * che qualcuno deve poter vedere, anche fra sei mesi. Se un giorno saranno
+ * troppi, il problema non è la tabella.
+ *
+ * Non è una pulizia cosmetica: è ciò che rende sostenibile una coda su
+ * Postgres letta ogni minuto. E resta il posto dove `MessageLog` continua a
+ * raccontare cosa è stato inviato — la storia dei messaggi non sta qui.
+ */
+export async function pulisciLavoriVecchi(
+  opts: { now?: Date; giorni?: number } = {},
+): Promise<number> {
+  const now = opts.now ?? new Date();
+  const limite = new Date(now.getTime() - (opts.giorni ?? GIORNI_DI_STORIA) * 86_400_000);
+
+  const { count } = await db.backgroundJob.deleteMany({
+    where: { status: "DONE", finishedAt: { lt: limite } },
+  });
+
+  if (count > 0) logEvento("coda.storia_ripulita", { quanti: count, giorni: opts.giorni ?? GIORNI_DI_STORIA });
+  return count;
 }
 
 /** Rimette in coda un lavoro non riuscito, azzerando i tentativi. */

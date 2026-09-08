@@ -7,6 +7,10 @@ import {
   retryJob,
   runDueJobs,
   MINUTI_APPESO,
+  GIORNI_DI_STORIA,
+  PRIORITA_PER_TIPO,
+  pulisciLavoriVecchi,
+  QUOTA_PER_GRUPPO,
   type EnqueueInput,
   type JobHandlers,
 } from "@/server/jobs/queue";
@@ -300,5 +304,217 @@ describe("stato e ripresa manuale", () => {
     const { jobId } = await enqueueJob({ kind: "prova.lavoro", payload: {}, venueId: altroVenueId });
     await db.backgroundJob.update({ where: { id: jobId }, data: { status: "FAILED" } });
     await expect(retryJob(venueId, jobId)).rejects.toThrow("not_found");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*  Priorità e quote per fornitore                                            */
+/* -------------------------------------------------------------------------- */
+
+describe("chi passa prima", () => {
+  /** Handler per i tipi veri, che contano l'ordine in cui sono stati chiamati. */
+  function registro() {
+    const ordine: string[] = [];
+    const handlers: JobHandlers = {
+      "message.send": async () => {
+        ordine.push("messaggio");
+      },
+      "campaign.send": async () => {
+        ordine.push("campagna");
+      },
+      "automation.run": async () => {
+        ordine.push("automazione");
+      },
+    };
+    return { ordine, handlers };
+  }
+
+  it("la priorità la decide il tipo, senza doverla ricordare a chi accoda", async () => {
+    const messaggio = await enqueueJob({ kind: "message.send", payload: {}, venueId });
+    const campagna = await enqueueJob({ kind: "campaign.send", payload: {}, venueId });
+    const automazione = await enqueueJob({ kind: "automation.run", payload: {}, venueId });
+
+    const righe = await db.backgroundJob.findMany({
+      where: { id: { in: [messaggio.jobId, campagna.jobId, automazione.jobId] } },
+      select: { id: true, priority: true },
+    });
+    const per = new Map(righe.map((r) => [r.id, r.priority]));
+    expect(per.get(messaggio.jobId)).toBe(PRIORITA_PER_TIPO["message.send"]);
+    expect(per.get(automazione.jobId)).toBe(PRIORITA_PER_TIPO["automation.run"]);
+    expect(per.get(campagna.jobId)).toBe(PRIORITA_PER_TIPO["campaign.send"]);
+    expect(per.get(messaggio.jobId)!).toBeLessThan(per.get(campagna.jobId)!);
+  });
+
+  it("un messaggio a un ospite passa davanti a una campagna messa in coda prima", async () => {
+    /**
+     * È il difetto per cui esiste la priorità: quattrocento email di una
+     * campagna accodate alle 20:00 stavano davanti alla conferma di una
+     * prenotazione arrivata alle 20:01, e il cliente aspettava di sapere se
+     * aveva un tavolo dietro una spedizione pubblicitaria.
+     */
+    const prima = new Date(Date.now() - 10 * 60_000);
+    for (let i = 0; i < 5; i++) {
+      await enqueueJob({ kind: "campaign.send", payload: { i }, venueId, runAt: prima });
+    }
+    await enqueueJob({ kind: "message.send", payload: { urgente: true }, venueId });
+
+    const { ordine, handlers } = registro();
+    await runDueJobs({ handlers });
+
+    expect(ordine[0]).toBe("messaggio");
+  });
+
+  it("a parità di priorità vince chi aspetta da più tempo", async () => {
+    const vecchio = await enqueueJob({
+      kind: "message.send",
+      payload: { quale: "vecchio" },
+      venueId,
+      runAt: new Date(Date.now() - 5 * 60_000),
+    });
+    await enqueueJob({ kind: "message.send", payload: { quale: "nuovo" }, venueId });
+
+    const ordine: string[] = [];
+    const handlers: JobHandlers = {
+      "message.send": async (payload) => {
+        ordine.push((payload as { quale: string }).quale);
+      },
+    };
+    await runDueJobs({ handlers });
+    expect(ordine).toEqual(["vecchio", "nuovo"]);
+    expect(vecchio.duplicate).toBe(false);
+  });
+
+  it("una priorità dichiarata a mano vince su quella del tipo", async () => {
+    const { jobId } = await enqueueJob({ kind: "campaign.send", payload: {}, venueId, priority: 1 });
+    const riga = await db.backgroundJob.findUniqueOrThrow({ where: { id: jobId } });
+    expect(riga.priority).toBe(1);
+  });
+});
+
+describe("la quota del fornitore", () => {
+  it("un giro non spedisce più di quanto il fornitore accetti", async () => {
+    const quanti = QUOTA_PER_GRUPPO.email + 5;
+    for (let i = 0; i < quanti; i++) {
+      await enqueueJob({ kind: "campaign.send", payload: { i }, venueId });
+    }
+
+    let chiamate = 0;
+    const handlers: JobHandlers = {
+      "campaign.send": async () => {
+        chiamate += 1;
+      },
+    };
+    const esito = await runDueJobs({ handlers });
+
+    expect(chiamate).toBe(QUOTA_PER_GRUPPO.email);
+    expect(esito.rinviatiPerQuota).toBe(5);
+  });
+
+  it("chi resta fuori per la quota non consuma tentativi: non è successo niente", async () => {
+    const quanti = QUOTA_PER_GRUPPO.email + 3;
+    for (let i = 0; i < quanti; i++) {
+      await enqueueJob({ kind: "campaign.send", payload: { i }, venueId });
+    }
+    const handlers: JobHandlers = { "campaign.send": async () => {} };
+    await runDueJobs({ handlers });
+
+    const rimasti = await db.backgroundJob.findMany({
+      where: { venueId, status: "PENDING" },
+      select: { attempts: true, lastError: true },
+    });
+    expect(rimasti).toHaveLength(3);
+    for (const r of rimasti) {
+      expect(r.attempts).toBe(0);
+      expect(r.lastError).toBeNull();
+    }
+  });
+
+  it("la quota di un gruppo non ferma i lavori di un altro", async () => {
+    // È metà del motivo per cui la quota esiste: una spedizione piena non
+    // deve occupare tutto il giro.
+    for (let i = 0; i < QUOTA_PER_GRUPPO.email + 10; i++) {
+      await enqueueJob({ kind: "campaign.send", payload: { i }, venueId });
+    }
+    await enqueueJob({ kind: "prova.lavoro", payload: { n: 99 }, venueId });
+
+    let campagne = 0;
+    const chiamate: string[] = [];
+    const handlers: JobHandlers = {
+      "campaign.send": async () => {
+        campagne += 1;
+      },
+      "prova.lavoro": async (payload) => {
+        chiamate.push(JSON.stringify(payload));
+      },
+    };
+    await runDueJobs({ handlers });
+
+    expect(campagne).toBe(QUOTA_PER_GRUPPO.email);
+    // Il lavoro senza gruppo è stato fatto nello stesso giro, nonostante la
+    // coda fosse piena di campagne.
+    expect(chiamate).toHaveLength(1);
+  });
+
+  it("il lotto resta un tetto: la quota non lo allarga", async () => {
+    for (let i = 0; i < 10; i++) {
+      await enqueueJob({ kind: "prova.lavoro", payload: { i }, venueId });
+    }
+    const { chiamate, handlers } = contatore();
+    const esito = await runDueJobs({ handlers, limit: 4 });
+    expect(chiamate).toHaveLength(4);
+    expect(esito.claimed).toBe(4);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*  La storia che si tiene, e quella che non si butta                         */
+/* -------------------------------------------------------------------------- */
+
+describe("la pulizia della storia", () => {
+  it("i lavori conclusi vecchi si tolgono, quelli recenti restano", async () => {
+    const { jobId: vecchio } = await accoda({ payload: { quale: "vecchio" } });
+    const { jobId: recente } = await accoda({ payload: { quale: "recente" } });
+    await db.backgroundJob.update({
+      where: { id: vecchio },
+      data: { status: "DONE", finishedAt: new Date(Date.now() - (GIORNI_DI_STORIA + 1) * 86_400_000) },
+    });
+    await db.backgroundJob.update({
+      where: { id: recente },
+      data: { status: "DONE", finishedAt: new Date() },
+    });
+
+    const quanti = await pulisciLavoriVecchi();
+    expect(quanti).toBe(1);
+    expect(await db.backgroundJob.findUnique({ where: { id: vecchio } })).toBeNull();
+    expect(await db.backgroundJob.findUnique({ where: { id: recente } })).not.toBeNull();
+  });
+
+  it("un lavoro NON riuscito non si tocca mai, quanto vecchio sia", async () => {
+    /**
+     * È la stessa ragione per cui resta in tabella invece di sparire: un
+     * invio che non è andato è una cosa che qualcuno deve poter vedere, anche
+     * fra sei mesi. Se un giorno saranno troppi, il problema non è la
+     * tabella.
+     */
+    const { jobId } = await accoda();
+    await db.backgroundJob.update({
+      where: { id: jobId },
+      data: {
+        status: "FAILED",
+        finishedAt: new Date(Date.now() - 400 * 86_400_000),
+        lastError: "il fornitore ha detto no",
+      },
+    });
+
+    expect(await pulisciLavoriVecchi()).toBe(0);
+    const riga = await db.backgroundJob.findUniqueOrThrow({ where: { id: jobId } });
+    expect(riga.status).toBe("FAILED");
+    expect(riga.lastError).toContain("il fornitore");
+  });
+
+  it("un lavoro ancora in attesa non si tocca, anche se accodato mesi fa", async () => {
+    const { jobId } = await accoda({ runAt: new Date(Date.now() - 200 * 86_400_000) });
+    expect(await pulisciLavoriVecchi()).toBe(0);
+    expect(await db.backgroundJob.findUnique({ where: { id: jobId } })).not.toBeNull();
   });
 });

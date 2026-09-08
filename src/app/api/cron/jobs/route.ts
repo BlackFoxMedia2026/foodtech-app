@@ -1,5 +1,5 @@
 import { eseguiCron } from "@/lib/cron";
-import { runDueJobs } from "@/server/jobs/queue";
+import { pulisciLavoriVecchi, runDueJobs } from "@/server/jobs/queue";
 import { JOB_HANDLERS } from "@/server/jobs/handlers";
 
 /**
@@ -17,7 +17,15 @@ export async function GET(req: Request) {
   return eseguiCron("jobs", req, async () => {
     const esito = await runDueJobs({ handlers: JOB_HANDLERS });
 
+    /**
+     * La pulizia va **dopo** il lavoro, non prima: se il budget di tempo
+     * finisce, si preferisce aver consegnato i messaggi e non aver ripulito
+     * la storia. E i lavori non riusciti non si toccano mai.
+     */
+    const storiaRipulita = await pulisciLavoriVecchi();
+
     return {
+      storiaRipulita,
       presiInCarico: esito.claimed,
       conclusi: esito.done,
       rimandati: esito.requeued,
@@ -25,6 +33,7 @@ export async function GET(req: Request) {
       nonRiusciti: esito.failed,
       ripresiDopoInterruzione: esito.recovered,
       tempoEsaurito: esito.budgetExhausted,
+      rinviatiPerQuota: esito.rinviatiPerQuota,
     };
   });
 }
