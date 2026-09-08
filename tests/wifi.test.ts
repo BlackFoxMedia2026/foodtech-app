@@ -143,6 +143,20 @@ describe("l'iscrizione", () => {
     expect(lead.guestId).not.toBeNull();
   });
 
+  it("un contatto nuovo fa suonare la campanella, uno abituale no", async () => {
+    await db.notification.deleteMany({ where: { venueId } });
+
+    await registraLead(slug, iscrizione());
+    const primo = await db.notification.findMany({ where: { venueId, kind: "WIFI_LEAD" } });
+    expect(primo).toHaveLength(1);
+    expect(primo[0].body).toContain("consenso");
+
+    // Sei persone dello stesso tavolo che si collegano una dopo l'altra non
+    // devono far suonare sei volte: dalla seconda volta la persona è già nota.
+    await registraLead(slug, iscrizione());
+    expect(await db.notification.count({ where: { venueId, kind: "WIFI_LEAD" } })).toBe(1);
+  });
+
   it("pretende un contatto e l'informativa accettata", async () => {
     await expect(registraLead(slug, iscrizione({ email: null, phone: null }))).rejects.toThrow();
     await expect(registraLead(slug, iscrizione({ consentPrivacy: false }))).rejects.toThrow();

@@ -2,6 +2,7 @@ import { Prisma, type GiftCard, type GiftCardStatus } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { recordAudit, type AuditActor } from "./audit";
+import { createNotification } from "./notifications";
 import { codiceCasuale } from "./coupons";
 
 /**
@@ -331,6 +332,22 @@ export async function redeemGiftCard(
     importoCentesimi: esito.importo,
     residuoCentesimi: esito.residuo,
     conto: input.orderId ?? null,
+  });
+
+  // Denaro che si muove: è la categoria di notizia che un titolare vuole
+  // vedere anche quando non era lui a battere il conto. Fuori dalla
+  // transazione di proposito — un avviso non riuscito non deve annullare un
+  // utilizzo già valido.
+  const euro = (c: number) => `${(c / 100).toFixed(2).replace(".", ",")} €`;
+  await createNotification(venueId, {
+    kind: "GIFT_CARD_REDEEMED",
+    title: `Gift card usata: ${euro(esito.importo)}`,
+    body:
+      esito.residuo > 0
+        ? `Codice ${esito.card.code}. Restano ${euro(esito.residuo)} sulla carta.`
+        : `Codice ${esito.card.code}. La carta è esaurita.`,
+    link: "/marketing/gift-cards",
+    meta: { giftCardId: esito.card.id, importoCentesimi: esito.importo },
   });
 
   return {

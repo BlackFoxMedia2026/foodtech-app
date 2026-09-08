@@ -172,6 +172,11 @@ costavano poco e valevano molto.
 - [x] **Percorsi end-to-end, in repository** (P0-2, primo cantiere): configurazione Playwright, dati di prova separati dalla demo, un solo accesso riusato, e il **primo percorso verde in 5,6 secondi** — dal widget alla scheda cliente, passando per conferma, arrivo, tavolo, conto e punti accreditati. `npm run test:e2e`
       → il locale di prova ha un turno 00:00–23:59: le prove riguardano la funzione, non l'ora in cui girano
       → scrivendolo sono emerse due cose sul prodotto, corrette **nel test** perché il codice aveva ragione: una prenotazione dal widget ha «Approva/Rifiuta» invece del menu degli stati, e il selettore dei tavoli propone già il primo tavolo che basta (il test lo deselezionava)
+- [x] **Le automazioni non chiedono più al database una volta per candidato** (P0-6): due letture per tutta la platea invece di due per persona. Con trecento clienti raggiungibili erano seicento viaggi per aprire una pagina, e quattro automazioni ne facevano duemilaquattrocento
+      → il test conta le letture: con tre candidati o con trenta devono restare due. È l'unico modo di impedire che il difetto rientri quando qualcuno aggiungerà un controllo dentro il ciclo
+- [x] **La campanella suona per otto categorie** invece di quattro (P1-6): prenotazione dal sito che aspetta una decisione, disdetta entro 48 ore, contatto nuovo dal Wi-Fi, gift card usata
+      → la regola che decide se una categoria vale una notifica: **si notifica solo ciò che nessun'altra schermata già mostra, e solo quando una persona può farci qualcosa**. Quindi niente «VIP senza tavolo» o «picco di arrivi» — il centro controllo li dice meglio, in ordine di urgenza e col rimedio accanto
+      → i silenzi sono difesi da altrettanti test: una prenotazione presa al telefono non suona, una disdetta per il mese prossimo no, e sei persone dello stesso tavolo che si collegano al Wi-Fi fanno suonare una volta sola
 - [ ] Restano quattro percorsi del §80: attesa→tavolo, gift card→uso parziale→residuo, campagna→clic→attribuzione, sondaggio→promotore→recensione. Il quinto (caparra→disdetta→rimborso) **non si può scrivere**: i pagamenti non esistono, e scriverlo con dati finti darebbe una copertura inventata
 
 

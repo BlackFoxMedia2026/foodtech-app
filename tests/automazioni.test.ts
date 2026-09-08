@@ -336,6 +336,56 @@ describe("chi tocca la gift card ferma", () => {
   });
 });
 
+describe("quante volte si chiede al database", () => {
+  /**
+   * Le due difese comuni (già ricevuto, silenzio) si chiedevano **una volta
+   * per candidato**: con trecento clienti raggiungibili erano seicento viaggi
+   * al database per aprire la pagina delle automazioni, e quattro automazioni
+   * ne facevano duemilaquattrocento. Nessuno l'aveva notato perché la demo ne
+   * ha centoventuno.
+   *
+   * Questa prova non guarda il risultato — lo guardano tutte le altre — ma
+   * **il numero di letture**: è l'unico modo di impedire che il difetto
+   * rientri dalla finestra la prossima volta che qualcuno aggiunge un
+   * controllo dentro il ciclo.
+   */
+  let letture = 0;
+  db.$use(async (params, next) => {
+    if (params.model === "MessageLog") letture += 1;
+    return next(params);
+  });
+
+  async function candidati(quanti: number) {
+    // La pulizia qui dentro, non in un `beforeEach`: questa prova ha bisogno
+    // di **due** platee diverse nella stessa esecuzione, per confrontarle.
+    await db.messageLog.deleteMany({ where: { venueId } });
+    await db.guest.deleteMany({ where: { venueId } });
+    for (let i = 0; i < quanti; i++) {
+      const g = await ospite(`Platea${i}`, { totalVisits: 3, lastVisitAt: piu(-61) });
+      // Metà hanno già ricevuto qualcosa: così entrambe le difese lavorano.
+      if (i % 2 === 0) await messaggioA(g.id, "altro.messaggio", 30);
+    }
+  }
+
+  it("le letture non crescono con la platea", async () => {
+    await candidati(3);
+    letture = 0;
+    const { pronti: pochi } = await resolveDestinatari(venueId, "non_torna", 60, ORA);
+    const conTre = letture;
+
+    await candidati(30);
+    letture = 0;
+    const { pronti: molti } = await resolveDestinatari(venueId, "non_torna", 60, ORA);
+    const conTrenta = letture;
+
+    expect(pochi.length).toBeGreaterThan(0);
+    expect(molti.length).toBeGreaterThan(pochi.length);
+    // Due letture sul registro dei messaggi, che siano tre candidati o trenta.
+    expect(conTre).toBeLessThanOrEqual(2);
+    expect(conTrenta).toBe(conTre);
+  });
+});
+
 describe("le difese comuni", () => {
   async function unCandidato(nome = "Candidata") {
     const g = await ospite(nome, { totalVisits: 3, lastVisitAt: piu(-61) });

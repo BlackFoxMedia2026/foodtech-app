@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { recordAudit, type AuditActor } from "./audit";
 import { trovaOCreaOspite } from "./guest-match";
 import { codiceCasuale } from "./coupons";
+import { createNotification } from "./notifications";
 
 /**
  * Il portale Wi-Fi.
@@ -360,6 +361,20 @@ export async function registraLead(
 
     return { coupon, giaConosciuto };
   });
+
+  // Solo i contatti **nuovi**: un cliente abituale che si ricollega ogni
+  // venerdì non è una notizia, e sei persone dello stesso tavolo che si
+  // collegano una dopo l'altra non devono far suonare sei volte la campanella.
+  if (!esito.giaConosciuto) {
+    await createNotification(venue.id, {
+      kind: "WIFI_LEAD",
+      title: `${data.name.trim()} si è collegato al Wi-Fi`,
+      body: data.consentMarketing
+        ? "Contatto nuovo, con il consenso a essere ricontattato."
+        : "Contatto nuovo, senza consenso al marketing: si può chiamare, non scrivere.",
+      link: "/marketing/wifi",
+    });
+  }
 
   return {
     networkName: venue.wifiNetworkName,
