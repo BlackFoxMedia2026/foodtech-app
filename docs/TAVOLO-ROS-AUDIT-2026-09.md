@@ -40,6 +40,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | P2-4 · cosa sapere di questo ospite | ✅ **chiuso**: allergia, occasione, nota scritta dal personale, preferenze, chi è, assenze — al massimo quattro righe, in ordine di urgenza, con la fonte in ogni riga e **lo stesso aspetto in tutte le schermate**. Il tetto non taglia mai un avviso: dal vivo si è visto sparire «una volta non si è presentato» per far posto a «non ama la musica alta» |
 | P2-2 · avvisi completi + due regole | ✅ **chiuso**: tutti e dieci gli avvisi hanno ora **problema → motivo → impatto → azione**, con l'impatto quantificato sui dati che ci sono. Le due regole nuove sono «sta per liberarsi» e «oltre la durata», e la seconda ha portato una regola generale: **un avviso senza impatto non si mostra** — un tavolo oltre la durata che nessuno aspetta non è un problema, è una serata che va bene |
 | P2-7 · impostazioni e «Altro» raggruppati | ✅ **chiuso**: le tredici schede sono quattro parti con un indice in cima (Il locale · Prenotazioni · Ospiti · Sistema), e «Altro» ha tre gruppi con l'etichetta, uguali su scrivania e telefono. L'indice sono ancore, non schede: funziona senza JavaScript, si può condividere il link a una parte, e il tasto indietro fa quello che ci si aspetta |
+| P2-5 · sintesi di Analytics | ✅ **chiuso**: «Com'è andata», cinque righe in cima con i problemi per primi. Solo fatti misurati — le misure che il locale non ha (food cost senza costi dichiarati, voti senza risposte) **non compaiono**, invece di diventare righe «dato non disponibile» |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -163,7 +164,7 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Lista d'attesa misurata (coperti recuperati) | **EXISTS** | Fatto stanotte |
 | Debito gift card nei numeri d'insieme | **EXISTS** | Fatto stanotte |
 | Previsione coperti conservativa | **EXISTS** | Con il ragionamento dietro ogni numero |
-| Executive summary mobile | **MISSING** | §28: mobile oggi è il desktop compresso |
+| Executive summary mobile | **EXISTS** | Fatto l'8 settembre: cinque righe in cima ad Analytics, problemi per primi, ognuna con la sua base. Funzione pura sui numeri già letti: nessuna lettura in più |
 | Campagne (segmento, anteprima destinatari, consenso, attribuzione) | **EXISTS** | Invio via Brevo |
 | Automazioni | **EXISTS** | **Quattro**, catalogo chiuso, cinque difese contro l'invio di massa |
 | Coupon (con spesa minima e giorni validi) | **EXISTS** | |
@@ -233,9 +234,9 @@ master prompt:
 
 ## Mobile
 
-6. **Analytics mobile è il desktop compresso** (§28). Zero scorrimento
-   orizzontale, ma nessuna executive summary: manca la pagina che dice in
-   cinque righe cosa è andato storto questa settimana.
+6. ~~**Analytics mobile è il desktop compresso** (§28)~~ — chiuso l'8
+   settembre: «Com'è andata» sta in cima, cinque righe con i problemi per
+   primi e la base di ogni numero.
 7. **Il menu admin da telefono è rumoroso** (§21): frecce, modifica ed elimina
    su ogni piatto. Va sostituito con un menu contestuale.
 8. **Il «+» centrale fa meno di quanto potrebbe** (§52): verificare quali
@@ -414,7 +415,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | ~~P2-2~~ | ~~**Avviso → problema/motivo/impatto/azione** e due regole nuove (tavolo che sta per liberarsi, tavolo oltre la durata)~~ — **fatto l'8 settembre** | 4 | M | nessuna | basso |
 | ~~P2-3~~ | ~~**Durata contestuale** nel motore (§15), solo con campioni sufficienti~~ — **fatto l'8 settembre** | 5 | M | rotazione (fatta) | medio |
 | ~~P2-4~~ | ~~**«Cosa sapere di questo ospite»** dove serve: servizio, sala, prenotazione~~ — **fatto l'8 settembre** | 4 | S | nessuna | basso |
-| P2-5 | **Executive summary mobile** per Analytics (§28) | 4 | M | nessuna | basso |
+| ~~P2-5~~ | ~~**Executive summary mobile** per Analytics (§28)~~ — **fatto l'8 settembre** | 4 | M | nessuna | basso |
 | P2-6 | **Menu mobile admin** con menu contestuale (§21) | 3 | S | nessuna | basso |
 | ~~P2-7~~ | ~~**Impostazioni raggruppate** + «Altro» raggruppato (§3)~~ — **fatto l'8 settembre** | 3 | S | nessuna | basso |
 | P2-8 | **Deduplica e merge ospiti** (§19) | 4 | M | nessuna | alto (dati) |

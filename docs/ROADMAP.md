@@ -182,6 +182,13 @@ costavano poco e valevano molto.
       → metà dei tredici test verifica che le difese **non scattino dove non devono**: orario diverso, coperti diversi, prenotazione annullata e riprenotata, chiave assurda (che si ignora invece di rifiutare), altro locale
       → chi fa scattare la trappola riceve un rifiuto generico e **non una finta conferma**: se un giorno scattasse per errore su una persona vera, la conferma falsa sarebbe il danno peggiore
       → resta fuori la **verifica del contatto** (codice via email o SMS): è la difesa vera contro gli indirizzi inventati e serve un fornitore. Non l'ho sostituita con un indovinello
+- [x] **«Com'è andata»: Analytics dice in cinque righe com'è andata** (P2-5)
+      → Analytics è undici pannelli, sedici numeri e quattro grafici: su una scrivania si legge, su un telefono era la stessa pagina compressa. Chi la apre fra due servizi non aveva modo di capire in trenta secondi se la settimana è andata bene
+      → **prima i problemi**, ordinati per gravità e non per argomento: «13 assenze, 58 coperti persi — 847 €» sta sopra «499 coperti, il 15% in più del periodo prima»
+      → **niente aggettivi al posto dei numeri**, e ogni riga porta la sua base: «Misurato su 40 cene con arrivo e chiusura registrati», «84% dell'incasso ha un costo dichiarato: sul resto non si può dire». Un numero senza la sua base è un'opinione con la faccia di un dato
+      → le misure che il locale **non ha** non compaiono: nessuna riga «dato non disponibile», perché occuperebbe il posto di un fatto. E se non c'è davvero niente da segnalare lo dice: «nessuno scostamento rilevante rispetto al periodo prima»
+      → una riga nuova che nessun altro pannello diceva: quando la durata misurata si scosta di oltre un quarto d'ora da quella prevista, la sintesi spiega **cosa fa al motore** — troppo corta e si vendono tavoli che non si liberano in tempo, troppo lunga e si rifiutano prenotazioni che ci starebbero
+      → è una **funzione pura** sui numeri che la pagina aveva già letto: nessuna lettura in più tranne una somma per l'incasso del periodo prima, e si verifica senza database (14 test)
 - [x] **Impostazioni in quattro parti, e «Altro» a gruppi** (P2-7): la colonna di tredici schede era diventata di sedici
       → il criterio del raggruppamento è **di chi è la decisione**: *Il locale* (chi siamo, chi lavora, com'è fatta la sala), *Prenotazioni* (le regole con cui si accettano), *Ospiti* (cosa si fa con chi è venuto), *Sistema* (invii, integrazioni, stato dei lavori)
       → l'indice sono **ancore, non schede**: funziona senza JavaScript, si può mandare a un collega il link a una parte, e il tasto indietro fa quello che ci si aspetta. Con `scroll-mt` il titolo della parte non finisce sotto la barra fissa
