@@ -38,6 +38,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | P2-1 · sala viva completa | ✅ **chiuso**: il conto aperto sul tavolo (col numero di righe, perché «conto vuoto» e «zero euro» sono due fatti diversi), la previsione di liberazione contata **da quando si sono seduti** e con la durata misurata qui quando ce n'è abbastanza, e chi arriva dopo su quel tavolo — anche mentre è occupato, con l'avviso «non fa in tempo». Trovato e corretto un difetto: la previsione partiva dall'orario prenotato, quindi un tavolo seduto in ritardo risultava libero mentre leggevano il menu |
 | P2-3 · durata contestuale | ✅ **chiuso**: il motore non vende più tutto con 105 minuti. La durata si misura per gruppo, fascia e tipo di giorno, con una scala che si allarga quando i campioni non bastano e finisce sulla predefinita dichiarandolo. Proposta nel modulo con la frase che dice su cosa poggia; **una durata scritta a mano resta quella** |
 | P2-4 · cosa sapere di questo ospite | ✅ **chiuso**: allergia, occasione, nota scritta dal personale, preferenze, chi è, assenze — al massimo quattro righe, in ordine di urgenza, con la fonte in ogni riga e **lo stesso aspetto in tutte le schermate**. Il tetto non taglia mai un avviso: dal vivo si è visto sparire «una volta non si è presentato» per far posto a «non ama la musica alta» |
+| P2-2 · avvisi completi + due regole | ✅ **chiuso**: tutti e dieci gli avvisi hanno ora **problema → motivo → impatto → azione**, con l'impatto quantificato sui dati che ci sono. Le due regole nuove sono «sta per liberarsi» e «oltre la durata», e la seconda ha portato una regola generale: **un avviso senza impatto non si mostra** — un tavolo oltre la durata che nessuno aspetta non è un problema, è una serata che va bene |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -223,9 +224,9 @@ master prompt:
    Sistema) con un indice in cima, come il menu pubblico.
 3. ~~**La sala non dice tutto quello che potrebbe** (§6)~~ — chiuso l'8 settembre. Restava: manca l'importo del
    conto e la prossima prenotazione sul riquadro del tavolo.
-4. **La Panoramica è già una mission control** (briefing + tre avvisi), ma
-   l'avviso non ha ancora la forma completa del §4:
-   *problema → motivo → impatto → azione*. Oggi ha problema → motivo → azione.
+4. ~~**La Panoramica è già una mission control** (briefing + tre avvisi), ma
+   l'avviso non ha ancora la forma completa del §4~~ — chiuso l'8 settembre:
+   tutti e dieci gli avvisi hanno *problema → motivo → impatto → azione*.
 5. **Densità uniforme** (rilevato ieri, non risolto): Servizio dovrebbe essere
    più denso di Impostazioni, e oggi respirano allo stesso modo.
 
@@ -409,7 +410,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | # | Cosa | Impatto | Compl. | Dipendenze | Rischio |
 |---|---|---|---|---|---|
 | ~~P2-1~~ | ~~**Sala viva completa** (§6): conto, previsione di liberazione, prossima prenotazione sul tavolo~~ — **fatto l'8 settembre** | 5 | M | nessuna | basso |
-| P2-2 | **Avviso → problema/motivo/impatto/azione** e due regole nuove (tavolo che sta per liberarsi, tavolo oltre la durata) | 4 | M | nessuna | basso |
+| ~~P2-2~~ | ~~**Avviso → problema/motivo/impatto/azione** e due regole nuove (tavolo che sta per liberarsi, tavolo oltre la durata)~~ — **fatto l'8 settembre** | 4 | M | nessuna | basso |
 | ~~P2-3~~ | ~~**Durata contestuale** nel motore (§15), solo con campioni sufficienti~~ — **fatto l'8 settembre** | 5 | M | rotazione (fatta) | medio |
 | ~~P2-4~~ | ~~**«Cosa sapere di questo ospite»** dove serve: servizio, sala, prenotazione~~ — **fatto l'8 settembre** | 4 | S | nessuna | basso |
 | P2-5 | **Executive summary mobile** per Analytics (§28) | 4 | M | nessuna | basso |

@@ -148,7 +148,7 @@ describe("picco di arrivi", () => {
     const picco = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "arrival_peak");
     expect(picco).toBeDefined();
     expect(picco!.severity).toBe("warning");
-    expect(picco!.detail).toContain("16 persone");
+    expect(picco!.motivo).toContain("16 persone");
     expect(picco!.action?.href).toBe("/service");
   });
 
@@ -215,8 +215,8 @@ describe("rischio no-show", () => {
     const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "no_show_risk");
     // Chi ha già due assenze merita una telefonata prima di liberare il tavolo:
     // il consiglio cambia in base al dato, non è una frase fissa.
-    expect(avviso!.detail).toContain("2 assenze");
-    expect(avviso!.detail).toContain("telefonata");
+    expect(avviso!.motivo).toContain("2 assenze");
+    expect(avviso!.impatto).toContain("telefonata");
   });
 
   it("chi è già arrivato non è a rischio, anche se in ritardo", async () => {
@@ -234,7 +234,7 @@ describe("opportunità", () => {
     const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "waitlist_match");
     expect(avviso).toBeDefined();
     expect(avviso!.severity).toBe("opportunity");
-    expect(avviso!.detail).toContain("in attesa");
+    expect(avviso!.motivo).toContain("in attesa");
   });
 
   it("propone un solo abbinamento per volta, non uno per persona in coda", async () => {
@@ -329,7 +329,7 @@ describe("una disdetta libera un posto", () => {
       minute: "2-digit",
     }).format(new Date(adesso.getTime() + 45 * 60_000));
     expect(avviso!.title).toContain(oraSala);
-    expect(avviso!.detail).toContain("Bianchi");
+    expect(avviso!.impatto).toContain("Bianchi");
     expect(avviso!.action?.href).toBe("/waitlist");
   });
 
@@ -477,7 +477,7 @@ describe("turno oltre la capienza", () => {
     );
     expect(avviso).toBeDefined();
     // Può essere voluto — qualcuno ha forzato — e il testo lo riconosce.
-    expect(avviso!.detail).toContain("Può essere voluto");
+    expect(avviso!.motivo).toContain("Può essere voluto");
   });
 });
 
@@ -568,7 +568,7 @@ describe("il centro controllo non si autoaffoga", () => {
     // Un solo avviso per le otto mai arrivate…
     expect(mancate).toHaveLength(1);
     expect(mancate[0].title).toContain("8 prenotazioni");
-    expect(mancate[0].detail).toContain("16 coperti");
+    expect(mancate[0].motivo).toContain("16 coperti");
     // …e il ritardo vero resta singolo e leggibile.
     expect(ritardi).toHaveLength(1);
     expect(ritardi[0].title).toContain("30 minuti");
@@ -597,5 +597,168 @@ describe("il centro controllo non si autoaffoga", () => {
     expect(mancate?.title).toContain("Una prenotazione");
     // E non è urgente: nessuno sta più arrivando.
     expect(mancate?.severity).not.toBe("warning");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*  Le quattro parti di un avviso (§4)                                        */
+/* -------------------------------------------------------------------------- */
+
+describe("ogni avviso dice problema, motivo, impatto e azione", () => {
+  it("nessuna regola può uscire senza impatto: è la parte su cui si decide", async () => {
+    /**
+     * Il test strutturale, e il più importante di questo file: mette la sala
+     * in uno stato che accende **più regole diverse** insieme, e pretende che
+     * ognuna abbia tutte e quattro le parti piene. Serve a impedire che una
+     * regola nuova venga scritta senza impatto — che è come nasceva prima
+     * ogni avviso: un titolo e una spiegazione, e chi legge che si arrangia.
+     */
+    await svuota();
+    // un picco
+    await prenota({ minutiDaAdesso: 30, partySize: 8 });
+    await prenota({ minutiDaAdesso: 35, partySize: 6 });
+    // un ritardo con storico
+    await prenota({ minutiDaAdesso: -40, guest: assenteId, tableId: t2 });
+    // un sei posti con due persone e qualcuno in coda
+    await prenota({ minutiDaAdesso: -30, status: "SEATED", tableId: t6, partySize: 2 });
+    await inCoda("Famiglia Sarti", 5);
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.length).toBeGreaterThan(2);
+
+    for (const a of avvisi) {
+      expect(a.title.trim().length, `titolo vuoto su ${a.kind}`).toBeGreaterThan(0);
+      expect(a.motivo.trim().length, `motivo vuoto su ${a.kind}`).toBeGreaterThan(10);
+      expect(a.impatto.trim().length, `impatto vuoto su ${a.kind}`).toBeGreaterThan(10);
+      expect(a.action?.href, `azione mancante su ${a.kind}`).toBeTruthy();
+      // Il motivo è un fatto, non un consiglio: i consigli stanno
+      // nell'impatto e nell'azione.
+      expect(a.motivo).not.toMatch(/^Prepara|^Sposta|^Assegna/);
+    }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*  Un tavolo che sta per liberarsi                                           */
+/* -------------------------------------------------------------------------- */
+
+describe("un tavolo sta per liberarsi", () => {
+  it("lo dice prima, se c'è qualcuno che ci starebbe", async () => {
+    await svuota();
+    // Seduto da 95 minuti su 105 previsti: si libera fra 10.
+    await prenota({ minutiDaAdesso: -95, status: "SEATED", tableId: t6, partySize: 4 });
+    await inCoda("Coppia Rizzo", 2);
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    const avviso = avvisi.find((a) => a.kind === "table_freeing_soon");
+    expect(avviso).toBeTruthy();
+    expect(avviso!.title).toContain("C6");
+    expect(avviso!.impatto).toContain("Coppia Rizzo");
+    // Il motivo dice anche su cosa poggia la previsione: senza cene misurate
+    // è la durata prevista, e va dichiarato.
+    expect(avviso!.motivo).toContain("Durata prevista");
+  });
+
+  it("senza nessuno in attesa, un tavolo che si libera è la normalità", async () => {
+    await svuota();
+    await prenota({ minutiDaAdesso: -95, status: "SEATED", tableId: t6, partySize: 4 });
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "table_freeing_soon")).toBeUndefined();
+  });
+
+  it("un tavolo già promesso a una prenotazione non è un'opportunità", async () => {
+    // È una collisione, e la dice l'altra regola: due avvisi sullo stesso
+    // tavolo con due consigli opposti sarebbero peggio di nessun avviso.
+    await svuota();
+    await prenota({ minutiDaAdesso: -95, status: "SEATED", tableId: t6, partySize: 4 });
+    await prenota({ minutiDaAdesso: 40, tableId: t6, partySize: 4 });
+    await inCoda("Coppia Rizzo", 2);
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "table_freeing_soon")).toBeUndefined();
+  });
+
+  it("un tavolo che si libera fra un'ora non sta per liberarsi", async () => {
+    await svuota();
+    await prenota({ minutiDaAdesso: -45, status: "SEATED", tableId: t6, partySize: 4 });
+    await inCoda("Coppia Rizzo", 2);
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "table_freeing_soon")).toBeUndefined();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*  Un tavolo oltre la durata                                                 */
+/* -------------------------------------------------------------------------- */
+
+describe("un tavolo oltre la durata", () => {
+  it("non è un problema se nessuno lo aspetta", async () => {
+    /**
+     * La regola più importante di questa coppia: gente che resta a tavola,
+     * con la sala mezza vuota, è una serata che va bene. Un prodotto che
+     * consiglia di alzarli darebbe il consiglio peggiore che può dare.
+     */
+    await svuota();
+    await prenota({ minutiDaAdesso: -180, status: "SEATED", tableId: t6, partySize: 4 });
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "table_overdue")).toBeUndefined();
+  });
+
+  it("lo diventa quando qualcuno arriva su quel tavolo", async () => {
+    await svuota();
+    await prenota({ minutiDaAdesso: -180, status: "SEATED", tableId: t6, partySize: 4 });
+    await prenota({ minutiDaAdesso: 20, tableId: t6, partySize: 4, guest: guestId });
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    const avviso = avvisi.find((a) => a.kind === "table_overdue");
+    expect(avviso).toBeTruthy();
+    expect(avviso!.severity).toBe("warning");
+    expect(avviso!.title).toContain("oltre di");
+    expect(avviso!.impatto).toContain("proprio su questo tavolo");
+  });
+
+  it("lo diventa anche quando c'è qualcuno in lista che ci starebbe", async () => {
+    await svuota();
+    await prenota({ minutiDaAdesso: -180, status: "SEATED", tableId: t6, partySize: 4 });
+    await inCoda("Gruppo Alberti", 5);
+
+    const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find(
+      (a) => a.kind === "table_overdue",
+    );
+    expect(avviso).toBeTruthy();
+    expect(avviso!.impatto).toContain("Gruppo Alberti");
+  });
+
+  it("il motivo dice a che punto è il conto: cambia cosa si fa", async () => {
+    await svuota();
+    const seduto = await prenota({ minutiDaAdesso: -180, status: "SEATED", tableId: t6, partySize: 4 });
+    await prenota({ minutiDaAdesso: 20, tableId: t6, partySize: 4 });
+    await db.order.create({
+      data: {
+        venueId,
+        bookingId: seduto.id,
+        kind: "TABLE",
+        status: "PREPARING",
+        reference: `${PREFISSO}${Date.now()}`,
+        scheduledAt: ADESSO,
+        totalCents: 8400,
+        OrderItem: { create: [{ name: "Menu", priceCents: 4200, quantity: 2 }] },
+      },
+    });
+
+    const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find(
+      (a) => a.kind === "table_overdue",
+    );
+    expect(avviso!.motivo).toContain("il conto è aperto con 1 riga");
+    await db.order.deleteMany({ where: { venueId } });
+  });
+
+  it("venti minuti oltre è la soglia: un tavolo che sfora di dieci non allarma", async () => {
+    await svuota();
+    // 110 minuti su 105 previsti: cinque oltre.
+    await prenota({ minutiDaAdesso: -110, status: "SEATED", tableId: t6, partySize: 4 });
+    await inCoda("Gruppo Alberti", 5);
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    expect(avvisi.find((a) => a.kind === "table_overdue")).toBeUndefined();
   });
 });

@@ -3,6 +3,7 @@ import { NON_PIU_RITARDO_MIN, durataUmana } from "@/lib/durata";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { checkAvailability, findShiftFor, zonedDayAndMinute } from "./availability";
 import { getFloorLive } from "./floor-live";
+import { frasePrevisione } from "@/lib/liberazione";
 import { listWaitlist } from "./waitlist";
 
 // Ri-esportata: il centro controllo è il posto dove ci si aspetta di trovarla.
@@ -40,11 +41,34 @@ export type ServiceInsight = {
     | "oversized_table"
     | "waitlist_match"
     | "freed_slot"
-    | "shift_over_capacity";
+    | "shift_over_capacity"
+    | "table_freeing_soon"
+    | "table_overdue";
   severity: InsightSeverity;
+  /** **Il problema**, in una riga: cosa sta succedendo. */
   title: string;
-  detail: string;
-  /** Dove si va per agire. */
+  /**
+   * **Il motivo**: il fatto misurato da cui nasce l'avviso.
+   *
+   * Non «potrebbe esserci un ritardo», ma «Marta è seduta dalle 20:05 e la
+   * durata misurata qui è 2 ore e 20». Un avviso di cui non si può verificare
+   * la causa, la seconda volta non lo si legge.
+   */
+  motivo: string;
+  /**
+   * **L'impatto**: cosa cambia se nessuno fa niente, con i numeri che si
+   * hanno.
+   *
+   * È la parte che mancava, e in un centro controllo è quella che decide se
+   * vale la pena alzarsi: «quattro posti fermi mentre cinque persone
+   * aspettano» è una frase su cui si agisce, «il tavolo è grande» no.
+   *
+   * Regola che ne è venuta fuori: **un avviso senza impatto non si mostra**.
+   * Se un tavolo è oltre la durata ma nessuno lo aspetta e nessuno è in
+   * lista, non è un problema: è una serata che va bene.
+   */
+  impatto: string;
+  /** **L'azione**: dove si va per sistemarla. */
   action?: { label: string; href: string };
   /**
    * Fra quanti minuti questo avviso conta davvero. Zero = adesso.
@@ -94,6 +118,24 @@ const OVERSIZED_SPARE_SEATS = 3;
 
 /** Quanto avanti si guarda per le collisioni. */
 const HORIZON_MIN = 90;
+
+/**
+ * Entro quanto un tavolo «sta per liberarsi».
+ *
+ * Un quarto d'ora: il tempo di avvisare chi aspetta e di preparare il tavolo.
+ * Mezz'ora sarebbe un annuncio senza urgenza, cinque minuti un annuncio
+ * inutile — quando il tavolo si alza lo si vede.
+ */
+export const LIBERAZIONE_VICINA_MIN = 15;
+
+/**
+ * Da quanto oltre la durata prevista un tavolo diventa un avviso.
+ *
+ * Venti minuti: sotto è normale — un caffè, il conto che arriva — e un avviso
+ * per ogni tavolo che sfora di cinque minuti sarebbe la pagina piena di
+ * cartelli in ogni servizio.
+ */
+export const OLTRE_LA_DURATA_MIN = 20;
 
 function oraLocale(instant: Date, timezone: string) {
   return new Intl.DateTimeFormat("it-IT", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(
@@ -183,11 +225,12 @@ export async function getServiceInsights(
       // Quanto manca: un picco fra dieci minuti viene prima di uno fra un'ora.
       urgenza: Math.max(0, Math.round((peggiore.da.getTime() - now.getTime()) / 60_000)),
       title: `Picco alle ${oraLocale(peggiore.da, timezone)}`,
-      detail: `Fra le ${oraLocale(peggiore.da, timezone)} e le ${oraLocale(peggiore.a, timezone)} arrivano ${
+      motivo: `Fra le ${oraLocale(peggiore.da, timezone)} e le ${oraLocale(peggiore.a, timezone)} arrivano ${
         peggiore.covers
       } persone su ${peggiore.bookings.length} ${
         peggiore.bookings.length === 1 ? "prenotazione" : "prenotazioni"
-      }. Prepara l'accoglienza: è il momento in cui si formano le attese.`,
+      }.`,
+      impatto: `${peggiore.covers} coperti da accogliere in ${PEAK_WINDOW_MIN} minuti: è il momento in cui si formano le attese all'ingresso.`,
       action: { label: "Vedi gli arrivi", href: "/service" },
     });
   }
@@ -216,9 +259,14 @@ export async function getServiceInsights(
         urgenza: Math.max(0, Math.round((prossima.startsAt.getTime() - now.getTime()) / 60_000)),
         severity: "warning",
         title: `${prossima.table?.label ?? "Tavolo"} rischia di non liberarsi`,
-        detail: `${nome(prossima)} arriva alle ${oraLocale(prossima.startsAt, timezone)} sul ${
-          prossima.table?.label ?? "tavolo"
-        }, dove ${occupante.guestName} è seduto fino a circa le ${oraLocale(finePrevista, timezone)} — ${durataUmana(ritardoAtteso)} oltre. Sposta uno dei due o preparati a farli attendere.`,
+        motivo: `${occupante.guestName} è ${
+          occupante.liberoVerso
+            ? frasePrevisione(occupante.liberoVerso, timezone).testo.replace("libero verso", "a tavola fino verso le")
+            : `a tavola fino verso le ${oraLocale(finePrevista, timezone)}`
+        }, e ${nome(prossima)} arriva alle ${oraLocale(prossima.startsAt, timezone)} sullo stesso tavolo.`,
+        impatto: `${prossima.partySize} ${
+          prossima.partySize === 1 ? "persona" : "persone"
+        } in attesa per circa ${durataUmana(ritardoAtteso)} — in piedi, all'ingresso, mentre il tavolo si alza.`,
         action: { label: "Apri la sala", href: "/service/room" },
       });
     }
@@ -229,6 +277,7 @@ export async function getServiceInsights(
   /* ---------------------------------------------------------------------- */
 
   const senzaTavolo = inArrivo.filter((b) => !b.tableId);
+  const copertiSenzaTavolo = senzaTavolo.reduce((n, b) => n + b.partySize, 0);
   if (senzaTavolo.length > 0) {
     const liberi = Object.values(live.byTableId).filter((t) => t.status === "LIBERO").length;
     insights.push({
@@ -240,10 +289,24 @@ export async function getServiceInsights(
       title: `${senzaTavolo.length} ${
         senzaTavolo.length === 1 ? "arrivo" : "arrivi"
       } senza tavolo assegnato`,
-      detail:
+      motivo:
         senzaTavolo.length > liberi
-          ? `Ci sono ${senzaTavolo.length} prenotazioni in arrivo senza tavolo e solo ${liberi} tavoli liberi. Assegnale adesso, prima che si accumulino all'ingresso.`
-          : `${senzaTavolo.length} prenotazioni in arrivo non hanno ancora un tavolo. Assegnarle prima riduce i tempi all'ingresso.`,
+          ? `${senzaTavolo.length} prenotazioni in arrivo entro ${durataUmana(
+              HORIZON_MIN,
+            )} non hanno un tavolo, e i tavoli liberi adesso sono ${liberi}.`
+          : `${senzaTavolo.length} ${
+              senzaTavolo.length === 1 ? "prenotazione" : "prenotazioni"
+            } in arrivo entro ${durataUmana(HORIZON_MIN)} non ${
+              senzaTavolo.length === 1 ? "ha" : "hanno"
+            } ancora un tavolo.`,
+      impatto:
+        senzaTavolo.length > liberi
+          ? `${senzaTavolo.length - liberi} ${
+              senzaTavolo.length - liberi === 1 ? "gruppo" : "gruppi"
+            } senza un posto dove metterlo: la scelta la farà qualcuno di corsa, con la gente davanti.`
+          : `${copertiSenzaTavolo} ${
+              copertiSenzaTavolo === 1 ? "coperto" : "coperti"
+            } da sistemare mentre arrivano, invece che adesso con calma.`,
       action: { label: "Assegna dalla sala", href: "/service/room" },
     });
   }
@@ -285,22 +348,34 @@ export async function getServiceInsights(
       severity: "warning",
       urgenza: ritardo,
       title: `${nome(b)} in ritardo di ${durataUmana(ritardo)}`,
-      detail:
+      motivo:
         storici > 0
           ? `${b.partySize} ${b.partySize === 1 ? "persona" : "persone"} attese alle ${oraLocale(
               b.startsAt,
               timezone,
-            )}. Questo cliente ha già ${storici} ${storici === 1 ? "assenza" : "assenze"} alle spalle: vale una telefonata prima di liberare il tavolo.`
+            )}, e questo cliente ha già ${storici} ${
+              storici === 1 ? "assenza" : "assenze"
+            } sulla sua scheda.`
           : `${b.partySize} ${b.partySize === 1 ? "persona" : "persone"} attese alle ${oraLocale(
               b.startsAt,
               timezone,
-            )}. Una telefonata adesso: se non vengono, quel tavolo si rivende.`,
+            )}, e non è ancora arrivato nessuno.`,
+      impatto: b.table
+        ? `Il ${b.table.label} resta bloccato: ${b.table.seats} posti fermi da ${durataUmana(
+            ritardo,
+          )}. Una telefonata adesso, o quel tavolo si rivende.`
+        : `${b.partySize} ${
+            b.partySize === 1 ? "coperto" : "coperti"
+          } contati come occupati nel turno: se non vengono, si rivendono.`,
       action: { label: "Apri il servizio", href: "/service" },
     });
   }
 
   // Gli altri ritardi, se sono più di quelli mostrati: una riga sola.
   const restanti = inRitardo.length - RITARDI_IN_EVIDENZA;
+  const copertiRestanti = inRitardo
+    .slice(RITARDI_IN_EVIDENZA)
+    .reduce((n, { b }) => n + b.partySize, 0);
   if (restanti > 0) {
     insights.push({
       id: "no_show_risk:altri",
@@ -309,7 +384,12 @@ export async function getServiceInsights(
       urgenza: inRitardo[RITARDI_IN_EVIDENZA].ritardo,
       title:
         restanti === 1 ? "Un'altra prenotazione in ritardo" : `Altre ${restanti} prenotazioni in ritardo`,
-      detail: `Oltre a quelle qui sopra. Le trovi tutte nell'elenco del servizio, dalla più recente.`,
+      motivo: `Oltre a quelle qui sopra, altre ${restanti} hanno superato ${durataUmana(
+        NO_SHOW_RISK_MIN,
+      )} di ritardo.`,
+      impatto: `${copertiRestanti} ${
+        copertiRestanti === 1 ? "coperto" : "coperti"
+      } di cui non si sa niente: finché restano aperti, il turno risulta più pieno di com'è.`,
       action: { label: "Apri il servizio", href: "/service" },
     });
   }
@@ -326,9 +406,12 @@ export async function getServiceInsights(
         nonArrivate.length === 1
           ? "Una prenotazione non è mai arrivata"
           : `${nonArrivate.length} prenotazioni non sono mai arrivate`,
-      detail: `${coperti} ${coperti === 1 ? "coperto" : "coperti"} attesi da più di ${durataUmana(
+      motivo: `${coperti} ${coperti === 1 ? "coperto" : "coperti"} attesi da più di ${durataUmana(
         NON_PIU_RITARDO_MIN,
-      )}: non è più un ritardo. Segnale come assenti o annullale, così i numeri della giornata restano veri.`,
+      )}: non è più un ritardo.`,
+      impatto: `Finché non hanno un esito, quei ${coperti} ${
+        coperti === 1 ? "coperto risulta" : "coperti risultano"
+      } occupati: la capienza del turno sembra più piena di com'è, e i numeri della giornata non sono veri.`,
       action: { label: "Vedi le prenotazioni", href: "/bookings" },
     });
   }
@@ -360,7 +443,14 @@ export async function getServiceInsights(
         severity: "opportunity",
         urgenza: 0,
         title: `${t.label} da ${t.seats} posti con ${info.current.partySize} persone`,
-        detail: `In lista d'attesa c'è ${candidato.guestName} in ${candidato.partySize}, che su questo tavolo ci starebbe. Se ${info.current.guestName} può spostarsi su un tavolo più piccolo, liberi il posto giusto.`,
+        motivo: `${info.current.guestName} occupa un ${t.seats} posti in ${
+          info.current.partySize
+        }, e in lista c'è ${candidato.guestName} in ${candidato.partySize}, che su questo tavolo ci starebbe.`,
+        impatto: `${avanzo} posti fermi mentre ${candidato.partySize} ${
+          candidato.partySize === 1 ? "persona aspetta" : "persone aspettano"
+        } da ${durataUmana(candidato.waitingMin)}. Spostando ${
+          info.current.guestName
+        } su un tavolo più piccolo, il posto torna quello giusto.`,
         action: { label: "Apri la sala", href: "/service/room" },
       });
     }
@@ -383,9 +473,10 @@ export async function getServiceInsights(
       // Il tavolo è libero adesso: aspettare lo spreca.
       urgenza: 0,
       title: `${compatibile.label} è libero per ${e.guestName}`,
-      detail: `${e.partySize} ${e.partySize === 1 ? "persona" : "persone"} in attesa da ${durataUmana(
+      motivo: `${e.partySize} ${e.partySize === 1 ? "persona" : "persone"} in attesa da ${durataUmana(
         e.waitingMin,
       )}, e il ${compatibile.label} (${compatibile.seats} posti) è libero adesso.`,
+      impatto: `${compatibile.seats} posti vuoti con qualcuno in piedi: ogni minuto in più è un tavolo che non incassa e un'attesa che non serve a niente.`,
       action: { label: "Accomoda dalla lista", href: "/service" },
     });
     // Una proposta per volta: proporre lo stesso tavolo a tre gruppi diversi
@@ -438,16 +529,131 @@ export async function getServiceInsights(
       severity: "opportunity",
       urgenza: Math.max(0, Math.round((disdetta.startsAt.getTime() - now.getTime()) / 60_000)),
       title: `Alle ${ora} si è liberato un posto per ${disdetta.partySize}`,
-      detail: `${nome(disdetta)} ha disdetto. In lista d'attesa c'è ${candidato.guestName} in ${
-        candidato.partySize
-      }: il posto delle ${ora} è ancora libero.`,
+      motivo: `${nome(disdetta)} ha disdetto, e il posto delle ${ora} risulta ancora libero adesso.`,
+      impatto: `${candidato.partySize} ${
+        candidato.partySize === 1 ? "coperto" : "coperti"
+      } che si riempiono invece di restare vuoti: in lista c'è ${candidato.guestName}, che aspetta da ${durataUmana(
+        candidato.waitingMin,
+      )}. Se nessuno lo offre, quel posto resta vuoto — è il ricavo che si perde più spesso.`,
       action: { label: "Offri il posto", href: "/waitlist" },
     });
     break;
   }
 
   /* ---------------------------------------------------------------------- */
-  /* 8. Turno oltre la capienza                                             */
+  /* 8. Un tavolo sta per liberarsi, e qualcuno aspetta                     */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * L'avviso che si dà **prima**, non dopo.
+   *
+   * Le altre due opportunità guardano tavoli già liberi: questa guarda quelli
+   * che si liberano fra un quarto d'ora. È la differenza fra «adesso corri» e
+   * «fra dieci minuti sei pronto» — e in sala il secondo vale molto più del
+   * primo, perché il tavolo si prepara mentre chi aspetta viene avvisato
+   * invece che dopo.
+   *
+   * Si dice solo se **qualcuno ci starebbe davvero**: senza nessuno in
+   * attesa, un tavolo che si libera è la normalità di una serata.
+   */
+  for (const t of tables) {
+    const info = live.byTableId[t.id];
+    const previsione = info?.current?.liberoVerso;
+    if (!info?.current || !previsione) continue;
+    if (previsione.minuti < 0 || previsione.minuti > LIBERAZIONE_VICINA_MIN) continue;
+
+    const candidato = gruppiInAttesa.find((e) => e.partySize <= t.seats);
+    if (!candidato) continue;
+
+    // Se quel tavolo è già promesso a una prenotazione, non è un'opportunità:
+    // è una collisione, e ce ne occupiamo sopra.
+    if (info.next) continue;
+
+    const frase = frasePrevisione(previsione, timezone);
+    insights.push({
+      id: `table_freeing_soon:${t.id}`,
+      kind: "table_freeing_soon",
+      severity: "opportunity",
+      urgenza: previsione.minuti,
+      title: `${t.label} si libera fra ${durataUmana(previsione.minuti)}`,
+      motivo: `${info.current.guestName} è ${frase.testo.replace(
+        "libero verso",
+        "a tavola fino verso le",
+      )}. ${frase.dettaglio}`,
+      impatto: `${candidato.guestName} aspetta da ${durataUmana(
+        candidato.waitingMin,
+      )} in ${candidato.partySize}: avvisandolo adesso si siede appena il tavolo è pronto, invece di sentirselo dire dopo.`,
+      action: { label: "Apri la sala", href: "/service/room" },
+    });
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* 9. Un tavolo è oltre la durata, e qualcuno lo aspetta                  */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * Un tavolo oltre la durata **non è un problema in sé**.
+   *
+   * Se nessuno aspetta quel tavolo e non c'è nessuno in lista, gente che
+   * resta a tavola è una serata che va bene: alzarli sarebbe il consiglio
+   * peggiore che questo prodotto possa dare. Perciò l'avviso esce solo quando
+   * c'è una conseguenza — è la regola che è venuta fuori scrivendo l'impatto,
+   * e vale per tutti: **un avviso senza impatto non si mostra**.
+   *
+   * Il conto entra nel motivo perché cambia cosa si fa: un tavolo oltre con
+   * il conto già alto sta finendo, uno con il conto ancora vuoto non è
+   * nemmeno partito.
+   */
+  for (const t of tables) {
+    const info = live.byTableId[t.id];
+    const previsione = info?.current?.liberoVerso;
+    if (!info?.current || !previsione) continue;
+    if (previsione.minuti > -OLTRE_LA_DURATA_MIN) continue;
+
+    const oltre = Math.abs(previsione.minuti);
+    const conto = info.current.conto;
+    const inAttesaQui = gruppiInAttesa.find((e) => e.partySize <= t.seats);
+
+    // La conseguenza: o c'è chi arriva su questo tavolo, o c'è chi aspetta.
+    // Se non c'è né l'uno né l'altro, non si dice niente.
+    const conseguenza = info.next
+      ? `Alle ${oraLocale(new Date(info.next.startsAt), timezone)} arriva ${info.next.guestName} in ${
+          info.next.partySize
+        } proprio su questo tavolo: se non si libera, l'attesa è già cominciata.`
+      : inAttesaQui
+        ? `${inAttesaQui.guestName} aspetta da ${durataUmana(inAttesaQui.waitingMin)} in ${
+            inAttesaQui.partySize
+          }, e su questo tavolo ci starebbe.`
+        : null;
+    if (!conseguenza) continue;
+
+    const statoConto = conto
+      ? conto.righe === 0
+        ? "il conto è aperto e non è stato battuto niente"
+        : `il conto è aperto con ${conto.righe} ${conto.righe === 1 ? "riga" : "righe"}`
+      : "non c'è nessun conto aperto sul tavolo";
+
+    insights.push({
+      id: `table_overdue:${t.id}`,
+      kind: "table_overdue",
+      severity: "warning",
+      // Più è oltre, più è urgente: `urgenza` cresce col tempo mancante, e qui
+      // il tempo è già scaduto.
+      urgenza: 0,
+      title: `${t.label} è oltre di ${durataUmana(oltre)}`,
+      motivo: `Il tavolo era previsto libero verso le ${oraLocale(
+        new Date(previsione.fine),
+        timezone,
+      )} e ${info.current.guestName} è ancora a tavola: ${statoConto}. ${
+        frasePrevisione(previsione, timezone).dettaglio
+      }`,
+      impatto: conseguenza,
+      action: { label: "Apri la sala", href: "/service/room" },
+    });
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* 10. Turno oltre la capienza                                            */
   /* ---------------------------------------------------------------------- */
 
   const { weekday, minuteOfDay } = zonedDayAndMinute(now, timezone);
@@ -466,9 +672,12 @@ export async function getServiceInsights(
         severity: "warning",
         urgenza: 60,
         title: `${turno.name}: ${copertiTurno} coperti su ${turno.capacity} di capienza`,
-        detail: `Il turno è oltre la capienza dichiarata di ${
+        motivo: `Il turno è oltre la capienza dichiarata di ${
           copertiTurno - turno.capacity
-        } coperti. Può essere voluto — qualcuno ha forzato — ma vale sapere che i tempi si allungheranno.`,
+        } coperti. Può essere voluto: qualcuno ha forzato, o l'overbooking dichiarato lo permette.`,
+        impatto: `${
+          copertiTurno - turno.capacity
+        } coperti in più di quanti la cucina e la sala sono state dichiarate capaci di servire: i tempi si allungano per tutti, non solo per gli ultimi arrivati.`,
         action: { label: "Vedi le prenotazioni", href: "/bookings" },
       });
     }

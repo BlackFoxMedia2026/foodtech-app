@@ -5,6 +5,20 @@ import { AlertTriangle, ArrowRight, Info, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { InsightSeverity, ServiceInsight } from "@/server/service-intelligence";
 
+/**
+ * Come si introduce l'impatto.
+ *
+ * Cambia con la gravità perché la stessa frase non va bene per tutti: «se
+ * resta così» davanti a un'opportunità la trasformerebbe in una minaccia, e
+ * «se agisci adesso» davanti a una collisione suonerebbe come un consiglio
+ * facoltativo.
+ */
+const PREFISSO: Record<InsightSeverity, string> = {
+  warning: "Se resta così:",
+  opportunity: "Se agisci adesso:",
+  info: "Effetto:",
+};
+
 const STILE: Record<InsightSeverity, { icona: typeof Info; classe: string; icona_classe: string }> = {
   warning: { icona: AlertTriangle, classe: "border-accent/60", icona_classe: "text-accent" },
   opportunity: { icona: Sparkles, classe: "border-sage/60", icona_classe: "text-sage" },
@@ -46,8 +60,19 @@ export function ServiceInsights({
             <div className="flex items-start gap-2.5">
               <Icona className={cn("mt-0.5 h-4 w-4 shrink-0", stile.icona_classe)} aria-hidden="true" />
               <div className="min-w-0">
+                {/*
+                  Le quattro parti, nell'ordine in cui servono: **problema**
+                  (il titolo), **motivo** (il fatto misurato), **impatto**
+                  (cosa cambia se nessuno fa niente) e **azione** (dove si
+                  va). L'impatto è la riga che decide se vale la pena
+                  alzarsi, e per questo non è grigia come il motivo.
+                */}
                 <p className="font-medium leading-snug">{i.title}</p>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{i.detail}</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{i.motivo}</p>
+                <p className="mt-1.5 text-sm leading-relaxed">
+                  <span className={cn("font-medium", stile.icona_classe)}>{PREFISSO[i.severity]}</span>{" "}
+                  {i.impatto}
+                </p>
                 {i.action && (
                   <Link
                     href={i.action.href}
