@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/utils";
 import { MINIMO_PER_QUOTA, type NoShowReport } from "@/server/no-show";
+import { Base } from "@/components/ui/base-del-numero";
 
 /**
  * Quanto costano le assenze.
@@ -83,10 +84,27 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
           </div>
 
           <div className="rounded-md border border-border p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
               {report.valoreCoperto.tipo === "misurato" ? "Valgono" : "Valore stimato"}
+              {/*
+                Il segno dice da dove viene la cifra, sempre nello stesso
+                modo in tutto il prodotto: la didascalia sotto la spiega, ma
+                chi guarda un numero non legge la didascalia.
+              */}
+              {report.costoCents != null && (
+                <Base
+                  base={report.valoreCoperto.tipo === "misurato" ? "misurato" : "stimato"}
+                  dettaglio={
+                    report.valoreCoperto.tipo === "misurato"
+                      ? `${euro(report.valoreCoperto.centesimi)} per coperto, dai conti chiusi di questo locale.`
+                      : report.valoreCoperto.tipo === "dichiarato"
+                        ? `${euro(report.valoreCoperto.centesimi)} per coperto, dallo scontrino medio che hai dichiarato: è una stima, non un incasso.`
+                        : "Manca lo scontrino medio: senza quello, questi coperti non hanno un valore in euro."
+                  }
+                />
+              )}
             </p>
-            <p className="mt-1 text-display text-2xl tabular-nums">
+            <p className="mt-1 text-2xl font-semibold tabular-nums">
               {report.costoCents != null ? euro(report.costoCents) : "—"}
             </p>
             <p className="text-xs text-muted-foreground">
