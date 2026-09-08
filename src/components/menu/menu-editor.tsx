@@ -2,7 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ExternalLink, Pencil, Plus, Search, Trash2, UtensilsCrossed } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  EyeOff,
+  ExternalLink,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UtensilsCrossed,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +25,13 @@ import { readApiError } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/utils";
 import { ALLERGENI, REGIMI, type MenuCategoryView, type MenuItemView } from "@/server/menu";
 import { MenuItemDialog } from "@/components/menu/menu-item-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /**
  * Il menu, da dentro.
@@ -372,8 +391,51 @@ export function MenuEditor({
                             )}
                           </div>
 
+                          {/*
+                            Su telefono un piatto portava **quattro** pulsanti
+                            a icona: su, giù, modifica, elimina. Quattro
+                            bersagli da 36 px per riga su un elenco di
+                            centoventi piatti è un muro di frecce, e il piatto
+                            — che è la cosa importante — diventa il testo
+                            fra le icone.
+                            
+                            Da telefono c'è un solo pulsante «⋯» con le stesse
+                            azioni scritte a parole; da tablet in su restano in
+                            fila, dove il mouse le raggiunge senza aprire
+                            niente.
+                          */}
                           {canEdit && (
-                            <div className="flex items-center gap-1">
+                            <MenuAzioniPiatto
+                              nome={i.name}
+                              disponibile={i.available}
+                              primo={indice === 0}
+                              ultimo={indice === c.items.length - 1}
+                              filtrando={filtrando}
+                              occupato={busy !== null}
+                              onModifica={() => setDialogo({ categoryId: c.id, categoryName: c.name, item: i })}
+                              onSu={() => sposta("piatti", idPiatti, indice, indice - 1)}
+                              onGiu={() => sposta("piatti", idPiatti, indice, indice + 1)}
+                              onDisponibilita={() =>
+                                chiama(
+                                  i.id,
+                                  `/api/menu/items/${i.id}`,
+                                  json({ available: !i.available }),
+                                  "Non siamo riusciti ad aggiornare il piatto.",
+                                )
+                              }
+                              onElimina={() =>
+                                chiama(
+                                  i.id,
+                                  `/api/menu/items/${i.id}`,
+                                  { method: "DELETE" },
+                                  "Non siamo riusciti a eliminare il piatto.",
+                                )
+                              }
+                            />
+                          )}
+
+                          {canEdit && (
+                            <div className="hidden items-center gap-1 md:flex">
                               {!filtrando && (
                               <>
                               <button
@@ -472,5 +534,91 @@ export function MenuEditor({
         />
       )}
     </>
+  );
+}
+
+/**
+ * Le azioni di un piatto, da telefono: un pulsante e le voci scritte.
+ *
+ * Le stesse quattro azioni della fila da scrivania, più una che da telefono
+ * serve più di tutte: **segnare un piatto finito**. È il gesto che si fa in
+ * cucina alle nove di sera con una mano, ed era raggiungibile solo aprendo
+ * la scheda del piatto.
+ *
+ * Le voci sono **parole, non icone**: dentro un menù non c'è l'ambiguità di
+ * un simbolo, e «Elimina il piatto» dice più di un cestino. Sta in fondo,
+ * dopo una riga di separazione, perché è l'unica che non si disfa.
+ *
+ * Le frecce non compaiono mentre un filtro è acceso, per la stessa ragione
+ * per cui spariscono dalla fila: riordinare un elenco parziale manderebbe al
+ * server un ordine che non è quello vero.
+ */
+function MenuAzioniPiatto({
+  nome,
+  disponibile,
+  primo,
+  ultimo,
+  filtrando,
+  occupato,
+  onModifica,
+  onSu,
+  onGiu,
+  onDisponibilita,
+  onElimina,
+}: {
+  nome: string;
+  disponibile: boolean;
+  primo: boolean;
+  ultimo: boolean;
+  filtrando: boolean;
+  occupato: boolean;
+  onModifica: () => void;
+  onSu: () => void;
+  onGiu: () => void;
+  onDisponibilita: () => void;
+  onElimina: () => void;
+}) {
+  return (
+    <div className="md:hidden">
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label={`Azioni per ${nome}`}
+          disabled={occupato}
+          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10 disabled:opacity-40"
+        >
+          <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onSelect={onModifica} className="flex items-center gap-2">
+            <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onDisponibilita} className="flex items-center gap-2">
+            {disponibile ? (
+              <>
+                <EyeOff className="h-4 w-4" aria-hidden="true" /> Segna come finito
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" aria-hidden="true" /> Rimetti disponibile
+              </>
+            )}
+          </DropdownMenuItem>
+          {!filtrando && (
+            <>
+              <DropdownMenuItem onSelect={onSu} disabled={primo} className="flex items-center gap-2">
+                <ArrowUp className="h-4 w-4" aria-hidden="true" /> Sposta in su
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onGiu} disabled={ultimo} className="flex items-center gap-2">
+                <ArrowDown className="h-4 w-4" aria-hidden="true" /> Sposta in giù
+              </DropdownMenuItem>
+            </>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={onElimina} className="flex items-center gap-2 text-accent">
+            <Trash2 className="h-4 w-4" aria-hidden="true" /> Elimina il piatto
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }

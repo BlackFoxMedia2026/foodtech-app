@@ -182,6 +182,11 @@ costavano poco e valevano molto.
       → metà dei tredici test verifica che le difese **non scattino dove non devono**: orario diverso, coperti diversi, prenotazione annullata e riprenotata, chiave assurda (che si ignora invece di rifiutare), altro locale
       → chi fa scattare la trappola riceve un rifiuto generico e **non una finta conferma**: se un giorno scattasse per errore su una persona vera, la conferma falsa sarebbe il danno peggiore
       → resta fuori la **verifica del contatto** (codice via email o SMS): è la difesa vera contro gli indirizzi inventati e serve un fornitore. Non l'ho sostituita con un indovinello
+- [x] **Il menu, da telefono, non è più un muro di frecce** (P2-6): un solo «⋯» per piatto con le azioni scritte a parole
+      → ogni piatto portava **quattro** pulsanti a icona — su, giù, modifica, elimina: quattro bersagli per riga su un elenco di centoventi piatti, e il nome del piatto diventava il testo fra le icone
+      → nel menù contestuale le voci sono **parole, non simboli**: «Elimina il piatto» dice più di un cestino, e sta in fondo dopo una riga di separazione perché è l'unica azione che non si disfa
+      → ci è entrata anche **«Segna come finito»**, che è il gesto più frequente durante un servizio (lo si fa in cucina alle nove di sera, con una mano) e prima si raggiungeva solo aprendo la scheda del piatto
+      → **da tablet in su la fila di pulsanti resta**: col mouse quattro bersagli in fila si raggiungono più in fretta di un menù da aprire. Non è la stessa interfaccia rimpicciolita, ed è il punto
 - [x] **«Com'è andata»: Analytics dice in cinque righe com'è andata** (P2-5)
       → Analytics è undici pannelli, sedici numeri e quattro grafici: su una scrivania si legge, su un telefono era la stessa pagina compressa. Chi la apre fra due servizi non aveva modo di capire in trenta secondi se la settimana è andata bene
       → **prima i problemi**, ordinati per gravità e non per argomento: «13 assenze, 58 coperti persi — 847 €» sta sopra «499 coperti, il 15% in più del periodo prima»
