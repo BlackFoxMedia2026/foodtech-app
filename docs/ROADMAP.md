@@ -167,6 +167,18 @@ costavano poco e valevano molto.
       → la classifica **si rifiuta di esistere** quando i dati non bastano (meno di 4 piatti o meno di 20 vendite), e un piatto venduto due volte resta fuori invece di diventare un «cane»: dire a un ristoratore di togliere dalla carta qualcosa che non ha mai avuto una possibilità è il modo di fargli perdere soldi con un grafico
 - [x] **La lista UX è chiusa**: le quattro voci rimaste (dimensione del tavolo, ricerca nel menu, scheletri, navigazione del menu pubblico) sono fatte
 
+## Master prompt «Restaurant Operating System» (8 settembre 2026)
+
+Audit di stato contro il master prompt in 92 sezioni:
+[`docs/TAVOLO-ROS-AUDIT-2026-09.md`](TAVOLO-ROS-AUDIT-2026-09.md) — venti
+problemi reali, matrice di tutte le aree (EXISTS/PARTIAL/MISSING/IMPROVE),
+gap tecnico, confronto competitivo, i dieci differenziatori da non perdere,
+e una roadmap P0→P4 con impatto, complessità, dipendenze e rischio.
+
+I primi cinque cantieri, tutti senza dipendenze da terzi: test end-to-end in
+repo, osservabilità minima, sessione e account, difese del widget, N+1 delle
+automazioni. Più il progetto dei pagamenti, scritto prima di toccare codice.
+
 ## Phase 7 — Enterprise
 
 - **Quando finisce la giornata di un ristorante?** Oggi «oggi» è il giorno del processo (UTC su Vercel), e per un locale italiano viene una finestra dalle 02:00 di ieri alle 01:59 di oggi: assomiglia per caso a una giornata di servizio. Delimitarla nel fuso del locale **peggiorerebbe le cose** — alle 00:30 la schermata Servizio si svuoterebbe con i tavoli ancora seduti. Serve una decisione: «la giornata di servizio comincia alle 05:00», impostazione del locale, usata in tutti e diciannove i punti che chiamano `startOfDay`. Descritto in `docs/ANALISI-STATO-2026-09-07.md` §11.7
