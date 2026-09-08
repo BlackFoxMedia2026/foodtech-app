@@ -37,7 +37,7 @@ Multi-locale per costruzione: un'organizzazione può avere più ristoranti, ogni
 | Pagamenti | schema pronto, **non implementati** |
 | Lavori pianificati | 5 cron Vercel |
 
-**Numeri, oggi:** 37 pagine · 107 rotte API · 111 moduli fra `server/` e `lib/` (~18.200 righe) · 165 componenti · **622 test in 38 file** · 16 migrazioni · 73 modelli di dati e 64 enumerazioni.
+**Numeri, oggi:** 37 pagine · 107 rotte API · 112 moduli fra `server/` e `lib/` (~18.400 righe) · 166 componenti · **631 test in 39 file** · 17 migrazioni · 73 modelli di dati e 64 enumerazioni.
 
 I conteggi sono quelli che si ottengono contando i file: `find src/app -name page.tsx`, `find src/app/api -name route.ts`, e così via. Un numero che non si può rifare contando non serve a nessuno.
 
@@ -82,21 +82,36 @@ fornitore. In ordine di valore:
    impressioni.
 9. **L'affidabilità raccontata** — «2 su 12, l'ultima il 5 settembre» invece di
    un punteggio da 0 a 100.
-10. **Il debito delle gift card** fra i numeri d'insieme.
-11. **Interfaccia**: il centro controllo non si autoaffoga più (nove avvisi
+10. **Quanto stanno a tavola** — la durata misurata dall'arrivo alla chiusura
+    del conto, **accanto a quella impostata** sulle prenotazioni: quei 105
+    minuti decidono quanti tavoli il motore vende ogni sera, ed erano una
+    convenzione mai confrontata con la realtà. Più i giri per tavolo.
+11. **L'overbooking, ma dichiarato** — una percentuale scritta dal locale,
+    valida su ogni canale, con gli orari dentro il margine segnati **solo in
+    sala**: al cliente non si racconta come il locale gestisce la propria
+    capienza.
+12. **Il debito delle gift card** fra i numeri d'insieme.
+13. **Interfaccia**: il centro controllo non si autoaffoga più (nove avvisi
     identici diventano uno), il briefing prima del servizio in Panoramica,
     numeri detti una volta sola, il widget che chiede prima il tavolo e poi i
     dati con la data scritta per esteso, coupon con spesa minima e giorni
     validi, un traguardo nella raccolta punti, ricerca e filtri nel menu, le
     portate in cima al menu pubblico, i tavoli disegnati in scala sui posti, e
     gli scheletri di caricamento sulle sette pagine che ne erano senza.
-12. **Tre test che passavano di giorno e fallivano la notte** — misuravano il
-    tempo con l'orologio del computer invece che con uno passato a mano.
+14. **Quattro test che passavano di giorno e fallivano la notte** — misuravano il
+    tempo con l'orologio del computer invece che con uno passato a mano. Per
+    chiudere la questione l'intera batteria gira anche da UTC+14 e da UTC-11, e
+    resta verde: è il modo di scoprirlo adesso invece che una notte a caso.
 
-Restano fuori, e per un motivo dichiarato: la **riconferma obbligatoria** (il
-promemoria che la chiederebbe non parte finché manca la chiave email: sarebbe
-una funzione che non fa niente), l'**overbooking controllato** e la
-**personalizzazione visiva del widget**.
+Resta fuori, e per un motivo dichiarato, la **riconferma obbligatoria**: il
+promemoria che la chiederebbe non parte finché manca la chiave email, e una
+riconferma che nessuno può dare sarebbe una funzione che non fa niente.
+
+Una cosa l'audit l'aveva scritta male, e va corretta: la **personalizzazione
+visiva del widget** non era assente — logo e colore d'accento del locale erano
+già usati. Quello che manca è più fine (carattere, immagine di copertina), e
+vale molto meno di come era stato scritto. Un audit che non si corregge quando
+sbaglia diventa la fonte di verità sbagliata.
 
 ---
 
@@ -344,7 +359,7 @@ I dati personali di un cliente stanno in **sette posti**, non uno: scheda, note 
 ## 12. Come verificare tutto questo senza fidarsi
 
 ```bash
-npm test                    # 622 verifiche
+npm test                    # 631 verifiche
 npx tsc --noEmit            # tipi
 npx next lint --dir src     # stile e regole
 npx prisma migrate status   # migrazioni allineate
@@ -359,4 +374,4 @@ Documenti tenuti allineati al codice, non alle intenzioni: `docs/PRODUCT_STATUS.
 
 ## In una riga
 
-Tavolo copre per intero il ciclo prenotazione → servizio → conto → margine → ritorno del cliente, con 622 verifiche e una disciplina esplicita sul non mostrare numeri che nessuno scrive. Quello che manca dipende quasi tutto da tre cose che non sono codice: un fornitore di pagamenti, una chiave email, e una cassa con cui parlare.
+Tavolo copre per intero il ciclo prenotazione → servizio → conto → margine → ritorno del cliente, con 631 verifiche e una disciplina esplicita sul non mostrare numeri che nessuno scrive. Quello che manca dipende quasi tutto da tre cose che non sono codice: un fornitore di pagamenti, una chiave email, e una cassa con cui parlare.
