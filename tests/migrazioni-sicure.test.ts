@@ -23,6 +23,12 @@ describe("cosa porta via dati", () => {
     ['DELETE FROM "Booking" WHERE id = \'x\';', "cancellare righe"],
     ['DROP TYPE "BookingStatus";', "cancellare un tipo"],
     ['ALTER TABLE "Venue" ALTER COLUMN "name" TYPE VARCHAR(10);', "restringere un tipo"],
+    // Diventare `text` è innocuo, ma dentro la stessa migrazione di una
+    // conversione vera non salva niente: basta un'istruzione pericolosa.
+    [
+      'ALTER TABLE "Venue" ALTER COLUMN "wifiPassword" TYPE TEXT;\nALTER TABLE "Venue" ALTER COLUMN "seats" TYPE INTEGER USING seats::integer;',
+      "allargare e convertire nella stessa migrazione",
+    ],
     ['ALTER TABLE "Guest" ALTER COLUMN "email" SET NOT NULL;', "rendere obbligatoria una colonna"],
     ['ALTER TABLE "Guest" RENAME COLUMN "email" TO "mail";', "rinominare"],
   ] as const;
@@ -46,6 +52,14 @@ describe("cosa si può applicare anche in anteprima", () => {
     // normale di rinominarli: vietarlo bloccherebbe metà delle migrazioni.
     ['ALTER TABLE "A" DROP CONSTRAINT "A_b_fkey";', "togliere un vincolo"],
     ['DROP INDEX "Guest_venueId_idx";', "togliere un indice"],
+    /**
+     * Diventare `text` è l'unico cambio di tipo che non può restringere
+     * niente: `text` non ha limite di lunghezza, quindi ogni valore già in
+     * tabella ci sta e nessuna scrittura che funzionava prima comincia a
+     * fallire. Serve alla password del Wi-Fi, che cifrata non sta più in
+     * `VarChar(128)`.
+     */
+    ['ALTER TABLE "Venue" ALTER COLUMN "wifiPassword" TYPE TEXT;', "allargare un testo a text"],
   ] as const;
 
   for (const [sql, cosa] of additive) {

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { cifra, decifra } from "@/lib/cifratura";
 import { recordAudit, type AuditActor } from "./audit";
 import { trovaOCreaOspite } from "./guest-match";
 import { codiceCasuale } from "./coupons";
@@ -91,7 +92,8 @@ export async function setPortale(venueId: string, raw: unknown, opts: { actor?: 
     where: { id: venueId },
     data: {
       wifiNetworkName: networkName,
-      wifiPassword: password,
+      // Sotto chiave: nel database non finisce più il testo leggibile.
+      wifiPassword: cifra(password),
       wifiPortalWelcome: data.welcome?.trim() || null,
       wifiPortalLegal: data.legal?.trim() || null,
       wifiPortalAccent: data.accent?.trim() || null,
@@ -378,7 +380,11 @@ export async function registraLead(
 
   return {
     networkName: venue.wifiNetworkName,
-    password: venue.wifiPassword,
+    // A questo punto `wifiPassword` c'è (controllato sopra, altrimenti il
+    // portale è chiuso): quello che può mancare è la **chiave** per
+    // rileggerla, e in quel caso `decifra` solleva invece di consegnare al
+    // cliente una password sbagliata.
+    password: decifra(venue.wifiPassword)!,
     redirectUrl: venue.wifiRedirectUrl,
     coupon: esito.coupon,
     giaConosciuto: esito.giaConosciuto,

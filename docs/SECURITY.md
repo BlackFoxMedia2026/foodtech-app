@@ -235,6 +235,35 @@ transazione:
 archivio. Prima di confermare, la finestra mostra due elenchi — cosa sparisce e cosa resta —
 perché la paura di chi preme quel pulsante è di cancellare un mese di incassi, e non succede.
 
+## La password del Wi-Fi, cifrata a riposo
+
+È l'unico segreto del prodotto che **deve restare leggibile**: il portale la
+consegna a chi lascia un contatto, ed è il motivo per cui esiste. Quindi non
+può diventare un'impronta come la password di un utente — si può solo mettere
+sotto chiave.
+
+**Come**: AES-256-GCM, chiave da `CHIAVE_CIFRATURA`, vettore
+d'inizializzazione nuovo a ogni scrittura, e il formato porta la versione
+davanti (`v1:`) così il giorno in cui si cambia algoritmo le righe vecchie si
+riconoscono. GCM e non CBC perché porta con sé un sigillo: se qualcuno
+modifica un byte, la lettura **fallisce** invece di restituire una password
+sbagliata — e una password sbagliata mostrata a un cliente è peggio di un
+errore, perché il cliente prova, non si collega, e dà la colpa al ristorante.
+
+**Senza chiave**: il valore si salva in chiaro con un'etichetta esplicita
+(`chiaro:`), e la schermata delle impostazioni **lo dice**. È la stessa scelta
+fatta per l'email e per l'error tracking: una funzione che dipende da una
+credenziale che non c'è dichiara il suo stato, invece di finto-funzionare.
+Rifiutare il lavoro qui vorrebbe dire che un locale non può accendere il
+portale Wi-Fi finché non si configura una chiave, e perderebbe contatti veri
+per un rischio ipotetico.
+
+**Se la chiave cambia**: i valori già cifrati non si leggono più, e la lettura
+solleva invece di restituire spazzatura. Si riscrivono dalle impostazioni del
+locale. Non esiste nessuna migrazione automatica dei dati: le righe scritte
+prima della cifratura si leggono come sono e passano sotto chiave alla prima
+riscrittura.
+
 ## Unire due schede della stessa persona
 
 È l'unica operazione che **cancella una riga di anagrafica**, e per questo ha le sue regole.

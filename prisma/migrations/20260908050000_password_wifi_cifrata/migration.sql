@@ -1,0 +1,11 @@
+-- La password del Wi-Fi passa sotto chiave (AES-256-GCM): il testo cifrato di
+-- una passphrase da 128 caratteri, col vettore d'inizializzazione e il
+-- sigillo, arriva a oltre duecento caratteri e in VarChar(128) non ci sta.
+--
+-- Diventa `text`, che è l'unico cambio di tipo che **non può restringere
+-- niente**: text non ha limite di lunghezza, quindi ogni valore già in
+-- tabella ci sta e nessuna scrittura che funzionava prima comincia a fallire.
+--
+-- Nessuna riga va convertita: i valori scritti prima si leggono come sono e
+-- passano sotto chiave alla prima riscrittura (vedi `decifra`).
+ALTER TABLE "Venue" ALTER COLUMN "wifiPassword" TYPE TEXT;
