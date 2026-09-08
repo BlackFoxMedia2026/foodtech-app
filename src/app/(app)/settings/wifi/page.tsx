@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { WifiSettings } from "@/components/settings/wifi-settings";
+import { cifraturaAttiva, decifra } from "@/lib/cifratura";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,26 @@ export default async function WifiSettingsPage() {
         <h1 className="text-display text-3xl">Portale Wi-Fi</h1>
       </header>
 
+      {/*
+        Lo stato della cifratura, detto una volta.
+
+        Non è un dettaglio tecnico: è la differenza fra «se qualcuno legge una
+        copia del database trova una stringa inutile» e «trova la password
+        della vostra rete». Chi gestisce il locale ha il diritto di saperlo,
+        e chi installa Tavolo ha il dovere di leggerlo.
+      */}
+      <p className="text-xs text-tertiary-foreground">
+        {cifraturaAttiva()
+          ? "La password della rete è salvata cifrata: nel database non c'è il testo leggibile."
+          : "La password della rete è salvata in chiaro: questa installazione non ha una chiave di cifratura configurata (CHIAVE_CIFRATURA). Il portale funziona comunque."}
+      </p>
+
       <WifiSettings
         iniziale={{
           networkName: v.wifiNetworkName,
-          password: v.wifiPassword,
+          // Nel database sta cifrata: qui si rilegge, perché il locale deve
+          // poter vedere la password che sta consegnando ai suoi clienti.
+          password: decifra(v.wifiPassword),
           welcome: v.wifiPortalWelcome,
           legal: v.wifiPortalLegal,
           accent: v.wifiPortalAccent,

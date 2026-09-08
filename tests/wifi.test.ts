@@ -143,6 +143,35 @@ describe("l'iscrizione", () => {
     expect(lead.guestId).not.toBeNull();
   });
 
+  it("nel database la password non è leggibile, ma al cliente arriva giusta", async () => {
+    /**
+     * La cifratura a riposo, provata dove conta: **cosa c'è scritto nella
+     * riga**. La password del Wi-Fi non può diventare un'impronta — va
+     * consegnata a chi lascia un contatto — quindi l'unica difesa possibile è
+     * che nel database non ci sia il testo leggibile.
+     */
+    const chiavePrima = process.env.CHIAVE_CIFRATURA;
+    process.env.CHIAVE_CIFRATURA = Buffer.alloc(32, 11).toString("base64");
+    try {
+      await setPortale(venueId, CONFIG_COMPLETA);
+
+      const riga = await db.venue.findUniqueOrThrow({
+        where: { id: venueId },
+        select: { wifiPassword: true },
+      });
+      expect(riga.wifiPassword).not.toContain("buonacena2026");
+      expect(riga.wifiPassword?.startsWith("v1:")).toBe(true);
+
+      // E chi si iscrive riceve comunque la password vera.
+      const esito = await registraLead(slug, iscrizione());
+      expect(esito.password).toBe("buonacena2026");
+    } finally {
+      if (chiavePrima === undefined) delete process.env.CHIAVE_CIFRATURA;
+      else process.env.CHIAVE_CIFRATURA = chiavePrima;
+      await setPortale(venueId, CONFIG_COMPLETA);
+    }
+  });
+
   it("un contatto nuovo fa suonare la campanella, uno abituale no", async () => {
     await db.notification.deleteMany({ where: { venueId } });
 

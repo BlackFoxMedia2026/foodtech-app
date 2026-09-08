@@ -43,6 +43,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | P2-5 · sintesi di Analytics | ✅ **chiuso**: «Com'è andata», cinque righe in cima con i problemi per primi. Solo fatti misurati — le misure che il locale non ha (food cost senza costi dichiarati, voti senza risposte) **non compaiono**, invece di diventare righe «dato non disponibile» |
 | P2-6 · menu admin da telefono | ✅ **chiuso**: da quattro pulsanti a icona per piatto a un solo «⋯» con le azioni scritte. Ci è entrata anche **«segna come finito»**, che è il gesto più frequente durante il servizio e prima richiedeva di aprire la scheda del piatto. Da tablet in su la fila di pulsanti resta: col mouse funziona meglio del menù |
 | P2-8 · deduplica e unione ospiti | ✅ **chiuso**: le coppie con la stessa email o lo stesso telefono si propongono, **nessuna unione è automatica**, e l'unione la può fare solo un Manager. Niente si perde: tutto si sposta, note e allergie si uniscono, i contatori si ricalcolano dalle righe. Una revoca di consenso più recente vince su un consenso più vecchio, e una scheda anonimizzata non si unisce mai |
+| P1-9 · cifratura della password Wi-Fi | ✅ **chiuso**: AES-256-GCM con chiave da `CHIAVE_CIFRATURA`. Non può essere un'impronta — il portale la consegna a chi lascia un contatto — quindi si mette sotto chiave. Senza chiave resta in chiaro **con l'etichetta**, e la schermata lo dice. Nel farlo è emerso che il freno delle migrazioni chiamava distruttivo anche diventare `text`: adesso distingue |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -409,7 +410,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | P1-6 | **Notifiche che esistono davvero**: le cinque categorie che contano | 3 | S | nessuna | basso |
 | P1-7 | **2FA** (i campi ci sono già) | 3 | M | P0-7 | basso |
 | P1-8 | **Permesso `booking.force`** e granularità del §48 | 3 | S | decisione tua su chi forza | basso |
-| P1-9 | **Cifratura credenziali Wi-Fi** | 3 | S | nessuna | basso |
+| ~~P1-9~~ | ~~**Cifratura credenziali Wi-Fi**~~ — **fatto l'8 settembre** | 3 | S | nessuna | basso |
 
 ## P2 — DIFFERENZIAZIONE (dove Tavolo diventa Tavolo)
 

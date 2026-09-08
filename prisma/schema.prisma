@@ -118,7 +118,16 @@ model Venue {
   /// password della rete ospiti, cioè una cosa nata per essere data a
   /// chiunque entri nel locale.
   wifiNetworkName        String?               @db.VarChar(64)
-  wifiPassword           String?               @db.VarChar(128)
+  /// La password della rete, **cifrata a riposo** (AES-256-GCM, vedi
+  /// `lib/cifratura`). Non è un'impronta: va riletta e mostrata a chi lascia
+  /// un contatto, ed è il motivo per cui il portale esiste.
+  ///
+  /// Era `VarChar(128)`, che il testo cifrato non rispetta: una passphrase da
+  /// 128 caratteri, col vettore d'inizializzazione e il sigillo, arriva a
+  /// oltre duecento. È `text` e non un `VarChar` più larga perché diventare
+  /// `text` è l'unico cambio di tipo che non può restringere niente — e il
+  /// freno delle migrazioni lo sa (vedi `lib/migration-safety`).
+  wifiPassword           String?
   /// Dove mandare la persona dopo: il sito del locale, la carta, oppure
   /// l'indirizzo con cui il router del locale sblocca la navigazione.
   wifiRedirectUrl        String?
