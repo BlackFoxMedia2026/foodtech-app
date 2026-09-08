@@ -235,12 +235,15 @@ export function BillDialog({
             <div className="space-y-1 border-t border-border pt-3">
               <div className="flex items-baseline justify-between">
                 <span className="text-sm text-muted-foreground">Totale</span>
+                {/* La cifra che si legge al tavolo, con una mano: sans
+                    semibold e tabellare. Il serif su un totale è un vezzo
+                    che costa leggibilità proprio nel momento peggiore. */}
                 <span
                   className={cn(
                     "tabular-nums",
                     pagamenti && pagamenti.daIncassareCents !== totale
                       ? "text-base"
-                      : "text-display text-2xl",
+                      : "text-2xl font-semibold",
                   )}
                 >
                   {formatCurrency(totale, currency)}
@@ -270,7 +273,7 @@ export function BillDialog({
               {pagamenti && pagamenti.daIncassareCents !== totale && (
                 <div className="flex items-baseline justify-between border-t border-border pt-2">
                   <span className="text-sm text-muted-foreground">Da incassare</span>
-                  <span className="text-display text-2xl tabular-nums">
+                  <span className="text-2xl font-semibold tabular-nums">
                     {formatCurrency(pagamenti.daIncassareCents, currency)}
                   </span>
                 </div>

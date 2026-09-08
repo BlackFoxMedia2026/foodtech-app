@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AddToWaitlistDialog } from "@/components/waitlist/add-to-waitlist-dialog";
 import { WaitlistRow, type WaitlistRowEntry } from "@/components/waitlist/waitlist-row";
+import { durataUmana } from "@/lib/durata";
 
 export type WaitlistSummary = {
   inAttesa: number;
@@ -36,14 +37,19 @@ export function WaitlistPageClient({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      {/* Direzione C: qui si lavora, e chi guarda questa schermata ha
+          qualcuno in piedi davanti. Il titolo si asciuga, il riassunto resta
+          — è quello che serve. */}
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
-          <h1 className="text-display text-3xl">Lista d&apos;attesa</h1>
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-lg font-semibold leading-none">Lista d&apos;attesa</h1>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
+          </div>
           {entries.length > 0 && (
             <p className="mt-1 text-sm text-muted-foreground">
               {summary.personeInCoda} {summary.personeInCoda === 1 ? "persona" : "persone"} in coda
-              {summary.attesaMediaMin > 0 && ` · attesa media ${summary.attesaMediaMin} min`}
+              {summary.attesaMediaMin > 0 && ` · attesa media ${durataUmana(summary.attesaMediaMin)}`}
               {summary.inRitardo > 0 && ` · ${summary.inRitardo} oltre la stima`}
             </p>
           )}
@@ -65,8 +71,10 @@ export function WaitlistPageClient({
       </header>
 
       {entries.length > 0 && (
-        <section className="grid gap-3 sm:grid-cols-3">
-          <Stat icon={ListOrdered} label="In attesa" value={summary.inAttesa} />
+        <section className="surface grid grid-cols-3 divide-x divide-border rounded-md border border-border">
+          {/* «2 in attesa» accanto a «9 persone in coda» si leggeva come una
+              contraddizione: sono gruppi, non persone. Un numero, un nome. */}
+          <Stat icon={ListOrdered} label="Gruppi in attesa" value={summary.inAttesa} />
           <Stat icon={Clock} label="Avvisati" value={summary.avvisati} hint="tavolo tenuto" />
           <Stat icon={Users} label="Confermati" value={summary.confermati} hint="stanno arrivando" />
         </section>
@@ -124,14 +132,17 @@ function Stat({
   value: number;
   hint?: string;
 }) {
+  /** Una cella di una fascia, come i numeri del Servizio: sans e tabellari. */
   return (
-    <div className="surface rounded-md border border-border p-4">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-        {label}
+    <div className="flex items-center gap-2 px-3 py-2">
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="min-w-0">
+        <p className="text-lg font-semibold leading-none tabular-nums">{value}</p>
+        <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">
+          {label}
+          {hint && <span className="normal-case tracking-normal text-tertiary-foreground"> · {hint}</span>}
+        </p>
       </div>
-      <p className="mt-1 text-2xl text-display">{value}</p>
-      {hint && <p className="text-xs text-tertiary-foreground">{hint}</p>}
     </div>
   );
 }

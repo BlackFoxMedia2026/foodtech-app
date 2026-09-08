@@ -144,7 +144,9 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
         aria-label="Navigazione principale"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <ul className="mx-auto flex items-stretch justify-around">
+        {/* Un filo di respiro ai lati: «Panoramica» a 10 px riempie il suo
+            posto, e senza questo tocca il bordo dello schermo. */}
+        <ul className="mx-auto flex items-stretch justify-around px-1">
           {MOBILE_NAV.slice(0, 2).map((item) => (
             <VoceBarra key={item.href} item={item} pathname={pathname} onNavigate={() => setAltroOpen(false)} />
           ))}
@@ -218,12 +220,14 @@ function VoceBarra({
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2 text-[11px]",
+          // 10 px invece di 11: «Panoramica» intera ci sta, e vale più di un
+          // nome più corto ma diverso da quello che si legge sul tablet.
+          "flex min-h-[56px] flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] leading-tight",
           active ? "font-medium text-foreground" : "text-muted-foreground",
         )}
       >
         <Icon className="h-5 w-5 shrink-0" />
-        {item.shortLabel ?? item.label}
+        <span className="w-full truncate text-center">{item.shortLabel ?? item.label}</span>
       </Link>
     </li>
   );
