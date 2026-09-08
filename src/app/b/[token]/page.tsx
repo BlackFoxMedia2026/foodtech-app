@@ -26,7 +26,7 @@ export default async function GuestBookingPage({ params }: { params: { token: st
         {prenotazione ? (
           <GuestBookingActions token={params.token} booking={prenotazione} />
         ) : (
-          <div className="surface rounded-md border border-border p-6 text-center">
+          <div className="surface riquadro p-6 text-center">
             <h1 className="text-display text-2xl">Link non più valido</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Questo link è scaduto o non è corretto. Se ti serve modificare una prenotazione, chiama

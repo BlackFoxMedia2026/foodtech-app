@@ -327,7 +327,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
           <div
             role="status"
             aria-live="polite"
-            className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 rounded-md border border-border bg-card px-4 py-3 text-sm text-card-foreground shadow-2xl animate-fade-in"
+            className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 riquadro bg-card px-4 py-3 text-sm text-card-foreground shadow-2xl animate-fade-in"
           >
             <CheckCircle2 className="h-4 w-4 text-accent-strong" />
             Cameriere registrato correttamente

@@ -47,7 +47,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
 
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Si sono sedute</p>
             <p className="mt-1 text-display text-2xl tabular-nums">
               {report.sedute}
@@ -62,7 +62,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
             </p>
           </div>
 
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Coperti recuperati</p>
             <p className="mt-1 text-display text-2xl tabular-nums text-accent">{report.copertiRecuperati}</p>
             <p className="text-xs text-muted-foreground">
@@ -70,7 +70,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
             </p>
           </div>
 
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Hanno aspettato</p>
             <p className="mt-1 text-display text-2xl">
               {report.attesaMediaMin != null ? durataUmana(report.attesaMediaMin) : "—"}
@@ -89,7 +89,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
         {report.maiChiuse > 0 && (
           /* Non sono clienti persi: sono un gesto mancato in sala. Mescolarle
              ai persi racconterebbe una serata peggiore di com'è andata. */
-          <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
+          <p className="riquadro p-3 text-sm text-muted-foreground">
             {report.maiChiuse === 1
               ? "Una riga è rimasta aperta per ore senza che nessuno l'abbia chiusa."
               : `${report.maiChiuse} righe sono rimaste aperte per ore senza che nessuno le abbia chiuse.`}{" "}

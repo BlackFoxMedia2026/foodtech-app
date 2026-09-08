@@ -16,7 +16,7 @@ export function FloorServiceFilter({ date, service, serviceOptions }: { date: st
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-card p-1">
+    <div className="flex items-center gap-2 riquadro bg-card p-1">
       <input
         type="date"
         value={date}

@@ -26,7 +26,7 @@ export function ColorField({
           type="color"
           value={pickerValue}
           onChange={(e) => onChange(e.target.value)}
-          className="h-9 w-11 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+          className="h-9 w-11 shrink-0 cursor-pointer riquadro bg-transparent p-0.5"
           aria-label={label}
         />
         <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-mono text-sm" />

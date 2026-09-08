@@ -23,7 +23,7 @@ export default function ErroreGenerale({
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
-      <div className="surface w-full max-w-md rounded-md border border-border p-8 text-center">
+      <div className="surface w-full max-w-md riquadro p-8 text-center">
         <h1 className="text-display text-2xl">Qualcosa non ha funzionato</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Riprova fra un momento. Se stavi prenotando, il posto non è stato preso: nessuna prenotazione è stata

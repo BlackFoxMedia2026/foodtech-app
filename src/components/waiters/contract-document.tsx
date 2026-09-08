@@ -163,7 +163,7 @@ export function ContractDocument({
           {hiddenInput}
         </div>
       ) : (
-        <div className="flex items-center gap-3 rounded-md border border-border p-3">
+        <div className="flex items-center gap-3 riquadro p-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted">
             {document.mimeType === "application/pdf" ? (
               <FileText className="h-4 w-4 text-muted-foreground" />
@@ -252,7 +252,7 @@ function ContractDocumentPreview({
             {formatKind(document.mimeType)} · {formatFileSize(document.fileSize)}
           </DialogDescription>
         </DialogHeader>
-        <div className="overflow-hidden rounded-md border border-border bg-muted">
+        <div className="overflow-hidden riquadro bg-muted">
           {isPdf ? (
             <iframe src={baseUrl} title={document.originalFileName} className="h-[60vh] w-full" />
           ) : (

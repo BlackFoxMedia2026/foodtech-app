@@ -185,7 +185,7 @@ export function AssignStaffDialog({
                 </div>
 
                 {isExpanded && (
-                  <div className="max-h-40 space-y-0.5 overflow-y-auto rounded-md border border-border p-1.5">
+                  <div className="max-h-40 space-y-0.5 overflow-y-auto riquadro p-1.5">
                     {eligibleLoading ? (
                       <p className="px-2 py-1.5 text-xs text-muted-foreground">Carico…</p>
                     ) : eligible.length === 0 ? (

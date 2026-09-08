@@ -93,7 +93,7 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
       {altroOpen && (
         <nav
           aria-label="Altre sezioni"
-          className="fixed inset-x-3 bottom-24 z-50 overflow-hidden rounded-md border border-border bg-popover shadow-xl md:hidden"
+          className="fixed inset-x-3 bottom-24 z-50 overflow-hidden riquadro bg-popover shadow-xl md:hidden"
         >
           {/*
             Raggruppato come su scrivania: «durante il servizio» sono le voci
@@ -248,7 +248,7 @@ function AzioneRapida({
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-[60px] w-full items-center gap-3 rounded-md border border-border bg-popover px-4 text-left"
+      className="flex min-h-[60px] w-full items-center gap-3 riquadro bg-popover px-4 text-left"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-current/10">
         <Icon className="h-4 w-4" aria-hidden="true" />

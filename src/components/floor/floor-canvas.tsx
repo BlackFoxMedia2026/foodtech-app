@@ -204,7 +204,7 @@ export const FloorCanvas = forwardRef<
       <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start gap-2">
         {staffByTableId && (
           <div
-            className="pointer-events-auto flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 text-xs shadow-lg backdrop-blur-sm"
+            className="pointer-events-auto flex items-center gap-1 riquadro bg-card/90 p-1 text-xs shadow-lg backdrop-blur-sm"
             onPointerDown={(e) => e.stopPropagation()}
           >
             {(["all", "assigned", "unassigned"] as const).map((f) => (
@@ -274,7 +274,7 @@ export const FloorCanvas = forwardRef<
       </div>
 
       <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden sm:block">
-        <span className="rounded-md border border-border bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground/80 backdrop-blur-sm">
+        <span className="riquadro bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground/80 backdrop-blur-sm">
           Trascina lo sfondo per navigare · clicca un tavolo per i dettagli
         </span>
       </div>

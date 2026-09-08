@@ -48,7 +48,7 @@ export function SurveyForm({ survey }: { survey: SurveyView }) {
 
   if (survey.alreadyAnswered && !esito) {
     return (
-      <div className="surface rounded-md border border-border p-6 text-center">
+      <div className="surface riquadro p-6 text-center">
         <CheckCircle2 className="mx-auto h-8 w-8 text-sage" aria-hidden="true" />
         <h1 className="mt-3 text-display text-2xl">Abbiamo già la tua risposta</h1>
         <p className="mt-2 text-sm text-muted-foreground">Grazie per il tempo che ci hai dedicato.</p>
@@ -59,7 +59,7 @@ export function SurveyForm({ survey }: { survey: SurveyView }) {
   // Risposta registrata: da qui in poi le due strade.
   if (esito) {
     return (
-      <div className="surface rounded-md border border-border p-6">
+      <div className="surface riquadro p-6">
         <CheckCircle2 className="h-8 w-8 text-sage" aria-hidden="true" />
         <h1 className="mt-3 text-display text-2xl">{esito.message}</h1>
 
@@ -99,7 +99,7 @@ export function SurveyForm({ survey }: { survey: SurveyView }) {
   }
 
   return (
-    <div className="surface rounded-md border border-border p-6">
+    <div className="surface riquadro p-6">
       <p className="text-xs uppercase tracking-widest text-muted-foreground">{survey.venueName}</p>
       <h1 className="mt-1 text-display text-2xl">
         {survey.guestName ? `Ciao ${survey.guestName}` : "Com'è andata?"}

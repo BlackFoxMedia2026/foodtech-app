@@ -124,7 +124,7 @@ export function BookingTableNode({
             style={{ transform: "translateX(-50%) scale(var(--ui-scale, 1))", transformOrigin: "top center" }}
           >
             {isBooked ? (
-              <div className="flex w-max max-w-[180px] flex-col items-center gap-0 rounded-md border border-border bg-card/95 px-2 py-1 shadow-sm backdrop-blur-sm">
+              <div className="flex w-max max-w-[180px] flex-col items-center gap-0 riquadro bg-card/95 px-2 py-1 shadow-sm backdrop-blur-sm">
                 <span className="whitespace-nowrap text-[10px] font-medium text-accent-strong">{formatTime(primary.startsAt)}</span>
                 <span className="truncate text-xs font-semibold text-card-foreground">{compactName(guestName)}</span>
                 {extraCount > 0 && <span className="text-[10px] text-muted-foreground">+{extraCount} altre</span>}

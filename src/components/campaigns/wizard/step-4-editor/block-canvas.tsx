@@ -53,7 +53,7 @@ export function BlockCanvas({
         </p>
       )}
       {fixed.map((block) => (
-        <div key={block.id} className="rounded-md border border-border bg-secondary/50 p-3 text-sm">
+        <div key={block.id} className="riquadro bg-secondary/50 p-3 text-sm">
           <p className="font-medium">Link di disiscrizione</p>
           <p className="text-xs text-muted-foreground">Obbligatorio, sempre presente in fondo all&apos;email — non eliminabile.</p>
         </div>

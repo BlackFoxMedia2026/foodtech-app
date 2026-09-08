@@ -275,7 +275,7 @@ export function RoomLiveView({
         <>
           {/* MAPPA — da tablet in su */}
           <div className="hidden lg:block">
-            <div className="surface relative overflow-hidden rounded-md border border-border">
+            <div className="surface relative overflow-hidden riquadro">
               <div
                 className="relative mx-auto"
                 style={{

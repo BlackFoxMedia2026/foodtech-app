@@ -145,20 +145,25 @@ export function ServiceView({
           intestazione più sei riquadri spingevano il primo avviso sotto la
           piega, e in servizio si scorreva due schermate per sapere cosa fare.
           Su schermo largo l'ordine resta quello di prima: là ci sta tutto. */}
-      <section className="surface order-2 grid grid-cols-3 divide-x divide-border rounded-md border border-border lg:order-1 lg:grid-cols-6">
+      {/*
+        Su tablet ci stanno tutti e sei, e ci devono stare: a 820 px la fascia
+        ne mostrava tre come su un telefono da 390, sprecando metà larghezza.
+        Il tablet non è un telefono grande.
+      */}
+      <section className="surface riquadro order-2 grid grid-cols-3 divide-x divide-border md:grid-cols-6 lg:order-1">
         <Numero
           icona={Users}
           etichetta="In sala"
           valore={c.copertiPresenti}
           nota="coperti"
-          className="hidden lg:flex"
+          className="hidden md:flex"
         />
         <Numero
           icona={UtensilsCrossed}
           etichetta="Tavoli"
           valore={`${c.tavoliOccupati}/${c.tavoliTotali}`}
           nota="occupati"
-          className="hidden lg:flex"
+          className="hidden md:flex"
         />
         <Numero icona={Clock} etichetta="In arrivo" valore={c.inArrivo} nota={`entro ${window_} min`} />
         <Numero
@@ -174,7 +179,7 @@ export function ServiceView({
           etichetta="Walk-in"
           valore={c.walkInOggi}
           nota="oggi"
-          className="hidden lg:flex"
+          className="hidden md:flex"
         />
       </section>
 
@@ -187,8 +192,9 @@ export function ServiceView({
         </section>
       )}
 
-      {/* Su telefono: una colonna per volta. */}
-      <div className="order-3 flex gap-1 lg:hidden" role="tablist" aria-label="Aree del servizio">
+      {/* Le linguette servono dove c'è una colonna per volta: sul telefono.
+          Da tablet in su le colonne stanno affiancate. */}
+      <div className="order-3 flex gap-1 md:hidden" role="tablist" aria-label="Aree del servizio">
         {(
           [
             ["adesso", "Adesso", snapshot.seated.length + snapshot.arrived.length],
@@ -213,7 +219,13 @@ export function ServiceView({
         ))}
       </div>
 
-      <div className="order-4 grid gap-4 lg:grid-cols-3">
+      {/*
+        Tre colonne su schermo largo, **due su tablet**, una sul telefono.
+        A 820 px tre colonne da 273 px comprimono le card fino a renderle
+        illeggibili; una sola spreca ottocento pixel. Due è la risposta del
+        tablet, che non è né l'uno né l'altro.
+      */}
+      <div className="order-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {/* ADESSO */}
         <Colonna1
           titolo="Adesso"
@@ -367,8 +379,8 @@ function Colonna1({
   children: React.ReactNode;
 }) {
   return (
-    <section className={cn("space-y-3", !visibile && "hidden lg:block")} aria-label={titolo}>
-      <h2 className="hidden items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground lg:flex">
+    <section className={cn("space-y-3", !visibile && "hidden md:block")} aria-label={titolo}>
+      <h2 className="hidden items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground md:flex">
         {titolo}
         <span className="rounded-full bg-current/10 px-2 py-0.5 text-[11px]">{conteggio}</span>
       </h2>

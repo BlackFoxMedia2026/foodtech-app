@@ -135,7 +135,7 @@ export function BookingsPageClient({
           </Button>
         </div>
 
-        <div className="flex items-center gap-1 rounded-md border border-border bg-card p-1">
+        <div className="flex items-center gap-1 riquadro bg-card p-1">
           <button
             type="button"
             onClick={() => changeView("elenco")}

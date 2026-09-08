@@ -30,7 +30,7 @@ export default async function PaginaInvito({ params }: { params: { token: string
         {invito ? (
           <AcceptInviteForm invito={invito} />
         ) : (
-          <div className="surface rounded-md border border-border p-6 text-center">
+          <div className="surface riquadro p-6 text-center">
             <h1 className="text-display text-2xl">Questo invito non è più valido</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Può essere scaduto, già usato, o non essere mai esistito. Chiedi al locale di crearne un

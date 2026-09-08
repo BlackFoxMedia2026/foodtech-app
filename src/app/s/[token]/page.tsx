@@ -19,7 +19,7 @@ export default async function SurveyPage({ params }: { params: { token: string }
         {survey ? (
           <SurveyForm survey={survey} />
         ) : (
-          <div className="surface rounded-md border border-border p-6 text-center">
+          <div className="surface riquadro p-6 text-center">
             <h1 className="text-display text-2xl">Link non più valido</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Questo link è scaduto o non è corretto. Se vuoi dirci qualcosa, chiamaci: ci fa piacere

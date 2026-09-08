@@ -157,7 +157,7 @@ export function ServiceOrganizationSettings({
         <div className="space-y-2 border-t border-border pt-4">
           {rooms.length === 0 && <p className="text-sm text-muted-foreground">Nessuna sala configurata ancora.</p>}
           {rooms.map((room) => (
-            <div key={room.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
+            <div key={room.id} className="flex items-center justify-between gap-2 riquadro p-3 text-sm">
               {editingId === room.id ? (
                 <div className="flex flex-1 items-center gap-2">
                   <Input

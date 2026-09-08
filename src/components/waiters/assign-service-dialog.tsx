@@ -224,7 +224,7 @@ export function AssignServiceDialog({
             ) : (
               <div className="space-y-3">
                 {rangeableTables.length > 0 && (
-                  <div className="space-y-2 rounded-md border border-border bg-secondary/40 p-3">
+                  <div className="space-y-2 riquadro bg-secondary/40 p-3">
                     <Label>Assegna intervallo</Label>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <div className="space-y-1">
@@ -314,7 +314,7 @@ export function AssignServiceDialog({
           <div
             role="status"
             aria-live="polite"
-            className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 rounded-md border border-border bg-card px-4 py-3 text-sm text-card-foreground shadow-2xl animate-fade-in"
+            className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 riquadro bg-card px-4 py-3 text-sm text-card-foreground shadow-2xl animate-fade-in"
           >
             <CheckCircle2 className="h-4 w-4 text-accent-strong" />
             Assegnazione salvata correttamente

@@ -105,7 +105,7 @@ export function ForecastPanel({
         </ul>
 
         {occupazione.length > 0 && (
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-sm font-medium">Dove hai margine</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Coperti prenotati in media, per giorno della settimana, dal più vuoto al più pieno — esclusi i

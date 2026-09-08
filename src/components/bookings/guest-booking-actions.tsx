@@ -59,7 +59,7 @@ export function GuestBookingActions({
   }
 
   return (
-    <div className="surface rounded-md border border-border p-6">
+    <div className="surface riquadro p-6">
       <p className="text-xs uppercase tracking-widest text-muted-foreground">{booking.venueName}</p>
       <h1 className="mt-1 text-display text-2xl">
         {booking.guestName ? `Ciao ${booking.guestName}` : "La tua prenotazione"}

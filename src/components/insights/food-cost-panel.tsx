@@ -65,17 +65,17 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-md border border-border p-3">
+              <div className="riquadro p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Materie prime</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">{euro(report.costoCents)}</p>
                 <p className="text-xs text-muted-foreground">{report.foodCostPct}% del venduto coperto</p>
               </div>
-              <div className="rounded-md border border-border p-3">
+              <div className="riquadro p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Resta</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums text-accent">{euro(report.margineCents)}</p>
                 <p className="text-xs text-muted-foreground">{100 - report.foodCostPct}% del venduto coperto</p>
               </div>
-              <div className="rounded-md border border-border p-3">
+              <div className="riquadro p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Su quanto</p>
                 <p className="mt-1 flex items-center gap-1.5 text-2xl font-semibold tabular-nums">
                   {report.coperturaPct}%
@@ -141,7 +141,7 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
         )}
 
         {report.senzaCosto.length > 0 && (
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-sm font-medium">
               {report.senzaCosto.length === 1
                 ? "Di questo piatto non sappiamo il costo"

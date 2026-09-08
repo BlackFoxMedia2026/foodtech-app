@@ -31,7 +31,7 @@ export default function ErroreApplicazione({
   }, [error]);
 
   return (
-    <div className="animate-fade-in surface mx-auto max-w-lg rounded-md border border-border p-8 text-center">
+    <div className="animate-fade-in surface mx-auto max-w-lg riquadro p-8 text-center">
       <AlertTriangle className="mx-auto h-8 w-8 text-amber-600" aria-hidden="true" />
       <h1 className="mt-4 text-display text-2xl">Qui si è rotto qualcosa</h1>
       <p className="mt-2 text-sm text-muted-foreground">

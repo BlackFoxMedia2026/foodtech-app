@@ -287,7 +287,7 @@ function OverlayHeader({
       </div>
 
       {confirmClose ? (
-        <div className="flex items-center gap-2 rounded-md border border-border bg-secondary/60 px-3 py-1.5 text-xs">
+        <div className="flex items-center gap-2 riquadro bg-secondary/60 px-3 py-1.5 text-xs">
           <span>Hai modifiche non salvate.</span>
           <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={onClose}>
             Continua senza salvare

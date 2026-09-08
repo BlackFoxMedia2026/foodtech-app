@@ -60,22 +60,22 @@ export default async function WifiLeadsPage({
       {stats.contatti > 0 && (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-md border border-border p-3">
+            <div className="riquadro p-3">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Contatti</p>
               <p className="mt-1 text-display text-2xl tabular-nums">{stats.contatti}</p>
               <p className="text-xs text-muted-foreground">{stats.ultimi30} negli ultimi 30 giorni</p>
             </div>
-            <div className="rounded-md border border-border p-3">
+            <div className="riquadro p-3">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Poi venuti a mangiare</p>
               <p className="mt-1 text-display text-2xl tabular-nums text-accent">{stats.conPrenotazione}</p>
               <p className="text-xs text-muted-foreground">hanno almeno una prenotazione</p>
             </div>
-            <div className="rounded-md border border-border p-3">
+            <div className="riquadro p-3">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Consenso marketing</p>
               <p className="mt-1 text-display text-2xl tabular-nums">{stats.conMarketing}</p>
               <p className="text-xs text-muted-foreground">si possono scrivere</p>
             </div>
-            <div className="rounded-md border border-border p-3">
+            <div className="riquadro p-3">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Sconti</p>
               <p className="mt-1 text-display text-2xl tabular-nums">
                 {stats.couponUsati}

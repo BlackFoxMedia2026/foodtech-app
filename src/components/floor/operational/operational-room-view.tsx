@@ -150,7 +150,7 @@ export function OperationalRoomView<T extends { id: string }>({
         {!hasPlan && emptyPlanSlot && (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
             <div
-              className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
+              className="pointer-events-auto flex items-center gap-2 riquadro bg-card/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
               onPointerDown={(e) => e.stopPropagation()}
             >
               {emptyPlanSlot}
@@ -169,7 +169,7 @@ export function OperationalRoomView<T extends { id: string }>({
 
       {children}
 
-      <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 shadow-lg backdrop-blur-sm">
+      <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 riquadro bg-card/90 p-1 shadow-lg backdrop-blur-sm">
         <div className="pointer-events-auto flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
           <Button
             type="button"

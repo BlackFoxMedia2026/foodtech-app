@@ -213,7 +213,7 @@ export function Step2Recipients() {
           </Select>
         </div>
 
-        <div className="flex items-center justify-between rounded-md border border-border p-3">
+        <div className="flex items-center justify-between riquadro p-3">
           <div>
             <p className="text-sm font-medium">Ha annullato una prenotazione in passato</p>
             <p className="text-xs text-muted-foreground">Il cliente ha prenotato ma poi cancellato almeno una volta.</p>
@@ -234,7 +234,7 @@ export function Step2Recipients() {
         </ul>
       </div>
 
-      <div className="rounded-md border border-border bg-secondary/50 p-4">
+      <div className="riquadro bg-secondary/50 p-4">
         <p className="text-sm font-medium">Destinatari finali: {state.segmentPreview?.finalRecipients ?? "—"}</p>
         {state.segmentPreview && (
           <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">

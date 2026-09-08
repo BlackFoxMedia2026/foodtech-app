@@ -141,7 +141,7 @@ export default function Landing() {
           <p className="text-sm text-card-foreground/65">98% occupazione · 4 turni · 6 VIP attesi</p>
           <div className="mt-6 grid grid-cols-3 gap-3 text-xs">
             {SLOTS.map((slot) => (
-              <div key={slot.time} className="rounded-md border border-border p-3">
+              <div key={slot.time} className="riquadro p-3">
                 <p className="text-card-foreground/65">{slot.time}</p>
                 <p className="mt-1 font-mono font-medium">{slot.covers} cop.</p>
               </div>

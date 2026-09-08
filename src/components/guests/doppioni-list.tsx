@@ -157,7 +157,7 @@ function Scheda({ lato, altro }: { lato: LatoDoppione; altro: LatoDoppione }) {
   });
 
   return (
-    <div className="rounded-md border border-border p-3 text-sm">
+    <div className="riquadro p-3 text-sm">
       <Link href={`/guests/${lato.id}`} className="font-medium underline-offset-4 hover:underline">
         {lato.nome}
       </Link>

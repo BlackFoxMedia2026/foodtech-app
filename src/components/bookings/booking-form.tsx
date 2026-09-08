@@ -216,7 +216,7 @@ export function BookingForm({
         )}
       </div>
 
-      <div className="rounded-md border border-border p-3">
+      <div className="riquadro p-3">
         <label className="flex cursor-pointer items-start gap-2.5 text-sm">
           <input
             type="checkbox"
@@ -268,7 +268,7 @@ export function BookingForm({
         Chi prende cinque prenotazioni di fila lo apre una volta e resta
         aperto.
       */}
-      <details className="rounded-md border border-border">
+      <details className="riquadro">
         <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium">
           Altri dettagli
           <span className="ml-2 font-normal text-tertiary-foreground">
