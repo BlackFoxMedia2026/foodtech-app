@@ -39,6 +39,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | P2-3 · durata contestuale | ✅ **chiuso**: il motore non vende più tutto con 105 minuti. La durata si misura per gruppo, fascia e tipo di giorno, con una scala che si allarga quando i campioni non bastano e finisce sulla predefinita dichiarandolo. Proposta nel modulo con la frase che dice su cosa poggia; **una durata scritta a mano resta quella** |
 | P2-4 · cosa sapere di questo ospite | ✅ **chiuso**: allergia, occasione, nota scritta dal personale, preferenze, chi è, assenze — al massimo quattro righe, in ordine di urgenza, con la fonte in ogni riga e **lo stesso aspetto in tutte le schermate**. Il tetto non taglia mai un avviso: dal vivo si è visto sparire «una volta non si è presentato» per far posto a «non ama la musica alta» |
 | P2-2 · avvisi completi + due regole | ✅ **chiuso**: tutti e dieci gli avvisi hanno ora **problema → motivo → impatto → azione**, con l'impatto quantificato sui dati che ci sono. Le due regole nuove sono «sta per liberarsi» e «oltre la durata», e la seconda ha portato una regola generale: **un avviso senza impatto non si mostra** — un tavolo oltre la durata che nessuno aspetta non è un problema, è una serata che va bene |
+| P2-7 · impostazioni e «Altro» raggruppati | ✅ **chiuso**: le tredici schede sono quattro parti con un indice in cima (Il locale · Prenotazioni · Ospiti · Sistema), e «Altro» ha tre gruppi con l'etichetta, uguali su scrivania e telefono. L'indice sono ancore, non schede: funziona senza JavaScript, si può condividere il link a una parte, e il tasto indietro fa quello che ci si aspetta |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -219,9 +220,9 @@ master prompt:
    non gonfiare la navigazione — giusto — ma chi compra Tavolo per il
    marketing lo trova sotto «Altro». **Serve un raggruppamento dentro
    «Altro»**, non una voce in più.
-2. **Impostazioni è una colonna di tredici schede.** Stanotte gliene ho
-   aggiunte tre. Vanno raggruppate (Locale · Prenotazioni · Marketing ·
-   Sistema) con un indice in cima, come il menu pubblico.
+2. ~~**Impostazioni è una colonna di tredici schede.**~~ — chiuso l'8
+   settembre: quattro parti (Il locale · Prenotazioni · Ospiti · Sistema) con
+   un indice in cima, come il menu pubblico.
 3. ~~**La sala non dice tutto quello che potrebbe** (§6)~~ — chiuso l'8 settembre. Restava: manca l'importo del
    conto e la prossima prenotazione sul riquadro del tavolo.
 4. ~~**La Panoramica è già una mission control** (briefing + tre avvisi), ma
@@ -415,7 +416,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | ~~P2-4~~ | ~~**«Cosa sapere di questo ospite»** dove serve: servizio, sala, prenotazione~~ — **fatto l'8 settembre** | 4 | S | nessuna | basso |
 | P2-5 | **Executive summary mobile** per Analytics (§28) | 4 | M | nessuna | basso |
 | P2-6 | **Menu mobile admin** con menu contestuale (§21) | 3 | S | nessuna | basso |
-| P2-7 | **Impostazioni raggruppate** + «Altro» raggruppato (§3) | 3 | S | nessuna | basso |
+| ~~P2-7~~ | ~~**Impostazioni raggruppate** + «Altro» raggruppato (§3)~~ — **fatto l'8 settembre** | 3 | S | nessuna | basso |
 | P2-8 | **Deduplica e merge ospiti** (§19) | 4 | M | nessuna | alto (dati) |
 | P2-9 | **Giornata di servizio configurabile** (§12 dell'audit A) | 4 | M | decisione tua | medio |
 

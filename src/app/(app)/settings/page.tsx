@@ -77,6 +77,9 @@ export default async function SettingsPage() {
         </div>
       )}
 
+      <Indice />
+
+      <Parte id="locale">
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
           <div>
@@ -114,6 +117,37 @@ export default async function SettingsPage() {
       </div>
 
       <Card>
+        <CardContent className="p-5">
+          <ServiceOrganizationSettings
+            initialMode={ctx.venue.serviceAssignmentMode}
+            initialRooms={rooms.map((r) => ({ id: r.id, name: r.name }))}
+            tablesCount={tablesCount}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Turni di servizio (domenica esempio)</CardTitle>
+          <CardDescription>Gestisci capienza e durata slot per ogni turno</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-3">
+          {shifts.map((s) => (
+            <div key={s.id} className="rounded-md border p-3 text-sm">
+              <p className="font-medium">{s.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {String(Math.floor(s.startMinute / 60)).padStart(2, "0")}:00 –{" "}
+                {String(Math.floor(s.endMinute / 60)).padStart(2, "0")}:00
+              </p>
+              <p className="mt-2 text-xs">Capienza: {s.capacity} · Slot: {s.slotMinutes}&apos;</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      </Parte>
+
+      <Parte id="prenotazioni">
+      <Card>
         <CardHeader>
           <CardTitle>Widget di prenotazione</CardTitle>
           <CardDescription>
@@ -126,6 +160,54 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
+      <BookingWindowSettings
+        windowDays={ctx.venue.bookingWindowDays}
+        cutoffMin={ctx.venue.bookingCutoffMin}
+        overbookingPct={ctx.venue.overbookingPct}
+        canManage={can(ctx.role, "manage_venue")}
+      />
+      </Parte>
+
+      <Parte id="ospiti">
+      {/* Lo scontrino medio era già scritto e importato qui, ma la pagina non
+          lo mostrava: un campo modificabile che nessuno poteva raggiungere.
+          Cioè esattamente la specie di funzione a metà che questo progetto ha
+          il compito di non lasciare in giro. */}
+      <AvgSpendSettings
+        initialCents={ctx.venue.avgSpendCents}
+        canManage={can(ctx.role, "manage_venue")}
+      />
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Wifi className="h-4 w-4 text-accent" /> Portale Wi-Fi
+            </CardTitle>
+            <CardDescription>
+              {ctx.venue.wifiSetupAt
+                ? `Attivo sulla rete «${ctx.venue.wifiNetworkName}». Chi si collega lascia un contatto.`
+                : "Chiuso: chi si collega lascia un contatto e riceve la password della rete."}
+            </CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/settings/wifi">{ctx.venue.wifiSetupAt ? "Gestisci" : "Configura"}</Link>
+          </Button>
+        </CardHeader>
+      </Card>
+
+      <ReviewLinksSettings initial={reviewLinks} canManage={can(ctx.role, "manage_venue")} />
+
+      <LoyaltySettings
+        puntiPerEuro={ctx.venue.loyaltyPointsPerEuro}
+        valorePuntoCents={ctx.venue.loyaltyPointValueCents}
+        premioPunti={ctx.venue.loyaltyRewardPoints}
+        premioCosa={ctx.venue.loyaltyRewardLabel}
+        canManage={can(ctx.role, "manage_venue")}
+      />
+      </Parte>
+
+      <Parte id="sistema">
       <Card>
         <CardHeader>
           <CardTitle>Integrazioni</CardTitle>
@@ -160,78 +242,65 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-5">
-          <ServiceOrganizationSettings
-            initialMode={ctx.venue.serviceAssignmentMode}
-            initialRooms={rooms.map((r) => ({ id: r.id, name: r.name }))}
-            tablesCount={tablesCount}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Wifi className="h-4 w-4 text-accent" /> Portale Wi-Fi
-            </CardTitle>
-            <CardDescription>
-              {ctx.venue.wifiSetupAt
-                ? `Attivo sulla rete «${ctx.venue.wifiNetworkName}». Chi si collega lascia un contatto.`
-                : "Chiuso: chi si collega lascia un contatto e riceve la password della rete."}
-            </CardDescription>
-          </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/settings/wifi">{ctx.venue.wifiSetupAt ? "Gestisci" : "Configura"}</Link>
-          </Button>
-        </CardHeader>
-      </Card>
-
-      {/* Lo scontrino medio era già scritto e importato qui, ma la pagina non
-          lo mostrava: un campo modificabile che nessuno poteva raggiungere.
-          Cioè esattamente la specie di funzione a metà che questo progetto ha
-          il compito di non lasciare in giro. */}
-      <AvgSpendSettings
-        initialCents={ctx.venue.avgSpendCents}
-        canManage={can(ctx.role, "manage_venue")}
-      />
-
-      <BookingWindowSettings
-        windowDays={ctx.venue.bookingWindowDays}
-        cutoffMin={ctx.venue.bookingCutoffMin}
-        overbookingPct={ctx.venue.overbookingPct}
-        canManage={can(ctx.role, "manage_venue")}
-      />
-
-      <ReviewLinksSettings initial={reviewLinks} canManage={can(ctx.role, "manage_venue")} />
-
-      <LoyaltySettings
-        puntiPerEuro={ctx.venue.loyaltyPointsPerEuro}
-        valorePuntoCents={ctx.venue.loyaltyPointValueCents}
-        premioPunti={ctx.venue.loyaltyRewardPoints}
-        premioCosa={ctx.venue.loyaltyRewardLabel}
-        canManage={can(ctx.role, "manage_venue")}
-      />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Turni di servizio (domenica esempio)</CardTitle>
-          <CardDescription>Gestisci capienza e durata slot per ogni turno</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          {shifts.map((s) => (
-            <div key={s.id} className="rounded-md border p-3 text-sm">
-              <p className="font-medium">{s.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {String(Math.floor(s.startMinute / 60)).padStart(2, "0")}:00 –{" "}
-                {String(Math.floor(s.endMinute / 60)).padStart(2, "0")}:00
-              </p>
-              <p className="mt-2 text-xs">Capienza: {s.capacity} · Slot: {s.slotMinutes}&apos;</p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      </Parte>
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Le quattro parti, e l'indice                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Impostazioni era **una colonna di tredici schede** in fila, tutte con la
+ * stessa importanza e nessun ordine leggibile: chi cercava la finestra di
+ * prenotazione scorreva finché non la vedeva, e chi non sapeva che esistesse
+ * non la trovava.
+ *
+ * Ora sono quattro parti con un indice in cima, come il menu pubblico. Il
+ * criterio del raggruppamento è **di chi è la decisione**: il locale (chi
+ * siamo, chi lavora, com'è fatta la sala), le prenotazioni (le regole con cui
+ * si accettano), gli ospiti (cosa si fa con chi è venuto), il sistema (le
+ * cose che riguardano il funzionamento, non il ristorante).
+ *
+ * L'indice sono ancore, non schede: funziona senza JavaScript, si può
+ * condividere un link a una parte, e il tasto indietro fa quello che ci si
+ * aspetta.
+ */
+const PARTI = [
+  { id: "locale", titolo: "Il locale", sottotitolo: "Chi siamo, chi lavora, com'è fatta la sala" },
+  { id: "prenotazioni", titolo: "Prenotazioni", sottotitolo: "Le regole con cui si accettano" },
+  { id: "ospiti", titolo: "Ospiti", sottotitolo: "Cosa si fa con chi è venuto" },
+  { id: "sistema", titolo: "Sistema", sottotitolo: "Invii, integrazioni, stato dei lavori" },
+] as const;
+
+function Indice() {
+  return (
+    <nav aria-label="Parti delle impostazioni" className="flex flex-wrap gap-2">
+      {PARTI.map((p) => (
+        <a
+          key={p.id}
+          href={`#${p.id}`}
+          className="min-h-[40px] rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-cream hover:text-foreground"
+        >
+          {p.titolo}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+function Parte({ id, children }: { id: (typeof PARTI)[number]["id"]; children: React.ReactNode }) {
+  const parte = PARTI.find((p) => p.id === id)!;
+  return (
+    // `scroll-mt` tiene il titolo sotto la barra fissa quando si arriva
+    // dall'indice: senza, la prima riga della sezione finisce nascosta.
+    <section id={id} className="scroll-mt-24 space-y-4">
+      <div className="border-b border-border pb-2">
+        <h2 className="text-display text-xl">{parte.titolo}</h2>
+        <p className="text-xs text-muted-foreground">{parte.sottotitolo}</p>
+      </div>
+      {children}
+    </section>
   );
 }
