@@ -31,29 +31,46 @@ La prima volta serve il browser: `npx playwright install chromium`.
 | File | Cosa percorre |
 |---|---|
 | `01-dal-sito-al-cliente.spec.ts` | Prenotazione dal widget → conferma in sala → arrivo → tavolo → conto con un piatto → chiusura con i punti accreditati → il cliente nel CRM |
+| `02-dalla-coda-al-tavolo.spec.ts` | Aggiunta in lista d'attesa → accomodata a un tavolo → **diventa una prenotazione vera**, non una riga chiusa |
+| `03-gift-card-a-meta.spec.ts` | Emissione da 100 € → walk-in → conto → cinque euro scalati → restano dieci da incassare → **95 € sulla carta**, per un'altra volta |
+| `04-dal-voto-alla-recensione.spec.ts` | Voto 10 → invito alla recensione → il collegamento passa dalla porta che **conta** il passaggio → il numero compare in Analytics. E, per la strada opposta: voto 4 → si chiede cosa non è andato **in privato**, e nessun invito pubblico |
 
 ## Quali mancano, e perché
 
-Dal §80 del master prompt restano quattro percorsi:
-
-- **lista d'attesa → offerta → prenotazione**;
-- **gift card: emissione → uso parziale → residuo**;
-- **campagna → clic → prenotazione attribuita**;
-- **sondaggio → promotore → clic sulla recensione contato**.
+Dal §80 del master prompt resta **campagna → clic → prenotazione attribuita**:
+il meccanismo dell'attribuzione esiste e ha i suoi test, ma il percorso passa
+dalla creazione guidata di una campagna, che è la finestra più lunga del
+prodotto.
 
 Il quinto del §80 — *prenotazione → caparra → disdetta → rimborso* — **non si
 può scrivere**: i pagamenti non esistono ancora (nessuna riga `Payment` viene
 creata da nessuna parte). Scriverlo con dati finti darebbe una copertura
 inventata, ed è esattamente ciò che questo progetto non fa.
 
-## Cosa ha già trovato
+## Le difese pubbliche restano quelle vere
 
-Scrivendo il primo percorso sono emerse due cose sul prodotto, entrambe
-corrette *nel test* e non nel codice, perché il codice aveva ragione:
+Rilanciando i percorsi, la seconda esecuzione di fila leggeva «Troppe richieste
+di seguito»: il limite di frequenza sull'endpoint pubblico funzionava, e la
+prova sembrava rotta.
+
+La soluzione **non** è stata allentare i limiti — una prova che gira con difese
+diverse da quelle vere non verifica il prodotto vero — ma dichiarare un
+indirizzo di provenienza nuovo a ogni esecuzione, che è quello che il
+middleware si aspetta da un proxy. Che i limiti funzionino lo verificano i test
+unitari (`tests/limite-frequenza.test.ts`).
+
+## Cosa hanno già trovato
+
+Scrivendoli sono emerse tre cose sul prodotto, tutte corrette *nel test* e non
+nel codice, perché il codice aveva ragione:
 
 1. una prenotazione dal widget non ha il menu degli stati ma due pulsanti
    espliciti, **Approva** e **Rifiuta** — su quella riga c'è una decisione da
    prendere, non uno stato da correggere;
 2. il selettore dei tavoli **propone già** il primo tavolo che basta da solo
    (un tocco in meno durante il servizio): il test lo deselezionava, e adesso
-   verifica quel comportamento invece di combatterlo.
+   verifica quel comportamento invece di combatterlo;
+3. chiudendo un conto la finestra **non se ne va**: mostra l'esito e i punti
+   accreditati, perché quella frase serve a chi deve dirlo al cliente
+   («Diglielo»). Il percorso adesso la legge — è il pezzo che unisce il conto
+   alla fedeltà — e solo dopo chiude.

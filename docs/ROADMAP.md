@@ -177,7 +177,9 @@ costavano poco e valevano molto.
 - [x] **La campanella suona per otto categorie** invece di quattro (P1-6): prenotazione dal sito che aspetta una decisione, disdetta entro 48 ore, contatto nuovo dal Wi-Fi, gift card usata
       → la regola che decide se una categoria vale una notifica: **si notifica solo ciò che nessun'altra schermata già mostra, e solo quando una persona può farci qualcosa**. Quindi niente «VIP senza tavolo» o «picco di arrivi» — il centro controllo li dice meglio, in ordine di urgenza e col rimedio accanto
       → i silenzi sono difesi da altrettanti test: una prenotazione presa al telefono non suona, una disdetta per il mese prossimo no, e sei persone dello stesso tavolo che si collegano al Wi-Fi fanno suonare una volta sola
-- [ ] Restano quattro percorsi del §80: attesa→tavolo, gift card→uso parziale→residuo, campagna→clic→attribuzione, sondaggio→promotore→recensione. Il quinto (caparra→disdetta→rimborso) **non si può scrivere**: i pagamenti non esistono, e scriverlo con dati finti darebbe una copertura inventata
+- [x] **Quattro percorsi end-to-end verdi in 11 secondi** (P0-2 chiuso per la parte che si può chiudere): dal sito al cliente, dalla coda al tavolo, la gift card usata a metà, e il voto che diventa recensione (con la strada opposta: voto basso → nessun invito pubblico)
+      → rilanciandoli scattava il limite di frequenza sull'endpoint pubblico: la soluzione non è stata allentare i limiti — una prova con difese diverse da quelle vere non verifica il prodotto vero — ma presentarsi come un cliente nuovo a ogni esecuzione, che è quello che fa un proxy
+- [ ] Resta un percorso del §80: **campagna → clic → attribuzione** (il meccanismo ha i suoi test; il percorso passa dalla finestra più lunga del prodotto). Il quinto — caparra→disdetta→rimborso — **non si può scrivere**: i pagamenti non esistono, e scriverlo con dati finti darebbe una copertura inventata
 
 
 Audit di stato contro il master prompt in 92 sezioni:
