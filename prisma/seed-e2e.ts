@@ -213,8 +213,51 @@ export async function seedE2E() {
     },
   });
 
+  /**
+   * Una campagna **già inviata**, per il percorso dell'attribuzione.
+   *
+   * L'invio vero passa da un fornitore email che in prova non c'è, e ha già i
+   * suoi test unitari. Quello che nessun test percorre è la parte **dal clic
+   * in poi**: il link porta a prenotare, la prenotazione nasce col merito
+   * della campagna, e il merito si vede nei risultati.
+   *
+   * Serve anche una riga di `MessageLog`: la finestra di attribuzione parte
+   * dal primo invio registrato, e senza quella riga una prenotazione di
+   * adesso non avrebbe nessun invio a cui essere attribuita.
+   */
+  const campagna = await db.campaign.create({
+    data: {
+      venueId: venue.id,
+      name: "Prova e2e: torna a trovarci",
+      channel: "EMAIL",
+      status: "SENT",
+      subject: "Ti aspettiamo",
+      body: "<p>Un tavolo per te.</p>",
+      sentCount: 1,
+      openedCount: 1,
+      segment: { audienceTag: "inattivi" },
+    },
+  });
+  await db.messageLog.create({
+    data: {
+      venueId: venue.id,
+      campaignId: campagna.id,
+      guestId: ospite.id,
+      channel: "EMAIL",
+      kind: "campaign.send",
+      status: "SENT",
+      sentAt: new Date(Date.now() - 2 * 3_600_000),
+      toAddress: ospite.email!,
+      subject: "Ti aspettiamo",
+      // Due ore fa: dentro la finestra, e prima della prenotazione che il
+      // percorso creerà adesso.
+      createdAt: new Date(Date.now() - 2 * 3_600_000),
+    },
+  });
+
   return {
     userId: user.id,
+    campaignId: campagna.id,
     orgId: org.id,
     venueId: venue.id,
     roomId: room.id,
