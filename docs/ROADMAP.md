@@ -169,5 +169,7 @@ costavano poco e valevano molto.
 
 ## Phase 7 — Enterprise
 
+- Il **cliente fra più locali** è l'ultima voce P1 che non dipende da un fornitore, e non va fatta senza una scelta: tre strade, con quello che ciascuna costa e quello che non si può più disfare, in [`docs/NOTA-CRM-FRA-LOCALI.md`](NOTA-CRM-FRA-LOCALI.md). Dentro c'è anche la riga SQL che dice **quanti clienti sono davvero in comune** fra due locali della stessa organizzazione: se sono venti su duemila, la strada più invasiva non si fa e la discussione finisce con un numero invece che con un'impressione
+
 - Permessi avanzati, multi-locale e multi-brand, SSO, 2FA
 - API pubbliche e webhook in uscita
