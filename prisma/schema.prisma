@@ -184,6 +184,7 @@ model Venue {
   WifiLead               WifiLead[]
   WifiSession            WifiSession[]
   members                VenueMembership[]
+  invites                VenueInvite[]
   waiters                Waiter[]
   waiterAssignments      WaiterAssignment[]
   staffAssignments       StaffAssignment[]
@@ -191,6 +192,34 @@ model Venue {
   contractDocuments      ContractDocument[]
 
   @@unique([orgId, slug])
+}
+
+/// Un invito a entrare nel team di un locale.
+///
+/// Esiste perché `VenueMembership` la scriveva solo il seed: i cinque ruoli
+/// funzionavano e non c'era modo di assegnarli, quindi un ristorante non
+/// poteva dare l'accesso al suo maître.
+///
+/// Il link si consegna a mano — si copia e si manda su WhatsApp, o si legge a
+/// voce a chi è nella stanza accanto — perché l'email di Tavolo è spenta e una
+/// funzione che dipende da una chiave che non c'è è una funzione che non c'è.
+model VenueInvite {
+  id        String     @id @default(cuid())
+  venueId   String
+  /// A chi è destinato: accettando, l'accesso nasce con questo indirizzo.
+  email     String
+  role      StaffRole  @default(RECEPTION)
+  /// Segreto del link. Unico e imprevedibile: è l'unica prova che serve.
+  token     String     @unique
+  expiresAt DateTime
+  /// Quando è stato usato. Un invito vale **una volta**.
+  acceptedAt DateTime?
+  /// Chi l'ha creato, per il registro.
+  invitedBy String?
+  createdAt DateTime   @default(now())
+  venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, acceptedAt])
 }
 
 model VenueMembership {
