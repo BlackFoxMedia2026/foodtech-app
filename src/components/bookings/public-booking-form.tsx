@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SlotPicker } from "@/components/bookings/slot-picker";
 import { AlertCircle, Loader2, Mail, Phone } from "lucide-react";
+import { CAMPO_TRAPPOLA } from "@/lib/widget-trappola";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6,8}$/;
 
@@ -54,6 +55,20 @@ export function PublicBookingForm({
   const [partySize, setPartySize] = useState(2);
   /** Vero quando il gruppo è troppo grande per il modulo. */
   const [gruppoGrande, setGruppoGrande] = useState(false);
+
+  /**
+   * La chiave di questo tentativo.
+   *
+   * Nasce con il modulo e resta la stessa finché la persona non ricarica: se
+   * il primo invio si perde su una rete lenta e la persona ritocca «Prenota»,
+   * il server riconosce lo stesso tentativo e restituisce la prenotazione già
+   * fatta invece di farne una seconda.
+   */
+  const [chiaveTentativo] = useState(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   /** Istante ISO scelto: arriva dal server e torna indietro identico. */
   const [startsAt, setStartsAt] = useState<string | null>(null);
 
@@ -99,6 +114,10 @@ export function PublicBookingForm({
           occasion: occasion && occasion !== "NONE" ? occasion : null,
           notes: notes || null,
           source: "WIDGET",
+          idempotencyKey: chiaveTentativo,
+          // Il campo trappola viaggia com'è: se qualcosa l'ha compilato, il
+          // server lo saprà.
+          [CAMPO_TRAPPOLA]: (formData.get(CAMPO_TRAPPOLA) as string) || "",
           ...(campaignId ? { campaignId } : {}),
         }),
       });
@@ -305,6 +324,20 @@ export function PublicBookingForm({
           maxLength={500}
         />
       </div>
+
+      {/* La trappola. `hidden` la toglie anche dalla lettura assistita e
+          dall'ordine di tabulazione: una persona non la incontra in nessun
+          modo, nemmeno con la tastiera o con uno screen reader — che è la
+          condizione perché questa difesa sia accettabile. */}
+      <input
+        type="text"
+        name={CAMPO_TRAPPOLA}
+        defaultValue=""
+        hidden
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+      />
 
       <Button type="submit" variant="accent" disabled={loading} className="w-full" style={buttonStyle}>
         {loading ? (

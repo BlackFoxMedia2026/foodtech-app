@@ -152,8 +152,18 @@ Per gravità, non per difficoltà:
    chiunque compili il modulo del portale. È deliberato: è la password della *rete ospiti*,
    quella che si dà a voce a chi entra nel locale, e in Impostazioni c'è scritto di non usare
    la rete a cui è collegata la cassa. Resta una cosa da sapere prima di configurarlo.
-2. **Nessuna verifica del contatto sul widget pubblico.** Il limite di frequenza rallenta un
-   bot, non lo fermano email e telefono inventati. Serve un captcha o una conferma via link.
+2. **Nessuna verifica del contatto sul widget pubblico.** Resta il buco vero: email e telefono
+   inventati passano, e la difesa che li fermerebbe è un codice via email o SMS — cioè un
+   fornitore che oggi non c'è. Non l'ho sostituita con un indovinello.
+   Quello che invece c'è, dall'8 settembre: **idempotenza** (un doppio tocco su una rete lenta
+   prenota una volta, e l'unicità la garantisce un indice, non un controllo che due richieste in
+   parallelo non si vedono), **riconoscimento del doppione identico** (stessa persona, stesso
+   orario, stessi coperti → si restituisce quella che c'è già), e un **campo trappola** che
+   risponde con un rifiuto generico — mai con una finta conferma: far credere di avere un tavolo
+   che non esiste è una bugia anche verso un programma.
+   La regola che ha guidato tutte tre: *una difesa che rifiuta una prenotazione vera costa più del
+   problema che risolve*. Nessuna euristica sul contenuto — nomi «strani», domini «sospetti» —
+   solo fatti verificabili.
 3. **`force: true` su `assign-table` resta disponibile a chiunque abbia `manage_bookings`**
    (quindi anche a `WAITER`). Il motivo obbligatorio ora c'è — allineato alla creazione
    forzata e alle tavolate — quindi ogni forzatura ha un perché scritto, un nome e un'ora nel
