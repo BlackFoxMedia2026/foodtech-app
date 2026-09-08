@@ -20,6 +20,20 @@ import { LIVE_STATUS_ORDER, getFloorLive } from "@/server/floor-live";
 
 const ora = new Date("2026-09-07T20:00:00.000Z");
 
+/**
+ * L'orologio delle prove sul database, fermo a mezzogiorno.
+ *
+ * `getFloorLive` guarda **la giornata di oggi**, e i test girano con TZ=UTC su
+ * un locale a Roma: fra mezzanotte e le due UTC, «trenta minuti fa» cade nel
+ * giorno prima e il tavolo risulta libero. Passavano di giorno e fallivano in
+ * una finestra di due ore, che è il modo peggiore di accorgersene.
+ */
+const ADESSO = (() => {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  return d;
+})();
+
 function prenotazione(p: Partial<LiveBookingLike> & { minutiDaOra: number }): LiveBookingLike {
   return {
     status: p.status ?? "CONFIRMED",
@@ -156,7 +170,7 @@ describe("la sala viva, contro il database", () => {
 
   it("conta gli stati di tutti i tavoli, compresi i disattivati", async () => {
     await svuota();
-    const live = await getFloorLive(venueId);
+    const live = await getFloorLive(venueId, { now: ADESSO });
     expect(live.counters.LIBERO).toBe(2);
     expect(live.counters.BLOCCATO).toBe(1); // L3 è disattivato
     expect(Object.keys(live.byTableId)).toHaveLength(3);
@@ -170,14 +184,14 @@ describe("la sala viva, contro il database", () => {
         guestId,
         tableId: t1,
         partySize: 2,
-        startsAt: new Date(Date.now() - 30 * 60_000),
+        startsAt: new Date(ADESSO.getTime() - 30 * 60_000),
         durationMin: 105,
         status: "SEATED",
         source: "PHONE",
       },
     });
 
-    const live = await getFloorLive(venueId);
+    const live = await getFloorLive(venueId, { now: ADESSO });
     const info = live.byTableId[t1];
     expect(info.status).toBe("OCCUPATO");
     expect(info.current?.guestName).toBe("Live Prova");
@@ -192,12 +206,12 @@ describe("la sala viva, contro il database", () => {
       data: {
         venueId,
         tableId: t2,
-        startsAt: new Date(Date.now() - 60 * 60_000),
-        endsAt: new Date(Date.now() + 60 * 60_000),
+        startsAt: new Date(ADESSO.getTime() - 60 * 60_000),
+        endsAt: new Date(ADESSO.getTime() + 60 * 60_000),
         reason: "riparazione",
       },
     });
-    const live = await getFloorLive(venueId);
+    const live = await getFloorLive(venueId, { now: ADESSO });
     expect(live.byTableId[t2].status).toBe("BLOCCATO");
   });
 
@@ -213,14 +227,14 @@ describe("la sala viva, contro il database", () => {
         tableId: t1,
         combinedTableIds: [t1, t2],
         partySize: 6,
-        startsAt: new Date(Date.now() - 20 * 60_000),
+        startsAt: new Date(ADESSO.getTime() - 20 * 60_000),
         durationMin: 105,
         status: "SEATED",
         source: "PHONE",
       },
     });
 
-    const live = await getFloorLive(venueId);
+    const live = await getFloorLive(venueId, { now: ADESSO });
     expect(live.byTableId[t1].status).toBe("OCCUPATO");
     expect(live.byTableId[t2].status).toBe("OCCUPATO");
     expect(live.byTableId[t1].current?.combinedWith).toEqual([t2]);
@@ -261,12 +275,12 @@ describe("la sala viva, contro il database", () => {
         guestId,
         tableId: t1,
         partySize: 2,
-        startsAt: new Date(Date.now() - 20 * 60_000),
+        startsAt: new Date(ADESSO.getTime() - 20 * 60_000),
         status: "CANCELLED",
         source: "PHONE",
       },
     });
-    const live = await getFloorLive(venueId);
+    const live = await getFloorLive(venueId, { now: ADESSO });
     expect(live.byTableId[t1].status).toBe("LIBERO");
     expect(live.byTableId[t1].current).toBeNull();
   });
@@ -276,10 +290,10 @@ describe("la sala viva, contro il database", () => {
     const sala = await db.room.create({ data: { venueId, name: "Terrazza" } });
     const t4 = await db.table.create({ data: { venueId, roomId: sala.id, label: "L4", seats: 2 } });
 
-    const soloTerrazza = await getFloorLive(venueId, { roomId: sala.id });
+    const soloTerrazza = await getFloorLive(venueId, { now: ADESSO, roomId: sala.id });
     expect(Object.keys(soloTerrazza.byTableId)).toEqual([t4.id]);
 
-    const tutti = await getFloorLive(venueId);
+    const tutti = await getFloorLive(venueId, { now: ADESSO });
     expect(Object.keys(tutti.byTableId).length).toBeGreaterThan(1);
 
     await db.table.delete({ where: { id: t4.id } });
@@ -296,7 +310,7 @@ describe("la sala viva, contro il database", () => {
     });
     const suo = await db.table.create({ data: { venueId: altro.id, label: "X9", seats: 2 } });
 
-    const live = await getFloorLive(venueId);
+    const live = await getFloorLive(venueId, { now: ADESSO });
     expect(live.byTableId[suo.id]).toBeUndefined();
     expect(t3 in live.byTableId).toBe(true);
   });

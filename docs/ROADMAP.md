@@ -169,6 +169,7 @@ costavano poco e valevano molto.
 
 ## Phase 7 — Enterprise
 
+- **Quando finisce la giornata di un ristorante?** Oggi «oggi» è il giorno del processo (UTC su Vercel), e per un locale italiano viene una finestra dalle 02:00 di ieri alle 01:59 di oggi: assomiglia per caso a una giornata di servizio. Delimitarla nel fuso del locale **peggiorerebbe le cose** — alle 00:30 la schermata Servizio si svuoterebbe con i tavoli ancora seduti. Serve una decisione: «la giornata di servizio comincia alle 05:00», impostazione del locale, usata in tutti e diciannove i punti che chiamano `startOfDay`. Descritto in `docs/ANALISI-STATO-2026-09-07.md` §11.7
 - Il **cliente fra più locali** è l'ultima voce P1 che non dipende da un fornitore, e non va fatta senza una scelta: tre strade, con quello che ciascuna costa e quello che non si può più disfare, in [`docs/NOTA-CRM-FRA-LOCALI.md`](NOTA-CRM-FRA-LOCALI.md). Dentro c'è anche la riga SQL che dice **quanti clienti sono davvero in comune** fra due locali della stessa organizzazione: se sono venti su duemila, la strada più invasiva non si fa e la discussione finisce con un numero invece che con un'impressione
 
 - Permessi avanzati, multi-locale e multi-brand, SSO, 2FA
