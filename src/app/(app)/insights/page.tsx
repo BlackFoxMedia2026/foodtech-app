@@ -17,6 +17,9 @@ import { reviewFunnel } from "@/server/reviews";
 import { menuEngineering } from "@/server/menu-engineering";
 import { waitlistReport } from "@/server/waitlist";
 import { debitoGiftCards } from "@/server/gift-cards";
+import { incassoNelPeriodo } from "@/server/orders";
+import { sintesiEsecutiva } from "@/server/sintesi-esecutiva";
+import { SintesiPanel } from "@/components/insights/sintesi-panel";
 import { rotazioneTavoli } from "@/server/rotazione";
 import { resolveSegment } from "@/server/campaigns";
 import { Button } from "@/components/ui/button";
@@ -79,7 +82,7 @@ export default async function InsightsPage({
   const ctx = await getActiveVenue();
   const { range, from, to } = computeRange(searchParams);
   const giorni = Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000));
-  const [a, prev, nps, ponteRecensioni, previsione, occupazione, foodCost, assenze, codaAttesa, giftCard, rotazione, inattivi] =
+  const [a, prev, nps, ponteRecensioni, previsione, occupazione, foodCost, assenze, codaAttesa, giftCard, rotazione, inattivi, incassoPrima] =
     await Promise.all([
       getAnalytics(ctx.venueId, from, to),
     getPreviousPeriodMetrics(ctx.venueId, from, to),
@@ -104,7 +107,35 @@ export default async function InsightsPage({
     // Quanti si potrebbero invitare davvero: con email e consenso, non
     // «quanti clienti ho». È lo stesso segmento che userebbe la campagna.
     resolveSegment(ctx.venueId, { audienceTag: "inattivi" }),
+      // L'incasso del periodo **prima**, per il confronto della sintesi: una
+      // somma sola, non il rendiconto completo calcolato due volte.
+      incassoNelPeriodo(
+        ctx.venueId,
+        new Date(from.getTime() - (to.getTime() - from.getTime())),
+        from,
+      ),
   ]);
+
+  /**
+   * La sintesi: cinque righe con i problemi per primi.
+   *
+   * È una funzione pura sui numeri già letti qui sopra — non aggiunge nessuna
+   * lettura, e si può verificare senza database.
+   */
+  const sintesi = sintesiEsecutiva({
+    periodoGiorni: giorni,
+    valuta: ctx.venue.currency,
+    ora: a,
+    prima: prev,
+    assenze,
+    foodCost,
+    incassoPrimaCents: incassoPrima.conti > 0 ? incassoPrima.totalCents : null,
+    coda: codaAttesa,
+    voti: nps,
+    rotazione,
+    giftCard,
+    inattivi: inattivi.length,
+  });
 
   const insights = generateInsights({
     current: a,
@@ -128,6 +159,9 @@ export default async function InsightsPage({
         </div>
         <PeriodSelector range={range} from={from.toISOString().slice(0, 10)} to={to.toISOString().slice(0, 10)} />
       </header>
+
+      {/* Prima di tutto il resto: è la riga che si legge su un telefono. */}
+      <SintesiPanel righe={sintesi} periodoGiorni={giorni} />
 
       <FoodCostPanel report={foodCost} currency={ctx.venue.currency} />
 

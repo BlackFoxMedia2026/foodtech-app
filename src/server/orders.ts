@@ -624,3 +624,27 @@ export async function incassoDelGiorno(
     righeTotali,
   };
 }
+
+/**
+ * L'incasso di un periodo, in una somma sola.
+ *
+ * Serve alla sintesi di Analytics per dire «il 12% in meno del periodo
+ * prima»: il rendiconto completo (`getFoodCost`) legge anche piatti, costi e
+ * classifiche, e chiamarlo due volte per ottenere un numero sarebbe far
+ * lavorare il database per niente.
+ *
+ * `conti: 0` non è «zero euro»: è «nessun conto chiuso», e chi legge deve
+ * poter distinguere le due cose — per questo torna anche il conteggio.
+ */
+export async function incassoNelPeriodo(
+  venueId: string,
+  from: Date,
+  to: Date,
+): Promise<{ totalCents: number; conti: number }> {
+  const esito = await db.order.aggregate({
+    where: { venueId, status: "COMPLETED", completedAt: { gte: from, lte: to } },
+    _sum: { totalCents: true },
+    _count: true,
+  });
+  return { totalCents: esito._sum.totalCents ?? 0, conti: esito._count };
+}
