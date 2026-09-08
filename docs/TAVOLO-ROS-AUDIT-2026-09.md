@@ -42,6 +42,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | P2-7 · impostazioni e «Altro» raggruppati | ✅ **chiuso**: le tredici schede sono quattro parti con un indice in cima (Il locale · Prenotazioni · Ospiti · Sistema), e «Altro» ha tre gruppi con l'etichetta, uguali su scrivania e telefono. L'indice sono ancore, non schede: funziona senza JavaScript, si può condividere il link a una parte, e il tasto indietro fa quello che ci si aspetta |
 | P2-5 · sintesi di Analytics | ✅ **chiuso**: «Com'è andata», cinque righe in cima con i problemi per primi. Solo fatti misurati — le misure che il locale non ha (food cost senza costi dichiarati, voti senza risposte) **non compaiono**, invece di diventare righe «dato non disponibile» |
 | P2-6 · menu admin da telefono | ✅ **chiuso**: da quattro pulsanti a icona per piatto a un solo «⋯» con le azioni scritte. Ci è entrata anche **«segna come finito»**, che è il gesto più frequente durante il servizio e prima richiedeva di aprire la scheda del piatto. Da tablet in su la fila di pulsanti resta: col mouse funziona meglio del menù |
+| P2-8 · deduplica e unione ospiti | ✅ **chiuso**: le coppie con la stessa email o lo stesso telefono si propongono, **nessuna unione è automatica**, e l'unione la può fare solo un Manager. Niente si perde: tutto si sposta, note e allergie si uniscono, i contatori si ricalcolano dalle righe. Una revoca di consenso più recente vince su un consenso più vecchio, e una scheda anonimizzata non si unisce mai |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -143,6 +144,7 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Allergie, note riservate, occasioni | **EXISTS** | |
 | Consenso separato da quello operativo, con prova | **EXISTS** | |
 | Export e cancellazione su richiesta | **EXISTS** | Sette posti in una transazione, i conti non si toccano |
+| Deduplica e unione schede ospite | **EXISTS** | Fatto l'8 settembre: proposte su segnali esatti, unione manuale, registro dell'azione, e nove test che verificano che si **rifiuti** |
 | Sintesi «cosa sapere di questo ospite» | **EXISTS** | Fatta l'8 settembre: quattro righe al massimo, in ordine di urgenza, uguali in Servizio, Sala e prenotazione. Gli avvisi non si tagliano mai |
 | Riconoscimento all'ingresso (email/telefono) | **EXISTS** | |
 | Deduplica a posteriori e merge controllato | **MISSING** | §19 |
@@ -420,7 +422,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | ~~P2-5~~ | ~~**Executive summary mobile** per Analytics (§28)~~ — **fatto l'8 settembre** | 4 | M | nessuna | basso |
 | ~~P2-6~~ | ~~**Menu mobile admin** con menu contestuale (§21)~~ — **fatto l'8 settembre** | 3 | S | nessuna | basso |
 | ~~P2-7~~ | ~~**Impostazioni raggruppate** + «Altro» raggruppato (§3)~~ — **fatto l'8 settembre** | 3 | S | nessuna | basso |
-| P2-8 | **Deduplica e merge ospiti** (§19) | 4 | M | nessuna | alto (dati) |
+| ~~P2-8~~ | ~~**Deduplica e merge ospiti** (§19)~~ — **fatto l'8 settembre** | 4 | M | nessuna | alto (dati) |
 | P2-9 | **Giornata di servizio configurabile** (§12 dell'audit A) | 4 | M | decisione tua | medio |
 
 ## P3 — CRESCITA

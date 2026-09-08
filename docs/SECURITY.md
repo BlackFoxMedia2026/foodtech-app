@@ -235,6 +235,31 @@ transazione:
 archivio. Prima di confermare, la finestra mostra due elenchi — cosa sparisce e cosa resta —
 perché la paura di chi preme quel pulsante è di cancellare un mese di incassi, e non succede.
 
+## Unire due schede della stessa persona
+
+È l'unica operazione che **cancella una riga di anagrafica**, e per questo ha le sue regole.
+
+**Chi può**: solo un Manager (`manage_venue`). Chi accoglie durante il servizio non deve
+poterla fare per sbaglio da un menù.
+
+**Su cosa si propone**: stessa email o stesso telefono, normalizzati, dentro lo stesso
+locale. Mai su somiglianza di nomi — due «Marco Rossi» in un ristorante di quartiere sono due
+persone, e unire le schede sbagliate significa mostrare a qualcuno le note riservate di un
+altro. La verifica del segnale in comune la rifà il server: un controllo che sta solo
+nell'interfaccia non è un controllo.
+
+**Cosa non si può unire**: una scheda **anonimizzata**. I suoi dati sono stati cancellati su
+richiesta della persona; attaccarli a un'altra riga sarebbe disfare una cancellazione.
+
+**Il consenso al marketing**: vale **l'ultima parola detta**. I `ConsentLog` delle due schede
+si uniscono, e se il più recente è una revoca la persona resta fuori dal marketing anche se
+l'altra scheda diceva sì. Senza nessun consenso registrato si tiene il sì che una delle due
+aveva: è un permesso raccolto davvero, e cancellarlo per un'unione sarebbe perderlo.
+
+**Cosa resta scritto**: l'unione finisce nel registro delle azioni con chi l'ha fatta, quale
+scheda è stata assorbita e cosa si è spostato. È l'unico posto dove quella scheda continua a
+esistere.
+
 ## Se trovi una vulnerabilità
 
 Scrivi a moncalvo@blackfoxmedia.agency prima di aprire una issue.

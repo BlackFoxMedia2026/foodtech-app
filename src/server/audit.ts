@@ -37,6 +37,7 @@ export type AuditAction =
   | "guest.update"
   | "guest.anonymize"
   | "guest.export"
+  | "guest.merge"
   | "order.open"
   | "order.line_add"
   | "order.line_update"

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getActiveVenue } from "@/lib/tenant";
 import { listGuests, listDistinctTags } from "@/server/guests";
+import { contaDoppioni } from "@/server/guest-merge";
 import { GuestsTable } from "@/components/guests/guests-table";
 import { Button } from "@/components/ui/button";
 
@@ -25,9 +26,10 @@ export default async function GuestsPage({
   const ctx = await getActiveVenue();
   const pagina = Number(searchParams.pagina) || 1;
 
-  const [elenco, availableTags] = await Promise.all([
+  const [elenco, availableTags, doppioni] = await Promise.all([
     listGuests(ctx.venueId, { q: searchParams.q, tag: searchParams.tag, pagina }),
     listDistinctTags(ctx.venueId),
+    contaDoppioni(ctx.venueId),
   ]);
 
   const primo = elenco.totale === 0 ? 0 : (elenco.pagina - 1) * elenco.perPagina + 1;
@@ -49,6 +51,32 @@ export default async function GuestsPage({
               : `Da ${primo} a ${ultimo} di ${elenco.totale}`}
         </p>
       </header>
+
+      {/*
+        L'avviso compare **solo se ci sono doppioni**: una voce di menù sempre
+        presente per un lavoro che si fa una volta ogni tanto sarebbe una voce
+        che nessuno guarda. Così invece è una notizia.
+      */}
+      {doppioni > 0 && (
+        <Link
+          href="/guests/doppioni"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-4 text-sm transition-colors hover:border-accent/60"
+        >
+          <span>
+            <span className="font-medium">
+              {doppioni === 1 ? "Una coppia di schede sembra" : `${doppioni} coppie di schede sembrano`} la
+              stessa persona
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              Stessa email o stesso telefono. Tre copie di un cliente sono tre saldi punti che non si
+              sommano.
+            </span>
+          </span>
+          <span className="flex items-center gap-1 font-medium">
+            Guarda <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </span>
+        </Link>
+      )}
 
       <GuestsTable rows={elenco.items} availableTags={availableTags} />
 
