@@ -306,14 +306,16 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
   return booking;
 }
 
-/** «giovedì 11 alle 20:30»: come lo direbbe una persona. */
+/**
+ * «giovedì 11 alle 20:30»: come lo direbbe una persona.
+ *
+ * Un solo formattatore con giorno e ora insieme scrive «giovedì 11, 20:30»,
+ * che in italiano non lo dice nessuno. Due formattatori e la parola in mezzo.
+ */
 function formatDayAndTime(quando: Date): string {
-  return new Intl.DateTimeFormat("it-IT", {
-    weekday: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(quando);
+  const giorno = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric" }).format(quando);
+  const ora = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" }).format(quando);
+  return `${giorno} alle ${ora}`;
 }
 
 /** Il canale, con il nome che usa chi lavora in sala. */
