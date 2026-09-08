@@ -20,13 +20,64 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { readApiError } from "@/lib/api-client";
 import { durataUmana } from "@/lib/durata";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { TABLE_LIVE_HINTS, TABLE_LIVE_LABELS, type TableLiveStatus } from "@/lib/table-status";
 import { LIVE_STATUS_ORDER, type FloorLive, type TableLiveInfo } from "@/server/floor-live";
 import { ServiceSwitch } from "@/components/service/service-switch";
 import { TablePickerDialog } from "@/components/service/table-picker-dialog";
 
 const REFRESH_MS = 30_000;
+
+type Corrente = NonNullable<TableLiveInfo["current"]>;
+
+/** L'ora nel fuso del locale. Una funzione sola: la usano il riquadro e la riga. */
+function oraLocale(iso: string, timezone: string): string {
+  return new Intl.DateTimeFormat("it-IT", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/**
+ * «Libero verso le 22:30», e da dove viene quel 22:30.
+ *
+ * L'ora si dice per intero perché è quella che si confronta con l'orario di
+ * chi sta arrivando: «fra un'ora e venti» costringe chi legge a fare una
+ * somma mentre ha un cliente davanti. E si dice **su cosa poggia**: una
+ * previsione basata su duecento cene misurate qui autorizza a promettere un
+ * tavolo; quella basata sui 105 minuti di default no.
+ */
+function frasePrevisione(
+  liberoVerso: NonNullable<Corrente["liberoVerso"]>,
+  timezone: string,
+): { testo: string; dettaglio: string } {
+  const ora = oraLocale(liberoVerso.fine, timezone);
+
+  const testo =
+    liberoVerso.minuti >= 0
+      ? `libero verso ${ora}`
+      : `oltre di ${durataUmana(Math.abs(liberoVerso.minuti))}`;
+
+  const dettaglio =
+    liberoVerso.fonte === "MISURATO"
+      ? `Durata misurata in questo locale: ${durataUmana(liberoVerso.durataMin)}, su ${liberoVerso.misurate} cene chiuse.`
+      : `Durata prevista sulla prenotazione: ${durataUmana(liberoVerso.durataMin)}. Non ci sono ancora abbastanza cene misurate per dire di più.`;
+
+  return { testo, dettaglio };
+}
+
+/**
+ * Il conto del tavolo, detto in due parole.
+ *
+ * Zero righe su un tavolo seduto non è «zero euro»: è **un conto aperto e
+ * ancora vuoto**, e sono due cose diverse per chi deve decidere se quel
+ * tavolo sta per liberarsi.
+ */
+function fraseConto(conto: NonNullable<Corrente["conto"]>): string {
+  if (conto.righe === 0) return "conto aperto, nulla battuto";
+  return `${formatCurrency(conto.totalCents)} · ${conto.righe} ${conto.righe === 1 ? "riga" : "righe"}`;
+}
 
 export type RoomTable = {
   id: string;
@@ -224,6 +275,22 @@ export function RoomLiveView({
         })}
       </div>
 
+      {/*
+        Su cosa poggiano le previsioni, detto una volta.
+
+        «Libero verso le 22:30» è una promessa: chi la legge la usa per far
+        aspettare qualcuno dieci minuti invece di mandarlo via. Va detto da
+        dove esce quel numero — e va detto **qui**, una volta per schermata,
+        invece che come etichetta su ogni tavolo.
+      */}
+      <p className="text-xs text-tertiary-foreground">
+        {live.durata
+          ? `Le previsioni di liberazione usano la durata misurata in questo locale: ${durataUmana(
+              live.durata.medianaMin,
+            )}, su ${live.durata.misurate} cene chiuse.`
+          : "Le previsioni di liberazione usano la durata prevista sulle prenotazioni: non ci sono ancora abbastanza cene chiuse per misurare quanto si sta a tavola qui."}
+      </p>
+
       {tavoliSala.length === 0 ? (
         <EmptyState icon={UtensilsCrossed} title="Nessun tavolo in questa sala">
           Aggiungi i tavoli dalla sezione Sala: da lì disegni la pianta, qui la guardi mentre lavora.
@@ -287,6 +354,7 @@ export function RoomLiveView({
                     timezone={live.timezone}
                     canManage={canManage}
                     onChanged={dopoAzione}
+                    durataLocale={live.durata}
                   />
                 ))}
               </section>
@@ -305,6 +373,7 @@ export function RoomLiveView({
             canManage={canManage}
             onChanged={dopoAzione}
             evidenziato
+            durataLocale={live.durata}
           />
         </div>
       )}
@@ -347,20 +416,32 @@ function TavoloMappa({
   const Icona = stile.icona;
   const corrente = info?.current;
 
-  const ora = corrente
-    ? new Intl.DateTimeFormat("it-IT", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(
-        new Date(corrente.startsAt),
-      )
-    : null;
+  const ora = corrente ? oraLocale(corrente.startsAt, timezone) : null;
 
-  const oltre = corrente?.minutesToFree != null && corrente.minutesToFree < 0;
+  const oltre = corrente?.liberoVerso != null && corrente.liberoVerso.minuti < 0;
+
+  // Le due righe nuove del riquadro: quando si libera e a quanto sta il
+  // conto. Il riquadro cresce solo se ha qualcosa da dire.
+  const previsione = corrente?.liberoVerso ? frasePrevisione(corrente.liberoVerso, timezone) : null;
+  const oraLibero = corrente?.liberoVerso ? oraLocale(corrente.liberoVerso.fine, timezone) : null;
+  const soldi =
+    corrente?.conto && corrente.conto.righe > 0 ? formatCurrency(corrente.conto.totalCents) : null;
+  const rigaExtra = !!(oraLibero || soldi || info?.next);
 
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selezionato}
-      title={`${table.label} · ${TABLE_LIVE_LABELS[stato]} — ${TABLE_LIVE_HINTS[stato]}`}
+      title={[
+        `${table.label} · ${TABLE_LIVE_LABELS[stato]} — ${TABLE_LIVE_HINTS[stato]}`,
+        previsione && `${previsione.testo}. ${previsione.dettaglio}`,
+        corrente?.conto && `Conto: ${fraseConto(corrente.conto)}.`,
+        info?.next &&
+          `Poi ${info.next.guestName} alle ${oraLocale(info.next.startsAt, timezone)}, ${info.next.partySize}p.`,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-label={`Tavolo ${table.label}, ${table.seats} posti, ${TABLE_LIVE_LABELS[stato]}${
         corrente ? `, ${corrente.guestName}, ${corrente.partySize} persone` : ""
       }`}
@@ -378,7 +459,7 @@ function TavoloMappa({
         left: `${(table.posX / bounds.w) * 100}%`,
         top: `${(table.posY / bounds.h) * 100}%`,
         width: `${(larghezzaTavolo(table.seats) / bounds.w) * 100}%`,
-        minHeight: `${(58 / bounds.h) * 100}%`,
+        minHeight: `${((rigaExtra ? 70 : 58) / bounds.h) * 100}%`,
       }}
     >
       <span className="flex w-full items-center gap-1">
@@ -393,13 +474,44 @@ function TavoloMappa({
           <span className="flex w-full items-center gap-1 text-[10px] leading-tight opacity-80">
             {ora} · {corrente.partySize}p
             {/* «+397′» è esatto e illeggibile: sopra l'ora si dice in ore. */}
-            {oltre && <span className="font-semibold">+{durataUmana(Math.abs(corrente.minutesToFree!))}</span>}
+            {oltre && (
+              <span className="font-semibold">+{durataUmana(Math.abs(corrente.liberoVerso!.minuti))}</span>
+            )}
             {corrente.combinedWith.length > 0 && <Link2 className="h-2.5 w-2.5" aria-hidden="true" />}
             {corrente.allergies && <AlertTriangle className="h-2.5 w-2.5" aria-hidden="true" />}
           </span>
+
+          {/*
+            L'ora di liberazione e il conto, sul tavolo.
+            
+            L'ora sta a sinistra perché è quella che si confronta con
+            l'orologio; i soldi a destra, dove l'occhio li cerca. Se il conto è
+            aperto e vuoto si mette un trattino: dire «0,00 €» sarebbe un
+            numero al posto di un fatto.
+          */}
+          {rigaExtra && (
+            <span className="flex w-full items-center gap-1 text-[10px] leading-tight opacity-80">
+              {oraLibero && !oltre && <span>→ {oraLibero}</span>}
+              {corrente.conto && (
+                <span className="ml-auto font-semibold">{soldi ?? "conto aperto"}</span>
+              )}
+            </span>
+          )}
         </>
       ) : (
-        <span className="text-[10px] leading-tight opacity-70">{TABLE_LIVE_LABELS[stato]}</span>
+        <>
+          <span className="text-[10px] leading-tight opacity-70">{TABLE_LIVE_LABELS[stato]}</span>
+          {/*
+            Un tavolo libero con qualcuno in arrivo non è un tavolo libero.
+            Qui si dice «alle» e non «poi»: «poi» ha senso dopo qualcuno, e su
+            questo tavolo non c'è nessuno.
+          */}
+          {info?.next && (
+            <span className="w-full truncate text-[10px] leading-tight opacity-70">
+              alle {oraLocale(info.next.startsAt, timezone)} · {info.next.partySize}p
+            </span>
+          )}
+        </>
       )}
     </button>
   );
@@ -413,11 +525,14 @@ function TavoloRiga({
   canManage,
   onChanged,
   evidenziato = false,
+  durataLocale = null,
 }: {
   table: RoomTable;
   info: TableLiveInfo | undefined;
   timezone: string;
   canManage: boolean;
+  /** La durata misurata del locale, se c'è: serve a capire se questa riga si scosta. */
+  durataLocale?: FloorLive["durata"];
   onChanged: () => void;
   evidenziato?: boolean;
 }) {
@@ -430,10 +545,7 @@ function TavoloRiga({
   const Icona = stile.icona;
   const corrente = info?.current;
 
-  const fmt = (iso: string) =>
-    new Intl.DateTimeFormat("it-IT", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(
-      new Date(iso),
-    );
+  const fmt = (iso: string) => oraLocale(iso, timezone);
 
   async function cambiaStato(nome: string, status: string) {
     if (!corrente) return;
@@ -481,13 +593,26 @@ function TavoloRiga({
               {" · "}
               {fmt(corrente.startsAt)} · {corrente.partySize}{" "}
               {corrente.partySize === 1 ? "persona" : "persone"}
-              {corrente.minutesToFree != null && (
+              {corrente.liberoVerso && (
                 <>
                   {" · "}
-                  <span className={cn(corrente.minutesToFree < 0 && "text-accent")}>
-                    {corrente.minutesToFree >= 0
-                      ? `libero fra ~${durataUmana(corrente.minutesToFree)}`
-                      : `oltre di ${durataUmana(Math.abs(corrente.minutesToFree))}`}
+                  <span
+                    className={cn(corrente.liberoVerso.minuti < 0 && "text-accent")}
+                    title={frasePrevisione(corrente.liberoVerso, timezone).dettaglio}
+                  >
+                    {frasePrevisione(corrente.liberoVerso, timezone).testo}
+                    {/*
+                      L'etichetta compare solo quando **questa** prenotazione
+                      si scosta da ciò che dice la riga in testa alla pagina:
+                      il locale ha una durata misurata, ma qui qualcuno ne ha
+                      decisa una a mano. Altrimenti sarebbe la stessa frase
+                      ripetuta su ogni tavolo.
+                    */}
+                    {durataLocale && corrente.liberoVerso.fonte === "PREVISTO" && (
+                      <span className="ml-1 text-[10px] uppercase tracking-wide opacity-60">
+                        durata decisa
+                      </span>
+                    )}
                   </span>
                 </>
               )}
@@ -505,6 +630,37 @@ function TavoloRiga({
               {info?.next
                 ? `Prossimo: ${info.next.guestName} alle ${fmt(info.next.startsAt)} · ${info.next.partySize}p`
                 : TABLE_LIVE_HINTS[stato]}
+            </p>
+          )}
+
+          {/*
+            Il conto aperto sul tavolo.
+
+            Era la cosa che chi sta in sala doveva andare a cercare altrove:
+            il tavolo diceva chi c'è e da quando, non a che punto è la cena.
+            Un tavolo oltre la durata con settanta euro battuti è una serata
+            che va bene; con il conto vuoto è un tavolo che non sta girando.
+          */}
+          {corrente?.conto && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+              <Receipt className="h-3 w-3" aria-hidden="true" />
+              {fraseConto(corrente.conto)}
+            </p>
+          )}
+
+          {/*
+            Chi arriva dopo, **anche mentre il tavolo è occupato**: è la metà
+            della decisione. Sapere che si libera verso le 22:30 serve a poco
+            se non si sa che alle 22:15 arriva qualcuno su questo tavolo.
+          */}
+          {corrente && info?.next && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" aria-hidden="true" />
+              poi {info.next.guestName} alle {fmt(info.next.startsAt)} · {info.next.partySize}p
+              {corrente.liberoVerso &&
+                new Date(corrente.liberoVerso.fine).getTime() > new Date(info.next.startsAt).getTime() && (
+                  <span className="text-accent">— non fa in tempo</span>
+                )}
             </p>
           )}
 

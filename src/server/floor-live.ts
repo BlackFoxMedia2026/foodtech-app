@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { deriveTableLiveStatus, type TableLiveStatus } from "@/lib/table-status";
+import { previsioneLiberazione, type DurataTipica } from "@/lib/liberazione";
+import { durataTipicaSeduta } from "./rotazione";
 
 /**
  * La sala in tempo reale.
@@ -28,6 +30,32 @@ export type TableLiveInfo = {
     status: string;
     /** Per chi è seduto: minuti alla fine prevista (negativo = oltre). */
     minutesToFree: number | null;
+    /**
+     * Quando si libera, e **da dove viene il numero**: `MISURATO` se la durata
+     * arriva dalle cene chiuse di questo locale, `PREVISTO` se arriva dalla
+     * durata scritta sulla prenotazione. Si conta da quando si sono seduti,
+     * non dall'orario prenotato (vedi `lib/liberazione`).
+     */
+    liberoVerso: {
+      fine: string;
+      minuti: number;
+      durataMin: number;
+      fonte: "MISURATO" | "PREVISTO";
+      /** Su quante cene è stata misurata la durata. Nullo se non misurata. */
+      misurate: number | null;
+    } | null;
+    /**
+     * Il conto aperto su questo tavolo, se c'è.
+     *
+     * Serve a due decisioni che in sala si prendono guardando il tavolo e non
+     * un elenco: se un tavolo che sta per liberarsi ha ancora il conto a zero
+     * righe, non sta per liberarsi; e un tavolo oltre la durata con un conto
+     * già alto non è un problema, è la serata che va bene.
+     *
+     * `righe` è il numero di righe battute: zero righe su un tavolo seduto da
+     * un'ora è un fatto che chi guarda deve poter vedere.
+     */
+    conto: { orderId: string; totalCents: number; righe: number } | null;
     /** Per chi deve arrivare: minuti all'orario (negativo = in ritardo). */
     minutesToArrival: number | null;
     isVip: boolean;
@@ -42,6 +70,15 @@ export type TableLiveInfo = {
 export type FloorLive = {
   now: string;
   timezone: string;
+  /**
+   * Su cosa poggiano le previsioni di liberazione di questa sala: la durata
+   * misurata qui, se ce n'è abbastanza, altrimenti niente — e in quel caso le
+   * previsioni si basano sulla durata scritta sulle prenotazioni.
+   *
+   * Sta qui, una volta, e non come etichetta su ogni riga: è una proprietà
+   * del locale, e ripeterla dodici volte sulla stessa schermata è rumore.
+   */
+  durata: { medianaMin: number; misurate: number } | null;
   byTableId: Record<string, TableLiveInfo>;
   counters: Record<TableLiveStatus, number>;
 };
@@ -69,11 +106,17 @@ export const LIVE_STATUS_ORDER: TableLiveStatus[] = [
 
 export async function getFloorLive(
   venueId: string,
-  opts: { now?: Date; roomId?: string | null } = {},
+  opts: { now?: Date; roomId?: string | null; durataTipica?: DurataTipica | null } = {},
 ): Promise<FloorLive> {
   const now = opts.now ?? new Date();
   const from = startOfDay(now);
   const to = endOfDay(now);
+
+  // Chi ci chiama può passarcela già letta (la fotografia del servizio la
+  // legge per sé): così una pagina che mostra sala e servizio insieme non
+  // interroga due volte lo stesso numero.
+  const tipica =
+    opts.durataTipica !== undefined ? opts.durataTipica : await durataTipicaSeduta(venueId, { now });
 
   const [venue, tables, bookings, blocks] = await Promise.all([
     db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }),
@@ -100,6 +143,36 @@ export async function getFloorLive(
   ]);
 
   const bloccati = new Set(blocks.map((b) => b.tableId));
+
+  /**
+   * I conti aperti delle prenotazioni di oggi: **una lettura sola**.
+   *
+   * Una per tavolo sarebbe una query per riquadro su una mappa che si
+   * ricarica ogni trenta secondi — è esattamente il difetto che ho appena
+   * finito di togliere altrove.
+   */
+  const conti = await db.order.findMany({
+    where: {
+      venueId,
+      kind: "TABLE",
+      bookingId: { in: bookings.map((b) => b.id) },
+      status: { notIn: ["COMPLETED", "CANCELLED"] },
+    },
+    select: {
+      id: true,
+      bookingId: true,
+      totalCents: true,
+      _count: { select: { OrderItem: true } },
+    },
+  });
+  const contoPerPrenotazione = new Map(
+    conti
+      .filter((o): o is typeof o & { bookingId: string } => !!o.bookingId)
+      .map((o) => [
+        o.bookingId,
+        { orderId: o.id, totalCents: o.totalCents, righe: o._count.OrderItem },
+      ]),
+  );
 
   // Una prenotazione può occupare più tavoli (combinedTableIds): va indicizzata
   // su tutti, altrimenti la mappa mostra libero un tavolo che è parte di una
@@ -132,6 +205,13 @@ export async function getFloorLive(
     );
     const corrente = seduta ?? (status === "IN_ARRIVO" ? inArrivo : null) ?? null;
 
+    // Una formula sola per «quando si libera»: la stessa che usa la
+    // fotografia del servizio.
+    const liberazione =
+      corrente && corrente.status === "SEATED"
+        ? previsioneLiberazione(corrente, now, tipica)
+        : null;
+
     const prossima = sue.find(
       (b) =>
         b.id !== corrente?.id &&
@@ -151,12 +231,17 @@ export async function getFloorLive(
             partySize: corrente.partySize,
             startsAt: corrente.startsAt.toISOString(),
             status: corrente.status,
-            minutesToFree:
-              corrente.status === "SEATED"
-                ? Math.round(
-                    (corrente.startsAt.getTime() + corrente.durationMin * 60_000 - now.getTime()) / 60_000,
-                  )
-                : null,
+            minutesToFree: liberazione ? liberazione.minuti : null,
+            liberoVerso: liberazione
+              ? {
+                  fine: liberazione.fine.toISOString(),
+                  minuti: liberazione.minuti,
+                  durataMin: liberazione.durataMin,
+                  fonte: liberazione.fonte,
+                  misurate: liberazione.fonte === "MISURATO" ? (tipica?.misurate ?? null) : null,
+                }
+              : null,
+            conto: contoPerPrenotazione.get(corrente.id) ?? null,
             minutesToArrival:
               corrente.status === "SEATED"
                 ? null
@@ -183,6 +268,7 @@ export async function getFloorLive(
   return {
     now: now.toISOString(),
     timezone: venue?.timezone ?? "Europe/Rome",
+    durata: tipica ?? null,
     byTableId,
     counters,
   };

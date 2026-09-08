@@ -30,3 +30,15 @@ export function durataUmana(minuti: number): string {
  * su gente che non sarebbe più venuta.
  */
 export const NON_PIU_RITARDO_MIN = 180;
+
+/**
+ * La durata di una prenotazione quando nessuno ne ha decisa una.
+ *
+ * Sta qui, in `lib`, e non nel motore di disponibilità: la usano anche i conti
+ * che girano nel browser (per esempio la previsione di liberazione di un
+ * tavolo), e importarla da `server/availability` porterebbe dietro il client
+ * del database. `DEFAULT_DURATION_MIN` la rimanda a questa, così il numero
+ * esiste in un posto solo — due costanti con lo stesso valore sono due
+ * costanti che un giorno divergono.
+ */
+export const DURATA_PREDEFINITA_MIN = 105;

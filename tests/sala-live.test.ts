@@ -300,6 +300,154 @@ describe("la sala viva, contro il database", () => {
     await db.room.delete({ where: { id: sala.id } });
   });
 
+  /* ---------------------------------------------------------------------- */
+  /*  Il conto sul tavolo, la previsione e il «poi» (P2-1)                    */
+  /* ---------------------------------------------------------------------- */
+
+  async function seduto(opts: { tableId: string; minutiFa: number; startsAtMinutiFa?: number }) {
+    const seatedAt = new Date(ADESSO.getTime() - opts.minutiFa * 60_000);
+    return db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        tableId: opts.tableId,
+        partySize: 2,
+        startsAt: new Date(ADESSO.getTime() - (opts.startsAtMinutiFa ?? opts.minutiFa) * 60_000),
+        durationMin: 105,
+        status: "SEATED",
+        source: "PHONE",
+        seatedAt,
+      },
+    });
+  }
+
+  async function contoAperto(bookingId: string, righe: { name: string; priceCents: number }[]) {
+    return db.order.create({
+      data: {
+        venueId,
+        bookingId,
+        kind: "TABLE",
+        status: "PREPARING",
+        reference: `${PREFISSO}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        scheduledAt: ADESSO,
+        totalCents: righe.reduce((n, r) => n + r.priceCents, 0),
+        OrderItem: { create: righe.map((r) => ({ name: r.name, priceCents: r.priceCents, quantity: 1 })) },
+      },
+    });
+  }
+
+  it("porta il conto aperto sul tavolo, col totale e le righe", async () => {
+    await svuota();
+    const b = await seduto({ tableId: t1, minutiFa: 40 });
+    await contoAperto(b.id, [
+      { name: "Tagliatelle", priceCents: 1500 },
+      { name: "Vino", priceCents: 2400 },
+    ]);
+
+    const live = await getFloorLive(venueId, { now: ADESSO });
+    expect(live.byTableId[t1].current?.conto).toMatchObject({ totalCents: 3900, righe: 2 });
+  });
+
+  it("un conto aperto e vuoto si distingue da un tavolo senza conto", async () => {
+    // Sono due fatti diversi in sala: «hanno ordinato zero euro» non esiste.
+    await svuota();
+    const b = await seduto({ tableId: t1, minutiFa: 20 });
+    await contoAperto(b.id, []);
+    const con = await getFloorLive(venueId, { now: ADESSO });
+    expect(con.byTableId[t1].current?.conto).toMatchObject({ totalCents: 0, righe: 0 });
+
+    await svuota();
+    await db.order.deleteMany({ where: { venueId } });
+    await seduto({ tableId: t1, minutiFa: 20 });
+    const senza = await getFloorLive(venueId, { now: ADESSO });
+    expect(senza.byTableId[t1].current?.conto).toBeNull();
+  });
+
+  it("un conto chiuso non resta sul tavolo", async () => {
+    await svuota();
+    await db.order.deleteMany({ where: { venueId } });
+    const b = await seduto({ tableId: t1, minutiFa: 30 });
+    const conto = await contoAperto(b.id, [{ name: "Caffè", priceCents: 200 }]);
+    await db.order.update({ where: { id: conto.id }, data: { status: "COMPLETED" } });
+
+    const live = await getFloorLive(venueId, { now: ADESSO });
+    expect(live.byTableId[t1].current?.conto).toBeNull();
+    await db.order.deleteMany({ where: { venueId } });
+  });
+
+  it("la previsione parte da quando si sono seduti, non dall'orario prenotato", async () => {
+    await svuota();
+    // Prenotati per un'ora fa, seduti mezz'ora fa: mancano 75 minuti, non 45.
+    await seduto({ tableId: t1, minutiFa: 30, startsAtMinutiFa: 60 });
+    const live = await getFloorLive(venueId, { now: ADESSO });
+    expect(live.byTableId[t1].current?.liberoVerso?.minuti).toBe(75);
+    expect(live.byTableId[t1].current?.minutesToFree).toBe(75);
+  });
+
+  it("senza abbastanza cene chiuse la previsione si dichiara «prevista»", async () => {
+    await svuota();
+    await seduto({ tableId: t1, minutiFa: 20 });
+    const live = await getFloorLive(venueId, { now: ADESSO });
+    expect(live.byTableId[t1].current?.liberoVerso).toMatchObject({
+      fonte: "PREVISTO",
+      durataMin: 105,
+      misurate: null,
+    });
+  });
+
+  it("con abbastanza cene chiuse la previsione usa la durata misurata qui", async () => {
+    await svuota();
+    // Dieci cene chiuse da 140 minuti nelle settimane scorse: è il minimo.
+    for (let i = 0; i < 10; i++) {
+      const inizio = new Date(ADESSO.getTime() - (i + 2) * 24 * 3_600_000);
+      await db.booking.create({
+        data: {
+          venueId,
+          guestId,
+          tableId: t2,
+          partySize: 2,
+          startsAt: inizio,
+          durationMin: 105,
+          status: "COMPLETED",
+          source: "PHONE",
+          seatedAt: inizio,
+          closedAt: new Date(inizio.getTime() + 140 * 60_000),
+        },
+      });
+    }
+    await seduto({ tableId: t1, minutiFa: 20 });
+
+    const live = await getFloorLive(venueId, { now: ADESSO });
+    expect(live.byTableId[t1].current?.liberoVerso).toMatchObject({
+      fonte: "MISURATO",
+      durataMin: 140,
+      misurate: 10,
+    });
+    // 140 misurati meno i 20 già passati.
+    expect(live.byTableId[t1].current?.liberoVerso?.minuti).toBe(120);
+  });
+
+  it("la prossima prenotazione si vede anche mentre il tavolo è occupato", async () => {
+    await svuota();
+    await seduto({ tableId: t1, minutiFa: 20 });
+    await db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        tableId: t1,
+        partySize: 2,
+        startsAt: new Date(ADESSO.getTime() + 100 * 60_000),
+        durationMin: 105,
+        status: "CONFIRMED",
+        source: "PHONE",
+      },
+    });
+
+    const live = await getFloorLive(venueId, { now: ADESSO });
+    expect(live.byTableId[t1].current).not.toBeNull();
+    expect(live.byTableId[t1].next?.startsAt).toBeTruthy();
+  });
+
   it("non mostra i tavoli di un altro ristorante", async () => {
     await svuota();
     const org = await db.organization.create({

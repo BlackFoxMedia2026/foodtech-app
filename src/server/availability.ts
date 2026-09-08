@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { DURATA_PREDEFINITA_MIN } from "@/lib/durata";
 
 /**
  * Controllo di disponibilità: unica fonte di verità su "questa prenotazione si può accettare?".
@@ -22,8 +23,12 @@ import { db } from "@/lib/db";
 /** Stati che tengono davvero occupati posti e tavoli. */
 export const OCCUPYING_STATUSES = ["CONFIRMED", "PENDING", "ARRIVED", "SEATED"] as const;
 
-/** Durata di una prenotazione quando non è specificata, allineata al valore dello schema. */
-export const DEFAULT_DURATION_MIN = 105;
+/**
+ * Durata di una prenotazione quando non è specificata, allineata al valore
+ * dello schema. Il numero vive in `lib/durata` perché lo usano anche i conti
+ * che girano nel browser: qui si rimanda, non si ricopia.
+ */
+export const DEFAULT_DURATION_MIN = DURATA_PREDEFINITA_MIN;
 
 /** Fuso usato se il locale non ne ha uno configurato, allineato al valore dello schema. */
 export const DEFAULT_TIMEZONE = "Europe/Rome";

@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { NON_PIU_RITARDO_MIN } from "./service-intelligence";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { listWaitlist, expireStaleOffers, type WaitlistView } from "./waitlist";
+import { previsioneLiberazione, type DurataTipica } from "@/lib/liberazione";
+import { durataTipicaSeduta } from "./rotazione";
 
 /**
  * Modalità Servizio: la risposta a «cosa sta succedendo adesso».
@@ -117,11 +119,18 @@ function loadBookings(venueId: string, from: Date, to: Date) {
   });
 }
 
-function toServiceBooking(b: BookingRow, now: Date, etichette?: Map<string, string>): ServiceBooking {
+function toServiceBooking(
+  b: BookingRow,
+  now: Date,
+  etichette?: Map<string, string>,
+  tipica?: DurataTipica | null,
+): ServiceBooking {
   const minutesToArrival = Math.round((b.startsAt.getTime() - now.getTime()) / 60_000);
   const isLate =
     (b.status === "CONFIRMED" || b.status === "PENDING") && minutesToArrival < -LATE_GRACE_MIN;
-  const fine = new Date(b.startsAt.getTime() + b.durationMin * 60_000);
+  // La stessa formula della sala: si conta da quando si sono seduti, e la
+  // durata è quella misurata nel locale quando ce n'è una.
+  const liberazione = previsioneLiberazione(b, now, tipica);
 
   return {
     id: b.id,
@@ -147,7 +156,7 @@ function toServiceBooking(b: BookingRow, now: Date, etichette?: Map<string, stri
     depositStatus: b.depositStatus,
     minutesToArrival,
     lateBy: isLate ? Math.abs(minutesToArrival) : 0,
-    minutesToFree: b.status === "SEATED" ? Math.round((fine.getTime() - now.getTime()) / 60_000) : null,
+    minutesToFree: b.status === "SEATED" ? liberazione.minuti : null,
     source: b.source,
   };
 }
@@ -170,7 +179,7 @@ export async function getServiceSnapshot(
   // la colonna delle attese mostra come "avvisate" persone andate altrove.
   await expireStaleOffers(venueId, now);
 
-  const [venue, bookings, tables, waitlist, walkInOggi] = await Promise.all([
+  const [venue, bookings, tables, waitlist, walkInOggi, tipica] = await Promise.all([
     db.venue.findUnique({ where: { id: venueId }, select: { timezone: true, currency: true } }),
     loadBookings(venueId, startOfDay(now), endOfDay(now)),
     db.table.findMany({ where: { venueId }, select: { id: true, active: true } }),
@@ -184,6 +193,7 @@ export async function getServiceSnapshot(
         deletedAt: null,
       },
     }),
+    durataTipicaSeduta(venueId, { now }),
   ]);
 
   // Le etichette dei tavoli accostati: una lettura sola per tutta la
@@ -197,7 +207,7 @@ export async function getServiceSnapshot(
         ).map((t) => [t.id, t.label] as const),
   );
 
-  const tutte = bookings.map((b) => toServiceBooking(b, now, etichette));
+  const tutte = bookings.map((b) => toServiceBooking(b, now, etichette, tipica));
 
   const seated = tutte.filter((b) => b.status === "SEATED");
   const arrived = tutte.filter((b) => b.status === "ARRIVED");
