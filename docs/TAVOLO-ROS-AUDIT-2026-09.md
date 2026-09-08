@@ -41,6 +41,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | P2-2 · avvisi completi + due regole | ✅ **chiuso**: tutti e dieci gli avvisi hanno ora **problema → motivo → impatto → azione**, con l'impatto quantificato sui dati che ci sono. Le due regole nuove sono «sta per liberarsi» e «oltre la durata», e la seconda ha portato una regola generale: **un avviso senza impatto non si mostra** — un tavolo oltre la durata che nessuno aspetta non è un problema, è una serata che va bene |
 | P2-7 · impostazioni e «Altro» raggruppati | ✅ **chiuso**: le tredici schede sono quattro parti con un indice in cima (Il locale · Prenotazioni · Ospiti · Sistema), e «Altro» ha tre gruppi con l'etichetta, uguali su scrivania e telefono. L'indice sono ancore, non schede: funziona senza JavaScript, si può condividere il link a una parte, e il tasto indietro fa quello che ci si aspetta |
 | P2-5 · sintesi di Analytics | ✅ **chiuso**: «Com'è andata», cinque righe in cima con i problemi per primi. Solo fatti misurati — le misure che il locale non ha (food cost senza costi dichiarati, voti senza risposte) **non compaiono**, invece di diventare righe «dato non disponibile» |
+| P2-6 · menu admin da telefono | ✅ **chiuso**: da quattro pulsanti a icona per piatto a un solo «⋯» con le azioni scritte. Ci è entrata anche **«segna come finito»**, che è il gesto più frequente durante il servizio e prima richiedeva di aprire la scheda del piatto. Da tablet in su la fila di pulsanti resta: col mouse funziona meglio del menù |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -237,8 +238,9 @@ master prompt:
 6. ~~**Analytics mobile è il desktop compresso** (§28)~~ — chiuso l'8
    settembre: «Com'è andata» sta in cima, cinque righe con i problemi per
    primi e la base di ogni numero.
-7. **Il menu admin da telefono è rumoroso** (§21): frecce, modifica ed elimina
-   su ogni piatto. Va sostituito con un menu contestuale.
+7. ~~**Il menu admin da telefono è rumoroso** (§21)~~ — chiuso l'8 settembre:
+   da telefono un solo «⋯» con le azioni scritte a parole, più «segna come
+   finito» che prima si raggiungeva solo aprendo la scheda del piatto.
 8. **Il «+» centrale fa meno di quanto potrebbe** (§52): verificare quali
    azioni offre davvero e portarlo a sei gesti a una mano. `NON VERIFICATO` in
    dettaglio.
@@ -416,7 +418,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | ~~P2-3~~ | ~~**Durata contestuale** nel motore (§15), solo con campioni sufficienti~~ — **fatto l'8 settembre** | 5 | M | rotazione (fatta) | medio |
 | ~~P2-4~~ | ~~**«Cosa sapere di questo ospite»** dove serve: servizio, sala, prenotazione~~ — **fatto l'8 settembre** | 4 | S | nessuna | basso |
 | ~~P2-5~~ | ~~**Executive summary mobile** per Analytics (§28)~~ — **fatto l'8 settembre** | 4 | M | nessuna | basso |
-| P2-6 | **Menu mobile admin** con menu contestuale (§21) | 3 | S | nessuna | basso |
+| ~~P2-6~~ | ~~**Menu mobile admin** con menu contestuale (§21)~~ — **fatto l'8 settembre** | 3 | S | nessuna | basso |
 | ~~P2-7~~ | ~~**Impostazioni raggruppate** + «Altro» raggruppato (§3)~~ — **fatto l'8 settembre** | 3 | S | nessuna | basso |
 | P2-8 | **Deduplica e merge ospiti** (§19) | 4 | M | nessuna | alto (dati) |
 | P2-9 | **Giornata di servizio configurabile** (§12 dell'audit A) | 4 | M | decisione tua | medio |
