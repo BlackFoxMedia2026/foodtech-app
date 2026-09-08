@@ -6,7 +6,7 @@ import {
   getServiceInsights,
   getTopServiceInsights,
 } from "@/server/service-intelligence";
-import { addToWaitlist } from "@/server/waitlist";
+
 import { zonedDayAndMinute } from "@/server/availability";
 
 /**
@@ -50,6 +50,26 @@ const ADESSO = (() => {
   d.setHours(12, 0, 0, 0);
   return d;
 })();
+
+/**
+ * Qualcuno in coda, entrato dieci minuti prima dell'orologio della prova.
+ *
+ * `addToWaitlist` scrive `createdAt` con l'ora vera: con l'orologio fermo a
+ * mezzogiorno, una riga creata alle due di notte risultava in attesa da dodici
+ * ore — cioè «dimenticata», e le righe dimenticate non entrano negli
+ * abbinamenti (è una regola voluta, vedi ATTESA_DIMENTICATA_MIN).
+ */
+async function inCoda(guestName: string, partySize: number) {
+  return db.waitlistEntry.create({
+    data: {
+      venueId,
+      guestName,
+      partySize,
+      status: "WAITING",
+      createdAt: new Date(ADESSO.getTime() - 10 * 60_000),
+    },
+  });
+}
 
 async function prenota(opts: {
   minutiDaAdesso: number;
@@ -209,7 +229,7 @@ describe("rischio no-show", () => {
 describe("opportunità", () => {
   it("un tavolo libero e qualcuno in attesa: lo dice", async () => {
     await svuota();
-    await addToWaitlist(venueId, { guestName: "Coppia Attesa", partySize: 2 });
+    await inCoda("Coppia Attesa", 2);
 
     const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "waitlist_match");
     expect(avviso).toBeDefined();
@@ -220,7 +240,7 @@ describe("opportunità", () => {
   it("propone un solo abbinamento per volta, non uno per persona in coda", async () => {
     await svuota();
     for (const nome of ["Primo", "Secondo", "Terzo"]) {
-      await addToWaitlist(venueId, { guestName: nome, partySize: 2 });
+      await inCoda(nome, 2);
     }
     const abbinamenti = (await getServiceInsights(venueId, { now: ADESSO })).filter((a) => a.kind === "waitlist_match");
     // Proporre lo stesso tavolo a tre gruppi trasformerebbe un aiuto in rumore.
@@ -232,7 +252,7 @@ describe("opportunità", () => {
     // Il sei posti è occupato da due persone…
     await prenota({ minutiDaAdesso: -20, status: "SEATED", tableId: t6, partySize: 2 });
     // …e in coda c'è un gruppo da sei, che ci starebbe.
-    await addToWaitlist(venueId, { guestName: "Tavolata", partySize: 6 });
+    await inCoda("Tavolata", 6);
 
     const avviso = (await getServiceInsights(venueId, { now: ADESSO })).find((a) => a.kind === "oversized_table");
     expect(avviso).toBeDefined();
@@ -465,7 +485,7 @@ describe("ordine e quantità", () => {
   it("i problemi vengono prima delle opportunità", async () => {
     await svuota();
     await prenota({ minutiDaAdesso: -(NO_SHOW_RISK_MIN + 5), tableId: t2 });
-    await addToWaitlist(venueId, { guestName: "Attesa", partySize: 2 });
+    await inCoda("Attesa", 2);
 
     const avvisi = await getServiceInsights(venueId, { now: ADESSO });
     const primoOpportunity = avvisi.findIndex((a) => a.severity === "opportunity");
@@ -478,7 +498,7 @@ describe("ordine e quantità", () => {
     await prenota({ minutiDaAdesso: 30, partySize: 6, tableId: t6 });
     await prenota({ minutiDaAdesso: 35, partySize: 6, tableId: t6 });
     await prenota({ minutiDaAdesso: -(NO_SHOW_RISK_MIN + 5), tableId: t2 });
-    await addToWaitlist(venueId, { guestName: "Attesa", partySize: 2 });
+    await inCoda("Attesa", 2);
 
     const tre = await getTopServiceInsights(venueId, { now: ADESSO });
     expect(tre.length).toBeLessThanOrEqual(3);

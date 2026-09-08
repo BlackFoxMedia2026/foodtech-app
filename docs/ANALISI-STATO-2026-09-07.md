@@ -353,6 +353,11 @@ I dati personali di un cliente stanno in **sette posti**, non uno: scheda, note 
 4. **Le sedici tabelle senza codice** (§9): ogni giorno che restano lì è un invito a mostrare un dato che nessuno scrive.
 5. **Nessuna cache**: ogni pagina interroga il database a ogni caricamento. Oggi sostenibile, con dieci locali attivi va guardato.
 6. **La coda dei lavori non ha priorità né limite per fornitore**: un invio di massa e un promemoria urgente sono nella stessa fila.
+7. **«Oggi» è la giornata del processo, non quella del locale — e nessuno ha ancora deciso quando finisce la giornata di un ristorante.** Servizio, sala viva e centro controllo delimitano il giorno con `startOfDay(now)`, che usa il fuso del processo: su Vercel è UTC, e il locale è a Roma. Il risultato, per un locale italiano, è una finestra che va **dalle 02:00 di ieri alle 01:59 di oggi**, che per caso assomiglia a una giornata di servizio — ed è il motivo per cui nessuno se n'è accorto.
+
+   La correzione ovvia (delimitare il giorno nel fuso del locale) **non è la correzione giusta**: alle 00:30 la schermata Servizio si svuoterebbe mentre in sala ci sono ancora tavoli seduti, perché per il calendario è già domani. La cosa giusta è una **decisione di prodotto** — «la giornata di servizio comincia alle 05:00» come impostazione del locale — e poi usarla in tutti e diciannove i punti che oggi chiamano `startOfDay`. Fino a quel momento vale la finestra di adesso, che è documentata qui invece di essere una sorpresa.
+
+   Nei test lo stesso difetto è già stato disinnescato: le prove passano un orologio fisso, e l'intera batteria gira anche da UTC+14 e UTC-11 per scoprire subito chi crede di sapere che ore sono.
 
 ---
 

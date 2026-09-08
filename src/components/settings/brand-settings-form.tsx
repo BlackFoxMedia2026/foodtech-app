@@ -173,7 +173,10 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettingsInitial }
         </Card>
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
-        {success && <p className="text-sm text-sage">Brand salvato correttamente.</p>}
+        {/* Stessa parola di ogni altro modulo delle Impostazioni: un vocabolario
+            che cambia da una pagina all'altra fa dubitare che sia successo
+            davvero la stessa cosa. */}
+        {success && <p className="text-sm text-sage">Salvato.</p>}
 
         <div className="flex items-center gap-3">
           <Button variant="accent" onClick={handleSave} disabled={saving}>
