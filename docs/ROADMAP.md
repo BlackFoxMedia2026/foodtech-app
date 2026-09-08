@@ -169,6 +169,12 @@ costavano poco e valevano molto.
 
 ## Master prompt «Restaurant Operating System» (8 settembre 2026)
 
+- [x] **Percorsi end-to-end, in repository** (P0-2, primo cantiere): configurazione Playwright, dati di prova separati dalla demo, un solo accesso riusato, e il **primo percorso verde in 5,6 secondi** — dal widget alla scheda cliente, passando per conferma, arrivo, tavolo, conto e punti accreditati. `npm run test:e2e`
+      → il locale di prova ha un turno 00:00–23:59: le prove riguardano la funzione, non l'ora in cui girano
+      → scrivendolo sono emerse due cose sul prodotto, corrette **nel test** perché il codice aveva ragione: una prenotazione dal widget ha «Approva/Rifiuta» invece del menu degli stati, e il selettore dei tavoli propone già il primo tavolo che basta (il test lo deselezionava)
+- [ ] Restano quattro percorsi del §80: attesa→tavolo, gift card→uso parziale→residuo, campagna→clic→attribuzione, sondaggio→promotore→recensione. Il quinto (caparra→disdetta→rimborso) **non si può scrivere**: i pagamenti non esistono, e scriverlo con dati finti darebbe una copertura inventata
+
+
 Audit di stato contro il master prompt in 92 sezioni:
 [`docs/TAVOLO-ROS-AUDIT-2026-09.md`](TAVOLO-ROS-AUDIT-2026-09.md) — venti
 problemi reali, matrice di tutte le aree (EXISTS/PARTIAL/MISSING/IMPROVE),

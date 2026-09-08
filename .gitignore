@@ -42,3 +42,8 @@ next-env.d.ts
 .vercel
 .env*
 *.tsbuildinfo
+
+# Percorsi end-to-end: esiti, tracce e sessione di prova non si versionano
+/test-results/
+/tests/e2e/.auth/
+/tests/e2e/.report/
