@@ -27,6 +27,25 @@ import { defineConfig, devices } from "@playwright/test";
 const PORTA = 3000;
 export const BASE_URL = `http://localhost:${PORTA}`;
 
+/**
+ * Ogni esecuzione si presenta come un cliente diverso.
+ *
+ * Le difese pubbliche sono severe di proposito — cinque prenotazioni e dieci
+ * risposte al sondaggio ogni dieci minuti per indirizzo — e rilanciando i
+ * percorsi si esauriscono in fretta: la seconda esecuzione di fila leggeva
+ * «Troppe richieste di seguito», che è il prodotto che funziona bene mentre la
+ * prova sembra rotta.
+ *
+ * La soluzione **non** è allentare i limiti (una prova che gira con difese
+ * diverse da quelle vere non verifica il prodotto vero): è dichiarare un
+ * indirizzo di provenienza nuovo a ogni esecuzione, che è esattamente quello
+ * che il middleware si aspetta da un proxy. Che i limiti funzionino lo
+ * verificano i test unitari (`tests/limite-frequenza.test.ts`).
+ */
+export const IP_DI_PROVA = `10.${Math.floor(Math.random() * 250) + 1}.${
+  Math.floor(Math.random() * 250) + 1
+}.${Math.floor(Math.random() * 250) + 1}`;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   globalSetup: "./tests/e2e/global-setup.ts",
@@ -43,6 +62,7 @@ export default defineConfig({
     locale: "it-IT",
     timezoneId: "Europe/Rome",
     storageState: "tests/e2e/.auth/staff.json",
+    extraHTTPHeaders: { "x-forwarded-for": IP_DI_PROVA },
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

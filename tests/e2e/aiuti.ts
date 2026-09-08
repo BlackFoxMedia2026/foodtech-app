@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 
 /** Il locale creato dal seed dei percorsi, scritto da `global-setup`. */
-export function leggiVenue(): { venueId: string; roomId: string; userId: string; orgId: string } {
+export function leggiVenue(): {
+  venueId: string;
+  roomId: string;
+  userId: string;
+  orgId: string;
+  surveyToken: string;
+  surveyTokenBasso: string;
+} {
   return JSON.parse(readFileSync("tests/e2e/.auth/venue.json", "utf8"));
 }
 

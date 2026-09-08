@@ -1,7 +1,7 @@
 import { chromium, request } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { seedE2E, E2E } from "../../prisma/seed-e2e";
-import { BASE_URL } from "../../playwright.config";
+import { BASE_URL, IP_DI_PROVA } from "../../playwright.config";
 
 /**
  * Prima di tutti i percorsi: dati puliti e **un solo accesso**.
@@ -20,7 +20,13 @@ export default async function globalSetup() {
   await mkdir("tests/e2e/.auth", { recursive: true });
   await writeFile("tests/e2e/.auth/venue.json", JSON.stringify(dati, null, 1));
 
-  const api = await request.newContext({ baseURL: BASE_URL });
+  // Anche l'accesso ha il suo limite (dieci ogni dieci minuti): l'esecuzione
+  // si presenta con lo stesso indirizzo di provenienza dei percorsi, così una
+  // sessione di lavoro non si chiude fuori da sola.
+  const api = await request.newContext({
+    baseURL: BASE_URL,
+    extraHTTPHeaders: { "x-forwarded-for": IP_DI_PROVA },
+  });
   const { csrfToken } = await (await api.get("/api/auth/csrf")).json();
   const esito = await api.post("/api/auth/callback/credentials", {
     form: {

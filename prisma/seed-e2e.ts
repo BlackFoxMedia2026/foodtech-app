@@ -79,6 +79,10 @@ export async function seedE2E() {
       currency: "EUR",
       phone: "+39 02 000 0000",
       email: "prova@tavolo.test",
+      // Il profilo pubblico serve al percorso del sondaggio: da qui nasce da
+      // sola la prima destinazione dove mandare chi è contento (vedi
+      // `ensureReviewLinks`), e il percorso verifica anche quello.
+      googleBusinessUrl: "https://esempio.test/recensione-e2e",
       // Le due regole della raccolta punti: dichiarate, altrimenti il percorso
       // del conto non potrebbe usare i punti.
       loyaltyPointsPerEuro: 1,
@@ -155,7 +159,68 @@ export async function seedE2E() {
     },
   });
 
-  return { userId: user.id, orgId: org.id, venueId: venue.id, roomId: room.id };
+  /**
+   * Una visita di ieri, chiusa, col suo sondaggio già inviato.
+   *
+   * Serve al percorso «sondaggio → recensione»: il messaggio lo manda un
+   * lavoro pianificato il giorno dopo la visita, e un percorso non può
+   * aspettare domani. Il lavoro pianificato ha già i suoi test; qui si
+   * verifica quello che succede **dal link in poi**, che è la parte che
+   * nessun test unitario percorre.
+   */
+  const ieri = new Date(Date.now() - 26 * 3_600_000);
+  const ospite = await db.guest.create({
+    data: {
+      venueId: venue.id,
+      firstName: "Chiara",
+      lastName: "Prova",
+      email: "chiara.prova@tavolo.test",
+      marketingOptIn: true,
+    },
+  });
+  const visita = await db.booking.create({
+    data: {
+      venueId: venue.id,
+      guestId: ospite.id,
+      partySize: 2,
+      startsAt: ieri,
+      durationMin: 105,
+      status: "COMPLETED",
+      source: "PHONE",
+      seatedAt: ieri,
+      closedAt: new Date(ieri.getTime() + 105 * 60_000),
+    },
+  });
+  const sondaggio = await db.survey.create({
+    data: {
+      venueId: venue.id,
+      guestId: ospite.id,
+      bookingId: visita.id,
+      token: `${E2E.prefisso}sondaggio`,
+      sentAt: new Date(),
+    },
+  });
+
+  // Un secondo link, per la strada opposta: un voto basso. Ne serve un altro
+  // perché **un sondaggio si risponde una volta sola** — è una difesa, non un
+  // limite, e il percorso del promotore ha già consumato il primo.
+  const sondaggioBasso = await db.survey.create({
+    data: {
+      venueId: venue.id,
+      guestId: ospite.id,
+      token: `${E2E.prefisso}sondaggio-basso`,
+      sentAt: new Date(),
+    },
+  });
+
+  return {
+    userId: user.id,
+    orgId: org.id,
+    venueId: venue.id,
+    roomId: room.id,
+    surveyToken: sondaggio.token,
+    surveyTokenBasso: sondaggioBasso.token,
+  };
 }
 
 // Eseguibile a mano: `npx tsx prisma/seed-e2e.ts`
