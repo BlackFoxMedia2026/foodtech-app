@@ -188,10 +188,12 @@ export function RoomLiveView({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      {/* Come in Servizio: qui si lavora, e ottanta pixel di titolo sono
+          spazio tolto alla mappa. L'identità editoriale resta dove si legge. */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-lg font-semibold leading-none">Sala</h1>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Servizio</p>
-          <h1 className="text-display text-3xl">Sala</h1>
         </div>
         <div className="flex items-center gap-3">
           <ServiceSwitch />
@@ -554,7 +556,9 @@ function TavoloRiga({
               <Icona className="h-3 w-3" aria-hidden="true" />
               {TABLE_LIVE_LABELS[stato]}
             </span>
-            <span className="text-display text-lg">{table.label}</span>
+            {/* L'etichetta del tavolo si legge da un metro di distanza: sans
+                semibold, non serif. */}
+            <span className="text-base font-semibold">{table.label}</span>
             <span className="text-xs text-muted-foreground">{table.seats} posti</span>
           </div>
 

@@ -569,6 +569,42 @@ Avvisi del servizio con severità, raggruppamento e soglia oltre la quale un rit
 
 ---
 
+# Stato dell'applicazione — 8 settembre, pomeriggio
+
+Questo documento è l'audit e non si riscrive. Qui si tiene il conto di cosa è
+stato **applicato**, perché un audit senza questo conto diventa un elenco di
+buoni propositi.
+
+**La lista dei difetti (P0 e la maggior parte di P1-P2) è chiusa**: severità
+sugli avvisi con soglia e raggruppamento, tempi in ore, numeri duplicati
+rimossi, data all'italiana, widget con la disponibilità prima dei dati,
+libero≠prenotato a colpo d'occhio, «Altro» diviso in famiglie, numeri nelle
+card del Marketing, ricerca e filtri nel menu, scheletri di caricamento, menu
+pubblico con la navigazione per categorie, sala viva completa (conto,
+liberazione, prossimo), avvisi in quattro parti.
+
+**La direzione C — Premium Control Room — è in prova su due schermate**
+(Servizio e Sala, la 1 e la 5 delle cinque da ridisegnare). Cosa cambia, e
+cosa si è misurato:
+
+| | Prima | Dopo |
+|---|---|---|
+| Intestazione di Servizio | serif, ~90 px | sans, 44 px |
+| I sei numeri | sei riquadri, ~110 px, numeri serif | una fascia, 52 px, sans tabellari |
+| Avvisi non urgenti | riquadro come gli urgenti (~170 px) | una riga, con il «perché» che si apre |
+| Dove comincia il lavoro (1500×1100) | **850 px** — sotto la piega | **~690 px** |
+| Avvisi visibili su telefono | 2 | 3 |
+| Serif nei numeri operativi | ore, KPI, etichette dei tavoli | nessuno |
+
+Il resto della direzione C — Attesa e Conto — e le quattro voci ancora aperte
+della roadmap (**un solo vocabolario di navigazione**, **divulgazione
+progressiva** nel modulo prenotazione, **componente tabella unico**, **segno
+visivo per stima/misura**) aspettano una parola su questa prova: estendere o
+tornare indietro. Il P3 (consolidamento delle card, scala di densità, modalità
+tablet) resta aperto per scelta.
+
+---
+
 # Final Recommendation
 
 **Non ridisegnare Tavolo. Togliere rumore dalle quattro schermate dove si lavora.**

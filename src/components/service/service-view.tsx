@@ -102,10 +102,24 @@ export function ServiceView({
 
   return (
     <div className="flex flex-col gap-5 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      {/*
+        L'intestazione qui è **compatta di proposito**, e non per gusto.
+
+        «Servizio» in serif a tre righe di altezza è l'identità editoriale di
+        Tavolo, e va benissimo in Panoramica o in Analytics — dove si legge.
+        Qui si lavora: prima di questa modifica, fra titolo, sei riquadri e
+        cinque avvisi, la prima colonna operativa cominciava a 850 px, cioè
+        **sotto la piega** su un portatile. Ottanta pixel di titolo alle 21:30
+        sono una prenotazione che non si vede.
+        
+        È la direzione C dell'audit visivo (*Premium Control Room*):
+        l'identità resta dove si legge e cede il passo alla densità dove si
+        lavora.
+      */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-lg font-semibold leading-none">Servizio</h1>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">{venueName}</p>
-          <h1 className="text-display text-3xl">Servizio</h1>
         </div>
 
         <div className="flex items-center gap-3">
@@ -131,7 +145,7 @@ export function ServiceView({
           intestazione più sei riquadri spingevano il primo avviso sotto la
           piega, e in servizio si scorreva due schermate per sapere cosa fare.
           Su schermo largo l'ordine resta quello di prima: là ci sta tutto. */}
-      <section className="order-2 grid grid-cols-3 gap-2 lg:order-1 lg:grid-cols-6">
+      <section className="surface order-2 grid grid-cols-3 divide-x divide-border rounded-md border border-border lg:order-1 lg:grid-cols-6">
         <Numero
           icona={Users}
           etichetta="In sala"
@@ -398,20 +412,36 @@ function Numero({
   /** Serve a tenerne alcuni fuori dal telefono: là contano le azioni. */
   className?: string;
 }) {
+  /**
+   * Una cella di una fascia, non un riquadro.
+   *
+   * Sei riquadri con la loro cornice e il loro respiro erano 110 px di
+   * altezza per dire sei numeri. In una fascia sola sono 52, e i numeri si
+   * leggono meglio: **sans e tabellari**, non serif. Il serif nei numeri è la
+   * cosa che l'audit visivo ha segnalato come «premium che costa
+   * leggibilità» — e un numero che si guarda di sfuggita mentre si cammina
+   * non è il posto dove fare bella figura.
+   */
   return (
-    <div
-      className={cn(
-        "surface flex flex-col rounded-md border px-2.5 py-2 lg:px-3 lg:py-3",
-        allarme ? "border-accent/60" : "border-border",
-        className,
-      )}
-    >
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground lg:gap-1.5 lg:text-[11px] lg:tracking-widest">
-        <Icona className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span className="truncate">{etichetta}</span>
+    <div className={cn("flex items-center gap-2 px-3 py-2", className)}>
+      <Icona
+        className={cn("h-4 w-4 shrink-0", allarme ? "text-accent" : "text-muted-foreground")}
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <p
+          className={cn(
+            "text-lg font-semibold leading-none tabular-nums",
+            allarme && "text-accent",
+          )}
+        >
+          {valore}
+        </p>
+        <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">
+          {etichetta}
+          {nota && <span className="normal-case tracking-normal text-tertiary-foreground"> · {nota}</span>}
+        </p>
       </div>
-      <p className={cn("mt-0.5 text-display text-xl lg:text-2xl", allarme && "text-accent")}>{valore}</p>
-      {nota && <p className="truncate text-[10px] text-tertiary-foreground lg:text-[11px]">{nota}</p>}
     </div>
   );
 }
