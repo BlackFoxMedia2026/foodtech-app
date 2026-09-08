@@ -153,7 +153,7 @@ function PannelloGiftCard({
   }
 
   return (
-    <div className="space-y-2 rounded-md border border-border p-3">
+    <div className="space-y-2 riquadro p-3">
       <div className="space-y-1.5">
         <Label htmlFor="gc-code">Codice della gift card</Label>
         <div className="flex gap-2">
@@ -275,12 +275,12 @@ function PannelloPunti({
     onChiudi();
   }
 
-  if (error && !saldo) return <p className="rounded-md border border-border p-3 text-sm text-destructive">{error}</p>;
-  if (!saldo) return <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">Leggo i punti…</p>;
+  if (error && !saldo) return <p className="riquadro p-3 text-sm text-destructive">{error}</p>;
+  if (!saldo) return <p className="riquadro p-3 text-sm text-muted-foreground">Leggo i punti…</p>;
 
   if (!saldo.attiva) {
     return (
-      <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
+      <p className="riquadro p-3 text-sm text-muted-foreground">
         La raccolta punti è spenta. Si accende dalle Impostazioni, dicendo quanti punti dà un euro e quanto vale un
         punto.
       </p>
@@ -289,14 +289,14 @@ function PannelloPunti({
 
   if (saldo.punti <= 0) {
     return (
-      <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
+      <p className="riquadro p-3 text-sm text-muted-foreground">
         Questo cliente non ha ancora punti. Ne accumula chiudendo questo conto.
       </p>
     );
   }
 
   return (
-    <div className="space-y-2 rounded-md border border-border p-3">
+    <div className="space-y-2 riquadro p-3">
       <p className="text-sm">
         Ha <strong className="tabular-nums">{saldo.punti} punti</strong>, che valgono{" "}
         <strong className="tabular-nums">{euro(saldo.valoreCents ?? 0)}</strong>.

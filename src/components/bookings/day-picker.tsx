@@ -30,7 +30,7 @@ export function DayPicker({ value }: { value: string }) {
   });
 
   return (
-    <div className="flex items-center gap-1 rounded-md border border-border bg-card p-1">
+    <div className="flex items-center gap-1 riquadro bg-card p-1">
       <Button size="icon" variant="ghost" onClick={() => shift(-1)} aria-label="Giorno precedente">
         <ChevronLeft className="h-4 w-4" />
       </Button>

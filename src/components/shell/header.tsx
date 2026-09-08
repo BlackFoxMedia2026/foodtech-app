@@ -108,14 +108,26 @@ export function Header({
                     // etichette più "Altro" non ci stavano, e una barra che
                     // scorre di lato è una barra che nasconde metà prodotto.
                     // 44 px di altezza minima perché su tablet si tocca.
-                    "relative z-10 flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors lg:min-w-0 lg:justify-start lg:px-3.5",
+                    // Su tablet l'etichetta sta **sotto** l'icona, come nella
+                    // barra in basso del telefono: in fila i sei nomi
+                    // chiedevano 671 px e lo spazio è 522, e infatti la
+                    // pillola veniva tagliata e finiva sotto la sfera
+                    // dell'agente. Sopra i 1024 px tornano accanto.
+                    "relative z-10 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium leading-tight transition-colors md:min-w-0 lg:flex-row lg:gap-2 lg:px-3.5 lg:py-2 lg:text-sm",
                     active ? "text-forest" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
+                  {/*
+                    Su tablet c'erano **sei icone senza nome**: il telefono ha
+                    le etichette nella barra in basso, la scrivania le ha
+                    accanto alle icone, e il tablet — l'unico schermo che una
+                    hostess tiene su un supporto — non le aveva. Da 768 px in
+                    su si legge la parola.
+                  */}
                   <span className="hidden xl:inline">{item.label}</span>
-                  <span className="hidden lg:inline xl:hidden">{item.shortLabel ?? item.label}</span>
-                  <span className="sr-only lg:hidden">{item.label}</span>
+                  <span className="hidden md:inline xl:hidden">{item.shortLabel ?? item.label}</span>
+                  <span className="sr-only md:hidden">{item.label}</span>
                 </Link>
               );
             })}
@@ -123,14 +135,16 @@ export function Header({
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
-                  "relative z-10 flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors lg:px-3.5",
+                  "relative z-10 flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium transition-colors lg:px-3.5 lg:py-2 lg:text-sm",
                   secondaryActive
                     ? "bg-cream text-forest"
                     : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
                 )}
               >
-                Altro
-                <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="flex flex-col items-center gap-0.5 lg:flex-row lg:gap-1.5">
+                  Altro
+                  <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 {/*

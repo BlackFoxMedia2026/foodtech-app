@@ -127,7 +127,7 @@ export function LoyaltySettings({
           </div>
 
           {attiva ? (
-            <p className="rounded-md border border-border bg-current/5 p-3 text-sm">
+            <p className="riquadro bg-current/5 p-3 text-sm">
               Un conto da 60 € dà{" "}
               <strong className="tabular-nums">
                 {esempioPunti} {esempioPunti === 1 ? "punto" : "punti"}
@@ -155,7 +155,7 @@ export function LoyaltySettings({
               riporta le persone. Il premio lo decide il locale — non sappiamo
               cosa può permettersi di regalare. */}
           {attiva && (
-            <div className="rounded-md border border-border p-3">
+            <div className="riquadro p-3">
               <p className="text-sm font-medium">Un traguardo, se vuoi</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Facoltativo. Senza, i punti restano solo uno sconto.

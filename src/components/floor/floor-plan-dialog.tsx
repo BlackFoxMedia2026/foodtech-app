@@ -99,7 +99,7 @@ export function FloorPlanDialog({
             <img
               src={displayUrl}
               alt={`Piantina di ${roomName}`}
-              className="max-h-64 w-full rounded-md border border-border object-contain"
+              className="max-h-64 w-full riquadro object-contain"
             />
           ) : (
             <button

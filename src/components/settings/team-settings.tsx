@@ -112,7 +112,7 @@ export function TeamSettings({
 
       <CardContent className="space-y-3">
         {apri && canManage && (
-          <form onSubmit={invita} className="space-y-3 rounded-md border border-border p-3">
+          <form onSubmit={invita} className="space-y-3 riquadro p-3">
             <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
               <div className="space-y-1.5">
                 <Label htmlFor="team-email">Email della persona</Label>
@@ -205,7 +205,7 @@ export function TeamSettings({
         {membri.map((m) => (
           <div
             key={m.membershipId}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3 text-sm"
+            className="flex flex-wrap items-center justify-between gap-3 riquadro p-3 text-sm"
           >
             <div className="flex min-w-0 items-center gap-3">
               <Avatar className="h-8 w-8">

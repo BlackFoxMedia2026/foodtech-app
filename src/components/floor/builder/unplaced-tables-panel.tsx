@@ -49,7 +49,7 @@ export function UnplacedTablesPanel({ builder }: { builder: RoomBuilder }) {
       </div>
 
       {creating && (
-        <form onSubmit={submit} method="post" className="flex flex-col gap-1.5 rounded-md border border-border bg-secondary/40 p-2">
+        <form onSubmit={submit} method="post" className="flex flex-col gap-1.5 riquadro bg-secondary/40 p-2">
           <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Nome (es. T20)" className="h-7 text-xs" autoFocus />
           <div className="flex gap-1.5">
             <Input value={seats} onChange={(e) => setSeats(e.target.value)} placeholder="Posti" inputMode="numeric" className="h-7 w-16 text-xs" />
@@ -83,7 +83,7 @@ export function UnplacedTablesPanel({ builder }: { builder: RoomBuilder }) {
               e.dataTransfer.setData("application/x-table-id", t.id);
               e.dataTransfer.effectAllowed = "move";
             }}
-            className="flex cursor-grab items-center justify-between rounded-md border border-border bg-card px-2 py-1.5 text-xs shadow-sm active:cursor-grabbing"
+            className="flex cursor-grab items-center justify-between riquadro bg-card px-2 py-1.5 text-xs shadow-sm active:cursor-grabbing"
           >
             <span className="font-medium">{t.label}</span>
             <span className="text-muted-foreground">{t.seats} posti</span>

@@ -407,7 +407,7 @@ export const RoomTableNode = memo(
                 style={{ transform: "translateX(-50%) scale(var(--ui-scale, 1))", transformOrigin: "top center" }}
               >
                 {isBooked && primaryBooking ? (
-                  <div className="flex w-max max-w-[180px] flex-col items-center gap-0 rounded-md border border-border bg-card/95 px-2 py-1 shadow-sm backdrop-blur-sm">
+                  <div className="flex w-max max-w-[180px] flex-col items-center gap-0 riquadro bg-card/95 px-2 py-1 shadow-sm backdrop-blur-sm">
                     <span className="whitespace-nowrap text-[10px] font-medium text-accent-strong">
                       {formatTime(primaryBooking.startsAt)}
                     </span>

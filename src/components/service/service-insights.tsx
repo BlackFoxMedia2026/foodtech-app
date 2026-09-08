@@ -70,7 +70,7 @@ export function ServiceInsights({
 
   return (
     <div className="space-y-2">
-      <ul className={cn("grid gap-2", !compact && urgenti.length > 1 && "lg:grid-cols-2")}>
+      <ul className={cn("grid gap-2", !compact && urgenti.length > 1 && "md:grid-cols-2")}>
       {urgenti.map((i) => {
         const stile = STILE[i.severity];
         const Icona = stile.icona;
@@ -128,7 +128,7 @@ export function ServiceInsights({
       </ul>
 
       {altri.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
+        <ul className="divide-y divide-border overflow-hidden riquadro">
           {altri.map((i) => {
             const stile = STILE[i.severity];
             const Icona = stile.icona;

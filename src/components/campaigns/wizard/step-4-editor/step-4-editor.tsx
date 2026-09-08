@@ -104,7 +104,7 @@ export function Step4Editor() {
         </div>
         <div className="min-w-0 space-y-2">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Anteprima live</p>
-          <div className="flex justify-center rounded-md border border-border bg-secondary/30 p-3">
+          <div className="flex justify-center riquadro bg-secondary/30 p-3">
             <iframe
               title="Anteprima email"
               srcDoc={previewHtml}
@@ -113,7 +113,7 @@ export function Step4Editor() {
             />
           </div>
         </div>
-        <div className="min-w-0 space-y-6 rounded-md border border-border p-4">
+        <div className="min-w-0 space-y-6 riquadro p-4">
           <BlockInspector block={selectedBlock} onChange={updateBlock} onFieldFocus={setFocusedField} />
           {showVariablesPanel && (
             <div className="border-t border-border pt-4">

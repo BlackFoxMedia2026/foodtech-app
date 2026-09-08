@@ -59,7 +59,7 @@ export function Briefing({
   ].filter((v): v is { icona: typeof Star; testo: string; href: string; forte?: boolean } => Boolean(v));
 
   return (
-    <section className="rounded-md border border-border bg-current/[0.04] p-4">
+    <section className="riquadro bg-current/[0.04] p-4">
       <p className="text-xs uppercase tracking-widest text-muted-foreground">Oggi, in breve</p>
 
       <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-lg">

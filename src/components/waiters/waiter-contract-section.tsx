@@ -146,7 +146,7 @@ export function WaiterContractSection({ waiterId, open }: { waiterId: string; op
       {mode === "view" && (
         <>
           {current ? (
-            <div className="space-y-2 rounded-md border border-border p-3">
+            <div className="space-y-2 riquadro p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium text-card-foreground">{staffContractTypeLabel(current.contractType)}</p>
                 <Badge tone={CONTRACT_STATUS_BADGE_TONE[getContractStatus(current)]}>{getContractStatusDetail(current)}</Badge>
@@ -203,7 +203,7 @@ export function WaiterContractSection({ waiterId, open }: { waiterId: string; op
                 Storico contratti ({history.length})
               </button>
               {historyExpanded && (
-                <div className="space-y-1.5 rounded-md border border-border p-2.5">
+                <div className="space-y-1.5 riquadro p-2.5">
                   {history.map((c) => (
                     <div key={c.id} className="space-y-1 border-b border-border/60 py-1.5 last:border-0 last:pb-0">
                       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">

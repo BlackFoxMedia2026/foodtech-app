@@ -120,7 +120,7 @@ export function LoyaltyPanel({
         )}
 
         {apri && (
-          <div className="space-y-2 rounded-md border border-border p-3">
+          <div className="space-y-2 riquadro p-3">
             <div className="grid gap-3 sm:grid-cols-[7rem_1fr]">
               <div className="space-y-1.5">
                 <Label htmlFor="ap-punti">Punti</Label>

@@ -84,7 +84,7 @@ export function Step6Send() {
         <p className="text-sm text-muted-foreground">Controlla la checklist prima di procedere.</p>
       </div>
 
-      <ul className="space-y-2 rounded-md border border-border p-4">
+      <ul className="space-y-2 riquadro p-4">
         <ChecklistRow ok={hasUnsubscribe} label="Link di disiscrizione presente" />
         <ChecklistRow ok={hasRecipients} label={`Destinatari validi (${state.segmentPreview?.finalRecipients ?? 0})`} />
         <ChecklistRow ok label="Consenso marketing rispettato (sempre applicato)" />
@@ -103,7 +103,7 @@ export function Step6Send() {
         </Button>
       </div>
 
-      <div className="space-y-2 rounded-md border border-border p-4">
+      <div className="space-y-2 riquadro p-4">
         <Label htmlFor="scheduledAt">Programma invio</Label>
         <div className="flex gap-2">
           <Input id="scheduledAt" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />

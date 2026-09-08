@@ -33,7 +33,7 @@ function BookingCard({
       ref={setNodeRef}
       style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
       className={cn(
-        "space-y-1.5 rounded-md border border-border bg-card p-2.5 shadow-sm transition-shadow",
+        "space-y-1.5 riquadro bg-card p-2.5 shadow-sm transition-shadow",
         isDragging && "opacity-40",
       )}
     >

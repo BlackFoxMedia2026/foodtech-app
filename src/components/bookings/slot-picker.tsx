@@ -282,7 +282,7 @@ function Alternative({
             key={g.date}
             type="button"
             onClick={() => onPickDay(g.date, g.primoOrario.startsAt)}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-border px-3 text-sm transition-colors hover:bg-secondary"
+            className="inline-flex min-h-[44px] items-center gap-2 riquadro px-3 text-sm transition-colors hover:bg-secondary"
           >
             <span>
               {g.label} alle <strong>{g.primoOrario.label}</strong>

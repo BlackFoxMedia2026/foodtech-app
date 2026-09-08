@@ -68,18 +68,18 @@ export function Step5PreviewTest() {
         </div>
         <div className="space-y-1">
           <Label>Nome mittente</Label>
-          <p className="rounded-md border border-border bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">{state.senderName}</p>
+          <p className="riquadro bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">{state.senderName}</p>
         </div>
         <div className="space-y-1">
           <Label>Email mittente</Label>
-          <p className="rounded-md border border-border bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">{state.senderEmail}</p>
+          <p className="riquadro bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">{state.senderEmail}</p>
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
         Mittente configurato a livello di provider — la personalizzazione per singola campagna non è ancora disponibile.
       </p>
 
-      <div className="rounded-md border border-border bg-secondary/50 p-3 text-sm">
+      <div className="riquadro bg-secondary/50 p-3 text-sm">
         <p>Destinatari: {state.segmentPreview?.finalRecipients ?? "—"}</p>
       </div>
 
@@ -100,7 +100,7 @@ export function Step5PreviewTest() {
             <Smartphone className="h-3.5 w-3.5" /> Mobile
           </button>
         </div>
-        <div className="flex justify-center rounded-md border border-border bg-secondary/30 p-4">
+        <div className="flex justify-center riquadro bg-secondary/30 p-4">
           <iframe
             title="Anteprima email"
             srcDoc={html}
@@ -110,7 +110,7 @@ export function Step5PreviewTest() {
         </div>
       </div>
 
-      <div className="space-y-2 rounded-md border border-border p-4">
+      <div className="space-y-2 riquadro p-4">
         <Label htmlFor="test-email">Invia email di test</Label>
         <div className="flex gap-2">
           <Input

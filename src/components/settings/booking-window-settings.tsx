@@ -207,7 +207,7 @@ export function BookingWindowSettings({
             </p>
           </div>
 
-          <p className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
+          <p className="flex items-start gap-2 riquadro p-3 text-sm">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span>
               Dal sito si prenota{" "}

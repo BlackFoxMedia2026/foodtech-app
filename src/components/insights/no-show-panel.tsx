@@ -77,13 +77,13 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
 
       <CardContent className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Coperti persi</p>
             <p className="mt-1 text-display text-2xl tabular-nums">{report.copertiPersi}</p>
             <p className="text-xs text-muted-foreground">tavoli tenuti e non usati</p>
           </div>
 
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
               {report.valoreCoperto.tipo === "misurato" ? "Valgono" : "Valore stimato"}
               {/*
@@ -116,7 +116,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
             </p>
           </div>
 
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Chi ripete</p>
             <p className="mt-1 text-display text-2xl tabular-nums">{report.recidiviTotali}</p>
             <p className="text-xs text-muted-foreground">
@@ -196,7 +196,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
         </div>
 
         {report.recidivi.length > 0 && (
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-sm font-medium">
               {report.recidivi.length === 1
                 ? "Un cliente è mancato più di una volta"

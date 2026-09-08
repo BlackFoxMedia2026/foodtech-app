@@ -130,7 +130,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">{automation.why}</p>
 
-        <div className="rounded-md border border-border p-3">
+        <div className="riquadro p-3">
           <p className="flex items-center gap-2 text-sm font-medium">
             <Users className="h-4 w-4 text-accent" aria-hidden="true" />
             {automation.toccherebbeOggi === 0
@@ -197,7 +197,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
         </div>
 
         {apriTesto && (
-          <div className="space-y-3 rounded-md border border-border p-3">
+          <div className="space-y-3 riquadro p-3">
             <div className="space-y-1.5">
               <Label htmlFor={`subject-${automation.key}`}>Oggetto</Label>
               <Input
@@ -224,7 +224,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
           </div>
         )}
 
-        <div className="rounded-md border border-border p-3">
+        <div className="riquadro p-3">
           <label htmlFor={`omaggio-${automation.key}`} className="flex min-h-[44px] cursor-pointer items-center gap-2">
             <Switch
               id={`omaggio-${automation.key}`}

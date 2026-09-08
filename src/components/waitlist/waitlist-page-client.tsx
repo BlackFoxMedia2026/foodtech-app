@@ -71,7 +71,7 @@ export function WaitlistPageClient({
       </header>
 
       {entries.length > 0 && (
-        <section className="surface grid grid-cols-3 divide-x divide-border rounded-md border border-border">
+        <section className="surface grid grid-cols-3 divide-x divide-border riquadro">
           {/* «2 in attesa» accanto a «9 persone in coda» si leggeva come una
               contraddizione: sono gruppi, non persone. Un numero, un nome. */}
           <Stat icon={ListOrdered} label="Gruppi in attesa" value={summary.inAttesa} />

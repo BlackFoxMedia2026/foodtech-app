@@ -125,7 +125,7 @@ export function AssignBookingDialog({
                   type="button"
                   disabled={pendingBookingId !== null}
                   onClick={() => handlePick(b)}
-                  className="flex w-full items-center justify-between gap-2 rounded-md border border-border p-2.5 text-left transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center justify-between gap-2 riquadro p-2.5 text-left transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-accent-strong">{formatTime(b.startsAt)}</p>

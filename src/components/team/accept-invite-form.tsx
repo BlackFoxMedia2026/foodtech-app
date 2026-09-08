@@ -60,7 +60,7 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
 
   if (fatto) {
     return (
-      <div className="surface rounded-md border border-border p-6 text-center">
+      <div className="surface riquadro p-6 text-center">
         <CheckCircle2 className="mx-auto h-8 w-8 text-sage" aria-hidden="true" />
         <h1 className="mt-3 text-display text-2xl">Ci sei</h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -79,7 +79,7 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
   }
 
   return (
-    <form onSubmit={accetta} className="surface space-y-4 rounded-md border border-border p-6">
+    <form onSubmit={accetta} className="surface space-y-4 riquadro p-6">
       <div>
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Invito</p>
         <h1 className="mt-1 text-display text-2xl">{invito.venueName}</h1>
@@ -90,7 +90,7 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
       </div>
 
       {invito.haGiaUnAccount ? (
-        <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
+        <p className="riquadro p-3 text-sm text-muted-foreground">
           Questo indirizzo ha già un accesso a Tavolo: non serve una password nuova. Accettando, il
           locale si aggiunge a quelli che vedi già.
         </p>

@@ -73,7 +73,7 @@ export function NpsPanel({ stats, funnel }: { stats: SurveyStats; funnel?: Revie
             </p>
             <div className="mt-2 grid grid-cols-4 gap-2">
               {stats.trend.map((t) => (
-                <div key={t.from} className="rounded-md border border-border px-2 py-1.5">
+                <div key={t.from} className="riquadro px-2 py-1.5">
                   <p className="text-sm">
                     {t.nps != null ? (t.nps > 0 ? `+${t.nps}` : t.nps) : "—"}
                   </p>
@@ -120,7 +120,7 @@ export function NpsPanel({ stats, funnel }: { stats: SurveyStats; funnel?: Revie
                 const t = TONO[c.sentiment];
                 const Icona = t.icona;
                 return (
-                  <li key={c.id} className="rounded-md border border-border p-3">
+                  <li key={c.id} className="riquadro p-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Icona className={cn("h-3.5 w-3.5", t.classe)} aria-hidden="true" />
                       <span className={t.classe}>{c.score}/10</span>

@@ -81,7 +81,7 @@ export function BookingDetailDialog({
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         {confirmingRemove ? (
-          <div className="space-y-2 rounded-md border border-border p-3">
+          <div className="space-y-2 riquadro p-3">
             <p className="text-sm text-card-foreground">Rimuovere questo tavolo dalla prenotazione?</p>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setConfirmingRemove(false)} disabled={removing}>

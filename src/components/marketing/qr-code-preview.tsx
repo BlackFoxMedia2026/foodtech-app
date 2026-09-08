@@ -37,7 +37,7 @@ export function QrCodePreview({ name, value, size = 160 }: { name: string; value
   if (!dataUrl) {
     return (
       <div
-        className="animate-pulse rounded-md border border-border bg-secondary"
+        className="animate-pulse riquadro bg-secondary"
         style={{ width: size, height: size }}
       />
     );
@@ -51,7 +51,7 @@ export function QrCodePreview({ name, value, size = 160 }: { name: string; value
         alt={`QR code per ${name}`}
         width={size}
         height={size}
-        className="rounded-md border border-border bg-white p-2"
+        className="riquadro bg-white p-2"
       />
       <a
         href={dataUrl}

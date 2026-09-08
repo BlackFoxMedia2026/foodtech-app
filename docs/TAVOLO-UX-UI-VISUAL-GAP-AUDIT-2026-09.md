@@ -642,8 +642,30 @@ italiano. Era un *hydration mismatch*: React buttava via l'HTML del server per
 quella cella e il numero cambiava fra il primo disegno e il secondo. Adesso il
 raggruppamento è dichiarato.
 
-Resta il P3: consolidamento delle card, scala di densità applicata al resto,
-modalità tablet.
+**Il P3, chiuso l'8 settembre.** Ed è venuto fuori diverso da come era
+scritto:
+
+- **le card**: non erano 190 oggetti diversi, era **un riquadro ripetuto
+  ~120 volte** con quattro spaziature e una variante tratteggiata. Il
+  linguaggio aveva già due livelli dichiarati (`.surface`, le card che
+  galleggiano, e `.recessed`, i pozzi incisi): quello usato più di tutti — un
+  riquadro semplice, né alzato né inciso — non era dichiarato da nessuna
+  parte. Adesso è `.riquadro`, accanto agli altri due, e cambiarne il raggio
+  o il bordo è una modifica invece di centoventi. **Niente è cambiato a
+  vedersi**: è cambiato che esiste un posto dove cambiarlo;
+- **la scala di densità**: `.denso` (dove si lavora) e `.comodo` (dove si
+  legge) dichiarate nello stesso posto, più le due densità del componente
+  tabella. È del contesto, non dell'utente: la sceglie la schermata;
+- **il tablet**: sbagliava **due volte**. La barra mostrava sei icone senza
+  nome — il telefono ha le etichette in basso, la scrivania accanto alle
+  icone, e il tablet, l'unico schermo che una hostess tiene su un supporto,
+  non le aveva. E il contenuto usava il layout del telefono: una colonna,
+  tre numeri su sei, avvisi a piena larghezza, con ottocento pixel sprecati.
+  Adesso il tablet è una cosa sua: **etichette sotto le icone** (in fila
+  chiedevano 671 px e lo spazio è 522: la pillola veniva tagliata e finiva
+  sotto la sfera dell'agente), tutti e sei i numeri, avvisi su due colonne e
+  **due colonne di lavoro** — tre a 820 px sarebbero da 273 px l'una,
+  illeggibili. Il lavoro comincia a **728 px invece di 995**.
 
 ---
 

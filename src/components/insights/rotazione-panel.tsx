@@ -32,7 +32,7 @@ export function RotazionePanel({ report }: { report: RotazioneReport }) {
 
       <CardContent className="space-y-4">
         {!report.abbastanza ? (
-          <div className="rounded-md border border-border p-4 text-sm">
+          <div className="riquadro p-4 text-sm">
             <p className="font-medium">Ancora presto per dirlo.</p>
             <p className="mt-1 text-muted-foreground">
               Servono almeno {MINIMO_MISURATE} prenotazioni con arrivo e conto chiuso: qui{" "}
@@ -47,17 +47,17 @@ export function RotazionePanel({ report }: { report: RotazioneReport }) {
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-md border border-border p-3">
+              <div className="riquadro p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Durata media</p>
                 <p className="mt-1 text-display text-2xl">{durataUmana(report.durataMediaMin!)}</p>
                 <p className="text-xs text-muted-foreground">dall&apos;arrivo alla chiusura del conto</p>
               </div>
-              <div className="rounded-md border border-border p-3">
+              <div className="riquadro p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Durata prevista</p>
                 <p className="mt-1 text-display text-2xl">{durataUmana(report.durataPrevistaMin!)}</p>
                 <p className="text-xs text-muted-foreground">quella impostata sulle prenotazioni</p>
               </div>
-              <div className="rounded-md border border-border p-3">
+              <div className="riquadro p-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Giri per tavolo</p>
                 <p className="mt-1 text-display text-2xl tabular-nums">{report.giri ?? "—"}</p>
                 <p className="text-xs text-muted-foreground">

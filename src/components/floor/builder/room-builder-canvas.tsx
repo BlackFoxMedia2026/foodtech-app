@@ -165,7 +165,7 @@ export function RoomBuilderCanvas({
       {drawing && (
         <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
           <div
-            className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/95 px-3 py-1.5 text-xs text-card-foreground shadow-lg backdrop-blur-sm"
+            className="pointer-events-auto flex items-center gap-2 riquadro bg-card/95 px-3 py-1.5 text-xs text-card-foreground shadow-lg backdrop-blur-sm"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <span className="text-muted-foreground">
@@ -184,7 +184,7 @@ export function RoomBuilderCanvas({
       {(builder.tool.mode === "placing" || builder.tool.mode === "placing-table") && (
         <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
           <div
-            className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/95 px-3 py-1.5 text-xs text-card-foreground shadow-lg backdrop-blur-sm"
+            className="pointer-events-auto flex items-center gap-2 riquadro bg-card/95 px-3 py-1.5 text-xs text-card-foreground shadow-lg backdrop-blur-sm"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <span className="text-muted-foreground">Clicca sulla piantina per posizionare l&apos;elemento</span>
@@ -210,7 +210,7 @@ export function RoomBuilderCanvas({
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 text-card-foreground shadow-lg backdrop-blur-sm">
+      <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 riquadro bg-card/90 p-1 text-card-foreground shadow-lg backdrop-blur-sm">
         <div className="pointer-events-auto flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
           <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={builder.undo} disabled={!builder.canUndo} aria-label="Annulla">
             <Undo2 className="h-4 w-4" />

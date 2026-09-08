@@ -119,6 +119,41 @@
       0 24px 48px rgba(0, 0, 0, 0.35);
   }
 
+  /*
+   * Il terzo livello, finalmente dichiarato.
+   *
+   * Il linguaggio ne aveva due: `.surface` — le card, che galleggiano — e
+   * `.recessed`, i pozzi incisi nella pagina. Ma dentro le card c'era un
+   * terzo oggetto usato **settanta volte**: un riquadro semplice, né alzato
+   * né inciso, scritto a mano ogni volta come
+   * `rounded-md border border-border`. Settanta copie della stessa cosa
+   * divergono sempre: cambiare il raggio o il colore del bordo voleva dire
+   * settanta modifiche, e infatti c'erano già quattro spaziature diverse e
+   * una variante col bordo tratteggiato.
+   *
+   * Qui non cambia niente di come appare: cambia che esiste **un posto** dove
+   * cambiarlo.
+   *
+   * La spaziatura resta esplicita accanto alla classe, e non è un dettaglio
+   * di gusto: è la scala di densità dell'audit visivo — `p-2.5`/`p-3` dove si
+   * lavora (Servizio, Sala, Attesa, Conto), `p-4`/`p-6` dove si legge
+   * (Panoramica, Analytics, Marketing, Impostazioni). Le due classi
+   * `.denso` e `.comodo` la dichiarano per il codice nuovo.
+   */
+  .riquadro {
+    @apply rounded-md border border-border;
+  }
+  .riquadro.denso {
+    @apply p-2.5;
+  }
+  .riquadro.comodo {
+    @apply p-4;
+  }
+  /* Il vuoto: un riquadro che non contiene ancora niente. */
+  .riquadro.tratteggiato {
+    @apply border-dashed;
+  }
+
   /* "Prenotazioni di oggi" list well — recessed instead of raised, per the
      material brief: content wells sit incised into the page, cards float. */
   .recessed {

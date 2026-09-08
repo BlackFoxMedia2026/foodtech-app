@@ -103,7 +103,7 @@ export function ManagePlanDialog({
               />
             </div>
           ) : (
-            <div className="flex flex-col gap-3 rounded-md border border-border bg-secondary/40 p-4 text-sm">
+            <div className="flex flex-col gap-3 riquadro bg-secondary/40 p-4 text-sm">
               <p>Hai già una piantina caricata per questa sala. Passando al Costruttore sala, la piantina caricata resterà salvata e potrai tornare a usarla in qualsiasi momento.</p>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setConfirmSwitch(false)}>

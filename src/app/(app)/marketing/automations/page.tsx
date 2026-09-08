@@ -31,7 +31,7 @@ export default async function AutomationsPage() {
         </div>
       )}
 
-      <div className="flex items-start gap-2 rounded-md border border-border p-4 text-sm text-muted-foreground">
+      <div className="flex items-start gap-2 riquadro p-4 text-sm text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
         <div className="space-y-1">
           <p className="font-medium text-foreground">Come stiamo alla larga dai guai</p>

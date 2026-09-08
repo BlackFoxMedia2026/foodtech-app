@@ -162,7 +162,7 @@ export function ShapeWizard({
               </>
             )}
             {area !== null && (
-              <div className="rounded-md border border-border bg-card/60 px-3 py-2">
+              <div className="riquadro bg-card/60 px-3 py-2">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Superficie indicativa</p>
                 <p className="text-sm font-semibold text-card-foreground">{area.toFixed(1).replace(".", ",")} m²</p>
               </div>

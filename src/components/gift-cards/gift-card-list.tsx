@@ -86,21 +86,21 @@ export function GiftCardList({
 
       {items.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Ancora da spendere</p>
             <p className="mt-1 text-display text-2xl tabular-nums">{euro(daSpendere)}</p>
             <p className="text-xs text-muted-foreground">
               su {vive.length} {vive.length === 1 ? "carta valida" : "carte valide"}
             </p>
           </div>
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Vendute in tutto</p>
             <p className="mt-1 text-display text-2xl tabular-nums">{euro(vendute)}</p>
             <p className="text-xs text-muted-foreground">
               {items.length} {items.length === 1 ? "carta" : "carte"}
             </p>
           </div>
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Già usate</p>
             <p className="mt-1 text-display text-2xl tabular-nums text-accent">{euro(usate)}</p>
             <p className="text-xs text-muted-foreground">scalate dai conti</p>

@@ -53,7 +53,7 @@ export function MenuEngineeringPanel({
 
       <CardContent className="space-y-4">
         {!dati.abbastanzaDati ? (
-          <div className="rounded-md border border-border p-4 text-sm">
+          <div className="riquadro p-4 text-sm">
             <p className="font-medium">Ancora presto per dirlo.</p>
             <p className="mt-1 text-muted-foreground">{dati.perche}</p>
             <p className="mt-1 text-xs text-tertiary-foreground">
@@ -96,7 +96,7 @@ export function MenuEngineeringPanel({
         )}
 
         {dati.esclusi.length > 0 && (
-          <div className="rounded-md border border-border p-3">
+          <div className="riquadro p-3">
             <p className="text-sm font-medium">
               {dati.esclusi.length === 1 ? "Un piatto resta fuori" : `${dati.esclusi.length} piatti restano fuori`}
             </p>

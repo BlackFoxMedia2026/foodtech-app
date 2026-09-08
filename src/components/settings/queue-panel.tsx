@@ -70,7 +70,7 @@ export function QueuePanel({ health }: { health: QueueHealth }) {
       </div>
 
       {health.ultimiErrori.length > 0 && (
-        <ul className="divide-y divide-border rounded-md border border-border">
+        <ul className="divide-y divide-border riquadro">
           {health.ultimiErrori.map((job) => (
             <li key={job.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
               <div className="min-w-0">

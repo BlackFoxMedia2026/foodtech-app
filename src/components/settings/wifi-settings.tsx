@@ -141,7 +141,7 @@ export function WifiSettings({
           )}
 
           {iniziale.attivo && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-border p-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2 riquadro p-3 text-sm">
               <span className="text-muted-foreground">Indirizzo del portale:</span>
               <code className="break-all font-mono text-xs">{portaleUrl}</code>
               <CopyButton value={portaleUrl} variant="ghost" size="sm" aria-label="Copia l'indirizzo del portale" />

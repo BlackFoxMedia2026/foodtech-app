@@ -269,7 +269,7 @@ export function MenuEditor({
       ) : (
         <div className="mt-6 space-y-4">
           {filtrando && visibili.length === 0 && (
-            <p className="rounded-md border border-border p-4 text-sm text-muted-foreground">
+            <p className="riquadro p-4 text-sm text-muted-foreground">
               Nessun piatto con questo nome o in questa condizione.
             </p>
           )}

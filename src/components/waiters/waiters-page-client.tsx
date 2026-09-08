@@ -100,7 +100,7 @@ export function WaitersPageClient({
                   <span className="text-muted-foreground/70">· {group.members.length}</span>
                 </div>
                 <Separator />
-                <div className="divide-y divide-border rounded-md border border-border bg-card">
+                <div className="divide-y divide-border riquadro bg-card">
                   {group.members.map((w) => (
                     <WaiterRow
                       key={w.id}
