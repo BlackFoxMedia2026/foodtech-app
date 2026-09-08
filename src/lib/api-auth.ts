@@ -1,3 +1,4 @@
+import { logErrore } from "./observability";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { resolveActiveVenue, type ActiveVenueContext } from "./tenant";
@@ -172,6 +173,10 @@ export function apiErrorResponse(err: unknown) {
     return apiError(403, "forbidden", "Il tuo ruolo non consente questa operazione.");
   }
 
-  console.error("[api] errore non gestito:", err);
+  // L'unico errore che non sappiamo spiegare: si scrive con il suo evento
+  // cercabile, perché è quello su cui si costruirà l'allarme il giorno che
+  // ci sarà un fornitore. Il percorso della richiesta lo aggiunge già Vercel,
+  // che associa i log alla richiesta che li ha prodotti.
+  logErrore("api.errore_non_gestito", err);
   return apiError(500, "internal_error", "Qualcosa è andato storto. Riprova.");
 }

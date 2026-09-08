@@ -1,3 +1,4 @@
+import { logAttenzione, logErrore } from "@/lib/observability";
 import type { BackgroundJob, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
@@ -152,6 +153,9 @@ export async function reapStuckJobs(now: Date = new Date()): Promise<number> {
     where: { status: "RUNNING", startedAt: { lt: limite } },
     data: { status: "PENDING", runAt: now, lastError: "ripreso dopo interruzione" },
   });
+  // Uno o due capitano (una funzione interrotta a metà); molti, tutti i
+  // minuti, vogliono dire che qualcosa si blocca sempre nello stesso punto.
+  if (count > 0) logAttenzione("coda.ripresi_dopo_interruzione", { quanti: count });
   return count;
 }
 
@@ -289,7 +293,23 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
       });
       if (esauriti) summary.failed += 1;
       else summary.retried += 1;
-      console.error("[coda] lavoro non riuscito", { id: job.id, kind: job.kind, tentativo: job.attempts }, err);
+      // Due eventi diversi, perché richiedono due reazioni diverse: un
+      // tentativo che riparte è normale, un lavoro che si arrende no.
+      if (esauriti) {
+        logErrore("coda.lavoro_arreso", err, {
+          lavoro: job.id,
+          tipo: job.kind,
+          tentativi: job.attempts,
+          venue: job.venueId,
+        });
+      } else {
+        logAttenzione("coda.lavoro_riprovato", {
+          lavoro: job.id,
+          tipo: job.kind,
+          tentativo: job.attempts,
+          motivo,
+        });
+      }
     }
   }
 

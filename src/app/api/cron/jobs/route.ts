@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { eseguiCron } from "@/lib/cron";
 import { runDueJobs } from "@/server/jobs/queue";
 import { JOB_HANDLERS } from "@/server/jobs/handlers";
 
@@ -14,24 +14,17 @@ import { JOB_HANDLERS } from "@/server/jobs/handlers";
  * restare un endpoint pubblico che chiunque trovi l'URL può innescare.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    console.error("[cron] CRON_SECRET non configurato — non eseguo jobs");
-    return NextResponse.json({ error: "cron_not_configured" }, { status: 500 });
-  }
-  if (req.headers.get("authorization") !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  return eseguiCron("jobs", req, async () => {
+    const esito = await runDueJobs({ handlers: JOB_HANDLERS });
 
-  const esito = await runDueJobs({ handlers: JOB_HANDLERS });
-
-  return NextResponse.json({
-    presiInCarico: esito.claimed,
-    conclusi: esito.done,
-    rimandati: esito.requeued,
-    daRiprovare: esito.retried,
-    nonRiusciti: esito.failed,
-    ripresiDopoInterruzione: esito.recovered,
-    tempoEsaurito: esito.budgetExhausted,
+    return {
+      presiInCarico: esito.claimed,
+      conclusi: esito.done,
+      rimandati: esito.requeued,
+      daRiprovare: esito.retried,
+      nonRiusciti: esito.failed,
+      ripresiDopoInterruzione: esito.recovered,
+      tempoEsaurito: esito.budgetExhausted,
+    };
   });
 }
