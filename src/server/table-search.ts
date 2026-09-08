@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { checkAvailability, DEFAULT_DURATION_MIN } from "./availability";
+import { checkAvailability } from "./availability";
+import { durataConsigliata } from "./durata-consigliata";
 
 /**
  * «Quali tavoli possono accogliere N persone in questo momento?»
@@ -57,7 +58,12 @@ export async function findFreeTables(
     includeSmaller?: boolean;
   },
 ): Promise<FreeTableSearch> {
-  const durationMin = request.durationMin ?? DEFAULT_DURATION_MIN;
+  // La durata con cui si cerca è quella con cui si prenoterà: cercare con 105
+  // minuti e poi prenotare con 140 vuol dire proporre un tavolo che non c'è.
+  const durationMin =
+    request.durationMin ??
+    (await durataConsigliata(venueId, { partySize: request.partySize, startsAt: request.startsAt }))
+      .durataMin;
 
   const tables = await db.table.findMany({
     where: {

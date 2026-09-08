@@ -4,7 +4,8 @@ import type { Prisma, WaitlistStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { createBooking } from "./bookings";
-import { checkAvailability, DEFAULT_DURATION_MIN } from "./availability";
+import { checkAvailability } from "./availability";
+import { prontuarioDurate } from "./durata-consigliata";
 import { findFreeTables, type FreeTableSearch } from "./table-search";
 
 /**
@@ -282,7 +283,16 @@ export async function suggestEntriesForTable(
   opts: { now?: Date; durationMin?: number } = {},
 ): Promise<WaitlistView[]> {
   const now = opts.now ?? new Date();
-  const durationMin = opts.durationMin ?? DEFAULT_DURATION_MIN;
+
+  /**
+   * La durata con cui si verifica se un candidato ci sta è quella con cui
+   * verrà davvero prenotato: **per candidato**, perché due persone e sei
+   * persone non stanno a tavola lo stesso tempo. Una lettura sola per tutta
+   * la coda.
+   */
+  const prontuario = opts.durationMin ? null : await prontuarioDurate(venueId, { now });
+  const durataDi = (partySize: number) =>
+    opts.durationMin ?? prontuario!.per({ partySize, startsAt: now }).durataMin;
 
   const table = await db.table.findFirst({
     where: { id: tableId, venueId, active: true },
@@ -303,7 +313,7 @@ export async function suggestEntriesForTable(
   for (const entry of compatibili) {
     const esito = await checkAvailability(venueId, {
       startsAt: now,
-      durationMin,
+      durationMin: durataDi(entry.partySize),
       partySize: entry.partySize,
       tableId: table.id,
     });
@@ -475,7 +485,8 @@ export async function seatWaitlistEntry(
           },
       partySize: entry.partySize,
       startsAt: input.startsAt ?? now,
-      durationMin: input.durationMin ?? DEFAULT_DURATION_MIN,
+      // Come per il walk-in: se nessuno l'ha scelta, la propone la misura.
+      durationMin: input.durationMin,
       tableId: input.tableId,
       source: "WALK_IN",
       notes: entry.notes,

@@ -36,6 +36,7 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | 10 · pagamenti | 🟡 **progettato**: `docs/PROGETTO-PAGAMENTI.md` — livello agnostico, cinque policy, sette regole, sei decisioni in attesa. Nessuna riga di codice, per scelta |
 | 6 · gestione del team | ✅ **chiuso**: invito con link da consegnare, ruoli assegnabili, rimozione, e le due difese contro il chiudersi fuori. Era «riscritto dopo verifica»: non è «`authorize` non controlla l'utente attivo», è che **non si può dare accesso a nessuno**. Vedi 5-bis |
 | P2-1 · sala viva completa | ✅ **chiuso**: il conto aperto sul tavolo (col numero di righe, perché «conto vuoto» e «zero euro» sono due fatti diversi), la previsione di liberazione contata **da quando si sono seduti** e con la durata misurata qui quando ce n'è abbastanza, e chi arriva dopo su quel tavolo — anche mentre è occupato, con l'avviso «non fa in tempo». Trovato e corretto un difetto: la previsione partiva dall'orario prenotato, quindi un tavolo seduto in ritardo risultava libero mentre leggevano il menu |
+| P2-3 · durata contestuale | ✅ **chiuso**: il motore non vende più tutto con 105 minuti. La durata si misura per gruppo, fascia e tipo di giorno, con una scala che si allarga quando i campioni non bastano e finisce sulla predefinita dichiarandolo. Proposta nel modulo con la frase che dice su cosa poggia; **una durata scritta a mano resta quella** |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -97,7 +98,7 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Riconferma obbligatoria con scadenza | **MISSING** | **Bloccata**: senza email il promemoria non parte, sarebbe una funzione che non fa niente |
 | Verifica contatto / OTP sul widget | **MISSING** | §11 |
 | Idempotenza, honeypot, doppioni, bot protection | **MISSING** | §11 |
-| Durata contestuale (per giorno/fascia/gruppo) | **MISSING** | §15. I dati ora esistono: vedi *Rotazione* |
+| Durata contestuale (per giorno/fascia/gruppo) | **EXISTS** | Fatta l'8 settembre. Scala a quattro gradini: gruppo+fascia+tipo di giorno → gruppo+fascia → gruppo → locale → predefinita, e si scende solo dove ci sono almeno dieci cene chiuse |
 
 ## SERVICE OS
 
@@ -408,7 +409,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 |---|---|---|---|---|---|
 | ~~P2-1~~ | ~~**Sala viva completa** (§6): conto, previsione di liberazione, prossima prenotazione sul tavolo~~ — **fatto l'8 settembre** | 5 | M | nessuna | basso |
 | P2-2 | **Avviso → problema/motivo/impatto/azione** e due regole nuove (tavolo che sta per liberarsi, tavolo oltre la durata) | 4 | M | nessuna | basso |
-| P2-3 | **Durata contestuale** nel motore (§15), solo con campioni sufficienti | 5 | M | rotazione (fatta) | medio |
+| ~~P2-3~~ | ~~**Durata contestuale** nel motore (§15), solo con campioni sufficienti~~ — **fatto l'8 settembre** | 5 | M | rotazione (fatta) | medio |
 | P2-4 | **«Cosa sapere di questo ospite»** dove serve: servizio, sala, prenotazione | 4 | S | nessuna | basso |
 | P2-5 | **Executive summary mobile** per Analytics (§28) | 4 | M | nessuna | basso |
 | P2-6 | **Menu mobile admin** con menu contestuale (§21) | 3 | S | nessuna | basso |
