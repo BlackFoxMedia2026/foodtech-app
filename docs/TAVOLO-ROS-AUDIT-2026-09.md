@@ -70,6 +70,9 @@ altrimenti non sarebbe più un audit. Qui invece si tiene il conto.
 | P1-9 · cifratura della password Wi-Fi | ✅ **chiuso**: AES-256-GCM con chiave da `CHIAVE_CIFRATURA`. Non può essere un'impronta — il portale la consegna a chi lascia un contatto — quindi si mette sotto chiave. Senza chiave resta in chiaro **con l'etichetta**, e la schermata lo dice. Nel farlo è emerso che il freno delle migrazioni chiamava distruttivo anche diventare `text`: adesso distingue |
 | 16 · le domande operative dell'agente | ✅ **chiuso**: le cinque domande del §56 sono cinque strumenti deterministici sui dati che esistevano già. Nessun modello: dove la misura non basta la risposta dice **cosa manca** invece di stimare, e ogni numero porta la sua base |
 | P3-6 · coda: priorità, quote, storia | ✅ **chiuso**: tre livelli di priorità (chi aspetta adesso, lavoro del locale, spedizioni), una quota per fornitore che vale sia come limite verso Brevo sia come garanzia che una campagna non occupi tutto il giro, e la storia dei lavori conclusi che si tiene due settimane — mentre **i non riusciti non si toccano mai**. È il lavoro che serviva prima di accendere l'email |
+| §60 · il progetto della prenotazione al telefono | ✅ **scritto**: `docs/PROGETTO-VOCE.md`. Il prompt chiede il progetto e non l'implementazione, e non l'avevo scritto: tre strade in ordine di costo (non perdere la chiamata → la segretaria che scrive → l'agente che risponde), le regole che valgono per tutte, e cinque decisioni tue. Zero righe di codice |
+| soglia dei gruppi numerosi | ✅ **chiuso**: era una costante (dodici), ora è un'impostazione del locale. Dodici va bene per una trattoria e non per una sala che fa banchetti |
+| ritardo nella rotazione | ✅ **chiuso**: l'undicesima regola del centro controllo. Le cene chiuse **di stasera** contro la mediana del locale, con almeno tre cene chiuse e almeno una conseguenza — un servizio lento con la sala mezza vuota non è un problema |
 | tutte le altre | aperte, nell'ordine della roadmap |
 
 ---
@@ -124,13 +127,13 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Overbooking dichiarato | **EXISTS** | Fatto stanotte. Percentuale del locale, segnata in sala, invisibile al cliente |
 | Permesso dedicato `booking.force` | **MISSING** | §48; oggi basta `manage_bookings` |
 | Gruppi numerosi → contattaci | **EXISTS** | Fatto stanotte, soglia fissa a 12 |
-| Soglia gruppi configurabile | **MISSING** | Oggi è una costante |
+| Soglia gruppi configurabile | **EXISTS** | Fatta l'8 settembre: impostazione del locale (`largePartyFrom`), non più una costante. Dodici resta il valore per difetto |
 | Alternative quando non c'è posto | **EXISTS** | Fatto stanotte: primi tre giorni con posto, un tocco per accettarli |
 | Alternative *nello stesso giorno* | **PARTIAL** | Gli orari del giorno si vedono tutti; non c'è «il primo orario successivo» in evidenza |
 | Alternative in un altro locale del gruppo | **MISSING** | §10, §46. Dipende dalla decisione sul multi-locale |
 | Riconferma obbligatoria con scadenza | **MISSING** | **Bloccata**: senza email il promemoria non parte, sarebbe una funzione che non fa niente |
 | Verifica contatto / OTP sul widget | **MISSING** | §11 |
-| Idempotenza, honeypot, doppioni, bot protection | **MISSING** | §11 |
+| Idempotenza, honeypot, doppioni, bot protection | **EXISTS** | Fatte l'8 settembre (PR #60). Resta la verifica del contatto, che richiede un fornitore |
 | Durata contestuale (per giorno/fascia/gruppo) | **EXISTS** | Fatta l'8 settembre. Scala a quattro gradini: gruppo+fascia+tipo di giorno → gruppo+fascia → gruppo → locale → predefinita, e si scende solo dove ci sono almeno dieci cene chiuse |
 
 ## SERVICE OS
@@ -148,9 +151,9 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | — waitlist compatibile | **EXISTS** | |
 | — capacità turno superata | **EXISTS** | |
 | — posto liberato da una disdetta | **EXISTS** | Fatto stanotte |
-| — tavoli che stanno per liberarsi | **PARTIAL** | Il dato c'è (`minutesToFree`), non è un avviso |
-| — tavoli oltre la durata prevista | **PARTIAL** | Si vede sul tavolo («+2 ore»), non è una regola del centro controllo |
-| — ritardo nella rotazione | **MISSING** | Ora misurabile: vedi *Rotazione* |
+| — tavoli che stanno per liberarsi | **EXISTS** | Fatto l'8 settembre: avviso un quarto d'ora prima, solo se c'è qualcuno che ci starebbe |
+| — tavoli oltre la durata prevista | **EXISTS** | Fatto l'8 settembre: regola del centro controllo, col conto nel motivo. Non scatta se nessuno aspetta quel tavolo |
+| — ritardo nella rotazione | **EXISTS** | Fatto l'8 settembre: le cene chiuse di stasera contro la mediana del locale, con almeno tre cene e una conseguenza |
 | Sala viva | **EXISTS** | Stato, ospite, coperti, orario, ritardo, allergie, tavolate |
 | Sala viva: conto sul tavolo, previsione di liberazione, prossima prenotazione | **EXISTS** | Fatte tutte e tre (8 set). La previsione dice anche su cosa poggia: durata misurata qui, o durata prevista sulla prenotazione |
 | Tavoli in scala sui posti | **EXISTS** | Fatto stanotte |
@@ -174,7 +177,7 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Deduplica e unione schede ospite | **EXISTS** | Fatto l'8 settembre: proposte su segnali esatti, unione manuale, registro dell'azione, e nove test che verificano che si **rifiuti** |
 | Sintesi «cosa sapere di questo ospite» | **EXISTS** | Fatta l'8 settembre: quattro righe al massimo, in ordine di urgenza, uguali in Servizio, Sala e prenotazione. Gli avvisi non si tagliano mai |
 | Riconoscimento all'ingresso (email/telefono) | **EXISTS** | |
-| Deduplica a posteriori e merge controllato | **MISSING** | §19 |
+| Deduplica a posteriori e merge controllato | **EXISTS** | Fatta l'8 settembre: proposte su segnali esatti, unione manuale da Manager, registro dell'azione |
 | Valore economico dell'ospite | **PARTIAL** | Solo dai conti chiusi su Tavolo; senza POS resta parziale — ed è dichiarato |
 
 ## GROWTH & REVENUE OS
@@ -183,12 +186,12 @@ merita un salto) · **DEFER** (non ora, per scelta).
 |---|---|---|
 | Menu (categorie, prezzo, costo, margine, allergeni UE, disponibilità) | **EXISTS** | 14 allergeni da elenco chiuso |
 | Ricerca e filtri nel menu | **EXISTS** | Fatto stanotte, oltre i dodici piatti |
-| Menu mobile admin senza rumore | **MISSING** | §21: le frecce e i pulsanti sono ancora tutti a schermo |
+| Menu mobile admin senza rumore | **EXISTS** | Fatto l'8 settembre: un solo «⋯» per piatto, con «segna come finito» dentro |
 | Menu pubblico da QR | **EXISTS** | Con navigazione per portate, fatta stanotte |
 | Food cost con copertura, senza estrapolare | **EXISTS** | «Le percentuali valgono sui € di cui conosciamo il costo» |
 | Menu engineering | **EXISTS** | Fatto stanotte: stelle/cavalli/enigmi/cani, e il rifiuto di classificare con pochi dati |
 | Rotazione: durata reale vs prevista | **EXISTS** | Fatto stanotte, con il consiglio operativo quando lo scarto supera i 10′ |
-| Rotazione segmentata (giorno, fascia, gruppo, zona) | **MISSING** | §15, secondo passo: i dati ora esistono |
+| Rotazione segmentata (giorno, fascia, gruppo, zona) | **EXISTS** per gruppo, fascia e tipo di giorno | Fatta l'8 settembre dentro il motore (durata contestuale). La **zona** resta fuori: le sale hanno pochi tavoli e i campioni non basterebbero |
 | Analytics: incassi, occupazione, fonti, fasce, giorni | **EXISTS** | |
 | Costo delle assenze in euro misurati | **EXISTS** | |
 | Lista d'attesa misurata (coperti recuperati) | **EXISTS** | Fatto stanotte |
@@ -201,7 +204,7 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Loyalty (punti dai conti chiusi, traguardo) | **EXISTS** | |
 | Gift card (emissione, uso parziale, debito) | **PARTIAL** | Manca solo **incassarle online** |
 | Wi-Fi (contatto in cambio della password, misurato fino alla prenotazione) | **EXISTS** | Dichiara di non aprire il router, invece di finger di farlo |
-| Credenziali Wi-Fi cifrate a riposo | **MISSING** | §41 |
+| Credenziali Wi-Fi cifrate a riposo | **EXISTS** | Fatta l'8 settembre (AES-256-GCM). Senza `CHIAVE_CIFRATURA` resta in chiaro **e la schermata lo dice** |
 | Reputation: sondaggio, NPS, due strade, ponte alle recensioni misurato | **EXISTS** | Fatto stanotte: `/r/<id>` conta il passaggio |
 | Recensioni vere dentro Tavolo | **MISSING** | Serve l'API delle piattaforme |
 | QR manager | **PARTIAL** | Crea e scarica; nessuna scansione tracciata (e non la inventa) |
@@ -215,10 +218,10 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Reporting di gruppo | **MISSING** | §46 |
 | Brand / white label sulle pagine guest | **EXISTS** | Logo e colore su widget, menu, Wi-Fi, sondaggio |
 | Ruoli e permessi | **PARTIAL** | 5 ruoli, 7 abilità, applicati dappertutto; mancano `booking.force` e la granularità del §48 |
-| Gestione del team (invito, ruolo, rimozione) | **MISSING** | `VenueMembership` la scrive solo il seed: nessuna rotta la crea o la cancella. È il buco più grosso della piattaforma dopo i pagamenti |
+| Gestione del team (invito, ruolo, rimozione) | **EXISTS** | Fatta: invito con link da consegnare, ruoli, rimozione, e le due difese contro il chiudersi fuori. Era il buco più grosso della piattaforma dopo i pagamenti |
 | Audit sulle azioni sensibili | **EXISTS** | 40+ azioni tipizzate |
 | Coda lavori su Postgres + 5 cron | **EXISTS** | |
-| Coda: priorità, dead-letter, limite per fornitore | **MISSING** | §72 |
+| Coda: priorità, dead-letter, limite per fornitore | **EXISTS** | Fatta l'8 settembre: tre priorità, quota per fornitore, storia di due settimane e i non riusciti che non si cancellano mai |
 | Email production | **MISSING** | Chiave |
 | WhatsApp / SMS | **MISSING** | Fornitore |
 | Pagamenti | **MISSING** | §12: nessuna riga `Payment` scritta |
@@ -226,14 +229,14 @@ merita un salto) · **DEFER** (non ora, per scelta).
 | Reserve with Google | **MISSING** | |
 | API pubbliche / webhook | **MISSING** | `ApiToken` senza codice |
 | Realtime | **PARTIAL** | Polling: servizio 30″, sala, campanella. Nessun push |
-| Osservabilità | **MISSING** | |
+| Osservabilità | **PARTIAL** | Log strutturati, cron con un `try` e la durata, coda che distingue riprovato da arreso. Resta la scelta del fornitore di error tracking e il primo allarme |
 | Test unitari e di integrazione | **EXISTS** | 631 in 39 file, verdi da quattro fusi diversi |
-| Test end-to-end | **MISSING** | §80 |
+| Test end-to-end | **EXISTS** | Cinque flussi su cinque l'8 settembre (nove prove). Il sesto — caparra→rimborso — richiede i pagamenti |
 | Seed realistico | **EXISTS** | Ripulito dalle assurdità (577′, 536′, tutti VIP) |
 | AI: agente con quota, conferme, permessi | **EXISTS** | 10 intenti, 1 azione |
 | AI: le domande operative del §56 | **EXISTS** | Fatte tutte e cinque l'8 settembre, come strumenti deterministici: chi rischia di mancare, quali tavoli vanno lunghi, chi non torna, quali piatti rendono meno, qual è il giorno peggiore. Dove la misura non basta, la risposta è che non basta |
 | AI: insight proattivi | **PARTIAL** | Esistono, ma **fuori** dall'agente: sono le otto regole del centro controllo. È probabilmente il posto giusto |
-| Voice booking | **MISSING** | `VoiceBookingDraft` senza codice. §60 chiede il progetto, non l'implementazione |
+| Voice booking | **PROGETTATO** | `docs/PROGETTO-VOCE.md` (8 set): tre strade in ordine di costo, le regole che valgono per tutte, cinque decisioni tue. Nessuna riga di codice, perché il §60 chiede il progetto |
 
 ---
 
@@ -436,6 +439,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | ~~P1-6~~ | ~~**Notifiche che esistono davvero**~~ — **fatto**: da quattro categorie a otto | 3 | S | nessuna | basso |
 | P1-7 | **2FA** (i campi ci sono già) | 3 | M | P0-7 | basso |
 | P1-8 | **Permesso `booking.force`** e granularità del §48 | 3 | S | decisione tua su chi forza | basso |
+| ~~P1-10~~ | ~~**Soglia dei gruppi numerosi** configurabile~~ — **fatto l'8 settembre**: era una costante | 2 | S | nessuna | basso |
 | ~~P1-9~~ | ~~**Cifratura credenziali Wi-Fi**~~ — **fatto l'8 settembre** | 3 | S | nessuna | basso |
 
 ## P2 — DIFFERENZIAZIONE (dove Tavolo diventa Tavolo)
@@ -470,7 +474,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | ~~P4-1~~ | ~~**Le domande del §56 dentro l'agente**, come strumenti sui dati che già esistono~~ — **fatto l'8 settembre** | 4 | M | nessuna | basso |
 | P4-2 | **Caparra suggerita e spiegata** (§13) | 4 | M | P1-1 | medio |
 | P4-3 | **Insight proattivi dell'agente** sopra le regole esistenti | 3 | M | P4-1 | medio |
-| P4-4 | **Voice booking**: progetto, non implementazione (§60) | 3 | L | fornitore voce | alto |
+| ~~P4-4~~ | ~~**Voice booking**: progetto, non implementazione (§60)~~ — **fatto l'8 settembre**: `docs/PROGETTO-VOCE.md`. L'implementazione resta fuori, e la prima strada non è codice: è contare quante chiamate si perdono | 3 | L | fornitore voce | alto |
 | P4-5 | **Realtime push** su sala/servizio/attesa | 3 | M | nessuna | medio |
 
 ---

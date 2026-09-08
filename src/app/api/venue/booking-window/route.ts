@@ -24,6 +24,14 @@ const Body = z.object({
    * le assenze e diventa una fila all'ingresso.
    */
   overbookingPct: z.union([z.coerce.number().int().min(0).max(30), z.null()]).optional(),
+  /**
+   * Da quante persone il modulo pubblico manda a telefonare.
+   *
+   * Minimo due, perché «da una persona in su parliamone» vorrebbe dire
+   * spegnere il widget senza dirlo. Massimo cinquanta, che è il tetto dei
+   * coperti di una prenotazione: oltre, la soglia non scatterebbe mai.
+   */
+  largePartyFrom: z.coerce.number().int().min(2).max(50).optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -31,7 +39,7 @@ export async function PATCH(req: Request) {
   if (!ctx.ok) return ctx.response;
 
   try {
-    const { windowDays, cutoffMin, overbookingPct } = Body.parse(await req.json());
+    const { windowDays, cutoffMin, overbookingPct, largePartyFrom } = Body.parse(await req.json());
 
     const updated = await db.venue.update({
       where: { id: ctx.venueId },
@@ -39,14 +47,21 @@ export async function PATCH(req: Request) {
         bookingWindowDays: windowDays,
         bookingCutoffMin: cutoffMin || null,
         ...(overbookingPct !== undefined && { overbookingPct: overbookingPct || null }),
+        ...(largePartyFrom !== undefined && { largePartyFrom }),
       },
-      select: { bookingWindowDays: true, bookingCutoffMin: true, overbookingPct: true },
+      select: {
+        bookingWindowDays: true,
+        bookingCutoffMin: true,
+        overbookingPct: true,
+        largePartyFrom: true,
+      },
     });
 
     await recordAudit(auditActor(ctx, req), "venue.booking_window_update", "venue", ctx.venueId, {
       giorniDiAnticipo: windowDays,
       preavvisoMinuti: cutoffMin,
       oltreLaCapienzaPct: overbookingPct ?? null,
+      gruppoGrandeDa: largePartyFrom ?? null,
     });
 
     return NextResponse.json(updated);

@@ -14,7 +14,16 @@ export default async function BookPage(props: {
   const venue = venueId
     ? await db.venue.findFirst({
         where: { id: venueId, active: true },
-        select: { id: true, name: true, slug: true, brandLogoUrl: true, brandAccent: true, phone: true, email: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          brandLogoUrl: true,
+          brandAccent: true,
+          phone: true,
+          email: true,
+          largePartyFrom: true,
+        },
       })
     : null;
 
@@ -27,6 +36,7 @@ export default async function BookPage(props: {
         <PublicBookingForm
           venueId={venue.id}
           venueName={venue.name}
+          largePartyFrom={venue.largePartyFrom}
           embed={isEmbed}
           logoUrl={venue.brandLogoUrl ?? undefined}
           primaryColor={venue.brandAccent ?? undefined}

@@ -22,11 +22,19 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6,8}$/;
  * un impegno che il locale non ha ancora visto, e la telefonata la si fa
  * comunque — solo dopo, e di corsa.
  */
-const GRUPPO_GRANDE = 12;
+/**
+ * Quando il locale non l'ha dichiarata: dodici, che era il valore della
+ * costante di prima. Non è un valore per difetto scelto adesso — è quello che
+ * il prodotto ha già usato, e cambiarlo in silenzio sposterebbe la soglia di
+ * tutti i locali al primo deploy.
+ */
+const GRUPPO_GRANDE_PREDEFINITO = 12;
 
 interface PublicBookingFormProps {
   venueId: string;
   venueName: string;
+  /** Da quante persone si passa alla telefonata. Del locale, non nostra. */
+  largePartyFrom?: number;
   embed?: boolean;
   logoUrl?: string;
   primaryColor?: string;
@@ -39,6 +47,7 @@ interface PublicBookingFormProps {
 export function PublicBookingForm({
   venueId,
   venueName,
+  largePartyFrom,
   embed,
   logoUrl,
   primaryColor,
@@ -47,6 +56,7 @@ export function PublicBookingForm({
   campaignId,
 }: PublicBookingFormProps) {
   const router = useRouter();
+  const gruppoGrandeDa = largePartyFrom ?? GRUPPO_GRANDE_PREDEFINITO;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -207,12 +217,12 @@ export function PublicBookingForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Array.from({ length: GRUPPO_GRANDE }, (_, i) => i + 1).map((n) => (
+              {Array.from({ length: gruppoGrandeDa }, (_, i) => i + 1).map((n) => (
                 <SelectItem key={n} value={n.toString()}>
                   {n} {n === 1 ? "persona" : "persone"}
                 </SelectItem>
               ))}
-              <SelectItem value="tanti">Più di {GRUPPO_GRANDE}</SelectItem>
+              <SelectItem value="tanti">Più di {gruppoGrandeDa}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -223,7 +233,7 @@ export function PublicBookingForm({
            di far compilare tutto per poi scrivere «vi richiamiamo», la strada
            giusta si dice subito — ed è un numero di telefono, non un errore. */
         <div className="space-y-2 rounded-md border border-accent/30 bg-accent/10 p-4 text-sm">
-          <p className="font-medium">Per più di {GRUPPO_GRANDE} persone parliamone.</p>
+          <p className="font-medium">Per più di {gruppoGrandeDa} persone parliamone.</p>
           <p>
             Un tavolo così si prepara: due tavoli uniti, a volte un menu concordato. Chiamaci e lo
             organizziamo insieme — è più veloce di questo modulo.
