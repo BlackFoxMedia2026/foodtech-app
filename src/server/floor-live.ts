@@ -1,7 +1,13 @@
 import { db } from "@/lib/db";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { deriveTableLiveStatus, type TableLiveStatus } from "@/lib/table-status";
-import { previsioneLiberazione, type DurataTipica } from "@/lib/liberazione";
+import {
+  comeLiberoVerso,
+  previsioneLiberazione,
+  type DurataTipica,
+  type LiberoVerso,
+} from "@/lib/liberazione";
+import { cosaSapere, type RigaDaSapere } from "@/lib/cosa-sapere";
 import { durataTipicaSeduta } from "./rotazione";
 
 /**
@@ -36,14 +42,7 @@ export type TableLiveInfo = {
      * durata scritta sulla prenotazione. Si conta da quando si sono seduti,
      * non dall'orario prenotato (vedi `lib/liberazione`).
      */
-    liberoVerso: {
-      fine: string;
-      minuti: number;
-      durataMin: number;
-      fonte: "MISURATO" | "PREVISTO";
-      /** Su quante cene è stata misurata la durata. Nullo se non misurata. */
-      misurate: number | null;
-    } | null;
+    liberoVerso: LiberoVerso | null;
     /**
      * Il conto aperto su questo tavolo, se c'è.
      *
@@ -60,6 +59,8 @@ export type TableLiveInfo = {
     minutesToArrival: number | null;
     isVip: boolean;
     allergies: string | null;
+    /** Le cose da sapere su chi c'è, in ordine di urgenza (`lib/cosa-sapere`). */
+    daSapere: RigaDaSapere[];
     /** Tavoli uniti a questo per la stessa prenotazione. */
     combinedWith: string[];
   } | null;
@@ -132,7 +133,20 @@ export async function getFloorLive(
         status: { notIn: ["CANCELLED"] },
       },
       include: {
-        guest: { select: { firstName: true, lastName: true, loyaltyTier: true, allergies: true } },
+        guest: {
+          select: {
+            firstName: true,
+            lastName: true,
+            loyaltyTier: true,
+            allergies: true,
+            // Gli stessi fatti che usa la modalità Servizio: la sala e
+            // l'elenco devono dire le stesse cose sulla stessa persona.
+            privateNotes: true,
+            preferences: true,
+            totalVisits: true,
+            noShowCount: true,
+          },
+        },
       },
       orderBy: { startsAt: "asc" },
     }),
@@ -232,15 +246,7 @@ export async function getFloorLive(
             startsAt: corrente.startsAt.toISOString(),
             status: corrente.status,
             minutesToFree: liberazione ? liberazione.minuti : null,
-            liberoVerso: liberazione
-              ? {
-                  fine: liberazione.fine.toISOString(),
-                  minuti: liberazione.minuti,
-                  durataMin: liberazione.durataMin,
-                  fonte: liberazione.fonte,
-                  misurate: liberazione.fonte === "MISURATO" ? (tipica?.misurate ?? null) : null,
-                }
-              : null,
+            liberoVerso: liberazione ? comeLiberoVerso(liberazione, tipica?.misurate ?? null) : null,
             conto: contoPerPrenotazione.get(corrente.id) ?? null,
             minutesToArrival:
               corrente.status === "SEATED"
@@ -249,6 +255,15 @@ export async function getFloorLive(
             isVip:
               corrente.guest?.loyaltyTier === "VIP" || corrente.guest?.loyaltyTier === "AMBASSADOR",
             allergies: corrente.guest?.allergies ?? null,
+            daSapere: cosaSapere({
+              allergies: corrente.guest?.allergies,
+              privateNotes: corrente.guest?.privateNotes,
+              preferences: corrente.guest?.preferences,
+              visits: corrente.guest?.totalVisits,
+              noShows: corrente.guest?.noShowCount,
+              loyaltyTier: corrente.guest?.loyaltyTier,
+              occasion: corrente.occasion,
+            }),
             combinedWith: corrente.combinedTableIds.filter((id) => id !== table.id),
           }
         : null,

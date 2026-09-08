@@ -1,4 +1,4 @@
-import { DURATA_PREDEFINITA_MIN } from "./durata";
+import { DURATA_PREDEFINITA_MIN, durataUmana } from "./durata";
 
 /**
  * Quando si libera questo tavolo.
@@ -79,4 +79,65 @@ export function previsioneLiberazione(
     fonte: usaMisura ? "MISURATO" : "PREVISTO",
     daSeduta: !!prenotazione.seatedAt,
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Come si dice, una volta per tutte                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * La previsione nella forma in cui viaggia verso l'interfaccia.
+ *
+ * Le date diventano stringhe perché passano da un server component a un
+ * componente del browser, e il numero porta con sé **da dove viene**.
+ */
+export type LiberoVerso = {
+  fine: string;
+  minuti: number;
+  durataMin: number;
+  fonte: "MISURATO" | "PREVISTO";
+  /** Su quante cene è stata misurata la durata. Nullo se non misurata. */
+  misurate: number | null;
+};
+
+export function comeLiberoVerso(l: Liberazione, misurate: number | null): LiberoVerso {
+  return {
+    fine: l.fine.toISOString(),
+    minuti: l.minuti,
+    durataMin: l.durataMin,
+    fonte: l.fonte,
+    misurate: l.fonte === "MISURATO" ? misurate : null,
+  };
+}
+
+/**
+ * «Libero verso le 22:30», e su cosa poggia quel 22:30.
+ *
+ * L'ora si dice per intero perché è quella che si confronta con l'orario di
+ * chi sta arrivando: «fra un'ora e diciannove» costringe chi legge a fare una
+ * somma mentre ha un cliente davanti. Ed è la stessa frase in Sala e in
+ * Servizio: erano due modi di dire la stessa cosa nelle due schermate che si
+ * guardano di seguito, e chi le legge non deve tradurre.
+ */
+export function frasePrevisione(
+  liberoVerso: LiberoVerso,
+  timezone: string,
+): { testo: string; dettaglio: string } {
+  const ora = new Intl.DateTimeFormat("it-IT", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(liberoVerso.fine));
+
+  const testo =
+    liberoVerso.minuti >= 0
+      ? `libero verso ${ora}`
+      : `oltre di ${durataUmana(Math.abs(liberoVerso.minuti))}`;
+
+  const dettaglio =
+    liberoVerso.fonte === "MISURATO"
+      ? `Durata misurata in questo locale: ${durataUmana(liberoVerso.durataMin)}, su ${liberoVerso.misurate} cene chiuse.`
+      : `Durata prevista sulla prenotazione: ${durataUmana(liberoVerso.durataMin)}. Non ci sono ancora abbastanza cene misurate per dire di più.`;
+
+  return { testo, dettaglio };
 }

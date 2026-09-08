@@ -17,6 +17,7 @@ import { LoyaltyPanel } from "@/components/guests/loyalty-panel";
 import { ErasureDialog } from "@/components/guests/erasure-dialog";
 import { getGuest } from "@/server/guests";
 import { formatCurrency, formatDate, formatDateTime, initials } from "@/lib/utils";
+import { notaPreferenze } from "@/lib/cosa-sapere";
 
 const PAYMENT_KIND_LABEL = {
   DEPOSIT: "Caparra",
@@ -33,13 +34,7 @@ const PAYMENT_STATUS_TONE = {
   REFUNDED: "neutral",
 } as const;
 
-function preferencesNote(preferences: unknown): string | null {
-  if (preferences && typeof preferences === "object" && "note" in preferences) {
-    const note = (preferences as { note?: unknown }).note;
-    if (typeof note === "string" && note.trim()) return note;
-  }
-  return null;
-}
+
 
 export default async function GuestDetail({ params }: { params: { id: string } }) {
   const ctx = await getActiveVenue();
@@ -131,10 +126,10 @@ export default async function GuestDetail({ params }: { params: { id: string } }
             </CardContent>
           </Card>
 
-          {preferencesNote(g.preferences) && (
+          {notaPreferenze(g.preferences) && (
             <Card>
               <CardHeader><CardTitle>Preferenze</CardTitle></CardHeader>
-              <CardContent className="text-sm text-muted-foreground">{preferencesNote(g.preferences)}</CardContent>
+              <CardContent className="text-sm text-muted-foreground">{notaPreferenze(g.preferences)}</CardContent>
             </Card>
           )}
 

@@ -2,7 +2,13 @@ import { db } from "@/lib/db";
 import { NON_PIU_RITARDO_MIN } from "./service-intelligence";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { listWaitlist, expireStaleOffers, type WaitlistView } from "./waitlist";
-import { previsioneLiberazione, type DurataTipica } from "@/lib/liberazione";
+import {
+  comeLiberoVerso,
+  previsioneLiberazione,
+  type DurataTipica,
+  type LiberoVerso,
+} from "@/lib/liberazione";
+import { cosaSapere, type RigaDaSapere } from "@/lib/cosa-sapere";
 import { durataTipicaSeduta } from "./rotazione";
 
 /**
@@ -50,6 +56,12 @@ export type ServiceBooking = {
   notes: string | null;
   occasion: string | null;
   allergies: string | null;
+  /**
+   * Le tre o quattro cose da sapere su questa persona, in ordine di urgenza.
+   * Vuoto quando non c'è niente da dire — che è diverso da «nessuna
+   * informazione», e si vede: non si stampa niente.
+   */
+  daSapere: RigaDaSapere[];
   isVip: boolean;
   depositCents: number;
   depositStatus: string;
@@ -66,6 +78,8 @@ export type ServiceBooking = {
   lateBy: number;
   /** Per chi è già seduto: minuti alla fine prevista. Negativo = oltre. */
   minutesToFree: number | null;
+  /** Quando si libera e da dove viene il numero: la stessa cosa che dice la Sala. */
+  liberoVerso: LiberoVerso | null;
   source: string;
 };
 
@@ -112,7 +126,23 @@ function loadBookings(venueId: string, from: Date, to: Date) {
       status: { notIn: ["CANCELLED"] },
     },
     include: {
-      guest: { select: { id: true, firstName: true, lastName: true, phone: true, allergies: true, loyaltyTier: true } },
+      guest: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          allergies: true,
+          loyaltyTier: true,
+          // I fatti di «cosa sapere»: nota scritta a mano, preferenze,
+          // visite e assenze. I contatori sono veri da settembre
+          // (`refreshGuestStats`), altrimenti non si potrebbero mostrare.
+          privateNotes: true,
+          preferences: true,
+          totalVisits: true,
+          noShowCount: true,
+        },
+      },
       table: { select: { id: true, label: true } },
     },
     orderBy: { startsAt: "asc" },
@@ -151,12 +181,23 @@ function toServiceBooking(
     notes: b.notes,
     occasion: b.occasion,
     allergies: b.guest?.allergies ?? null,
+    daSapere: cosaSapere({
+      allergies: b.guest?.allergies,
+      privateNotes: b.guest?.privateNotes,
+      preferences: b.guest?.preferences,
+      visits: b.guest?.totalVisits,
+      noShows: b.guest?.noShowCount,
+      loyaltyTier: b.guest?.loyaltyTier,
+      occasion: b.occasion,
+    }),
     isVip: b.guest?.loyaltyTier === "VIP" || b.guest?.loyaltyTier === "AMBASSADOR",
     depositCents: b.depositCents,
     depositStatus: b.depositStatus,
     minutesToArrival,
     lateBy: isLate ? Math.abs(minutesToArrival) : 0,
     minutesToFree: b.status === "SEATED" ? liberazione.minuti : null,
+    liberoVerso:
+      b.status === "SEATED" ? comeLiberoVerso(liberazione, tipica?.misurate ?? null) : null,
     source: b.source,
   };
 }

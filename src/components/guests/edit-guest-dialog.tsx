@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { notaPreferenze } from "@/lib/cosa-sapere";
 
 type LoyaltyTier = "NEW" | "REGULAR" | "VIP" | "AMBASSADOR";
 
@@ -27,13 +28,7 @@ interface EditableGuest {
   preferences: unknown;
 }
 
-function preferencesNote(preferences: unknown): string {
-  if (preferences && typeof preferences === "object" && "note" in preferences) {
-    const note = (preferences as { note?: unknown }).note;
-    if (typeof note === "string") return note;
-  }
-  return "";
-}
+
 
 export function EditGuestDialog({ guest }: { guest: EditableGuest }) {
   const router = useRouter();
@@ -138,7 +133,7 @@ export function EditGuestDialog({ guest }: { guest: EditableGuest }) {
               id="preferencesNote"
               name="preferencesNote"
               placeholder="Es. preferisce il tavolo in terrazza, ama il vino rosso…"
-              defaultValue={preferencesNote(guest.preferences)}
+              defaultValue={notaPreferenze(guest.preferences) ?? ""}
             />
           </div>
 
