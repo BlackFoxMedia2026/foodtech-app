@@ -187,7 +187,7 @@ export function RoomLiveView({
   const tavoloSelezionato = tavoliSala.find((t) => t.id === selezionato) ?? null;
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="schermo animate-fade-in gap-3">
       {/* Come in Servizio: qui si lavora, e ottanta pixel di titolo sono
           spazio tolto alla mappa. L'identità editoriale resta dove si legge. */}
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -274,14 +274,19 @@ export function RoomLiveView({
       ) : (
         <>
           {/* MAPPA — da tablet in su */}
-          <div className="hidden lg:block">
-            <div className="surface relative overflow-hidden riquadro">
+          <div className="fill hidden min-h-0 lg:block">
+            <div className="surface relative h-full overflow-hidden riquadro">
               <div
                 className="relative mx-auto"
                 style={{
                   width: "100%",
                   aspectRatio: `${bounds.w} / ${bounds.h}`,
-                  maxHeight: "62vh",
+                  // Prima era `62vh`: un valore fisso che non sapeva quanta
+                  // altezza avesse davvero a disposizione, e che sommato a
+                  // testata e legenda faceva sforare la pagina. Adesso la
+                  // mappa non passa l'altezza del suo contenitore, che è
+                  // quello che avanza.
+                  maxHeight: "100%",
                 }}
               >
                 <div
@@ -313,7 +318,7 @@ export function RoomLiveView({
           </div>
 
           {/* ELENCO — su telefono, e sotto la mappa come dettaglio */}
-          <div className="space-y-4 lg:hidden">
+          <div className="fill-scroll space-y-4 pr-0.5 lg:hidden">
             {LIVE_STATUS_ORDER.filter((s) => (perStato.get(s)?.length ?? 0) > 0).map((stato) => (
               <section key={stato} className="space-y-2">
                 <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">

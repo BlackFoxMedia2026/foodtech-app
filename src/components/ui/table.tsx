@@ -33,17 +33,37 @@ export function Tabella({
   children,
   densita = "comoda",
   minWidth,
+  /**
+   * La tabella prende l'altezza che avanza e **scorre dentro di sé**.
+   *
+   * È la regola delle liste senza lunghezza naturale: sessanta clienti o
+   * centoventi piatti non possono dettare l'altezza della schermata. Con
+   * `fill` l'intestazione resta attaccata in alto mentre le righe scorrono —
+   * altrimenti si scorre e non si sa più cosa sia ogni colonna.
+   */
+  fill = false,
   className,
 }: {
   children: React.ReactNode;
   densita?: Densita;
   /** Larghezza minima: sotto, la tabella scorre invece di comprimersi. */
   minWidth?: string;
+  fill?: boolean;
   className?: string;
 }) {
   return (
-    <div className={cn("overflow-x-auto rounded-xl border border-border bg-card", className)}>
-      <table className={cn("w-full text-sm", minWidth)} data-densita={densita}>
+    <div
+      className={cn(
+        "rounded-xl border border-border bg-card",
+        fill ? "fill-scroll overflow-x-auto" : "overflow-x-auto",
+        className,
+      )}
+    >
+      <table
+        className={cn("w-full text-sm", minWidth)}
+        data-densita={densita}
+        data-fill={fill ? "" : undefined}
+      >
         {children}
       </table>
     </div>
@@ -52,7 +72,11 @@ export function Tabella({
 
 export function Testa({ children }: { children: React.ReactNode }) {
   return (
-    <thead className="border-b border-border bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground">
+    // `sticky` vale solo dentro una tabella che scorre (`fill`), e lì serve:
+    // scorrere cinquanta righe senza più sapere cosa sia ogni colonna è
+    // peggio che scorrere. Il fondo è pieno, non trasparente, altrimenti le
+    // righe si leggono attraverso l'intestazione.
+    <thead className="sticky top-0 z-10 border-b border-border bg-[#153a2d] text-xs uppercase tracking-wider text-muted-foreground">
       <tr>{children}</tr>
     </thead>
   );

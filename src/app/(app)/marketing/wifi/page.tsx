@@ -41,8 +41,8 @@ export default async function WifiLeadsPage({
   const link = (p: number) => `/marketing/wifi?pagina=${p}${soloMarketing ? "&marketing=1" : ""}`;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <div className="schermo animate-fade-in gap-3">
+      <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing / Wi-Fi</p>
           <h1 className="text-display text-3xl">Wi-Fi</h1>
@@ -59,7 +59,7 @@ export default async function WifiLeadsPage({
 
       {stats.contatti > 0 && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="fissa grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="riquadro p-3">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Contatti</p>
               <p className="mt-1 text-display text-2xl tabular-nums">{stats.contatti}</p>
@@ -85,7 +85,7 @@ export default async function WifiLeadsPage({
             </div>
           </div>
 
-          <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+          <p className="fissa flex items-start gap-2 text-xs text-tertiary-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {/* Il numero onesto è il secondo. Un elenco di contatti è un
                 costo e una responsabilità finché non porta qualcuno a tavola. */}
@@ -95,8 +95,8 @@ export default async function WifiLeadsPage({
         </>
       )}
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+      <Card className="flex min-h-0 flex-1 flex-col">
+        <CardHeader className="fissa flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle>Chi si è collegato</CardTitle>
           <div className="flex gap-2">
             <Button asChild variant={soloMarketing ? "ghost" : "outline"} size="sm">
@@ -107,7 +107,7 @@ export default async function WifiLeadsPage({
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex min-h-0 flex-1 flex-col">
           {elenco.items.length === 0 ? (
             <EmptyState icon={Wifi} compact title="Nessuno si è ancora collegato">
               {attivo
@@ -116,7 +116,7 @@ export default async function WifiLeadsPage({
             </EmptyState>
           ) : (
             <>
-              <ul className="divide-y divide-border">
+              <ul className="fill-scroll divide-y divide-border pr-0.5">
                 {elenco.items.map((l) => (
                   <li key={l.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                     <div className="min-w-0">
@@ -144,7 +144,7 @@ export default async function WifiLeadsPage({
                 ))}
               </ul>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+              <div className="fissa mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
                 <p className="text-muted-foreground">
                   Da {da} a {a} di {elenco.totale}
                 </p>

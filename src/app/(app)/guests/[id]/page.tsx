@@ -50,12 +50,12 @@ export default async function GuestDetail({ params }: { params: { id: string } }
   const name = `${g.firstName} ${g.lastName ?? ""}`.trim();
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <Button asChild variant="ghost" size="sm">
+    <div className="schermo animate-fade-in gap-4">
+      <Button asChild variant="ghost" size="sm" className="fissa self-start">
         <Link href="/guests"><ArrowLeft className="h-4 w-4" /> CRM ospiti</Link>
       </Button>
 
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      <header className="fissa flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-14 w-14">
             <AvatarFallback className="text-base">{initials(name)}</AvatarFallback>
@@ -112,8 +112,8 @@ export default async function GuestDetail({ params }: { params: { id: string } }
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.6fr]">
-        <div className="space-y-6">
+      <div className="fill min-h-0 space-y-6 overflow-y-auto pr-0.5 lg:grid lg:grid-cols-[1fr_1.6fr] lg:gap-6 lg:space-y-0 lg:overflow-hidden">
+        <div className="space-y-6 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
           <Card>
             <CardHeader><CardTitle>Contatti</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
@@ -145,7 +145,7 @@ export default async function GuestDetail({ params }: { params: { id: string } }
           )}
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
           {profile && <GuestProfilePanel profile={profile} currency={ctx.venue.currency} />}
 
           <LoyaltyPanel

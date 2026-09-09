@@ -95,11 +95,16 @@ export function BookingsPageClient({
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    // Niente scroll di pagina: testata, giorno e filtri restano fissi, e la
+    // vista scelta — elenco, mappa o settimana — prende l'altezza che avanza.
+    // Qui si lavora, quindi l'intestazione è compatta (direzione C).
+    <div className="schermo animate-fade-in gap-3">
+      <header className="fissa flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
-          <h1 className="text-display text-3xl">Prenotazioni</h1>
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-lg font-semibold leading-none">Prenotazioni</h1>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
+          </div>
           <p className="text-sm text-muted-foreground">
             {filteredRows.length} prenotazioni · {totalCovers} coperti
             {pendingCount > 0 && <span className="ml-2 font-semibold text-amber-600">({pendingCount} da approvare)</span>}
@@ -115,7 +120,7 @@ export function BookingsPageClient({
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="fissa flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2">
           <Button variant={statusFilter === "all" ? "default" : "outline"} asChild>
             <Link href={getStatusFilterUrl("all")}>Tutte</Link>
@@ -169,10 +174,17 @@ export function BookingsPageClient({
         </div>
       </div>
 
+      {/*
+        La vista prende l'altezza che avanza. L'elenco delle prenotazioni non
+        ha una lunghezza massima — un sabato sera sono quaranta righe — quindi
+        scorre lui, con l'intestazione della tabella attaccata in alto.
+      */}
       {view === "settimana" ? (
-        <WeekBoard settimana={settimana} />
+        <div className="fill-scroll">
+          <WeekBoard settimana={settimana} />
+        </div>
       ) : view === "elenco" ? (
-        <BookingsTable rows={rows} />
+        <BookingsTable rows={rows} fill />
       ) : (
         <BookingsFloorView
           rooms={rooms}

@@ -66,7 +66,7 @@ export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: b
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing / Coupon</p>
           <h1 className="text-display text-3xl">Coupon</h1>
@@ -81,10 +81,10 @@ export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: b
         )}
       </header>
 
-      {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+      {error && <p className="fissa mt-4 text-sm text-destructive">{error}</p>}
 
       {items.length === 0 ? (
-        <div className="mt-6">
+        <div className="fill mt-6">
           <EmptyState
             icon={Ticket}
             title="Nessun coupon"
@@ -101,7 +101,7 @@ export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: b
           </EmptyState>
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="fill-scroll mt-6 grid gap-4 pr-0.5 md:grid-cols-2 xl:grid-cols-3">
           {items.map((c) => {
             const attivo = c.stato === "usabile";
             return (
@@ -203,7 +203,7 @@ export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: b
         </div>
       )}
 
-      <p className="mt-6 text-xs text-tertiary-foreground">
+      <p className="fissa mt-6 text-xs text-tertiary-foreground">
         Un coupon archiviato non si usa più ma resta negli utilizzi già fatti: la storia di uno sconto non si
         cancella. Gli utilizzi si possono annullare, uno per uno, dal tavolo.
       </p>

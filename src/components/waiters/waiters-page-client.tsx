@@ -65,11 +65,11 @@ export function WaitersPageClient({
   const groups = useMemo(() => groupWaitersByRole(filtered), [filtered]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="schermo animate-fade-in gap-3">
+      <header className="fissa flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-lg font-semibold leading-none">Camerieri</h1>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
-          <h1 className="text-display text-3xl">Camerieri</h1>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 max-sm:w-full">
           <WaiterSearchBar query={query} onQueryChange={setQuery} />
@@ -89,7 +89,8 @@ export function WaitersPageClient({
           <p className="mt-1 text-xs">Prova con un altro nome o ruolo.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        // L'elenco del personale scorre dentro di sé: la pagina no.
+        <div className="fill-scroll space-y-4 pr-0.5">
           {groups.map((group) => {
             const Icon = GROUP_ICON[group.key];
             return (

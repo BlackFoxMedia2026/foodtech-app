@@ -9,8 +9,8 @@ export default async function BrandSettingsPage() {
   const venue = await getBrandSettings(ctx.venueId);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header>
+    <div className="schermo animate-fade-in gap-3">
+      <header className="fissa">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Impostazioni</p>
         <h1 className="text-display text-3xl">Brand</h1>
         <p className="text-sm text-muted-foreground">
@@ -18,6 +18,7 @@ export default async function BrandSettingsPage() {
         </p>
       </header>
 
+      <div className="fill-scroll pr-0.5">
       <BrandSettingsForm
         initial={{
           name: venue.name,
@@ -35,6 +36,7 @@ export default async function BrandSettingsPage() {
           googleBusinessUrl: venue.googleBusinessUrl ?? "",
         }}
       />
+      </div>
     </div>
   );
 }

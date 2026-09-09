@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import { PrismaClient } from "@prisma/client";
+import { contatoriDaPrenotazioni } from "../src/lib/visite";
 
 /**
  * Riallinea i contatori di tutti gli ospiti alle prenotazioni vere.
@@ -23,8 +24,6 @@ import { PrismaClient } from "@prisma/client";
 const db = new PrismaClient();
 const applica = process.argv.includes("--applica");
 
-const VISITE = ["COMPLETED", "SEATED"];
-
 async function main() {
   const ospiti = await db.guest.findMany({
     select: { id: true, firstName: true, lastName: true, totalVisits: true, noShowCount: true, lastVisitAt: true },
@@ -38,12 +37,10 @@ async function main() {
       select: { startsAt: true, status: true },
     });
 
-    const visite = prenotazioni.filter((b) => VISITE.includes(b.status));
-    const assenze = prenotazioni.filter((b) => b.status === "NO_SHOW").length;
-    const ultima = visite.map((b) => b.startsAt).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+    const { visite, assenze, ultimaVisita: ultima } = contatoriDaPrenotazioni(prenotazioni);
 
     const cambia =
-      g.totalVisits !== visite.length ||
+      g.totalVisits !== visite ||
       g.noShowCount !== assenze ||
       (g.lastVisitAt?.getTime() ?? null) !== (ultima?.getTime() ?? null);
 
@@ -52,7 +49,7 @@ async function main() {
 
     const nome = `${g.firstName} ${g.lastName ?? ""}`.trim();
     console.log(
-      `  ${nome.padEnd(24)} visite ${String(g.totalVisits).padStart(3)} → ${String(visite.length).padStart(3)}` +
+      `  ${nome.padEnd(24)} visite ${String(g.totalVisits).padStart(3)} → ${String(visite).padStart(3)}` +
         `   assenze ${g.noShowCount} → ${assenze}` +
         `   ultima ${g.lastVisitAt?.toISOString().slice(0, 10) ?? "—"} → ${ultima?.toISOString().slice(0, 10) ?? "—"}`,
     );
@@ -60,7 +57,7 @@ async function main() {
     if (applica) {
       await db.guest.update({
         where: { id: g.id },
-        data: { totalVisits: visite.length, noShowCount: assenze, lastVisitAt: ultima },
+        data: { totalVisits: visite, noShowCount: assenze, lastVisitAt: ultima },
       });
     }
   }

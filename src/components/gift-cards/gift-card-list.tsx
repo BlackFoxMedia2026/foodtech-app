@@ -67,7 +67,7 @@ export function GiftCardList({
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing / Gift card</p>
           <h1 className="text-display text-3xl">Gift card</h1>
@@ -82,10 +82,10 @@ export function GiftCardList({
         )}
       </header>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="fissa text-sm text-destructive">{error}</p>}
 
       {items.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="fissa grid gap-3 sm:grid-cols-3">
           <div className="riquadro p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Ancora da spendere</p>
             <p className="mt-1 text-display text-2xl tabular-nums">{euro(daSpendere)}</p>
@@ -109,7 +109,7 @@ export function GiftCardList({
       )}
 
       {items.length > 0 && (
-        <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+        <p className="fissa flex items-start gap-2 text-xs text-tertiary-foreground">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {/* Chiamare le cose col loro nome: questo denaro è già entrato, la
               cena no. Metterlo fra gli incassi del mese sarebbe contarlo due
@@ -119,7 +119,7 @@ export function GiftCardList({
       )}
 
       {items.length === 0 ? (
-        <Card>
+        <Card className="fissa">
           <CardContent className="pt-6">
             <EmptyState icon={Gift} title="Nessuna gift card">
               Una gift card è una cena pagata in anticipo: si vende al bancone, si regala, e chi la riceve la usa
@@ -128,7 +128,7 @@ export function GiftCardList({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3">
+        <div className="fill-scroll grid gap-3 pr-0.5">
           {items.map((c) => (
             <Card key={c.id}>
               <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 pb-3">

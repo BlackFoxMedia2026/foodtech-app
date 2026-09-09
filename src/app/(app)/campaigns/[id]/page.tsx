@@ -40,8 +40,8 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
   const resa = await getCampaignAttribution(ctx.venueId, campaign.id);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <div className="schermo animate-fade-in gap-4">
+      <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing / Campagne</p>
           <h1 className="text-display text-3xl">{campaign.name}</h1>
@@ -58,105 +58,107 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
         </div>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Segmento</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {segment.tags && segment.tags.length > 0 && (
-              <p>
-                <span className="text-muted-foreground">Tag:</span> {segment.tags.join(", ")}
+      <div className="fill-scroll space-y-6 pr-0.5">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Segmento</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {segment.tags && segment.tags.length > 0 && (
+                <p>
+                  <span className="text-muted-foreground">Tag:</span> {segment.tags.join(", ")}
+                </p>
+              )}
+              {segment.loyaltyTier && (
+                <p>
+                  <span className="text-muted-foreground">Livello fedeltà:</span> {LOYALTY_LABELS[segment.loyaltyTier]}
+                </p>
+              )}
+              {segment.minTotalVisits !== undefined && (
+                <p>
+                  <span className="text-muted-foreground">Visite minime:</span> {segment.minTotalVisits}
+                </p>
+              )}
+              {segment.inactiveDays !== undefined && (
+                <p>
+                  <span className="text-muted-foreground">Inattivo da:</span> {segment.inactiveDays} giorni
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Solo clienti con consenso marketing attivo ed email valida vengono inclusi.
               </p>
-            )}
-            {segment.loyaltyTier && (
-              <p>
-                <span className="text-muted-foreground">Livello fedeltà:</span> {LOYALTY_LABELS[segment.loyaltyTier]}
-              </p>
-            )}
-            {segment.minTotalVisits !== undefined && (
-              <p>
-                <span className="text-muted-foreground">Visite minime:</span> {segment.minTotalVisits}
-              </p>
-            )}
-            {segment.inactiveDays !== undefined && (
-              <p>
-                <span className="text-muted-foreground">Inattivo da:</span> {segment.inactiveDays} giorni
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Solo clienti con consenso marketing attivo ed email valida vengono inclusi.
-            </p>
-            {campaign.status === "DRAFT" && (
-              <p className="pt-2 text-sm font-medium">
-                {matchingGuests.length} clienti corrispondono al segmento oggi
-              </p>
-            )}
-          </CardContent>
-        </Card>
+              {campaign.status === "DRAFT" && (
+                <p className="pt-2 text-sm font-medium">
+                  {matchingGuests.length} clienti corrispondono al segmento oggi
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Contenuto</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="text-muted-foreground">Oggetto:</span> {campaign.subject}
-            </p>
-            <div
-              className="rounded-md border bg-secondary/30 p-3 text-xs"
-              dangerouslySetInnerHTML={{ __html: campaign.body || "" }}
-            />
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Contenuto</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>
+                <span className="text-muted-foreground">Oggetto:</span> {campaign.subject}
+              </p>
+              <div
+                className="rounded-md border bg-secondary/30 p-3 text-xs"
+                dangerouslySetInnerHTML={{ __html: campaign.body || "" }}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {campaign.status === "DRAFT" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Invio</CardTitle>
+              <CardDescription>{matchingGuests.length} destinatari con email e consenso.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CampaignActions campaignId={campaign.id} recipients={matchingGuests.length} />
+            </CardContent>
+          </Card>
+        )}
+
+        {inCoda && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Invio</CardTitle>
+              {stato.hint && <CardDescription>{stato.hint}</CardDescription>}
+            </CardHeader>
+            <CardContent>
+              <CampaignSendStatus
+                campaignId={campaign.id}
+                status={campaign.status === "SENDING" ? "SENDING" : "FAILED"}
+                progress={avanzamento}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {(campaign.status === "SENT" || campaign.status === "SCHEDULED") && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Risultati</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CampaignResultsChart
+                sentCount={campaign.sentCount}
+                openedCount={campaign.openedCount}
+                bookings={resa.bookings}
+                covers={resa.covers}
+                revenueCents={resa.revenueCents}
+                fuoriFinestra={resa.fuoriFinestra}
+                giorniFinestra={FINESTRA_ATTRIBUZIONE_GIORNI}
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
-
-      {campaign.status === "DRAFT" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Invio</CardTitle>
-            <CardDescription>{matchingGuests.length} destinatari con email e consenso.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CampaignActions campaignId={campaign.id} recipients={matchingGuests.length} />
-          </CardContent>
-        </Card>
-      )}
-
-      {inCoda && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Invio</CardTitle>
-            {stato.hint && <CardDescription>{stato.hint}</CardDescription>}
-          </CardHeader>
-          <CardContent>
-            <CampaignSendStatus
-              campaignId={campaign.id}
-              status={campaign.status === "SENDING" ? "SENDING" : "FAILED"}
-              progress={avanzamento}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {(campaign.status === "SENT" || campaign.status === "SCHEDULED") && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Risultati</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CampaignResultsChart
-              sentCount={campaign.sentCount}
-              openedCount={campaign.openedCount}
-              bookings={resa.bookings}
-              covers={resa.covers}
-              revenueCents={resa.revenueCents}
-              fuoriFinestra={resa.fuoriFinestra}
-              giorniFinestra={FINESTRA_ATTRIBUZIONE_GIORNI}
-            />
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

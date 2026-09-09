@@ -36,8 +36,11 @@ export default async function GuestsPage({
   const ultimo = (elenco.pagina - 1) * elenco.perPagina + elenco.items.length;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header>
+    // Niente scroll di pagina: testata, avviso e paginazione restano fissi,
+    // e la lista — che per natura non ha una lunghezza massima — scorre
+    // dentro di sé.
+    <div className="schermo animate-fade-in gap-4">
+      <header className="fissa">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">CRM</p>
         <h1 className="text-display text-3xl">Ospiti</h1>
         <p className="text-sm text-muted-foreground">
@@ -81,7 +84,7 @@ export default async function GuestsPage({
       <GuestsTable rows={elenco.items} availableTags={availableTags} />
 
       {elenco.pagine > 1 && (
-        <nav className="flex items-center justify-between gap-3" aria-label="Pagine degli ospiti">
+        <nav className="fissa flex items-center justify-between gap-3" aria-label="Pagine degli ospiti">
           <Button asChild variant="outline" size="sm" disabled={elenco.pagina === 1}>
             <Link
               href={href(searchParams, elenco.pagina - 1)}

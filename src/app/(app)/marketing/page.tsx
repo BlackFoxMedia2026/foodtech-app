@@ -96,8 +96,8 @@ export default async function MarketingPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header>
+    <div className="schermo animate-fade-in gap-3">
+      <header className="fissa">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing</p>
         <h1 className="text-display text-3xl">Marketing</h1>
         <p className="text-sm text-muted-foreground">
@@ -105,7 +105,9 @@ export default async function MarketingPage() {
         </p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Cinque card: su schermo largo ci stanno, sul telefono scorrono
+          dentro questa regione invece di allungare la pagina. */}
+      <div className="fill-scroll grid gap-3 pr-0.5 md:grid-cols-2">
         {SECTIONS.map(({ href, icon: Icon, eyebrow, title, description }) => (
           <Link key={href} href={href}>
             <Card className="h-full transition-colors hover:border-gilt-dark/50">

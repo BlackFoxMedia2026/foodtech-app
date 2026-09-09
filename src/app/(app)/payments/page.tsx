@@ -49,8 +49,8 @@ export default async function PaymentsPage() {
   const pending = items.filter((p) => p.status === "PENDING").length;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header>
+    <div className="schermo animate-fade-in gap-3">
+      <header className="fissa">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Finanze</p>
         <h1 className="text-display text-3xl">Pagamenti registrati</h1>
         {/* La parola «Incassato» qui contava solo le caparre e i ticket, e la
@@ -71,15 +71,16 @@ export default async function PaymentsPage() {
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="fissa grid gap-3 md:grid-cols-3">
         <StatCard label="Incassato qui" value={formatCurrency(total, ctx.venue.currency)} emphasize />
         <StatCard label="Rimborsato" value={formatCurrency(refunded, ctx.venue.currency)} />
         <StatCard label="In attesa" value={String(pending)} />
       </section>
 
-      <Card>
-        <CardHeader><CardTitle>Movimenti recenti</CardTitle></CardHeader>
-        <CardContent>
+      {/* I movimenti sono una lista senza lunghezza massima: scorre lei. */}
+      <Card className="flex min-h-0 flex-1 flex-col">
+        <CardHeader className="fissa py-3"><CardTitle className="text-base">Movimenti recenti</CardTitle></CardHeader>
+        <CardContent className="fill-scroll pt-0">
           {items.length === 0 ? (
             <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
               Nessun pagamento registrato. Caparre, ticket e rimborsi compariranno qui: i conti chiusi al tavolo,

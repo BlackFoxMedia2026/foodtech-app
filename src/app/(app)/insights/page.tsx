@@ -53,7 +53,13 @@ function computeRange(searchParams: { range?: string; from?: string; to?: string
   }
   const days = key === "last30" ? 30 : key === "last90" ? 90 : 7;
   const from = startOfDay(now);
-  from.setDate(from.getDate() - days);
+  /*
+    `- (days - 1)`, non `- days`. Oggi conta come uno dei giorni del periodo:
+    sottraendone sette da mezzanotte di oggi la finestra copriva **otto**
+    giorni di calendario, e la sintesi scriveva «gli ultimi 8 giorni» sotto una
+    pillola che dice «Ultimi 7 giorni». Lo stesso valeva per 30 e 90.
+  */
+  from.setDate(from.getDate() - (days - 1));
   return { range: key, from, to: endOfDay(now) };
 }
 
@@ -77,19 +83,30 @@ function DeltaBadge({ current, previous }: { current: number; previous: number }
 export default async function InsightsPage({
   searchParams,
 }: {
-  searchParams: { range?: string; from?: string; to?: string };
+  searchParams: { range?: string; from?: string; to?: string; vista?: string };
 }) {
   const ctx = await getActiveVenue();
   const { range, from, to } = computeRange(searchParams);
-  const giorni = Math.max(30, Math.round((to.getTime() - from.getTime()) / 86_400_000));
+  const giorni = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86_400_000));
+  /*
+    Qui c'era `Math.max(30, ...)`, e con l'intervallo predefinito di sette
+    giorni la sintesi scriveva «gli ultimi 30 giorni» sopra numeri di sette:
+    l'etichetta non descriveva il calcolo. `giorni` adesso è il periodo scelto.
+
+    Il pavimento a trenta serviva a un'altra cosa, legittima: i voti degli
+    ospiti sono pochi, e su sette giorni un NPS è un aneddoto. Quel pavimento
+    resta, ma con un nome suo — e il pannello dice su quanti giorni è
+    misurato, perché un numero senza la sua finestra non è un numero.
+  */
+  const giorniVoti = Math.max(30, giorni);
   const [a, prev, nps, ponteRecensioni, previsione, occupazione, foodCost, assenze, codaAttesa, giftCard, rotazione, inattivi, incassoPrima] =
     await Promise.all([
       getAnalytics(ctx.venueId, from, to),
     getPreviousPeriodMetrics(ctx.venueId, from, to),
-    getSurveyStats(ctx.venueId, { days: giorni }),
+    getSurveyStats(ctx.venueId, { days: giorniVoti }),
     // Lo stesso periodo del sondaggio: due numeri accanto che contassero
     // finestre diverse sarebbero una percentuale falsa.
-    reviewFunnel(ctx.venueId, { days: giorni }),
+    reviewFunnel(ctx.venueId, { days: giorniVoti }),
     // La previsione guarda avanti: non dipende dal periodo selezionato, che
     // riguarda il passato.
     getWeekForecast(ctx.venueId),
@@ -146,40 +163,43 @@ export default async function InsightsPage({
     sourceLabels: SOURCE_LABELS,
   });
 
+  /**
+   * Una vista per volta, scelta dall'indirizzo.
+   *
+   * Analytics era un rendiconto di tredici pannelli uno sotto l'altro:
+   * 5.791 px, sette schermate di scorrimento. Un rendiconto si legge, ma non
+   * si legge tutto insieme — e le domande che ci si fa sono quattro, non
+   * tredici: com'è andata, come va la carta, come va il servizio, cosa
+   * chiede la gente.
+   *
+   * Come in Impostazioni, la vista sta nell'indirizzo: link condivisibile,
+   * tasto indietro che funziona, e nessun JavaScript per cambiarla.
+   */
+  const vistaAttiva: VistaId = VISTE.find((v) => v.id === searchParams.vista)?.id ?? VISTE[0].id;
+
   const pctNewGuests = a.totalGuests ? Math.round((a.newGuests / a.totalGuests) * 100) : null;
   const pctRepeatGuests = a.totalGuests ? Math.round((a.repeatGuests / a.totalGuests) * 100) : null;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Analytics</p>
-          <h1 className="text-display text-3xl">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Monitora performance, domanda e comportamento degli ospiti.</p>
+    <div className="schermo animate-fade-in gap-3">
+      <header className="fissa flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-lg font-semibold leading-none">Analytics</h1>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">
+            {VISTE.find((v) => v.id === vistaAttiva)!.sottotitolo}
+          </p>
         </div>
         <PeriodSelector range={range} from={from.toISOString().slice(0, 10)} to={to.toISOString().slice(0, 10)} />
       </header>
 
+      <Schede attiva={vistaAttiva} range={range} />
+
+      <div className="fill-scroll space-y-4 pr-0.5">
+      {/* ---- COM'È ANDATA ---- */}
+      {vistaAttiva === "andamento" && (
+        <>
       {/* Prima di tutto il resto: è la riga che si legge su un telefono. */}
       <SintesiPanel righe={sintesi} periodoGiorni={giorni} />
-
-      <FoodCostPanel report={foodCost} currency={ctx.venue.currency} />
-
-      {/* Stessa serata, stessi piatti: la classifica si calcola sul rendiconto
-          già letto invece di rifare le stesse letture in un altro modo. */}
-      {foodCost.conti > 0 && (
-        <MenuEngineeringPanel dati={menuEngineering(foodCost)} currency={ctx.venue.currency} />
-      )}
-
-      <NoShowPanel report={assenze} currency={ctx.venue.currency} />
-
-      <RotazionePanel report={rotazione} />
-
-      <WaitlistPanel report={codaAttesa} />
-
-      <ForecastPanel giorni={previsione} occupazione={occupazione} inattivi={inattivi.length} />
-
-      <NpsPanel stats={nps} funnel={ponteRecensioni} />
 
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
@@ -231,64 +251,6 @@ export default async function InsightsPage({
         />
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Coperti per fascia oraria</CardTitle>
-            <CardDescription>Distribuzione del flusso nel periodo selezionato</CardDescription>
-          </CardHeader>
-          <CardContent><SlotChart data={a.slots} /></CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Domanda per giorno e orario</CardTitle>
-            <CardDescription>Coperti per giorno della settimana e fascia oraria</CardDescription>
-          </CardHeader>
-          <CardContent><WeekdayHeatmap data={a.heatmap} /></CardContent>
-        </Card>
-      </section>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Fonti di prenotazione</CardTitle>
-          <CardDescription>Dove arrivano i tuoi ospiti</CardDescription>
-        </CardHeader>
-        <CardContent><SourcesChart data={a.sources} /></CardContent>
-      </Card>
-
-      <section className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Nuovi ospiti</CardTitle>
-            <CardDescription>Profili creati nel periodo selezionato</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-display text-4xl">{a.newGuests}</p>
-            <p className="text-sm text-muted-foreground">
-              {pctNewGuests !== null ? `${pctNewGuests}% degli ospiti nel periodo` : "Nessun ospite nel periodo"}
-            </p>
-            <DeltaBadge current={a.newGuests} previous={prev.newGuests} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Ospiti ricorrenti</CardTitle>
-            <CardDescription>Hanno visitato più di una volta</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-display text-4xl">{a.repeatGuests}</p>
-            <p className="text-sm text-muted-foreground">
-              {pctRepeatGuests !== null ? `${pctRepeatGuests}% degli ospiti nel periodo` : "Nessun ospite nel periodo"}
-            </p>
-            <DeltaBadge current={a.repeatGuests} previous={prev.repeatGuests} />
-            <Button asChild variant="outline" size="sm">
-              <Link href="/guests">Vai a Ospiti <ArrowRight className="h-4 w-4" /></Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
-
       <Card>
         <CardHeader>
           <CardTitle>Confronto periodi</CardTitle>
@@ -330,6 +292,145 @@ export default async function InsightsPage({
           )}
         </CardContent>
       </Card>
+        </>
+      )}
+
+      {/* ---- CIBO E CARTA ---- */}
+      {vistaAttiva === "carta" && (
+        <>
+          <FoodCostPanel report={foodCost} currency={ctx.venue.currency} />
+          {/* Stessa serata, stessi piatti: la classifica si calcola sul
+              rendiconto già letto invece di rifare le stesse letture. */}
+          {foodCost.conti > 0 && (
+            <MenuEngineeringPanel dati={menuEngineering(foodCost)} currency={ctx.venue.currency} />
+          )}
+        </>
+      )}
+
+      {/* ---- SERVIZIO ---- */}
+      {vistaAttiva === "servizio" && (
+        <>
+          <NoShowPanel report={assenze} currency={ctx.venue.currency} />
+          <RotazionePanel report={rotazione} />
+          <WaitlistPanel report={codaAttesa} />
+        </>
+      )}
+
+      {/* ---- DOMANDA E OSPITI ---- */}
+      {vistaAttiva === "domanda" && (
+        <>
+          <ForecastPanel giorni={previsione} occupazione={occupazione} inattivi={inattivi.length} />
+          <NpsPanel stats={nps} funnel={ponteRecensioni} giorni={giorniVoti} />
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Coperti per fascia oraria</CardTitle>
+            <CardDescription>Distribuzione del flusso nel periodo selezionato</CardDescription>
+          </CardHeader>
+          <CardContent><SlotChart data={a.slots} /></CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Domanda per giorno e orario</CardTitle>
+            <CardDescription>Coperti per giorno della settimana e fascia oraria</CardDescription>
+          </CardHeader>
+          <CardContent><WeekdayHeatmap data={a.heatmap} /></CardContent>
+        </Card>
+      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Fonti di prenotazione</CardTitle>
+          <CardDescription>Dove arrivano i tuoi ospiti</CardDescription>
+        </CardHeader>
+        <CardContent><SourcesChart data={a.sources} /></CardContent>
+      </Card>
+      <section className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Nuovi ospiti</CardTitle>
+            <CardDescription>Profili creati nel periodo selezionato</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-display text-4xl">{a.newGuests}</p>
+            <p className="text-sm text-muted-foreground">
+              {pctNewGuests !== null ? `${pctNewGuests}% degli ospiti nel periodo` : "Nessun ospite nel periodo"}
+            </p>
+            <DeltaBadge current={a.newGuests} previous={prev.newGuests} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Ospiti ricorrenti</CardTitle>
+            <CardDescription>Hanno visitato più di una volta</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-display text-4xl">{a.repeatGuests}</p>
+            <p className="text-sm text-muted-foreground">
+              {pctRepeatGuests !== null ? `${pctRepeatGuests}% degli ospiti nel periodo` : "Nessun ospite nel periodo"}
+            </p>
+            <DeltaBadge current={a.repeatGuests} previous={prev.repeatGuests} />
+            <Button asChild variant="outline" size="sm">
+              <Link href="/guests">Vai a Ospiti <ArrowRight className="h-4 w-4" /></Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+        </>
+      )}
+      </div>
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Le quattro domande                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Analytics era un rendiconto di tredici pannelli in colonna: 5.791 px,
+ * sette schermate di scorrimento. Ma le domande che un ristoratore si fa
+ * guardando i numeri sono quattro, non tredici — e una per volta.
+ *
+ * Il nome di ogni vista è la domanda, non l'argomento: «com'è andata» e non
+ * «performance».
+ */
+const VISTE = [
+  { id: "andamento", titolo: "Com'è andata", sottotitolo: "il periodo in numeri" },
+  { id: "carta", titolo: "Cibo e carta", sottotitolo: "costo, margine, piatti" },
+  { id: "servizio", titolo: "Servizio", sottotitolo: "assenze, rotazione, attesa" },
+  { id: "domanda", titolo: "Domanda e ospiti", sottotitolo: "previsione, voti, fonti" },
+] as const;
+
+type VistaId = (typeof VISTE)[number]["id"];
+
+/** Le schede: link, non stato — il periodo scelto viaggia con loro. */
+function Schede({ attiva, range }: { attiva: VistaId; range: string }) {
+  return (
+    // Come il selettore del periodo: una riga che scorre sul telefono, più
+    // righe da `sm`. Le quattro viste devono restare tutte raggiungibili
+    // senza rubare altezza al contenuto.
+    <nav
+      aria-label="Viste di Analytics"
+      className="fissa -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+    >
+      {VISTE.map((v) => {
+        const scelta = v.id === attiva;
+        return (
+          <Link
+            key={v.id}
+            href={`/insights?range=${range}&vista=${v.id}`}
+            aria-current={scelta ? "page" : undefined}
+            className={
+              scelta
+                ? "min-h-[40px] shrink-0 rounded-full border border-cream bg-cream px-3 py-2 text-sm font-medium text-clay-ink"
+                : "min-h-[40px] shrink-0 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-cream hover:text-foreground"
+            }
+          >
+            {v.titolo}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

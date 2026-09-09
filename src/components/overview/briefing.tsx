@@ -20,6 +20,7 @@ import { Cake, Clock, ShieldAlert, Star, Users } from "lucide-react";
  *   momento critico.
  */
 export function Briefing({
+  prenotazioni,
   coperti,
   occupancyPct,
   vip,
@@ -28,6 +29,12 @@ export function Briefing({
   daConfermare,
   picco,
 }: {
+  /**
+   * Quante prenotazioni: era in una fascia a parte sotto questa frase, che
+   * ripeteva coperti e occupazione già scritti qui. Duecentosessantasei
+   * pixel per dire due numeri due volte.
+   */
+  prenotazioni: number;
   coperti: number;
   occupancyPct: number;
   vip: number;
@@ -64,6 +71,11 @@ export function Briefing({
 
       <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-lg">
         <Users className="h-4 w-4 self-center text-muted-foreground" aria-hidden="true" />
+        <span>
+          <strong className="tabular-nums">{prenotazioni}</strong>{" "}
+          {prenotazioni === 1 ? "prenotazione" : "prenotazioni"}
+        </span>
+        <span className="text-muted-foreground">·</span>
         <span>
           <strong className="tabular-nums">{coperti}</strong> coperti
         </span>

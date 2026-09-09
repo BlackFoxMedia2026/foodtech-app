@@ -33,8 +33,10 @@ export function GuestsTable({ rows, availableTags }: { rows: Guest[]; availableT
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    // La ricerca resta fissa, la tabella prende l'altezza che avanza: si
+    // cerca senza perdere il campo di ricerca sotto lo scorrimento.
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="fissa flex flex-wrap items-center gap-3">
         <div className="relative max-w-md flex-1">
           <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -59,9 +61,43 @@ export function GuestsTable({ rows, availableTags }: { rows: Guest[]; availableT
         )}
       </div>
 
+      {/* Sul telefono una tabella a sei colonne mostra due colonne e mezzo:
+          visite, ultima visita e livello — cioè le informazioni per cui si apre
+          il CRM — restavano fuori dallo schermo, raggiungibili solo scorrendo
+          in orizzontale. Sotto `md` le stesse righe diventano schede, dove
+          tutto ciò che conta sta su due righe di testo. */}
+      <ul className="fill-scroll space-y-2 pr-0.5 md:hidden">
+        {rows.length === 0 && (
+          <li className="riquadro comodo text-center text-sm text-muted-foreground">Nessun ospite trovato.</li>
+        )}
+        {rows.map((g) => {
+          const name = `${g.firstName} ${g.lastName ?? ""}`.trim();
+          return (
+            <li key={g.id}>
+              <Link href={`/guests/${g.id}`} className="riquadro denso flex items-center gap-3">
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarFallback>{initials(name)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {g.totalVisits} {g.totalVisits === 1 ? "visita" : "visite"}
+                    {g.lastVisitAt ? ` · ultima il ${formatDate(g.lastVisitAt)}` : " · mai venuto"}
+                    {g.tags?.length > 0 ? ` · ${g.tags.join(" · ")}` : ""}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{g.email ?? g.phone ?? "nessun contatto"}</p>
+                </div>
+                <LoyaltyPill tier={g.loyaltyTier} />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
       {/* La stessa tabella delle prenotazioni, densità comoda: qui si legge,
           non si lavora durante il servizio. */}
-      <Tabella>
+      <div className="hidden min-h-0 flex-1 flex-col md:flex">
+      <Tabella fill>
         <Testa>
           <Th>Ospite</Th>
           <Th>Contatti</Th>
@@ -94,8 +130,15 @@ export function GuestsTable({ rows, availableTags }: { rows: Guest[]; availableT
                     <p className="text-xs">{g.phone ?? ""}</p>
                   </Td>
                   <Td className="tabular-nums">{g.totalVisits}</Td>
-                  <Td className="tabular-nums">
-                    {formatCurrency(Math.round(Number(g.totalSpend) * 100))}
+                  {/* `totalSpend` non lo scrive nessuno: non ci sono ordini né
+                      incassi collegati a un ospite. Mostrarlo come «0,00 €»
+                      farebbe sembrare misurato uno zero che è solo un campo
+                      vuoto. Vedi docs/PRODUCT_STATUS.md, «Nota sui numeri in
+                      euro». */}
+                  <Td className="tabular-nums text-muted-foreground">
+                    {Number(g.totalSpend) > 0
+                      ? formatCurrency(Math.round(Number(g.totalSpend) * 100))
+                      : "non misurata"}
                   </Td>
                   <Td className="text-muted-foreground tabular-nums">
                     {g.lastVisitAt ? formatDate(g.lastVisitAt) : "—"}
@@ -106,6 +149,7 @@ export function GuestsTable({ rows, availableTags }: { rows: Guest[]; availableT
             })}
         </Corpo>
       </Tabella>
+      </div>
     </div>
   );
 }

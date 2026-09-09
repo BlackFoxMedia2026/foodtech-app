@@ -9,7 +9,7 @@ export default async function GiftCardsPage() {
   const items = await listGiftCards(ctx.venueId);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="schermo animate-fade-in gap-4">
       <GiftCardList
         items={items}
         canIssue={can(ctx.role, "manage_venue")}

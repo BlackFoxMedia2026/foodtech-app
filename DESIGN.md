@@ -250,3 +250,67 @@ La sidebar è il componente distintivo del sistema: una capsula di vetro (`.glas
 - **Don't** usare bordi laterali colorati (`border-left`/`border-right` oltre 1px) come accento decorativo su card o liste.
 - **Don't** applicare `background-clip: text` con gradiente sul testo per enfasi — l'enfasi passa da peso o dimensione, non da gradient text.
 - **Don't** coprire di vetro smerigliato ogni superficie: se tutto è vetro, la sidebar smette di essere il punto focale che è oggi.
+
+## 7. Layout: una schermata, nessuno scorrimento di pagina
+
+In un ristorante nessuno scorre. Chi accoglie ha una persona davanti, il
+telefono in mano e tre secondi: se l'informazione che cerca è sotto la piega,
+per lui non esiste. Da qui la regola che governa tutte le pagine dell'area
+operativa: **la pagina non scorre mai; scorrono i suoi elenchi.**
+
+### Le quattro classi
+
+Stanno in `src/styles/globals.css`, dentro `@layer components`, e sono l'unico
+vocabolario ammesso per costruire una pagina:
+
+| Classe | Cosa fa |
+|---|---|
+| `.schermo` | la radice della pagina: colonna alta quanto lo spazio disponibile (`flex h-full min-h-0 flex-col`) |
+| `.fissa` | non si comprime e non si allunga: intestazioni, filtri, riepiloghi, paginazione |
+| `.fill` | assorbe **tutta** l'altezza che resta (`min-h-0 flex-1`), senza scorrere: per una mappa o un grafico |
+| `.fill-scroll` | come `.fill`, ma il suo contenuto scorre al suo interno |
+
+### Le regole che le rendono vere
+
+**Una sola regione elastica per schermata.** Se due fratelli sono `.fill`, si
+dividono lo spazio e su un telefono diventano due finestrelle da settanta
+pixel: illeggibili entrambe. Quando servono due colonne che scorrono (scheda
+ospite, panoramica), sotto il breakpoint scorre **la regione intera** e solo da
+`md`/`lg` le colonne diventano indipendenti.
+
+**`min-height: 0` a ogni livello.** È la parte che si dimentica sempre: un
+figlio flex ha `min-height: auto`, cioè "non scendo sotto il mio contenuto", e
+questo basta a far crescere il genitore oltre lo schermo. Ogni anello della
+catena — `main`, la pagina, la card, il `CardContent` — deve poter essere più
+basso del suo contenuto perché la regione elastica funzioni.
+
+**Una regione elastica dentro un contenitore che già scorre viene schiacciata.**
+Il `main` dell'area operativa non è più lo scroller: tiene
+`overflow-y-auto` solo come rete di sicurezza per le pagine non ancora
+convertite, e le pagine convertite non lo usano.
+
+**Prima di comprimere, cerca il doppione.** La panoramica non è entrata in una
+schermata togliendo margini: è entrata perché coperti e occupazione erano
+scritti **due volte**, nel briefing e in una card da 266 pixel. Cancellata la
+card, lo spazio c'era. Lo stesso per la scorciatoia "Nuova prenotazione", che
+era già un pulsante nell'intestazione: quattro riquadri da 268px sono diventati
+una riga da 44.
+
+**Le intestazioni delle tabelle sono `sticky`.** Se il corpo della tabella
+scorre dentro la sua regione, l'intestazione deve restare: `Testa` è
+`sticky top-0` con fondo pieno, altrimenti si perde di vista cosa si sta
+leggendo.
+
+**Niente barre `fixed`.** Una barra dei comandi sovrapposta con `position: fixed`
+obbliga a indovinare un `padding-bottom` sul contenuto (`pb-24` e simili). In
+una schermata che non scorre la barra è semplicemente l'ultima riga `.fissa`
+della colonna: nessun numero da indovinare.
+
+### Come si verifica
+
+**Mai a occhio.** Si misura con una sonda: per ogni rotta e per quattro
+risoluzioni (1440×900, 1280×800, 820×1180, 390×844) si legge
+`scrollHeight - clientHeight` su `document.scrollingElement` e su `main`, e si
+pretende zero. Un valore anche di 40 pixel è una piega, e la piega è dove
+l'informazione smette di esistere. La sonda va eseguita su una build di
+produzione: in sviluppo le altezze cambiano con il ricaricamento a caldo.

@@ -9,7 +9,7 @@ export default async function CouponsPage() {
   const items = await listCoupons(ctx.venueId);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="schermo animate-fade-in">
       <CouponList items={items} canEdit={can(ctx.role, "edit_marketing")} />
     </div>
   );

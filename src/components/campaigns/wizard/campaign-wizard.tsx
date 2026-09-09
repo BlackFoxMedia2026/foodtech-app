@@ -139,8 +139,8 @@ function WizardShell() {
   const isLastStep = state.step === WIZARD_STEPS.length - 1;
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 pb-24">
-      <header className="space-y-4">
+    <div className="schermo mx-auto w-full max-w-4xl gap-4">
+      <header className="fissa space-y-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Nuova campagna email</p>
           <h1 className="text-display text-2xl">{state.name || "Senza nome"}</h1>
@@ -154,18 +154,18 @@ function WizardShell() {
       </header>
 
       {localError && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
+        <div className="fissa rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
           {localError}
         </div>
       )}
 
-      <div className="surface p-6">
+      <div className="surface fill-scroll p-6">
         <StepComponent />
       </div>
 
       {!isLastStep && (
-        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur">
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+        <div className="fissa -mx-4 border-t border-border bg-background/95 px-4 pt-3 backdrop-blur md:-mx-6">
+          <div className="flex items-center justify-between">
             <Button variant="outline" onClick={handleBack} disabled={state.step === 0}>
               <ChevronLeft className="h-4 w-4" /> Indietro
             </Button>

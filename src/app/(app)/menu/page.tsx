@@ -9,7 +9,7 @@ export default async function MenuPage() {
   const categorie = await getMenu(ctx.venueId);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="schermo animate-fade-in gap-3">
       <MenuEditor
         categorie={categorie}
         venueSlug={ctx.venue.slug}

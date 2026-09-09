@@ -31,9 +31,21 @@ export default async function AppShell({ children }: { children: React.ReactNode
         venues={venueList}
         activeVenueId={ctx.venueId}
       />
-      {/* pb-24 su telefono: lo spazio della barra in basso, altrimenti l'ultima
-          riga di ogni pagina finisce sotto la navigazione. */}
-      <main className="flex-1 overflow-y-auto px-4 pb-24 pt-6 md:px-6 md:pb-6 lg:px-8">
+      {/*
+        `main` dà la sua altezza alle pagine invece di scorrere.
+        
+        Prima era lui il contenitore che scorreva, e una pagina più alta dello
+        schermo si trascinava: è lo scroll che non vogliamo. Adesso ha
+        un'altezza definita (quello che avanza sotto la testata) e
+        `min-h-0`, così una pagina costruita con `.schermo` la riceve tutta e
+        decide **al suo interno** cosa scorre. Resta `overflow-y-auto` come
+        rete: una pagina non ancora convertita scorre invece di tagliare il
+        contenuto, che sarebbe peggio.
+        
+        `pb-24` su telefono è lo spazio della barra in basso, altrimenti
+        l'ultima riga finisce sotto la navigazione.
+      */}
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-24 pt-4 md:px-6 md:pb-6 md:pt-5 lg:px-8">
         <VenueTimeProvider timezone={ctx.venue.timezone}>{children}</VenueTimeProvider>
       </main>
 
