@@ -1813,6 +1813,41 @@ email, turni non configurati).
 componente che si aggiorna**. Oggi alcune pagine mostrano uno scheletro intero
 per un aggiornamento parziale.
 
+### Fatto il 9 settembre — e la constatazione era mezza sbagliata
+
+**Misurando** (richieste del router rallentate a otto secondi, e la schermata
+guardata **durante** l'attesa) è venuto fuori che un aggiornamento parziale non
+mostra nessuno scheletro: cambiando vista in Analytics o parte in Impostazioni,
+Next tiene la pagina precedente in piedi finché i dati nuovi non arrivano,
+perché il pezzo di navigazione è lo stesso e cambia solo l'indirizzo.
+
+Il difetto vero era **l'opposto**: non lo diceva. Otto secondi di numeri vecchi
+sotto una vista già cliccata, senza sapere se il tocco fosse arrivato. Adesso
+la pillola chiesta porta una rotella per tutta la durata della transizione —
+e resta un `<a href>`, quindi il tasto centrale, Ctrl+clic e il caso senza
+JavaScript funzionano come prima. Quando il router ha già in cache la vista
+(prefetch), il cambio è istantaneo e non compare nessuna rotella: il segno c'è
+solo quando serve.
+
+**Il difetto che c'era davvero**, sull'ingresso: la schermata d'attesa era
+fatta di soli rettangoli grigi, **titolo compreso**. Entrando in Analytics
+sparivano il nome della pagina, il periodo scelto e le quattro viste; entrando
+in Impostazioni, l'indice delle quattro parti. Niente di tutto questo dipende
+dai dati. Adesso quelle parti sono **gli stessi componenti** che si vedranno un
+istante dopo, e i rettangoli restano solo dove arriveranno i numeri — con la
+forma che avranno: quattro riquadri in fila per «Com'è andata», righe basse per
+i blocchi delle Impostazioni, perché uno scheletro che non somiglia al
+contenuto fa saltare la pagina appena i dati arrivano.
+
+**Un confine che ha morso per la terza volta.** Per rendere le pillole anche
+nella schermata d'attesa, i nomi delle viste sono passati in un modulo
+condiviso — e la prima versione li esportava dal componente `"use client"`.
+Da un modulo client il server **non può leggere un valore esportato**: quello
+che attraversa il confine sono riferimenti a componenti. Risultato: Analytics
+si rompeva con «An error occurred in the Server Components render». Costanti e
+funzioni pure condivise fra server e client stanno in `lib` — vale per i
+livelli degli avvisi, per i tipi della ricerca, e ora per le viste e le parti.
+
 ## 38. Tempo reale (§65, §66)
 
 **Cosa esiste da oggi:** ogni cinque secondi si chiede «è cambiato qualcosa?» e
@@ -2007,7 +2042,7 @@ gliene **prepara**: oggi una, e possono essere sei.
 23. Scala tipografica e tre livelli di densità applicati
 24. ~~Attribuzione dei cambiamenti in tempo reale («assegnato da Anna»)~~ — **fatta il 9 settembre**
 25. ~~Ricerca globale~~ — **fatta il 9 settembre**
-26. Scheletri per componente
+26. ~~Scheletri per componente~~ — **fatto il 9 settembre** (e la constatazione era mezza sbagliata: vedi la sezione 35-37)
 27. Guest 360 riorganizzato
 28. Anteprime reali in Brand
 

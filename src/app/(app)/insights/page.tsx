@@ -25,6 +25,8 @@ import { resolveSegment } from "@/server/campaigns";
 import { Button } from "@/components/ui/button";
 import { SlotChart, SourcesChart, WeekdayHeatmap } from "@/components/insights/charts";
 import { PeriodSelector } from "@/components/insights/period-selector";
+import { SchedeViste } from "@/components/insights/schede-viste";
+import { VISTE, vistaDa } from "@/lib/viste-insights";
 import { ComparisonStat } from "@/components/insights/comparison-stat";
 import { getActiveVenue } from "@/lib/tenant";
 import { getAnalytics, getPreviousPeriodMetrics } from "@/server/analytics";
@@ -175,7 +177,7 @@ export default async function InsightsPage({
    * Come in Impostazioni, la vista sta nell'indirizzo: link condivisibile,
    * tasto indietro che funziona, e nessun JavaScript per cambiarla.
    */
-  const vistaAttiva: VistaId = VISTE.find((v) => v.id === searchParams.vista)?.id ?? VISTE[0].id;
+  const vistaAttiva = vistaDa(searchParams.vista);
 
   const pctNewGuests = a.totalGuests ? Math.round((a.newGuests / a.totalGuests) * 100) : null;
   const pctRepeatGuests = a.totalGuests ? Math.round((a.repeatGuests / a.totalGuests) * 100) : null;
@@ -192,7 +194,7 @@ export default async function InsightsPage({
         <PeriodSelector range={range} from={from.toISOString().slice(0, 10)} to={to.toISOString().slice(0, 10)} />
       </header>
 
-      <Schede attiva={vistaAttiva} range={range} />
+      <SchedeViste />
 
       <div className="fill-scroll space-y-4 pr-0.5">
       {/* ---- COM'È ANDATA ---- */}
@@ -416,42 +418,3 @@ export default async function InsightsPage({
  * Il nome di ogni vista è la domanda, non l'argomento: «com'è andata» e non
  * «performance».
  */
-const VISTE = [
-  { id: "andamento", titolo: "Com'è andata", sottotitolo: "il periodo in numeri" },
-  { id: "carta", titolo: "Cibo e carta", sottotitolo: "costo, margine, piatti" },
-  { id: "servizio", titolo: "Servizio", sottotitolo: "assenze, rotazione, attesa" },
-  { id: "domanda", titolo: "Domanda e ospiti", sottotitolo: "previsione, voti, fonti" },
-] as const;
-
-type VistaId = (typeof VISTE)[number]["id"];
-
-/** Le schede: link, non stato — il periodo scelto viaggia con loro. */
-function Schede({ attiva, range }: { attiva: VistaId; range: string }) {
-  return (
-    // Come il selettore del periodo: una riga che scorre sul telefono, più
-    // righe da `sm`. Le quattro viste devono restare tutte raggiungibili
-    // senza rubare altezza al contenuto.
-    <nav
-      aria-label="Viste di Analytics"
-      className="fissa -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
-    >
-      {VISTE.map((v) => {
-        const scelta = v.id === attiva;
-        return (
-          <Link
-            key={v.id}
-            href={`/insights?range=${range}&vista=${v.id}`}
-            aria-current={scelta ? "page" : undefined}
-            className={
-              scelta
-                ? "min-h-[40px] shrink-0 rounded-full border border-cream bg-cream px-3 py-2 text-sm font-medium text-clay-ink"
-                : "min-h-[40px] shrink-0 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-cream hover:text-foreground"
-            }
-          >
-            {v.titolo}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}

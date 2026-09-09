@@ -22,6 +22,8 @@ import { listReviewLinks } from "@/server/reviews";
 import { listInviti, listTeam } from "@/server/team";
 import { initials } from "@/lib/utils";
 import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
+import { IndiceParti } from "@/components/settings/indice-parti";
+import { PARTI, parteDa, type ParteId } from "@/lib/parti-impostazioni";
 
 export const dynamic = "force-dynamic";
 
@@ -52,8 +54,7 @@ export default async function SettingsPage({
    * tasto indietro fa quello che ci si aspetta. È la stessa scelta delle
    * ancore di ieri, portata alle sue conseguenze.
    */
-  const parteAttiva: ParteId =
-    PARTI.find((p) => p.id === searchParams?.parte)?.id ?? PARTI[0].id;
+  const parteAttiva = parteDa(searchParams?.parte);
 
   // L'indirizzo pubblico di questa installazione serve due volte: nel codice
   // da incollare sul sito del locale, e nei link d'invito al team.
@@ -97,7 +98,7 @@ export default async function SettingsPage({
         </div>
       )}
 
-      <Indice attiva={parteAttiva} />
+      <IndiceParti />
 
       <Parte id="locale" attiva={parteAttiva}>
       {/* Il brand si configura in una pagina sua: qui è una riga che dice
@@ -306,13 +307,6 @@ export default async function SettingsPage({
  * condividere un link a una parte, e il tasto indietro fa quello che ci si
  * aspetta.
  */
-const PARTI = [
-  { id: "locale", titolo: "Il locale", sottotitolo: "Chi siamo, chi lavora, com'è fatta la sala" },
-  { id: "prenotazioni", titolo: "Prenotazioni", sottotitolo: "Le regole con cui si accettano" },
-  { id: "ospiti", titolo: "Ospiti", sottotitolo: "Cosa si fa con chi è venuto" },
-  { id: "sistema", titolo: "Sistema", sottotitolo: "Invii, integrazioni, stato dei lavori" },
-] as const;
-
 /*
   «BEACH_CLUB» e «piano GROWTH» erano costanti del database mostrate a un
   ristoratore. Sono le stesse chiavi dello schema, tradotte in una parola che
@@ -333,38 +327,6 @@ const NOME_PIANO: Record<string, string> = {
   ENTERPRISE: "Enterprise",
 };
 
-function Indice({ attiva }: { attiva: ParteId }) {
-  return (
-    // Sul telefono le quattro pillole andavano a capo su due righe: cento
-    // pixel di intestazione in una schermata che non scorre. Qui scorrono in
-    // orizzontale, e da `sm` tornano a disporsi su più righe.
-    <nav
-      aria-label="Parti delle impostazioni"
-      className="fissa -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
-    >
-      {PARTI.map((p) => {
-        const scelta = p.id === attiva;
-        return (
-          <Link
-            key={p.id}
-            href={`/settings?parte=${p.id}`}
-            aria-current={scelta ? "page" : undefined}
-            className={
-              scelta
-                ? "min-h-[40px] shrink-0 rounded-full border border-cream bg-cream px-3 py-2 text-sm font-medium text-clay-ink"
-                : "min-h-[40px] shrink-0 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-cream hover:text-foreground"
-            }
-          >
-            {p.titolo}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
-type ParteId = (typeof PARTI)[number]["id"];
-
 function Parte({
   id,
   attiva,
@@ -384,12 +346,10 @@ function Parte({
     // elenco che galleggia. Tre unità tengono i blocchi separati e la parte
     // leggibile in una schermata.
     <section id={id} className="fill-scroll space-y-3 pr-0.5" aria-label={parte.titolo}>
-      {/* Il titolo della parte non si ripete: la pillola accesa qui sopra lo
-          dice già, e in una schermata che non scorre cinquanta pixel di
-          ripetizione sono cinquanta pixel di contenuto in meno. Resta la
-          riga che aggiunge qualcosa — cosa c'è dentro questa parte — e il
-          nome va all'assistente vocale, che la pillola non gliela legge. */}
-      <p className="border-b border-border pb-2 text-xs text-muted-foreground">{parte.sottotitolo}</p>
+      {/* La riga che dice cosa c'è dentro questa parte sta nell'indice, con le
+          pillole: la rende anche la schermata di caricamento, e non dipende dai
+          dati. Qui resta il nome per l'assistente vocale, che la pillola non
+          gliela legge. */}
       {children}
     </section>
   );
