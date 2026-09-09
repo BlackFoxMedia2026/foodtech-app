@@ -396,6 +396,55 @@ nuova, stato cambiato, riga cancellata, qualcuno in coda, conto aperto — e
 una coda già chiusa. Se cambiasse troppo sarebbe una richiesta ogni cinque
 secondi per niente, peggio dei trenta di prima.
 
+## Master redesign V2 (9 settembre 2026)
+
+Il documento di progetto — [`docs/TAVOLO-UX-REDESIGN-V2.md`](TAVOLO-UX-REDESIGN-V2.md),
+1862 righe — e le sei fasi, tutte in produzione. Non un restyling: palette,
+tipografia e atmosfera sono quelle. Il menu resta orizzontale: è cambiata una
+destinazione.
+
+**Il difetto più grave era una destinazione sbagliata.** La voce «Sala» portava
+all'editor della piantina; la sala **viva** — sette stati, chi è seduto, il
+conto aperto, fra quanto si libera — non aveva nessuna voce di navigazione.
+Adesso «Sala» va lì e la piantina sta sotto «Altro», dove sta la
+configurazione.
+
+**Tre volte l'intelligenza è uscita in superficie senza codice nuovo:** il
+segnale dell'ospite nella lista prenotazioni (`cosaSapere` esisteva e non era
+là), il tavolo consigliato nella riga della coda (il motore c'era, sepolto
+sotto un click), e il riconoscimento di chi è al telefono mentre si scrive.
+
+**Tre cose le ho trovate solo costruendo**, e nessuna era nell'audit:
+
+1. **Due tabelle per «chi copre questo tavolo»** — `StaffAssignment` e
+   `WaiterAssignment`, entrambe scritte dal prodotto da schermate diverse, che
+   non si guardano. Sulla demo: settantasei tavoli assegnati, zero mostrati in
+   Camerieri. **P0, mitigato e non risolto: serve una decisione sul modello.**
+2. **`/service` non era mai stata convertita al non-scorrimento.** Misurava
+   zero solo perché il contenuto ci stava: con un servizio vero sforava di 600
+   px su un telefono. *Misurare zero non è la stessa cosa che essere costruito
+   per non scorrere.*
+3. **Il precompilamento demo nella pagina d'accesso**, senza controllo di
+   ambiente: un cliente vero avrebbe visto la propria pagina riempita con le
+   credenziali di un'altra vetrina.
+
+**E cinque cose che l'audit aveva scritto sbagliate**, corrette dove stavano —
+il server evitava già i doppioni, Camerieri leggeva la tabella sbagliata, il
+modulo pubblico proponeva già le alternative, i gruppi grandi andavano già al
+telefono, il portale Wi-Fi era già essenziale. Il filo comune di quattro su
+cinque: **dedurre l'assenza da una lettura di superficie**. Le funzioni migliori
+di un prodotto operativo vivono negli stati eccezionali — la giornata piena, il
+gruppo di quindici, la coda di dodici — che sono esattamente quelli che una
+ricognizione non incontra. La sezione 51 del documento tiene il conto.
+
+**Il tablet:** gli avevo dato 3/10 contando i breakpoint. Misurando un iPad, il
+layout teneva (zero scorrimenti a 1024) e il difetto erano i **bersagli di
+tocco**: dieci pagine su dodici avevano i controlli operativi sotto i 36 px. Da
+dieci pagine a una.
+
+901 test, 9 flussi end-to-end, nessuna funzione rimossa — e un test che lo
+verifica.
+
 ## Phase 7 — Enterprise
 
 - **Quando finisce la giornata di un ristorante?** Oggi «oggi» è il giorno del processo (UTC su Vercel), e per un locale italiano viene una finestra dalle 02:00 di ieri alle 01:59 di oggi: assomiglia per caso a una giornata di servizio. Delimitarla nel fuso del locale **peggiorerebbe le cose** — alle 00:30 la schermata Servizio si svuoterebbe con i tavoli ancora seduti. Serve una decisione: «la giornata di servizio comincia alle 05:00», impostazione del locale, usata in tutti e diciannove i punti che chiamano `startOfDay`. Descritto in `docs/ANALISI-STATO-2026-09-07.md` §11.7
