@@ -131,11 +131,30 @@ scoperto.
 
 I dieci problemi, in ordine di quanto costano durante un servizio.
 
-## P-01 · «Sala» porta all'editor · **P0**
-`PRIMARY_NAV[3]` e `MOBILE_NAV[2]` puntano a `/floor`, che è l'editor. La sala
-viva è a `/service/room`. Durante il servizio la domanda «dove metto questa
-persona?» è la seconda più frequente, e la risposta è in un posto che nessuno
-indovina.
+## P-01 · «Sala» porta all'editor · **P0** — **RITIRATO il 9 settembre**
+
+**Questa constatazione era sbagliata, e la modifica è stata annullata su
+indicazione di Luca.**
+
+Avevo scritto che la voce «Sala» portava all'editor delle piantine e che la
+sala vera fosse `/service/room`, e avevo spostato la voce lì. `/floor` **non è
+un editor**: è la sala del locale — i tavoli in pianta, i posti, chi copre
+quale tavolo, il turno, la data, «17 di 17 tavoli assegnati» — e l'editor è una
+cosa che si apre da lì, quando serve.
+
+Il risultato della modifica era il contrario di un miglioramento: «Sala»
+apriva una vista a riquadri che dice meno e assomiglia poco al locale, mentre
+la sala vera finiva sotto «Altro» col nome «Piantina».
+
+Rimesso tutto come stava: «Sala» → `/floor`, nessuna seconda voce, e anche
+«vai in sala» dell'agente apre la stessa cosa che apre il menu. La sala viva
+resta dove era anche prima: dentro Servizio, con la sua linguetta.
+
+**Cosa insegna, oltre al caso.** È lo stesso difetto delle cinque cose che
+avevo già sbagliato in questo audit (sezione 51): **ho dedotto cosa fa una
+schermata dal suo indirizzo e dal nome dei suoi componenti**, invece di
+aprirla. `/floor` + `room-builder-*` mi ha fatto scrivere «editor». Bastava
+guardarla.
 
 ## P-02 · Due vocabolari di stato per i tavoli · **P0**
 Sette stati contro quattro, nomi diversi per la stessa condizione. Vedi §34.
@@ -1912,6 +1931,10 @@ scritte in `DESIGN.md`.
 fase che non si vede e senza la quale le altre non si possono fare.
 
 ## Fase 2 — la navigazione e il servizio
+
+> **Nota del 9 settembre:** lo spostamento di «Sala» su `/service/room` di
+> questa fase è stato annullato — vedi P-01. La sala del locale è `/floor` e la
+> voce «Sala» ci punta di nuovo.
 «Sala» → sala viva; piantina in Impostazioni (con reindirizzamento) · barra in
 basso · pannello tavolo · segnale ospite nella lista prenotazioni · azioni di
 riga · tavolo consigliato nella coda · quattro livelli di priorità · tre zone

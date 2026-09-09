@@ -1,4 +1,4 @@
-import { CalendarRange, CreditCard, LayoutDashboard, LayoutPanelTop, LineChart, ListOrdered, Megaphone, Radio, Settings, Sparkles, UserRound, UtensilsCrossed } from "lucide-react";
+import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Radio, Settings, Sparkles, UserRound, UtensilsCrossed } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 
 export type NavItem = {
@@ -58,24 +58,23 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/service", label: "Servizio", icon: Radio },
   { href: "/bookings", label: "Prenotazioni", shortLabel: "Prenot.", icon: CalendarRange },
   /*
-    «Sala» porta alla sala **viva**, non all'editor.
+    «Sala» è la sala di `/floor`, e ci resta.
 
-    Fino al 9 settembre questa voce puntava a `/floor`, che è la pagina dove si
-    aggiungono, si rinominano, si spostano e si cancellano i tavoli. La sala
-    viva — sette stati per tavolo, chi è seduto, il conto aperto, fra quanto si
-    libera — stava a `/service/room`, dentro Servizio, e non aveva nessuna
-    voce di navigazione.
+    Il 9 settembre questa voce l'avevo spostata su `/service/room` — la sala
+    viva dentro Servizio — con l'argomento che `/floor` è anche l'editor dei
+    tavoli, e che alle 21:15 di sabato «dove metto questa persona?» non si
+    risponde con un editor di piantine.
 
-    Quindi alle 21:15 di sabato la domanda «dove metto questa persona?» — la
-    seconda più frequente di una serata — si rispondeva con un gesto che
-    portava a un editor di piantine. Non era una preferenza discutibile: era
-    una destinazione sbagliata.
+    L'argomento era sbagliato su un fatto: `/floor` **non** è un editor. È la
+    sala vera, quella disegnata con i tavoli in pianta, i posti, chi copre
+    quale tavolo, il turno e la data — e l'editor è una cosa che si apre da
+    lì. Spostare la voce ha portato «Sala» su una vista a riquadri che dice
+    meno e assomiglia poco al locale, e ha spinto la sala vera sotto «Altro».
 
-    L'editor è configurazione: si fa una volta e si ritocca quando cambia
-    l'arredamento. Sta sotto «Altro», nel gruppo «Il locale», con le altre cose
-    che si preparano prima del servizio.
+    Rimessa dov'era. La sala viva resta dove stava anche prima: dentro
+    Servizio, con la linguetta «Sala».
   */
-  { href: "/service/room", label: "Sala", icon: DiningTableIcon },
+  { href: "/floor", label: "Sala", icon: DiningTableIcon },
   { href: "/waitlist", label: "Attesa", icon: ListOrdered },
   { href: "/guests", label: "Ospiti", icon: TuxedoGuestIcon },
 ];
@@ -83,7 +82,6 @@ export const PRIMARY_NAV: NavItem[] = [
 export const SECONDARY_NAV: NavItem[] = [
   // I camerieri si configurano prima del servizio, non durante: da qui in poi
   // e' lavoro da ufficio, e la barra ha spazio per sei voci, non per sette.
-  { href: "/floor", label: "Piantina", icon: LayoutPanelTop, gruppo: "locale" },
   { href: "/waiters", label: "Camerieri", icon: UserRound, gruppo: "locale" },
   { href: "/menu", label: "Menu", icon: UtensilsCrossed, gruppo: "locale" },
   { href: "/experiences", label: "Esperienze", icon: Sparkles, gruppo: "locale" },
@@ -116,7 +114,7 @@ export const MOBILE_NAV: NavItem[] = [
   PRIMARY_NAV[0], // Panoramica
   PRIMARY_NAV[1], // Servizio — durante il servizio è la schermata madre
   PRIMARY_NAV[2], // Prenotazioni
-  PRIMARY_NAV[3], // Sala (viva)
+  PRIMARY_NAV[3], // Sala
 ];
 
 /** Vero se questo percorso sta sotto questo indirizzo. */
@@ -127,9 +125,11 @@ function sottoA(pathname: string, href: string) {
 /**
  * Quale voce è accesa — e vince **la corrispondenza più lunga**.
  *
- * Serve da quando «Sala» punta a `/service/room`: per prefisso quel percorso
- * sta anche sotto `/service`, quindi si accendevano due voci insieme e la
- * navigazione diceva due cose diverse nello stesso momento.
+ * È servita quando «Sala» puntava a `/service/room`: per prefisso quel
+ * percorso sta anche sotto `/service`, quindi si accendevano due voci insieme
+ * e la navigazione diceva due cose diverse nello stesso momento. La regola
+ * resta perché vale in generale — domani una sottopagina di una voce
+ * esistente non richiede di venire a scrivere un'eccezione qui.
  *
  * La regola generale invece di un'eccezione scritta a mano su «Servizio»:
  * se un'altra voce corrisponde con un indirizzo più lungo, è la sua. Così
