@@ -2,7 +2,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { createCategory, createItem } from "@/server/menu";
 import { addLine, closeOrder, openOrderForBooking } from "@/server/orders";
-import { MINIMO_PER_QUOTA, getNoShowReport } from "@/server/no-show";
+import {
+  ASSENZE_CHE_CONTANO,
+  GIORNI_AVANTI_RISCHIO,
+  MAX_RISCHIO_IN_ELENCO,
+  MINIMO_PER_QUOTA,
+  getNoShowReport,
+} from "@/server/no-show";
 
 /**
  * Quanto costano le assenze.
@@ -233,5 +239,116 @@ describe("i confini", () => {
 
     await db.booking.deleteMany({ where: { venueId: altro.id } });
     await db.venue.delete({ where: { id: altro.id } });
+  });
+});
+
+describe("la terza riga: cosa si può fare", () => {
+  /*
+    Il quadro diceva cosa è successo e su cosa era misurato, ma non cosa si può
+    fare. Queste prove fissano le due cose che rendono quel «si può fare» vero
+    invece che un consiglio: **guarda avanti** (non dipende dal periodo
+    dell'analisi) e **conta solo chi è già mancato davvero**.
+  */
+  const ADESSO = new Date("2026-09-10T12:00:00+02:00");
+
+  /** Un ospite con `assenze` assenze sulla scheda. */
+  async function ospiteConAssenze(nome: string, assenze: number) {
+    return db.guest.create({
+      data: { venueId, firstName: nome, noShowCount: assenze, totalVisits: 3 },
+    });
+  }
+
+  it("elenca le prenotazioni future di chi è già mancato, coperti compresi", async () => {
+    const g = await ospiteConAssenze("Ripetente", 2);
+    // Due nei prossimi giorni…
+    await prenotazione("2026-09-11", 4, "CONFIRMED", g.id);
+    await prenotazione("2026-09-12", 2, "PENDING", g.id);
+
+    const r = await getNoShowReport(venueId, DA, A, { now: ADESSO });
+    expect(r.aRischioTotali).toBe(2);
+    expect(r.aRischioCoperti).toBe(6);
+    expect(r.aRischio[0].nome).toBe("Ripetente");
+    expect(r.aRischio[0].assenze).toBe(2);
+    // In ordine di quando arrivano: la telefonata più urgente è la prima.
+    expect(r.aRischio[0].quando.getTime()).toBeLessThan(r.aRischio[1].quando.getTime());
+  });
+
+  it("non guarda il periodo dell'analisi ma i prossimi giorni", async () => {
+    const g = await ospiteConAssenze("Ripetente", ASSENZE_CHE_CONTANO);
+    // Dentro il periodo dell'analisi ma **passata**: non è più un'azione.
+    await prenotazione("2026-09-08", 4, "CONFIRMED", g.id);
+    // Oltre la finestra in avanti: troppo lontana per essere un lavoro di oggi.
+    const lontano = new Date(ADESSO.getTime() + (GIORNI_AVANTI_RISCHIO + 3) * 86_400_000);
+    await db.booking.create({
+      data: { venueId, guestId: g.id, partySize: 2, startsAt: lontano, status: "CONFIRMED", source: "PHONE" },
+    });
+
+    const r = await getNoShowReport(venueId, DA, A, { now: ADESSO });
+    expect(r.aRischioTotali).toBe(0);
+  });
+
+  it("chi non è mai mancato non finisce nell'elenco", async () => {
+    const pulito = await db.guest.create({
+      data: { venueId, firstName: "Puntuale", noShowCount: 0, totalVisits: 9 },
+    });
+    await prenotazione("2026-09-11", 4, "CONFIRMED", pulito.id);
+
+    const r = await getNoShowReport(venueId, DA, A, { now: ADESSO });
+    expect(r.aRischioTotali).toBe(0);
+  });
+
+  it("una sola assenza non basta: sotto la soglia l'elenco diventa rumore", async () => {
+    /*
+      Sulla demo, con una sola assenza, l'elenco veniva di 95 prenotazioni su
+      384: «telefona a novantacinque persone» non lo fa nessuno, e la riga si
+      impara a saltarla. Una volta si può mancare per mille motivi; due volte
+      è un'abitudine — ed è la stessa soglia con cui questo quadro chiama
+      qualcuno «chi ripete».
+    */
+    const unaVolta = await db.guest.create({
+      data: { venueId, firstName: "UnaVolta", noShowCount: ASSENZE_CHE_CONTANO - 1, totalVisits: 5 },
+    });
+    await prenotazione("2026-09-11", 4, "CONFIRMED", unaVolta.id);
+    expect((await getNoShowReport(venueId, DA, A, { now: ADESSO })).aRischioTotali).toBe(0);
+
+    const dueVolte = await db.guest.create({
+      data: { venueId, firstName: "DueVolte", noShowCount: ASSENZE_CHE_CONTANO, totalVisits: 5 },
+    });
+    await prenotazione("2026-09-12", 4, "CONFIRMED", dueVolte.id);
+    const r = await getNoShowReport(venueId, DA, A, { now: ADESSO });
+    expect(r.aRischioTotali).toBe(1);
+    expect(r.aRischio[0].nome).toBe("DueVolte");
+  });
+
+  it("una prenotazione già chiusa o disdetta non è un rischio", async () => {
+    const g = await ospiteConAssenze("Ripetente", 2);
+    await prenotazione("2026-09-11", 4, "CANCELLED", g.id);
+    await prenotazione("2026-09-12", 4, "COMPLETED", g.id);
+
+    const r = await getNoShowReport(venueId, DA, A, { now: ADESSO });
+    expect(r.aRischioTotali).toBe(0);
+  });
+
+  it("il tetto sull'elenco non nasconde il totale", async () => {
+    const g = await ospiteConAssenze("Ripetente", 3);
+    for (let i = 0; i < MAX_RISCHIO_IN_ELENCO + 3; i++) {
+      await db.booking.create({
+        data: {
+          venueId,
+          guestId: g.id,
+          partySize: 2,
+          startsAt: new Date(ADESSO.getTime() + (i + 1) * 3_600_000),
+          status: "CONFIRMED",
+          source: "PHONE",
+        },
+      });
+    }
+
+    const r = await getNoShowReport(venueId, DA, A, { now: ADESSO });
+    // Le righe sono al massimo cinque, ma il totale è quello vero: un tetto
+    // senza il totale è una bugia per omissione.
+    expect(r.aRischio).toHaveLength(MAX_RISCHIO_IN_ELENCO);
+    expect(r.aRischioTotali).toBe(MAX_RISCHIO_IN_ELENCO + 3);
+    expect(r.aRischioCoperti).toBe((MAX_RISCHIO_IN_ELENCO + 3) * 2);
   });
 });

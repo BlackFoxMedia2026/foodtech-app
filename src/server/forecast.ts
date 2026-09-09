@@ -61,6 +61,24 @@ export const PRESENTI = ["PENDING", "CONFIRMED", "SEATED", "ARRIVED", "COMPLETED
 
 const GIORNI_SETTIMANA = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"] as const;
 
+/**
+ * I giorni al plurale, perché le frasi li contano.
+ *
+ * «Solo 2 sabato confrontabili» era la frase che usciva: il nome del giorno
+ * veniva infilato in una frase al plurale senza cambiarlo. Quattro giorni su
+ * sette in italiano sono invariabili (lunedì, martedì, mercoledì, giovedì,
+ * venerdì) e due no, e non c'è una regola: c'è un elenco.
+ */
+const GIORNI_AL_PLURALE = [
+  "domeniche",
+  "lunedì",
+  "martedì",
+  "mercoledì",
+  "giovedì",
+  "venerdì",
+  "sabati",
+] as const;
+
 export type Confidenza = "buona" | "scarsa" | "assente";
 
 export type DayForecast = {
@@ -293,8 +311,22 @@ function previsioneDelGiorno(args: {
   if (grezza != null && expectedNoShowCovers > 0) {
     dettagli.push(`Togliamo ${expectedNoShowCovers} coperti di assenze attese (${percentuale(noShowRate)} storico).`);
   }
+  /*
+    Quanto vale questa previsione, detto sempre e non solo quando è debole
+    (§16 del brief: «una confidenza dichiarata — quante giornate confrontabili
+    sostengono quel numero»).
+
+    Prima la solidità si diceva solo nel caso brutto: chi leggeva un numero
+    senza avvertenze non sapeva se stava guardando sei sabati o due. E una
+    previsione senza la sua base è esattamente quello che il resto del prodotto
+    non fa da nessuna parte.
+  */
   if (confidenza === "scarsa") {
-    dettagli.push(`Solo ${giorniComparabili} ${weekdayLabel} confrontabili: prendila con le molle.`);
+    dettagli.push(
+      `Solo ${giorniComparabili} ${GIORNI_AL_PLURALE[weekday]} confrontabili: prendila con le molle.`,
+    );
+  } else if (confidenza === "buona") {
+    dettagli.push(`Su ${giorniComparabili} ${GIORNI_AL_PLURALE[weekday]} confrontabili.`);
   }
   if (!capacity) {
     dettagli.push("Nessun turno configurato per questo giorno: non possiamo dire quanto sia pieno.");
