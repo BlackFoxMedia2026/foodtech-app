@@ -1227,6 +1227,48 @@ posti, sala preferita e orario desiderato. Da aggiungere: **tempo di attesa** e
 trentacinque ha una precedenza che la dimensione non cattura. La decisione resta
 al personale: il sistema ordina, non esegue.
 
+### Fatto il 9 settembre
+
+La precedenza non è più l'ordine di arrivo. Tre criteri, in quest'ordine:
+
+1. **la sala che ha chiesto** — non è un favore, è il motivo per cui l'ha
+   chiesta;
+2. **di quanto abbiamo sforato la promessa**, a scaglioni di cinque minuti;
+3. **l'ordine di arrivo**, che resta l'ultima parola a parità di tutto.
+
+Il numero che conta è `ritardoSullaPromessa` = attesa − stima, **non** l'attesa:
+a chi ha sentito «quaranta minuti» e ne ha aspettati quarantacinque non è stato
+promesso niente di falso; a chi ha sentito «venti» e ne ha aspettati
+trentacinque, sì. E in sala è il secondo che si alza e va via.
+
+**Tre dettagli che tengono la regola onesta.**
+
+*Gli scaglioni.* Un minuto di differenza non deve riordinare la coda a ogni
+aggiornamento automatico della pagina: sei minuti oltre e sette minuti oltre
+sono lo stesso scaglione, e fra loro decide l'arrivo.
+
+*Nessuna stima, nessuna promessa.* `expectedWaitMin` ha un valore di comodo
+(venti minuti). Trattarlo come una promessa vera metterebbe davanti proprio
+chi non ha mai sentito un numero, quindi con stima a zero il ritardo è zero.
+
+*La lista resta in ordine di arrivo.* Una coda è una coda, e il numero accanto
+al nome è la posizione. Quando la precedenza **non** coincide con l'arrivo, la
+riga lo dice: «Tocca a lei», e nella riga sotto c'è il perché — «16 minuti
+oltre la stima». Senza quel cartellino la decisione del motore sarebbe
+invisibile e chi è in sala continuerebbe a offrire il tavolo al numero 1; con
+il cartellino anche sul primo della fila, sarebbe rumore.
+
+La stessa precedenza governa **quale tavolo va a chi**: un tavolo si propone a
+una persona sola, e a distribuirli si passa in ordine di precedenza invece che
+di posizione.
+
+**Verificato premendo:** con due gruppi in coda — uno arrivato prima, promessa
+40, in attesa da 46; l'altro arrivato dopo, promessa 20, in attesa da 36 — il
+cartellino compare **solo** sul secondo, e il primo tavolo libero va a lui.
+Sette test nuovi (`tests/precedenza-attesa.test.ts`) fissano il sorpasso, il
+non-sorpasso dentro la stima, la soglia dello scaglione, la stima assente e il
+caso con un tavolo solo.
+
 **Click:** accomodare passa da 3 a 1 (candidato unico) o 2 (scelta).
 
 ---

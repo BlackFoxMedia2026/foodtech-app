@@ -17,12 +17,20 @@ export type WaitlistRowEntry = {
   notes: string | null;
   waitingMin: number;
   overdue: boolean;
+  /** Di quanto abbiamo sforato la promessa: è il numero che dà la precedenza. */
+  ritardoSullaPromessa: number;
   expectedWaitMin: number;
   desiredAt: string | null;
   offerExpiresAt: string | null;
   isVip: boolean;
   allergies: string | null;
   preferredRoomName: string | null;
+  /**
+   * Vero quando la precedenza sul primo tavolo che si libera è sua, e **non**
+   * è già la prima della fila: si segnala solo quando l'ordine di arrivo e la
+   * precedenza non coincidono.
+   */
+  tocca: boolean;
 };
 
 const STATO: Record<string, { testo: string; classe: string }> = {
@@ -86,6 +94,18 @@ export function WaitlistRow({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="truncate font-medium">{entry.guestName}</p>
+              {/*
+                «Tocca a lei» compare solo quando la precedenza non coincide
+                con l'ordine di arrivo: è la decisione del motore detta in due
+                parole, con accanto il perché — quanto abbiamo sforato la
+                promessa — nella riga sotto. Sul primo della fila non
+                comparirebbe niente, perché non ci sarebbe niente da dire.
+              */}
+              {entry.tocca && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-accent/50 bg-accent/15 px-2 py-0.5 text-xs font-medium">
+                  Tocca a lei
+                </span>
+              )}
               {entry.isVip && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5 text-xs">
                   <Star className="h-3 w-3" aria-hidden="true" /> VIP
@@ -121,7 +141,17 @@ export function WaitlistRow({
               {entry.waitingMin === 0
                 ? "appena entrato"
                 : `in attesa da ${durataUmana(entry.waitingMin)}`}
-              {entry.overdue && ` · oltre la stima di ${durataUmana(entry.expectedWaitMin)}`}
+              {/*
+                Non «oltre la stima di venti minuti» ma «quindici minuti oltre
+                la stima»: il numero che serve è di quanto abbiamo sforato, non
+                quanto avevamo promesso. Ed è lo stesso numero che decide chi
+                ha la precedenza sul primo tavolo che si libera
+                (`confrontaPerPrecedenza`), quindi chi legge la riga capisce
+                perché l'ordine è quello.
+              */}
+              {entry.overdue &&
+                entry.ritardoSullaPromessa > 0 &&
+                ` · ${durataUmana(entry.ritardoSullaPromessa)} oltre la stima`}
               {entry.status === "NOTIFIED" && entry.offerExpiresAt && (
                 <> · tavolo tenuto fino alle {ora(entry.offerExpiresAt)}</>
               )}
