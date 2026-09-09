@@ -169,7 +169,7 @@ export function MenuItemDialog({
                   className={cn(
                     "min-h-[36px] rounded-full border px-3 text-xs transition-colors",
                     allergeni.includes(k)
-                      ? "border-amber-300 bg-amber-50 text-amber-800"
+                      ? "border-accent/50 bg-accent/10 text-foreground"
                       : "border-border text-muted-foreground hover:bg-current/5",
                   )}
                 >

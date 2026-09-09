@@ -133,7 +133,7 @@ export function WifiSettings({
           </p>
 
           {!completo && (
-            <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p className="rounded-md border border-accent/40 bg-accent/10 p-3 text-sm text-foreground">
               Finché mancano nome della rete e password il portale resta chiuso, e la pagina pubblica non esiste.
               Meglio così: un modulo che chiede l&apos;email senza dare niente in cambio fa scrivere alla gente
               indirizzi finti.

@@ -25,7 +25,7 @@ export default async function AutomationsPage() {
       </header>
 
       {!emailPronta && (
-        <div className="fissa rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="fissa rounded-md border border-accent/40 bg-accent/10 p-4 text-sm text-foreground">
           L&apos;email non è configurata: le automazioni non manderanno niente finché non c&apos;è la chiave del
           fornitore. Puoi comunque prepararle e vedere chi toccherebbero.
         </div>

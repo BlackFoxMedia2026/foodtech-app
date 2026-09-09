@@ -32,7 +32,7 @@ export default function ErroreApplicazione({
 
   return (
     <div className="animate-fade-in surface mx-auto max-w-lg riquadro p-8 text-center">
-      <AlertTriangle className="mx-auto h-8 w-8 text-amber-600" aria-hidden="true" />
+      <AlertTriangle className="mx-auto h-8 w-8 text-accent" aria-hidden="true" />
       <h1 className="mt-4 text-display text-2xl">Qui si è rotto qualcosa</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Non è colpa tua e non hai perso niente: quello che avevi salvato è salvato. Riprova, e se succede ancora
