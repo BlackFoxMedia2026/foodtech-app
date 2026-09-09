@@ -25,7 +25,13 @@ test("dalla coda al tavolo: accomodare crea una prenotazione, non una riga chius
 
   // Accomodare **richiede un tavolo**: il selettore propone solo quelli
   // liberi adesso, e senza scegliere non si può confermare.
-  await page.getByRole("button", { name: "Accomoda", exact: true }).first().click();
+  /*
+    Si cerca per **nome dell'ospite**, non per «Accomoda» esatto: da quando la
+    riga propone un tavolo, l'etichetta visibile diventa «Accomoda al T9» —
+    e il nome accessibile porta chi si sta accomodando, che è anche il modo
+    giusto di distinguere dieci pulsanti identici in una lista.
+  */
+  await page.getByRole("button", { name: new RegExp(`^Accomoda ${nome}`) }).first().click();
   const scelta = page.locator('[role="dialog"]');
   await expect(scelta).toBeVisible();
   await expect(scelta.getByRole("button", { name: "Accomoda qui" })).toBeDisabled();

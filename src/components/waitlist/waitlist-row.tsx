@@ -33,11 +33,18 @@ const STATO: Record<string, { testo: string; classe: string }> = {
 
 export function WaitlistRow({
   entry,
+  suggerito,
   position,
   canManage,
   onChanged,
 }: {
   entry: WaitlistRowEntry;
+  /**
+   * Il tavolo che potrebbe accoglierlo adesso — il più piccolo che basta, e
+   * proposto a una persona sola. Assente quando non ce n'è nessuno: la riga
+   * non scrive «nessun tavolo», perché l'assenza si vede già.
+   */
+  suggerito?: { tableId: string; label: string; seats: number };
   position: number;
   canManage: boolean;
   onChanged: () => void;
@@ -120,6 +127,27 @@ export function WaitlistRow({
               )}
             </p>
 
+            {/*
+              Il tavolo da proporre, **nella riga**.
+
+              Il motore che lo trova esisteva già, ma bisognava premere
+              «Accomoda» e aprire una finestra per sapere quale. In Servizio
+              l'avviso lo dice ancora prima; qui, nella schermata che si chiama
+              Attesa, no.
+
+              È un suggerimento, non una promessa: premendo «Accomoda» la
+              verifica completa si rifà, e se il tavolo è stato preso nel
+              frattempo lo dice. Per questo il testo è «potrebbe stare», non
+              «è suo».
+            */}
+            {suggerito && (
+              <p className="mt-1 flex items-center gap-1 text-xs text-sage">
+                <UtensilsCrossed className="h-3 w-3 shrink-0" aria-hidden="true" />
+                Potrebbe stare al <strong className="font-medium">{suggerito.label}</strong> — {suggerito.seats}{" "}
+                {suggerito.seats === 1 ? "posto" : "posti"}
+              </p>
+            )}
+
             {entry.allergies && (
               <p className="mt-1 flex items-center gap-1 text-xs text-accent">
                 <AlertTriangle className="h-3 w-3" aria-hidden="true" /> {entry.allergies}
@@ -155,9 +183,29 @@ export function WaitlistRow({
               </Button>
             )}
 
-            <Button size="sm" variant="accent" disabled={busy !== null} onClick={() => setSeatOpen(true)}>
+            {/*
+              Il pulsante nomina il tavolo quando ce n'è uno da proporre: chi
+              lo preme sa dove sta mandando la persona prima di premerlo. La
+              finestra si apre comunque, perché la scelta finale è del
+              personale e a volte il tavolo giusto è un altro — ma si apre
+              **con quello già scelto**.
+            */}
+            <Button
+              size="sm"
+              variant="accent"
+              disabled={busy !== null}
+              /*
+                Il nome accessibile porta **chi**, non solo il verbo: dieci
+                pulsanti «Accomoda» in una lista sono dieci pulsanti identici
+                per chi naviga a voce, e non c'è modo di sapere quale riga si
+                sta per accomodare. È la stessa lezione del pulsante «Walk-in»
+                nella Panoramica, dove l'etichetta corta aveva perso il verbo.
+              */
+              aria-label={`Accomoda ${entry.guestName}${suggerito ? ` al tavolo ${suggerito.label}` : ""}`}
+              onClick={() => setSeatOpen(true)}
+            >
               <UtensilsCrossed className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              Accomoda
+              {suggerito ? `Accomoda al ${suggerito.label}` : "Accomoda"}
             </Button>
 
             <Button

@@ -3,7 +3,10 @@ import type { Tool } from "../types";
 const SECTION_ROUTES: Record<string, string> = {
   panoramica: "/overview",
   prenotazioni: "/bookings",
-  sala: "/floor",
+  // «Vai in sala» durante il servizio è la sala viva, non l'editor della
+  // piantina: chi lo chiede vuole vedere i tavoli adesso.
+  sala: "/service/room",
+  piantina: "/floor",
   camerieri: "/waiters",
   ospiti: "/guests",
   esperienze: "/experiences",

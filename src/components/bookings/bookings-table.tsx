@@ -15,6 +15,8 @@ import {
 import { Check, MoreHorizontal } from "lucide-react";
 import { formatTime, initials } from "@/lib/utils";
 import { Corpo, Riga, Tabella, Td, Testa, Th } from "@/components/ui/table";
+import { cosaSapere } from "@/lib/cosa-sapere";
+import { CosaSapere } from "@/components/guests/cosa-sapere";
 
 /** Vedi la nota in `bookings-page-client.tsx`: niente `Decimal` da questa parte. */
 type Row = Booking & { guest: Omit<Guest, "totalSpend"> | null; table: Table | null };
@@ -69,6 +71,15 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
           {rows.map((b) => {
             const name = b.guest ? `${b.guest.firstName} ${b.guest.lastName ?? ""}`.trim() : "Walk-in";
             const isPending = b.status === "PENDING";
+            const segnali = cosaSapere({
+              allergies: b.guest?.allergies,
+              privateNotes: b.guest?.privateNotes,
+              preferences: b.guest?.preferences,
+              visits: b.guest?.totalVisits,
+              noShows: b.guest?.noShowCount,
+              loyaltyTier: b.guest?.loyaltyTier,
+              occasion: b.occasion,
+            });
             return (
               // Una riga in attesa di una decisione era dipinta con
               // `bg-red-50`: un rosso da tema chiaro, che su questo fondo
@@ -82,8 +93,29 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
                     <Avatar className="hidden h-7 w-7 sm:flex">
                       <AvatarFallback className="text-[10px]">{initials(name)}</AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium">{name}</p>
+                      {/*
+                        Il segnale, nella lista.
+
+                        `cosaSapere` esiste da tempo — allergia, occasione,
+                        nota del personale, assenze precedenti, livello, al
+                        massimo quattro righe in ordine di urgenza, con la
+                        fonte su ognuna — ed era usato nella scheda della
+                        prenotazione, in Servizio e in Sala. Non qui, che è la
+                        schermata con cui si **prepara** il servizio: per
+                        sapere chi ha un'allergia bisognava aprire una
+                        prenotazione per volta e tornare indietro.
+
+                        Nessun dato in più da caricare: la riga porta già
+                        l'ospite intero e l'occasione di questa prenotazione.
+
+                        E se non c'è niente da sapere non si stampa niente
+                        (`CosaSapere` restituisce `null`): una riga senza
+                        segnali resta a un livello, così la lista non
+                        raddoppia di altezza per le prenotazioni normali.
+                      */}
+                      <CosaSapere righe={segnali} className="mt-0.5" />
                       {b.guest?.phone && <p className="text-xs text-muted-foreground">{b.guest.phone}</p>}
                     </div>
                   </div>
