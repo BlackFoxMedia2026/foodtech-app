@@ -8,7 +8,9 @@ export const dynamic = "force-dynamic";
 export default async function ServicePage() {
   const ctx = await getActiveVenue();
   const [snapshot, insights] = await Promise.all([
-    getServiceSnapshot(ctx.venueId),
+    // L'utente serve per **escludere** i propri cambiamenti dall'attribuzione:
+    // chi li ha fatti li ha visti succedere.
+    getServiceSnapshot(ctx.venueId, { utente: ctx.userId }),
     getServiceInsights(ctx.venueId),
   ]);
 

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { NON_PIU_RITARDO_MIN } from "./service-intelligence";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { listWaitlist, expireStaleOffers, type WaitlistView } from "./waitlist";
+import { ultimiCambiamenti, type Cambiamento } from "./cambiamenti";
 import {
   comeLiberoVerso,
   previsioneLiberazione,
@@ -113,6 +114,15 @@ export type ServiceSnapshot = {
     /** Coperti previsti nel resto della giornata, esclusi annullati e no-show. */
     copertiPrevisti: number;
   };
+  /**
+   * Chi ha cambiato cosa negli ultimi minuti (§65).
+   *
+   * La schermata si aggiorna da sola, e prima il cambiamento appariva senza
+   * dire chi: due persone sullo stesso servizio da due tablet vedevano un
+   * tavolo assegnarsi da solo. Le **proprie** azioni non ci sono: chi le ha
+   * fatte le ha viste succedere.
+   */
+  cambiamenti: Cambiamento[];
 };
 
 type BookingRow = Awaited<ReturnType<typeof loadBookings>>[number];
@@ -211,7 +221,7 @@ function toServiceBooking(
  */
 export async function getServiceSnapshot(
   venueId: string,
-  opts: { now?: Date; nextWindowMin?: number } = {},
+  opts: { now?: Date; nextWindowMin?: number; utente?: string } = {},
 ): Promise<ServiceSnapshot> {
   const now = opts.now ?? new Date();
   const nextWindowMin = opts.nextWindowMin ?? 60;
@@ -220,7 +230,7 @@ export async function getServiceSnapshot(
   // la colonna delle attese mostra come "avvisate" persone andate altrove.
   await expireStaleOffers(venueId, now);
 
-  const [venue, bookings, tables, waitlist, walkInOggi, tipica] = await Promise.all([
+  const [venue, bookings, tables, waitlist, walkInOggi, tipica, cambiamenti] = await Promise.all([
     db.venue.findUnique({ where: { id: venueId }, select: { timezone: true, currency: true } }),
     loadBookings(venueId, startOfDay(now), endOfDay(now)),
     db.table.findMany({ where: { venueId }, select: { id: true, active: true } }),
@@ -235,6 +245,7 @@ export async function getServiceSnapshot(
       },
     }),
     durataTipicaSeduta(venueId, { now }),
+    ultimiCambiamenti(venueId, { now, escludiUtente: opts.utente }),
   ]);
 
   // Le etichette dei tavoli accostati: una lettura sola per tutta la
@@ -302,5 +313,6 @@ export async function getServiceSnapshot(
         .filter((b) => b.status !== "NO_SHOW" && b.minutesToArrival > -LATE_GRACE_MIN)
         .reduce((n, b) => n + b.partySize, 0),
     },
+    cambiamenti,
   };
 }
