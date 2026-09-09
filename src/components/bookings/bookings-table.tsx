@@ -40,7 +40,23 @@ const STATUS_OPTIONS = [
   ["NO_SHOW", "No-show"],
 ] as const;
 
-export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: boolean }) {
+export function BookingsTable({
+  rows,
+  fill = false,
+  vuoto,
+}: {
+  rows: Row[];
+  fill?: boolean;
+  /**
+   * Cosa dire quando non c'è nessuna riga.
+   *
+   * Serve perché la frase giusta dipende da **perché** è vuoto: «nessuna
+   * prenotazione per questa data» è falso se la giornata ne ha tredici e il
+   * filtro «in sospeso» ne mostra zero. Un vuoto che dà la colpa alla cosa
+   * sbagliata fa cercare nel posto sbagliato.
+   */
+  vuoto?: React.ReactNode;
+}) {
   const router = useRouter();
   /* La riga aperta nel pannello. `null` = nessun pannello. */
   const [aperta, setAperta] = useState<Row | null>(null);
@@ -57,7 +73,7 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
   if (rows.length === 0) {
     return (
       <div className="rounded-md border border-dashed p-12 text-center text-sm text-muted-foreground">
-        Nessuna prenotazione per questa data.
+        {vuoto ?? "Nessuna prenotazione per questa data."}
       </div>
     );
   }

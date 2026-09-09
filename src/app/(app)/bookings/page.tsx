@@ -88,6 +88,9 @@ export default async function BookingsPage({
       }))}
       totalCovers={totalCovers}
       pendingCount={pendingCount}
+      // Il totale **della giornata**, non del filtro: serve a dire la verità
+      // quando il filtro non trova niente ma la giornata è piena.
+      totaleDelGiorno={rows.filter((r) => r.status !== "CANCELLED").length}
       tables={tables}
       service={service}
       serviceOptions={serviceOptions}

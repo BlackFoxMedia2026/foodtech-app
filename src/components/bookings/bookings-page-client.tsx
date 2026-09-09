@@ -43,6 +43,7 @@ export function BookingsPageClient({
   filteredRows,
   totalCovers,
   pendingCount,
+  totaleDelGiorno,
   tables,
   service,
   serviceOptions,
@@ -56,6 +57,8 @@ export function BookingsPageClient({
   filteredRows: Row[];
   totalCovers: number;
   pendingCount: number;
+  /** Quante prenotazioni ha la giornata, **prima** del filtro. */
+  totaleDelGiorno: number;
   tables: { id: string; label: string; seats: number }[];
   service: string;
   serviceOptions: string[];
@@ -114,8 +117,22 @@ export function BookingsPageClient({
             <p className="t-etichetta">Sala</p>
           </div>
           <p className="text-sm text-muted-foreground">
-            {filteredRows.length} prenotazioni · {totalCovers} coperti
-            {pendingCount > 0 && <span className="ml-2 font-semibold text-amber-600">({pendingCount} da approvare)</span>}
+            {/*
+              Il conteggio dice **su cosa** è: con un filtro acceso «0
+              prenotazioni · 0 coperti» era vero del filtro e falso della
+              giornata, che ne aveva tredici. Un numero senza la sua base è la
+              cosa che questo prodotto non fa da nessuna parte.
+            */}
+            {statusFilter === "all"
+              ? `${filteredRows.length} prenotazioni`
+              : `${filteredRows.length} ${statusFilter === "pending" ? "in sospeso" : "confermate"} su ${totaleDelGiorno}`}{" "}
+            · {totalCovers} coperti
+            {/* L'accento del tema, non `amber-600`: un giallo preso fuori
+                dalla tavolozza su verde scuro è l'unico colore della pagina
+                che non appartiene al prodotto. */}
+            {pendingCount > 0 && (
+              <span className="ml-2 font-semibold text-accent">({pendingCount} da approvare)</span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -129,6 +146,18 @@ export function BookingsPageClient({
       </header>
 
       <div className="fissa flex flex-wrap items-center justify-between gap-3">
+        {/*
+          Un solo modo di dire «questa è scelta».
+
+          Su questa schermata ce n'erano tre: crema per «Tutte» e
+          «Confermate», arancione (`bg-amber-600`) per «In sospeso», e un
+          quarto colore per la vista scelta qui a destra. Tre modi di dire la
+          stessa cosa nello stesso posto si leggono come tre cose diverse — e
+          l'arancione su un filtro sembrava un allarme, non una selezione.
+
+          Il numero delle sospese resta in evidenza: è un'informazione, e
+          l'informazione non è la selezione.
+        */}
         <div className="flex gap-2">
           <Button variant={statusFilter === "all" ? "default" : "outline"} asChild>
             <Link href={getStatusFilterUrl("all")}>Tutte</Link>
@@ -136,14 +165,19 @@ export function BookingsPageClient({
           <Button variant={statusFilter === "confirmed" ? "default" : "outline"} asChild>
             <Link href={getStatusFilterUrl("confirmed")}>Confermate</Link>
           </Button>
-          <Button
-            variant={statusFilter === "pending" ? "default" : "outline"}
-            asChild
-            className={statusFilter === "pending" ? "bg-amber-600 hover:bg-amber-700" : ""}
-          >
+          <Button variant={statusFilter === "pending" ? "default" : "outline"} asChild>
             <Link href={getStatusFilterUrl("pending")}>
-              In sospeso{" "}
-              {pendingCount > 0 && <span className="ml-2 rounded bg-white px-2 py-1 text-xs font-bold text-amber-600">{pendingCount}</span>}
+              In sospeso
+              {pendingCount > 0 && (
+                <span
+                  className={cn(
+                    "ml-2 rounded-full px-1.5 text-xs font-semibold tabular-nums",
+                    statusFilter === "pending" ? "bg-forest/15 text-clay-ink" : "bg-accent/20 text-accent",
+                  )}
+                >
+                  {pendingCount}
+                </span>
+              )}
             </Link>
           </Button>
         </div>
@@ -154,7 +188,7 @@ export function BookingsPageClient({
             onClick={() => changeView("elenco")}
             className={cn(
               "tocco-comodo flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
-              view === "elenco" ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
+              view === "elenco" ? "bg-cream text-clay-ink" : "text-muted-foreground hover:bg-secondary",
             )}
           >
             <List className="h-4 w-4" /> Elenco
@@ -164,7 +198,7 @@ export function BookingsPageClient({
             onClick={() => changeView("mappa")}
             className={cn(
               "tocco-comodo flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
-              view === "mappa" ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
+              view === "mappa" ? "bg-cream text-clay-ink" : "text-muted-foreground hover:bg-secondary",
             )}
           >
             <MapIcon className="h-4 w-4" /> Mappa
@@ -174,7 +208,7 @@ export function BookingsPageClient({
             onClick={() => changeView("settimana")}
             className={cn(
               "tocco-comodo flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
-              view === "settimana" ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
+              view === "settimana" ? "bg-cream text-clay-ink" : "text-muted-foreground hover:bg-secondary",
             )}
           >
             <CalendarRange className="h-4 w-4" /> Settimana
@@ -192,7 +226,28 @@ export function BookingsPageClient({
           <WeekBoard settimana={settimana} />
         </div>
       ) : view === "elenco" ? (
-        <BookingsTable rows={rows} fill />
+        <BookingsTable
+          rows={rows}
+          fill
+          vuoto={
+            /*
+              «Nessuna prenotazione per questa data» era falso quando la
+              giornata ne aveva tredici e il filtro ne mostrava zero: il vuoto
+              dava la colpa alla data invece che al filtro, e chi legge cambia
+              giorno per cercare una cosa che è lì.
+            */
+            statusFilter !== "all" && totaleDelGiorno > 0 ? (
+              <>
+                Nessuna prenotazione {statusFilter === "pending" ? "in sospeso" : "confermata"} per questa
+                data — la giornata ne ha {totaleDelGiorno}.{" "}
+                <Link href={getStatusFilterUrl("all")} className="underline underline-offset-4">
+                  Vedi tutte
+                </Link>
+                .
+              </>
+            ) : undefined
+          }
+        />
       ) : (
         <BookingsFloorView
           rooms={rooms}
