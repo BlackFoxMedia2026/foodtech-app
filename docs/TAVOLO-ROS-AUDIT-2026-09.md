@@ -421,7 +421,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | P0-1 | **Ramo di database per le anteprime** (Neon) + `regions: ["fra1"]` | 5 | S | accesso console Neon → **tuo** | basso |
 | ~~P0-2~~ | ~~**Test end-to-end in repo**: i cinque flussi del §80~~ — **fatto**: cinque su cinque l'8 settembre (il sesto richiede i pagamenti) | 5 | M | nessuna | basso |
 | P0-3 | **Osservabilità minima**: error tracking, log strutturati, allarme sui cron falliti | 5 | S | scelta del fornitore | basso |
-| P0-4 | **Sessione**: scadenza dichiarata (**fatta**), `authorize` che controlla l'utente attivo (**rivisto: non serviva**, l'accesso è già verificato a ogni richiesta), revoca (**resta**) | 4 | S | nessuna | basso |
+| ~~P0-4~~ | ~~**Sessione**: scadenza, `authorize`, revoca~~ — **chiuso il 9 settembre**: la revoca è un istante (`User.sessionsRevokedAt`) confrontato con la data di nascita della sessione dove passa ogni richiesta. Non `iat`, che il rinnovo silenzioso rimette a nuovo. Un manager la chiede per una persona del team, chiunque per sé — e si può chiudere fuori anche l'ultimo manager, perché chiudere una sessione non toglie l'accesso | 4 | S | nessuna | basso |
 | ~~P0-5~~ | ~~**Widget hardening**~~ — **fatte tre su quattro** l'8 settembre: idempotenza, doppione identico, campo trappola. Resta la verifica del contatto (serve un fornitore) e il limite di frequenza su store condiviso | 4 | M | uno store (Upstash o tabella) | medio |
 | ~~P0-6~~ | ~~**N+1 automazioni** → due query aggregate~~ — **fatto** | 3 | S | nessuna | basso |
 | P0-7 | **Recupero password + verifica email** | 4 | M | **chiave email** | basso |

@@ -21,6 +21,7 @@ import { listRooms } from "@/server/rooms";
 import { listReviewLinks } from "@/server/reviews";
 import { listInviti, listTeam } from "@/server/team";
 import { initials } from "@/lib/utils";
+import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
 
 export const dynamic = "force-dynamic";
 
@@ -232,6 +233,11 @@ export default async function SettingsPage({
       </Parte>
 
       <Parte id="sistema" attiva={parteAttiva}>
+      {/* Sta in «Sistema» e non in «Il locale» perché riguarda il proprio
+          accesso, non il ristorante: è la stessa parte dove si legge lo stato
+          delle integrazioni e dei lavori. */}
+      <MieiDispositivi />
+
       <Card>
         <CardHeader>
           <CardTitle>Integrazioni</CardTitle>

@@ -18,9 +18,9 @@ import { db } from "./db";
  * indietro. Il numero sta qui, in una riga, perché è una decisione del locale
  * più che del software.
  *
- * La revoca vera (invalidare le sessioni già emesse) richiede o le sessioni
- * sul database o una versione del token da confrontare a ogni richiesta: è in
- * roadmap, e accorciare la durata è la mitigazione che si può avere subito.
+ * La revoca vera adesso c'è: vedi `User.sessionsRevokedAt` e il controllo in
+ * `lib/tenant.ts`. Accorciare la durata resta comunque giusto — la revoca
+ * richiede che qualcuno la chieda, la scadenza no.
  */
 const DURATA_SESSIONE_GIORNI = 7;
 
@@ -52,11 +52,29 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) token.uid = user.id;
+      if (user) {
+        token.uid = user.id;
+        /*
+          Quando è cominciata **questa** sessione.
+
+          Non è `iat`: `iat` cambia a ogni rinnovo silenzioso (ogni
+          ventiquattr'ore di uso), e un token rinnovato stamattina sembrerebbe
+          nato stamattina — sopravvivendo a una revoca chiesta ieri. Questo
+          valore si scrive una volta sola, all'accesso, e il rinnovo lo porta
+          avanti intatto: è la data di nascita della sessione, non quella
+          dell'ultimo timbro.
+        */
+        token.sessioneDa = Date.now();
+      }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.uid) (session.user as { id?: string }).id = token.uid as string;
+      // Serve al controllo della revoca, che vive dove la sessione diventa
+      // contesto (`lib/tenant.ts`): là si sa già chi è l'utente e si legge la
+      // sua eventuale revoca senza una richiesta in più al database.
+      (session as { sessioneDa?: number }).sessioneDa =
+        typeof token.sessioneDa === "number" ? token.sessioneDa : undefined;
       return session;
     },
   },

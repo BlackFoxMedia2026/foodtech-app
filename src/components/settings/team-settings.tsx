@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, Trash2, UserPlus } from "lucide-react";
+import { Copy, Check, LogOut, Trash2, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -247,6 +247,25 @@ export function TeamSettings({
                     ))}
                   </SelectContent>
                 </Select>
+                {/* Chiudere le sessioni non è togliere l'accesso: la persona
+                    rientra con la sua password. Serve per il tablet lasciato
+                    aperto in sala, e come prima cosa da fare quando qualcuno
+                    non lavora più qui — prima ancora di togliergli il ruolo. */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Chiudi le sessioni di ${m.nome ?? m.email} su tutti i dispositivi`}
+                  title="Chiudi le sessioni su tutti i dispositivi"
+                  onClick={() =>
+                    azione(
+                      `/api/team/members/${m.membershipId}/sessioni`,
+                      { method: "DELETE" },
+                      "Non siamo riusciti a chiudere le sessioni.",
+                    )
+                  }
+                >
+                  <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"

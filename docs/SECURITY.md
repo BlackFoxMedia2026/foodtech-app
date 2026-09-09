@@ -174,8 +174,34 @@ Per gravità, non per difficoltà:
    token che non si possono revocare. Sette giorni è un compromesso dichiarato: in un
    ristorante il dispositivo è condiviso e chi apre il servizio non deve trovare la schermata
    d'accesso ogni sera, ma un mese è troppo per una cosa che non si può richiamare indietro.
-   La **revoca vera** resta aperta: richiede le sessioni sul database o una versione del token
-   confrontata a ogni richiesta.
+   La **revoca vera adesso c'è** (9 settembre). Non con le sessioni sul database: con un
+   istante. `User.sessionsRevokedAt` dice «tutto quello che è stato emesso prima di questo
+   momento non vale più», e il token porta con sé la data in cui **quella** sessione è nata.
+   Il confronto sta in `lib/tenant.ts`, dove passa ogni richiesta autenticata e dove la riga
+   dell'utente è già letta insieme alle appartenenze: nessuna interrogazione in più.
+
+   Tre dettagli che la rendono vera:
+
+   - **non è `iat`.** L'istante di emissione cambia a ogni rinnovo silenzioso, quindi un token
+     rinnovato stamattina sembrerebbe nato stamattina e sopravvivrebbe a una revoca chiesta
+     ieri. La data di nascita della sessione si scrive una volta sola, all'accesso, e il
+     rinnovo la porta avanti intatta;
+   - **un token senza data di nascita, con una revoca in corso, non vale.** Sono quelli
+     emessi prima che questo esistesse: non sappiamo quando sono nati, e chiedere di rientrare
+     è il male minore;
+   - **si possono chiudere le sessioni dell'ultimo manager.** La difesa che impedisce di
+     togliere l'accesso all'ultimo manager — senza manager il locale è inaccessibile per
+     sempre — non vale qui: chiudere una sessione non toglie l'accesso, la persona rientra con
+     la sua password. Ed è il caso in cui la revoca serve di più, perché il tablet perso è
+     spesso quello del titolare.
+
+   Due modi di usarla: un manager la chiede per una persona del team
+   (`DELETE /api/team/members/<id>/sessioni`, tracciata come `team.revoke_sessions`), e
+   chiunque la chiede per sé (`DELETE /api/account/sessioni`, `account.revoke_sessions`) —
+   per sé non serve essere manager, e chiude anche la sessione da cui si sta chiedendo.
+
+   La scadenza dei sette giorni resta comunque: la revoca richiede che qualcuno la chieda, la
+   scadenza no.
 4-bis. **Non si può dare accesso a una persona del team, né toglierlo.** `VenueMembership` la
    scrive solo il seed: in tutto il prodotto non esiste una rotta che la crei o la cancelli.
    Non è un buco di sicurezza in senso stretto — chi non ha un locale non vede niente, e il

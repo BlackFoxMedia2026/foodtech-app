@@ -85,6 +85,11 @@ export type AuditAction =
   | "team.invite_accepted"
   | "team.role_change"
   | "team.remove"
+  // Chiudere le sessioni di qualcuno è un'azione da tracciare come le altre:
+  // chi l'ha fatta, su chi, e quando. È l'unico modo di distinguere «gli
+  // abbiamo chiuso l'accesso» da «si è disconnesso da solo».
+  | "team.revoke_sessions"
+  | "account.revoke_sessions"
   | "waitlist.add"
   | "waitlist.update"
   | "waitlist.notify"

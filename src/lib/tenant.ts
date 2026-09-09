@@ -48,9 +48,41 @@ export const resolveActiveVenue = cache(async function resolveActiveVenue(): Pro
 
   const memberships = await db.venueMembership.findMany({
     where: { userId },
-    include: { venue: { include: { org: true } } },
+    include: { venue: { include: { org: true } }, user: { select: { sessionsRevokedAt: true } } },
     orderBy: { createdAt: "asc" },
   });
+
+  /*
+    La revoca delle sessioni.
+
+    Una sessione è un token firmato, non una riga: non si può cancellare. Si
+    può però dire «tutto quello che è stato emesso prima di questo istante non
+    vale più», ed è `User.sessionsRevokedAt`. Il controllo sta qui perché qui
+    passa **ogni** richiesta autenticata, e perché l'utente è già letto
+    insieme alle appartenenze: nessuna interrogazione in più.
+
+    Un token senza `sessioneDa` è un token emesso prima che questa funzione
+    esistesse: se c'è una revoca in corso e non sappiamo quando quella
+    sessione è nata, la si considera revocata. Chiedere di rientrare è il male
+    minore; il male maggiore è lasciare dentro il tablet che si voleva
+    chiudere fuori.
+  */
+  const revocaDa =
+    memberships.length > 0
+      ? memberships[0].user.sessionsRevokedAt
+      : // Nessuna appartenenza: la riga dell'utente non è arrivata con la
+        // query di sopra, quindi qui serve chiederla. È il caso raro — una
+        // persona invitata che non è ancora dentro nessun locale — e non
+        // vale la pena farlo pagare a tutte le altre richieste.
+        (await db.user.findUnique({ where: { id: userId }, select: { sessionsRevokedAt: true } }))
+          ?.sessionsRevokedAt ?? null;
+
+  if (revocaDa) {
+    const sessioneDa = (session as { sessioneDa?: number }).sessioneDa;
+    if (sessioneDa === undefined || sessioneDa < revocaDa.getTime()) {
+      return { state: "unauthenticated" };
+    }
+  }
 
   if (memberships.length === 0) return { state: "no_venue", userId };
 

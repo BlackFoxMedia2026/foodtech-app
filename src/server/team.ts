@@ -290,12 +290,11 @@ export async function accettaInvito(
  * Stanno qui e non nell'interfaccia perché un pulsante nascosto non è un
  * controllo: chi chiama l'API a mano deve sentirsi dire no.
  */
-async function difendiIlLocale(
-  venueId: string,
-  membershipId: string,
-  userId: string,
-  nuovoRuolo: StaffRole | null,
-) {
+/**
+ * Le due difese che valgono per **ogni** azione su un membro del team: che sia
+ * davvero di questo locale, e che non sia te stesso.
+ */
+async function membroDiQuestoLocale(venueId: string, membershipId: string, userId: string) {
   const membro = await db.venueMembership.findFirst({ where: { id: membershipId, venueId } });
   if (!membro) throw new TeamError("invito_non_valido");
 
@@ -303,8 +302,27 @@ async function difendiIlLocale(
   // È il modo più comune di restare fuori dal proprio locale.
   if (membro.userId === userId) throw new TeamError("non_su_di_te");
 
-  // L'ultimo manager non si tocca: senza manager nessuno può più invitare
-  // nessuno, e il locale diventa inaccessibile per sempre.
+  return membro;
+}
+
+async function difendiIlLocale(
+  venueId: string,
+  membershipId: string,
+  userId: string,
+  nuovoRuolo: StaffRole | null,
+) {
+  const membro = await membroDiQuestoLocale(venueId, membershipId, userId);
+
+  /*
+    L'ultimo manager non si tocca: senza manager nessuno può più invitare
+    nessuno, e il locale diventa inaccessibile per sempre.
+
+    Questa difesa vale per **togliere l'accesso o abbassare il ruolo**, non
+    per chiudere le sessioni: chiudere una sessione non toglie l'accesso, la
+    persona rientra con la sua password. Applicarla anche là renderebbe
+    impossibile chiudere fuori il tablet perso **del titolare**, che è
+    esattamente il caso in cui serve. Vedi `chiudiLeSessioni`.
+  */
   if (membro.role === "MANAGER" && nuovoRuolo !== "MANAGER") {
     const manager = await db.venueMembership.count({ where: { venueId, role: "MANAGER" } });
     if (manager <= 1) throw new TeamError("ultimo_manager");
@@ -331,6 +349,60 @@ export async function cambiaRuolo(
     a: ruolo,
   });
   return aggiornato;
+}
+
+/**
+ * Chiude tutte le sessioni di una persona, su ogni dispositivo.
+ *
+ * Serve nei due momenti in cui serve: un tablet perso in sala, e una persona
+ * che non lavora più qui. Togliere qualcuno dal team gli toglie l'accesso a
+ * **questo** locale, ma se ha un altro locale nella stessa organizzazione la
+ * sua sessione resta valida — e in ogni caso, fra il momento in cui gli si
+ * toglie l'accesso e quello in cui il suo browser lo scopre, un token firmato
+ * continua a essere un token firmato.
+ *
+ * Non cancella niente: scrive un istante. Tutti i token emessi prima di quel
+ * momento smettono di valere al primo controllo (vedi `lib/tenant.ts`), e la
+ * persona rientra con la sua password come sempre. Non è un divieto: è un
+ * «ricominciamo da capo».
+ *
+ * Le stesse due difese di ogni altra azione sul team: non si agisce su di sé
+ * da qui — per uscire dai propri dispositivi c'è `chiudiLeMieSessioni`, che
+ * non ha bisogno di essere manager — e non si tocca chi non fa parte di
+ * questo locale.
+ */
+export async function chiudiLeSessioni(
+  venueId: string,
+  membershipId: string,
+  userId: string,
+  actor?: AuditActor,
+) {
+  // `membroDiQuestoLocale` e non `difendiIlLocale`: vedi la nota là sopra —
+  // l'ultimo manager si può e si deve poter chiudere fuori.
+  const membro = await membroDiQuestoLocale(venueId, membershipId, userId);
+  const quando = new Date();
+  await db.user.update({ where: { id: membro.userId }, data: { sessionsRevokedAt: quando } });
+  await recordAudit(actor, "team.revoke_sessions", "venue", venueId, {
+    utente: membro.userId,
+    ruolo: membro.role,
+    da: quando.toISOString(),
+  });
+  return quando;
+}
+
+/**
+ * «Esci da tutti i dispositivi», per sé.
+ *
+ * Non richiede di essere manager e non passa da `difendiIlLocale`: chiudere le
+ * proprie sessioni è sempre lecito, ed è la cosa da fare quando si è lasciato
+ * l'accesso aperto da qualche parte e non si sa dove. Chiude anche quella da
+ * cui si sta chiedendo: è il senso di «tutti».
+ */
+export async function chiudiLeMieSessioni(userId: string, actor?: AuditActor) {
+  const quando = new Date();
+  await db.user.update({ where: { id: userId }, data: { sessionsRevokedAt: quando } });
+  await recordAudit(actor, "account.revoke_sessions", "user", userId, { da: quando.toISOString() });
+  return quando;
 }
 
 export async function togliDalTeam(
