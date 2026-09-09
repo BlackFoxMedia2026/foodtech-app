@@ -31,7 +31,22 @@ const TIPI = [
  * cifre che si confondono al telefono — e chi vuole il proprio lo scrive.
  * Un ristoratore non deve inventarsi una stringa unica per fare uno sconto.
  */
-export function CouponDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function CouponDialog({
+  open,
+  onOpenChange,
+  giorniIniziali = [],
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /**
+   * I giorni della settimana già selezionati.
+   *
+   * Serve all'intento «riempire il martedì» dell'hub marketing: chi arriva da
+   * lì vuole uno sconto valido **quel** giorno, e riselezionarlo a mano è un
+   * passaggio che il prodotto conosce già.
+   */
+  giorniIniziali?: number[];
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -43,7 +58,7 @@ export function CouponDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const [maxRedemptions, setMaxRedemptions] = useState("");
   const [maxPerGuest, setMaxPerGuest] = useState("1");
   const [minSpend, setMinSpend] = useState("");
-  const [giorni, setGiorni] = useState<number[]>([]);
+  const [giorni, setGiorni] = useState<number[]>(giorniIniziali);
   const [inCorso, setInCorso] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -220,8 +235,17 @@ export function CouponDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                   );
                 })}
               </div>
+              {/* La frase seguiva la selezione solo per metà: con «mar»
+                  acceso continuava a dire «nessuno selezionato», che è il
+                  contrario di quello che si vedeva. Adesso dice cosa vale. */}
               <p className="text-xs text-tertiary-foreground">
-                Nessuno selezionato: vale tutti i giorni.
+                {giorni.length === 0
+                  ? "Nessuno selezionato: vale tutti i giorni."
+                  : `Vale solo ${giorni
+                      .slice()
+                      .sort((a, b) => a - b)
+                      .map((i) => ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"][i])
+                      .join(", ")}.`}
               </p>
             </div>
           </div>

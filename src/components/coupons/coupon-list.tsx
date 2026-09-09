@@ -42,9 +42,28 @@ const ETICHETTA_STATO: Partial<Record<CouponView["stato"], string>> = {
   below_min_spend: "Sotto il minimo",
 };
 
-export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: boolean }) {
+export function CouponList({
+  items,
+  canEdit,
+  apriNuovo = false,
+  giorniIniziali = [],
+}: {
+  items: CouponView[];
+  canEdit: boolean;
+  /**
+   * Il modulo «nuovo coupon» già aperto, perché lo chiede l'indirizzo.
+   *
+   * `?nuovo=1&giorno=2` è come ci arriva l'intento «riempire il martedì»
+   * dell'hub marketing. Sta nell'indirizzo e non in uno stato del browser per
+   * la stessa ragione delle viste di Analytics e delle parti delle
+   * Impostazioni: si può mandare a un collega, e il tasto indietro fa quello
+   * che ci si aspetta.
+   */
+  apriNuovo?: boolean;
+  giorniIniziali?: number[];
+}) {
   const router = useRouter();
-  const [nuovo, setNuovo] = useState(false);
+  const [nuovo, setNuovo] = useState(apriNuovo && canEdit);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -242,7 +261,13 @@ export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: b
         cancella. Gli utilizzi si possono annullare, uno per uno, dal tavolo.
       </p>
 
-      {nuovo && <CouponDialog open onOpenChange={(v) => !v && setNuovo(false)} />}
+      {nuovo && (
+        <CouponDialog
+          open
+          onOpenChange={(v) => !v && setNuovo(false)}
+          giorniIniziali={giorniIniziali}
+        />
+      )}
     </>
   );
 }
