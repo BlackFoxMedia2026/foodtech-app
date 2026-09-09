@@ -74,7 +74,7 @@ export function VenueSwitcher({ venues, activeId }: { venues: Venue[]; activeId:
         tabIndex={open ? -1 : 0}
         onClick={() => setOpen(true)}
         className={cn(
-          "grid shrink-0 place-items-center overflow-hidden rounded-lg bg-accent text-white ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "grid shrink-0 place-items-center overflow-hidden rounded-lg bg-surface-brown-dark text-cream ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           reducedMotion ? "transition-none" : "transition-[width,opacity] duration-[400ms]",
           open ? "h-9 w-0 opacity-0 pointer-events-none" : "h-9 w-9 opacity-100",
         )}

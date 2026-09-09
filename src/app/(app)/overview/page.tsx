@@ -120,7 +120,7 @@ export default async function OverviewPage() {
               <CardTitle className="text-base">Andamento settimanale</CardTitle>
               <CardDescription>
                 Coperti ·{" "}
-                <span className={data.weekComparisonPct >= 0 ? "text-sage" : "text-destructive-soft"}>
+                <span className={data.weekComparisonPct >= 0 ? "text-sage-strong" : "text-destructive-soft"}>
                   {data.weekComparisonPct >= 0 ? "▲" : "▼"} {Math.abs(data.weekComparisonPct)}% sulla
                   settimana scorsa
                 </span>

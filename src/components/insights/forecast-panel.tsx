@@ -68,7 +68,7 @@ export function ForecastPanel({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CalendarClock className="h-4 w-4 text-accent" aria-hidden="true" /> Quanto sarai pieno
+          <CalendarClock className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Quanto sarai pieno
         </CardTitle>
         <CardDescription>
           {senzaStoria
@@ -111,7 +111,7 @@ export function ForecastPanel({
                       <strong>~{g.forecastCovers}</strong>
                       {g.capacity ? <span className="text-muted-foreground"> su {g.capacity}</span> : null}
                       {g.occupancyPct != null && (
-                        <span className={cn("ml-2", g.occupancyPct >= 85 ? "text-accent" : "text-muted-foreground")}>
+                        <span className={cn("ml-2", g.occupancyPct >= 85 ? "text-accent-strong" : "text-muted-foreground")}>
                           {g.occupancyPct}%
                         </span>
                       )}

@@ -176,7 +176,7 @@ export function ReviewLinksSettings({
             <Button variant="accent" size="sm" onClick={salva} disabled={salvando}>
               {salvando ? "Salvo…" : "Salva"}
             </Button>
-            {salvato && <span className="text-sm text-sage">Salvato.</span>}
+            {salvato && <span className="text-sm text-sage-strong">Salvato.</span>}
           </div>
         )}
 

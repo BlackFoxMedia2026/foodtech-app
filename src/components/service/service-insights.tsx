@@ -27,7 +27,7 @@ const STILE: Record<
   warning: {
     icona: AlertTriangle,
     classe: "border-accent/60",
-    icona_classe: "text-accent",
+    icona_classe: "text-accent-strong",
     fondo: "bg-accent/[0.07]",
   },
   /*
@@ -42,7 +42,7 @@ const STILE: Record<
   opportunity: {
     icona: Sparkles,
     classe: "border-sage/60",
-    icona_classe: "text-sage",
+    icona_classe: "text-sage-strong",
     fondo: "bg-sage/[0.07]",
   },
   info: {

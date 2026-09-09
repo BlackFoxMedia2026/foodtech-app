@@ -29,7 +29,7 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ChefHat className="h-4 w-4 text-accent" aria-hidden="true" /> Quanto è rimasto
+            <ChefHat className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Quanto è rimasto
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -46,7 +46,7 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <ChefHat className="h-4 w-4 text-accent" aria-hidden="true" /> Quanto è rimasto
+          <ChefHat className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Quanto è rimasto
         </CardTitle>
         <CardDescription>
           {report.conti} {report.conti === 1 ? "conto chiuso" : "conti chiusi"} nel periodo, per{" "}
@@ -73,7 +73,7 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
               </div>
               <div className="riquadro p-3">
                 <p className="t-etichetta">Resta</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums text-accent">{euro(report.margineCents)}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-accent-strong">{euro(report.margineCents)}</p>
                 <p className="text-xs text-muted-foreground">{100 - report.foodCostPct}% del venduto coperto</p>
               </div>
               <div className="riquadro p-3">

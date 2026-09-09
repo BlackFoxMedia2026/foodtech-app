@@ -176,7 +176,7 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettingsInitial }
         {/* Stessa parola di ogni altro modulo delle Impostazioni: un vocabolario
             che cambia da una pagina all'altra fa dubitare che sia successo
             davvero la stessa cosa. */}
-        {success && <p className="text-sm text-sage">Salvato.</p>}
+        {success && <p className="text-sm text-sage-strong">Salvato.</p>}
 
         <div className="flex items-center gap-3">
           <Button variant="accent" onClick={handleSave} disabled={saving}>

@@ -197,7 +197,7 @@ export function WaiterContractSection({ waiterId, open }: { waiterId: string; op
               <button
                 type="button"
                 onClick={() => setHistoryExpanded((v) => !v)}
-                className="flex items-center gap-1 text-xs font-medium text-accent"
+                className="flex items-center gap-1 text-xs font-medium text-accent-strong"
               >
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${historyExpanded ? "rotate-180" : ""}`} />
                 Storico contratti ({history.length})

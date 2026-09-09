@@ -73,7 +73,7 @@ export function DoppioniList({ doppioni, canManage }: { doppioni: Doppione[]; ca
     <div className="space-y-4">
       {errore && (
         <p className="flex items-start gap-2 rounded-md border border-accent/40 bg-accent/10 p-3 text-sm">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />
           {errore}
         </p>
       )}
@@ -82,7 +82,7 @@ export function DoppioniList({ doppioni, canManage }: { doppioni: Doppione[]; ca
         <ul className="space-y-1 rounded-md border border-sage/40 bg-sage/10 p-3 text-sm">
           {fatte.map((f) => (
             <li key={f} className="flex items-start gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-sage" aria-hidden="true" />
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-sage-strong" aria-hidden="true" />
               {f}
             </li>
           ))}

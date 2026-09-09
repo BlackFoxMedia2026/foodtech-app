@@ -7,9 +7,9 @@ import type { SurveyStats } from "@/server/surveys";
 import type { ReviewFunnel } from "@/server/reviews";
 
 const TONO = {
-  PROMOTER: { icona: Smile, classe: "text-sage", etichetta: "Promotore" },
+  PROMOTER: { icona: Smile, classe: "text-sage-strong", etichetta: "Promotore" },
   PASSIVE: { icona: Meh, classe: "text-muted-foreground", etichetta: "Passivo" },
-  DETRACTOR: { icona: Frown, classe: "text-accent", etichetta: "Detrattore" },
+  DETRACTOR: { icona: Frown, classe: "text-accent-strong", etichetta: "Detrattore" },
 } as const;
 
 /**
@@ -76,9 +76,9 @@ export function NpsPanel({
               <p className="text-[11px] text-tertiary-foreground">poche risposte: indicativo</p>
             )}
           </div>
-          <Conteggio icona={Smile} etichetta="Promotori" valore={stats.promoters} classe="text-sage" />
+          <Conteggio icona={Smile} etichetta="Promotori" valore={stats.promoters} classe="text-sage-strong" />
           <Conteggio icona={Meh} etichetta="Passivi" valore={stats.passives} />
-          <Conteggio icona={Frown} etichetta="Detrattori" valore={stats.detractors} classe="text-accent" />
+          <Conteggio icona={Frown} etichetta="Detrattori" valore={stats.detractors} classe="text-accent-strong" />
         </div>
 
         {stats.trend.some((t) => t.responses > 0) && (

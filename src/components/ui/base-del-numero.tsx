@@ -29,9 +29,9 @@ const TESTO: Record<BaseNumero, string> = {
 
 const STILE: Record<BaseNumero, string> = {
   // Il misurato è il caso normale: si dichiara, ma non chiede attenzione.
-  misurato: "border-sage/40 text-sage",
+  misurato: "border-sage/40 text-sage-strong",
   // La stima è la sola che va guardata con prudenza.
-  stimato: "border-accent/40 text-accent",
+  stimato: "border-accent/40 text-accent-strong",
   previsto: "border-border text-muted-foreground",
 };
 

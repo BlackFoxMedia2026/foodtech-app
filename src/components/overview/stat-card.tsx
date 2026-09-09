@@ -51,7 +51,7 @@ export function StatCard({
               : tone === "cream"
                 ? "text-cream"
                 : tone === "sage"
-                  ? "text-sage"
+                  ? "text-sage-strong"
                   : emphasize
                     ? "text-surface-brown-light"
                     : "text-card-foreground";
@@ -76,7 +76,7 @@ export function StatCard({
         <p
           className={cn(
             "mt-3 inline-flex items-center gap-1 font-mono text-xs font-medium",
-            caramelFill || lightFill || brownFill ? valueColor : trend.positive ? "text-sage" : "text-destructive-soft",
+            caramelFill || lightFill || brownFill ? valueColor : trend.positive ? "text-sage-strong" : "text-destructive-soft",
           )}
         >
           {trend.positive ? "▲" : "▼"} {Math.abs(trend.value)}%

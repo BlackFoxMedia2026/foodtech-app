@@ -16,9 +16,9 @@ import type { RigaSintesi, TonoSintesi } from "@/server/sintesi-esecutiva";
  */
 
 const STILE: Record<TonoSintesi, { icona: typeof Info; classe: string }> = {
-  problema: { icona: AlertTriangle, classe: "text-accent" },
+  problema: { icona: AlertTriangle, classe: "text-accent-strong" },
   attenzione: { icona: Info, classe: "text-muted-foreground" },
-  bene: { icona: CheckCircle2, classe: "text-sage" },
+  bene: { icona: CheckCircle2, classe: "text-sage-strong" },
 };
 
 export function SintesiPanel({ righe, periodoGiorni }: { righe: RigaSintesi[]; periodoGiorni: number }) {

@@ -414,7 +414,7 @@ function Gruppo({
 }) {
   return (
     <div className="space-y-2">
-      <p className={cn("text-xs font-medium", allarme ? "text-accent" : "text-tertiary-foreground")}>
+      <p className={cn("text-xs font-medium", allarme ? "text-accent-strong" : "text-tertiary-foreground")}>
         {titolo}
       </p>
       {children}
@@ -451,14 +451,14 @@ function Numero({
   return (
     <div className={cn("flex items-center gap-2 px-3 py-2", className)}>
       <Icona
-        className={cn("h-4 w-4 shrink-0", allarme ? "text-accent" : "text-muted-foreground")}
+        className={cn("h-4 w-4 shrink-0", allarme ? "text-accent-strong" : "text-muted-foreground")}
         aria-hidden="true"
       />
       <div className="min-w-0">
         <p
           className={cn(
             "text-lg font-semibold leading-none tabular-nums",
-            allarme && "text-accent",
+            allarme && "text-accent-strong",
           )}
         >
           {valore}

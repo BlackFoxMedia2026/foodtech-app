@@ -15,7 +15,7 @@ import type { RigaDaSapere } from "@/lib/cosa-sapere";
  */
 
 const STILE = {
-  attenzione: { icona: AlertTriangle, classe: "text-accent" },
+  attenzione: { icona: AlertTriangle, classe: "text-accent-strong" },
   bello: { icona: Sparkles, classe: "text-foreground" },
   neutro: { icona: Info, classe: "text-muted-foreground" },
 } as const;

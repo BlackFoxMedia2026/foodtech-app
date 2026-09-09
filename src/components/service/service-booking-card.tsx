@@ -185,7 +185,7 @@ export function ServiceBookingCard({
               <>
                 {" · "}
                 <span
-                  className={cn(booking.liberoVerso.minuti <= 0 && "text-accent")}
+                  className={cn(booking.liberoVerso.minuti <= 0 && "text-accent-strong")}
                   title={frasePrevisione(booking.liberoVerso, timezone).dettaglio}
                 >
                   {frasePrevisione(booking.liberoVerso, timezone).testo}
@@ -195,7 +195,7 @@ export function ServiceBookingCard({
             {booking.lateBy > 0 && (
               <>
                 {" · "}
-                <span className="text-accent">in ritardo di {durataUmana(booking.lateBy)}</span>
+                <span className="text-accent-strong">in ritardo di {durataUmana(booking.lateBy)}</span>
               </>
             )}
             {booking.status !== "SEATED" &&

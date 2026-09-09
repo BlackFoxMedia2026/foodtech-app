@@ -85,7 +85,7 @@ export function GuestBookingActions({
 
       {esito ? (
         <p className="mt-6 flex items-start gap-2 rounded-md bg-current/10 p-4 text-sm">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-sage" aria-hidden="true" />
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-sage-strong" aria-hidden="true" />
           {esito}
         </p>
       ) : booking.closed ? (

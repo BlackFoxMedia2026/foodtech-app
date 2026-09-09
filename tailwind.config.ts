@@ -48,6 +48,9 @@ const config: Config = {
         sage: {
           DEFAULT: "#8A9F60",
           deep: "#3D5C34",
+          /** Il verde salvia che si legge: #8A9F60 fa 2,95-5,14 : 1 sul fondo
+           * scuro (sotto soglia nell'angolo chiaro), questo 5,68 : 1. */
+          strong: "#B6C695",
         },
         carbon: {
           DEFAULT: "#15161a",
@@ -88,10 +91,19 @@ const config: Config = {
           DEFAULT: "hsl(var(--accent) / <alpha-value>)",
           foreground: "hsl(var(--accent-foreground) / <alpha-value>)",
         },
+        /** L'accento che si **legge**, non quello che riempie.
+         * `accent` (hsl 30 44% 48%) su verde scuro fa 2,79-4,16 : 1 a seconda
+         * dell'angolo del gradiente: non è un colore da testo. Questo lo è —
+         * stessa terracotta, alzata di luminosità fino a 5,44 : 1 sul fondo
+         * peggiore e 4,76 : 1 anche sopra una tinta accento al 15%.
+         * Regola: `accent` riempie e borda, `accent-strong` si legge. */
         "accent-strong": {
-          DEFAULT: "#AF7944",
-          hover: "#936637",
+          DEFAULT: "#E2B383",
+          hover: "#EFC79C",
           foreground: "#2F1F11",
+          /** Il vecchio valore, per quando serve terracotta su fondo CHIARO:
+           * lì la versione chiara non si vede (1,65 : 1 sul crema). */
+          ink: "#74432D",
         },
         /** Il rosso da leggere su verde scuro: vedi la nota in `globals.css`. */
         "destructive-soft": "hsl(var(--destructive-soft) / <alpha-value>)",

@@ -23,7 +23,7 @@ export function RotazionePanel({ report }: { report: RotazioneReport }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Timer className="h-4 w-4 text-accent" aria-hidden="true" /> Quanto stanno a tavola
+          <Timer className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Quanto stanno a tavola
         </CardTitle>
         <CardDescription>
           Misurato su chi si è seduto e ha chiuso il conto: {report.misurate}{" "}

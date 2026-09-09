@@ -116,7 +116,7 @@ export function AvvisiProvider({ children }: { children: React.ReactNode }) {
             )}
           >
             {avviso.tono === "fatto" && (
-              <Check className="h-4 w-4 shrink-0 text-sage" aria-hidden="true" />
+              <Check className="h-4 w-4 shrink-0 text-sage-strong" aria-hidden="true" />
             )}
             <span className="min-w-0">{avviso.testo}</span>
             {avviso.annulla && (

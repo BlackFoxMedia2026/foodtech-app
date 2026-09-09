@@ -245,7 +245,7 @@ export function TablePickerDialog({
                 un avvertimento in accento si legge peggio delle note grigie
                 accanto. */}
             {scelti.length > 0 && (
-              <p className={cn("text-sm", bastano ? "text-muted-foreground" : "text-gilt")}>
+              <p className={cn("text-sm", bastano ? "text-muted-foreground" : "text-accent-strong")}>
                 {unione ? `${scelti.length} tavoli uniti: ` : ""}
                 {posti} {posti === 1 ? "posto" : "posti"} per {partySize}{" "}
                 {partySize === 1 ? "persona" : "persone"}

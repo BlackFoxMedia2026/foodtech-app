@@ -168,7 +168,7 @@ export function BillDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-accent" aria-hidden="true" /> Conto di {guestName}
+            <Receipt className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Conto di {guestName}
           </DialogTitle>
           <DialogDescription>
             {conto ? (
@@ -253,7 +253,7 @@ export function BillDialog({
               {pagamenti && pagamenti.giftCardCents > 0 && (
                 <div className="flex items-baseline justify-between text-sm">
                   <span className="text-muted-foreground">Gift card</span>
-                  <span className="tabular-nums text-sage">
+                  <span className="tabular-nums text-sage-strong">
                     −{formatCurrency(pagamenti.giftCardCents, currency)}
                   </span>
                 </div>
@@ -264,7 +264,7 @@ export function BillDialog({
                   <span className="text-muted-foreground">
                     Punti fedeltà{pagamenti.punti > 0 ? ` (${pagamenti.punti})` : ""}
                   </span>
-                  <span className="tabular-nums text-sage">
+                  <span className="tabular-nums text-sage-strong">
                     −{formatCurrency(pagamenti.puntiCents, currency)}
                   </span>
                 </div>

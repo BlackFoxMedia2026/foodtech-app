@@ -30,11 +30,17 @@
       d'errore era la cosa **meno** leggibile della schermata, e il testo
       normale accanto fa 6,02 : 1.
 
-      A 72% di luminosità lo stesso rosso fa 4,7 : 1 — sopra la soglia AA per
-      il testo piccolo, e sopra il colore delle note (4,45 : 1). Il pieno
-      resta `--destructive`, che serve a riempire con testo bianco sopra.
+      A 76% di luminosità lo stesso rosso fa 4,68 : 1 — sopra la soglia AA
+      per il testo piccolo. Il pieno resta `--destructive`, che serve a
+      riempire con testo bianco sopra.
+
+      NB: la misura va fatta sull'**angolo più chiaro** del fondo reso, non
+      sul token. Le schede e la pagina non sono tinte piatte: hanno un
+      gradiente e una velatura bianca al 5-7%, che alza la luminanza del
+      fondo e abbassa il contrasto di ogni testo chiaro. Misurato sul token
+      piatto, questo rosso sembrava 4,7 a 72%; misurato sul reso era 4,07.
     */
-    --destructive-soft: 0 70% 72%;
+    --destructive-soft: 0 70% 76%;
     --border: 157 19% 26%;
     --border-strong: 157 19% 34%;
     --input: 157 19% 26%;

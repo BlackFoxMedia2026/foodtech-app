@@ -337,7 +337,7 @@ function ContestoServizio({
       {voci.map((v) => (
         <div key={v.etichetta}>
           <p className="t-etichetta">{v.etichetta}</p>
-          <p className={v.allarme ? "text-accent" : undefined}>
+          <p className={v.allarme ? "text-accent-strong" : undefined}>
             {v.valore}
             {v.nota && <span className="t-nota"> · {v.nota}</span>}
           </p>

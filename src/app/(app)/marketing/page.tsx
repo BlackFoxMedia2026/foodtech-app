@@ -130,7 +130,7 @@ export default async function MarketingPage() {
               href={i.href}
               className="riquadro group flex flex-col gap-1 p-3 transition-colors hover:border-gilt-dark/50"
             >
-              <span className="flex items-center gap-1.5 text-accent">
+              <span className="flex items-center gap-1.5 text-accent-strong">
                 <Target className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 <span className="t-titolo-scheda">{i.titolo}</span>
               </span>
@@ -154,7 +154,7 @@ export default async function MarketingPage() {
             <Card className="h-full transition-colors hover:border-gilt-dark/50">
               <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
                 <div>
-                  <div className="flex items-center gap-2 text-accent">
+                  <div className="flex items-center gap-2 text-accent-strong">
                     <Icon className="h-4 w-4" />
                     <span className="text-xs font-medium uppercase tracking-wide">{eyebrow}</span>
                   </div>

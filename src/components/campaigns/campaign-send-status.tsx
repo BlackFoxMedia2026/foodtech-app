@@ -55,7 +55,7 @@ export function CampaignSendStatus({
     return (
       <div className="space-y-3">
         <p className="flex items-center gap-2 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin text-accent" aria-hidden="true" />
+          <Loader2 className="h-4 w-4 animate-spin text-accent-strong" aria-hidden="true" />
           Invio in corso — {preparati} destinatari preparati su {totale}
         </p>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-current/20">
@@ -65,7 +65,7 @@ export function CampaignSendStatus({
           Puoi chiudere questa pagina: il lavoro continua da solo e questa schermata si aggiorna da sé.
         </p>
         {progress?.ultimoErrore && (
-          <p className="text-xs text-gilt">
+          <p className="text-xs text-accent-strong">
             Ultimo tentativo non riuscito ({progress.tentativi}): {progress.ultimoErrore}. Ci riproviamo.
           </p>
         )}

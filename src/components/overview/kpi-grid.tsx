@@ -23,14 +23,14 @@ const SURFACE = {
     container: "border border-border bg-background",
     iconLabel: "text-muted-foreground",
     value: "text-foreground",
-    positive: "text-sage",
+    positive: "text-sage-strong",
     negative: "text-destructive-soft",
   },
   brown: {
     container: "finish-brown-dark border border-[#633a26]",
     iconLabel: "text-cream/65",
     value: "text-cream",
-    positive: "text-sage",
+    positive: "text-sage-strong",
     negative: "text-rose-400",
   },
   cream: {

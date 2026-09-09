@@ -43,7 +43,7 @@ export function MenuEngineeringPanel({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <LayoutGrid className="h-4 w-4 text-accent" aria-hidden="true" /> Che cosa tiene su la carta
+          <LayoutGrid className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Che cosa tiene su la carta
         </CardTitle>
         <CardDescription>
           Quanto piace incrociato con quanto rende, sui piatti di cui conosciamo il costo. Nessun dato nuovo:

@@ -61,7 +61,7 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
   if (fatto) {
     return (
       <div className="surface riquadro p-6 text-center">
-        <CheckCircle2 className="mx-auto h-8 w-8 text-sage" aria-hidden="true" />
+        <CheckCircle2 className="mx-auto h-8 w-8 text-sage-strong" aria-hidden="true" />
         <h1 className="mt-3 text-display text-2xl">Ci sei</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Il tuo accesso a {invito.venueName} è attivo. Entra con <strong>{invito.email}</strong>

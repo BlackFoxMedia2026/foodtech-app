@@ -144,7 +144,7 @@ export function WaitersPageClient({
                 <div className="flex items-center gap-2 t-etichetta font-medium">
                   <Icon className="h-3.5 w-3.5" />
                   {group.label}
-                  <span className="text-muted-foreground/70">· {group.members.length}</span>
+                  <span className="text-muted-foreground">· {group.members.length}</span>
                 </div>
                 <Separator />
                 <div className="divide-y divide-border riquadro bg-card">

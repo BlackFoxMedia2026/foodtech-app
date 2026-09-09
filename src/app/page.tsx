@@ -113,7 +113,7 @@ export default function Landing() {
           <Badge tone="gold">Beta · gestionale ospitalità</Badge>
           <h1 className="text-display text-balance text-5xl leading-tight md:text-6xl">
             Il tempo della sala, <br />
-            <span className="text-accent">finalmente in ordine.</span>
+            <span className="text-accent-strong">finalmente in ordine.</span>
           </h1>
           <p className="max-w-lg text-pretty text-lg text-muted-foreground">
             Tavolo unisce prenotazioni, mappa sala, CRM, esperienze e marketing

@@ -233,7 +233,7 @@ export function BookingWindowSettings({
             <Button type="submit" variant="accent" size="sm" disabled={salvando}>
               {salvando ? "Salvo…" : "Salva"}
             </Button>
-            {salvato && <span className="text-sm text-sage">Salvato.</span>}
+            {salvato && <span className="text-sm text-sage-strong">Salvato.</span>}
             {error && <span className="text-sm text-destructive">{error}</span>}
           </div>
         )}

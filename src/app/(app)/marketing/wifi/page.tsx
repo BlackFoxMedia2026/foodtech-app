@@ -67,7 +67,7 @@ export default async function WifiLeadsPage({
             </div>
             <div className="riquadro p-3">
               <p className="t-etichetta">Poi venuti a mangiare</p>
-              <p className="mt-1 text-display text-2xl tabular-nums text-accent">{stats.conPrenotazione}</p>
+              <p className="mt-1 text-display text-2xl tabular-nums text-accent-strong">{stats.conPrenotazione}</p>
               <p className="text-xs text-muted-foreground">hanno almeno una prenotazione</p>
             </div>
             <div className="riquadro p-3">

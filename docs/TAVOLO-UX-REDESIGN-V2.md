@@ -2018,13 +2018,62 @@ Verifiche fatte oggi, e cosa resta.
 | Indici come collegamenti, non stato | ✅ | viste di Analisi e parti di Impostazioni sono link: funzionano senza JavaScript e con la tastiera |
 | Nome accessibile con il verbo | ✅ | corretto oggi: «Walk-in» visibile, «Accomoda walk-in» a voce |
 | Stato anche non a colore | ⚠️ | la sala viva distingue con bordo e tratteggio, non solo colore; da verificare sui sette stati |
-| Contrasto | **misurato il 9 settembre** | e tre colori erano sotto soglia: vedi sotto |
+| Contrasto | **misurato due volte il 9 settembre** | la prima misura era generosa: vedi sotto |
 | Etichette per lettori di schermo | ⚠️ parziale | presenti sulle azioni di riga del team, da estendere |
 
-### Il contrasto, misurato (9 settembre)
+### Il contrasto, misurato due volte (9 settembre)
 
-Rapporti WCAG calcolati sul fondo di una scheda del prodotto
-(`--card`, verde molto scuro):
+**La prima misura era sbagliata, e in una direzione precisa: troppo
+generosa.** L'avevo calcolata sul *token* `--card`, una tinta piatta. Ma
+nessuna superficie di questo prodotto è una tinta piatta: le schede e la
+pagina hanno un gradiente e sopra una **velatura bianca al 5-7%**, che schiara
+il fondo e quindi **abbassa** il contrasto di ogni testo chiaro. Rimisurando
+sull'angolo più chiaro del fondo reso, ogni numero scende di circa il 15%:
+
+| Colore | sul token (prima) | sul fondo reso (vero) |
+|---|---:|---:|
+| oro (`gilt`) | 5,11 ✅ | **4,34 ❌** |
+| accento (terracotta) | 3,32 | **2,79** |
+| `destructive-soft` a 72% | 4,70 ✅ | **4,07 ❌** |
+| testo tenue | 6,02 | 5,12 |
+| crema | 9,94 | 8,45 |
+
+Conseguenza: **l'oro non era la risposta.** Spostare gli avvertimenti sull'oro
+li aveva portati a 4,34 — ancora sotto soglia — e in più li aveva portati
+*fuori* dalla famiglia terracotta. E il rosso leggibile appena introdotto era
+anch'esso sotto soglia.
+
+La vera causa era un'altra, e stava in un nome:
+
+> `accent` = `hsl(30 44% 48%)` = **rgb(176, 122, 69)**
+> `accent-strong` = `#AF7944` = **rgb(175, 121, 68)**
+
+**Erano lo stesso colore.** Il token che promette «l'accento forte, quello che
+si legge» non era più forte di niente. Per questo *ogni* testo terracotta del
+prodotto era sotto soglia: non esisteva una terracotta leggibile da usare, solo
+un nome che diceva di esserlo.
+
+Il rimedio non è spostarsi sull'oro, è **mantenere la promessa del token**:
+`accent-strong` diventa `#E2B383` — la stessa terracotta, alzata di luminosità
+finché fa **5,44 : 1** sul fondo peggiore e **4,76 : 1** anche sopra una tinta
+accento al 15%. Con quello a posto, i 100 testi terracotta del prodotto si
+leggono e restano terracotta.
+
+Rapporti sul fondo reso, dopo:
+
+| Colore | Rapporto | Ruolo |
+|---|---:|---|
+| crema | 8,45 : 1 | ✅ testo pieno |
+| `sage-strong` **nuovo** #B6C695 | 5,68 : 1 | ✅ il positivo che si legge |
+| `accent-strong` **nuovo** #E2B383 | 5,44 : 1 | ✅ l'accento che si legge |
+| testo tenue | 5,12 : 1 | ✅ |
+| `destructive-soft` a **76%** | 4,68 : 1 | ✅ l'errore che si legge |
+| oro (`gilt`) | 4,34 : 1 | ⚠️ non per il testo piccolo |
+| sage | 3,56 : 1 | ⚠️ solo per riempire |
+| accento (terracotta) | 2,79 : 1 | ⚠️ solo per riempire e bordare |
+
+Rapporti WCAG della prima misura, sul *token* di una scheda (`--card`),
+conservati per memoria:
 
 | Colore | Rapporto | Verdetto |
 |---|---:|---|

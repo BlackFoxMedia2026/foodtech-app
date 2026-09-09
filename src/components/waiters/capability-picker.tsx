@@ -6,7 +6,7 @@ import { STAFF_CAPABILITIES } from "@/lib/staff-roles";
 import { cn } from "@/lib/utils";
 
 /** Compact toggle-chip list for StaffCapability — same visual language as
- * Badge's "gold" tone (border-accent/30 bg-accent/10 text-accent), so it
+ * Badge's "gold" tone (border-accent/30 bg-accent/10 text-accent-strong), so it
  * reads as part of the existing design system rather than a new control. */
 export function CapabilityPicker({
   value,
@@ -32,7 +32,7 @@ export function CapabilityPicker({
             className={cn(
               "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
               active
-                ? "border-accent/40 bg-accent/15 text-accent"
+                ? "border-accent/40 bg-accent/15 text-accent-strong"
                 : "border-border text-muted-foreground hover:bg-secondary",
             )}
           >

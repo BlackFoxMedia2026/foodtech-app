@@ -132,7 +132,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
 
         <div className="riquadro p-3">
           <p className="flex items-center gap-2 text-sm font-medium">
-            <Users className="h-4 w-4 text-accent" aria-hidden="true" />
+            <Users className="h-4 w-4 text-accent-strong" aria-hidden="true" />
             {automation.toccherebbeOggi === 0
               ? "Oggi non toccherebbe nessuno"
               : `Oggi scriverebbe a ${automation.toccherebbeOggi} ${
@@ -233,7 +233,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
               onCheckedChange={setConOmaggio}
             />
             <span className="flex items-center gap-1.5 text-sm font-medium">
-              <Gift className="h-4 w-4 text-accent" aria-hidden="true" /> Allega un omaggio
+              <Gift className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Allega un omaggio
             </span>
           </label>
 
@@ -348,7 +348,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
             }).format(automation.ultimaEsecuzione.quando)}.`}
         </p>
 
-        {esito && <p className="text-sm text-sage">{esito}</p>}
+        {esito && <p className="text-sm text-sage-strong">{esito}</p>}
         {errore && <p className="text-sm text-destructive">{errore}</p>}
       </CardContent>
     </Card>
