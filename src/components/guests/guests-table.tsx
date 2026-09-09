@@ -3,17 +3,34 @@
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Search } from "lucide-react";
-import type { Guest } from "@prisma/client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoyaltyPill } from "./loyalty-pill";
 import { formatCurrency, formatDate, initials } from "@/lib/utils";
 import { Corpo, Riga, RigaVuota, Tabella, Td, Testa, Th } from "@/components/ui/table";
+import type { PaginaOspiti } from "@/server/guests";
 
 const ALL_TAGS = "__all__";
 
-export function GuestsTable({ rows, availableTags }: { rows: Guest[]; availableTags: string[] }) {
+export function GuestsTable({
+  rows,
+  availableTags,
+  spesaCents,
+}: {
+  /**
+   * Solo le colonne che l'elenco mostra, non la riga intera del database: la
+   * spesa è un `Decimal` di Prisma e non attraversa il confine col client, e
+   * le note riservate di un ospite non hanno ragione di arrivare fin qui.
+   */
+  rows: PaginaOspiti["items"];
+  availableTags: string[];
+  /**
+   * Quanto ha speso ciascuno, contato dai conti chiusi. Un ospite che non c'è
+   * dentro non ha conti chiusi: si scrive «non ancora», non «0,00 €».
+   */
+  spesaCents: Record<string, number>;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -130,15 +147,16 @@ export function GuestsTable({ rows, availableTags }: { rows: Guest[]; availableT
                     <p className="text-xs">{g.phone ?? ""}</p>
                   </Td>
                   <Td className="tabular-nums">{g.totalVisits}</Td>
-                  {/* `totalSpend` non lo scrive nessuno: non ci sono ordini né
-                      incassi collegati a un ospite. Mostrarlo come «0,00 €»
-                      farebbe sembrare misurato uno zero che è solo un campo
-                      vuoto. Vedi docs/PRODUCT_STATUS.md, «Nota sui numeri in
-                      euro». */}
-                  <Td className="tabular-nums text-muted-foreground">
-                    {Number(g.totalSpend) > 0
-                      ? formatCurrency(Math.round(Number(g.totalSpend) * 100))
-                      : "non misurata"}
+                  {/* Non `Guest.totalSpend`, che nessuno scrive: la somma dei
+                      conti chiusi di questa persona. Chi non ne ha, non ha
+                      speso «zero» — non l'abbiamo ancora misurato, e le due
+                      cose vanno dette in modo diverso. */}
+                  <Td className="tabular-nums">
+                    {spesaCents[g.id] != null ? (
+                      formatCurrency(spesaCents[g.id])
+                    ) : (
+                      <span className="text-tertiary-foreground">non ancora</span>
+                    )}
                   </Td>
                   <Td className="text-muted-foreground tabular-nums">
                     {g.lastVisitAt ? formatDate(g.lastVisitAt) : "—"}

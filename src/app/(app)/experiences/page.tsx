@@ -9,7 +9,7 @@ export default async function ExperiencesPage() {
   const items = await listExperiences(ctx.venueId);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="schermo animate-fade-in">
       <ExperienceList
         items={items}
         currency={ctx.venue.currency}

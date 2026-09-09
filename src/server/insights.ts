@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { startOfDay, endOfDay } from "@/lib/utils";
 import { dateKeyInVenue } from "@/lib/venue-time";
 import { incassoDelGiorno } from "./orders";
+import { capienzaDelGiorno, quantoPieno } from "./capienza-giorno";
 
 function isSameCalendarDay(a: Date, b: Date) {
   return a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -29,7 +30,7 @@ async function getDayStats(venueId: string, day: Date, avgSpend: number | null) 
   const dayStart = startOfDay(day);
   const dayEnd = endOfDay(day);
 
-  const [bookings, noShowCount, service] = await Promise.all([
+  const [bookings, noShowCount, service, capacity] = await Promise.all([
     db.booking.findMany({
       where: { venueId, startsAt: { gte: dayStart, lte: dayEnd }, status: { not: "CANCELLED" } },
       include: { guest: true, table: true },
@@ -39,11 +40,18 @@ async function getDayStats(venueId: string, day: Date, avgSpend: number | null) 
       where: { venueId, startsAt: { gte: dayStart, lte: dayEnd }, status: "NO_SHOW" },
     }),
     getServiceWindow(venueId, day),
+    /*
+      La capienza della **giornata**, la stessa che usa la previsione. Qui si
+      prendeva quella di un turno solo e ci si dividevano i coperti di tutto il
+      giorno: con turni da 60 e 90, 75 coperti facevano 125%, e il tetto a
+      cento lo mascherava in «100% pieno» mentre la previsione, per lo stesso
+      giorno, diceva 44%. Vedi server/capienza-giorno.ts.
+    */
+    capienzaDelGiorno(venueId, day),
   ]);
 
   const totalCovers = bookings.reduce((s, b) => s + b.partySize, 0);
-  const capacity = service?.capacity ?? 90;
-  const occupancyPct = Math.min(100, Math.round((totalCovers / capacity) * 100));
+  const occupancyPct = quantoPieno(totalCovers, capacity);
   // Nullo quando il locale non ha dichiarato la spesa media: la Panoramica
   // mostra una casella vuota con l'invito a impostarla.
   const revenueCents = avgSpend != null ? Math.round(avgSpend * totalCovers * 100) : null;
@@ -194,7 +202,13 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
         today.revenueCents != null && prev.revenueCents != null
           ? pctChange(today.revenueCents, prev.revenueCents)
           : null,
-      occupancy: pctChange(today.occupancyPct, prev.occupancyPct),
+      /* Senza capienza dichiarata non c'è percentuale, quindi non c'è
+         confronto: prima si divideva per 90 inventati e il confronto usciva
+         comunque. */
+      occupancy:
+        today.occupancyPct != null && prev.occupancyPct != null
+          ? pctChange(today.occupancyPct, prev.occupancyPct)
+          : null,
       noShow: expectedNoShow - prev.noShowCount,
     },
     trend,

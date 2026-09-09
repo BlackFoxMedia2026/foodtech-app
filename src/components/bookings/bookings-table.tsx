@@ -16,7 +16,8 @@ import { Check, MoreHorizontal } from "lucide-react";
 import { formatTime, initials } from "@/lib/utils";
 import { Corpo, Riga, Tabella, Td, Testa, Th } from "@/components/ui/table";
 
-type Row = Booking & { guest: Guest | null; table: Table | null };
+/** Vedi la nota in `bookings-page-client.tsx`: niente `Decimal` da questa parte. */
+type Row = Booking & { guest: Omit<Guest, "totalSpend"> | null; table: Table | null };
 
 const STATUS_OPTIONS = [
   ["CONFIRMED", "Confermata"],

@@ -81,7 +81,13 @@ export default async function GuestsPage({
         </Link>
       )}
 
-      <GuestsTable rows={elenco.items} availableTags={availableTags} />
+      {/* `spesaCents` è una Map, e una Map non attraversa il confine fra
+          server e client: si passa come oggetto semplice. */}
+      <GuestsTable
+        rows={elenco.items}
+        availableTags={availableTags}
+        spesaCents={Object.fromEntries(elenco.spesaCents)}
+      />
 
       {elenco.pagine > 1 && (
         <nav className="fissa flex items-center justify-between gap-3" aria-label="Pagine degli ospiti">

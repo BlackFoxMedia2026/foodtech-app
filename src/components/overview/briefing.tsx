@@ -36,7 +36,8 @@ export function Briefing({
    */
   prenotazioni: number;
   coperti: number;
-  occupancyPct: number;
+  /** Nullo quando il locale non ha turni configurati: non lo sappiamo. */
+  occupancyPct: number | null;
   vip: number;
   compleanni: number;
   allergie: number;
@@ -79,10 +80,17 @@ export function Briefing({
         <span>
           <strong className="tabular-nums">{coperti}</strong> coperti
         </span>
-        <span className="text-muted-foreground">·</span>
-        <span>
-          <strong className="tabular-nums">{occupancyPct}%</strong> pieno
-        </span>
+        {/* Senza turni configurati non sappiamo quanto sia pieno, e non lo
+            diciamo: prima si divideva per una capienza di ripiego (90) e usciva
+            una percentuale che non voleva dire niente. */}
+        {occupancyPct != null && (
+          <>
+            <span className="text-muted-foreground">·</span>
+            <span>
+              <strong className="tabular-nums">{occupancyPct}%</strong> pieno
+            </span>
+          </>
+        )}
         {picco && (
           <>
             <span className="text-muted-foreground">·</span>

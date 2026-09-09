@@ -7,6 +7,11 @@ import { listRooms } from "@/server/rooms";
 import { listServiceOptions } from "@/server/waiter-assignments";
 import { BookingsPageClient } from "@/components/bookings/bookings-page-client";
 
+/** La riga ospite senza la colonna `Decimal` che il client non può ricevere. */
+function senzaSpesa<T extends { totalSpend: unknown }>({ totalSpend, ...resto }: T): Omit<T, "totalSpend"> {
+  return resto;
+}
+
 export const dynamic = "force-dynamic";
 
 type StatusFilter = "all" | "pending" | "confirmed";
@@ -71,10 +76,16 @@ export default async function BookingsPage({
   }));
 
   return (
+    // Si toglie la spesa dell'ospite prima di passare le righe al client: è un
+    // `Decimal` di Prisma che nessuno legge qui, e che Next segnalava a ogni
+    // caricamento. Vedi la nota in `bookings-page-client.tsx`.
     <BookingsPageClient
       dayString={dayString}
       statusFilter={statusFilter}
-      filteredRows={filteredRows}
+      filteredRows={filteredRows.map(({ guest, ...resto }) => ({
+        ...resto,
+        guest: guest ? senzaSpesa(guest) : null,
+      }))}
       totalCovers={totalCovers}
       pendingCount={pendingCount}
       tables={tables}

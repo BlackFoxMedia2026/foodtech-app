@@ -47,7 +47,6 @@ export function KpiGrid({
   estimatedRevenueCents,
   incasso,
   currency,
-  occupancyPct,
   expectedNoShow,
   comparisons,
 }: {
@@ -63,9 +62,12 @@ export function KpiGrid({
     scontiPuntiCents?: number;
   } | null;
   currency: string;
-  occupancyPct: number;
   expectedNoShow: number;
-  comparisons: { covers: number; revenue: number | null; occupancy: number; noShow: number };
+  /*
+    `occupancyPct` arrivava fin qui e non veniva mai reso: un dato passato per
+    abitudine. La percentuale di pieno si legge nel briefing, una volta.
+  */
+  comparisons: { covers: number; revenue: number | null; occupancy: number | null; noShow: number };
 }) {
   const kpis: Kpi[] = [
 
