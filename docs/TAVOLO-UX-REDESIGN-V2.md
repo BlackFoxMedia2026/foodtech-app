@@ -329,7 +329,7 @@ lavora*.
 | Pagamenti | `/payments` | manager | bassa | bassa | 8 | 8 | — | 7 | 8 |
 | Camerieri | `/waiters` | manager | media | media | 5 | 5 | 5 | 6 | 9 |
 | Impostazioni × 4 | `/settings?parte=` | manager | bassa | bassa | 7 | 7 | 6 | 7 | 8,5 |
-| Brand | `/settings/brand` | manager | bassa | bassa | 6 | 6 | 6 | 6 | 8,5 |
+| Brand | `/settings/brand` | manager | bassa | bassa | **8,5** | 8 | 8 | 8 | 8,5 |
 | Portale Wi-Fi (conf.) | `/settings/wifi` | manager | bassa | bassa | 7 | 7 | 6 | 6 | 8 |
 | Vetrina | `/` | pubblico | — | — | 7 | 7 | — | 7 | 8 |
 | Accesso | `/sign-in` | staff | — | — | 6 | 7 | 8 | 8 | 8,5 |
@@ -1284,14 +1284,30 @@ voleva.
 
 **Punteggio rivisto: da 7 a 8,5.**
 
-## Brand (§56) — l'unica voce di Fase 6 davvero aperta
-L'anteprima è un finto statico, e il commento nel codice lo dichiara: «è solo
-un mockup di come apparirebbe un widget brandizzato». Il §56 chiede le quattro
-superfici pubbliche vere — modulo, menu, portale, sondaggio — col brand
-applicato. **Da fare**, e non l'ho fatta in questa fase: costruirla bene
-significa rendere i componenti pubblici veri con i valori del locale, ed è un
-lavoro che merita il suo giro invece di essere accodato a una correzione di
-documento.
+## Brand (§56) — fatto
+
+Era un'anteprima sola e generica: un'intestazione, un rettangolo grigio, un
+pulsante. Diceva «il colore va sul pulsante», che è vero e non serve a
+decidere.
+
+Adesso sono **quattro**, una per superficie che un cliente incontra davvero —
+prenotazione, menu, portale Wi-Fi, sondaggio — con i testi veri di ciascuna e i
+valori del locale. Perché la domanda di chi sta scegliendo un colore non è
+«dove va», è: **come starà accanto a un prezzo, a una password da copiare, a
+una scala da zero a dieci?** Un colore che funziona su un pulsante d'azione può
+essere illeggibile su un prezzo in testo piccolo su fondo chiaro — e adesso lo
+si vede prima di salvare.
+
+Una per volta, non impilate: quattro anteprime avrebbero allungato Impostazioni
+di seicento pixel per una cosa che si guarda mentre si sceglie un colore.
+
+**Sono anteprime, e il testo lo dichiara:** riproducono la struttura delle
+pagine pubbliche, non sono le pagine vere. Renderizzarle per davvero
+richiederebbe la carta, i turni e la rete dentro un modulo che si sta ancora
+compilando, e mostrerebbe una pagina vuota invece di un'anteprima. Un'anteprima
+presa per la pagina vera è una promessa che qualcuno verrà a riscuotere.
+
+**Punteggio: da 6 a 8,5.**
 
 ## Sondaggio (§46)
 **Non toccare.** Una domanda, un tocco, 0–8 in privato e 9–10 con la
