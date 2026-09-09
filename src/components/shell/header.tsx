@@ -23,6 +23,7 @@ import {
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
 import { NotificationBell } from "./notification-bell";
+import { RicercaGlobale } from "./ricerca-globale";
 
 /**
  * La barra in alto è la navigazione **da scrivania**: su telefono le voci
@@ -184,6 +185,9 @@ export function Header({
         {/* Su telefono il gruppo di destra si allarga per riempire lo spazio
             lasciato libero dalla navigazione. */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          {/* La ricerca sta a sinistra dell'agente: è la cosa che si usa più
+              spesso delle tre, e il pollice sul telefono arriva prima qui. */}
+          <RicercaGlobale />
           <Agent />
           <NotificationBell />
           <ProfileMenu user={user} />

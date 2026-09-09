@@ -1465,6 +1465,51 @@ sempre aperta: è quella che si legge in piedi.
 
 ---
 
+# 16-bis. Ricerca globale (§64) — fatta il 9 settembre
+
+«Trovare un ospite» era l'unico dei sette compiti del §123 senza una strada:
+bisognava andare in Ospiti e cercare da lì. Con una prenotazione al telefono in
+corso, sono tre gesti e una schermata di contesto perso.
+
+Adesso c'è un pulsante accanto all'agente e **⌘K / Ctrl+K** da qualunque
+schermata. Non è una tavolozza dei comandi — quella resta in P3 — perché non
+lancia azioni: trova **cose**, un ospite o una prenotazione.
+
+**Perché un pulsante e non un campo nella barra.** A 1440 px la barra in alto
+porta già sei voci più «Altro» più tre comandi a destra: un campo lì dentro
+l'avrebbe fatta tornare a scorrere in orizzontale, che è il difetto da cui
+questa navigazione è nata. Un pulsante costa quaranta pixel e apre una finestra
+che su telefono e su scrivania è la stessa.
+
+**Il difetto vero che ha risolto, ed era nell'audit:** «la ricerca non trova per
+numero di telefono parziale in modo evidente». In archivio i numeri stanno come
+li ha scritti chi li ha scritti — «+39 335 8842910» — e la ricerca del CRM
+faceva `phone contains`: cercare «3358842» non trovava niente per colpa degli
+spazi, e cercare «33» restituiva mezzo archivio. Cioè **rumore sulle domande
+corte e silenzio su quelle giuste**. Adesso il numero si confronta a cifre
+(`regexp_replace` in una query grezza, perché la funzione va applicata alla
+colonna) e solo da quattro cifre in su.
+
+**Cosa cerca, scritto in fondo alla finestra:** ospiti e prenotazioni delle
+prossime settimane — una settimana indietro e un mese avanti, perché chi cerca
+«Bianchi» sta rispondendo al telefono adesso, e lo storico completo è nella
+scheda a un clic dal risultato. Una ricerca che non dichiara il suo perimetro fa
+concludere «non c'è» a chi cerca un piatto o un coupon.
+
+**Tre cose che si notano solo usandola.** Le risposte in ritardo di una domanda
+precedente si scartano confrontando la domanda che torna con quella scritta
+adesso (senza, chi digita in fretta vede lampeggiare i risultati di «Ro» sopra
+quelli di «Rossi»). La scorciatoia non scatta mentre si scrive in un campo. E
+`bg-current/10` per la riga scelta **non si vedeva** su verde scuro: la riga che
+Invio apre deve stare addosso all'occhio.
+
+**Misurato:** ⌘K apre, le frecce e Invio arrivano alla scheda, «3682288» trova
+il numero scritto con gli spazi, Escape chiude, e a 390×844 la finestra è la
+stessa senza scorrimento. Dodici test nuovi, fra cui i tre casi del telefono e
+i due dei confini fra locali.
+
+---
+
 # 17. Menu Redesign
 
 **Backoffice, scrivania:** intestazione di categoria compatta (nome · numero di
@@ -1842,7 +1887,7 @@ Bersagli del §83, con la mia stima di fattibilità.
 | Check-in prenotazione | <3 s | sì, da Servizio; **no** oggi da Prenotazioni | mancano le azioni di riga |
 | Assegnazione tavolo | <5 s | sì con azione di riga | oggi tre pagine |
 | Accomodare dalla coda | <5 s | sì col suggerimento nella riga | oggi finestra di scelta |
-| Trovare un ospite | <5 s | sì | manca la ricerca globale (§64) |
+| Trovare un ospite | <5 s | sì | ~~manca la ricerca globale (§64)~~ **fatta il 9 settembre**: ⌘K da qualunque schermata |
 
 **Nota di metodo:** questi numeri vanno **misurati**, non stimati. Il §123
 chiede test su compiti reali: la sezione 48 dice come.
@@ -1928,7 +1973,7 @@ gliene **prepara**: oggi una, e possono essere sei.
 22. Coupon ed Esperienze in righe
 23. Scala tipografica e tre livelli di densità applicati
 24. Attribuzione dei cambiamenti in tempo reale («assegnato da Anna»)
-25. Ricerca globale
+25. ~~Ricerca globale~~ — **fatta il 9 settembre**
 26. Scheletri per componente
 27. Guest 360 riorganizzato
 28. Anteprime reali in Brand
