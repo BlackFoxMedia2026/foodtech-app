@@ -99,6 +99,41 @@ Adesso: il locale **dichiara** la spesa media per coperto in Impostazioni, e la
 stima è detta stima. Senza quel valore, la casella resta vuota e dice cosa
 manca. Il valore reale arriverà con ordini o pagamenti.
 
+### Tre difetti trovati allineando la demo **in produzione**
+
+Il seed girava da mesi solo in sviluppo, dove i dati nascono e muoiono nella
+stessa ora. In produzione, su una vetrina viva da settembre, sono emersi tre
+difetti che in locale non si potevano vedere.
+
+**Il riallineamento delle date era ancorato all'estremo.** Prendeva
+`max(startsAt)` e lo portava a «oggi + quattordici». Ha funzionato finché la
+demo era solo il seed; poi sono comparse tre prenotazioni isolate mesi avanti
+— prese a mano durante una dimostrazione — e quelle tre hanno deciso lo
+spostamento di tutte le altre millecentoquarantuno. Il grosso della vetrina è
+rimasto a maggio, la Panoramica diceva «nessuna prenotazione per oggi», e il
+riallineamento **sembrava fatto**. Adesso l'ancora è la mediana: per spostarla
+servirebbe che metà delle righe fosse fuori posto, e a quel punto non è più un
+caso isolato.
+
+**Spostare le date non spostava gli stati.** Con uno scarto di quattro mesi,
+331 cene già chiuse sono finite nel futuro portandosi dietro il loro stato: la
+demo mostrava prenotazioni «completate» per giorni non ancora arrivati e
+quattro «no-show» per la sera stessa alle 21:45. Un no-show per una cena che
+non è ancora avvenuta è una cosa che il prodotto non può produrre: se la
+vetrina la mostra, sta mentendo su come funziona. E la prima versione della
+correzione era **dentro** la funzione dello spostamento, dove non girava —
+quando le date sono già a posto quella funzione esce subito. Una regola di
+coerenza non va appesa al ramo che l'ha creata: va verificata ogni volta.
+
+**Aurora Bistrot non aveva un solo tavolo.** Il ramo «demo già installata» non
+creava sale né tavoli, e Aurora è il locale che si apre per primo: ogni
+prenotazione diceva «Tavolo da assegnare» e la pianta della sala era una
+stanza vuota. Creati i diciassette tavoli, 142 prenotazioni hanno ricevuto il
+loro — il più piccolo che basta, senza sovrapposizioni, usando `overlaps` del
+motore di disponibilità invece di una seconda formula. Due restano senza, e
+restano perché sono tavolate da sette e il tavolo più grande è da sei:
+«da assegnare» è la verità, e unire due tavoli è un gesto che si fa a mano.
+
 ### Due formule per la stessa domanda, trovate riempiendo la demo
 
 **«Quanto sono pieno oggi?»** aveva due risposte che si contraddicevano sulla

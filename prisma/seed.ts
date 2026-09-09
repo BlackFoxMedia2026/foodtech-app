@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { PrismaClient, BookingStatus, BookingSource, Occasion, LoyaltyTier, TableShape } from "@prisma/client";
+import { PrismaClient, BookingStatus, BookingSource, Occasion, LoyaltyTier, TableShape, VenueKind } from "@prisma/client";
 import { contatoriDaPrenotazioni } from "../src/lib/visite";
 import { arricchisciVetrina } from "./demo-vetrina";
 import bcrypt from "bcryptjs";
@@ -92,19 +92,43 @@ async function riallineaDateDemo(venueIds: string[]) {
     return;
   }
 
-  const ultima = await db.booking.findFirst({
+  /*
+    L'ancora è la **mediana**, non la prenotazione più lontana.
+
+    Prima si prendeva `max(startsAt)` e si portava a «oggi + quattordici». Ha
+    funzionato finché la demo era solo il seed; poi in produzione sono
+    comparse tre prenotazioni isolate mesi avanti — prese a mano durante una
+    dimostrazione, o nate da un'esperienza — e quelle tre hanno deciso lo
+    spostamento di tutte le altre milleecento. Risultato: il grosso della
+    vetrina è rimasto a maggio, la Panoramica diceva «nessuna prenotazione per
+    oggi», e il riallineamento sembrava fatto.
+
+    Un estremo non è un buon punto di riferimento: basta un valore fuori scala
+    per spostare tutto. La mediana no — per muoverla servirebbe che metà delle
+    righe fosse fuori posto, e a quel punto non è più un caso isolato.
+
+    Il bersaglio è «oggi meno otto giorni» perché la finestra generata dal
+    seed non è simmetrica: trenta giorni indietro e quattordici avanti, quindi
+    la sua mediana cade otto giorni prima del giorno in cui è stato eseguito.
+    Riportarla lì rimette la vetrina esattamente com'era pensata.
+  */
+  const totale = await db.booking.count({ where: { venueId: { in: venueIds } } });
+  const centrale = await db.booking.findMany({
     where: { venueId: { in: venueIds } },
-    orderBy: { startsAt: "desc" },
+    orderBy: { startsAt: "asc" },
+    skip: Math.floor(totale / 2),
+    take: 1,
     select: { startsAt: true },
   });
-  if (!ultima) return;
+  const mediana = centrale[0];
+  if (!mediana) return;
 
   const oggi = new Date();
   oggi.setHours(0, 0, 0, 0);
   const bersaglio = new Date(oggi);
-  bersaglio.setDate(bersaglio.getDate() + FUTURO_GIORNI);
+  bersaglio.setDate(bersaglio.getDate() - Math.round((PASSATO_GIORNI - FUTURO_GIORNI) / 2));
 
-  const giorni = Math.round((bersaglio.getTime() - ultima.startsAt.getTime()) / 86_400_000);
+  const giorni = Math.round((bersaglio.getTime() - mediana.startsAt.getTime()) / 86_400_000);
   if (giorni === 0) {
     console.log("→ Le date della demo sono già allineate a oggi.");
     return;
@@ -130,6 +154,43 @@ async function riallineaDateDemo(venueIds: string[]) {
   );
 
   console.log(`→ Demo riallineata: ${pren} prenotazioni spostate di ${giorni} giorni.`);
+}
+
+/**
+ * Nel futuro non si è ancora cenato.
+ *
+ * Spostare le date sposta gli orari, non gli **stati**: con uno spostamento di
+ * quattro mesi centinaia di cene già chiuse finiscono in avanti portandosi
+ * dietro il loro stato. In produzione la demo mostrava **331 prenotazioni
+ * «completate» per giorni non ancora arrivati** e quattro «no-show» per
+ * stasera alle 21:45. Un no-show per una cena che non è ancora avvenuta è una
+ * cosa che il prodotto non può produrre: se la vetrina la mostra, sta mentendo
+ * su come funziona.
+ *
+ * Sta **fuori** da `riallineaDateDemo` di proposito. Là dentro c'era, e non
+ * girava: quando le date sono già a posto quella funzione esce subito, e
+ * l'incoerenza — che intanto esisteva già — restava. Una regola di coerenza
+ * non va appesa al ramo che l'ha creata: va verificata ogni volta.
+ *
+ * Il caso opposto — una cena confermata finita nel passato — lo sistema
+ * `chiudiLeCeneFinite`, dove c'è la logica che decide chi ha cenato e chi non
+ * si è presentato.
+ */
+async function nelFuturoNonSiHaCenato(venueIds: string[]) {
+  if (venueIds.length === 0) return;
+  const rimesse = await db.booking.updateMany({
+    where: {
+      venueId: { in: venueIds },
+      startsAt: { gt: new Date() },
+      status: { in: ["COMPLETED", "NO_SHOW", "SEATED"] },
+    },
+    data: { status: "CONFIRMED", arrivedAt: null, seatedAt: null, closedAt: null },
+  });
+  if (rimesse.count > 0) {
+    console.log(
+      `→ ${rimesse.count} prenotazioni future erano segnate come già servite o assenti: rimesse a «confermata».`,
+    );
+  }
 }
 
 /** Il modulo Camerieri è il più recente e il più curato, e il seed non creava
@@ -171,6 +232,76 @@ async function allineaContatoriOspiti(venueId: string) {
   }
 
   console.log(`→ Contatori di ${ospiti.length} ospiti ricalcolati dalle prenotazioni.`);
+}
+
+/**
+ * Sale e tavoli della demo, creati **se mancano**.
+ *
+ * Nel ramo «demo già installata» questa parte non c'era, e in produzione si è
+ * visto cosa vuol dire: **Aurora Bistrot non aveva un solo tavolo**. Ogni
+ * prenotazione diceva «Tavolo da assegnare», la pianta della sala era una
+ * stanza vuota, e Aurora è il locale che si apre per primo — quindi era la
+ * prima cosa che vedeva chi valutava il prodotto.
+ *
+ * Non ricrea niente se i tavoli ci sono: un tavolo spostato a mano sulla
+ * piantina durante una dimostrazione non deve tornare al suo posto d'origine
+ * perché qualcuno ha rilanciato il seed.
+ */
+async function creaSalaDemo(venueId: string, kind: VenueKind, nome: string) {
+  const quanti = await db.table.count({ where: { venueId } });
+  if (quanti > 0) return;
+
+  // Una sala potrebbe esserci già anche senza tavoli: si riusa, non si
+  // aggiunge una seconda «Sala principale» accanto alla prima.
+  const room =
+    (await db.room.findFirst({ where: { venueId } })) ??
+    (await db.room.create({
+      data: {
+        venueId,
+        name: kind === "BEACH_CLUB" ? "Spiaggia" : "Sala principale",
+        width: 1200,
+        height: 760,
+      },
+    }));
+
+  const tableDefs = kind === "BEACH_CLUB"
+    ? Array.from({ length: 18 }).map((_, i) => ({
+        label: `Beach ${i + 1}`,
+        seats: 4,
+        shape: "LOUNGE" as const,
+        posX: 80 + (i % 6) * 170,
+        posY: 100 + Math.floor(i / 6) * 200,
+      }))
+    : [
+        ...Array.from({ length: 8 }).map((_, i) => ({
+          label: `T${i + 1}`,
+          seats: 2,
+          shape: TableShape.ROUND,
+          posX: 80 + i * 130,
+          posY: 120,
+        })),
+        ...Array.from({ length: 6 }).map((_, i) => ({
+          label: `T${i + 9}`,
+          seats: 4,
+          shape: TableShape.SQUARE,
+          posX: 100 + i * 170,
+          posY: 320,
+        })),
+        ...Array.from({ length: 3 }).map((_, i) => ({
+          label: `B${i + 1}`,
+          seats: 6,
+          shape: TableShape.BOOTH,
+          posX: 140 + i * 290,
+          posY: 540,
+        })),
+      ];
+
+  await db.table.createMany({
+    data: tableDefs.map((t) => ({ ...t, venueId: venueId, roomId: room.id })),
+  });
+
+
+  console.log(`   Sala di ${nome}: creati ${tableDefs.length} tavoli (non ce n'erano).`);
 }
 
 async function creaCamerieriDemo(venueId: string) {
@@ -394,14 +525,25 @@ async function main() {
     // In ordine: senza `orderBy` Postgres restituisce i locali nell'ordine che
     // gli conviene, e il registro del seed cambiava ordine a ogni esecuzione —
     // il che rende impossibile confrontare due esecuzioni.
-    include: { venues: { select: { id: true, name: true }, orderBy: { name: "asc" } } },
+    include: { venues: { select: { id: true, name: true, kind: true }, orderBy: { name: "asc" } } },
   });
 
   if (existingOrg) {
     // Non ricrea niente, ma non se ne va a mani vuote: rinfresca la vetrina.
     const venueIds = existingOrg.venues.map((v) => v.id);
     const nomi = new Map(existingOrg.venues.map((v) => [v.id, v.name]));
+
+    /*
+      Prima di tutto le sale: senza tavoli non c'è niente da assegnare, e
+      l'arricchimento della vetrina — che assegna i tavoli del giorno —
+      girerebbe a vuoto. In produzione Aurora Bistrot non aveva nemmeno un
+      tavolo, e questo ramo non se ne accorgeva: ogni prenotazione diceva
+      «Tavolo da assegnare» e la pianta della sala era una stanza vuota.
+    */
+    for (const v of existingOrg.venues) await creaSalaDemo(v.id, v.kind, v.name);
+
     await riallineaDateDemo(venueIds);
+    await nelFuturoNonSiHaCenato(venueIds);
     for (const id of venueIds) await creaCamerieriDemo(id);
     // Anche il menu: chi ha la demo già installata deve vedere la carta senza
     // dover ricreare tutto da zero.
@@ -493,45 +635,7 @@ async function main() {
     console.log(`→ Setup ${venue.name}`);
 
     // Sale + tavoli
-    const room = await db.room.create({
-      data: { venueId: venue.id, name: venue.kind === "BEACH_CLUB" ? "Spiaggia" : "Sala principale", width: 1200, height: 760 },
-    });
-
-    const tableDefs = venue.kind === "BEACH_CLUB"
-      ? Array.from({ length: 18 }).map((_, i) => ({
-          label: `Beach ${i + 1}`,
-          seats: 4,
-          shape: "LOUNGE" as const,
-          posX: 80 + (i % 6) * 170,
-          posY: 100 + Math.floor(i / 6) * 200,
-        }))
-      : [
-          ...Array.from({ length: 8 }).map((_, i) => ({
-            label: `T${i + 1}`,
-            seats: 2,
-            shape: TableShape.ROUND,
-            posX: 80 + i * 130,
-            posY: 120,
-          })),
-          ...Array.from({ length: 6 }).map((_, i) => ({
-            label: `T${i + 9}`,
-            seats: 4,
-            shape: TableShape.SQUARE,
-            posX: 100 + i * 170,
-            posY: 320,
-          })),
-          ...Array.from({ length: 3 }).map((_, i) => ({
-            label: `B${i + 1}`,
-            seats: 6,
-            shape: TableShape.BOOTH,
-            posX: 140 + i * 290,
-            posY: 540,
-          })),
-        ];
-
-    await db.table.createMany({
-      data: tableDefs.map((t) => ({ ...t, venueId: venue.id, roomId: room.id })),
-    });
+    await creaSalaDemo(venue.id, venue.kind, venue.name);
 
     // Turni
     for (let weekday = 0; weekday < 7; weekday++) {
@@ -687,6 +791,11 @@ async function main() {
         openedCount: 0,
       },
     });
+
+    // Anche qui, per la stessa ragione: il seed genera prenotazioni future e
+    // se un giorno cambiasse il modo di generarle, questa coerenza va comunque
+    // verificata. Costa una query e chiude la porta.
+    await nelFuturoNonSiHaCenato([venue.id]);
 
     // E qui la vetrina: conti chiusi, orari, sondaggi, coda, punti, coupon.
     await arricchisciVetrina(db, venue.id, venue.name);
