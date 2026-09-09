@@ -175,6 +175,25 @@ quello che capita. Nessuna vista affiancata.
 Scheda prenotazione, scheda ospite, dettaglio campagna: pagine intere con un
 ritorno che perde la posizione nella lista.
 
+## P-11 · Due tabelle per «chi copre questo tavolo» · **P0** *(trovato in Fase 5)*
+`StaffAssignment` (una riga per tavolo, con la capacità — la scrive la
+piantina) e `WaiterAssignment` (una riga per cameriere, con un elenco di tavoli
+— la scrive «Assegna servizio» da Camerieri). **Due fonti di verità per lo
+stesso fatto, e non si guardano.** Un manager assegna Alfredo a T1–T7 da
+Camerieri, qualcun altro assegna Giulia a T1 dalla sala, e nessuna delle due
+schermate vede il lavoro dell'altra.
+
+Il sintomo visibile l'ho trovato sulla demo: **settantasei tavoli assegnati
+dalla sala, e la pagina Camerieri non ne mostrava nessuno.** Non era «un elenco
+amministrativo poco utile», come avevo scritto: era una pagina che leggeva la
+tabella sbagliata.
+
+**Mitigato in Fase 5** — la fascia «il turno di oggi» legge entrambe, perché dal
+punto di vista di chi lavora sono entrambe assegnazioni vere fatte dentro il
+prodotto. **Non risolto:** serve decidere quale modello resta e migrare
+l'altro. Non è UX, è una decisione sul modello dei dati, e va fatta con gli
+occhi aperti perché tocca una funzione che qualcuno potrebbe già usare.
+
 ## P-10 · Densità uniforme · **P2**
 Gli stessi padding in Servizio e in Impostazioni. `text-xs` 488 usi, `text-sm`
 454: la scala è in pratica binaria, e la gerarchia si regge sul peso e sul
@@ -600,6 +619,20 @@ sovrapposto sulla sala viva). La seconda è quella che si apre durante il
 servizio.
 **Target:** 9 — è il salto più grande fra i punteggi, perché oggi la pagina non
 serve al servizio e potrebbe.
+
+> **Fase 5, fatto — e la diagnosi era incompleta.** La fascia «il turno di
+> oggi» adesso c'è: per servizio, chi c'è, ruolo, zona con gli intervalli dei
+> tavoli («Tavoli B1–B3, T1–T2, T4, T6, T8, T11, T13 · 10 tavoli»), e compare
+> solo se qualcuno è assegnato.
+>
+> Ma implementandola ho trovato la causa vera del problema, ed era peggiore:
+> **la pagina leggeva la tabella sbagliata** (vedi P-11). Sulla demo c'erano
+> settantasei tavoli assegnati e questa pagina ne mostrava zero. Avevo
+> attribuito a una scelta di progetto — «è un elenco amministrativo» — quello
+> che era un difetto di lettura dei dati.
+>
+> Resta da fare il livello sovrapposto sulla piantina (§50), che ha senso solo
+> dopo che si sarà deciso quale delle due tabelle è la verità.
 
 ### Impostazioni · quattro parti
 **Già giusto:** quattro parti invece di tredici schede, nell'indirizzo.

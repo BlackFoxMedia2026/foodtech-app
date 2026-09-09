@@ -83,11 +83,14 @@ export function MenuEditor({
   venueSlug,
   currency,
   canEdit,
+  filtroIniziale,
 }: {
   categorie: MenuCategoryView[];
   venueSlug: string;
   currency: string;
   canEdit: boolean;
+  /** Il filtro con cui aprire la carta, da `?filtro=` — vedi la nota sotto. */
+  filtroIniziale?: string;
 }) {
   const router = useRouter();
   const [nuovaCategoria, setNuovaCategoria] = useState("");
@@ -97,7 +100,21 @@ export function MenuEditor({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ricerca, setRicerca] = useState("");
-  const [filtro, setFiltro] = useState<Filtro>("tutti");
+  /*
+    Il filtro iniziale può arrivare dall'indirizzo.
+
+    Serve perché Analisi ora dice «cinque piatti non hanno un costo
+    dichiarato → completali», e quel collegamento deve arrivare sulla carta
+    **con il filtro già acceso**: un'azione che porta su una lista di quaranta
+    piatti e lascia a chi legge il compito di ritrovare i cinque non è
+    un'azione, è un rimando.
+
+    Resta stato del client per l'interazione: cambiando filtro non si naviga.
+    L'indirizzo è il punto di ingresso, non il padrone.
+  */
+  const [filtro, setFiltro] = useState<Filtro>(
+    FILTRI.some((f) => f.chiave === filtroIniziale) ? (filtroIniziale as Filtro) : "tutti",
+  );
 
   async function chiama(chiave: string, url: string, init: RequestInit, fallback: string) {
     setBusy(chiave);
@@ -387,8 +404,26 @@ export function MenuEditor({
                               )}
                             </div>
 
+                            {/*
+                              La descrizione **da tablet in su**, non sul
+                              telefono.
+
+                              Questa è una lista amministrativa: chi la apre
+                              cerca un piatto per cambiargli il prezzo o per
+                              segnarlo finito, e la descrizione completa la
+                              conosce già — l'ha scritta lui. Su 390 px
+                              costava due o tre righe per piatto, e con
+                              quaranta piatti sono cento righe di testo fra
+                              chi cerca e quello che cerca.
+
+                              Resta intera nell'editor del piatto, dove la si
+                              scrive, e nel menu pubblico, dove la legge chi
+                              deve scegliere.
+                            */}
                             {i.description && (
-                              <p className="mt-0.5 text-sm text-muted-foreground">{i.description}</p>
+                              <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
+                                {i.description}
+                              </p>
                             )}
 
                             {(i.allergens.length > 0 || i.dietary.length > 0) && (
