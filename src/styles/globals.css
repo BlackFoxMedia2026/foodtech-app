@@ -182,12 +182,63 @@
   .riquadro {
     @apply rounded-md border border-border;
   }
+  /*
+    Tre densità, e si scelgono in base al **modo operativo**, non alla pagina.
+
+    Prima i padding erano gli stessi in Servizio e in Impostazioni. Sono due
+    situazioni opposte: in Servizio si guarda per un secondo mentre qualcuno
+    aspetta, e ogni pixel speso è una riga in meno; in Impostazioni si legge
+    con calma, e lo spazio aiuta a capire cosa si sta cambiando.
+
+    - `operativa`  → Servizio, Sala, Prenotazioni, Attesa
+    - `denso`      → liste e tabelle in generale
+    - (nessuna)    → il valore normale
+    - `comodo`     → Impostazioni, moduli, pagine pubbliche
+  */
+  .riquadro.operativa {
+    @apply p-2;
+  }
   .riquadro.denso {
     @apply p-2.5;
   }
   .riquadro.comodo {
     @apply p-4;
   }
+  /*
+    La scala tipografica, per **ruolo** e non per dimensione.
+
+    Prima la scala era in pratica binaria: `text-xs` 488 usi, `text-sm` 454,
+    tutto il resto sotto cinquanta. Con due misure la gerarchia si regge sul
+    peso e sul colore, e su una schermata densa non basta.
+
+    Otto ruoli. Il serif (`text-display`) resta dove aggiunge personalità —
+    numeri grandi e titoli di pagina — e **non** sui dati operativi: in una
+    riga di servizio un numero in serif si legge più lentamente di uno in sans
+    tabellare, e quella riga si legge in un secondo.
+  */
+  .t-titolo-pagina {
+    @apply text-display text-2xl md:text-3xl;
+  }
+  .t-titolo-sezione {
+    @apply text-base font-medium md:text-lg;
+  }
+  .t-titolo-scheda {
+    @apply text-sm font-medium md:text-base;
+  }
+  .t-corpo {
+    @apply text-sm;
+  }
+  /* Ora, coperti, tavolo: cifre che si incolonnano. */
+  .t-dato {
+    @apply text-sm tabular-nums;
+  }
+  .t-etichetta {
+    @apply text-xs uppercase tracking-wide text-muted-foreground;
+  }
+  .t-nota {
+    @apply text-xs text-tertiary-foreground;
+  }
+
   /* Il vuoto: un riquadro che non contiene ancora niente. */
   .riquadro.tratteggiato {
     @apply border-dashed;
@@ -328,6 +379,61 @@
     opacity: 1;
     transform: scale(1);
   }
+  /* L'avviso temporaneo: sale di poco e non rimbalza. In sala un movimento
+     vistoso attira l'occhio via da quello che si sta facendo. */
+  .avviso {
+    animation: avviso-entra 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes avviso-entra {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .avviso {
+      animation: none;
+    }
+  }
+
+  /* Il pannello di contesto: entra dal basso su telefono, da destra da `md`.
+     Due direzioni perché sono due forme diverse, non la stessa rimpicciolita —
+     vedi la nota in components/ui/pannello.tsx. */
+  .pannello {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 240ms cubic-bezier(0.16, 1, 0.3, 1), transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .pannello[data-state="open"] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  @media (min-width: 768px) {
+    .pannello {
+      transform: translateX(22px);
+    }
+    .pannello[data-state="open"] {
+      transform: translateX(0);
+    }
+    .pannello[data-state="closed"] {
+      transform: translateX(22px);
+    }
+  }
+  /* Chi ha chiesto meno animazioni non deve vedere niente muoversi: il
+     pannello compare, e basta. */
+  @media (prefers-reduced-motion: reduce) {
+    .pannello,
+    .pannello[data-state="open"],
+    .pannello[data-state="closed"] {
+      transition: none;
+      transform: none;
+    }
+  }
+
   .sheet-content {
     opacity: 0;
     transform: translateX(26px);

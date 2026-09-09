@@ -83,19 +83,19 @@ const STATUS_SURFACE: Record<TableOperationalStatus, string> = {
   LIBERO: "table-wood text-clay-ink",
   PRENOTATO: "bg-surface-brown-light text-clay-ink",
   OCCUPATO: "bg-surface-brown-dark text-cream",
-  NON_DISPONIBILE: "bg-muted text-muted-foreground",
+  BLOCCATO: "bg-muted text-muted-foreground",
 };
 const STATUS_EDGE: Record<TableOperationalStatus, string> = {
   LIBERO: "bg-surface-brown-light",
   PRENOTATO: "bg-surface-brown",
   OCCUPATO: "bg-clay-ink",
-  NON_DISPONIBILE: "bg-muted-foreground/30",
+  BLOCCATO: "bg-muted-foreground/30",
 };
 const STATUS_RING: Record<TableOperationalStatus, string> = {
   LIBERO: "ring-1 ring-sage-deep/50",
   PRENOTATO: "ring-1 ring-surface-brown/60",
   OCCUPATO: "ring-1 ring-clay-ink/60",
-  NON_DISPONIBILE: "ring-1 ring-muted-foreground/30",
+  BLOCCATO: "ring-1 ring-muted-foreground/30",
 };
 
 type MenuProps = {
@@ -192,7 +192,7 @@ export const RoomTableNode = memo(
     // falls back to the same isBooked-driven brown tint BookingTableNode used
     // to render, so this merge doesn't regress that visual cue.
     const effectiveStatus: TableOperationalStatus | null =
-      status ?? (!t.active ? "NON_DISPONIBILE" : mode === "RESERVATIONS" && isBooked ? "PRENOTATO" : null);
+      status ?? (!t.active ? "BLOCCATO" : mode === "RESERVATIONS" && isBooked ? "PRENOTATO" : null);
     const surfaceClass = effectiveStatus ? STATUS_SURFACE[effectiveStatus] : "table-wood text-clay-ink";
     const edgeClass = effectiveStatus ? STATUS_EDGE[effectiveStatus] : "bg-surface-brown-light";
     const statusRing = effectiveStatus

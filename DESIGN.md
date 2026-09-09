@@ -314,3 +314,110 @@ risoluzioni (1440×900, 1280×800, 820×1180, 390×844) si legge
 pretende zero. Un valore anche di 40 pixel è una piega, e la piega è dove
 l'informazione smette di esistere. La sonda va eseguita su una build di
 produzione: in sviluppo le altezze cambiano con il ricaricamento a caldo.
+
+## 8. Pagina, pannello, modale, foglio: quando si usa cosa
+
+Prima c'erano due contenitori e una regola implicita: `Dialog` (ventinove file)
+e `Sheet` (due, il pannello dell'agente). Quindi ogni **dettaglio** era una
+pagina e ogni **azione** una finestra modale — e aprire il dettaglio di una riga
+da una lista significava perdere la posizione nella lista.
+
+Cinque contenitori, cinque usi.
+
+| Contenitore | Quando | Esempi |
+|---|---|---|
+| **Pagina** | un compito lungo, o una destinazione che si condivide con un link | Analisi, Impostazioni, procedura campagne, carta |
+| **Pannello** (`ui/pannello.tsx`) | il dettaglio di una riga, restando nella lista | prenotazione, ospite, tavolo, riga di attesa |
+| **Modale** (`ui/dialog.tsx`) | un'azione concentrata da finire o annullare | emettere una gift card, una conferma distruttiva |
+| **Popover** (`ui/popover.tsx`) | una scelta breve | menù di riga, filtro |
+| **Avviso** (`ui/avvisi.tsx`) | dire cosa è successo, e offrire di annullarlo | «Sofia segnata come arrivata — Annulla» |
+
+**Il pannello è la stessa cosa in due forme**, non due componenti: pannello
+laterale da `md`, foglio dal basso su telefono. A 390 px un pannello da 420 è
+la pagina intera, e allora tanto vale la forma che il telefono conosce — sale
+dal basso, si chiude verso il basso, e ha le azioni in fondo dove arriva il
+pollice.
+
+**Il pannello non oscura la pagina.** Nessun velo: quello che sta sotto resta
+visibile e cliccabile, perché il senso è tenere il contesto, non sostituirlo. Un
+clic fuori non chiude: chiudono il pulsante, `Esc`, o l'apertura di un'altra
+riga. Su un tablet al leggio un tocco impreciso non deve far sparire quello che
+si stava leggendo.
+
+**Le rotte dei dettagli restano.** `/bookings/[id]` continua a rendere una
+pagina, così un link condiviso funziona. È la **lista** che apre un pannello
+invece di navigare.
+
+**La domanda di verifica:** ogni volta che si apre una pagina e poi si torna
+indietro, chiedersi se poteva essere un pannello. Se la risposta è sì e la rotta
+serve per condividere, si fanno entrambe.
+
+## 9. Annullare invece di chiedere conferma
+
+Non esisteva nessun sistema di avvisi temporanei. Quindi ogni azione era o
+**silenziosa** — segni un arrivo e non succede niente di visibile, e resta il
+dubbio di aver premuto — o protetta da una **conferma**, che è una domanda in
+più per un gesto che si fa cinquanta volte a sera.
+
+La terza via: l'azione si fa subito, e per qualche secondo si può tornare
+indietro. È più veloce di una conferma e più sicura del silenzio, perché sposta
+la protezione **dopo** l'errore invece di metterla prima di ogni gesto giusto.
+
+**La conferma preventiva resta solo per ciò che non si annulla:** la
+cancellazione dei dati di una persona, l'annullamento di una gift card, un
+rimborso, l'eliminazione di un tavolo con prenotazioni collegate. Per tutto il
+resto — arrivato, seduto, libera, avvisa, assegna — si agisce e si offre
+l'annulla.
+
+**Un avviso alla volta**, perché in sala non si leggono tre messaggi impilati.
+**Non copre le azioni**: sta sopra la barra di navigazione, altrimenti nasconde
+il pulsante appena premuto. **Cinque secondi**, sette se c'è un annulla: tre
+bastano a vedere il messaggio, non a decidere di annullarlo.
+
+## 10. Tre densità, scelte dal modo operativo
+
+`.riquadro.operativa` · `.riquadro.denso` · normale · `.riquadro.comodo`
+
+La densità **non** dipende dalla pagina, dipende da cosa si sta facendo:
+
+| Modo | Densità | Perché |
+|---|---|---|
+| Servizio, Sala, Prenotazioni, Attesa | `operativa` | si guarda per un secondo mentre qualcuno aspetta: ogni pixel speso è una riga in meno |
+| Analisi, Ospiti, Carta, Marketing | `denso` o normale | si legge, si confronta |
+| Impostazioni, moduli, pagine pubbliche | `comodo` | si decide con calma, e lo spazio aiuta a capire cosa si sta cambiando |
+
+## 11. La scala tipografica, per ruolo
+
+La scala era in pratica binaria: `text-xs` 488 usi, `text-sm` 454, tutto il
+resto sotto cinquanta. Con due misure la gerarchia si regge sul peso e sul
+colore, e su una schermata densa non basta.
+
+`.t-titolo-pagina` · `.t-titolo-sezione` · `.t-titolo-scheda` · `.t-corpo` ·
+`.t-dato` · `.t-etichetta` · `.t-nota`
+
+**Il serif solo dove aggiunge personalità** — numeri grandi e titoli di pagina —
+e **non** sui dati operativi: in una riga di servizio un numero in serif si
+legge più lentamente di uno in sans tabellare, e quella riga si legge in un
+secondo. `.t-dato` è sans e `tabular-nums`, così le cifre si incolonnano fra
+righe diverse.
+
+## 12. Un vocabolario solo per lo stato di un tavolo
+
+C'erano due dizionari: la sala viva con sette stati e la piantina con quattro.
+Lo stesso tavolo era «al conto» in una schermata e «occupato» nell'altra, e
+«non disponibile» qui era «bloccato» là.
+
+**Sette stati, un dizionario** (`lib/table-status.ts`):
+
+`LIBERO` · `PRENOTATO` · `IN_ARRIVO` · `OCCUPATO` · `CONTO` · `PULIZIA` ·
+`BLOCCATO`
+
+La vista di una **giornata** — che può essere un sabato non ancora arrivato — ne
+usa quattro: libero, prenotato, occupato, bloccato. Non è una semplificazione: è
+che «al conto» e «in pulizia» sono fatti del presente, e su una data futura non
+vogliono dire niente. Sono gli **stessi nomi**, un sottoinsieme dichiarato nel
+tipo.
+
+**Il ritardo non è uno stato**, è una proprietà di `IN_ARRIVO`: un tavolo il cui
+ospite è in ritardo è ancora in arrivo, e trattarlo come stato a sé
+raddoppierebbe i casi senza aggiungere informazione.

@@ -4,6 +4,7 @@ import { BrandSetupDialog } from "@/components/settings/brand-setup-dialog";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { VenueTimeProvider } from "@/components/shell/venue-time-provider";
 import { MobileNav } from "@/components/shell/mobile-nav";
+import { AvvisiProvider } from "@/components/ui/avvisi";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const display = Fraunces({
@@ -25,6 +26,12 @@ export default async function AppShell({ children }: { children: React.ReactNode
   }));
 
   return (
+    /*
+      `AvvisiProvider` avvolge l'area operativa e non le pagine pubbliche: gli
+      avvisi con «annulla» servono a chi lavora, e un cliente che prenota non
+      deve poter annullare niente da un messaggio che passa.
+    */
+    <AvvisiProvider>
     <div className={`${sans.variable} ${display.variable} ${mono.variable} relative z-0 flex h-screen flex-col overflow-hidden bg-background text-foreground`}>
       <Header
         user={{ name: ctx.session.user?.name, email: ctx.session.user?.email }}
@@ -52,5 +59,6 @@ export default async function AppShell({ children }: { children: React.ReactNode
       <MobileNav canManageBookings={can(ctx.role, "manage_bookings")} />
       {showBrandSetup && <BrandSetupDialog initialName={ctx.venue.name} />}
     </div>
+    </AvvisiProvider>
   );
 }
