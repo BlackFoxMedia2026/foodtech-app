@@ -99,14 +99,14 @@ function SignInForm() {
           <div className="flex flex-1 flex-col items-end justify-center">
             <div className="max-w-md space-y-4">
               <p className="text-display text-2xl leading-tight sm:text-3xl">
-                Una sala perfetta è prima di tutto una <span className="text-accent">questione di ritmo</span>.
+                Una sala perfetta è prima di tutto una <span className="text-accent-strong">questione di ritmo</span>.
               </p>
               <p className="hidden text-sm text-muted-foreground sm:block">
                 Tavolo coordina prenotazioni, sala, ospiti ed esperienze in un&apos;unica
                 interfaccia pensata per chi accoglie ogni giorno.
               </p>
               <div className="hidden items-center gap-3 rounded-xl border border-border bg-muted/50 px-4 py-3 sm:flex">
-                <span className="font-mono text-lg font-semibold text-accent">142</span>
+                <span className="font-mono text-lg font-semibold text-accent-strong">142</span>
                 <span className="text-xs text-muted-foreground">coperti gestiti ieri sera da Aurora Bistrot</span>
               </div>
             </div>

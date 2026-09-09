@@ -169,14 +169,49 @@ rosso per il distruttivo, perché comunicano un significato e non un'identità.
 schermata è una **pillola crema** (variant `accent`), non l'accento terracotta.
 Il terracotta segnala *dove sei* e *cosa guardare*; il crema segnala *cosa fare*.
 
+**La Regola dell'Accento che Riempie e dell'Accento che si Legge.** Il
+terracotta del tema (`accent`) **riempie e borda**: fondi, pillole, tinte,
+bordi, con il crema sopra. Non è un colore da testo su verde scuro — misurato
+sul fondo reso fa **2,79-4,16 : 1**, sotto la soglia AA e sotto perfino la
+soglia 3 : 1 delle icone nell'angolo più chiaro. Il colore da testo è
+`accent-strong` (**#E2B383**, 5,44 : 1 sul fondo peggiore e 4,76 : 1 anche
+sopra una tinta accento al 15%): stessa terracotta, alzata di luminosità
+finché si legge. Lo stesso vale per il positivo — `sage` riempie, `sage-strong`
+si legge — e per il distruttivo: `destructive` riempie con il bianco sopra,
+`destructive-soft` è quello da leggere. Su fondo **chiaro** vale il contrario:
+lì serve `accent-strong-ink` (#74432D), perché la versione chiara sul crema
+fa 1,65 : 1.
+
+**Corollario: su una tinta va il crema, non il colore della tinta.** Testo
+accento su tinta accento al 15% fa 2,61 : 1; crema sulla stessa tinta fa
+7,80 : 1. Una pillola tinta che ripete il proprio colore nel testo è sempre
+sotto soglia.
+
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
 servono a dire di che materiale è fatta una superficie, non a decorare.
 
-**Una nota per chi misura il contrasto.** Le card crema sono dipinte con
-`background-image` (gradiente più texture), non con `background-color`: gli
-strumenti automatici non riescono a leggere il colore di fondo e riportano falsi
-allarmi di contrasto. Quelle superfici vanno verificate a mano.
+**Come si misura il contrasto qui (e perché il token non basta).** Nessuna
+superficie di questo sistema è una tinta piatta: le card e la pagina hanno un
+gradiente più una **velatura bianca al 5-7%**, e le card crema sono dipinte
+con `background-image` (gradiente più texture) senza alcun `background-color`.
+Ne seguono due errori opposti, e vanno evitati entrambi.
+
+1. **Misurare sul token** dà numeri **troppo generosi**: la velatura alza la
+   luminanza del fondo e abbassa il contrasto di ogni testo chiaro. Sul token
+   `--card` piatto l'oro sembrava 5,11 : 1; sull'angolo chiaro del gradiente
+   reso è **4,34** — sotto soglia. Il contrasto va calcolato sul fondo
+   **composto**, nel suo punto più chiaro: `#17382C` con il 7% di bianco per
+   la pagina, `#163C2F` con il 5% per le card.
+2. **Leggere il fondo dal DOM** dà **falsi allarmi**: `backgroundColor` è
+   trasparente dove c'è un gradiente, e un fondo dipinto da un *fratello* in
+   posizione assoluta (la pillola crema della voce di menu attiva) non è un
+   antenato. Uno strumento che risale solo gli antenati legge il verde della
+   pagina e denuncia 1,2 : 1 dove l'occhio vede 9,9 : 1.
+
+Chi misura in automatico deve quindi **dichiarare come non misurabile** ogni
+testo che ha un gradiente o un elemento dipinto dietro, e guardare quelli a
+mano, invece di contarli come difetti o di assolverli in blocco.
 
 ## 3. Typography
 

@@ -135,7 +135,7 @@ export function BookingsPageClient({
               faceva 3,83.
             */}
             {pendingCount > 0 && (
-              <span className="ml-2 font-semibold text-gilt">({pendingCount} da approvare)</span>
+              <span className="ml-2 font-semibold text-accent-strong">({pendingCount} da approvare)</span>
             )}
           </p>
         </div>

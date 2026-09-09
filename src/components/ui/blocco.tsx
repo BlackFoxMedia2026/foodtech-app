@@ -66,7 +66,7 @@ export function Blocco({
 }) {
   const nome = (
     <span className="flex min-w-0 items-center gap-2">
-      {Icona && <Icona className="h-4 w-4 shrink-0 text-accent" />}
+      {Icona && <Icona className="h-4 w-4 shrink-0 text-accent-strong" />}
       <span className="t-titolo-scheda truncate">{titolo}</span>
     </span>
   );

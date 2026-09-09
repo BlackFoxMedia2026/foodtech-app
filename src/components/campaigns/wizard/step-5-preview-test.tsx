@@ -125,7 +125,7 @@ export function Step5PreviewTest() {
           </Button>
         </div>
         {testError && <p className="text-xs text-destructive-soft">{testError}</p>}
-        {testSuccess && <p className="text-xs text-sage">Email di test inviata.</p>}
+        {testSuccess && <p className="text-xs text-sage-strong">Email di test inviata.</p>}
       </div>
     </div>
   );

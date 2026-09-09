@@ -20,7 +20,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ListOrdered className="h-4 w-4 text-accent" aria-hidden="true" /> La lista d&apos;attesa
+            <ListOrdered className="h-4 w-4 text-accent-strong" aria-hidden="true" /> La lista d&apos;attesa
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -37,7 +37,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <ListOrdered className="h-4 w-4 text-accent" aria-hidden="true" /> La lista d&apos;attesa
+          <ListOrdered className="h-4 w-4 text-accent-strong" aria-hidden="true" /> La lista d&apos;attesa
         </CardTitle>
         <CardDescription>
           {report.chiuse} {report.chiuse === 1 ? "persona è uscita" : "persone sono uscite"} dalla coda nel
@@ -64,7 +64,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
 
           <div className="riquadro p-3">
             <p className="t-etichetta">Coperti recuperati</p>
-            <p className="mt-1 text-display text-2xl tabular-nums text-accent">{report.copertiRecuperati}</p>
+            <p className="mt-1 text-display text-2xl tabular-nums text-accent-strong">{report.copertiRecuperati}</p>
             <p className="text-xs text-muted-foreground">
               persone che senza la lista sarebbero andate altrove
             </p>

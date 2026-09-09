@@ -231,7 +231,7 @@ function Dato({
         {Icona && <Icona className="h-3 w-3 shrink-0" aria-hidden="true" />}
         {etichetta}
       </p>
-      <p className={cn("mt-0.5 text-lg", allarme ? "text-accent" : "text-foreground")}>{valore}</p>
+      <p className={cn("mt-0.5 text-lg", allarme ? "text-accent-strong" : "text-foreground")}>{valore}</p>
       {nota && <p className="t-nota">{nota}</p>}
     </div>
   );
@@ -290,7 +290,7 @@ export function GuestTimeline({
                     className={cn(
                       "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full",
                       e.kind === "no_show" || e.kind === "cancelled"
-                        ? "bg-accent/20 text-accent"
+                        ? "bg-accent/20 text-accent-strong"
                         : "bg-current/10 text-muted-foreground",
                     )}
                   >

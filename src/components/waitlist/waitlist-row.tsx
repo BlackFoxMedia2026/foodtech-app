@@ -128,7 +128,7 @@ export function WaitlistRow({
             <p
               className={cn(
                 "mt-1 flex items-center gap-1 text-xs",
-                entry.overdue ? "text-accent" : "text-tertiary-foreground",
+                entry.overdue ? "text-accent-strong" : "text-tertiary-foreground",
               )}
             >
               <Timer className="h-3 w-3" aria-hidden="true" />
@@ -171,7 +171,7 @@ export function WaitlistRow({
               «è suo».
             */}
             {suggerito && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-sage">
+              <p className="mt-1 flex items-center gap-1 text-xs text-sage-strong">
                 <UtensilsCrossed className="h-3 w-3 shrink-0" aria-hidden="true" />
                 Potrebbe stare al <strong className="font-medium">{suggerito.label}</strong> — {suggerito.seats}{" "}
                 {suggerito.seats === 1 ? "posto" : "posti"}
@@ -179,7 +179,7 @@ export function WaitlistRow({
             )}
 
             {entry.allergies && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-gilt">
+              <p className="mt-1 flex items-center gap-1 text-xs text-accent-strong">
                 <AlertTriangle className="h-3 w-3" aria-hidden="true" /> {entry.allergies}
               </p>
             )}

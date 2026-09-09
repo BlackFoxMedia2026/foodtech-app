@@ -93,7 +93,7 @@ export function WifiSettings({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Wifi className="h-4 w-4 text-accent" aria-hidden="true" /> La rete
+            <Wifi className="h-4 w-4 text-accent-strong" aria-hidden="true" /> La rete
           </CardTitle>
           <CardDescription>
             Chi si collega lascia un contatto e riceve la password. Tavolo non apre la rete — quello lo fa il tuo
@@ -262,7 +262,7 @@ export function WifiSettings({
       </Card>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {salvato && !error && <p className="text-sm text-sage">Salvato.</p>}
+      {salvato && !error && <p className="text-sm text-sage-strong">Salvato.</p>}
 
       {canManage && (
         <Button type="submit" variant="accent" disabled={salvando}>

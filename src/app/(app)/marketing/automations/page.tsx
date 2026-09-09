@@ -36,7 +36,7 @@ export default async function AutomationsPage() {
           la pagina. */}
       <div className="fill-scroll space-y-4 pr-0.5">
         <div className="flex items-start gap-2 riquadro p-4 text-sm text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />
           <div className="space-y-1">
             <p className="font-medium text-foreground">Come stiamo alla larga dai guai</p>
             <p>

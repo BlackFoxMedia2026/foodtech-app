@@ -96,7 +96,7 @@ export function RedeemCouponDialog({
         {esito ? (
           <div className="space-y-3">
             <p className="flex items-start gap-2 text-sm">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-sage" aria-hidden="true" />
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-sage-strong" aria-hidden="true" />
               <span>
                 <strong>{esito.name}</strong> — {esito.descrizione}. Segnato come usato.
                 {esito.restanti != null && (

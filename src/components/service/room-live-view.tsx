@@ -554,7 +554,7 @@ function TavoloRiga({
                 <>
                   {" · "}
                   <span
-                    className={cn(corrente.liberoVerso.minuti < 0 && "text-accent")}
+                    className={cn(corrente.liberoVerso.minuti < 0 && "text-accent-strong")}
                     title={frasePrevisione(corrente.liberoVerso, timezone).dettaglio}
                   >
                     {frasePrevisione(corrente.liberoVerso, timezone).testo}
@@ -616,7 +616,7 @@ function TavoloRiga({
               poi {info.next.guestName} alle {fmt(info.next.startsAt)} · {info.next.partySize}p
               {corrente.liberoVerso &&
                 new Date(corrente.liberoVerso.fine).getTime() > new Date(info.next.startsAt).getTime() && (
-                  <span className="text-accent">— non fa in tempo</span>
+                  <span className="text-accent-strong">— non fa in tempo</span>
                 )}
             </p>
           )}

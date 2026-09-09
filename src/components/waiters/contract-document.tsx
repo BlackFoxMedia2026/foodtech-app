@@ -120,7 +120,7 @@ export function ContractDocument({
         {document ? (
           <>
             <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
-            <button type="button" className="text-accent hover:underline" onClick={() => setPreviewOpen(true)}>
+            <button type="button" className="text-accent-strong hover:underline" onClick={() => setPreviewOpen(true)}>
               {document.originalFileName}
             </button>
             <ContractDocumentPreview open={previewOpen} onOpenChange={setPreviewOpen} document={document} baseUrl={baseUrl} />

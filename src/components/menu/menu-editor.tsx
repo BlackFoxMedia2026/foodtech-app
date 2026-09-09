@@ -660,7 +660,7 @@ function MenuAzioniPiatto({
             </>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={onElimina} className="flex items-center gap-2 text-accent">
+          <DropdownMenuItem onSelect={onElimina} className="flex items-center gap-2 text-accent-strong">
             <Trash2 className="h-4 w-4" aria-hidden="true" /> Elimina il piatto
           </DropdownMenuItem>
         </DropdownMenuContent>

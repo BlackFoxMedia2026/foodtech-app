@@ -191,7 +191,7 @@ export function MenuItemDialog({
                   className={cn(
                     "min-h-[36px] rounded-full border px-3 text-xs transition-colors",
                     regimi.includes(k)
-                      ? "border-sage/50 bg-sage/15 text-sage"
+                      ? "border-sage/50 bg-sage/15 text-sage-strong"
                       : "border-border text-muted-foreground hover:bg-current/5",
                   )}
                 >

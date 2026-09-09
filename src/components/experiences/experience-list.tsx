@@ -138,7 +138,7 @@ export function ExperienceList({
             <Card className="lg:max-w-3xl">
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-accent">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-accent-strong">
                     <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                     {new Date(prossima.startsAt).getTime() <= ora ? "In corso" : "La prossima"}
                     {!prossima.published && " · bozza"}
@@ -283,7 +283,7 @@ function Riga({
         {!e.published && <span className="t-nota"> · bozza</span>}
       </span>
 
-      <span className="t-dato shrink-0 text-accent">{formatCurrency(e.priceCents, currency)}</span>
+      <span className="t-dato shrink-0 text-accent-strong">{formatCurrency(e.priceCents, currency)}</span>
 
       <span className="t-nota shrink-0">
         {e.capacity} {e.capacity === 1 ? "posto" : "posti"}

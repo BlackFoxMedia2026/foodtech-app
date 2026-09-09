@@ -230,7 +230,7 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
                   {/* Il pallino c'è solo in sala: al cliente non si racconta
                       come il locale gestisce la propria capienza. */}
                   {segnaOltre && slot.available && slot.oltreCapienza && (
-                    <span className="ml-1 text-accent" aria-hidden="true">
+                    <span className="ml-1 text-accent-strong" aria-hidden="true">
                       •
                     </span>
                   )}

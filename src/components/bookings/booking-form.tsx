@@ -346,7 +346,7 @@ export function BookingForm({
           />
           <span>
             <span className="flex items-center gap-1.5 font-medium">
-              <AlertTriangle className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+              <AlertTriangle className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
               Accetta comunque, oltre i limiti
             </span>
             <span className="mt-0.5 block text-xs text-muted-foreground">

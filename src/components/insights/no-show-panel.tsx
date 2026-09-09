@@ -36,7 +36,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CalendarX className="h-4 w-4 text-accent" aria-hidden="true" /> Quanto costano le assenze
+            <CalendarX className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Quanto costano le assenze
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -54,7 +54,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CalendarX className="h-4 w-4 text-accent" aria-hidden="true" /> Quanto costano le assenze
+            <CalendarX className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Quanto costano le assenze
           </CardTitle>
           <CardDescription>
             Nessuna assenza su {report.prenotazioni}{" "}
@@ -72,7 +72,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CalendarX className="h-4 w-4 text-accent" aria-hidden="true" /> Quanto costano le assenze
+          <CalendarX className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Quanto costano le assenze
         </CardTitle>
         <CardDescription>
           {report.assenze} {report.assenze === 1 ? "prenotazione" : "prenotazioni"} andate a vuoto su{" "}

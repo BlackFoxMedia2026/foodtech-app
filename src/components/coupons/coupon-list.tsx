@@ -178,7 +178,7 @@ export function CouponList({
 
                 {/* Il valore: è la ragione per cui esiste il coupon, e resta
                     nel colore dell'accento come sulla scheda di prima. */}
-                <span className="t-corpo shrink-0 text-accent">{c.descrizione}</span>
+                <span className="t-corpo shrink-0 text-accent-strong">{c.descrizione}</span>
 
                 <span className="flex shrink-0 items-center gap-1">
                   <code className="whitespace-nowrap rounded-md bg-current/10 px-2 py-0.5 font-mono text-xs tracking-wider">

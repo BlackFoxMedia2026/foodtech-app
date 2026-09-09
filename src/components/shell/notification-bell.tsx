@@ -76,7 +76,7 @@ export function NotificationBell() {
         <div className="flex items-center justify-between px-3 py-2.5">
           <span className="text-sm font-medium">Notifiche</span>
           {unreadCount > 0 && (
-            <button type="button" onClick={markAllRead} className="text-xs text-accent hover:underline">
+            <button type="button" onClick={markAllRead} className="text-xs text-accent-strong hover:underline">
               Segna tutte come lette
             </button>
           )}

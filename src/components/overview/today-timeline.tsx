@@ -43,7 +43,7 @@ const DOT_TONE: Record<Tone, string> = {
 };
 
 const TEXT_TONE: Record<Tone, string> = {
-  positive: "text-sage",
+  positive: "text-sage-strong",
   warn: "text-card-foreground",
   negative: "text-destructive-soft",
   neutral: "text-card-foreground/65",

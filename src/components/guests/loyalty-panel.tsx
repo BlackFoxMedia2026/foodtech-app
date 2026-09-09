@@ -68,7 +68,7 @@ export function LoyaltyPanel({
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
         <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" /> Punti fedeltà
+          <Sparkles className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Punti fedeltà
         </CardTitle>
         {canAdjust && saldo.attiva && (
           <Button variant="outline" size="sm" onClick={() => setApri(!apri)}>
@@ -172,7 +172,7 @@ export function LoyaltyPanel({
                   <p className="text-xs text-muted-foreground">{formatDateTime(m.createdAt)}</p>
                 </div>
                 <span
-                  className={`shrink-0 tabular-nums ${m.points >= 0 ? "text-sage" : "text-muted-foreground"}`}
+                  className={`shrink-0 tabular-nums ${m.points >= 0 ? "text-sage-strong" : "text-muted-foreground"}`}
                 >
                   {m.points > 0 ? "+" : ""}
                   {m.points}

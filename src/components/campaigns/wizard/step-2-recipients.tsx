@@ -244,7 +244,7 @@ export function Step2Recipients() {
           </ul>
         )}
         {state.segmentPreview && state.segmentPreview.finalRecipients === 0 && (
-          <p className="mt-2 text-xs text-gilt">Nessun destinatario corrisponde a questi filtri.</p>
+          <p className="mt-2 text-xs text-accent-strong">Nessun destinatario corrisponde a questi filtri.</p>
         )}
       </div>
     </div>

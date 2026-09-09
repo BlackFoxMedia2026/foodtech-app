@@ -71,7 +71,7 @@ export function ServiceWaitlistCard({
           <p
             className={cn(
               "mt-0.5 flex items-center gap-1 text-xs",
-              entry.overdue ? "text-accent" : "text-tertiary-foreground",
+              entry.overdue ? "text-accent-strong" : "text-tertiary-foreground",
             )}
           >
             <Timer className="h-3 w-3" aria-hidden="true" />

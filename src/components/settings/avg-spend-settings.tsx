@@ -99,7 +99,7 @@ export function AvgSpendSettings({
         </p>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
-        {salvato && !error && <p className="text-sm text-sage">Salvato.</p>}
+        {salvato && !error && <p className="text-sm text-sage-strong">Salvato.</p>}
       </form>
     </Blocco>
   );
