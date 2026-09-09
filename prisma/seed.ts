@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import { PrismaClient, BookingStatus, BookingSource, Occasion, LoyaltyTier, TableShape } from "@prisma/client";
+import { contatoriDaPrenotazioni } from "../src/lib/visite";
 import bcrypt from "bcryptjs";
 
 const db = new PrismaClient();
@@ -107,6 +108,45 @@ async function riallineaDateDemo(venueIds: string[]) {
 
 /** Il modulo Camerieri è il più recente e il più curato, e il seed non creava
  * nemmeno una persona: sulla demo appariva vuoto. */
+/**
+ * Visite, assenze, ultima visita e livello fedeltà: **dalle righe**.
+ *
+ * È la stessa regola che vale nel prodotto (`refreshGuestStats` in
+ * `server/guest-intelligence.ts`): un contatore è il conteggio di qualcosa che
+ * esiste, non un numero scritto a mano. Qui va rifatta perché il seed crea le
+ * prenotazioni **dopo** gli ospiti, e finché non le ha create non c'è niente
+ * da contare.
+ *
+ * `totalSpend` resta fuori, come nel prodotto: senza conti chiusi collegati,
+ * scriverci una cifra sarebbe inventarla.
+ */
+async function allineaContatoriOspiti(venueId: string) {
+  const ospiti = await db.guest.findMany({
+    where: { venueId },
+    select: { id: true, bookings: { where: { deletedAt: null }, select: { status: true, startsAt: true } } },
+  });
+
+  for (const o of ospiti) {
+    const { visite, assenze, ultimaVisita } = contatoriDaPrenotazioni(o.bookings);
+    // Le stesse soglie di prima, applicate però a un numero vero.
+    const livello: LoyaltyTier =
+      visite > 10 ? "AMBASSADOR" : visite > 6 ? "VIP" : visite > 2 ? "REGULAR" : "NEW";
+
+    await db.guest.update({
+      where: { id: o.id },
+      data: {
+        totalVisits: visite,
+        noShowCount: assenze,
+        lastVisitAt: ultimaVisita,
+        loyaltyTier: livello,
+        tags: visite > 6 ? ["fedele"] : [],
+      },
+    });
+  }
+
+  console.log(`→ Contatori di ${ospiti.length} ospiti ricalcolati dalle prenotazioni.`);
+}
+
 async function creaCamerieriDemo(venueId: string) {
   const esistenti = await db.waiter.count({ where: { venueId } });
   if (esistenti > 0) return;
@@ -340,6 +380,10 @@ async function main() {
     // questa senza ricreare niente.
     for (const id of venueIds) await creaFedeltaDemo(id);
     for (const id of venueIds) await creaWifiDemo(id);
+    // I contatori degli ospiti: chi ha la demo installata da prima ha in
+    // archivio livelli e visite scritti a caso dal vecchio seed — «Ambassador»
+    // accanto a «1 visita». Qui si riallineano alle prenotazioni vere.
+    for (const id of venueIds) await allineaContatoriOspiti(id);
     // La spesa media è dichiarata dal locale: se manca, la stima degli
     // incassi non si mostra. Sulla demo va impostata, altrimenti la
     // Panoramica sembra incompleta.
@@ -462,9 +506,14 @@ async function main() {
       Array.from({ length: 60 }).map((_, i) => {
         const first = pick(FIRST);
         const last = pick(LAST);
-        const visits = Math.floor(Math.random() * 14);
-        const tier: LoyaltyTier =
-          visits > 10 ? "AMBASSADOR" : visits > 6 ? "VIP" : visits > 2 ? "REGULAR" : "NEW";
+        /*
+          Niente contatori qui. Il seed scriveva un `totalVisits` casuale e ne
+          derivava il livello fedeltà, poi creava un numero **diverso** di
+          prenotazioni: nell'elenco ospiti si leggeva «Ambassador» accanto a
+          «1 visita», e la demo si contraddiceva da sola in una riga.
+          Visite, assenze, ultima visita e livello si ricalcolano dalle righe
+          quando le prenotazioni esistono — vedi `allineaContatoriOspiti`.
+        */
         return db.guest.create({
           data: {
             venueId: venue.id,
@@ -472,10 +521,7 @@ async function main() {
             lastName: last,
             email: `${first.toLowerCase()}.${last.toLowerCase().replace(/\s/g, "")}${i}@example.com`,
             phone: `+39 3${Math.floor(Math.random() * 90 + 10)} ${Math.floor(Math.random() * 9000000 + 1000000)}`,
-            loyaltyTier: tier,
-            totalVisits: visits,
-            totalSpend: visits * (Math.floor(Math.random() * 60) + 35),
-            tags: visits > 6 ? ["fedele"] : [],
+            tags: [],
             marketingOptIn: Math.random() > 0.3,
             preferences: Math.random() > 0.7 ? { table: "vista mare" } : undefined,
             allergies: Math.random() > 0.85 ? "Glutine" : null,
@@ -562,6 +608,8 @@ async function main() {
         },
       });
     }
+
+    await allineaContatoriOspiti(venue.id);
 
     await creaCamerieriDemo(venue.id);
 

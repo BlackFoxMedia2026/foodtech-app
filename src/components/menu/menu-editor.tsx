@@ -172,13 +172,16 @@ export function MenuEditor({
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
-          <h1 className="text-display text-3xl">Menu</h1>
-          <p className="text-sm text-muted-foreground">
-            Quello che i clienti leggono dal QR sul tavolo. Un piatto finito si segna non disponibile e sparisce
-            dalla loro carta.
+      {/* Testata e ricerca restano fisse: si cerca fra centoventi piatti
+          senza perdere il campo di ricerca sotto lo scorrimento. */}
+      <header className="fissa flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-lg font-semibold leading-none">Menu</h1>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
+          </div>
+          <p className="truncate text-sm text-muted-foreground">
+            Quello che i clienti leggono dal QR sul tavolo. Un piatto finito sparisce dalla loro carta.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
@@ -191,7 +194,7 @@ export function MenuEditor({
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
       {cercabile && (
-        <div className="mt-5 space-y-2">
+        <div className="fissa mt-3 space-y-2">
           <div className="relative max-w-sm">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -267,7 +270,8 @@ export function MenuEditor({
           )}
         </div>
       ) : (
-        <div className="mt-6 space-y-4">
+        // L'elenco dei piatti non ha una lunghezza massima: scorre lui.
+        <div className="fill-scroll mt-3 space-y-4 pr-0.5">
           {filtrando && visibili.length === 0 && (
             <p className="riquadro p-4 text-sm text-muted-foreground">
               Nessun piatto con questo nome o in questa condizione.

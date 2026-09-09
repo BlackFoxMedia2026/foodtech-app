@@ -32,8 +32,27 @@ const ROLE_LABELS = {
   READ_ONLY: "Sola lettura",
 } as const;
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams?: { parte?: string };
+}) {
   const ctx = await getActiveVenue();
+
+  /**
+   * Una parte per volta, scelta dall'indirizzo.
+   *
+   * Le quattro parti erano una sotto l'altra: 2.915 px, cioè tre schermate e
+   * mezza di scorrimento per una pagina di configurazione. Adesso l'indice le
+   * apre una per volta e la pagina sta in una schermata.
+   *
+   * La parte sta nell'indirizzo e non in uno stato del browser: funziona
+   * senza JavaScript, si può mandare a un collega il link a una parte, e il
+   * tasto indietro fa quello che ci si aspetta. È la stessa scelta delle
+   * ancore di ieri, portata alle sue conseguenze.
+   */
+  const parteAttiva: ParteId =
+    PARTI.find((p) => p.id === searchParams?.parte)?.id ?? PARTI[0].id;
 
   // L'indirizzo pubblico di questa installazione serve due volte: nel codice
   // da incollare sul sito del locale, e nei link d'invito al team.
@@ -62,14 +81,14 @@ export default async function SettingsPage() {
   const embedSnippet = `<iframe src="${embedSrc}" width="480" height="820" style="border:0;max-width:100%" title="Prenota un tavolo"></iframe>`;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header>
+    <div className="schermo animate-fade-in gap-3">
+      <header className="fissa flex items-baseline gap-2">
+        <h1 className="text-lg font-semibold leading-none">Impostazioni</h1>
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Configurazione</p>
-        <h1 className="text-display text-3xl">Impostazioni</h1>
       </header>
 
       {ctx.venue.onboardingStatus === "SKIPPED" && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-4">
+        <div className="fissa flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-3">
           <p className="text-sm font-medium">Completa la personalizzazione del brand</p>
           <Button asChild variant="accent" size="sm">
             <Link href="/settings/brand">Completa ora</Link>
@@ -77,9 +96,9 @@ export default async function SettingsPage() {
         </div>
       )}
 
-      <Indice />
+      <Indice attiva={parteAttiva} />
 
-      <Parte id="locale">
+      <Parte id="locale" attiva={parteAttiva}>
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
           <div>
@@ -98,14 +117,18 @@ export default async function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Locali del gruppo</CardTitle>
-            <CardDescription>{ctx.org.name} · piano {ctx.org.plan}</CardDescription>
+            <CardDescription>
+              {ctx.org.name} · piano {NOME_PIANO[ctx.org.plan] ?? ctx.org.plan}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {venues.map((v) => (
               <div key={v.id} className="flex items-center justify-between rounded-md border p-3 text-sm">
                 <div>
                   <p className="font-medium">{v.name}</p>
-                  <p className="text-xs text-muted-foreground">{v.city ?? ""} · {v.kind}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[v.city, NOME_TIPO_LOCALE[v.kind] ?? v.kind].filter(Boolean).join(" · ")}
+                  </p>
                 </div>
                 {v.id === ctx.venueId && <Badge tone="gold">Attivo</Badge>}
               </div>
@@ -146,7 +169,7 @@ export default async function SettingsPage() {
       </Card>
       </Parte>
 
-      <Parte id="prenotazioni">
+      <Parte id="prenotazioni" attiva={parteAttiva}>
       <Card>
         <CardHeader>
           <CardTitle>Widget di prenotazione</CardTitle>
@@ -169,7 +192,7 @@ export default async function SettingsPage() {
       />
       </Parte>
 
-      <Parte id="ospiti">
+      <Parte id="ospiti" attiva={parteAttiva}>
       {/* Lo scontrino medio era già scritto e importato qui, ma la pagina non
           lo mostrava: un campo modificabile che nessuno poteva raggiungere.
           Cioè esattamente la specie di funzione a metà che questo progetto ha
@@ -208,7 +231,7 @@ export default async function SettingsPage() {
       />
       </Parte>
 
-      <Parte id="sistema">
+      <Parte id="sistema" attiva={parteAttiva}>
       <Card>
         <CardHeader>
           <CardTitle>Integrazioni</CardTitle>
@@ -275,32 +298,80 @@ const PARTI = [
   { id: "sistema", titolo: "Sistema", sottotitolo: "Invii, integrazioni, stato dei lavori" },
 ] as const;
 
-function Indice() {
+/*
+  «BEACH_CLUB» e «piano GROWTH» erano costanti del database mostrate a un
+  ristoratore. Sono le stesse chiavi dello schema, tradotte in una parola che
+  si legge: se domani lo schema ne aggiunge una, il `??` la mostra grezza
+  invece di far sparire l'informazione.
+*/
+const NOME_TIPO_LOCALE: Record<string, string> = {
+  RESTAURANT: "Ristorante",
+  BEACH_CLUB: "Beach club",
+  BAR: "Bar",
+  HOTEL_RESTAURANT: "Ristorante d'albergo",
+  PRIVATE_CLUB: "Club privato",
+};
+
+const NOME_PIANO: Record<string, string> = {
+  STARTER: "Starter",
+  GROWTH: "Growth",
+  ENTERPRISE: "Enterprise",
+};
+
+function Indice({ attiva }: { attiva: ParteId }) {
   return (
-    <nav aria-label="Parti delle impostazioni" className="flex flex-wrap gap-2">
-      {PARTI.map((p) => (
-        <a
-          key={p.id}
-          href={`#${p.id}`}
-          className="min-h-[40px] rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-cream hover:text-foreground"
-        >
-          {p.titolo}
-        </a>
-      ))}
+    // Sul telefono le quattro pillole andavano a capo su due righe: cento
+    // pixel di intestazione in una schermata che non scorre. Qui scorrono in
+    // orizzontale, e da `sm` tornano a disporsi su più righe.
+    <nav
+      aria-label="Parti delle impostazioni"
+      className="fissa -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+    >
+      {PARTI.map((p) => {
+        const scelta = p.id === attiva;
+        return (
+          <Link
+            key={p.id}
+            href={`/settings?parte=${p.id}`}
+            aria-current={scelta ? "page" : undefined}
+            className={
+              scelta
+                ? "min-h-[40px] shrink-0 rounded-full border border-cream bg-cream px-3 py-2 text-sm font-medium text-clay-ink"
+                : "min-h-[40px] shrink-0 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-cream hover:text-foreground"
+            }
+          >
+            {p.titolo}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
 
-function Parte({ id, children }: { id: (typeof PARTI)[number]["id"]; children: React.ReactNode }) {
+type ParteId = (typeof PARTI)[number]["id"];
+
+function Parte({
+  id,
+  attiva,
+  children,
+}: {
+  id: ParteId;
+  attiva: ParteId;
+  children: React.ReactNode;
+}) {
+  if (id !== attiva) return null;
   const parte = PARTI.find((p) => p.id === id)!;
   return (
-    // `scroll-mt` tiene il titolo sotto la barra fissa quando si arriva
-    // dall'indice: senza, la prima riga della sezione finisce nascosta.
-    <section id={id} className="scroll-mt-24 space-y-4">
-      <div className="border-b border-border pb-2">
-        <h2 className="text-display text-xl">{parte.titolo}</h2>
-        <p className="text-xs text-muted-foreground">{parte.sottotitolo}</p>
-      </div>
+    // La parte scelta prende l'altezza che avanza. Se il suo contenuto è più
+    // alto — «Il locale» ha brand, locali, team, sale e turni — scorre lei,
+    // non la pagina.
+    <section id={id} className="fill-scroll space-y-4 pr-0.5" aria-label={parte.titolo}>
+      {/* Il titolo della parte non si ripete: la pillola accesa qui sopra lo
+          dice già, e in una schermata che non scorre cinquanta pixel di
+          ripetizione sono cinquanta pixel di contenuto in meno. Resta la
+          riga che aggiunge qualcosa — cosa c'è dentro questa parte — e il
+          nome va all'assistente vocale, che la pillola non gliela legge. */}
+      <p className="border-b border-border pb-2 text-xs text-muted-foreground">{parte.sottotitolo}</p>
       {children}
     </section>
   );

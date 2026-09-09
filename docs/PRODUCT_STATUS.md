@@ -99,6 +99,16 @@ Adesso: il locale **dichiara** la spesa media per coperto in Impostazioni, e la
 stima è detta stima. Senza quel valore, la casella resta vuota e dice cosa
 manca. Il valore reale arriverà con ordini o pagamenti.
 
+Lo stesso vizio era rimasto nel **seed della demo**: scriveva un `totalVisits`
+casuale, ne ricavava il livello fedeltà, e poi creava un numero diverso di
+prenotazioni. Nell'elenco ospiti si leggeva «Ambassador» accanto a «1 visita»:
+la demo si contraddiceva in una riga. Dal 9 settembre visite, assenze, ultima
+visita e livello si ricalcolano dalle prenotazioni vere
+(`allineaContatoriOspiti`), anche sulle demo già installate. `totalSpend` resta
+non scritto di proposito: senza conti chiusi collegati, una cifra lì sarebbe
+inventata — e per la stessa ragione la colonna «Spesa totale» del CRM ora dice
+**«non misurata»** invece di mostrare `0,00 €`, che sembrerebbe una misura.
+
 ## Analisi
 
 | Modulo | Stato | Note |
@@ -128,6 +138,7 @@ manca. Il valore reale arriverà con ordini o pagamenti.
 | Audit log | LIVE | Azioni sensibili tracciate con attore, entità e differenza |
 | Migrazioni versionate | LIVE | `prisma migrate deploy` al deploy |
 | Branding | LIVE | |
+| Nessuno scorrimento di pagina | LIVE | 28 rotte × 4 risoluzioni misurate a zero. Ricetta e regole in `DESIGN.md` §7 |
 | Notifiche in-app | LIVE | Filtrate per ruolo |
 | Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii. La risposta del fornitore viene verificata: un rifiuto non risulta più «inviato» |
 | Previsione coperti e occupazione | LIVE | Sette giorni avanti, con il ragionamento accanto a ogni numero: si confronta ogni giorno con gli stessi giorni della settimana e si guarda quanto era già prenotato alla stessa distanza dal servizio. Assenze attese sottratte. Dove la storia non basta **non si prevede**, invece di mostrare uno zero. Più l'occupazione media per giorno della settimana, «dove hai margine» |

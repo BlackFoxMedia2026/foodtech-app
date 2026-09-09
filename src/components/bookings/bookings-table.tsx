@@ -28,7 +28,7 @@ const STATUS_OPTIONS = [
   ["NO_SHOW", "No-show"],
 ] as const;
 
-export function BookingsTable({ rows }: { rows: Row[] }) {
+export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: boolean }) {
   const router = useRouter();
 
   async function changeStatus(id: string, status: string) {
@@ -52,7 +52,7 @@ export function BookingsTable({ rows }: { rows: Row[] }) {
     /* Sette colonne su 390 px non si leggono. Su telefono restano le quattro
        che servono a riconoscere una prenotazione — ora, chi, quanti, come sta
        — e spariscono tavolo e provenienza, che si guardano da fermi. */
-    <Tabella densita="densa">
+    <Tabella densita="densa" fill={fill}>
       <Testa>
         <Th densita="densa">Orario</Th>
         <Th densita="densa">Ospite</Th>

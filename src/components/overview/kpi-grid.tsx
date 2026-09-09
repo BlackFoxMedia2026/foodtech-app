@@ -139,7 +139,9 @@ export function KpiGrid({
             visivi. Qui restano i due che in cima non ci sono. */}
         <CardTitle>Soldi e assenze</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-3">
+      {/* Due caselle affiancate solo dove c'è spazio: nella colonna del
+          tablet (310 px) «2.250,00 €» andava a capo sull'euro. */}
+      <CardContent className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {kpis.map(({ label, value, icon: Icon, delta, hint, higherIsBetter, isCount, surface }) => {
           const positive = delta != null && (higherIsBetter ? delta >= 0 : delta <= 0);
           const magnitude = delta != null ? Math.abs(delta) : 0;

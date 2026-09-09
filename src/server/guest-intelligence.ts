@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
+import { contatoriDaPrenotazioni, eUnaVisita } from "@/lib/visite";
 
 /**
  * Da anagrafica a conoscenza del cliente.
@@ -95,8 +96,6 @@ export type GuestProfile = {
   tags: GuestTag[];
 };
 
-const VISIT_STATUSES = ["COMPLETED", "SEATED"] as const;
-
 type BookingRow = {
   startsAt: Date;
   createdAt: Date;
@@ -159,7 +158,7 @@ export function computeGuestProfile(
   const now = opts.now ?? new Date();
 
   const visite = bookings
-    .filter((b) => (VISIT_STATUSES as readonly string[]).includes(b.status))
+    .filter((b) => eUnaVisita(b.status))
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
   const cancellate = bookings.filter((b) => b.status === "CANCELLED").length;
@@ -456,16 +455,11 @@ export async function refreshGuestStats(guestId: string): Promise<void> {
     select: { startsAt: true, status: true },
   });
 
-  const visite = bookings.filter((b) => (VISIT_STATUSES as readonly string[]).includes(b.status));
-  const ultima = visite.map((b) => b.startsAt).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+  const { visite, assenze, ultimaVisita } = contatoriDaPrenotazioni(bookings);
 
   await db.guest.update({
     where: { id: guestId },
-    data: {
-      totalVisits: visite.length,
-      noShowCount: bookings.filter((b) => b.status === "NO_SHOW").length,
-      lastVisitAt: ultima,
-    },
+    data: { totalVisits: visite, noShowCount: assenze, lastVisitAt: ultimaVisita },
   });
 }
 

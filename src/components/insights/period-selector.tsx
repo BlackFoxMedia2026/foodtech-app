@@ -31,19 +31,27 @@ export function PeriodSelector({ range, from, to }: { range: string; from: strin
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    /*
+      Sul telefono queste sei pillole andavano a capo su tre righe, e insieme
+      alle quattro viste prendevano metà degli 844 pixel: al contenuto ne
+      restavano 380. Qui scorrono in orizzontale su una riga sola — un gesto
+      che sul telefono è naturale — e da `sm` tornano a disporsi su più righe,
+      dove lo spazio c'è.
+    */
+    <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
       {PRESETS.map((p) => (
         <Button
           key={p.key}
           size="sm"
           variant={range === p.key ? "default" : "outline"}
+          className="shrink-0"
           onClick={() => setRange(p.key)}
         >
           {p.label}
         </Button>
       ))}
       {range === "custom" && (
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex shrink-0 items-center gap-2 text-sm">
           <input
             type="date"
             value={from}

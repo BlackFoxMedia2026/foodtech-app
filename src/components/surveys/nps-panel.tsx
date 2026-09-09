@@ -23,7 +23,21 @@ const TONO = {
  * quattro risposte non è un dato, è un aneddoto, e senza il numero accanto non
  * si distinguono.
  */
-export function NpsPanel({ stats, funnel }: { stats: SurveyStats; funnel?: ReviewFunnel | null }) {
+export function NpsPanel({
+  stats,
+  funnel,
+  giorni,
+}: {
+  stats: SurveyStats;
+  funnel?: ReviewFunnel | null;
+  /**
+   * Su quanti giorni sono contati i voti. Non coincide sempre col periodo
+   * scelto in Analytics: i voti hanno un minimo di trenta giorni, perché su
+   * una settimana sarebbero troppo pochi per dire qualcosa. Dichiararlo è
+   * l'unico modo per non far sembrare questi numeri parte del periodo sopra.
+   */
+  giorni: number;
+}) {
   if (stats.sent === 0) {
     return (
       <Card>
@@ -48,6 +62,7 @@ export function NpsPanel({ stats, funnel }: { stats: SurveyStats; funnel?: Revie
         <CardDescription>
           {stats.responses} risposte su {stats.sent} richieste
           {stats.responseRate != null && ` · ${Math.round(stats.responseRate * 100)}% ha risposto`}
+          {` · ultimi ${giorni} giorni`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

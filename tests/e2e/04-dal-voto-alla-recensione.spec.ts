@@ -42,7 +42,13 @@ test("un promotore arriva alla recensione, e il passaggio si conta", async ({ pa
    * questa riga non comparisse, il ponte esisterebbe e nessuno saprebbe se
    * serve.
    */
-  await page.goto("/insights?range=90d");
+  /*
+    `vista=domanda`: da quando Analisi non scorre più, i pannelli stanno in
+    quattro viste e la vista è nell'indirizzo. Il collegamento a un numero
+    deve dire in quale vista sta, ed è per questo che le viste sono nella
+    barra degli indirizzi invece che nello stato del client.
+  */
+  await page.goto("/insights?range=90d&vista=domanda");
   await expect(page.getByText("Dai promotori alle recensioni")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/promotore è andato a scrivere/)).toBeVisible();
 });

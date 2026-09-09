@@ -120,6 +120,45 @@
   }
 
   /*
+   * Niente scroll di pagina: la ricetta.
+   *
+   * Una schermata operativa si guarda, non si scorre. Chi ha una persona
+   * davanti non trascina una pagina per cercare il pulsante: se una cosa non
+   * si vede, per lui non esiste.
+   *
+   * Il modo che funziona **non è comprimere**:
+   *
+   * 1. testata e comandi restano a misura piena, fissi in cima (`.fissa`);
+   * 2. tutto il resto va in **una sola regione** che prende l'altezza che
+   *    avanza (`.fill`) e, se il contenuto è più lungo, scorre **dentro di
+   *    sé** (`.fill-scroll`);
+   * 3. `min-height: 0` a **ogni** livello della catena: senza, un elemento
+   *    flex non scende sotto l'altezza del proprio contenuto e sfora senza
+   *    mostrare niente;
+   * 4. una lista che per natura non ha una lunghezza massima — sessanta
+   *    clienti, centoventi piatti — **non può dettare l'altezza della
+   *    schermata**: scorre lei.
+   *
+   * Due trappole misurate: una regione elastica **dentro** un contenitore che
+   * già scorre non ha altezza da prendere e viene schiacciata; e se tutti i
+   * fratelli sono rigidi, quello elastico riceve zero.
+   */
+  .schermo {
+    @apply flex h-full min-h-0 flex-col;
+  }
+  .fissa {
+    @apply shrink-0;
+  }
+  .fill {
+    @apply min-h-0 flex-1;
+  }
+  .fill-scroll {
+    @apply min-h-0 flex-1 overflow-y-auto;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /*
    * Il terzo livello, finalmente dichiarato.
    *
    * Il linguaggio ne aveva due: `.surface` — le card, che galleggiano — e

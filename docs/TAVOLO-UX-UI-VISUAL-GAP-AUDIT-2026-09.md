@@ -667,6 +667,133 @@ scritto:
   **due colonne di lavoro** — tre a 820 px sarebbero da 273 px l'una,
   illeggibili. Il lavoro comincia a **728 px invece di 995**.
 
+## Una schermata, nessuno scorrimento — 9 settembre
+
+> «Tutto deve stare in una pagina non voglio scroll, rivedi completamente la
+> struttura delle pagine.»
+
+Questa non è una rifinitura: è la regola che cambia come si costruisce ogni
+pagina, e sta scritta per intero in `DESIGN.md` §7. Qui c'è cosa è stato fatto
+e cosa ha insegnato.
+
+### Il problema, misurato
+
+La sonda legge `scrollHeight - clientHeight` su `document.scrollingElement` e
+su `main`, per ogni rotta e a quattro risoluzioni. Prima:
+
+| Pagina | Pixel oltre lo schermo (1440×900) |
+|---|---|
+| Analisi | 5 791 |
+| Impostazioni | 2 915 |
+| Scheda ospite | 2 320 |
+| Automazioni | 1 672 |
+| CRM ospiti | 2 504 |
+| Carta | 1 474 |
+| Panoramica | 951 |
+
+Cinquemilasettecento pixel sono sei schermate e mezzo. Non è una piega: è un
+documento.
+
+### Cosa è stato fatto
+
+**Quattro classi, non una libreria.** `.schermo`, `.fissa`, `.fill`,
+`.fill-scroll` in `globals.css`. Ogni pagina è una colonna: intestazione ferma,
+**una** regione che assorbe l'altezza rimasta, e dentro quella regione il
+contenuto che scorre. Il `main` dell'area operativa non è più lo scroller.
+
+**Il doppione prima della compressione.** La Panoramica non è entrata in una
+schermata togliendo margini. È entrata perché coperti e occupazione erano
+scritti due volte — nel briefing e in una card da 266 px — e perché «Nuova
+prenotazione» era una scorciatoia da 268 px accanto al pulsante che fa la
+stessa cosa. Cancellata la card, ridotte quattro tessere a una riga da 44 px:
+lo spazio c'era già, era occupato da ripetizioni.
+
+**Le pagine lunghe diventano viste, non rotoli.** Analisi (5 791 px) è ora
+quattro viste — andamento, carta, servizio, domanda — e Impostazioni sei parti.
+Non con uno stato del client: con l'indirizzo (`?vista=`, `?parte=`), che si
+condivide, si mette nei preferiti e risponde al tasto Indietro.
+
+**Le tabelle scorrono da sole, con l'intestazione ferma.** `Tabella` ha un
+`fill`, e `Testa` è `sticky top-0`: il corpo scorre dentro la sua regione e si
+continua a vedere di che colonna si tratta.
+
+**Le barre sovrapposte sono diventate righe.** La procedura guidata delle
+campagne aveva una barra `position: fixed` e un `pb-24` per non finirci sotto:
+un numero indovinato. Ora è l'ultima riga `.fissa` della colonna.
+
+**Sotto il breakpoint, una sola regione scorre.** Due regioni elastiche su un
+telefono da 390 px erano due finestre da settanta pixel. Nella Panoramica e
+nella scheda ospite le colonne diventano indipendenti solo da `md`/`lg`.
+
+### Il risultato
+
+Sondate **31 rotte** — le 13 principali, 12 secondarie, 3 pagine di dettaglio
+con identificativo pescato dagli elenchi, più le tre convertite in corsa — a
+1440×900, 1280×800, 820×1180 e 390×844, su una build di produzione. **Zero
+scorrimento di pagina e zero scorrimento del `main` su ogni combinazione.**
+
+### Cosa ha insegnato
+
+- **`min-height: 0` è la metà del lavoro.** Un figlio flex non scende sotto il
+  proprio contenuto: un solo anello dimenticato nella catena e il genitore
+  cresce oltre lo schermo.
+- **Una regione elastica dentro un contenitore che già scorre viene
+  schiacciata.** Prima di aggiungere `.fill` bisogna togliere lo scroll di chi
+  sta sopra.
+- **Mai a occhio.** Trentuno rotte per quattro risoluzioni sono 124 misure: a
+  vista se ne sarebbe controllata una decina, e le pagine sbagliate sarebbero
+  state proprio quelle secondarie che nessuno guarda — Automazioni sforava di
+  1 672 px e non era in nessuna lista.
+- **In sviluppo non si misura.** Le altezze cambiano con il ricaricamento a
+  caldo e il server sotto carico non risponde: la sonda va su `next start`.
+
+### Sette difetti trovati guardando le schermate
+
+Nessuno di questi era nella misura: la sonda diceva zero su tutte e 112 le
+combinazioni, e queste cose si vedono solo aprendo le immagini.
+
+1. **L'asse del grafico settimanale perdeva la prima cifra.** `margin left: -16`
+   su un asse da 32 px: le etichette, allineate a destra dentro l'asse,
+   finivano fuori dal contenitore. «40» si leggeva «0» — e visto che le tacche
+   sono valori tondi, l'asse mostrava **cinque zeri**. È l'unico `YAxis` del
+   prodotto con una larghezza dichiarata, e per questo l'unico rotto.
+2. **Analisi diceva «gli ultimi 30 giorni» sopra numeri di sette.** Un
+   `Math.max(30, …)` serviva ai voti degli ospiti — su sette giorni un NPS è un
+   aneddoto — ma veniva usato anche per l'etichetta. Ora i voti hanno la loro
+   finestra e **la dichiarano** nel pannello; il resto segue il periodo scelto.
+3. **«Ultimi 7 giorni» copriva otto giorni.** `startOfDay(oggi) - 7` più
+   `endOfDay(oggi)` fa otto giorni di calendario. Corretta la finestra, non
+   l'etichetta: `- (giorni - 1)`.
+4. **Il titolo della parte era ripetuto in Impostazioni**, sotto la pillola che
+   lo nomina già.
+5. **Sul telefono la parola dello stato mangiava il nome dell'ospite.**
+   «Confermato» prendeva un terzo della riga e il nome finiva a undici
+   caratteri: «Alessia Co…». Il pallino colorato lo stato lo dice già; la
+   parola torna da `sm`, e resta sempre per chi naviga a voce.
+6. **Il pulsante «Nuova prenotazione» in testata era un doppione sul telefono**
+   del «+» grande della barra in basso, la cui prima voce è proprio quella. Via
+   sotto `md`: il saluto non finisce più a puntini.
+7. **`RESTAURANT`, `BEACH_CLUB`, `piano GROWTH`**: costanti del database
+   mostrate a un ristoratore.
+
+E due cose che erano una **forma sbagliata**, non un difetto di misura:
+
+- **Le pillole di periodo e vista prendevano metà del telefono.** Sei più
+  quattro, andando a capo, occupavano 460 degli 844 pixel: al contenuto ne
+  restavano meno della metà. Ora scorrono in orizzontale su una riga sola sotto
+  `sm`. Stesso trattamento alle quattro parti di Impostazioni.
+- **Il CRM ospiti su telefono mostrava due colonne su sei.** Visite, ultima
+  visita e livello — le informazioni per cui si apre il CRM — stavano fuori
+  dallo schermo. Sotto `md` le righe sono diventate schede: nome, livello, e
+  su una riga «8 visite · ultima il 7 set · fedele».
+
+E un contatore che nessuno scrive: la colonna **«Spesa totale»** mostrava
+`0,00 €` per tutti, perché `Guest.totalSpend` non lo aggiorna nessuna parte del
+codice. Adesso dice «non misurata». Lo stesso vizio stava nel seed della demo,
+che scriveva visite e livello fedeltà a caso: si leggeva «Ambassador» accanto a
+«1 visita». Ora si ricalcolano dalle prenotazioni vere, anche sulle demo già
+installate.
+
 ---
 
 # Final Recommendation

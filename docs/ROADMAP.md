@@ -307,6 +307,47 @@ I primi cinque cantieri, tutti senza dipendenze da terzi: test end-to-end in
 repo, osservabilità minima, sessione e account, difese del widget, N+1 delle
 automazioni. Più il progetto dei pagamenti, scritto prima di toccare codice.
 
+## Una schermata, nessuno scorrimento (9 settembre 2026)
+
+> «Tutto deve stare in una pagina non voglio scroll, rivedi completamente la
+> struttura delle pagine.»
+
+Non una rifinitura: una regola di costruzione, e adesso è quella. In sala
+nessuno scorre — chi accoglie ha una persona davanti e tre secondi, e ciò che
+sta sotto la piega per lui non esiste.
+
+**Come si costruisce una pagina, da qui in poi:** quattro classi in
+`globals.css` — `.schermo` (la colonna), `.fissa` (non si comprime),
+`.fill` (assorbe l'altezza rimasta), `.fill-scroll` (la assorbe e scorre
+dentro) — e una sola regione elastica per schermata. Il `main` dell'area
+operativa non è più lo scroller. Tutto scritto in `DESIGN.md` §7.
+
+**Cosa è cambiato nelle pagine:** Analisi sforava di 5 791 pixel ed è diventata
+quattro viste (`?vista=`); Impostazioni, 2 915, quattro parti (`?parte=`) —
+con l'indirizzo, non con lo stato del client, così una vista si condivide e
+risponde al tasto Indietro. Le tabelle scorrono da sole con l'intestazione
+`sticky`. La barra `position: fixed` della procedura guidata campagne, con il
+suo `pb-24` indovinato, è diventata l'ultima riga `.fissa` della colonna.
+
+**Quello che ha fatto entrare la Panoramica non è stata la compressione.**
+Coperti e occupazione erano scritti due volte — nel briefing e in una card da
+266 px — e «Nuova prenotazione» era una tessera da 268 px accanto al pulsante
+che fa la stessa cosa. Lo spazio c'era già: era occupato da ripetizioni.
+
+**Verificato, non guardato:** 28 rotte × 4 risoluzioni (1440×900, 1280×800,
+820×1180, 390×844) su una build di produzione, `scrollHeight - clientHeight`
+su `document.scrollingElement` e su `main`. **112 misure, tutte zero.** Le
+pagine che sfioravano erano proprio le secondarie che nessuno guarda:
+Automazioni sforava di 1 672 px e non era in nessuna lista.
+
+Tre difetti trovati guardando le schermate, non cercandoli: l'asse del grafico
+settimanale perdeva la prima cifra (`margin left: -16` su un asse da 32 px:
+«40» si leggeva «0»); Analisi scriveva «gli ultimi 30 giorni» sopra numeri di
+sette, per un `Math.max(30, …)` che serviva ai voti degli ospiti e non
+all'etichetta — ora i voti hanno la loro finestra e la dichiarano; e in
+Impostazioni il titolo della parte era ripetuto sotto la pillola che lo
+nomina.
+
 ## Phase 7 — Enterprise
 
 - **Quando finisce la giornata di un ristorante?** Oggi «oggi» è il giorno del processo (UTC su Vercel), e per un locale italiano viene una finestra dalle 02:00 di ieri alle 01:59 di oggi: assomiglia per caso a una giornata di servizio. Delimitarla nel fuso del locale **peggiorerebbe le cose** — alle 00:30 la schermata Servizio si svuoterebbe con i tavoli ancora seduti. Serve una decisione: «la giornata di servizio comincia alle 05:00», impostazione del locale, usata in tutti e diciannove i punti che chiamano `startOfDay`. Descritto in `docs/ANALISI-STATO-2026-09-07.md` §11.7

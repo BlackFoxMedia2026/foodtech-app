@@ -80,7 +80,20 @@ export function TodayTimeline({ bookings }: { bookings: Row[] }) {
                   {b.partySize} {b.partySize === 1 ? "persona" : "persone"} · {b.table ? `Tavolo ${b.table.label}` : "Tavolo da assegnare"}
                 </p>
               </div>
-              <span className={cn("shrink-0 text-right text-xs font-medium", TEXT_TONE[status.tone])}>{status.label}</span>
+              {/* Sul telefono la parola dello stato prendeva un terzo della
+                  riga e il nome dell'ospite finiva a undici caratteri:
+                  «Alessia Co…». Il pallino colorato lo stato lo dice già, e
+                  il nome è l'informazione che serve a chi accoglie. Da `sm`,
+                  dove lo spazio c'è, torna anche la parola. */}
+              <span
+                className={cn(
+                  "hidden shrink-0 text-right text-xs font-medium sm:inline",
+                  TEXT_TONE[status.tone],
+                )}
+              >
+                {status.label}
+              </span>
+              <span className="sr-only">{status.label}</span>
               <ChevronRight className="h-4 w-4 shrink-0 text-card-foreground/65" />
             </Link>
           </li>

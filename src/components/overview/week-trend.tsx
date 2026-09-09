@@ -4,9 +4,17 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 
 export function WeekTrend({ data }: { data: { day: string; covers: number; bookings: number }[] }) {
   return (
-    <div className="h-56 w-full">
+    // 40 invece di 56: questo grafico vive solo nella colonna della
+    // Panoramica, e là deve stare dentro l'altezza che avanza. Sette punti si
+    // leggono uguale, e la pagina non scorre. I grafici alti stanno in
+    // Analytics, che è la schermata dove si legge.
+    <div className="h-40 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+        {/* Il margine sinistro era -16 con un asse da 32: le etichette,
+              allineate a destra dentro l'asse, finivano mezzo pixel fuori dal
+              contenitore e perdevano la prima cifra. «40» si leggeva «0», e
+              tutti i valori tondi si leggevano zero. */}
+          <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="coversFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#C29B72" stopOpacity={0.3} />
@@ -15,7 +23,7 @@ export function WeekTrend({ data }: { data: { day: string; covers: number; booki
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
           <XAxis dataKey="day" stroke="hsl(var(--card-foreground) / 0.65)" fontSize={12} tickLine={false} axisLine={false} />
-          <YAxis stroke="hsl(var(--card-foreground) / 0.65)" fontSize={12} tickLine={false} axisLine={false} width={32} />
+          <YAxis stroke="hsl(var(--card-foreground) / 0.65)" fontSize={12} tickLine={false} axisLine={false} width={34} />
           <Tooltip
             cursor={{ stroke: "#C29B72", strokeOpacity: 0.3 }}
             contentStyle={{
