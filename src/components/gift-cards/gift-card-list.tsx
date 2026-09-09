@@ -85,25 +85,35 @@ export function GiftCardList({
       {error && <p className="fissa text-sm text-destructive">{error}</p>}
 
       {items.length > 0 && (
-        <div className="fissa grid gap-3 sm:grid-cols-3">
-          <div className="riquadro p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Ancora da spendere</p>
-            <p className="mt-1 text-display text-2xl tabular-nums">{euro(daSpendere)}</p>
-            <p className="text-xs text-muted-foreground">
-              su {vive.length} {vive.length === 1 ? "carta valida" : "carte valide"}
+        /*
+          Tre numeri, e uno solo è un impegno.
+
+          «Vendute» e «già usate» sono storia: dicono cosa è successo, e non
+          cambiano più. «Ancora da spendere» invece è **denaro già incassato
+          per cene ancora da servire** — l'unico dei tre su cui il locale deve
+          qualcosa a qualcuno. Erano tre riquadri identici con lo stesso corpo
+          tipografico: la stessa forma per un debito e per due consuntivi.
+        */
+        <div className="fissa grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="riquadro comodo sm:col-span-2">
+            <p className="t-etichetta">Ancora da spendere</p>
+            <p className="mt-1 text-display text-3xl tabular-nums md:text-4xl">{euro(daSpendere)}</p>
+            <p className="t-nota">
+              su {vive.length} {vive.length === 1 ? "carta valida" : "carte valide"} · cene già pagate,
+              non ancora servite
             </p>
           </div>
           <div className="riquadro p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Vendute in tutto</p>
-            <p className="mt-1 text-display text-2xl tabular-nums">{euro(vendute)}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="t-etichetta">Vendute in tutto</p>
+            <p className="mt-1 text-xl tabular-nums text-muted-foreground">{euro(vendute)}</p>
+            <p className="t-nota">
               {items.length} {items.length === 1 ? "carta" : "carte"}
             </p>
           </div>
           <div className="riquadro p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Già usate</p>
-            <p className="mt-1 text-display text-2xl tabular-nums text-accent">{euro(usate)}</p>
-            <p className="text-xs text-muted-foreground">scalate dai conti</p>
+            <p className="t-etichetta">Già usate</p>
+            <p className="mt-1 text-xl tabular-nums text-muted-foreground">{euro(usate)}</p>
+            <p className="t-nota">scalate dai conti</p>
           </div>
         </div>
       )}

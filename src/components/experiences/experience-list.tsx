@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Switch } from "@/components/ui/switch";
 import { readApiError } from "@/lib/api-client";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { ExperienceDialog } from "@/components/experiences/experience-dialog";
 import type { ExperienceView } from "@/server/experiences";
 
@@ -29,10 +29,13 @@ export function ExperienceList({
   items,
   currency,
   canEdit,
+  adesso,
 }: {
   items: ExperienceView[];
   currency: string;
   canEdit: boolean;
+  /** L'ora del server, in ISO: vedi il commento nella pagina. */
+  adesso: string;
 }) {
   const router = useRouter();
   const [nuova, setNuova] = useState(false);
@@ -65,6 +68,29 @@ export function ExperienceList({
 
   const elimina = (e: ExperienceView) =>
     chiama(e.id, { method: "DELETE" }, "Non siamo riusciti a eliminare l'esperienza.");
+
+  /*
+    Una scheda sola, per la serata che conta: quella in corso o la prima che
+    arriva. Tutto il resto sono righe.
+
+    Prima erano tutte schede uguali in una griglia, e la griglia le allungava
+    fino all'altezza della più alta: due esperienze occupavano due riquadri da
+    novecento pixel di cui seicento vuoti, e per sapere quando fosse la
+    prossima si leggevano le date una per una. La differenza fra «giovedì c'è
+    la degustazione» e «a marzo c'era la serata Piemonte» non è una differenza
+    di dettaglio: è tutta l'informazione che questa pagina deve dare.
+
+    E le righe passate stanno in fondo, non in cima. L'elenco arriva ordinato
+    per data crescente — giusto per un archivio, sbagliato per un programma,
+    dove la prima cosa che si legge era la serata più vecchia.
+  */
+  const ora = new Date(adesso).getTime();
+  const daVenire = items.filter((e) => new Date(e.endsAt).getTime() >= ora);
+  const passate = items
+    .filter((e) => new Date(e.endsAt).getTime() < ora)
+    .sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
+  const prossima = daVenire[0] ?? null;
+  const altreDaVenire = daVenire.slice(1);
 
   return (
     <>
@@ -105,79 +131,87 @@ export function ExperienceList({
           </EmptyState>
         </div>
       ) : (
-        <div className="fill-scroll mt-6 grid gap-4 pr-0.5 md:grid-cols-2 xl:grid-cols-3">
-          {items.map((e) => (
-            <Card key={e.id} className="flex flex-col">
+        <div className="fill-scroll mt-4 space-y-4 pr-0.5">
+          {prossima && (
+            /* Larghezza contenuta: una scheda che attraversa millenovecento
+               pixel per quattro righe di contenuto è per tre quarti vuota. */
+            <Card className="lg:max-w-3xl">
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-accent">
                     <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                    {e.published ? "Pubblicata" : "Bozza"}
+                    {new Date(prossima.startsAt).getTime() <= ora ? "In corso" : "La prossima"}
+                    {!prossima.published && " · bozza"}
                   </div>
-                  {canEdit && (
-                    <label
-                      htmlFor={`pub-${e.id}`}
-                      className="flex min-h-[44px] cursor-pointer items-center gap-2 px-1"
-                      title={e.published ? "Riporta in bozza" : "Pubblica"}
-                    >
-                      <Switch
-                        id={`pub-${e.id}`}
-                        checked={e.published}
-                        disabled={busy === e.id}
-                        aria-label={e.published ? `Riporta in bozza ${e.title}` : `Pubblica ${e.title}`}
-                        onCheckedChange={(v) => void pubblica(e, v)}
-                      />
-                    </label>
-                  )}
+                  {canEdit && <InterruttorePubblica e={prossima} busy={busy} pubblica={pubblica} />}
                 </div>
-                <CardTitle>{e.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">{formatDateTime(e.startsAt)}</p>
+                <CardTitle>{prossima.title}</CardTitle>
+                <p className="text-sm text-muted-foreground">{formatDateTime(prossima.startsAt)}</p>
               </CardHeader>
 
-              <CardContent className="flex flex-1 flex-col gap-3 text-sm">
-                {e.description && <p className="text-muted-foreground">{e.description}</p>}
+              <CardContent className="flex flex-col gap-3 text-sm">
+                {prossima.description && <p className="text-muted-foreground">{prossima.description}</p>}
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone="gold">{formatCurrency(e.priceCents, currency)}</Badge>
+                  <Badge tone="gold">{formatCurrency(prossima.priceCents, currency)}</Badge>
                   <span className="text-xs text-muted-foreground">
-                    {e.capacity} {e.capacity === 1 ? "posto" : "posti"}
+                    {prossima.capacity} {prossima.capacity === 1 ? "posto" : "posti"}
                   </span>
-                  {e.ticketsSold > 0 && (
-                    <span className="text-xs text-muted-foreground">· {e.ticketsSold} venduti</span>
+                  {prossima.ticketsSold > 0 && (
+                    <span className="text-xs text-muted-foreground">· {prossima.ticketsSold} venduti</span>
                   )}
                 </div>
 
-                <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-                  {e.ticketUrl ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {prossima.ticketUrl ? (
                     <Button asChild variant="outline" size="sm">
-                      <a href={e.ticketUrl} target="_blank" rel="noopener noreferrer">
+                      <a href={prossima.ticketUrl} target="_blank" rel="noopener noreferrer">
                         Biglietti <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
                       </a>
                     </Button>
                   ) : (
                     <span className="text-xs text-tertiary-foreground">Nessun link ai biglietti</span>
                   )}
-
-                  {canEdit && (
-                    <>
-                      <Button variant="ghost" size="sm" onClick={() => setInModifica(e)} disabled={busy === e.id}>
-                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Modifica
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void elimina(e)}
-                        disabled={busy === e.id}
-                        aria-label={`Elimina ${e.title}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      </Button>
-                    </>
-                  )}
+                  {canEdit && <Comandi e={prossima} busy={busy} onModifica={setInModifica} onElimina={elimina} />}
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )}
+
+          {altreDaVenire.length > 0 && (
+            <Gruppo titolo="In programma">
+              {altreDaVenire.map((e) => (
+                <Riga
+                  key={e.id}
+                  e={e}
+                  currency={currency}
+                  canEdit={canEdit}
+                  busy={busy}
+                  pubblica={pubblica}
+                  onModifica={setInModifica}
+                  onElimina={elimina}
+                />
+              ))}
+            </Gruppo>
+          )}
+
+          {passate.length > 0 && (
+            <Gruppo titolo={passate.length === 1 ? "Una passata" : `${passate.length} passate`}>
+              {passate.map((e) => (
+                <Riga
+                  key={e.id}
+                  e={e}
+                  currency={currency}
+                  canEdit={canEdit}
+                  busy={busy}
+                  passata
+                  pubblica={pubblica}
+                  onModifica={setInModifica}
+                  onElimina={elimina}
+                />
+              ))}
+            </Gruppo>
+          )}
         </div>
       )}
 
@@ -194,6 +228,150 @@ export function ExperienceList({
           experience={inModifica}
         />
       )}
+    </>
+  );
+}
+
+/** Il gruppo di righe, con la sua intestazione. */
+function Gruppo({ titolo, children }: { titolo: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="t-etichetta mb-1.5">{titolo}</h2>
+      <ul className="riquadro divide-y divide-border">{children}</ul>
+    </section>
+  );
+}
+
+/**
+ * Una serata in una riga: data, titolo, prezzo, posti, stato.
+ *
+ * Da `md` è una griglia e non un flex che va a capo, così le date e i prezzi
+ * si incolonnano e l'elenco si legge per colonna invece che riga per riga.
+ */
+function Riga({
+  e,
+  currency,
+  canEdit,
+  busy,
+  passata = false,
+  pubblica,
+  onModifica,
+  onElimina,
+}: {
+  e: ExperienceView;
+  currency: string;
+  canEdit: boolean;
+  busy: string | null;
+  passata?: boolean;
+  pubblica: (e: ExperienceView, published: boolean) => void;
+  onModifica: (e: ExperienceView) => void;
+  onElimina: (e: ExperienceView) => void;
+}) {
+  return (
+    <li
+      className={cn(
+        "flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 md:grid md:grid-cols-[11rem_minmax(0,1fr)_6rem_5rem_auto] md:items-center md:gap-x-3",
+        // Una serata passata non si tinge di grigio per punizione: pesa meno
+        // perché non c'è più niente da decidere.
+        passata && "text-muted-foreground",
+      )}
+    >
+      <span className="t-dato shrink-0">{formatDateTime(e.startsAt)}</span>
+
+      <span className="min-w-0 basis-full md:basis-auto">
+        <span className="t-titolo-scheda">{e.title}</span>
+        {!e.published && <span className="t-nota"> · bozza</span>}
+      </span>
+
+      <span className="t-dato shrink-0 text-accent">{formatCurrency(e.priceCents, currency)}</span>
+
+      <span className="t-nota shrink-0">
+        {e.capacity} {e.capacity === 1 ? "posto" : "posti"}
+        {e.ticketsSold > 0 && ` · ${e.ticketsSold} venduti`}
+      </span>
+
+      <span className="flex shrink-0 items-center gap-1">
+        {e.ticketUrl && (
+          <Button asChild variant="ghost" size="sm">
+            <a
+              href={e.ticketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Biglietti di ${e.title}`}
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
+          </Button>
+        )}
+        {canEdit && (
+          <>
+            <InterruttorePubblica e={e} busy={busy} pubblica={pubblica} />
+            <Comandi e={e} busy={busy} onModifica={onModifica} onElimina={onElimina} />
+          </>
+        )}
+      </span>
+    </li>
+  );
+}
+
+/** Pubblica o riporta in bozza. L'etichetta dice quale delle due, per nome. */
+function InterruttorePubblica({
+  e,
+  busy,
+  pubblica,
+}: {
+  e: ExperienceView;
+  busy: string | null;
+  pubblica: (e: ExperienceView, published: boolean) => void;
+}) {
+  return (
+    <label
+      htmlFor={`pub-${e.id}`}
+      className="flex min-h-[44px] cursor-pointer items-center gap-2 px-1"
+      title={e.published ? "Riporta in bozza" : "Pubblica"}
+    >
+      <Switch
+        id={`pub-${e.id}`}
+        checked={e.published}
+        disabled={busy === e.id}
+        aria-label={e.published ? `Riporta in bozza ${e.title}` : `Pubblica ${e.title}`}
+        onCheckedChange={(v) => void pubblica(e, v)}
+      />
+    </label>
+  );
+}
+
+function Comandi({
+  e,
+  busy,
+  onModifica,
+  onElimina,
+}: {
+  e: ExperienceView;
+  busy: string | null;
+  onModifica: (e: ExperienceView) => void;
+  onElimina: (e: ExperienceView) => void;
+}) {
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onModifica(e)}
+        disabled={busy === e.id}
+        aria-label={`Modifica ${e.title}`}
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => void onElimina(e)}
+        disabled={busy === e.id}
+        aria-label={`Elimina ${e.title}`}
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+      </Button>
     </>
   );
 }

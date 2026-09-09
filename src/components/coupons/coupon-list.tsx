@@ -101,106 +101,140 @@ export function CouponList({ items, canEdit }: { items: CouponView[]; canEdit: b
           </EmptyState>
         </div>
       ) : (
-        <div className="fill-scroll mt-6 grid gap-4 pr-0.5 md:grid-cols-2 xl:grid-cols-3">
+        /*
+          Righe, non schede.
+
+          Nove coupon in schede grandi facevano 2.192 px di scorrimento per
+          dire nove volte le stesse sei cose: nome, tipo, valore, codice,
+          utilizzi, stato. Ogni scheda era alta 450 px e metà era spazio.
+
+          Una riga porta le sei cose in una battuta e le condizioni — minimo di
+          conto, giorni, scadenza, riservato a — nella riga sotto, in grigio:
+          sono il motivo per cui un coupon **non** vale oggi, quindi non
+          possono sparire, ma non sono la cosa che si cerca arrivando qui.
+        */
+        <ul className="fill-scroll riquadro mt-4 divide-y divide-border">
           {items.map((c) => {
             const attivo = c.stato === "usabile";
+            const condizioni = [
+              // Corto perché sta su ogni riga: «Massimo 1 volta per cliente»
+              // ripetuto undici volte diventa arredamento.
+              `${c.maxPerGuest} per cliente`,
+              c.minSpendCents != null &&
+                `da ${(c.minSpendCents / 100).toLocaleString("it-IT", {
+                  style: "currency",
+                  currency: "EUR",
+                })} di conto`,
+              (c.validWeekdays ?? []).length > 0 &&
+                `solo ${(c.validWeekdays ?? [])
+                  .map((g) => ["dom", "lun", "mar", "mer", "gio", "ven", "sab"][g])
+                  .join(", ")}`,
+              c.validUntil &&
+                `fino al ${new Intl.DateTimeFormat("it-IT", {
+                  day: "numeric",
+                  month: "long",
+                }).format(new Date(c.validUntil))}`,
+              c.guestName && `riservato a ${c.guestName}`,
+              c.description,
+            ].filter(Boolean) as string[];
+
             return (
-              <Card key={c.id} className="flex flex-col">
-                <CardHeader className="gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* «Non valido» su un coupon che vale solo il martedì,
-                        letto di lunedì, sembra un difetto: non lo è, e la
-                        parola giusta è un'altra. */}
-                    <Badge tone={attivo ? "success" : "neutral"}>
-                      {attivo ? "Valido" : ETICHETTA_STATO[c.stato] ?? "Non valido"}
-                    </Badge>
-                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {CATEGORIA[c.category] ?? c.category}
-                    </span>
-                  </div>
-                  <CardTitle>{c.name}</CardTitle>
-                  <p className="text-sm text-accent">{c.descrizione}</p>
-                </CardHeader>
+              /*
+                Da `md` è una griglia e non un flex che va a capo: con le
+                colonne libere «15% di sconto» cadeva a un'ascissa diversa su
+                ogni riga, e undici righe disallineate si leggono una per una
+                invece di per colonna. Sotto `md` le parti si impilano.
+              */
+              <li
+                key={c.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 md:grid md:grid-cols-[minmax(0,1fr)_8rem_14rem_9rem_5.5rem_auto] md:items-center md:gap-x-3"
+              >
+                <div className="min-w-0 flex-1 basis-full md:basis-auto">
+                  <p className="flex flex-wrap items-center gap-x-2">
+                    <span className="t-titolo-scheda">{c.name}</span>
+                    <span className="t-etichetta">{CATEGORIA[c.category] ?? c.category}</span>
+                  </p>
+                  <p className="t-nota">{condizioni.join(" · ")}</p>
+                </div>
 
-                <CardContent className="flex flex-1 flex-col gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <code className="rounded-md bg-current/10 px-2 py-1 font-mono text-sm tracking-wider">
-                      {c.code}
-                    </code>
-                    <CopyButton value={c.code} variant="ghost" size="sm" aria-label={`Copia il codice ${c.code}`} />
-                  </div>
+                {/* Il valore: è la ragione per cui esiste il coupon, e resta
+                    nel colore dell'accento come sulla scheda di prima. */}
+                <span className="t-corpo shrink-0 text-accent">{c.descrizione}</span>
 
-                  {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
+                <span className="flex shrink-0 items-center gap-1">
+                  <code className="whitespace-nowrap rounded-md bg-current/10 px-2 py-0.5 font-mono text-xs tracking-wider">
+                    {c.code}
+                  </code>
+                  <CopyButton
+                    value={c.code}
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Copia il codice ${c.code}`}
+                  />
+                </span>
 
-                  {!attivo && (
-                    <p className="text-xs text-amber-700">{MOTIVO_NON_VALIDO[c.stato as keyof typeof MOTIVO_NON_VALIDO]}</p>
-                  )}
+                <span className="t-dato shrink-0 text-muted-foreground">
+                  {c.usi} {c.usi === 1 ? "uso" : "usi"}
+                  {c.restanti != null
+                    ? ` · ${c.restanti} ${c.restanti === 1 ? "rimasta" : "rimaste"}`
+                    : " · senza tetto"}
+                </span>
 
-                  <ul className="space-y-0.5 text-xs text-muted-foreground">
-                    <li>
-                      Usato {c.usi} {c.usi === 1 ? "volta" : "volte"}
-                      {c.restanti != null ? ` · ${c.restanti} ${c.restanti === 1 ? "rimasta" : "rimaste"}` : " · senza tetto"}
-                    </li>
-                    <li>
-                      Massimo {c.maxPerGuest} {c.maxPerGuest === 1 ? "volta" : "volte"} per cliente
-                      {c.minSpendCents != null &&
-                        ` · da ${(c.minSpendCents / 100).toLocaleString("it-IT", {
-                          style: "currency",
-                          currency: "EUR",
-                        })} di conto`}
-                      {(c.validWeekdays ?? []).length > 0 &&
-                        ` · solo ${(c.validWeekdays ?? [])
-                          .map((g) => ["dom", "lun", "mar", "mer", "gio", "ven", "sab"][g])
-                          .join(", ")}`}
-                    </li>
-                    {c.validUntil && (
-                      <li>
-                        Valido fino al{" "}
-                        {new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", year: "numeric" }).format(
-                          new Date(c.validUntil),
-                        )}
-                      </li>
-                    )}
-                    {c.guestName && <li>Riservato a {c.guestName}</li>}
-                  </ul>
+                {/* «Non valido» su un coupon che vale solo il martedì, letto
+                    di lunedì, sembra un difetto: non lo è, e la parola giusta
+                    è un'altra. Il perché sta nel suggerimento, così la riga
+                    resta una riga. */}
+                <Badge
+                  tone={attivo ? "success" : "neutral"}
+                  className="shrink-0"
+                  title={
+                    attivo
+                      ? undefined
+                      : MOTIVO_NON_VALIDO[c.stato as keyof typeof MOTIVO_NON_VALIDO]
+                  }
+                >
+                  {attivo ? "Valido" : ETICHETTA_STATO[c.stato] ?? "Non valido"}
+                </Badge>
 
-                  {canEdit && (
-                    <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-                      {c.status === "PAUSED" ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={busy === c.id}
-                          onClick={() => void cambiaStato(c.id, "ACTIVE")}
-                        >
-                          <Play className="h-3.5 w-3.5" aria-hidden="true" /> Riattiva
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={busy === c.id}
-                          onClick={() => void cambiaStato(c.id, "PAUSED")}
-                        >
-                          <Pause className="h-3.5 w-3.5" aria-hidden="true" /> Metti in pausa
-                        </Button>
-                      )}
+                {canEdit && (
+                  <span className="flex shrink-0 items-center gap-1">
+                    {c.status === "PAUSED" ? (
                       <Button
                         variant="ghost"
                         size="sm"
                         disabled={busy === c.id}
-                        onClick={() => void cambiaStato(c.id, "ARCHIVED")}
-                        aria-label={`Archivia ${c.name}`}
+                        onClick={() => void cambiaStato(c.id, "ACTIVE")}
+                        aria-label={`Riattiva ${c.name}`}
                       >
-                        <Archive className="h-3.5 w-3.5" aria-hidden="true" /> Archivia
+                        <Play className="h-3.5 w-3.5" aria-hidden="true" /> Riattiva
                       </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy === c.id}
+                        onClick={() => void cambiaStato(c.id, "PAUSED")}
+                        aria-label={`Metti in pausa ${c.name}`}
+                      >
+                        <Pause className="h-3.5 w-3.5" aria-hidden="true" /> Pausa
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy === c.id}
+                      onClick={() => void cambiaStato(c.id, "ARCHIVED")}
+                      aria-label={`Archivia ${c.name}`}
+                    >
+                      <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span className="sr-only md:not-sr-only">Archivia</span>
+                    </Button>
+                  </span>
+                )}
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       <p className="fissa mt-6 text-xs text-tertiary-foreground">
