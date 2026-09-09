@@ -70,11 +70,20 @@ tavolo**: bisogna premere «Accomoda» e aprire una finestra per scoprirlo. In
 Servizio l'avviso lo dice («T9 è libero per Famiglia Bertoldi»); nella schermata
 che si chiama Attesa, no.
 
-**4. Manca il riconoscimento dell'ospite dove nasce il duplicato.** Il modulo di
-nuova prenotazione non cerca nel CRM mentre si digita telefono, email o nome.
-Esiste una pagina, `/guests/doppioni`, per ripulire un problema che il modulo
-crea. La funzione di ricerca c'è (`trovaOspite`, per email o telefono
-normalizzato) e viene usata altrove.
+**4. Manca il riconoscimento dell'ospite mentre si scrive.** Il modulo di nuova
+prenotazione non cerca nel CRM mentre si digita telefono o email, quindi chi
+risponde al telefono chiede nome, cognome ed email a un cliente che il locale
+conosce — e soprattutto **non vede** che è un VIP, che è allergico ai
+crostacei, che due volte non si è presentato. Sono le tre cose che cambiano la
+risposta a «avete un tavolo sabato?», e oggi si scoprono aprendo la scheda,
+cioè quasi mai.
+
+> **Correzione, 9 settembre.** La prima versione di questa riga diceva che ogni
+> prenotazione telefonica è «un potenziale doppione». **È falso**, e l'ho
+> verificato implementando: `createBooking` passa da `trovaOCreaOspite` e
+> riusa la scheda esistente cercandola per email o telefono normalizzato. Il
+> server si difende già. Il valore del riconoscimento è la velocità e il
+> contesto, non l'integrità dei dati — che è un'altra cosa e funziona.
 
 **5. Un solo modo di aprire le cose.** `Dialog` è importato in 29 file, `Sheet`
 in 2, un `Drawer` non esiste. Quindi ogni dettaglio è una **pagina** (con un
@@ -136,8 +145,10 @@ Il motore c'è. La riga non lo mostra. Un click e una finestra fra «vedo chi
 aspetta» e «so dove metterlo».
 
 ## P-04 · Nessun riconoscimento ospite in prenotazione · **P0**
-Ogni prenotazione telefonica di un cliente abituale è un potenziale doppione, e
-il contesto (VIP, allergia, assenze) non arriva a chi sta scrivendo.
+Il contesto — VIP, allergia, assenze precedenti — non arriva a chi sta
+scrivendo la prenotazione, e si chiedono dati che il locale ha già. **Non** è
+un problema di doppioni: quelli il server li evita da sé (vedi la correzione
+nel §1).
 
 ## P-05 · Il contesto ospite non è nella lista prenotazioni · **P1**
 `cosaSapere` — allergia, occasione, note, assenze, livello, al massimo quattro
@@ -469,9 +480,13 @@ che servono al leggio: VIP, visite, ultima visita, allergie, assenze.
 ### Doppioni · `/guests/doppioni`
 **Già buona:** nessuna unione automatica, solo il manager, niente si perde, una
 revoca di consenso più recente vince su un consenso più vecchio.
-**Nota di sistema:** questa pagina esiste per ripulire un problema che il modulo
-di prenotazione crea (P-04). Risolto il riconoscimento a monte, questa pagina
-diventa una manutenzione rara invece di un lavoro ricorrente.
+**Nota di sistema, corretta:** avevo scritto che questa pagina esiste per
+ripulire un problema creato dal modulo di prenotazione. Sbagliato: il server
+riusa già la scheda esistente. I doppioni che questa pagina trova nascono
+altrove — la stessa persona che prenota una volta col telefono di casa e una
+col cellulare, o una volta con l'email del lavoro. Sono doppioni **veri**, che
+nessun riconoscimento automatico può evitare senza rischiare di unire due
+persone diverse. La pagina serve, e serve così: proponendo, non decidendo.
 **Target:** 8,5.
 
 ### Analisi · quattro viste
@@ -1298,7 +1313,7 @@ Misurato sul codice attuale, contando le aperture di pagina e i tocchi.
 
 | Compito | Oggi | Bersaglio | Come |
 |---|---:|---:|---|
-| Nuova prenotazione telefonica | 1 apertura + 6 campi | 1 + 4 campi | riconoscimento ospite: nome e telefono arrivano dal CRM |
+| Nuova prenotazione telefonica | 1 apertura + 6 campi | 1 + 3 campi | riconoscimento: nome, cognome ed email arrivano dal CRM |
 | Segna arrivato (da Servizio) | 1 | 1 | già ottimo |
 | Segna arrivato (da Prenotazioni) | 3 (apri, agisci, torna) | **1** | azione di riga |
 | Accomoda dalla coda | 3 | **1** se un candidato, 2 se scelta | tavolo consigliato nella riga |
@@ -1321,7 +1336,7 @@ Bersagli del §83, con la mia stima di fattibilità.
 
 | Compito | Bersaglio | Fattibile? | Collo di bottiglia vero |
 |---|---|---|---|
-| Prenotazione telefonica | <20 s | sì, **dopo** il riconoscimento ospite | non è il numero di campi: è chiedere dati che il locale ha già |
+| Prenotazione telefonica | <20 s | sì, **dopo** il riconoscimento ospite (fatto) | non è il numero di campi: è chiedere dati che il locale ha già |
 | Walk-in | <10 s | sì, quasi già | scelta del tavolo |
 | Check-in prenotazione | <3 s | sì, da Servizio; **no** oggi da Prenotazioni | mancano le azioni di riga |
 | Assegnazione tavolo | <5 s | sì con azione di riga | oggi tre pagine |

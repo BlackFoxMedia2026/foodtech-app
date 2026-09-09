@@ -95,6 +95,69 @@ export async function trovaOspite(
   return null;
 }
 
+export type OspiteRiconosciuto = {
+  guestId: string;
+  nome: string;
+  visite: number;
+  ultimaVisita: string | null;
+  livello: string;
+  allergie: string | null;
+  assenze: number;
+};
+
+/**
+ * Chi è la persona che sta al telefono, mentre la si sta ancora scrivendo.
+ *
+ * ## A cosa serve, e a cosa **non** serve
+ *
+ * Non serve a evitare i doppioni: quelli il server li evita già da sé, perché
+ * `createBooking` passa da `trovaOCreaOspite` e riusa la scheda che c'è.
+ *
+ * Serve a due cose che il server non può fare per conto di chi risponde al
+ * telefono. La prima è **non chiedere** quello che il locale sa già: nome,
+ * cognome, email. La seconda, che vale di più, è il **contesto nel momento in
+ * cui si decide**: che questa persona è un VIP, che è allergica ai crostacei,
+ * che due volte non si è presentata. Sono le tre cose che cambiano la risposta
+ * a «avete un tavolo sabato?», e oggi si scoprono dopo, aprendo la scheda —
+ * cioè quasi mai.
+ *
+ * Il conteggio delle visite viene dalle prenotazioni, non da un contatore:
+ * `totalVisits` è aggiornato da `refreshGuestStats` a ogni cambio di stato che
+ * conta, ed è la stessa fonte che legge l'elenco ospiti.
+ */
+export async function riconosciOspite(
+  venueId: string,
+  dati: { email?: string | null; phone?: string | null },
+): Promise<OspiteRiconosciuto | null> {
+  const id = await trovaOspite(venueId, dati);
+  if (!id) return null;
+
+  const g = await db.guest.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      totalVisits: true,
+      lastVisitAt: true,
+      loyaltyTier: true,
+      allergies: true,
+      noShowCount: true,
+    },
+  });
+  if (!g) return null;
+
+  return {
+    guestId: g.id,
+    nome: `${g.firstName} ${g.lastName ?? ""}`.trim(),
+    visite: g.totalVisits,
+    ultimaVisita: g.lastVisitAt?.toISOString() ?? null,
+    livello: g.loyaltyTier,
+    allergie: g.allergies,
+    assenze: g.noShowCount,
+  };
+}
+
 /**
  * L'ospite che c'è già, o uno nuovo.
  *

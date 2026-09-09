@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { readApiError } from "@/lib/api-client";
 import { SlotPicker } from "@/components/bookings/slot-picker";
@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
+import type { OspiteRiconosciuto } from "@/server/guest-match";
 
 type TableOpt = { id: string; label: string; seats: number };
 
@@ -59,6 +62,56 @@ export function BookingForm({
   const [durata, setDurata] = useState(105);
   const [durataNota, setDurataNota] = useState<string | null>(null);
   const [durataToccata, setDurataToccata] = useState(false);
+
+  /*
+    Il riconoscimento dell'ospite.
+
+    Si aspetta mezzo secondo dall'ultima cifra invece di chiedere a ogni tasto:
+    un numero italiano sono dieci cifre, e dieci richieste per una risposta
+    sola sono nove buttate. E si comincia a chiedere da sei cifre: sotto, la
+    domanda non ha abbastanza informazione per avere una risposta utile.
+  */
+  const [telefono, setTelefono] = useState("");
+  const [riconosciuto, setRiconosciuto] = useState<OspiteRiconosciuto | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    const cifre = telefono.replace(/\D/g, "");
+    if (cifre.length < 6) {
+      setRiconosciuto(null);
+      return;
+    }
+    let annullato = false;
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/guests/riconosci?phone=${encodeURIComponent(telefono)}`);
+        if (annullato || !res.ok) return;
+        const { ospite } = (await res.json()) as { ospite: OspiteRiconosciuto | null };
+        if (!annullato) setRiconosciuto(ospite);
+      } catch {
+        // Una richiesta che non torna non deve fare niente di visibile: il
+        // riconoscimento è un aiuto, non un passaggio obbligato del modulo.
+      }
+    }, 500);
+    return () => {
+      annullato = true;
+      clearTimeout(t);
+    };
+  }, [telefono]);
+
+  /** Riempie nome e cognome dalla scheda trovata, senza toccare il resto. */
+  function usaOspite() {
+    if (!riconosciuto) return;
+    const form = formRef.current;
+    if (!form) return;
+    const [nome, ...resto] = riconosciuto.nome.split(" ");
+    const campo = (name: string) => form.elements.namedItem(name) as HTMLInputElement | null;
+    const primo = campo("firstName");
+    const secondo = campo("lastName");
+    if (primo) primo.value = nome ?? "";
+    if (secondo) secondo.value = resto.join(" ");
+    primo?.focus();
+  }
 
   const quando = forceOpen ? (date && manualTime ? `${date}T${manualTime}` : null) : slot;
 
@@ -143,7 +196,7 @@ export function BookingForm({
   const giorno = date || today;
 
   return (
-    <form onSubmit={onSubmit} method="post" className="space-y-5">
+    <form ref={formRef} onSubmit={onSubmit} method="post" className="space-y-5">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="firstName">Nome</Label>
@@ -158,9 +211,68 @@ export function BookingForm({
             questa metà era un buco. */}
         <div className="col-span-2 space-y-1.5">
           <Label htmlFor="phone">Telefono</Label>
-          <Input id="phone" name="phone" placeholder="+39 …" />
+          <Input
+            id="phone"
+            name="phone"
+            placeholder="+39 …"
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+          />
         </div>
       </div>
+
+      {/*
+        «Questa persona la conosciamo già?»
+
+        Compare **solo** quando c'è una corrispondenza. Non si scrive «nessun
+        cliente trovato» mentre qualcuno sta ancora digitando: sarebbe una
+        smentita a ogni cifra, per una domanda che non è stata fatta.
+
+        Le tre cose che porta — VIP, allergie, assenze — sono quelle che
+        cambiano la risposta a «avete un tavolo sabato?», e prima si scoprivano
+        aprendo la scheda dell'ospite, cioè quasi mai.
+
+        Non serve a evitare i doppioni: quelli il server li evita già, perché
+        riusa la scheda che c'è. Serve a non chiedere quello che il locale sa
+        già, e a saperlo mentre si decide.
+      */}
+      {riconosciuto && (
+        <div className="riquadro comodo space-y-2 border-accent/40 bg-accent/5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm font-medium">{riconosciuto.nome}</p>
+            <p className="t-nota">
+              {riconosciuto.visite} {riconosciuto.visite === 1 ? "visita" : "visite"}
+              {riconosciuto.ultimaVisita && ` · ultima il ${formatDate(riconosciuto.ultimaVisita)}`}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {(riconosciuto.livello === "VIP" || riconosciuto.livello === "AMBASSADOR") && (
+              <Badge tone="gold">{riconosciuto.livello === "AMBASSADOR" ? "Ambassador" : "VIP"}</Badge>
+            )}
+            {riconosciuto.allergie && (
+              <Badge tone="danger" className="badge-dot">
+                {riconosciuto.allergie}
+              </Badge>
+            )}
+            {riconosciuto.assenze > 0 && (
+              <Badge tone="warning">
+                {riconosciuto.assenze} {riconosciuto.assenze === 1 ? "assenza" : "assenze"}
+              </Badge>
+            )}
+          </div>
+
+          {/*
+            «Usa questi dati» non è obbligatorio: se la persona al telefono dà
+            un cognome diverso o una email nuova, si scrive quella e il server
+            riconosce comunque la scheda dal telefono. Il pulsante serve a
+            **non digitare**, non a vincolare.
+          */}
+          <Button type="button" variant="outline" size="sm" onClick={usaOspite}>
+            Usa questi dati
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
