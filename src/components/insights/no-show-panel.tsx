@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/utils";
 import { MINIMO_PER_QUOTA, type NoShowReport } from "@/server/no-show";
 import { Base } from "@/components/ui/base-del-numero";
+import { giornoConArticolo } from "@/server/no-show";
 
 /**
  * Quanto costano le assenze.
@@ -22,6 +23,11 @@ import { Base } from "@/components/ui/base-del-numero";
  * prenotazioni: un martedì con due prenotazioni e un'assenza fa «50%», che è
  * vero e non significa niente.
  */
+/** La prima lettera in maiuscolo, per una frase che comincia col giorno. */
+function maiuscola(t: string): string {
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 export function NoShowPanel({ report, currency }: { report: NoShowReport; currency: string }) {
   const euro = (c: number) => formatCurrency(c, currency);
 
@@ -152,7 +158,10 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
           <p className="text-sm font-medium">In che giorni succede</p>
           {report.giornoPeggiore ? (
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Il {report.giornoPeggiore.nome} è il giorno peggiore: {report.giornoPeggiore.quota}% di assenze
+              {/* L'articolo lo decide `giornoConArticolo`: era scritto fisso
+                  qui, e per la domenica veniva «Il domenica». */}
+              {maiuscola(giornoConArticolo(report.giornoPeggiore.nome))} è il giorno peggiore:{" "}
+              {report.giornoPeggiore.quota}% di assenze
               contro il {report.quota}% della media.
             </p>
           ) : (

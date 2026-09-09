@@ -28,6 +28,22 @@ export const MINIMO_PER_QUOTA = 10;
 
 const GIORNI = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 
+/**
+ * «La domenica», «il lunedì».
+ *
+ * Si leggeva «Il domenica è il giorno peggiore»: domenica è l'unico giorno
+ * femminile della settimana italiana, e l'articolo era scritto fisso nel
+ * testo. Il fatto che sia uno su sette è esattamente la ragione per cui una
+ * cosa così passa i controlli — sei volte su sette la frase è giusta.
+ *
+ * E l'articolo non è solo grammatica, è il senso: «la domenica» vuol dire le
+ * domeniche in generale, che è quello che questo numero misura; «domenica» da
+ * solo vuol dire la prossima.
+ */
+export function giornoConArticolo(giorno: string): string {
+  return `${giorno === "domenica" ? "la" : "il"} ${giorno}`;
+}
+
 export type AssenzePerGiorno = {
   weekday: number;
   nome: string;
