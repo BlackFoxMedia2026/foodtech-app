@@ -357,6 +357,22 @@ function fonteUmana(source: string): string {
   return nomi[source] ?? source.toLowerCase();
 }
 
+/**
+ * Quali stati implicano che l'ospite fosse arrivato, seduto, o che la
+ * prenotazione fosse chiusa.
+ *
+ * Scritti una volta e usati per tenere gli orari coerenti con lo stato: un
+ * elenco per ciascun fatto, invece di tre condizioni ripetute che possono
+ * divergere.
+ *
+ * `COMPLETED` conserva arrivo e accomodamento perché quella cena è avvenuta.
+ * `NO_SHOW` e `CANCELLED` no: chi non si è presentato non è arrivato, e
+ * lasciargli un'ora d'arrivo è una piccola bugia che finisce nelle statistiche.
+ */
+const ARRIVATO_DA: BookingStatus[] = ["ARRIVED", "SEATED", "COMPLETED"];
+const SEDUTO_DA: BookingStatus[] = ["SEATED", "COMPLETED"];
+const CHIUSO_DA: BookingStatus[] = ["COMPLETED", "NO_SHOW", "CANCELLED"];
+
 export async function updateBooking(
   venueId: string,
   id: string,
@@ -402,12 +418,39 @@ export async function updateBooking(
       occasion: data.occasion ?? undefined,
       notes: data.notes ?? undefined,
       internalNotes: data.internalNotes ?? undefined,
-      arrivedAt: data.status === "ARRIVED" ? new Date() : undefined,
-      seatedAt: data.status === "SEATED" ? new Date() : undefined,
-      closedAt:
-        data.status === "COMPLETED" || data.status === "NO_SHOW" || data.status === "CANCELLED"
-          ? new Date()
-          : undefined,
+      /*
+        Gli orari del servizio seguono lo stato, in **entrambe** le direzioni.
+
+        Prima andavano solo avanti: passando a `SEATED` si scriveva `seatedAt`,
+        ma tornando indietro non si cancellava. Una prenotazione segnata seduta
+        per sbaglio e riportata a «confermata» conservava l'istante in cui si
+        era seduta — e quell'istante non è un dettaglio: `rotazione.ts` calcola
+        da lì la durata che il prodotto chiama **misurata**, e la sala viva ci
+        dice «seduto da 45 minuti».
+        
+        Cioè un errore di un secondo in sala inquinava per sempre la statistica
+        su cui si fonda la previsione di liberazione. È il difetto peggiore fra
+        quelli che si vedono meno.
+
+        Adesso: quando lo stato cambia, ogni orario è coerente con lo stato
+        nuovo. Chi non è mai arrivato non ha un'ora d'arrivo; un conto chiuso
+        conserva arrivo e accomodamento, perché quella cena è avvenuta.
+
+        `existing.X ?? new Date()` e non `new Date()`: passando da «arrivato» a
+        «seduto» l'ora dell'arrivo resta quella vera, non si sposta a adesso.
+
+        Gli orari si toccano **solo** se lo stato cambia davvero: modificare le
+        note di una prenotazione seduta non deve riscriverne l'orologio.
+      */
+      ...(data.status && data.status !== existing.status
+        ? {
+            arrivedAt: ARRIVATO_DA.includes(data.status)
+              ? existing.arrivedAt ?? new Date()
+              : null,
+            seatedAt: SEDUTO_DA.includes(data.status) ? existing.seatedAt ?? new Date() : null,
+            closedAt: CHIUSO_DA.includes(data.status) ? existing.closedAt ?? new Date() : null,
+          }
+        : {}),
     },
     include: { guest: true, table: true },
   });
