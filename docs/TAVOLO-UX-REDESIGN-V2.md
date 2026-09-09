@@ -569,6 +569,45 @@ se il dato per calcolarlo c'è; «riempire un giorno debole» richiede giorni
 misurati a sufficienza, altrimenti non compare.
 **Target:** 8,5.
 
+**Fatto il 9 settembre.** Cinque intenti, e nessuno compare senza il suo
+numero:
+
+| Intento | Compare se | Dove porta |
+|---|---|---|
+| **Riempire il ‹giorno›** | un giorno misurato almeno `GIORNI_MINIMI` volte e almeno 10 punti di occupazione sotto la media **degli altri** | il modulo del coupon, già limitato a quel giorno |
+| **Far tornare chi non viene più** | almeno 3 persone «inattive» con email **e** consenso | la campagna con `?segmento=inattivi` |
+| **Premiare i clienti abituali** | almeno 3 «abituali» scrivibili | la campagna con `?segmento=abituali` |
+| **Riempire ‹la serata›** | un'esperienza pubblicata e non passata | la campagna col titolo già scritto |
+| **Scrivere a mano a chi voglio** | sempre | la procedura, che dice quante persone sono prima di inviare |
+
+Sono cinque e non sei: **«recuperare una recensione» non è stato costruito**,
+perché non esiste un segmento «clienti contenti». Il sondaggio sa chi ha dato
+9 o 10, i collegamenti alle recensioni sanno quanti clic hanno raccolto, ma le
+due cose non si incontrano su una persona: un intento che promette «scrivi a
+chi ti ha dato 10» richiederebbe un dato che non abbiamo. È esattamente il
+vincolo del §38 applicato a se stesso.
+
+Nessun dato nuovo per gli altri quattro: la debolezza di un giorno la calcola
+già la previsione, i segmenti li calcolano già le campagne, e il segmento
+viaggia nell'indirizzo come faceva già Analytics.
+
+**Provato sui dati veri, e i cancelli hanno funzionato:** sulla demo compaiono
+tre intenti su cinque. «Riempire un giorno» non c'è perché la settimana è
+piatta — dal 27% al 38%, e il più vuoto sta solo 3 punti sotto la media — e
+«far tornare gli inattivi» non c'è perché di inattivi non ce n'è nessuno. Su un
+locale appena aperto rimane il solo «scrivere a mano», che è la verità.
+
+**Due dettagli venuti fuori costruendolo.** La media di confronto è quella
+**degli altri** giorni, non di tutta la settimana: includendo il giorno debole,
+il giorno debole abbassa la propria asta. E il modulo del coupon adesso si apre
+dall'indirizzo (`?nuovo=1&giorno=2`), con la stessa disciplina delle viste di
+Analytics e delle parti delle Impostazioni — un numero inventato nell'indirizzo
+non seleziona niente.
+
+**Un difetto trovato guardando:** con il martedì già selezionato, la frase
+sotto i giorni continuava a dire «nessuno selezionato: vale tutti i giorni»,
+cioè il contrario di quello che si vedeva. Adesso dice quali giorni vale.
+
 ### Automazioni · `/marketing/automations`
 **Cosa è già giusto, e il §41 lo conferma:** tre ricette, non un costruttore di
 flussi. E le cinque difese contro l'invio di massa scritte nella schermata.

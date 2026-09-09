@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ChevronRight, Gift, Megaphone, QrCode as QrCodeIcon, Repeat, Ticket, Wifi } from "lucide-react";
+import { ArrowRight, ChevronRight, Gift, Megaphone, QrCode as QrCodeIcon, Repeat, Target, Ticket, Wifi } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { listAutomations } from "@/server/automations/engine";
 import { debitoGiftCards } from "@/server/gift-cards";
 import { getWifiStats } from "@/server/wifi";
+import { intentiDisponibili } from "@/server/marketing/intenti";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -67,12 +68,13 @@ export default async function MarketingPage() {
    * un cruscotto. Tutti questi dati esistono già — nessuna colonna nuova,
    * nessuna tabella nuova: si leggono e si scrivono sulla card.
    */
-  const [campagne, automazioni, coupon, gift, wifi] = await Promise.all([
+  const [campagne, automazioni, coupon, gift, wifi, intenti] = await Promise.all([
     db.campaign.count({ where: { venueId: ctx.venueId, status: { in: ["SENT", "SCHEDULED", "SENDING"] } } }),
     listAutomations(ctx.venueId),
     db.coupon.count({ where: { venueId: ctx.venueId, status: "ACTIVE" } }),
     debitoGiftCards(ctx.venueId),
     getWifiStats(ctx.venueId),
+    intentiDisponibili(ctx.venueId),
   ]);
 
   const attive = automazioni.filter((a) => a.active).length;
@@ -101,9 +103,48 @@ export default async function MarketingPage() {
         <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing</p>
         <h1 className="text-display text-3xl">Marketing</h1>
         <p className="text-sm text-muted-foreground">
-          Gestisci campagne, strumenti promozionali e contenuti per raggiungere i tuoi ospiti.
+          Cosa vuoi ottenere. Gli strumenti stanno sotto, con i loro numeri.
         </p>
       </header>
+
+      {/*
+        La prima domanda è «cosa vuoi ottenere», non «quale strumento apro»
+        (§38).
+
+        Questa pagina era un indice di funzioni: campagne, automazioni,
+        coupon, gift card, Wi-Fi, QR. Chi ci arriva sapendo già cosa cliccare
+        non ha bisogno di un indice; chi non lo sa non trova il suo problema
+        in un elenco di strumenti, perché il suo problema è «il martedì è
+        vuoto» e non «coupon».
+
+        Ogni intento porta **il numero che lo giustifica** e la base su cui è
+        misurato, e compare solo se quel numero si può calcolare: la regola sta
+        in `server/marketing/intenti.ts`. Su un locale appena aperto qui
+        rimane un solo intento — scrivere a mano — che è la verità.
+      */}
+      <section className="fissa" aria-label="Cosa vuoi ottenere">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {intenti.map((i) => (
+            <Link
+              key={i.chiave}
+              href={i.href}
+              className="riquadro group flex flex-col gap-1 p-3 transition-colors hover:border-gilt-dark/50"
+            >
+              <span className="flex items-center gap-1.5 text-accent">
+                <Target className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="t-titolo-scheda">{i.titolo}</span>
+              </span>
+              <span className="t-nota">{i.perche}</span>
+              <span className="mt-auto inline-flex items-center gap-1 pt-1 text-sm font-medium">
+                {i.azione}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <h2 className="fissa t-etichetta">Gli strumenti</h2>
 
       {/* Cinque card: su schermo largo ci stanno, sul telefono scorrono
           dentro questa regione invece di allungare la pagina. */}
