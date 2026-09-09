@@ -153,7 +153,7 @@ export function BookingsPageClient({
             type="button"
             onClick={() => changeView("elenco")}
             className={cn(
-              "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
+              "tocco-comodo flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
               view === "elenco" ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
             )}
           >
@@ -163,7 +163,7 @@ export function BookingsPageClient({
             type="button"
             onClick={() => changeView("mappa")}
             className={cn(
-              "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
+              "tocco-comodo flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
               view === "mappa" ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
             )}
           >
@@ -173,7 +173,7 @@ export function BookingsPageClient({
             type="button"
             onClick={() => changeView("settimana")}
             className={cn(
-              "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
+              "tocco-comodo flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
               view === "settimana" ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
             )}
           >

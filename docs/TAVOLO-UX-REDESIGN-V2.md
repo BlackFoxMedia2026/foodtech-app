@@ -117,7 +117,7 @@ modo uniforme.
 | **Coerenza del linguaggio** | 6,0 | 9,0 | Un nome per funzione su tutti i device (buono); due vocabolari di stato per i tavoli (grave) |
 | **Architettura dell'informazione** | 5,5 | 9,0 | «Sala» porta all'editor. Il dettaglio è una pagina. L'intelligenza è sepolta |
 | **Velocità operativa (click)** | 5,5 | 8,5 | Nessun undo, quasi nessun optimistic, azioni di riga assenti nelle liste |
-| **Tablet** | 3,0 | 8,0 | Non esiste una strategia: 12 usi di `xl:` in tutto il prodotto |
+| **Tablet** | 3,0 → **6,5** | 8,0 | Rivisto dopo la misura: il layout tiene (zero scorrimenti a 1024), i bersagli di tocco erano il difetto vero e sono corretti. Restano le viste affiancate |
 | **Complessivo** | **6,4** | **8,6** | |
 
 **Come ho pesato:** fiducia nei dati e non-scorrimento contano doppio, perché
@@ -751,8 +751,82 @@ chiudere, che è il gesto della preparazione (nove prenotazioni da controllare).
 
 # 8. Tablet Strategy (768–1279)
 
-Oggi non esiste: 12 usi di `xl:` in tutto il prodotto. È la lacuna più grande
-del redesign, e probabilmente il device principale al leggio.
+> **Rivisto il 9 settembre, dopo aver misurato.** Il giudizio iniziale — «non
+> esiste una strategia tablet», 3/10 — veniva dal conteggio dei breakpoint
+> (`xl:` usato 12 volte), che è prova debole. Misurando un iPad a 1024×1366 il
+> quadro è diverso, e in due direzioni opposte.
+>
+> **Meglio del previsto sul layout:** *nessuna* pagina scorre a 1024×1366, e
+> Servizio a quella larghezza mostra già due colonne (`md:grid-cols-2`), che è
+> esattamente la risposta che questo documento proponeva. La coppia
+> «prenotazioni + sala» esiste già come selettore Elenco/Mappa/Settimana.
+>
+> **Peggio del previsto sul tocco:** dieci pagine su dodici avevano controlli
+> sotto i 36 px, e non erano decorazioni — erano «Arrivato», «No-show»,
+> «Accomoda», «Avvisa». Quattordici su Servizio, trenta su Prenotazioni. I
+> gesti del servizio, sul dispositivo più probabile al leggio, con un dito
+> invece di un mouse.
+>
+> **Quindi la priorità del tablet cambia:** prima i bersagli di tocco (fatto,
+> vedi sotto), poi le viste affiancate — che valgono ancora, ma valgono meno di
+> un pulsante che si prende al primo colpo.
+
+## Cosa è stato fatto (Fase 4)
+
+`size="sm"` è passato da 32 a 36 pixel. Trentasei e non quarantaquattro di
+proposito: in una lista di prenotazioni ogni pixel di altezza è una riga in
+meno, e la densità operativa serve. I quarantaquattro si prendono **senza
+allargare il pulsante**, con `.tocco-comodo`: un riquadro invisibile di quattro
+pixel sopra e sotto estende l'area sensibile.
+
+Solo in verticale, e la ragione è concreta: questi pulsanti stanno in fila
+orizzontale, e estendendo anche di lato due bersagli adiacenti si
+sovrapporrebbero — il tocco finirebbe sul vicino, che è **peggio** di un
+bersaglio piccolo.
+
+**Esito: da dieci pagine con problemi a una**, misurato a 1024×1366, 390×844 e
+1440×900. Servizio, Sala, Attesa, Prenotazioni, Ospiti, Carta, Analisi,
+Impostazioni, Camerieri, Marketing: pulite a tutte e tre le misure.
+
+## Due falsi positivi della sonda, e cosa insegnano
+
+Misurare male produce difetti che non esistono, e correggerli peggiora il
+prodotto. Due casi, entrambi trovati verificando prima di intervenire:
+
+**Gli interruttori della carta.** Segnalati come bersagli da 24 px. In realtà
+ogni interruttore sta dentro una `label` collegata alta 44: il bersaglio vero è
+l'etichetta, ed era già giusto. Corretta la sonda, non il codice.
+
+**I tavoli sulla piantina.** Diciassette «difetti» a 390 px. Ma un tavolo su una
+mappa non è un pulsante: è un **oggetto spaziale**, e la sua dimensione è la
+geometria della sala. Un tavolo da due posti non può essere alto 44 px perché
+la sala non è disegnata a misura di dito — si tocca dopo aver ingrandito, e lo
+zoom c'è. Ora portano `data-oggetto-mappa`, che è un marcatore utile a chiunque
+misuri.
+
+**E uno che resta, dichiarato:** «Crea la tua sala» è un collegamento **dentro
+una frase** («Nessuna piantina caricata. Crea la tua sala»). WCAG 2.5.8 esenta
+esplicitamente il testo in linea dalla regola sulla dimensione del bersaglio, e
+ingrandirlo spezzerebbe la riga. Resta com'è, e resta scritto qui perché la
+prossima sonda non lo segnali come una dimenticanza.
+
+## Le viste affiancate, che restano da fare
+
+| Compito | Sinistra | Destra | Stato |
+|---|---|---|---|
+| Accogliere | Prenotazioni del giorno | Sala viva | esiste come **selettore**, non affiancate |
+| Gestire la coda | Attesa | Sala viva | **da fare** — è la coppia che manca |
+| Rispondere al telefono | Nuova prenotazione | Disponibilità | esiste dentro il modulo |
+
+**Perché la sala viva sta a destra:** è la superficie su cui si agisce, e la
+mano destra su un tablet appoggiato è quella che tocca.
+
+**Preparato in questa fase:** la sonda del tempo reale è ora **una per pagina**
+e non una per componente. Due viste affiancate che chiedono «è cambiato
+qualcosa?» facevano due richieste ogni cinque secondi per una risposta
+identica; adesso una sola interrogazione si distribuisce a chi si è iscritto.
+Affiancare due viste costa quanto tenerne una — che è il prerequisito perché
+affiancarle sia una buona idea.
 
 **Tre viste affiancate, una per compito**
 

@@ -128,6 +128,18 @@ export const TableNode = memo(function TableNode({
 
   return (
     <div
+      /*
+        Questo è un **oggetto spaziale**, non un controllo: la sua dimensione è
+        la geometria della sala, non una scelta di interfaccia. Un tavolo da due
+        posti non può essere alto quarantaquattro pixel perché la sala non è
+        disegnata a misura di dito — si tocca dopo aver ingrandito, e lo zoom
+        c'è.
+
+        Il marcatore serve a chi misura: una sonda che cerca bersagli di tocco
+        troppo piccoli deve saltare questi, altrimenti segnala diciassette
+        difetti che non sono difetti.
+      */
+      data-oggetto-mappa=""
       role="button"
       tabIndex={0}
       onPointerDown={(e) => {

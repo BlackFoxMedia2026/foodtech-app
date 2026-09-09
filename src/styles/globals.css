@@ -379,6 +379,36 @@
     opacity: 1;
     transform: scale(1);
   }
+  /*
+    Area di tocco comoda, senza ingrandire il pulsante.
+
+    Su un tablet al leggio si tocca con un dito: le linee guida chiedono
+    quarantaquattro pixel, e un pulsante di trentasei in una riga densa non li
+    ha. Ingrandire il pulsante costerebbe righe — in una lista di prenotazioni
+    ogni pixel di altezza è una prenotazione in meno visibile.
+
+    Quindi si estende **solo l'area sensibile**, e solo in verticale: un
+    riquadro invisibile di quattro pixel sopra e sotto porta il bersaglio a
+    quarantaquattro. Solo in verticale perché questi pulsanti stanno in fila
+    orizzontale: estendendo anche di lato, due bersagli adiacenti si
+    sovrapporrebbero e il tocco finirebbe sul vicino — che è peggio di un
+    bersaglio piccolo.
+
+    Da usare dove si agisce durante il servizio: Servizio, Attesa, la lista
+    delle prenotazioni. Non nelle impostazioni, dove non c'è fretta.
+  */
+  .tocco-comodo {
+    @apply relative;
+  }
+  .tocco-comodo::after {
+    content: "";
+    position: absolute;
+    inset: -4px 0;
+    /* Non deve coprire il contenuto del pulsante né rubare il puntatore al
+       testo: è solo un'estensione del bersaglio. */
+    pointer-events: auto;
+  }
+
   /* L'avviso temporaneo: sale di poco e non rimbalza. In sala un movimento
      vistoso attira l'occhio via da quello che si sta facendo. */
   .avviso {

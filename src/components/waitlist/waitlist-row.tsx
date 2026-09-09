@@ -161,6 +161,7 @@ export function WaitlistRow({
           <div className="flex flex-wrap items-center gap-2">
             {entry.status === "WAITING" && (
               <Button
+                className="tocco-comodo"
                 size="sm"
                 variant="outline"
                 disabled={busy !== null}
@@ -173,6 +174,7 @@ export function WaitlistRow({
 
             {entry.status === "NOTIFIED" && (
               <Button
+                className="tocco-comodo"
                 size="sm"
                 variant="outline"
                 disabled={busy !== null}
@@ -192,6 +194,7 @@ export function WaitlistRow({
             */}
             <Button
               size="sm"
+              className="tocco-comodo"
               variant="accent"
               disabled={busy !== null}
               /*
@@ -210,6 +213,7 @@ export function WaitlistRow({
 
             <Button
               size="sm"
+              className="tocco-comodo"
               variant="ghost"
               disabled={busy !== null}
               aria-label={`Togli ${entry.guestName} dalla lista`}

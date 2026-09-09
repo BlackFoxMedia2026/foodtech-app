@@ -12,6 +12,91 @@ const CONTROLLO_MS = 5_000;
 const ATTESA_MINIMA_MS = 5_000;
 const ATTESA_MASSIMA_MS = 60_000;
 
+/* -------------------------------------------------------------------------- */
+/*  La sonda condivisa                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Una sola sonda per pagina, non una per componente.
+ *
+ * Da quando la lista d'attesa e la sala viva stanno affiancate sullo stesso
+ * schermo, due componenti chiedono la stessa cosa: due richieste ogni cinque
+ * secondi per una risposta identica. Il registro qui sotto tiene una sola
+ * interrogazione e la distribuisce a chi si è iscritto — così affiancare due
+ * viste costa quanto tenerne una.
+ *
+ * Sta a livello di modulo e non in un contesto React di proposito: non
+ * richiede di avvolgere niente, e un componente che finisce in una pagina
+ * dove non c'è nessun altro funziona esattamente allo stesso modo.
+ */
+type Iscritto = () => void | Promise<void>;
+
+const iscritti = new Set<Iscritto>();
+let versione: string | null = null;
+let timer: ReturnType<typeof setTimeout> | null = null;
+let attesa = ATTESA_MINIMA_MS;
+let inVolo = false;
+
+async function controlla() {
+  timer = null;
+  if (iscritti.size === 0) return;
+
+  if (document.visibilityState !== "visible") {
+    // Un tablet nel cassetto non interroga il server.
+    programma(CONTROLLO_MS);
+    return;
+  }
+  if (inVolo) {
+    programma(CONTROLLO_MS);
+    return;
+  }
+
+  inVolo = true;
+  try {
+    const res = await fetch("/api/servizio-versione", { cache: "no-store" });
+    if (res.ok) {
+      const { v } = (await res.json()) as { v: string };
+      attesa = ATTESA_MINIMA_MS;
+      // Il primo giro registra solo la versione: la fotografia è quella che il
+      // server ha già reso, e riscaricarla subito sarebbe una richiesta
+      // buttata.
+      if (versione === null) versione = v;
+      else if (v !== versione) {
+        versione = v;
+        await Promise.all([...iscritti].map((f) => f()));
+      }
+    } else {
+      attesa = Math.min(ATTESA_MASSIMA_MS, attesa * 2);
+    }
+  } catch {
+    attesa = Math.min(ATTESA_MASSIMA_MS, attesa * 2);
+  } finally {
+    inVolo = false;
+  }
+
+  programma(attesa);
+}
+
+function programma(ms: number) {
+  if (timer !== null || iscritti.size === 0) return;
+  timer = setTimeout(controlla, ms);
+}
+
+function fermaSeNessuno() {
+  if (iscritti.size === 0 && timer !== null) {
+    clearTimeout(timer);
+    timer = null;
+    // La versione si azzera: alla prossima iscrizione si riparte da quella del
+    // server, senza scaricare una fotografia che è già sullo schermo.
+    versione = null;
+    attesa = ATTESA_MINIMA_MS;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Il gancio                                                                 */
+/* -------------------------------------------------------------------------- */
+
 /**
  * Tiene una schermata di servizio aggiornata, chiedendo poco e spesso.
  *
@@ -27,12 +112,14 @@ const ATTESA_MASSIMA_MS = 60_000;
  * sono cinque secondi di ritardo invece di trenta, e complessivamente meno
  * lavoro di prima.
  *
- * Tre cose che questo gancio fa e che vanno tenute:
+ * Quattro cose che questo gancio fa e che vanno tenute:
  *
- * - **Non chiede niente a scheda nascosta.** Un tablet nel cassetto non deve
- *   interrogare il server: si riparte, con un aggiornamento immediato, quando
- *   la scheda torna visibile — perché il servizio è andato avanti senza di noi.
- * - **Una richiesta alla volta.** Se il caricamento è lento, il controllo
+ * - **Una sonda per pagina.** Due componenti affiancati non fanno due
+ *   richieste: vedi il registro qui sopra.
+ * - **Non chiede niente a scheda nascosta.** Si riparte, con un aggiornamento
+ *   immediato, quando la scheda torna visibile — perché il servizio è andato
+ *   avanti senza di noi.
+ * - **Una richiesta alla volta per componente.** Se il caricamento è lento, il
  *   successivo non parte: due fotografie in volo tornano in ordine casuale, e
  *   la più vecchia può sovrascrivere la più nuova.
  * - **Se la rete salta, la fotografia resta.** Non si svuota la schermata: si
@@ -43,12 +130,10 @@ export function useServizioVivo(scarica: () => Promise<void>) {
   const [ultimo, setUltimo] = useState<Date | null>(null);
   const [aggiornando, setAggiornando] = useState(false);
 
-  const versione = useRef<string | null>(null);
   const inCorso = useRef(false);
-  const attesa = useRef(ATTESA_MINIMA_MS);
   // `scarica` cambia a ogni rendering nei componenti che la costruiscono con
-  // useCallback su uno stato: tenerla in un riferimento evita di riavviare il
-  // temporizzatore a ogni battito.
+  // useCallback su uno stato: tenerla in un riferimento evita di riscrivere
+  // l'iscrizione a ogni battito.
   const scaricaRef = useRef(scarica);
   scaricaRef.current = scarica;
 
@@ -66,41 +151,12 @@ export function useServizioVivo(scarica: () => Promise<void>) {
   }, []);
 
   useEffect(() => {
-    let vivo = true;
-    let timer: ReturnType<typeof setTimeout>;
-
-    async function controlla() {
-      if (!vivo) return;
-      if (document.visibilityState !== "visible") {
-        timer = setTimeout(controlla, CONTROLLO_MS);
-        return;
-      }
-      try {
-        const res = await fetch("/api/servizio-versione", { cache: "no-store" });
-        if (res.ok) {
-          const { v } = (await res.json()) as { v: string };
-          attesa.current = ATTESA_MINIMA_MS;
-          // Il primo giro registra solo la versione: la fotografia è quella
-          // che il server ha già reso, e riscaricarla subito sarebbe una
-          // richiesta buttata.
-          if (versione.current === null) versione.current = v;
-          else if (v !== versione.current) {
-            versione.current = v;
-            await aggiornaOra();
-          }
-        } else {
-          attesa.current = Math.min(ATTESA_MASSIMA_MS, attesa.current * 2);
-        }
-      } catch {
-        attesa.current = Math.min(ATTESA_MASSIMA_MS, attesa.current * 2);
-      }
-      if (vivo) timer = setTimeout(controlla, attesa.current);
-    }
-
-    timer = setTimeout(controlla, CONTROLLO_MS);
+    const mio = () => aggiornaOra();
+    iscritti.add(mio);
+    programma(CONTROLLO_MS);
     return () => {
-      vivo = false;
-      clearTimeout(timer);
+      iscritti.delete(mio);
+      fermaSeNessuno();
     };
   }, [aggiornaOra]);
 
@@ -109,7 +165,7 @@ export function useServizioVivo(scarica: () => Promise<void>) {
   useEffect(() => {
     async function onVisible() {
       if (document.visibilityState !== "visible") return;
-      versione.current = null;
+      versione = null;
       await aggiornaOra();
     }
     document.addEventListener("visibilitychange", onVisible);

@@ -212,10 +212,10 @@ export function RoomBuilderCanvas({
 
       <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1 riquadro bg-card/90 p-1 text-card-foreground shadow-lg backdrop-blur-sm">
         <div className="pointer-events-auto flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
-          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={builder.undo} disabled={!builder.canUndo} aria-label="Annulla">
+          <Button type="button" size="icon" variant="ghost" className="tocco-comodo h-9 w-9" onClick={builder.undo} disabled={!builder.canUndo} aria-label="Annulla">
             <Undo2 className="h-4 w-4" />
           </Button>
-          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={builder.redo} disabled={!builder.canRedo} aria-label="Ripeti">
+          <Button type="button" size="icon" variant="ghost" className="tocco-comodo h-9 w-9" onClick={builder.redo} disabled={!builder.canRedo} aria-label="Ripeti">
             <Redo2 className="h-4 w-4" />
           </Button>
           <div className="mx-1 h-4 w-px bg-border" />
@@ -223,28 +223,28 @@ export function RoomBuilderCanvas({
             type="button"
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="tocco-comodo h-9 w-9"
             onClick={() => builder.stepZoom(-1)}
             disabled={builder.camera.zoom <= MIN_ZOOM}
             aria-label="Riduci zoom"
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <button type="button" className="w-10 text-center text-xs text-muted-foreground hover:text-foreground" onClick={() => builder.reset100()}>
+          <button type="button" className="tocco-comodo h-9 w-10 text-center text-xs text-muted-foreground hover:text-foreground" onClick={() => builder.reset100()}>
             {Math.round(builder.camera.zoom * 100)}%
           </button>
           <Button
             type="button"
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="tocco-comodo h-9 w-9"
             onClick={() => builder.stepZoom(1)}
             disabled={builder.camera.zoom >= MAX_ZOOM}
             aria-label="Aumenta zoom"
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
-          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => builder.fitRoom(true)} aria-label="Adatta alla sala">
+          <Button type="button" size="icon" variant="ghost" className="tocco-comodo h-9 w-9" onClick={() => builder.fitRoom(true)} aria-label="Adatta alla sala">
             <Maximize2 className="h-4 w-4" />
           </Button>
         </div>

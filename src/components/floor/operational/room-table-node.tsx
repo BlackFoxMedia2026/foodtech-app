@@ -216,6 +216,9 @@ export const RoomTableNode = memo(
     return (
       <div
         ref={ref}
+        /* Oggetto spaziale, non controllo: la sua dimensione è la geometria
+           della sala. Vedi la nota in `floor/table-node.tsx`. */
+        data-oggetto-mappa=""
         role={mode === "READONLY" ? undefined : "button"}
         tabIndex={mode === "READONLY" ? undefined : 0}
         // Always stop here, regardless of mode: OperationalRoomView's

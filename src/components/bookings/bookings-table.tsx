@@ -166,7 +166,7 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="sm" className="tocco-comodo"
                             aria-label={`Cambia lo stato di ${name}`}
                             title="Cambia stato"
                           >
@@ -196,7 +196,7 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
                       Indietro fa quello che deve. È la **lista** che apre un
                       pannello invece di navigare.
                     */}
-                    <Button variant="ghost" size="sm" onClick={() => setAperta(b)}>
+                    <Button variant="ghost" size="sm" className="tocco-comodo" onClick={() => setAperta(b)}>
                       Apri
                     </Button>
                   </div>
@@ -263,11 +263,11 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
               resto — modifica, tavolo, storia. Il pannello risponde a «chi è e
               cosa devo sapere», che è la domanda che si fa scorrendo la lista.
             */}
-            <Button asChild variant="accent" size="sm">
+            <Button asChild variant="accent" size="sm" className="tocco-comodo">
               <Link href={`/bookings/${aperta.id}`}>Apri la scheda</Link>
             </Button>
             {aperta.guest && (
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="sm" className="tocco-comodo">
                 <Link href={`/guests/${aperta.guest.id}`}>Scheda ospite</Link>
               </Button>
             )}

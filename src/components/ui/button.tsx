@@ -22,9 +22,24 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         link: "underline-offset-4 hover:underline",
       },
+      /*
+        Le altezze, e perché `sm` è passato da 32 a 36 pixel.
+
+        Misurando un iPad a 1024×1366 sono usciti bersagli sotto i 36 px su
+        dieci pagine su dodici — e non erano decorazioni: erano «Arrivato»,
+        «No-show», «Accomoda», «Avvisa». I gesti del servizio, sul dispositivo
+        più probabile al leggio, con un dito invece di un mouse.
+
+        Trentasei non sono i quarantaquattro che le linee guida chiedono, e non
+        lo sono di proposito: in una lista di prenotazioni ogni pixel di
+        altezza è una riga in meno, e la densità operativa serve. I
+        quarantaquattro si prendono **senza allargare il pulsante**, con
+        `.tocco-comodo` (vedi globals.css): l'area sensibile si estende in
+        verticale, il pulsante resta quello che si vede.
+      */
       size: {
         default: "h-9 px-4 py-2",
-        sm: "h-8 px-3 text-xs",
+        sm: "h-9 px-3 text-xs",
         lg: "h-11 px-6",
         icon: "h-9 w-9",
       },

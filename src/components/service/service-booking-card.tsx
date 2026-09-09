@@ -181,7 +181,7 @@ export function ServiceBookingCard({
             {(booking.status === "CONFIRMED" || booking.status === "PENDING") && (
               <>
                 <Button
-                  size="sm"
+                  size="sm" className="tocco-comodo"
                   variant="accent"
                   disabled={busy !== null}
                   onClick={() => cambiaStato("arrived", "ARRIVED")}
@@ -191,7 +191,7 @@ export function ServiceBookingCard({
                 </Button>
                 {booking.lateBy > 0 && (
                   <Button
-                    size="sm"
+                    size="sm" className="tocco-comodo"
                     variant="ghost"
                     disabled={busy !== null}
                     onClick={() => cambiaStato("noshow", "NO_SHOW")}
@@ -204,7 +204,7 @@ export function ServiceBookingCard({
             )}
 
             {booking.status === "ARRIVED" && (
-              <Button size="sm" variant="accent" disabled={busy !== null} onClick={accomoda}>
+              <Button size="sm" className="tocco-comodo" variant="accent" disabled={busy !== null} onClick={accomoda}>
                 <UtensilsCrossed className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                 {busy === "seat" ? "…" : "Accomoda"}
               </Button>
@@ -212,7 +212,7 @@ export function ServiceBookingCard({
 
             {booking.status === "SEATED" && (
               <Button
-                size="sm"
+                size="sm" className="tocco-comodo"
                 variant="outline"
                 disabled={busy !== null}
                 onClick={() => cambiaStato("done", "COMPLETED")}
