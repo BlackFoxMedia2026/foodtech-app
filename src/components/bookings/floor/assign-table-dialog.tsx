@@ -136,7 +136,7 @@ export function AssignTableDialog({
           <div className="space-y-4">
             {tablesByRoom.map((room) => (
               <div key={room.roomId} className="space-y-1.5">
-                <p className="t-etichetta font-medium">{room.roomName}</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{room.roomName}</p>
                 <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                   {room.tables.map((t) => {
                     const compatible = t.seats >= booking.partySize;

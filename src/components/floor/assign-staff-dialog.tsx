@@ -161,7 +161,7 @@ export function AssignStaffDialog({
             const isExpanded = expandedRole === role;
             return (
               <div key={role} className="space-y-2 border-b border-border pb-4 last:border-b-0 last:pb-0">
-                <p className="flex items-center gap-1.5 t-etichetta font-medium">
+                <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   <Icon className="h-3.5 w-3.5" />
                   {TABLE_ROLE_LABELS[role]}
                 </p>
