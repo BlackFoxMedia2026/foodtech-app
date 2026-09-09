@@ -24,7 +24,19 @@ import { defineConfig, devices } from "@playwright/test";
  *   lavorando non se lo vede spegnere sotto le mani.
  */
 
-const PORTA = 3000;
+/**
+ * La porta, con una via d'uscita.
+ *
+ * Resta 3000 — è quella del `npm run dev` di tutti i giorni, e riusare il
+ * server già acceso è una delle scelte di questo file. Ma su una macchina dove
+ * gira anche un altro progetto la 3000 può essere occupata da lui: allora
+ * `reuseExistingServer` si attacca a **quel** server, e la suite fallisce
+ * nell'accesso con un errore che parla di JSON («Unexpected token '<'»)
+ * invece di dire la verità, cioè che sta parlando con un'altra applicazione.
+ *
+ * `PORTA_E2E=3210 npx playwright test` la sposta senza toccare niente.
+ */
+const PORTA = Number(process.env.PORTA_E2E ?? 3000);
 export const BASE_URL = `http://localhost:${PORTA}`;
 
 /**
@@ -73,7 +85,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev",
+    command: `npm run dev -- -p ${PORTA}`,
     url: BASE_URL,
     reuseExistingServer: true,
     timeout: 180_000,

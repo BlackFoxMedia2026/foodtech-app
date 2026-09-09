@@ -585,6 +585,20 @@ adesso, prima di poter essere accesa.
 stato) con azioni rapide (pausa, duplica, archivia).
 **Target:** 8.
 
+**Fatto il 9 settembre.** Righe. Nove coupon in schede facevano **2.192 px** di
+scorrimento interno per dire nove volte le stesse sei cose, con ogni scheda
+alta 450 px di cui metà vuota: adesso **951 px**, e a schermo se ne vedono
+undici invece di sei. Le condizioni — minimo di conto, giorni, scadenza,
+riservato a — stanno nella riga sotto, in grigio: sono il motivo per cui un
+coupon *non* vale oggi, quindi non possono sparire, ma non sono la cosa che si
+cerca arrivando qui.
+
+Da `md` la riga è una **griglia** e non un flex che va a capo: con le colonne
+libere «15% di sconto» cadeva a un'ascissa diversa su ogni riga, e undici righe
+disallineate si leggono una per una invece che per colonna. E «Massimo 1 volta
+per cliente» è diventato «1 per cliente»: ripetuto undici volte, era
+arredamento.
+
 ### Gift card · `/marketing/gift-cards`
 **Cosa è già giusto, e va reso più forte:** «i 307 € ancora da spendere non sono
 un incasso: sono cene già pagate e non ancora servite». È un debito, e il
@@ -593,6 +607,13 @@ prodotto lo tiene fuori dagli incassi.
 onorare** — e «da onorare» tipograficamente il più forte, perché è l'unico che
 è un impegno.
 **Target:** 8,5.
+
+**Fatto il 9 settembre.** «Ancora da spendere» prende due colonne e un corpo
+da `text-4xl`; «vendute in tutto» e «già usate» restano numeri normali, in
+grigio. Erano tre riquadri identici: la stessa forma per un debito e per due
+consuntivi. Sotto il numero grande c'è scritto cos'è — «cene già pagate, non
+ancora servite» — così l'informazione non dipende dal fatto che uno legga la
+nota in fondo alla pagina.
 
 ### Wi-Fi contatti · `/marketing/wifi`
 **Già giusto:** «il numero che dice se questa cosa serve è *poi venuti a
@@ -620,6 +641,25 @@ stato — e la scheda solo per l'evento in corso o il prossimo.
 **Onestà da conservare:** i biglietti non si vendono da Tavolo, e la pagina lo
 dice. Non va aggiunto un «venduti» che nessuno può calcolare.
 **Target:** 8.
+
+**Fatto il 9 settembre.** Una scheda sola, per la serata in corso o la prima
+che arriva; tutto il resto sono righe. Due esperienze occupavano due riquadri
+da 900 px di cui 600 vuoti — la griglia allungava le schede fino all'altezza
+della più alta — e per sapere quale fosse la prossima si leggevano le date una
+per una.
+
+**Una cosa che il documento non aveva visto:** l'elenco arriva ordinato per
+data **crescente**, giusto per un archivio e sbagliato per un programma. La
+prima cosa che si leggeva era la serata più vecchia. Adesso: la prossima in
+cima, poi «in programma», e le passate in fondo dalla più recente.
+
+Il «venduti» resta condizionato a un numero maggiore di zero, come prima: non
+è stato aggiunto niente che nessuno può calcolare.
+
+**Nota di metodo:** la divisione fra passato e futuro la decide **il server** e
+non il browser (`adesso` arriva come proprietà). Calcolandola nei due posti,
+il confine può cadere in due punti diversi fra il render del server e quello
+del client, e React lo segnala come disallineamento di idratazione.
 
 ### Pagamenti · `/payments`
 **La schermata più onesta del prodotto:** non c'è integrazione d'incasso, quindi
