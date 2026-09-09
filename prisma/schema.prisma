@@ -14,6 +14,14 @@ model User {
   passwordHash       String?
   image              String?
   createdAt          DateTime            @default(now())
+  /// Istante da cui le sessioni **emesse prima** non valgono più.
+  ///
+  /// Le sessioni sono token firmati, non righe: non si possono cancellare una
+  /// per una. Questa colonna è la revoca — si scrive «adesso» e tutti i token
+  /// emessi prima di adesso, su qualunque dispositivo, smettono di funzionare
+  /// al primo controllo. Serve nei due momenti in cui serve davvero: un
+  /// tablet perso in sala, e una persona che non lavora più qui.
+  sessionsRevokedAt  DateTime?
   totpEnabled        Boolean             @default(false)
   totpSecret         String?
   recoveryCodesHash  String[]            @default([])
