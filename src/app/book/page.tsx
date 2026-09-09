@@ -11,9 +11,18 @@ export default async function BookPage(props: {
   // dentro l'email. La verifica che sia di questo locale la fa la route.
   const campaignId = props.searchParams?.c;
 
+  /*
+    Si accetta l'identificativo **o lo slug**.
+
+    I link che il prodotto genera da solo — il codice da incorporare, le
+    campagne, le automazioni — portano l'identificativo, e restano com'erano.
+    Ma un ristoratore che vuole mettere il link su Instagram scrive
+    «…/book?venue=aurora-bistrot», non un codice di venticinque caratteri
+    senza senso: e prima quel link mostrava «Locale non trovato».
+  */
   const venue = venueId
     ? await db.venue.findFirst({
-        where: { id: venueId, active: true },
+        where: { active: true, OR: [{ id: venueId }, { slug: venueId }] },
         select: {
           id: true,
           name: true,
@@ -47,8 +56,30 @@ export default async function BookPage(props: {
       </CardContent>
     </Card>
   ) : (
+    /*
+      Due situazioni diverse, due frasi diverse.
+
+      Senza `?venue` non è che il locale non si trova: è che nessuno ha detto
+      quale. «Locale non trovato» su `/book` senza parametri era una risposta
+      falsa a una domanda che non era stata fatta — e chi ci arrivava per
+      sbaglio non capiva né cosa fosse andato storto né cosa fare.
+    */
     <Card>
-      <CardContent className="text-center text-muted-foreground py-8">Locale non trovato</CardContent>
+      <CardContent className="py-8 text-center text-sm text-muted-foreground">
+        {venueId ? (
+          <>
+            Questo locale non c&apos;è, o non accetta prenotazioni online in questo momento.
+            <br />
+            Se hai il numero, una telefonata è la strada più breve.
+          </>
+        ) : (
+          <>
+            Questo indirizzo va usato col link del ristorante.
+            <br />
+            Chiedilo a chi ti ha invitato, o cercalo sul suo sito.
+          </>
+        )}
+      </CardContent>
     </Card>
   );
 

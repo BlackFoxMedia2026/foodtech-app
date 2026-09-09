@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ALLERGENI, REGIMI, getMenuPubblico } from "@/server/menu";
+import { getMenuPubblico, nomeAllergene, nomeRegime } from "@/server/menu";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -93,10 +93,10 @@ export default async function MenuPubblicoPage({
                     {i.description && <p className="mt-1 text-sm text-muted-foreground">{i.description}</p>}
                     {(i.dietary.length > 0 || i.allergens.length > 0) && (
                       <p className="mt-1 text-xs text-tertiary-foreground">
-                        {i.dietary.length > 0 && <>{i.dietary.map((d) => REGIMI[d]).join(" · ")}</>}
+                        {i.dietary.length > 0 && <>{i.dietary.map(nomeRegime).join(" · ")}</>}
                         {i.dietary.length > 0 && i.allergens.length > 0 && " — "}
                         {i.allergens.length > 0 && (
-                          <>Contiene: {i.allergens.map((a) => ALLERGENI[a]).join(", ")}</>
+                          <>Contiene: {i.allergens.map(nomeAllergene).join(", ")}</>
                         )}
                       </p>
                     )}

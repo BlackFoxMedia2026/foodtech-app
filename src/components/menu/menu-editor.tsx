@@ -23,7 +23,14 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { readApiError } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/utils";
-import { ALLERGENI, REGIMI, type MenuCategoryView, type MenuItemView } from "@/server/menu";
+import {
+  ALLERGENI,
+  REGIMI,
+  nomeAllergene,
+  nomeRegime,
+  type MenuCategoryView,
+  type MenuItemView,
+} from "@/server/menu";
 import { MenuItemDialog } from "@/components/menu/menu-item-dialog";
 import {
   DropdownMenu,
@@ -387,10 +394,10 @@ export function MenuEditor({
                             {(i.allergens.length > 0 || i.dietary.length > 0) && (
                               <p className="mt-1 text-xs text-tertiary-foreground">
                                 {i.allergens.length > 0 && (
-                                  <>Allergeni: {i.allergens.map((a) => ALLERGENI[a]).join(", ")}</>
+                                  <>Allergeni: {i.allergens.map(nomeAllergene).join(", ")}</>
                                 )}
                                 {i.allergens.length > 0 && i.dietary.length > 0 && " · "}
-                                {i.dietary.map((d) => REGIMI[d]).join(", ")}
+                                {i.dietary.map(nomeRegime).join(", ")}
                               </p>
                             )}
                           </div>
