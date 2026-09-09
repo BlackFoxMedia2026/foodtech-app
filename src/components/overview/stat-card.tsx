@@ -76,7 +76,7 @@ export function StatCard({
         <p
           className={cn(
             "mt-3 inline-flex items-center gap-1 font-mono text-xs font-medium",
-            caramelFill || lightFill || brownFill ? valueColor : trend.positive ? "text-sage" : "text-rose-600",
+            caramelFill || lightFill || brownFill ? valueColor : trend.positive ? "text-sage" : "text-destructive-soft",
           )}
         >
           {trend.positive ? "▲" : "▼"} {Math.abs(trend.value)}%

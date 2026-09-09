@@ -2018,8 +2018,52 @@ Verifiche fatte oggi, e cosa resta.
 | Indici come collegamenti, non stato | ✅ | viste di Analisi e parti di Impostazioni sono link: funzionano senza JavaScript e con la tastiera |
 | Nome accessibile con il verbo | ✅ | corretto oggi: «Walk-in» visibile, «Accomoda walk-in» a voce |
 | Stato anche non a colore | ⚠️ | la sala viva distingue con bordo e tratteggio, non solo colore; da verificare sui sette stati |
-| Contrasto | ⚠️ non misurato | serve l'occhio o uno strumento: non l'ho verificato in questa sessione |
+| Contrasto | **misurato il 9 settembre** | e tre colori erano sotto soglia: vedi sotto |
 | Etichette per lettori di schermo | ⚠️ parziale | presenti sulle azioni di riga del team, da estendere |
+
+### Il contrasto, misurato (9 settembre)
+
+Rapporti WCAG calcolati sul fondo di una scheda del prodotto
+(`--card`, verde molto scuro):
+
+| Colore | Rapporto | Verdetto |
+|---|---:|---|
+| testo pieno (crema) | 9,94 : 1 | ✅ |
+| testo tenue (`muted-foreground`) | 6,02 : 1 | ✅ |
+| **oro del tema** (`gilt`) | **5,11 : 1** | ✅ anche per il testo piccolo |
+| note (`tertiary`) | 4,45 : 1 | ✅ al limite |
+| sage | 4,19 : 1 | ⚠️ sotto 4,5 |
+| `amber-600` (il giallo fuori tavolozza) | 3,83 : 1 | ⚠️ |
+| **accento** (terracotta) | **3,32 : 1** | ⚠️ |
+| `accent-strong` | 3,28 : 1 | ⚠️ |
+| `rose-600` (gli errori, prima) | 2,60 : 1 | ❌ |
+| **`destructive`** (il rosso del sistema) | **2,08 : 1** | ❌ il peggiore |
+
+**Tre conseguenze, e una è una smentita di quello che avevo scritto tre ore
+prima.**
+
+1. **Un messaggio d'errore era la cosa meno leggibile della schermata** (2,60),
+   e passare al rosso del sistema — che sembrava la scelta ortodossa —
+   l'avrebbe **peggiorata** (2,08). Il documento di design non aveva un rosso
+   *da leggere*: ne ha uno *da riempire*, con il bianco sopra. Aggiunto
+   `--destructive-soft` (0 70% 72% → 4,7 : 1), che è lo stesso rosso schiarito
+   fino a diventare leggibile: sedici messaggi d'errore ci sono passati.
+2. **L'accento non è un colore da testo piccolo su questo fondo.** Nella
+   passata precedente avevo spostato gli avvertimenti da `amber-600` (3,83) a
+   `text-accent` (3,32): *peggio*. La tavolozza aveva già la risposta —
+   l'**oro** (`gilt`, 5,11) — che è della stessa famiglia e si legge.
+3. **Su una tinta va il crema, non il colore della tinta.** Testo accento su
+   tinta accento al 15% fa 2,85 : 1; crema sulla stessa tinta fa 8,52 : 1. È
+   il motivo per cui i riquadri d'avvertimento rifatti (accento tenue + testo
+   crema) sono corretti, mentre un numero «accento su accento» non lo era.
+
+**E la ragione per cui le pillole di stato restano come sono:** i loro fondi
+chiari con testo scuro fanno 4,84–5,72 : 1, cioè **passano**. Trasformarle in
+tinte del tema con il colore come testo le porterebbe a 2,07–3,36 — un
+peggioramento. Se si vuole toglierle dalla tavolozza esterna, la strada
+misurata è «tinta del tema + testo crema» (7,98–9,90), che però cambia
+completamente il peso visivo dei sette stati: quella è la decisione di design
+che resta aperta.
 
 **Regola:** non sacrificare la leggibilità per l'estetica. Il caso concreto già
 incontrato: su telefono la parola dello stato prendeva un terzo della riga e il

@@ -65,7 +65,7 @@ export function CampaignSendStatus({
           Puoi chiudere questa pagina: il lavoro continua da solo e questa schermata si aggiorna da sé.
         </p>
         {progress?.ultimoErrore && (
-          <p className="text-xs text-accent">
+          <p className="text-xs text-gilt">
             Ultimo tentativo non riuscito ({progress.tentativi}): {progress.ultimoErrore}. Ci riproviamo.
           </p>
         )}
@@ -76,7 +76,7 @@ export function CampaignSendStatus({
   return (
     <div className="space-y-3">
       <p className="flex items-start gap-2 text-sm">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive-soft" aria-hidden="true" />
         <span>
           L&apos;invio non è andato a termine
           {progress?.ultimoErrore ? <>: {progress.ultimoErrore}</> : "."}

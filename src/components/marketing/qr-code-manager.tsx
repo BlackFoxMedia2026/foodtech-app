@@ -157,7 +157,7 @@ function QrCodeFormDialog({
               </SelectContent>
             </Select>
           </div>
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && <p className="text-sm text-destructive-soft">{error}</p>}
         </div>
 
         <DialogFooter>

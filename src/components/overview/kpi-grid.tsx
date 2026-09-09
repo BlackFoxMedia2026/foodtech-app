@@ -24,7 +24,7 @@ const SURFACE = {
     iconLabel: "text-muted-foreground",
     value: "text-foreground",
     positive: "text-sage",
-    negative: "text-rose-600",
+    negative: "text-destructive-soft",
   },
   brown: {
     container: "finish-brown-dark border border-[#633a26]",

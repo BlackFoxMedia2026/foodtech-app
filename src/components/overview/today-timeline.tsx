@@ -38,14 +38,14 @@ function getStatusDisplay(booking: Row, now: Date): { label: string; tone: Tone 
 const DOT_TONE: Record<Tone, string> = {
   positive: "bg-sage",
   warn: "bg-card-foreground",
-  negative: "bg-rose-600",
+  negative: "bg-destructive",
   neutral: "bg-card-foreground/40",
 };
 
 const TEXT_TONE: Record<Tone, string> = {
   positive: "text-sage",
   warn: "text-card-foreground",
-  negative: "text-rose-600",
+  negative: "text-destructive-soft",
   neutral: "text-card-foreground/65",
 };
 

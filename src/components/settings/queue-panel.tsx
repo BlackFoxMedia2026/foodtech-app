@@ -64,7 +64,7 @@ export function QueuePanel({ health }: { health: QueueHealth }) {
         <span>
           <span className="text-muted-foreground">In corso:</span> {health.inCorso}
         </span>
-        <span className={health.nonRiusciti > 0 ? "text-rose-600" : undefined}>
+        <span className={health.nonRiusciti > 0 ? "text-destructive-soft" : undefined}>
           <span className="text-muted-foreground">Non riusciti:</span> {health.nonRiusciti}
         </span>
       </div>

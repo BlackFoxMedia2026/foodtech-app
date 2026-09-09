@@ -127,11 +127,15 @@ export function BookingsPageClient({
               ? `${filteredRows.length} prenotazioni`
               : `${filteredRows.length} ${statusFilter === "pending" ? "in sospeso" : "confermate"} su ${totaleDelGiorno}`}{" "}
             · {totalCovers} coperti
-            {/* L'accento del tema, non `amber-600`: un giallo preso fuori
-                dalla tavolozza su verde scuro è l'unico colore della pagina
-                che non appartiene al prodotto. */}
+            {/*
+              Un colore della tavolozza **che si legge**: misurato sulla
+              scheda, l'oro del tema fa 5,11 : 1 e l'accento 3,32 : 1 — sotto
+              la soglia per un testo piccolo, e perfino sotto il grigio delle
+              note (4,45). Il giallo di prima (`amber-600`, fuori tavolozza)
+              faceva 3,83.
+            */}
             {pendingCount > 0 && (
-              <span className="ml-2 font-semibold text-accent">({pendingCount} da approvare)</span>
+              <span className="ml-2 font-semibold text-gilt">({pendingCount} da approvare)</span>
             )}
           </p>
         </div>
@@ -172,7 +176,9 @@ export function BookingsPageClient({
                 <span
                   className={cn(
                     "ml-2 rounded-full px-1.5 text-xs font-semibold tabular-nums",
-                    statusFilter === "pending" ? "bg-forest/15 text-clay-ink" : "bg-accent/20 text-accent",
+                    // Sulla tinta dell'accento il testo accento non si legge
+                    // (2,85 : 1): sopra una tinta va il crema, che fa 8,52.
+                    statusFilter === "pending" ? "bg-forest/15 text-clay-ink" : "bg-accent/20 text-foreground",
                   )}
                 >
                   {pendingCount}
