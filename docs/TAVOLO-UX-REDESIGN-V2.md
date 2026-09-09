@@ -333,9 +333,9 @@ lavora*.
 | Portale Wi-Fi (conf.) | `/settings/wifi` | manager | bassa | bassa | 7 | 7 | 6 | 6 | 8 |
 | Vetrina | `/` | pubblico | — | — | 7 | 7 | — | 7 | 8 |
 | Accesso | `/sign-in` | staff | — | — | 6 | 7 | 8 | 8 | 8,5 |
-| Prenota (pubblico) | `/book` | **cliente** | — | — | 7 | 8 | 6 | 7 | 9,5 |
+| Prenota (pubblico) | `/book` | **cliente** | — | — | **8,5** | 9 | 8 | 8 | 9,5 |
 | Menu pubblico | `/m/[slug]` | **cliente** | — | — | 8 | 8 | — | 8 | 9 |
-| Portale Wi-Fi | `/wifi/[slug]` | **cliente** | — | — | 7 | 7 | 7 | 8 | 9 |
+| Portale Wi-Fi | `/wifi/[slug]` | **cliente** | — | — | **8,5** | 8 | 8 | 8 | 9 |
 | Sondaggio | `/s/[token]` | **cliente** | — | — | 9 | 9 | 9 | 9 | 9 |
 
 «Velocità» su Pagamenti è `—` perché la pagina dichiara di non avere funzioni:
@@ -1224,30 +1224,74 @@ e la sicurezza in «Sistema», dove c'è già «I tuoi dispositivi».
 
 # 27-30. Le esperienze pubbliche
 
-## Prenota (§98–101) — il salto di valore più alto
-È l'unica schermata usata da chi non è pagato per usarla.
+> **Rivisto in Fase 6, e la revisione è severa con me.** Di quattro cose che
+> avevo elencato come da fare sulle pagine pubbliche, **tre erano già
+> costruite** — e bene. Il §98, il §99, il §100 e il §45 sono implementati.
+>
+> **Perché ho sbagliato:** ho letto il testo che le pagine *rendono* nel loro
+> stato iniziale (data vuota → «Scegli prima una data»), la pagina
+> `book/page.tsx` e il modulo, ma non i componenti che fanno il lavoro —
+> `slot-picker.tsx` e `public-booking-form.tsx`. Ho **dedotto l'assenza da una
+> lettura di superficie**. È il terzo errore dello stesso tipo in questo
+> documento, e li ho corretti tutti dove stavano: i doppioni in prenotazione
+> (§1), la pagina Camerieri (§25), e queste.
+>
+> **La lezione, per il prossimo audit:** una funzione che compare solo in uno
+> stato particolare — quando la giornata è piena, quando il gruppo supera una
+> soglia — non si vede nello stato iniziale di una schermata. Il testo estratto
+> e le misure non la trovano. Va cercata nel codice del componente, o
+> provocando lo stato.
 
-**Già fatto:** la disponibilità viene prima dei dati personali.
+## Prenota (§98–101) — la pagina più finita del prodotto, non la più incompleta
 
-**Da fare, in ordine:**
-1. **Quando è pieno, proporre** (§99). Oggi: una griglia di orari spenti. Domani:
-   «Per 4 persone giovedì non c'è posto» e sotto le prime tre disponibilità
-   vere — «venerdì 20:00 · sabato 19:45 · domenica 20:15». Il motore sa già
-   rispondere: la funzione che dice «sabato no, venerdì sì» esiste.
-2. **Gruppi grandi** (§100): sopra la soglia il modulo non chiede dati, propone
-   di parlarne. La soglia esiste già come impostazione del locale.
-3. **Telefono prima dell'email su mobile** (§101) — **ma va verificata la regola
-   di business prima di cambiare**: oggi l'email è obbligatoria perché la
-   conferma scritta è l'unico canale che il prodotto ha. Con il telefono
-   obbligatorio e l'email facoltativa la conferma diventa un SMS che nessuno
-   manda. **Da non toccare finché non c'è un canale.**
+**Già fatto, verificato nel codice:**
+
+1. **La disponibilità prima dei dati personali** (§98). Data, persone, orario,
+   e solo dopo «I tuoi dati».
+2. **Quando è pieno, propone** (§99). «Per 4 persone non c'è posto in questa
+   data» e sotto le prime disponibilità vere, da `prossimiGiorniLiberi` — che
+   carica il contesto **una volta sola** per tutto l'intervallo invece di fare
+   ventun letture. E la richiesta parte **solo** se la giornata è piena: «chi
+   trova posto al primo colpo non paga il conto di una ricerca che non gli
+   serve».
+3. **I gruppi grandi vanno al telefono** (§100). Sopra la soglia del locale il
+   modulo non chiede niente: «Per più di 12 persone parliamone. Un tavolo così
+   si prepara: due tavoli uniti, a volte un menu concordato. Chiamaci e lo
+   organizziamo insieme — è più veloce di questo modulo», col numero come
+   collegamento da 44 px. Il commento nel codice dice la cosa giusta: «la
+   strada giusta si dice subito — ed è un numero di telefono, non un errore».
+
+**Resta aperto solo il §101** (telefono prima dell'email su mobile), e resta
+aperto di proposito: oggi l'email è obbligatoria perché la conferma scritta è
+l'unico canale che il prodotto ha. Con l'email facoltativa la conferma
+diventerebbe un SMS che nessuno manda. **Da non toccare finché non c'è un
+canale.**
+
+**Punteggio rivisto: da 7 a 8,5.** Il target 9,5 resta, e la distanza è il
+§101 più una rifinitura visiva che non ho potuto giudicare senza vedere le
+immagini.
 
 ## Menu pubblico
 Già buono. Non aggiungere niente di gestionale.
 
-## Portale Wi-Fi (§45)
-Meno testo. Il flusso: nome del locale, «Wi-Fi ospiti», nome, un contatto,
-privacy, marketing facoltativo, pulsante. Lo sconto è secondario e va sotto.
+## Portale Wi-Fi (§45) — anche questo già fatto
+Il flusso è già quello che il §45 chiede: una riga di introduzione («Lascia un
+contatto e ricevi subito la password della rete»), nome, un contatto, privacy,
+marketing **facoltativo** con detto perché — «senza la spunta ti colleghi
+comunque». E lo sconto **non è nel modulo**: compare nella schermata dopo, come
+un regalo per la prossima volta, che è esattamente il posto in cui il §45 lo
+voleva.
+
+**Punteggio rivisto: da 7 a 8,5.**
+
+## Brand (§56) — l'unica voce di Fase 6 davvero aperta
+L'anteprima è un finto statico, e il commento nel codice lo dichiara: «è solo
+un mockup di come apparirebbe un widget brandizzato». Il §56 chiede le quattro
+superfici pubbliche vere — modulo, menu, portale, sondaggio — col brand
+applicato. **Da fare**, e non l'ho fatta in questa fase: costruirla bene
+significa rendere i componenti pubblici veri con i valori del locale, ed è un
+lavoro che merita il suo giro invece di essere accodato a una correzione di
+documento.
 
 ## Sondaggio (§46)
 **Non toccare.** Una domanda, un tocco, 0–8 in privato e 9–10 con la
@@ -1737,6 +1781,65 @@ i quattro livelli di verità del dato · il catalogo chiuso delle automazioni ·
 la regola «un avviso senza impatto non si mostra» · il sondaggio a una domanda ·
 la disciplina «un nome per funzione su tutti gli schermi» · e il fatto che
 nessuna funzione esistente venga rimossa per semplificare (§118).
+
+---
+
+---
+
+# 51. Cosa ha detto l'implementazione all'audit
+
+Sezione aggiunta dopo aver costruito le sei fasi, perché un documento di
+progetto che non registra dove aveva torto serve una volta sola.
+
+## Le cinque cose che avevo sbagliato, e come
+
+| Avevo scritto | La verità | Perché ho sbagliato |
+|---|---|---|
+| «Ogni prenotazione telefonica è un potenziale doppione» | Il server riusa già la scheda esistente (`trovaOCreaOspite`) | Ho dedotto il difetto dall'assenza del riconoscimento nell'interfaccia, senza seguire il percorso fino al server |
+| «Camerieri è un elenco amministrativo», voto 5 | Leggeva la **tabella sbagliata**: 76 tavoli assegnati, zero mostrati | Ho attribuito a una scelta di progetto quello che era un difetto dei dati |
+| «Il modulo pubblico mostra una griglia morta quando è pieno» | Propone già le prime disponibilità, e le chiede solo se serve | Lettura di superficie: il testo reso nello stato iniziale, non il codice del componente |
+| «I gruppi grandi compilano un modulo inutile» | Vanno già al telefono, con il numero a 44 px | Idem |
+| «Il portale Wi-Fi ha troppo testo» | È già essenziale, e lo sconto è già nella schermata dopo | Idem |
+| Tablet 3/10 | Il layout tiene (zero scorrimenti a 1024): il difetto erano i bersagli di tocco | Ho contato i breakpoint invece di misurare |
+
+**Il filo comune di quattro su sei: dedurre l'assenza da una lettura di
+superficie.** Una funzione che vive solo in uno stato particolare — la giornata
+piena, il gruppo oltre la soglia, la tabella con l'altro nome — non si vede
+nello stato iniziale di una schermata, e non compare nel testo estratto né
+nelle misure. Va cercata nel codice, o provocando lo stato.
+
+## Le tre cose che ho trovato solo costruendo
+
+Nessuna delle tre era nell'audit, e la prima è più grave di qualsiasi voce che
+c'era.
+
+1. **Due tabelle per «chi copre questo tavolo»** (P-11): `StaffAssignment` e
+   `WaiterAssignment`, entrambe scritte dal prodotto da schermate diverse, che
+   non si guardano. **P0, non risolto**: serve una decisione sul modello.
+2. **`/service` non era mai stata convertita al non-scorrimento.** Misurava
+   zero solo perché il contenuto ci stava: con un servizio vero sforava di 600
+   px su un telefono. *Misurare zero non è la stessa cosa che essere costruito
+   per non scorrere.*
+3. **Il precompilamento demo nella pagina d'accesso**, senza controllo di
+   ambiente (§4-ter). Trovato verificando il §104, ed era la cosa più urgente
+   di tutte.
+
+## Il bilancio, senza abbellirlo
+
+Delle sette voci P0 della roadmap, **cinque erano vere** e sono chiuse; due
+erano diagnosi sbagliate di problemi che esistevano per un'altra ragione — e
+sono chiuse anche quelle, ma non per il motivo che avevo scritto. Sono
+comparse tre voci nuove, una delle quali (P-11) più grave di sei delle sette
+originali.
+
+**Quello che l'audit ha preso bene:** le destinazioni sbagliate, l'intelligenza
+sepolta un click troppo in basso, l'inventario dei contenitori, la densità e la
+tipografia. Sono le cose che si vedono leggendo la struttura.
+
+**Quello che l'audit ha preso male:** tutto ciò che dipende da uno stato che non
+si vede a riposo. Per quelle cose la lettura non basta, e la prossima volta si
+comincia provocando lo stato — una giornata piena, un gruppo di quindici, una
+coda di dodici — prima di scrivere che manca qualcosa.
 
 ---
 
