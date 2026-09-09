@@ -214,6 +214,10 @@ inventata — e per la stessa ragione la colonna «Spesa totale» del CRM ora di
 | Migrazioni versionate | LIVE | `prisma migrate deploy` al deploy |
 | Branding | LIVE | |
 | Sala e servizio che si aggiornano da soli | LIVE | 5 secondi invece di 30, chiedendo «è cambiato qualcosa?» invece di riscaricare tutto. Verificato dal vivo: 2 s dal cambio alla schermata |
+| Pannello di contesto invece di pagine | LIVE | Il dettaglio di una riga si apre accanto alla lista: laterale da `md`, foglio dal basso su telefono. Le rotte restano per i link condivisi |
+| Avvisi con «annulla» | LIVE | La protezione sta **dopo** l'errore, non prima di ogni gesto giusto. La conferma resta solo per ciò che non si annulla |
+| Riconoscimento dell'ospite al telefono | LIVE | Digitando il numero compaiono visite, VIP, allergie, assenze — le tre cose che cambiano la risposta a «avete un tavolo sabato?» |
+| Tavolo consigliato nella lista d'attesa | LIVE | Il più piccolo che basta, e a una persona sola. Una verifica per riga, non una per tavolo |
 | Nessuno scorrimento di pagina | LIVE | 28 rotte × 4 risoluzioni misurate a zero. Ricetta e regole in `DESIGN.md` §7 |
 | Notifiche in-app | LIVE | Filtrate per ruolo |
 | Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii. La risposta del fornitore viene verificata: un rifiuto non risulta più «inviato» |
