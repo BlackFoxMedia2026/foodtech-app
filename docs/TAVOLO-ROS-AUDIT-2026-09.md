@@ -21,9 +21,9 @@ che manchi. Preferisco dirlo.
 
 ## Stato dei lavori — aggiornato l'8 settembre, pomeriggio
 
-**Dove siamo: la roadmap che non dipende da nessuno è finita**, tranne una
-voce (il *realtime push* su sala e servizio, P4-5) e le cose che aspettano una
-tua decisione o una chiave. Tredici cantieri chiusi e pubblicati l'8
+**Dove siamo: la roadmap che non dipende da nessuno è finita.** L'ultima voce
+(il *realtime push* su sala e servizio, P4-5) è stata chiusa il 9 settembre.
+Restano solo le cose che aspettano una tua decisione o una chiave. Tredici cantieri chiusi e pubblicati l'8
 settembre — dalle difese del widget alla coda dei lavori — con 834 test
 unitari e 9 percorsi end-to-end verdi.
 
@@ -476,7 +476,7 @@ Impatto (1-5) · Complessità (S/M/L) · Rischio (basso/medio/alto).
 | P4-2 | **Caparra suggerita e spiegata** (§13) | 4 | M | P1-1 | medio |
 | P4-3 | **Insight proattivi dell'agente** sopra le regole esistenti | 3 | M | P4-1 | medio |
 | ~~P4-4~~ | ~~**Voice booking**: progetto, non implementazione (§60)~~ — **fatto l'8 settembre**: `docs/PROGETTO-VOCE.md`. L'implementazione resta fuori, e la prima strada non è codice: è contare quante chiamate si perdono | 3 | L | fornitore voce | alto |
-| P4-5 | **Realtime push** su sala/servizio/attesa | 3 | M | nessuna | medio |
+| ~~P4-5~~ | ~~**Realtime push** su sala/servizio/attesa~~ — **fatto il 9 settembre**, ma non col push: su Vercel non ci sono WebSocket e una connessione SSE per tablet costerebbe più lavoro sul database di quello che risparmia (`LISTEN/NOTIFY` non passa dal pooler di Neon). Si chiede ogni cinque secondi una domanda piccola — «è cambiato qualcosa?» — e si scarica la fotografia solo quando la risposta cambia: da 30 secondi a 5, con meno richieste di prima | 3 | M | nessuna | medio |
 
 ---
 
