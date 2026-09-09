@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Cake, Download, Mail, Phone, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Cake, Download, Mail, Phone, ShieldAlert } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getGuestProfile, getGuestTimeline } from "@/server/guest-intelligence";
 import { GuestProfilePanel, GuestTimeline } from "@/components/guests/guest-profile-panel";
 import { Badge } from "@/components/ui/badge";
+import { Etichetta } from "@/components/ui/etichetta";
 import { Button } from "@/components/ui/button";
 import { LoyaltyPill } from "@/components/guests/loyalty-pill";
 import { EditGuestDialog } from "@/components/guests/edit-guest-dialog";
@@ -70,8 +71,14 @@ export default async function GuestDetail({ params }: { params: { id: string } }
                   dati cancellati su richiesta
                 </Badge>
               )}
+              {/* Un'allergia non è un tag: è un fatto che cambia il servizio
+                  adesso. Forma quadrata e icona — il linguaggio dei segnali —
+                  così non si legge come «VIP», che è un'opinione, né come
+                  «abituale», che è una formula. */}
               {g.allergies && (
-                <Badge tone="danger" className="badge-dot">{g.allergies}</Badge>
+                <Etichetta linguaggio="segnale" icona={AlertTriangle}>
+                  {g.allergies}
+                </Etichetta>
               )}
             </div>
             <div className="mt-3">

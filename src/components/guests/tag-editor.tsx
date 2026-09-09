@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Etichetta } from "@/components/ui/etichetta";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -54,8 +54,11 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
+        {/* Questi li ha scritti una persona del locale: pillola piena
+            (`linguaggio="manuale"`), diversa dal bordo vuoto dei tag che
+            calcoliamo noi. */}
         {tags.map((t) => (
-          <Badge key={t} tone="neutral" className="gap-1">
+          <Etichetta key={t} linguaggio="manuale">
             {t}
             <button
               type="button"
@@ -66,7 +69,7 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
             >
               <X className="h-3 w-3" />
             </button>
-          </Badge>
+          </Etichetta>
         ))}
         <Input
           value={draft}

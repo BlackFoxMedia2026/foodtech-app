@@ -354,3 +354,48 @@ describe("etichette automatiche", () => {
     expect(p.avgPartySize).toBe(7);
   });
 });
+
+describe("tre linguaggi per tre cose diverse (§29)", () => {
+  const conVisite = (n: number, giorniDaUltima = 5) =>
+    Array.from({ length: n }, (_, i) => pren({ startsAt: giorniPrima(giorniDaUltima + (n - 1 - i) * 15) }));
+
+  /*
+    Il punto non è estetico: un'etichetta dice anche **chi l'ha messa**, e da
+    quello dipende quanto fidarsi. «VIP» l'ha deciso il locale, «Abituale» è
+    una nostra soglia su un conteggio, un'allergia è un fatto. Prima erano
+    tutte pillole con lo stesso colore.
+  */
+  it("il livello VIP è manuale: l'ha messo una persona", () => {
+    const p = computeGuestProfile({ ...OSPITE, loyaltyTier: "VIP" }, conVisite(1), { now: ORA });
+    expect(p.tags.find((t) => t.key === "vip")?.linguaggio).toBe("manuale");
+  });
+
+  it("le abitudini sono calcolate: sono soglie nostre", () => {
+    const p = computeGuestProfile(OSPITE, conVisite(6), { now: ORA });
+    for (const chiave of ["abituale", "gruppi"]) {
+      const t = p.tags.find((x) => x.key === chiave);
+      if (t) expect(t.linguaggio).toBe("calcolata");
+    }
+  });
+
+  it("allergie e assenze ripetute sono segnali", () => {
+    const p = computeGuestProfile(
+      { ...OSPITE, allergies: "Crostacei" },
+      conVisite(1),
+      { now: ORA },
+    );
+    expect(p.tags.find((t) => t.key === "allergie")?.linguaggio).toBe("segnale");
+  });
+
+  it("i segnali stanno davanti a tutto, anche a «VIP»", () => {
+    const p = computeGuestProfile(
+      { ...OSPITE, allergies: "Crostacei", loyaltyTier: "VIP" },
+      conVisite(6),
+      { now: ORA },
+    );
+    const linguaggi = p.tags.map((t) => t.linguaggio);
+    expect(linguaggi[0]).toBe("segnale");
+    // E nessun calcolato prima di un manuale.
+    expect(linguaggi.indexOf("manuale")).toBeLessThan(linguaggi.indexOf("calcolata"));
+  });
+});

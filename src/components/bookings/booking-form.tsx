@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { Etichetta } from "@/components/ui/etichetta";
 import { formatDate } from "@/lib/utils";
 import type { OspiteRiconosciuto } from "@/server/guest-match";
 
@@ -246,19 +246,24 @@ export function BookingForm({
             </p>
           </div>
 
+          {/* I segnali prima, il tag dopo: un'allergia e due assenze cambiano
+              come si accoglie questa persona adesso, «VIP» dice come la vede
+              il locale. Erano tre pillole uguali in fila. */}
           <div className="flex flex-wrap items-center gap-2">
-            {(riconosciuto.livello === "VIP" || riconosciuto.livello === "AMBASSADOR") && (
-              <Badge tone="gold">{riconosciuto.livello === "AMBASSADOR" ? "Ambassador" : "VIP"}</Badge>
-            )}
             {riconosciuto.allergie && (
-              <Badge tone="danger" className="badge-dot">
+              <Etichetta linguaggio="segnale" icona={AlertTriangle}>
                 {riconosciuto.allergie}
-              </Badge>
+              </Etichetta>
             )}
             {riconosciuto.assenze > 0 && (
-              <Badge tone="warning">
+              <Etichetta linguaggio="segnale" icona={AlertTriangle}>
                 {riconosciuto.assenze} {riconosciuto.assenze === 1 ? "assenza" : "assenze"}
-              </Badge>
+              </Etichetta>
+            )}
+            {(riconosciuto.livello === "VIP" || riconosciuto.livello === "AMBASSADOR") && (
+              <Etichetta linguaggio="manuale">
+                {riconosciuto.livello === "AMBASSADOR" ? "Ambassador" : "VIP"}
+              </Etichetta>
             )}
           </div>
 

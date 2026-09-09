@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoyaltyPill } from "./loyalty-pill";
+import { Etichetta } from "@/components/ui/etichetta";
 import { formatCurrency, formatDate, initials } from "@/lib/utils";
 import { Corpo, Riga, RigaVuota, Tabella, Td, Testa, Th } from "@/components/ui/table";
 import type { PaginaOspiti } from "@/server/guests";
@@ -100,9 +101,9 @@ export function GuestsTable({
                   <p className="truncate text-xs text-muted-foreground">
                     {g.totalVisits} {g.totalVisits === 1 ? "visita" : "visite"}
                     {g.lastVisitAt ? ` · ultima il ${formatDate(g.lastVisitAt)}` : " · mai venuto"}
-                    {g.tags?.length > 0 ? ` · ${g.tags.join(" · ")}` : ""}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">{g.email ?? g.phone ?? "nessun contatto"}</p>
+                  <Tag tags={g.tags} />
                 </div>
                 <LoyaltyPill tier={g.loyaltyTier} />
               </Link>
@@ -136,9 +137,7 @@ export function GuestsTable({
                       </Avatar>
                       <div>
                         <p className="font-medium">{name}</p>
-                        {g.tags?.length > 0 && (
-                          <p className="text-xs text-muted-foreground">{g.tags.join(" · ")}</p>
-                        )}
+                        <Tag tags={g.tags} />
                       </div>
                     </Link>
                   </Td>
@@ -169,5 +168,38 @@ export function GuestsTable({
       </Tabella>
       </div>
     </div>
+  );
+}
+
+/**
+ * I tag scritti a mano, in riga.
+ *
+ * Erano testo separato da punti, indistinguibile dal resto della riga —
+ * «3 visite · ultima il 12 agosto · VIP» — e quindi indistinguibile anche dai
+ * tag che calcoliamo noi sulla scheda. Adesso sono pillole piene: chi legge
+ * sa che quelle parole le ha scritte una persona del locale (§29).
+ *
+ * Tre e poi il resto contato. Il tetto senza il totale sarebbe una bugia
+ * — «questo cliente ha tre tag» quando ne ha sette — e su una riga di elenco
+ * sette pillole mangiano la riga.
+ */
+const TAG_IN_RIGA = 3;
+
+function Tag({ tags }: { tags?: string[] | null }) {
+  if (!tags || tags.length === 0) return null;
+  const restanti = tags.length - TAG_IN_RIGA;
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-1">
+      {tags.slice(0, TAG_IN_RIGA).map((t) => (
+        <Etichetta key={t} linguaggio="manuale">
+          {t}
+        </Etichetta>
+      ))}
+      {restanti > 0 && (
+        <span className="text-xs text-muted-foreground" title={tags.slice(TAG_IN_RIGA).join(" · ")}>
+          +{restanti}
+        </span>
+      )}
+    </span>
   );
 }

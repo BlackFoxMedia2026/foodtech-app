@@ -474,8 +474,8 @@ colonne che ne mostra due; «non ancora» al posto di «0,00 €» dove non abbi
 misurato.
 **Problemi:** la ricerca non trova per numero di telefono parziale in modo
 evidente; nessuna azione di riga (chiama, apri prenotazione, aggiungi tag).
-**Mancanti:** la distinzione visiva fra tag scritti a mano e tag calcolati
-(§29).
+**Mancanti:** ~~la distinzione visiva fra tag scritti a mano e tag calcolati
+(§29)~~ — **fatta il 9 settembre**, vedi la sezione 15.
 **Proposta:** tre linguaggi visivi separati — **segnali** (allergia, compleanno,
 assenze: la cosa che cambia il servizio), **tag manuali** (VIP, giornalista),
 **tag calcolati** (abituale, inattivo, preferisce il pranzo). Oggi hanno la
@@ -1165,6 +1165,42 @@ domanda. Le ultime tre rispondono a «cosa ho di lei», che è un'altra.
 Oggi hanno tutti la stessa forma. Distinguerli non è decorazione: è dire a chi
 legge **quanto fidarsi**. È la stessa disciplina di misurato/stimato applicata
 alle etichette.
+
+### Fatto il 9 settembre
+
+Un componente (`ui/etichetta.tsx`) con i tre linguaggi, e la differenza è di
+**forma** prima che di colore — si distingue con le luci basse e da chi non
+separa il rosso dal verde:
+
+- **segnale**: quadrato, tinto, con l'icona. Non è una pillola, quindi si vede
+  prima di qualsiasi pillola;
+- **manuale**: pillola **piena**;
+- **calcolata**: pillola col solo **bordo**, testo tenue. Pesa meno perché vale
+  meno, e il perché resta nel suggerimento.
+
+Applicato in cinque punti: la lista ospiti (dove i tag erano testo separato da
+punti, indistinguibile dal resto della riga), la scheda ospite, l'editor dei
+tag, il profilo calcolato e la striscia di riconoscimento in nuova
+prenotazione.
+
+**La cosa che si è scoperta applicandolo:** il linguaggio non è una proprietà
+di *dove* si mostra un'etichetta, è una proprietà **dell'etichetta**. Quindi
+`GuestTag` non ha più `tone` (`neutral | good | warning`) ma `linguaggio`, e
+ogni regola dichiara il suo: il livello VIP è `manuale` — lo mette una persona,
+e il suo stesso «perché» diceva già «assegnato dal locale» — le abitudini sono
+`calcolata`, allergie, assenze ripetute e compleanno vicino sono `segnale`.
+`tone` diceva quanto una cosa fosse *bella*, non quanto fosse *affidabile*:
+«Inattivo» e «Allergie» erano entrambi `warning`, cioè lo stesso colore per una
+deduzione nostra e per un fatto che può mandare qualcuno all'ospedale.
+
+E i segnali ora sono **primi** perché il motore li ordina: prima erano
+nell'ordine in cui le regole stanno scritte nel file, che non è un ordine —
+«Allergie» finiva ultima, dopo «Abitué del martedì».
+
+**Un difetto misurato guardando:** `bg-current/15` per la pillola piena non si
+vede su verde scuro. Nella lista ospiti «fedele» sembrava testo normale. Il
+pieno adesso è un token del tema (`bg-secondary`), non una trasparenza del
+colore del testo.
 
 ## CRM nel contesto (§30 del prompt) — il punto più importante di questa sezione
 
