@@ -348,6 +348,54 @@ all'etichetta — ora i voti hanno la loro finestra e la dichiarano; e in
 Impostazioni il titolo della parte era ripetuto sotto la pillola che lo
 nomina.
 
+## La sala che si aggiorna in cinque secondi (9 settembre 2026)
+
+Ultima voce della roadmap che non dipendeva da nessuno (P4-5), chiusa — ma
+**non col push**, e la ragione conta.
+
+**Perché non i WebSocket.** Su Vercel non ci sono. **Perché non SSE.** Una
+connessione tenuta aperta da ogni tablet occupa una funzione per tutta la
+durata del servizio, e dall'interno dovrebbe comunque interrogare il database,
+perché `LISTEN/NOTIFY` di Postgres non passa attraverso il pooler di Neon. Il
+push «vero», su questa piattaforma, costerebbe **più** lavoro sul database di
+quello che risparmia.
+
+**Cosa si fa invece.** Si chiede spesso una domanda piccola — «è cambiato
+qualcosa?» — e si scarica la fotografia intera **solo quando la risposta
+cambia**. `/api/servizio-versione` restituisce una stringa corta costruita da
+tre coppie «quante righe ci sono, qual è la più recentemente toccata»:
+prenotazioni di oggi, coda aperta, conti aperti. Tre interrogazioni su indici
+che esistevano già, che toccano solo le righe di oggi: nessuna migrazione.
+
+Il conteggio non è ridondante: `max(updatedAt)` da solo **non vede le
+cancellazioni** — una prenotazione tolta non aggiorna niente, fa solo
+diminuire il totale — e la sala sarebbe cambiata mentre il segnale diceva di
+no. È il caso che si nota meno, quindi il peggiore.
+
+**Il risultato:** da trenta secondi a cinque, con meno richieste di prima.
+Trenta secondi in sala sono lunghi: chi accomoda un tavolo e chi guarda la
+mappa dall'altra parte della sala vedevano due cose diverse per mezzo minuto,
+e in mezzo minuto si porta una persona a un tavolo già occupato.
+
+**E la lista d'attesa non si aggiornava affatto**: si ricaricava solo dopo
+un'azione fatta su quella schermata, mentre la coda la muovono anche gli altri
+— chi accomoda dalla Sala, chi conferma dal Servizio, e il lavoro in coda che
+fa scadere un'offerta. Chi teneva aperta la pagina chiamava un nome già andato
+a tavola.
+
+Un gancio solo (`lib/use-servizio-vivo.ts`) al posto di due temporizzatori
+copiati, che fa tre cose che vanno tenute: **non chiede niente a scheda
+nascosta** (un tablet nel cassetto non interroga il server), **una richiesta
+alla volta** (due fotografie in volo tornano in ordine casuale, e la vecchia
+sovrascrive la nuova), e **se la rete salta la fotografia resta** con l'ora a
+cui è stata presa, riprovando più piano.
+
+Nove test nuovi su una cosa sola: che il segnale cambi quando deve — riga
+nuova, stato cambiato, riga cancellata, qualcuno in coda, conto aperto — e
+**non cambi quando non deve**: una prenotazione per domani, un altro locale,
+una coda già chiusa. Se cambiasse troppo sarebbe una richiesta ogni cinque
+secondi per niente, peggio dei trenta di prima.
+
 ## Phase 7 — Enterprise
 
 - **Quando finisce la giornata di un ristorante?** Oggi «oggi» è il giorno del processo (UTC su Vercel), e per un locale italiano viene una finestra dalle 02:00 di ieri alle 01:59 di oggi: assomiglia per caso a una giornata di servizio. Delimitarla nel fuso del locale **peggiorerebbe le cose** — alle 00:30 la schermata Servizio si svuoterebbe con i tavoli ancora seduti. Serve una decisione: «la giornata di servizio comincia alle 05:00», impostazione del locale, usata in tutti e diciannove i punti che chiamano `startOfDay`. Descritto in `docs/ANALISI-STATO-2026-09-07.md` §11.7

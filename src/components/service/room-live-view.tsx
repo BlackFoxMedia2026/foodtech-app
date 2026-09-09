@@ -27,8 +27,7 @@ import { TABLE_LIVE_HINTS, TABLE_LIVE_LABELS, type TableLiveStatus } from "@/lib
 import { LIVE_STATUS_ORDER, type FloorLive, type TableLiveInfo } from "@/server/floor-live";
 import { ServiceSwitch } from "@/components/service/service-switch";
 import { TablePickerDialog } from "@/components/service/table-picker-dialog";
-
-const REFRESH_MS = 30_000;
+import { useServizioVivo } from "@/lib/use-servizio-vivo";
 
 type Corrente = NonNullable<TableLiveInfo["current"]>;
 
@@ -116,42 +115,17 @@ export function RoomLiveView({
   const router = useRouter();
   const [live, setLive] = useState(initial);
   const [roomId, setRoomId] = useState<string | null>(rooms[0]?.id ?? null);
-  const [aggiornando, setAggiornando] = useState(false);
-  // Nullo fino al primo aggiornamento: vedi la nota in service-view.tsx.
-  const [ultimo, setUltimo] = useState<Date | null>(null);
   const [selezionato, setSelezionato] = useState<string | null>(null);
-  const inFlight = useRef(false);
 
-  const aggiorna = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setAggiornando(true);
-    try {
-      const res = await fetch("/api/floor-live", { cache: "no-store" });
-      if (res.ok) {
-        setLive(await res.json());
-        setUltimo(new Date());
-      }
-    } catch {
-      // Resta l'ultima fotografia buona, con la sua ora.
-    } finally {
-      inFlight.current = false;
-      setAggiornando(false);
-    }
+  // Il *quando* non è più affare di questo componente: vedi
+  // `lib/use-servizio-vivo.ts`. Qui si sa solo come scaricare la mappa.
+  const scarica = useCallback(async () => {
+    const res = await fetch("/api/floor-live", { cache: "no-store" });
+    // Resta l'ultima fotografia buona, con la sua ora.
+    if (res.ok) setLive(await res.json());
   }, []);
 
-  useEffect(() => {
-    const id = setInterval(aggiorna, REFRESH_MS);
-    return () => clearInterval(id);
-  }, [aggiorna]);
-
-  useEffect(() => {
-    function onVisible() {
-      if (document.visibilityState === "visible") aggiorna();
-    }
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [aggiorna]);
+  const { ultimo, aggiornando, aggiornaOra: aggiorna } = useServizioVivo(scarica);
 
   const dopoAzione = useCallback(() => {
     setSelezionato(null);

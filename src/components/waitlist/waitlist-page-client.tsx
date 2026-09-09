@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { AddToWaitlistDialog } from "@/components/waitlist/add-to-waitlist-dialog";
 import { WaitlistRow, type WaitlistRowEntry } from "@/components/waitlist/waitlist-row";
 import { durataUmana } from "@/lib/durata";
+import { useServizioVivo } from "@/lib/use-servizio-vivo";
 
 export type WaitlistSummary = {
   inAttesa: number;
@@ -33,6 +34,21 @@ export function WaitlistPageClient({
   canManage: boolean;
 }) {
   const router = useRouter();
+
+  /*
+    La lista d'attesa non si aggiornava da sola: si ricaricava solo dopo
+    un'azione fatta su questa schermata. Ma la coda la muovono anche gli
+    altri — chi accomoda dalla Sala, chi conferma dal Servizio, e il lavoro in
+    coda che fa scadere un'offerta dopo il suo tempo. Chi teneva aperta questa
+    pagina vedeva una fila che non era più quella, e chiamava un nome già
+    andato a tavola.
+
+    Qui non c'è una fotografia da scaricare — le righe arrivano dal server —
+    quindi la ricarica è `router.refresh()`, che rifà solo questa pagina.
+  */
+  useServizioVivo(async () => {
+    router.refresh();
+  });
   const [addOpen, setAddOpen] = useState(false);
 
   return (

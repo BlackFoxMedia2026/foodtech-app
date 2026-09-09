@@ -11,9 +11,7 @@ import { ServiceWaitlistCard } from "@/components/service/service-waitlist-card"
 import { ServiceSwitch } from "@/components/service/service-switch";
 import { ServiceInsights } from "@/components/service/service-insights";
 import type { ServiceInsight } from "@/server/service-intelligence";
-
-/** Ogni quanto la schermata si riaggiorna da sola. */
-const REFRESH_MS = 30_000;
+import { useServizioVivo } from "@/lib/use-servizio-vivo";
 
 type Colonna = "adesso" | "prossimi" | "attesa";
 
@@ -47,50 +45,25 @@ export function ServiceView({
   const [snapshot, setSnapshot] = useState(initial);
   const [window_, setWindow] = useState(60);
   const [colonna, setColonna] = useState<Colonna>("adesso");
-  const [aggiornando, setAggiornando] = useState(false);
-  // Nullo fino al primo aggiornamento: un orologio reso durante il rendering
-  // sul server produce un'ora diversa da quella del browser, React se ne
-  // accorge e sostituisce l'HTML — un errore di idratazione per un dettaglio
-  // che prima del montaggio non ha nemmeno senso mostrare.
-  const [ultimo, setUltimo] = useState<Date | null>(null);
-  const inFlight = useRef(false);
-
-  const aggiorna = useCallback(
+  // Scarica la fotografia. Il *quando* non è più affare di questo componente:
+  // ci pensa `useServizioVivo`, che chiede al server ogni cinque secondi se
+  // qualcosa è cambiato e chiama questa funzione solo se la risposta è sì.
+  const scarica = useCallback(
     async (finestra = window_) => {
-      if (inFlight.current) return;
-      inFlight.current = true;
-      setAggiornando(true);
-      try {
-        const res = await fetch(`/api/service?window=${finestra}`, { cache: "no-store" });
-        if (res.ok) {
-          setSnapshot(await res.json());
-          setUltimo(new Date());
-        }
-      } catch {
-        // Una rete che salta per un istante non deve svuotare la schermata:
-        // resta l'ultima fotografia buona, con l'ora a cui è stata presa.
-      } finally {
-        inFlight.current = false;
-        setAggiornando(false);
-      }
+      const res = await fetch(`/api/service?window=${finestra}`, { cache: "no-store" });
+      // Una rete che salta per un istante non deve svuotare la schermata:
+      // resta l'ultima fotografia buona, con l'ora a cui è stata presa.
+      if (res.ok) setSnapshot(await res.json());
     },
     [window_],
   );
 
-  useEffect(() => {
-    const id = setInterval(() => aggiorna(), REFRESH_MS);
-    return () => clearInterval(id);
-  }, [aggiorna]);
+  const { ultimo, aggiornando, aggiornaOra } = useServizioVivo(scarica);
 
-  // Tornando sulla scheda dopo una pausa, la prima cosa da fare è ricaricare:
-  // il servizio è andato avanti senza di noi.
-  useEffect(() => {
-    function onVisible() {
-      if (document.visibilityState === "visible") aggiorna();
-    }
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [aggiorna]);
+  const aggiorna = useCallback(
+    (finestra?: number) => (finestra === undefined ? aggiornaOra() : scarica(finestra)),
+    [aggiornaOra, scarica],
+  );
 
   const dopoAzione = useCallback(() => {
     aggiorna();

@@ -163,6 +163,7 @@ inventata — e per la stessa ragione la colonna «Spesa totale» del CRM ora di
 | Audit log | LIVE | Azioni sensibili tracciate con attore, entità e differenza |
 | Migrazioni versionate | LIVE | `prisma migrate deploy` al deploy |
 | Branding | LIVE | |
+| Sala e servizio che si aggiornano da soli | LIVE | 5 secondi invece di 30, chiedendo «è cambiato qualcosa?» invece di riscaricare tutto. Verificato dal vivo: 2 s dal cambio alla schermata |
 | Nessuno scorrimento di pagina | LIVE | 28 rotte × 4 risoluzioni misurate a zero. Ricetta e regole in `DESIGN.md` §7 |
 | Notifiche in-app | LIVE | Filtrate per ruolo |
 | Messaggi in uscita | LIVE (email) | Un solo punto d'uscita, registrato su `MessageLog`; niente doppi invii. La risposta del fornitore viene verificata: un rifiuto non risulta più «inviato» |
