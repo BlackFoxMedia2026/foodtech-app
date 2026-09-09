@@ -51,9 +51,11 @@ describe("una voce sola accesa", () => {
     });
   }
 
-  it("la sala viva accende «Sala», non «Servizio»", () => {
-    const accesa = ALL_NAV.find((v) => isNavActive("/service/room", v));
-    expect(accesa?.label).toBe("Sala");
+  it("la sala viva sta dentro Servizio, e accende «Servizio»", () => {
+    // `/service/room` è una vista del Servizio (la linguetta «Sala»), non una
+    // destinazione della barra: la voce accesa è quella che la contiene.
+    const accese = ALL_NAV.filter((v) => isNavActive("/service/room", v));
+    expect(accese.map((v) => v.label)).toEqual(["Servizio"]);
   });
 
   it("il servizio accende «Servizio»", () => {
@@ -72,15 +74,23 @@ describe("una voce sola accesa", () => {
 });
 
 describe("le destinazioni", () => {
-  it("«Sala» porta alla sala viva, non alla piantina", () => {
+  it("«Sala» porta alla sala del locale", () => {
+    /*
+      `/floor` è la sala vera: i tavoli in pianta, i posti, chi copre quale
+      tavolo, il turno e la data. Per un giorno questa voce ha puntato su
+      `/service/room` con l'idea che `/floor` fosse «l'editor delle
+      piantine» — non lo è, l'editor si apre da lì — e il risultato era che
+      «Sala» mostrava una vista a riquadri che assomiglia poco al locale
+      mentre la sala vera finiva sotto «Altro».
+    */
     const sala = PRIMARY_NAV.find((v) => v.label === "Sala");
-    expect(sala?.href).toBe("/service/room");
+    expect(sala?.href).toBe("/floor");
   });
 
-  it("la piantina è raggiungibile, sotto «Il locale»", () => {
-    const piantina = SECONDARY_NAV.find((v) => v.href === "/floor");
-    expect(piantina).toBeDefined();
-    expect(piantina?.gruppo).toBe("locale");
+  it("la sala non compare due volte nella navigazione", () => {
+    // Era anche sotto «Altro» col nome «Piantina»: due voci per la stessa
+    // schermata sono due nomi per la stessa cosa.
+    expect(ALL_NAV.filter((v) => v.href === "/floor")).toHaveLength(1);
   });
 
   it("nessuna funzione è sparita: ogni voce di prima ha ancora una casa", () => {
@@ -105,9 +115,8 @@ describe("la barra in basso del telefono", () => {
     expect(MOBILE_NAV.map((v) => v.href)).toContain("/bookings");
   });
 
-  it("porta la sala viva e non l'editor", () => {
-    expect(MOBILE_NAV.map((v) => v.href)).toContain("/service/room");
-    expect(MOBILE_NAV.map((v) => v.href)).not.toContain("/floor");
+  it("porta la sala", () => {
+    expect(MOBILE_NAV.map((v) => v.href)).toContain("/floor");
   });
 
   it("ogni voce della barra viene dalla navigazione principale", () => {
