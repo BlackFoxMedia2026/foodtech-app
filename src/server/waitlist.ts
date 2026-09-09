@@ -179,11 +179,31 @@ export async function addToWaitlist(venueId: string, raw: unknown, actor?: Audit
  */
 export const ATTESA_DIMENTICATA_MIN = 240;
 
+/**
+ * Da quanti minuti oltre la promessa un'attesa conta come promessa rotta.
+ *
+ * Cinque: sotto, è la differenza fra due sguardi all'orologio, e ordinare la
+ * coda su quel rumore la farebbe ballare a ogni aggiornamento. Sopra, qualcuno
+ * è in piedi da più di quello che gli abbiamo detto.
+ */
+export const RITARDO_CHE_CONTA_MIN = 5;
+
 export type WaitlistView = WaitlistEntryWithRelations & {
   /** Minuti trascorsi da quando è entrato in lista. */
   waitingMin: number;
   /** Vero quando ha aspettato più della stima: è il momento di dire qualcosa. */
   overdue: boolean;
+  /**
+   * Di quanti minuti abbiamo sforato **la promessa fatta a questa persona**.
+   * Zero quando siamo dentro la stima.
+   *
+   * Non è «da quanto aspetta»: è la differenza fra quanto aspetta e quanto le
+   * abbiamo detto che avrebbe aspettato. Sono due cose diverse, e la seconda è
+   * quella che fa alzare e andare via — a chi ha sentito «quaranta minuti» e
+   * ne ha aspettati quarantacinque non è stato promesso niente di falso; a chi
+   * ha sentito «venti» e ne ha aspettati trentacinque, sì.
+   */
+  ritardoSullaPromessa: number;
   /**
    * Vero quando è in lista da così tanto che non sta più aspettando.
    * Resta in elenco, ma non entra nell'attesa media.
@@ -200,6 +220,11 @@ function decorate(entry: WaitlistEntryWithRelations, now: Date): WaitlistView {
     ...entry,
     waitingMin,
     overdue: entry.status === "WAITING" && waitingMin > entry.expectedWaitMin,
+    // Senza una stima non c'è una promessa da rompere: `expectedWaitMin` ha un
+    // valore di comodo (venti minuti), e trattarlo come una promessa vera
+    // metterebbe davanti chi non ha mai sentito un numero.
+    ritardoSullaPromessa:
+      entry.expectedWaitMin > 0 ? Math.max(0, waitingMin - entry.expectedWaitMin) : 0,
     dimenticata: waitingMin >= ATTESA_DIMENTICATA_MIN,
     offerExpired:
       entry.status === "NOTIFIED" && !!entry.offerExpiresAt && entry.offerExpiresAt.getTime() < now.getTime(),
@@ -277,6 +302,41 @@ export async function findTablesForEntry(
  * È la domanda che si fa un maître quando un tavolo si alza, e la ragione per
  * cui una lista d'attesa vale più di un foglio di carta.
  */
+/**
+ * Chi ha la precedenza su un tavolo che si è liberato.
+ *
+ * Tre criteri, in quest'ordine, e il secondo è quello aggiunto il 9 settembre
+ * (§26 del brief):
+ *
+ * 1. **la sala che ha chiesto.** Non è un favore: è il motivo per cui ha
+ *    chiesto quella sala;
+ * 2. **quanto abbiamo sforato la promessa**, a scaglioni di cinque minuti.
+ *    Prima l'ordine era quello di arrivo, e l'ordine di arrivo non sa niente
+ *    di cosa è stato detto a chi: un gruppo a cui abbiamo promesso venti
+ *    minuti e che ne ha aspettati trentacinque ha una precedenza che la
+ *    posizione in coda non cattura. Gli scaglioni servono perché un minuto di
+ *    differenza non deve far ballare la coda a ogni aggiornamento;
+ * 3. **l'ordine di arrivo**, che resta l'ultima parola a parità di tutto.
+ *
+ * Il sistema **ordina, non esegue**: la proposta si vede nella riga e chi è in
+ * sala decide. È lo stesso confine di tutto il resto del prodotto.
+ */
+export function confrontaPerPrecedenza(roomId?: string | null) {
+  const scaglione = (e: WaitlistView) =>
+    Math.floor(e.ritardoSullaPromessa / RITARDO_CHE_CONTA_MIN);
+
+  return (a: WaitlistView, b: WaitlistView) => {
+    if (roomId) {
+      const prefA = a.preferredRoomId === roomId ? 0 : 1;
+      const prefB = b.preferredRoomId === roomId ? 0 : 1;
+      if (prefA !== prefB) return prefA - prefB;
+    }
+    const ritardo = scaglione(b) - scaglione(a);
+    if (ritardo !== 0) return ritardo;
+    return a.position - b.position;
+  };
+}
+
 export async function suggestEntriesForTable(
   venueId: string,
   tableId: string,
@@ -320,13 +380,7 @@ export async function suggestEntriesForTable(
     if (esito.available) proponibili.push(entry);
   }
 
-  return proponibili.sort((a, b) => {
-    // A parità di coda, chi ha chiesto questa sala e chi aspetta da più tempo.
-    const prefA = a.preferredRoomId === table.roomId ? 0 : 1;
-    const prefB = b.preferredRoomId === table.roomId ? 0 : 1;
-    if (prefA !== prefB) return prefA - prefB;
-    return a.position - b.position;
-  });
+  return proponibili.sort(confrontaPerPrecedenza(table.roomId));
 }
 
 /**
@@ -356,7 +410,8 @@ export async function suggestEntriesForTable(
  *
  * **Un tavolo si propone a una persona sola.** Senza questo, i primi tre della
  * coda si vedrebbero proporre tutti «T9», e due su tre farebbero un giro a
- * vuoto. Chi è più avanti in coda ha la precedenza sul tavolo migliore.
+ * vuoto. La precedenza sul tavolo migliore la dà `confrontaPerPrecedenza`:
+ * prima chi ha aspettato oltre la promessa, poi l'ordine di arrivo.
  *
  * Il suggerimento non sostituisce il controllo: premendo «Accomoda» la
  * verifica completa si rifà, e se nel frattempo il tavolo è stato preso lo
@@ -369,7 +424,20 @@ export async function tavoliSuggeritiPerLaCoda(
   opts: { now?: Date } = {},
 ): Promise<Record<string, { tableId: string; label: string; seats: number }>> {
   const now = opts.now ?? new Date();
-  const inAttesa = coda.filter((e) => e.status === "WAITING" || e.status === "NOTIFIED");
+  /*
+    L'ordine con cui si distribuiscono i tavoli è quello della **precedenza**,
+    non quello di arrivo.
+
+    Conta perché un tavolo si propone a una persona sola: chi viene prima in
+    questo ciclo si prende il tavolo migliore fra quelli che gli stanno. Fino
+    al 9 settembre l'ordine era la posizione in coda, che non sa niente di cosa
+    è stato detto a chi — e un gruppo a cui avevamo promesso venti minuti, in
+    piedi da trentacinque, si vedeva passare davanti chi era arrivato prima con
+    una promessa di quaranta.
+  */
+  const inAttesa = coda
+    .filter((e) => e.status === "WAITING" || e.status === "NOTIFIED")
+    .sort(confrontaPerPrecedenza());
   if (inAttesa.length === 0) return {};
 
   const tavoli = await db.table.findMany({
