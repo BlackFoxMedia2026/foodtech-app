@@ -6,6 +6,7 @@ import {
   MAX_PER_TIPO,
   MINIMO_CIFRE,
   MINIMO_LETTERE,
+  MINIMO_RIFERIMENTO,
   soloCifre,
   type EsitoRicerca,
   type OspiteTrovato,
@@ -43,7 +44,12 @@ export type { EsitoRicerca, OspiteTrovato, PrenotazioneTrovata } from "@/lib/ric
  * 3. **le prenotazioni si cercano in una finestra dichiarata.** Una settimana
  *    indietro e un mese avanti: chi cerca «Bianchi» sta rispondendo al
  *    telefono adesso, non facendo ricerca storica. Lo storico completo di una
- *    persona sta nella sua scheda, ed è a un clic dal risultato.
+ *    persona sta nella sua scheda, ed è a un clic dal risultato;
+ * 4. **il riferimento non ha finestra.** Chi telefona leggendo la referenza
+ *    che ha ricevuto per email cerca **quella** prenotazione, e potrebbe
+ *    essere fra due mesi. Un riferimento è una corrispondenza precisa: la
+ *    finestra serve a non annegare nei nomi comuni, non a nascondere una
+ *    prenotazione che qualcuno sta nominando per identificativo.
  */
 
 const VUOTO = (q: string): EsitoRicerca => ({
@@ -139,14 +145,28 @@ export async function cercaNelLocale(
     si trova per nome, perché il nome non c'è da nessuna parte. È un limite
     vero, e la schermata lo dice invece di far cercare a vuoto.
   */
-  const dovePrenotazioni: Prisma.BookingWhereInput = {
-    venueId,
-    deletedAt: null,
+  const perOspiteInFinestra: Prisma.BookingWhereInput = {
     startsAt: {
       gte: new Date(now.getTime() - GIORNI_INDIETRO * 86_400_000),
       lte: new Date(now.getTime() + GIORNI_AVANTI * 86_400_000),
     },
     guest: dove,
+  };
+
+  /*
+    Il riferimento: il cliente lo riceve per intero nella conferma e
+    nell'email, e quando telefona legge quello. Cercarlo è il modo più preciso
+    di trovare una prenotazione — quindi non ha la finestra dei nomi, e basta
+    un pezzo di stringa perché nessuno detta venticinque caratteri senza
+    sbagliare.
+  */
+  const dovePrenotazioni: Prisma.BookingWhereInput = {
+    venueId,
+    deletedAt: null,
+    OR:
+      q.length >= MINIMO_RIFERIMENTO
+        ? [perOspiteInFinestra, { reference: { contains: q, mode: "insensitive" } }]
+        : [perOspiteInFinestra],
   };
 
   const [prenotazioni, prenotazioniTotali] = await Promise.all([
@@ -159,6 +179,7 @@ export async function cercaNelLocale(
         startsAt: true,
         partySize: true,
         status: true,
+        reference: true,
         table: { select: { label: true } },
         guest: { select: { firstName: true, lastName: true } },
       },
@@ -179,6 +200,9 @@ export async function cercaNelLocale(
     prenotazioni: prenotazioni.map((b) => ({
       id: b.id,
       nome: b.guest ? nomeDi(b.guest) : "Senza scheda",
+      // Se la corrispondenza è sul riferimento, la riga lo dice: chi ha
+      // cercato una stringa deve vedere perché quella riga è lì.
+      perRiferimento: q.length >= MINIMO_RIFERIMENTO && b.reference.toLowerCase().includes(q.toLowerCase()),
       quando: b.startsAt,
       partySize: b.partySize,
       stato: b.status,

@@ -206,3 +206,63 @@ describe("i confini", () => {
     expect(e.q).toBe("Bianchi");
   });
 });
+
+describe("il riferimento della prenotazione", () => {
+  /*
+    Il cliente riceve il riferimento per intero — nella pagina di conferma e
+    nell'email — e quando telefona legge quello. Prima non si poteva cercare, e
+    la scheda della prenotazione lo mostrava **troncato a dieci caratteri**:
+    chi in sala confrontava la stringa letta al telefono con quella sullo
+    schermo confrontava due cose diverse.
+  */
+  it("trova una prenotazione dal suo riferimento, anche solo un pezzo", async () => {
+    await svuota();
+    const g = await ospite(venueId, { nome: "Marta", cognome: "Bianchi" });
+    const b = await prenotazione(g.id, 2);
+    const pezzo = b.reference.slice(-8);
+
+    const e = await cercaNelLocale(venueId, pezzo, { now: ORA });
+    expect(e.prenotazioni.map((p) => p.id)).toContain(b.id);
+    // E la riga dice perché è lì.
+    expect(e.prenotazioni.find((p) => p.id === b.id)?.perRiferimento).toBe(true);
+  });
+
+  it("il riferimento non ha finestra: vale anche per una prenotazione fra due mesi", async () => {
+    await svuota();
+    const g = await ospite(venueId, { nome: "Marta", cognome: "Bianchi" });
+    const lontana = await prenotazione(g.id, GIORNI_AVANTI + 30);
+
+    // Per nome non si trova — è fuori dalla finestra dichiarata…
+    expect((await cercaNelLocale(venueId, "Bianchi", { now: ORA })).prenotazioni).toHaveLength(0);
+    // …per riferimento sì, perché è una corrispondenza precisa.
+    const e = await cercaNelLocale(venueId, lontana.reference.slice(-10), { now: ORA });
+    expect(e.prenotazioni.map((p) => p.id)).toEqual([lontana.id]);
+  });
+
+  it("una stringa corta non è un riferimento", async () => {
+    await svuota();
+    const g = await ospite(venueId, { nome: "Marta", cognome: "Bianchi" });
+    const b = await prenotazione(g.id, 2);
+    // Cinque caratteri del riferimento non bastano: sotto la soglia un
+    // frammento di identificativo corrisponderebbe a mezzo archivio.
+    const e = await cercaNelLocale(venueId, b.reference.slice(0, 5), { now: ORA });
+    expect(e.prenotazioni.find((p) => p.perRiferimento)).toBeUndefined();
+  });
+
+  it("il riferimento di un altro locale non si trova", async () => {
+    await svuota();
+    const g = await ospite(altroVenueId, { nome: "Altrui" });
+    const b = await db.booking.create({
+      data: {
+        venueId: altroVenueId,
+        guestId: g.id,
+        partySize: 2,
+        startsAt: ORA,
+        status: "CONFIRMED",
+        source: "PHONE",
+      },
+    });
+    const e = await cercaNelLocale(venueId, b.reference.slice(-10), { now: ORA });
+    expect(e.prenotazioni).toHaveLength(0);
+  });
+});
