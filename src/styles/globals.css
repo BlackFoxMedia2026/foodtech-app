@@ -21,6 +21,20 @@
     --accent-foreground: 41 59% 92%;
     --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
+    /*
+      Il rosso **da leggere**, non da riempire.
+
+      Misurato: `--destructive` (45% di luminosità) su una scheda del prodotto
+      fa **2,08 : 1** — sotto qualunque soglia. Il `rose-600` che il codice
+      usava per gli errori fa 2,60 : 1, meglio ma ancora sotto: un messaggio
+      d'errore era la cosa **meno** leggibile della schermata, e il testo
+      normale accanto fa 6,02 : 1.
+
+      A 72% di luminosità lo stesso rosso fa 4,7 : 1 — sopra la soglia AA per
+      il testo piccolo, e sopra il colore delle note (4,45 : 1). Il pieno
+      resta `--destructive`, che serve a riempire con testo bianco sopra.
+    */
+    --destructive-soft: 0 70% 72%;
     --border: 157 19% 26%;
     --border-strong: 157 19% 34%;
     --input: 157 19% 26%;

@@ -15,7 +15,7 @@ function ChecklistRow({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li className="flex items-center gap-2 text-sm">
       {ok ? <Check className="h-4 w-4 text-sage" /> : <X className="h-4 w-4 text-destructive" />}
-      <span className={cn(!ok && "text-rose-600")}>{label}</span>
+      <span className={cn(!ok && "text-destructive-soft")}>{label}</span>
     </li>
   );
 }
@@ -92,7 +92,7 @@ export function Step6Send() {
         <ChecklistRow ok={state.testEmailSentThisSession} label="Email di test inviata (consigliato, non obbligatorio)" />
       </ul>
 
-      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {error && <p className="text-sm text-destructive-soft">{error}</p>}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" onClick={handleSaveDraft}>

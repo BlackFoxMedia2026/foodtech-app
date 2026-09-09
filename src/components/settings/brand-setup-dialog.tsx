@@ -161,7 +161,7 @@ export function BrandSetupDialog({ initialName }: { initialName: string }) {
           </div>
         )}
 
-        {error && <p className="text-sm text-rose-600">{error}</p>}
+        {error && <p className="text-sm text-destructive-soft">{error}</p>}
 
         <div className="flex items-center justify-between border-t border-border pt-4">
           <Button type="button" variant="ghost" onClick={handleSkip} disabled={submitting}>

@@ -93,6 +93,8 @@ const config: Config = {
           hover: "#936637",
           foreground: "#2F1F11",
         },
+        /** Il rosso da leggere su verde scuro: vedi la nota in `globals.css`. */
+        "destructive-soft": "hsl(var(--destructive-soft) / <alpha-value>)",
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",
           foreground: "hsl(var(--card-foreground) / <alpha-value>)",

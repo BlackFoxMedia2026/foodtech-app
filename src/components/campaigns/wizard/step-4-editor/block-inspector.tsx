@@ -85,7 +85,7 @@ function ImageField({
           Oppure incolla un URL
         </button>
       )}
-      {error && <p className="text-xs text-rose-600">{error}</p>}
+      {error && <p className="text-xs text-destructive-soft">{error}</p>}
     </div>
   );
 }

@@ -241,8 +241,11 @@ export function TablePickerDialog({
               })}
             </ul>
 
+            {/* L'oro del tema (5,11 : 1) e non l'accento (3,32): su verde scuro
+                un avvertimento in accento si legge peggio delle note grigie
+                accanto. */}
             {scelti.length > 0 && (
-              <p className={cn("text-sm", bastano ? "text-muted-foreground" : "text-accent")}>
+              <p className={cn("text-sm", bastano ? "text-muted-foreground" : "text-gilt")}>
                 {unione ? `${scelti.length} tavoli uniti: ` : ""}
                 {posti} {posti === 1 ? "posto" : "posti"} per {partySize}{" "}
                 {partySize === 1 ? "persona" : "persone"}

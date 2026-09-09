@@ -179,7 +179,7 @@ export function WaitlistRow({
             )}
 
             {entry.allergies && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-accent">
+              <p className="mt-1 flex items-center gap-1 text-xs text-gilt">
                 <AlertTriangle className="h-3 w-3" aria-hidden="true" /> {entry.allergies}
               </p>
             )}

@@ -64,7 +64,7 @@ export function BrandImageField({
         </Button>
       )}
       <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={handleFileChange} />
-      {error && <p className="text-xs text-rose-600">{error}</p>}
+      {error && <p className="text-xs text-destructive-soft">{error}</p>}
     </div>
   );
 }

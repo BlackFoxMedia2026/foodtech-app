@@ -124,7 +124,7 @@ export function Step5PreviewTest() {
             {sending ? "Invio..." : "Invia test"}
           </Button>
         </div>
-        {testError && <p className="text-xs text-rose-600">{testError}</p>}
+        {testError && <p className="text-xs text-destructive-soft">{testError}</p>}
         {testSuccess && <p className="text-xs text-sage">Email di test inviata.</p>}
       </div>
     </div>

@@ -172,7 +172,7 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettingsInitial }
           </CardContent>
         </Card>
 
-        {error && <p className="text-sm text-rose-600">{error}</p>}
+        {error && <p className="text-sm text-destructive-soft">{error}</p>}
         {/* Stessa parola di ogni altro modulo delle Impostazioni: un vocabolario
             che cambia da una pagina all'altra fa dubitare che sia successo
             davvero la stessa cosa. */}
