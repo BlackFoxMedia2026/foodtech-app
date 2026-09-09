@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Booking, Guest, Table } from "@prisma/client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -15,6 +16,16 @@ import {
 import { Check, MoreHorizontal } from "lucide-react";
 import { formatTime, initials } from "@/lib/utils";
 import { Corpo, Riga, Tabella, Td, Testa, Th } from "@/components/ui/table";
+import { cosaSapere } from "@/lib/cosa-sapere";
+import { CosaSapere } from "@/components/guests/cosa-sapere";
+import {
+  Pannello,
+  PannelloAzioni,
+  PannelloContenuto,
+  PannelloCorpo,
+  PannelloTesta,
+  PannelloTitle,
+} from "@/components/ui/pannello";
 
 /** Vedi la nota in `bookings-page-client.tsx`: niente `Decimal` da questa parte. */
 type Row = Booking & { guest: Omit<Guest, "totalSpend"> | null; table: Table | null };
@@ -31,6 +42,8 @@ const STATUS_OPTIONS = [
 
 export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: boolean }) {
   const router = useRouter();
+  /* La riga aperta nel pannello. `null` = nessun pannello. */
+  const [aperta, setAperta] = useState<Row | null>(null);
 
   async function changeStatus(id: string, status: string) {
     await fetch(`/api/bookings/${id}`, {
@@ -50,9 +63,10 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
   }
 
   return (
-    /* Sette colonne su 390 px non si leggono. Su telefono restano le quattro
-       che servono a riconoscere una prenotazione — ora, chi, quanti, come sta
-       — e spariscono tavolo e provenienza, che si guardano da fermi. */
+    <>
+    {/* Sette colonne su 390 px non si leggono. Su telefono restano le quattro
+        che servono a riconoscere una prenotazione — ora, chi, quanti, come sta
+        — e spariscono tavolo e provenienza, che si guardano da fermi. */}
     <Tabella densita="densa" fill={fill}>
       <Testa>
         <Th densita="densa">Orario</Th>
@@ -69,6 +83,15 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
           {rows.map((b) => {
             const name = b.guest ? `${b.guest.firstName} ${b.guest.lastName ?? ""}`.trim() : "Walk-in";
             const isPending = b.status === "PENDING";
+            const segnali = cosaSapere({
+              allergies: b.guest?.allergies,
+              privateNotes: b.guest?.privateNotes,
+              preferences: b.guest?.preferences,
+              visits: b.guest?.totalVisits,
+              noShows: b.guest?.noShowCount,
+              loyaltyTier: b.guest?.loyaltyTier,
+              occasion: b.occasion,
+            });
             return (
               // Una riga in attesa di una decisione era dipinta con
               // `bg-red-50`: un rosso da tema chiaro, che su questo fondo
@@ -82,8 +105,29 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
                     <Avatar className="hidden h-7 w-7 sm:flex">
                       <AvatarFallback className="text-[10px]">{initials(name)}</AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium">{name}</p>
+                      {/*
+                        Il segnale, nella lista.
+
+                        `cosaSapere` esiste da tempo — allergia, occasione,
+                        nota del personale, assenze precedenti, livello, al
+                        massimo quattro righe in ordine di urgenza, con la
+                        fonte su ognuna — ed era usato nella scheda della
+                        prenotazione, in Servizio e in Sala. Non qui, che è la
+                        schermata con cui si **prepara** il servizio: per
+                        sapere chi ha un'allergia bisognava aprire una
+                        prenotazione per volta e tornare indietro.
+
+                        Nessun dato in più da caricare: la riga porta già
+                        l'ospite intero e l'occasione di questa prenotazione.
+
+                        E se non c'è niente da sapere non si stampa niente
+                        (`CosaSapere` restituisce `null`): una riga senza
+                        segnali resta a un livello, così la lista non
+                        raddoppia di altezza per le prenotazioni normali.
+                      */}
+                      <CosaSapere righe={segnali} className="mt-0.5" />
                       {b.guest?.phone && <p className="text-xs text-muted-foreground">{b.guest.phone}</p>}
                     </div>
                   </div>
@@ -122,7 +166,7 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="sm" className="tocco-comodo"
                             aria-label={`Cambia lo stato di ${name}`}
                             title="Cambia stato"
                           >
@@ -139,8 +183,21 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
-                    <Button asChild variant="ghost" size="sm">
-                      <Link href={`/bookings/${b.id}`}>Apri</Link>
+                    {/*
+                      «Apri» apre un **pannello**, non una pagina.
+
+                      Preparare un servizio è scorrere nove prenotazioni
+                      guardando i dettagli: apri, leggi, torna, apri la
+                      seconda. Ventisette navigazioni, e ogni ritorno perdeva
+                      la posizione nella lista.
+
+                      La rotta resta: `/bookings/[id]` rende ancora una
+                      pagina, così un link condiviso funziona e il tasto
+                      Indietro fa quello che deve. È la **lista** che apre un
+                      pannello invece di navigare.
+                    */}
+                    <Button variant="ghost" size="sm" className="tocco-comodo" onClick={() => setAperta(b)}>
+                      Apri
                     </Button>
                   </div>
                 </Td>
@@ -149,5 +206,75 @@ export function BookingsTable({ rows, fill = false }: { rows: Row[]; fill?: bool
           })}
       </Corpo>
     </Tabella>
+
+    {/* Il pannello di contesto della riga aperta. */}
+    <Pannello open={aperta !== null} onOpenChange={(v) => !v && setAperta(null)} modal={false}>
+      {aperta && (
+        <PannelloContenuto aria-describedby={undefined}>
+          <PannelloTesta>
+            <PannelloTitle className="text-base font-medium">
+              {aperta.guest ? `${aperta.guest.firstName} ${aperta.guest.lastName ?? ""}`.trim() : "Walk-in"}
+            </PannelloTitle>
+            <p className="t-nota mt-0.5">
+              {formatTime(aperta.startsAt)} · {aperta.partySize}{" "}
+              {aperta.partySize === 1 ? "persona" : "persone"}
+              {aperta.table?.label && ` · ${aperta.table.label}`}
+            </p>
+          </PannelloTesta>
+
+          <PannelloCorpo>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={aperta.status} />
+              <SourceBadge source={aperta.source} />
+            </div>
+
+            <CosaSapere
+              disposizione="colonna"
+              righe={cosaSapere({
+                allergies: aperta.guest?.allergies,
+                privateNotes: aperta.guest?.privateNotes,
+                preferences: aperta.guest?.preferences,
+                visits: aperta.guest?.totalVisits,
+                noShows: aperta.guest?.noShowCount,
+                loyaltyTier: aperta.guest?.loyaltyTier,
+                occasion: aperta.occasion,
+              })}
+            />
+
+            {aperta.guest?.phone && (
+              <p className="t-corpo">
+                <span className="t-etichetta mr-2">Telefono</span>
+                <a href={`tel:${aperta.guest.phone}`} className="underline underline-offset-4">
+                  {aperta.guest.phone}
+                </a>
+              </p>
+            )}
+            {aperta.notes && (
+              <p className="t-corpo">
+                <span className="t-etichetta mr-2">Note</span>
+                {aperta.notes}
+              </p>
+            )}
+          </PannelloCorpo>
+
+          <PannelloAzioni>
+            {/*
+              La pagina intera resta raggiungibile: da qui si va a tutto il
+              resto — modifica, tavolo, storia. Il pannello risponde a «chi è e
+              cosa devo sapere», che è la domanda che si fa scorrendo la lista.
+            */}
+            <Button asChild variant="accent" size="sm" className="tocco-comodo">
+              <Link href={`/bookings/${aperta.id}`}>Apri la scheda</Link>
+            </Button>
+            {aperta.guest && (
+              <Button asChild variant="outline" size="sm" className="tocco-comodo">
+                <Link href={`/guests/${aperta.guest.id}`}>Scheda ospite</Link>
+              </Button>
+            )}
+          </PannelloAzioni>
+        </PannelloContenuto>
+      )}
+    </Pannello>
+    </>
   );
 }

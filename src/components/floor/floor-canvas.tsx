@@ -159,7 +159,11 @@ export const FloorCanvas = forwardRef<
       emptyPlanSlot={
         <>
           Nessuna piantina caricata.
-          <button type="button" className="font-medium text-accent-strong hover:underline" onClick={() => setManagePlanOpen(true)}>
+          <button type="button" /* Collegamento dentro una frase («Nessuna piantina caricata. Crea la
+                 tua sala»): la regola dei bersagli grandi non si applica al
+                 testo in linea — WCAG 2.5.8 lo esenta esplicitamente — e
+                 ingrandirlo spezzerebbe la riga. */
+              className="font-medium text-accent-strong hover:underline" onClick={() => setManagePlanOpen(true)}>
             Crea la tua sala
           </button>
         </>
@@ -213,7 +217,9 @@ export const FloorCanvas = forwardRef<
                 type="button"
                 onClick={() => setCoverageFilter(f)}
                 className={cn(
-                  "rounded px-2 py-1 transition-colors",
+                  // `tocco-comodo`: la piantina si configura anche da tablet,
+                  // e questi filtri erano bersagli da 24 px.
+                  "tocco-comodo min-h-[36px] rounded px-2 py-1 transition-colors",
                   coverageFilter === f ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
                 )}
               >

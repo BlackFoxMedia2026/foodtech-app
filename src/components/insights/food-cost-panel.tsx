@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChefHat, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/utils";
@@ -151,7 +152,10 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
               {report.senzaCosto.length === 1 ? "È venduto e incassa" : "Sono venduti e incassano"}, ma senza il
               costo delle materie prime non {report.senzaCosto.length === 1 ? "entra" : "entrano"} nel calcolo. Si
               {report.senzaCosto.length === 1 ? " completa" : " completano"} dal{" "}
-              <Link href="/menu" className="underline">menu</Link>.
+              <Link href="/menu?filtro=senza_costo" className="underline">
+                menu
+              </Link>
+              .
             </p>
             <ul className="mt-2 space-y-1 text-sm">
               {report.senzaCosto.slice(0, 8).map((p) => (
@@ -166,6 +170,26 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
                 <li className="text-xs text-tertiary-foreground">e altri {report.senzaCosto.length - 8}</li>
               )}
             </ul>
+
+            {/*
+              La terza riga: **cosa posso fare**.
+
+              Questo riquadro diceva già cosa è successo e su cosa è misurato.
+              Mancava l'azione — e il collegamento c'era, ma portava sulla carta
+              intera, dove ritrovare i cinque piatti fra quaranta era di nuovo
+              un lavoro. Adesso arriva con il filtro già acceso.
+
+              La regola che mi sono dato: l'azione si scrive **solo** se porta
+              su una schermata con quelle righe dentro. Un consiglio generico —
+              «considera di dichiarare i costi» — insegna a saltare la riga.
+              Per questo qui c'è e altrove no: è l'unico posto, per adesso,
+              dove esiste una destinazione vera.
+            */}
+            <Button asChild variant="outline" size="sm" className="mt-3">
+              <Link href="/menu?filtro=senza_costo">
+                {report.senzaCosto.length === 1 ? "Completa il costo" : "Completa i costi"}
+              </Link>
+            </Button>
           </div>
         )}
 

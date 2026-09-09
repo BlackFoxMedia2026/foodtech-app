@@ -43,6 +43,7 @@ export function WaitersPageClient({
   tables,
   serviceOptions,
   canManageContracts,
+  turnoDiOggi,
   assignmentSummaryByWaiterId,
   contractAttentionByWaiterId,
 }: {
@@ -52,6 +53,12 @@ export function WaitersPageClient({
   tables: { id: string; label: string; seats: number }[];
   serviceOptions: string[];
   canManageContracts: boolean;
+  /**
+   * Chi è in turno oggi, per servizio. Vuoto quando nessuno è assegnato — e in
+   * quel caso la fascia non compare: «nessuno in turno» a metà pomeriggio è
+   * normale, e una riga che lo dice ogni giorno insegna a non leggerla.
+   */
+  turnoDiOggi: { servizio: string; persone: { nome: string; ruolo: string; zona: string; tavoli: number }[] }[];
   assignmentSummaryByWaiterId: Record<string, string>;
   contractAttentionByWaiterId: Record<string, { status: "EXPIRING_SOON" | "EXPIRED"; detail: string }>;
 }) {
@@ -76,6 +83,45 @@ export function WaitersPageClient({
           <NewWaiterDialog canManageContracts={canManageContracts} />
         </div>
       </header>
+
+      {/*
+        Il turno di oggi, in cima.
+
+        Questa pagina era un elenco amministrativo: nomi raggruppati per ruolo,
+        con l'assegnazione scritta dentro ogni riga. Per sapere «chi è in turno
+        stasera e su che zona» bisognava leggere tutte le righe e tenere a
+        mente quali ce l'avevano.
+
+        Qui la domanda è girata: prima il servizio, poi chi c'è, poi quanti
+        tavoli. Chi non è assegnato non compare — non è «zero tavoli», è che
+        stasera non è in turno.
+
+        Compare solo se qualcuno è assegnato: «nessuno in turno» a metà
+        pomeriggio è normale, e una riga che lo dice ogni giorno insegna a non
+        leggerla.
+      */}
+      {turnoDiOggi.length > 0 && (
+        <section className="fissa riquadro denso space-y-2" aria-label="Il turno di oggi">
+          <p className="t-etichetta">Il turno di oggi</p>
+          {turnoDiOggi.map(({ servizio, persone }) => (
+            <div key={servizio} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="t-titolo-scheda min-w-[4.5rem]">{servizio}</span>
+              {persone.map((p) => (
+                <span key={`${servizio}-${p.nome}`} className="t-corpo text-muted-foreground">
+                  <strong className="font-medium text-foreground">{p.nome}</strong>
+                  <span className="t-nota"> {p.ruolo}</span> · {p.zona}
+                  {p.tavoli > 0 && (
+                    <span className="t-nota">
+                      {" "}
+                      ({p.tavoli} {p.tavoli === 1 ? "tavolo" : "tavoli"})
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          ))}
+        </section>
+      )}
 
       {waiters.length === 0 ? (
         <div className="rounded-md border border-dashed p-12 text-center text-sm text-muted-foreground">

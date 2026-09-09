@@ -130,7 +130,9 @@ export default async function OverviewPage() {
               <WeekTrend data={data.trend} />
               <Link
                 href="/insights"
-                className="mt-2 inline-block text-xs font-medium text-surface-brown-light hover:underline"
+                /* Non è un collegamento dentro una frase: è l'unica uscita
+                   dal riquadro, quindi ha diritto a un bersaglio vero. */
+                className="tocco-comodo mt-2 inline-flex min-h-[36px] items-center text-xs font-medium text-surface-brown-light hover:underline"
               >
                 Vedi report completo
               </Link>

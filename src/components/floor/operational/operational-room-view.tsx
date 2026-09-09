@@ -175,7 +175,7 @@ export function OperationalRoomView<T extends { id: string }>({
             type="button"
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="tocco-comodo h-9 w-9"
             onClick={() => stepZoom(-1)}
             disabled={camera.zoom <= minZoom}
             aria-label="Riduci zoom"
@@ -184,7 +184,7 @@ export function OperationalRoomView<T extends { id: string }>({
           </Button>
           <button
             type="button"
-            className="w-10 text-center text-xs text-muted-foreground hover:text-foreground"
+            className="tocco-comodo h-9 w-10 text-center text-xs text-muted-foreground hover:text-foreground"
             onClick={() => reset100()}
             title="Dimensione reale (100%)"
           >
@@ -194,7 +194,7 @@ export function OperationalRoomView<T extends { id: string }>({
             type="button"
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="tocco-comodo h-9 w-9"
             onClick={() => stepZoom(1)}
             disabled={camera.zoom >= MAX_ZOOM}
             aria-label="Aumenta zoom"
@@ -205,7 +205,7 @@ export function OperationalRoomView<T extends { id: string }>({
             type="button"
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="tocco-comodo h-9 w-9"
             onClick={() => fitRoom(true)}
             aria-label="Adatta alla sala"
             title="Adatta alla sala"

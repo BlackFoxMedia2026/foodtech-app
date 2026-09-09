@@ -24,7 +24,8 @@ export function FloorServiceFilter({ date, service, serviceOptions }: { date: st
         className="bg-transparent px-2 text-sm font-medium focus:outline-none"
       />
       <Select value={service} onValueChange={(v) => update({ service: v })}>
-        <SelectTrigger className="h-8 w-36 border-0 bg-transparent">
+        {/* 36 px come gli altri controlli: su un tablet si tocca anche qui. */}
+        <SelectTrigger className="h-9 w-36 border-0 bg-transparent">
           <SelectValue placeholder="Servizio" />
         </SelectTrigger>
         <SelectContent>

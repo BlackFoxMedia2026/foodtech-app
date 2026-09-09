@@ -24,11 +24,19 @@ export type WaitlistSummary = {
 
 export function WaitlistPageClient({
   entries,
+  suggeriti,
   summary,
   rooms,
   canManage,
 }: {
   entries: WaitlistRowEntry[];
+  /**
+   * Il tavolo da proporre a ciascuno, per identificativo della riga. Chi non
+   * c'è dentro non ha un tavolo libero che lo regga adesso — e la riga non
+   * scrive niente invece di scrivere «nessun tavolo», che sarebbe una riga in
+   * più per un'informazione che si vede già dall'assenza.
+   */
+  suggeriti: Record<string, { tableId: string; label: string; seats: number }>;
   summary: WaitlistSummary;
   rooms: { id: string; name: string }[];
   canManage: boolean;
@@ -119,6 +127,7 @@ export function WaitlistPageClient({
             <WaitlistRow
               key={entry.id}
               entry={entry}
+              suggerito={suggeriti[entry.id]}
               position={i + 1}
               canManage={canManage}
               onChanged={() => router.refresh()}

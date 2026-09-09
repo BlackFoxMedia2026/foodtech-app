@@ -329,6 +329,93 @@ export async function suggestEntriesForTable(
   });
 }
 
+/**
+ * Il tavolo da proporre a chi aspetta, **per tutta la coda in un colpo**.
+ *
+ * ## Perché serve
+ *
+ * Il motore che trova i tavoli per una persona in coda esisteva già ed era
+ * buono, ma la riga della lista d'attesa non diceva **quale** tavolo: bisognava
+ * premere «Accomoda» e aprire una finestra per scoprirlo. In Servizio l'avviso
+ * lo dice ancora prima («T9 è libero per Famiglia Bertoldi»); nella schermata
+ * che si chiama Attesa, no. Un click e una finestra fra «vedo chi aspetta» e
+ * «so dove metterlo».
+ *
+ * ## Perché non `findTablesForEntry` per ogni riga
+ *
+ * Quella funzione fa una verifica di disponibilità **per ogni tavolo**: con
+ * diciassette tavoli e dodici persone in coda sarebbero duecento controlli a
+ * ogni caricamento della pagina. Qui si gira la domanda: si parte dai tavoli
+ * liberi, si sceglie il più piccolo che basta, e si fa **una** verifica per
+ * riga — dodici invece di duecento, con lo stesso controllo di prima.
+ *
+ * ## Due scelte da tenere
+ *
+ * **Il più piccolo che basta**, come farebbe un maître: mettere due persone al
+ * tavolo da sei vuol dire non poterci più mettere sei.
+ *
+ * **Un tavolo si propone a una persona sola.** Senza questo, i primi tre della
+ * coda si vedrebbero proporre tutti «T9», e due su tre farebbero un giro a
+ * vuoto. Chi è più avanti in coda ha la precedenza sul tavolo migliore.
+ *
+ * Il suggerimento non sostituisce il controllo: premendo «Accomoda» la
+ * verifica completa si rifà, e se nel frattempo il tavolo è stato preso lo
+ * dice. Qui si risponde a «dove **potrei** metterlo», che è la domanda che si
+ * fa guardando la lista.
+ */
+export async function tavoliSuggeritiPerLaCoda(
+  venueId: string,
+  coda: WaitlistView[],
+  opts: { now?: Date } = {},
+): Promise<Record<string, { tableId: string; label: string; seats: number }>> {
+  const now = opts.now ?? new Date();
+  const inAttesa = coda.filter((e) => e.status === "WAITING" || e.status === "NOTIFIED");
+  if (inAttesa.length === 0) return {};
+
+  const tavoli = await db.table.findMany({
+    where: { venueId, active: true },
+    orderBy: [{ seats: "asc" }, { label: "asc" }],
+    select: { id: true, label: true, seats: true, roomId: true },
+  });
+  if (tavoli.length === 0) return {};
+
+  const prontuario = await prontuarioDurate(venueId, { now });
+  const suggeriti: Record<string, { tableId: string; label: string; seats: number }> = {};
+  const giaProposti = new Set<string>();
+
+  for (const entry of inAttesa) {
+    // La durata con cui si cerca è quella con cui si accomoderà: cercare con
+    // 105 minuti e poi accomodare con 140 vuol dire proporre un tavolo che non
+    // c'è.
+    const durationMin = prontuario.per({ partySize: entry.partySize, startsAt: now }).durataMin;
+
+    // A parità di posti, prima la sala che ha chiesto.
+    const candidati = tavoli
+      .filter((t) => t.seats >= entry.partySize && !giaProposti.has(t.id))
+      .sort((a, b) => {
+        const prefA = entry.preferredRoomId && a.roomId === entry.preferredRoomId ? 0 : 1;
+        const prefB = entry.preferredRoomId && b.roomId === entry.preferredRoomId ? 0 : 1;
+        return prefA - prefB;
+      });
+
+    for (const t of candidati) {
+      const esito = await checkAvailability(venueId, {
+        startsAt: now,
+        durationMin,
+        partySize: entry.partySize,
+        tableId: t.id,
+      });
+      if (esito.available) {
+        suggeriti[entry.id] = { tableId: t.id, label: t.label, seats: t.seats };
+        giaProposti.add(t.id);
+        break;
+      }
+    }
+  }
+
+  return suggeriti;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Azioni                                                                    */
 /* -------------------------------------------------------------------------- */

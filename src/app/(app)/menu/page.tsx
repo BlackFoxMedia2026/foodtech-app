@@ -4,7 +4,11 @@ import { MenuEditor } from "@/components/menu/menu-editor";
 
 export const dynamic = "force-dynamic";
 
-export default async function MenuPage() {
+export default async function MenuPage({
+  searchParams,
+}: {
+  searchParams: { filtro?: string };
+}) {
   const ctx = await getActiveVenue();
   const categorie = await getMenu(ctx.venueId);
 
@@ -15,6 +19,9 @@ export default async function MenuPage() {
         venueSlug={ctx.venue.slug}
         currency={ctx.venue.currency}
         canEdit={can(ctx.role, "manage_venue")}
+        /* Da Analisi si arriva qui con il filtro già acceso: vedi la nota in
+           menu-editor.tsx. */
+        filtroIniziale={searchParams.filtro}
       />
     </div>
   );

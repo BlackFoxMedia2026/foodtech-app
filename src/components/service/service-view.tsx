@@ -74,7 +74,17 @@ export function ServiceView({
   const c = snapshot.counters;
 
   return (
-    <div className="flex flex-col gap-5 animate-fade-in">
+    /*
+      Questa schermata non era mai stata convertita: la radice era un
+      `flex flex-col` che cresce, e misurava zero solo perché il contenuto ci
+      stava. Il 9 settembre, con un servizio vero in corso — sei avvisi, tavoli
+      seduti, tre colonne piene — sforava di 49 px su una scrivania e di 600 su
+      un telefono. Cioè cedeva **esattamente quando serve**, che è il modo
+      peggiore di cedere.
+
+      Misurare zero non è la stessa cosa che essere costruito per non scorrere.
+    */
+    <div className="schermo animate-fade-in gap-4">
       {/*
         L'intestazione qui è **compatta di proposito**, e non per gusto.
 
@@ -89,7 +99,7 @@ export function ServiceView({
         l'identità resta dove si legge e cede il passo alla densità dove si
         lavora.
       */}
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header className="fissa flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <h1 className="text-lg font-semibold leading-none">Servizio</h1>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">{venueName}</p>
@@ -123,7 +133,7 @@ export function ServiceView({
         ne mostrava tre come su un telefono da 390, sprecando metà larghezza.
         Il tablet non è un telefono grande.
       */}
-      <section className="surface riquadro order-2 grid grid-cols-3 divide-x divide-border md:grid-cols-6 lg:order-1">
+      <section className="fissa surface riquadro order-2 grid grid-cols-3 divide-x divide-border md:grid-cols-6 lg:order-1">
         <Numero
           icona={Users}
           etichetta="In sala"
@@ -157,7 +167,17 @@ export function ServiceView({
       </section>
 
       {insights.length > 0 && (
-        <section aria-label="Cosa sta per andare storto" className="order-1 space-y-2 lg:order-2">
+        /*
+          Gli avvisi restano fermi — sono la cosa più importante della
+          schermata — ma non oltre un terzo dell'altezza: dieci avvisi da
+          sessanta pixel si mangerebbero lo schermo e le tre colonne
+          sparirebbero. Sono già ordinati per urgenza, quindi quello che finisce
+          sotto la piega interna è il meno grave, e scorre nel suo riquadro.
+        */
+        <section
+          aria-label="Cosa sta per andare storto"
+          className="fissa order-1 max-h-[34%] space-y-2 overflow-y-auto pr-0.5 lg:order-2"
+        >
           <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             Da tenere d&apos;occhio
           </h2>
@@ -167,7 +187,7 @@ export function ServiceView({
 
       {/* Le linguette servono dove c'è una colonna per volta: sul telefono.
           Da tablet in su le colonne stanno affiancate. */}
-      <div className="order-3 flex gap-1 md:hidden" role="tablist" aria-label="Aree del servizio">
+      <div className="fissa order-3 flex gap-1 md:hidden" role="tablist" aria-label="Aree del servizio">
         {(
           [
             ["adesso", "Adesso", snapshot.seated.length + snapshot.arrived.length],
@@ -198,7 +218,9 @@ export function ServiceView({
         illeggibili; una sola spreca ottocento pixel. Due è la risposta del
         tablet, che non è né l'uno né l'altro.
       */}
-      <div className="order-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {/* La regione elastica: le colonne prendono l'altezza che avanza e
+          scorrono al loro interno. */}
+      <div className="fill-scroll order-4 grid gap-4 pr-0.5 md:grid-cols-2 xl:grid-cols-3">
         {/* ADESSO */}
         <Colonna1
           titolo="Adesso"

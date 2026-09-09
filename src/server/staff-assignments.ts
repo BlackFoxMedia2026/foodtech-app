@@ -45,6 +45,40 @@ export async function listStaffAssignmentsForService(venueId: string, date: Date
   });
 }
 
+/**
+ * Tutte le assegnazioni ai tavoli di una giornata, di tutti i servizi.
+ *
+ * Serve alla fascia «il turno di oggi» in Camerieri, che deve dire chi c'è a
+ * pranzo e chi a cena senza sapere in anticipo quali servizi esistono in quel
+ * locale.
+ *
+ * ## Una nota che vale più di questa funzione
+ *
+ * «Chi copre questo tavolo» ha **due tabelle**: `StaffAssignment` (una riga per
+ * tavolo, con la capacità — la scrive la piantina) e `WaiterAssignment` (una
+ * riga per cameriere, con un elenco di tavoli — la scrive «Assegna servizio»
+ * dalla pagina Camerieri). Sono due fonti di verità per lo stesso fatto, e non
+ * si guardano: un manager può assegnare Alfredo ai tavoli T1–T7 da Camerieri e
+ * qualcun altro assegnare Giulia a T1 dalla sala, e nessuna delle due
+ * schermate vede il lavoro dell'altra.
+ *
+ * Non è una cosa che si risolve in una fascia: è una decisione su quale
+ * modello resti e una migrazione dell'altro. Fino ad allora chi legge il turno
+ * di oggi vede **entrambe**, perché dal punto di vista di chi lavora sono
+ * entrambe assegnazioni vere, fatte dentro il prodotto.
+ */
+export async function listStaffAssignmentsForDate(venueId: string, date: Date) {
+  const day = normalizeDate(date);
+  return db.staffAssignment.findMany({
+    where: { venueId, date: day, scope: "TABLE" },
+    include: {
+      waiter: { select: { id: true, firstName: true, lastName: true, role: true } },
+      table: { select: { label: true } },
+    },
+    orderBy: [{ service: "asc" }],
+  });
+}
+
 /** Active waiters holding a given capability — powers the filtered picker in
  * the assign-staff dialog ("Assegna Sommelier" only shows sommeliers). */
 export async function listEligibleStaff(venueId: string, capability: StaffCapability) {

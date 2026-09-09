@@ -1,13 +1,6 @@
 import type { BookingStatus } from "@prisma/client";
 
-export type TableOperationalStatus = "LIBERO" | "PRENOTATO" | "OCCUPATO" | "NON_DISPONIBILE";
 
-export const TABLE_STATUS_LABELS: Record<TableOperationalStatus, string> = {
-  LIBERO: "Libero",
-  PRENOTATO: "Prenotato",
-  OCCUPATO: "Occupato",
-  NON_DISPONIBILE: "Non disponibile",
-};
 
 const ACTIVE_UPCOMING_STATUSES: BookingStatus[] = ["CONFIRMED", "PENDING", "ARRIVED"];
 
@@ -21,7 +14,7 @@ export function deriveTableStatus(
   bookingsForTable: Array<{ status: BookingStatus; startsAt: Date; durationMin: number; closedAt: Date | null }>,
   now: Date,
 ): TableOperationalStatus {
-  if (!table.active) return "NON_DISPONIBILE";
+  if (!table.active) return "BLOCCATO";
   if (bookingsForTable.some((b) => b.status === "SEATED" && !b.closedAt)) return "OCCUPATO";
   const upcoming = bookingsForTable.some((b) => {
     if (!ACTIVE_UPCOMING_STATUSES.includes(b.status)) return false;
@@ -66,6 +59,27 @@ export const TABLE_LIVE_LABELS: Record<TableLiveStatus, string> = {
 };
 
 /** Descrizione per chi legge con uno screen reader, e per il tooltip. */
+/**
+ * Gli stati di un tavolo che si possono dire **di una giornata**, non
+ * dell'istante: un sottoinsieme di `TableLiveStatus`, con gli stessi nomi.
+ *
+ * Prima questo era un dizionario a sé — `LIBERO, PRENOTATO, OCCUPATO,
+ * NON_DISPONIBILE` — e la sala viva ne aveva un altro da sette. Lo stesso
+ * tavolo era «al conto» in una schermata e «occupato» nell'altra, e
+ * «non disponibile» qui era «bloccato» là: chi imparava il prodotto su una
+ * vista non riconosceva l'altra.
+ *
+ * Adesso c'è un vocabolario solo. Questa vista ne usa tre più uno, e la
+ * ragione non è una semplificazione: di un sabato che non è ancora arrivato si
+ * può dire che un tavolo è libero, prenotato o fuori servizio. «Al conto» e
+ * «in pulizia» sono fatti del presente, e su una data futura non vogliono dire
+ * niente.
+ */
+export type TableOperationalStatus = Extract<
+  TableLiveStatus,
+  "LIBERO" | "PRENOTATO" | "OCCUPATO" | "BLOCCATO"
+>;
+
 export const TABLE_LIVE_HINTS: Record<TableLiveStatus, string> = {
   LIBERO: "nessuno seduto e nessun arrivo imminente",
   PRENOTATO: "prenotato più tardi",

@@ -108,7 +108,7 @@ export function Briefing({
             <li key={testo}>
               <Link
                 href={href}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-colors ${
+                className={`tocco-comodo inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-colors ${
                   forte
                     ? "border-rose-300/50 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
                     : "border-border hover:bg-current/5"
