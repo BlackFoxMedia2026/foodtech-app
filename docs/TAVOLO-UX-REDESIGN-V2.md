@@ -423,6 +423,31 @@ stato, ospite, durata, prossima prenotazione, allergie, conto e le azioni
 **Target:** 9,5.
 
 ### Prenotazioni · giorno · `/bookings`
+
+**Tre difetti trovati il 9 settembre guardando lo scatto di
+`?status=pending`** — e nessuna misura ne segnalava uno:
+
+1. **Il vuoto dava la colpa alla data.** «Nessuna prenotazione per questa
+   data» con tredici prenotazioni in giornata e zero in sospeso: chi legge
+   cambia giorno per cercare una cosa che è lì. Adesso dice cosa è vuoto —
+   «Nessuna prenotazione in sospeso per questa data — la giornata ne ha 13» —
+   con il collegamento per tornare a tutte.
+2. **Il conteggio in testa era vero del filtro e falso della giornata:** «0
+   prenotazioni · 0 coperti». Adesso dichiara la base: «0 in sospeso su 13».
+   È la stessa regola dei numeri che dicono su cosa sono misurati, applicata a
+   un filtro.
+3. **Tre modi di dire «questa è scelta» nella stessa schermata:** crema per
+   «Tutte» e «Confermate», **arancione** (`bg-amber-600`, un giallo preso fuori
+   dalla tavolozza) per «In sospeso», e un quarto colore per la vista scelta
+   accanto. L'arancione su un filtro sembrava un allarme, non una selezione.
+   Adesso il crema è l'unico modo, come nella linguetta del Servizio e nelle
+   viste di Analytics; il numero delle sospese resta in evidenza, perché
+   quello è un'informazione e l'informazione non è la selezione.
+
+Restano **sedici** punti nel prodotto con un colore fuori tavolozza
+(`amber-*`), quasi tutti riquadri d'avvertimento su fondo giallo chiaro: sono
+un lavoro a parte, perché lì la domanda non è il colore ma **come si dice
+un'avvertenza** in un prodotto verde scuro.
 **Funzione:** «chi deve venire e quando». **Pressione: alta** — è la schermata
 aperta quando squilla il telefono.
 **Problemi:** la riga dice ora, ospite, coperti, tavolo, stato — e **non** dice
