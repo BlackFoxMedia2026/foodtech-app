@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DoorOpen, LayoutGrid, Pencil, Plus, Trash2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -108,133 +109,137 @@ export function ServiceOrganizationSettings({
     router.refresh();
   }
 
+  const riepilogo =
+    mode === "ROOMS"
+      ? `per sale · ${rooms.length} ${rooms.length === 1 ? "sala" : "sale"}`
+      : `per tavoli · ${tablesCount} ${tablesCount === 1 ? "tavolo" : "tavoli"}`;
+
   return (
-    <div className="space-y-5">
-      <div>
-        <h3 className="text-display text-lg font-medium leading-tight">Organizzazione del servizio</h3>
-        <p className="text-sm text-card-foreground/65">Scegli come suddividere il lavoro dello staff durante il servizio.</p>
-      </div>
+    <Blocco titolo="Organizzazione del servizio" valore={riepilogo}>
+      <BloccoNota>Scegli come suddividere il lavoro dello staff durante il servizio.</BloccoNota>
+      <div className="space-y-5">
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={() => changeMode("ROOMS")}
-          disabled={switching}
-          className={cn(
-            "flex items-start gap-3 rounded-lg border p-4 text-left transition-colors disabled:opacity-60",
-            mode === "ROOMS" ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
-          )}
-        >
-          <DoorOpen className={cn("mt-0.5 h-5 w-5 shrink-0", mode === "ROOMS" ? "text-accent-strong" : "text-muted-foreground")} />
-          <div>
-            <p className="text-sm font-medium">Per sale</p>
-            <p className="text-xs text-muted-foreground">Assegna lo staff a sale come Sala principale, Dehor, Terrazza.</p>
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => changeMode("TABLES")}
-          disabled={switching}
-          className={cn(
-            "flex items-start gap-3 rounded-lg border p-4 text-left transition-colors disabled:opacity-60",
-            mode === "TABLES" ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
-          )}
-        >
-          <LayoutGrid className={cn("mt-0.5 h-5 w-5 shrink-0", mode === "TABLES" ? "text-accent-strong" : "text-muted-foreground")} />
-          <div>
-            <p className="text-sm font-medium">Per tavoli</p>
-            <p className="text-xs text-muted-foreground">Assegna lo staff a uno o più tavoli specifici.</p>
-          </div>
-        </button>
-      </div>
-
-      {notice && (
-        <p className="rounded-md border border-accent/30 bg-accent/10 p-3 text-xs text-card-foreground">{notice}</p>
-      )}
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
-      {mode === "ROOMS" ? (
-        <div className="space-y-2 border-t border-border pt-4">
-          {rooms.length === 0 && <p className="text-sm text-muted-foreground">Nessuna sala configurata ancora.</p>}
-          {rooms.map((room) => (
-            <div key={room.id} className="flex items-center justify-between gap-2 riquadro p-3 text-sm">
-              {editingId === room.id ? (
-                <div className="flex flex-1 items-center gap-2">
-                  <Input
-                    autoFocus
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveRename(room.id);
-                      if (e.key === "Escape") setEditingId(null);
-                    }}
-                  />
-                  <Button type="button" size="icon" variant="ghost" onClick={() => saveRename(room.id)}>
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button type="button" size="icon" variant="ghost" onClick={() => setEditingId(null)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <p className="font-medium">{room.name}</p>
-                  {confirmDeleteId === room.id ? (
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-muted-foreground">Eliminare?</span>
-                      <Button type="button" size="sm" variant="destructive" onClick={() => confirmDelete(room.id)}>
-                        Elimina
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>
-                        Annulla
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingId(room.id);
-                          setEditingName(room.name);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button type="button" size="icon" variant="ghost" onClick={() => setConfirmDeleteId(room.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => changeMode("ROOMS")}
+            disabled={switching}
+            className={cn(
+              "flex items-start gap-3 rounded-lg border p-4 text-left transition-colors disabled:opacity-60",
+              mode === "ROOMS" ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
+            )}
+          >
+            <DoorOpen className={cn("mt-0.5 h-5 w-5 shrink-0", mode === "ROOMS" ? "text-accent-strong" : "text-muted-foreground")} />
+            <div>
+              <p className="text-sm font-medium">Per sale</p>
+              <p className="text-xs text-muted-foreground">Assegna lo staff a sale come Sala principale, Dehor, Terrazza.</p>
             </div>
-          ))}
+          </button>
+          <button
+            type="button"
+            onClick={() => changeMode("TABLES")}
+            disabled={switching}
+            className={cn(
+              "flex items-start gap-3 rounded-lg border p-4 text-left transition-colors disabled:opacity-60",
+              mode === "TABLES" ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
+            )}
+          >
+            <LayoutGrid className={cn("mt-0.5 h-5 w-5 shrink-0", mode === "TABLES" ? "text-accent-strong" : "text-muted-foreground")} />
+            <div>
+              <p className="text-sm font-medium">Per tavoli</p>
+              <p className="text-xs text-muted-foreground">Assegna lo staff a uno o più tavoli specifici.</p>
+            </div>
+          </button>
+        </div>
 
-          <form onSubmit={addRoom} method="post" className="flex items-center gap-2 pt-1">
-            <Input
-              value={newRoomName}
-              onChange={(e) => setNewRoomName(e.target.value)}
-              placeholder="Es. Sala privata"
-            />
-            <Button type="submit" variant="outline" disabled={adding || !newRoomName.trim()}>
-              <Plus className="h-4 w-4" /> Aggiungi sala
-            </Button>
-          </form>
-        </div>
-      ) : (
-        <div className="space-y-2 border-t border-border pt-4 text-sm">
-          <p className="text-muted-foreground">
-            {tablesCount > 0
-              ? `${tablesCount} tavoli configurati in Sala.`
-              : "Nessun tavolo configurato ancora."}
-          </p>
-          <Link href="/floor" className="text-accent-strong underline-offset-4 hover:underline">
-            Gestisci i tavoli nella mappa sala →
-          </Link>
-        </div>
-      )}
-    </div>
+        {notice && (
+          <p className="rounded-md border border-accent/30 bg-accent/10 p-3 text-xs text-card-foreground">{notice}</p>
+        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {mode === "ROOMS" ? (
+          <div className="space-y-2 border-t border-border pt-4">
+            {rooms.length === 0 && <p className="text-sm text-muted-foreground">Nessuna sala configurata ancora.</p>}
+            {rooms.map((room) => (
+              <div key={room.id} className="flex items-center justify-between gap-2 riquadro p-3 text-sm">
+                {editingId === room.id ? (
+                  <div className="flex flex-1 items-center gap-2">
+                    <Input
+                      autoFocus
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveRename(room.id);
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                    />
+                    <Button type="button" size="icon" variant="ghost" onClick={() => saveRename(room.id)}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button type="button" size="icon" variant="ghost" onClick={() => setEditingId(null)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-medium">{room.name}</p>
+                    {confirmDeleteId === room.id ? (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground">Eliminare?</span>
+                        <Button type="button" size="sm" variant="destructive" onClick={() => confirmDelete(room.id)}>
+                          Elimina
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>
+                          Annulla
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingId(room.id);
+                            setEditingName(room.name);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" onClick={() => setConfirmDeleteId(room.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+
+            <form onSubmit={addRoom} method="post" className="flex items-center gap-2 pt-1">
+              <Input
+                value={newRoomName}
+                onChange={(e) => setNewRoomName(e.target.value)}
+                placeholder="Es. Sala privata"
+              />
+              <Button type="submit" variant="outline" disabled={adding || !newRoomName.trim()}>
+                <Plus className="h-4 w-4" /> Aggiungi sala
+              </Button>
+            </form>
+          </div>
+        ) : (
+          <div className="space-y-2 border-t border-border pt-4 text-sm">
+            <p className="text-muted-foreground">
+              {tablesCount > 0
+                ? `${tablesCount} tavoli configurati in Sala.`
+                : "Nessun tavolo configurato ancora."}
+            </p>
+            <Link href="/floor" className="text-accent-strong underline-offset-4 hover:underline">
+              Gestisci i tavoli nella mappa sala →
+            </Link>
+          </div>
+        )}
+      </div>
+    </Blocco>
   );
 }

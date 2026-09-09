@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Palette, Wifi } from "lucide-react";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -100,62 +100,71 @@ export default async function SettingsPage({
       <Indice attiva={parteAttiva} />
 
       <Parte id="locale" attiva={parteAttiva}>
-      <Card>
-        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Palette className="h-4 w-4 text-accent" /> Brand
-            </CardTitle>
-            <CardDescription>Logo, colori e informazioni pubbliche del tuo ristorante.</CardDescription>
-          </div>
+      {/* Il brand si configura in una pagina sua: qui è una riga che dice
+          com'è adesso, non una scheda con un pulsante dentro. */}
+      <Blocco
+        titolo="Brand"
+        icona={Palette}
+        valore={ctx.venue.onboardingStatus === "COMPLETED" ? "personalizzato" : "da personalizzare"}
+        azione={
           <Button asChild variant="outline" size="sm">
-            <Link href="/settings/brand">Gestisci brand</Link>
+            <Link href="/settings/brand">Gestisci</Link>
           </Button>
-        </CardHeader>
-      </Card>
+        }
+      />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Locali del gruppo</CardTitle>
-            <CardDescription>
-              {ctx.org.name} · piano {NOME_PIANO[ctx.org.plan] ?? ctx.org.plan}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {venues.map((v) => (
-              <div key={v.id} className="flex items-center justify-between rounded-md border p-3 text-sm">
-                <div>
-                  <p className="font-medium">{v.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {[v.city, NOME_TIPO_LOCALE[v.kind] ?? v.kind].filter(Boolean).join(" · ")}
-                  </p>
-                </div>
-                {v.id === ctx.venueId && <Badge tone="gold">Attivo</Badge>}
+      {/* Una colonna, non due.
+
+          Le due colonne servivano quando ogni blocco era una scheda alta:
+          affiancarle riempiva la pagina. Con i blocchi chiusi il Team aperto
+          è alto quattro righe e «Locali del gruppo» una: la griglia lasciava
+          quattrocento pixel di vuoto accanto a una riga sola. Le righe si
+          impilano. */}
+      <Blocco
+        titolo="Locali del gruppo"
+        valore={`${venues.length} ${venues.length === 1 ? "locale" : "locali"} · piano ${
+          NOME_PIANO[ctx.org.plan] ?? ctx.org.plan
+        }`}
+      >
+        <BloccoNota>{ctx.org.name}</BloccoNota>
+        <div className="space-y-2">
+          {venues.map((v) => (
+            <div key={v.id} className="flex items-center justify-between rounded-md border p-3 text-sm">
+              <div>
+                <p className="font-medium">{v.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {[v.city, NOME_TIPO_LOCALE[v.kind] ?? v.kind].filter(Boolean).join(" · ")}
+                </p>
               </div>
-            ))}
-          </CardContent>
-        </Card>
+              {v.id === ctx.venueId && <Badge tone="gold">Attivo</Badge>}
+            </div>
+          ))}
+        </div>
+      </Blocco>
 
-        <TeamSettings membri={team} inviti={inviti} canManage={can(ctx.role, "manage_venue")} />
-      </div>
+      <TeamSettings membri={team} inviti={inviti} canManage={can(ctx.role, "manage_venue")} />
 
-      <Card>
-        <CardContent className="p-5">
-          <ServiceOrganizationSettings
-            initialMode={ctx.venue.serviceAssignmentMode}
-            initialRooms={rooms.map((r) => ({ id: r.id, name: r.name }))}
-            tablesCount={tablesCount}
-          />
-        </CardContent>
-      </Card>
+      <ServiceOrganizationSettings
+        initialMode={ctx.venue.serviceAssignmentMode}
+        initialRooms={rooms.map((r) => ({ id: r.id, name: r.name }))}
+        tablesCount={tablesCount}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Turni di servizio (domenica esempio)</CardTitle>
-          <CardDescription>Gestisci capienza e durata slot per ogni turno</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
+      <Blocco
+        titolo="Turni di servizio"
+        valore={
+          shifts.length === 0
+            ? "nessun turno"
+            : `${shifts.map((s) => s.name).join(" · ")} · ${shifts.reduce(
+                (n, s) => n + s.capacity,
+                0,
+              )} coperti`
+        }
+      >
+        <BloccoNota>
+          La domenica come esempio: capienza e durata degli slot, turno per turno.
+        </BloccoNota>
+        <div className="grid gap-3 md:grid-cols-3">
           {shifts.map((s) => (
             <div key={s.id} className="rounded-md border p-3 text-sm">
               <p className="font-medium">{s.name}</p>
@@ -166,23 +175,20 @@ export default async function SettingsPage({
               <p className="mt-2 text-xs">Capienza: {s.capacity} · Slot: {s.slotMinutes}&apos;</p>
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </Blocco>
       </Parte>
 
       <Parte id="prenotazioni" attiva={parteAttiva}>
-      <Card>
-        <CardHeader>
-          <CardTitle>Widget di prenotazione</CardTitle>
-          <CardDescription>
-            Incolla questo codice sul sito del locale per far prenotare i clienti in autonomia
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <Blocco titolo="Widget di prenotazione" valore="codice da incollare sul sito">
+        <BloccoNota>
+          Incolla questo codice sul sito del locale per far prenotare i clienti in autonomia.
+        </BloccoNota>
+        <div className="space-y-3">
           <pre className="overflow-x-auto rounded-md border bg-secondary p-3 text-xs">{embedSnippet}</pre>
           <CopyButton value={embedSnippet} size="sm" variant="outline" />
-        </CardContent>
-      </Card>
+        </div>
+      </Blocco>
 
       <BookingWindowSettings
         windowDays={ctx.venue.bookingWindowDays}
@@ -203,23 +209,18 @@ export default async function SettingsPage({
         canManage={can(ctx.role, "manage_venue")}
       />
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Wifi className="h-4 w-4 text-accent" /> Portale Wi-Fi
-            </CardTitle>
-            <CardDescription>
-              {ctx.venue.wifiSetupAt
-                ? `Attivo sulla rete «${ctx.venue.wifiNetworkName}». Chi si collega lascia un contatto.`
-                : "Chiuso: chi si collega lascia un contatto e riceve la password della rete."}
-            </CardDescription>
-          </div>
+      <Blocco
+        titolo="Portale Wi-Fi"
+        icona={Wifi}
+        valore={
+          ctx.venue.wifiSetupAt ? `attivo su «${ctx.venue.wifiNetworkName}»` : "chiuso"
+        }
+        azione={
           <Button asChild variant="outline" size="sm">
             <Link href="/settings/wifi">{ctx.venue.wifiSetupAt ? "Gestisci" : "Configura"}</Link>
           </Button>
-        </CardHeader>
-      </Card>
+        }
+      />
 
       <ReviewLinksSettings initial={reviewLinks} canManage={can(ctx.role, "manage_venue")} />
 
@@ -238,12 +239,12 @@ export default async function SettingsPage({
           delle integrazioni e dei lavori. */}
       <MieiDispositivi />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Integrazioni</CardTitle>
-          <CardDescription>Stato del provider email marketing</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
+      <Blocco
+        titolo="Integrazioni"
+        valore={`Brevo · ${process.env.BREVO_API_KEY ? "configurato" : "non configurato"}`}
+      >
+        <BloccoNota>Stato del provider email marketing.</BloccoNota>
+        <div className="space-y-2">
           <div className="flex items-center justify-between rounded-md border p-3 text-sm">
             <div>
               <p className="font-medium">Brevo</p>
@@ -256,21 +257,29 @@ export default async function SettingsPage({
           <p className="text-xs text-muted-foreground">
             Verifica basata sulla presenza della chiave API. Non verifica la validità del dominio mittente.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </Blocco>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Invii in corso</CardTitle>
-          <CardDescription>
-            Messaggi agli ospiti e campagne non partono dentro la richiesta del browser: vengono messi in coda e
-            consegnati entro un minuto. Qui si vede cosa è in attesa e cosa non è riuscito.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <QueuePanel health={queueHealth} />
-        </CardContent>
-      </Card>
+      {/* Questo blocco nasce aperto quando c'è qualcosa che non è riuscito:
+          un invio fallito nascosto dietro un'intestazione è la cosa che si
+          scopre tardi. */}
+      <Blocco
+        titolo="Invii in corso"
+        valore={
+          queueHealth.nonRiusciti > 0
+            ? `${queueHealth.nonRiusciti} non ${queueHealth.nonRiusciti === 1 ? "riuscito" : "riusciti"}`
+            : queueHealth.inAttesa + queueHealth.inCorso > 0
+              ? `${queueHealth.inAttesa + queueHealth.inCorso} in coda`
+              : "tutto consegnato"
+        }
+        aperto={queueHealth.nonRiusciti > 0}
+      >
+        <BloccoNota>
+          Messaggi agli ospiti e campagne non partono dentro la richiesta del browser: vengono messi in coda e
+          consegnati entro un minuto. Qui si vede cosa è in attesa e cosa non è riuscito.
+        </BloccoNota>
+        <QueuePanel health={queueHealth} />
+      </Blocco>
 
       </Parte>
     </div>
@@ -371,7 +380,10 @@ function Parte({
     // La parte scelta prende l'altezza che avanza. Se il suo contenuto è più
     // alto — «Il locale» ha brand, locali, team, sale e turni — scorre lei,
     // non la pagina.
-    <section id={id} className="fill-scroll space-y-4 pr-0.5" aria-label={parte.titolo}>
+    // Blocchi chiusi sono righe, non schede: fra righe `space-y-4` diventa un
+    // elenco che galleggia. Tre unità tengono i blocchi separati e la parte
+    // leggibile in una schermata.
+    <section id={id} className="fill-scroll space-y-3 pr-0.5" aria-label={parte.titolo}>
       {/* Il titolo della parte non si ripete: la pillola accesa qui sopra lo
           dice già, e in una schermata che non scorre cinquanta pixel di
           ripetizione sono cinquanta pixel di contenuto in meno. Resta la

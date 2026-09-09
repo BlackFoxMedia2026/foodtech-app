@@ -1,13 +1,20 @@
-import { AlertTriangle, CalendarClock, Clock, Info, MapPin, Repeat, Sparkles, Users } from "lucide-react";
+import { AlertTriangle, Cake, CalendarClock, Clock, Info, MapPin, Repeat, Sparkles, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Etichetta } from "@/components/ui/etichetta";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import type { GuestProfile, GuestTag } from "@/server/guest-intelligence";
+import type { GuestProfile } from "@/server/guest-intelligence";
 
-const TONO: Record<GuestTag["tone"], string> = {
-  neutral: "bg-current/10 text-muted-foreground",
-  good: "bg-sage/25 text-foreground",
-  warning: "bg-accent/20 text-foreground",
+/**
+ * L'icona di un segnale, per chi non separa il rosso dal verde.
+ *
+ * Solo per i segnali, e per chiave: un triangolo su «Compleanno oggi» direbbe
+ * la cosa sbagliata. I tag non ne hanno bisogno — la forma li distingue già.
+ */
+const ICONA_SEGNALE: Record<string, typeof AlertTriangle | undefined> = {
+  allergie: AlertTriangle,
+  assenze: AlertTriangle,
+  compleanno: Cake,
 };
 
 /**
@@ -29,35 +36,61 @@ export function GuestProfilePanel({
 
   return (
     <div className="space-y-4">
+      {/*
+        Tre linguaggi, e la differenza dice **quanto fidarsi**.
+
+        Un'allergia è un fatto e sta davanti a tutto; «VIP» l'ha deciso una
+        persona del locale; «Abituale» l'ha dedotta una formula con una soglia
+        scelta da noi — quattro visite — e può sbagliarsi. Erano tre pillole
+        con lo stesso colore di fondo, quindi si leggevano come tre cose dello
+        stesso peso.
+
+        Prima le etichette le ha dedotte una formula: «abituale» è un conteggio
+        di visite sopra una soglia che abbiamo scelto noi, «inattivo» è un
+        silenzio più lungo di un numero di giorni che abbiamo scelto noi.
+        Vanno lette sapendo che possono sbagliarsi, quindi hanno il bordo
+        senza il pieno — al contrario dei tag che ha scritto una persona del
+        locale, che sono pillole piene.
+
+        Il colore del tono non c'è più: distingueva fra loro tre etichette che
+        hanno tutte la stessa affidabilità, mentre la differenza che conta è
+        quella con i tag manuali. Il perché resta nel suggerimento, dove
+        c'era già.
+      */}
       {p.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {p.tags.map((t) => (
-            <span
+            <Etichetta
               key={t.key}
-              title={t.why}
-              className={cn("rounded-full px-2.5 py-1 text-xs", TONO[t.tone])}
+              linguaggio={t.linguaggio}
+              icona={ICONA_SEGNALE[t.key]}
+              perche={t.why}
             >
               {t.label}
-            </span>
+            </Etichetta>
           ))}
         </div>
       )}
 
+      {/*
+        Relazione e affidabilità, in un blocco solo (§28: «la relazione e
+        l'affidabilità in cima, perché sono quelle che cambiano come lo si
+        accoglie»).
+
+        Erano due schede, «Relazione» e «Come prenota», e rispondevano alla
+        stessa domanda da due posti: da quanto viene, con che ritmo, e quanto
+        ci si può contare. Due delle otto caselle — visite e ultima visita —
+        sono uscite da qui: le dice la fascia in cima alla scheda, e ripetere
+        un numero a cento pixel di distanza non lo rende più vero.
+      */}
       <Card>
         <CardHeader>
-          <CardTitle>Relazione</CardTitle>
+          <CardTitle>Relazione e affidabilità</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Dato etichetta="Visite" valore={String(p.visits)} icona={Users} />
+        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Dato
             etichetta="Prima visita"
             valore={p.firstVisitAt ? formatDate(new Date(p.firstVisitAt)) : "—"}
-            icona={CalendarClock}
-          />
-          <Dato
-            etichetta="Ultima visita"
-            valore={p.lastVisitAt ? formatDate(new Date(p.lastVisitAt)) : "—"}
-            nota={p.daysSinceLastVisit != null ? `${p.daysSinceLastVisit} giorni fa` : undefined}
             icona={CalendarClock}
           />
           <Dato
@@ -66,14 +99,6 @@ export function GuestProfilePanel({
             nota={p.avgDaysBetweenVisits == null && p.visits < 2 ? "serve più di una visita" : undefined}
             icona={Repeat}
           />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Come prenota</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Dato
             etichetta="Coperti medi"
             valore={p.avgPartySize != null ? String(p.avgPartySize) : "—"}

@@ -474,8 +474,8 @@ colonne che ne mostra due; «non ancora» al posto di «0,00 €» dove non abbi
 misurato.
 **Problemi:** la ricerca non trova per numero di telefono parziale in modo
 evidente; nessuna azione di riga (chiama, apri prenotazione, aggiungi tag).
-**Mancanti:** la distinzione visiva fra tag scritti a mano e tag calcolati
-(§29).
+**Mancanti:** ~~la distinzione visiva fra tag scritti a mano e tag calcolati
+(§29)~~ — **fatta il 9 settembre**, vedi la sezione 15.
 **Proposta:** tre linguaggi visivi separati — **segnali** (allergia, compleanno,
 assenze: la cosa che cambia il servizio), **tag manuali** (VIP, giornalista),
 **tag calcolati** (abituale, inattivo, preferisce il pranzo). Oggi hanno la
@@ -642,6 +642,46 @@ serve al servizio e potrebbe.
 apre, con i valori correnti leggibili **da chiuso** — così si vede la
 configurazione senza aprire nulla, e si apre solo per cambiare.
 **Target:** 8,5.
+
+**Fatto il 9 settembre.** Un componente solo (`ui/blocco.tsx`), applicato a
+tredici blocchi. Misurato prima e dopo, a 1440×900:
+
+| Parte | Scorrimento interno prima | Dopo |
+|---|---|---|
+| Il locale | 345 px | 0 |
+| Prenotazioni | 225 px | 0 |
+| Ospiti | 466 px | 0 |
+| Sistema | 0 | 0 |
+
+Adesso «Ospiti» dice tutta la sua configurazione in quattro righe — *45 € a
+persona · attivo su «Aurora-Ospiti» · Google · restituisci il 5%* — dove prima
+per gli stessi quattro dati servivano quattro schede aperte e mezzo schermo di
+scorrimento. Anche su telefono (390×844) e tablet (834×1112) le parti stanno
+in una schermata.
+
+Tre decisioni che sono venute dal costruirlo:
+
+1. **Le due colonne sono sparite.** Servivano quando ogni blocco era una
+   scheda alta: affiancarne due riempiva la pagina. Con i blocchi chiusi il
+   Team aperto è alto quattro righe e «Locali del gruppo» una, e la griglia
+   lasciava quattrocento pixel di vuoto accanto a una riga sola.
+2. **Un blocco nasce aperto solo se il contenuto *è* l'informazione.** Il
+   Team, perché chi ha accesso al locale è un elenco che si guarda, non una
+   soglia da controllare una volta; e «Invii in corso» quando c'è qualcosa che
+   non è riuscito, perché un invio fallito nascosto dietro un'intestazione è
+   la cosa che si scopre tardi.
+3. **Il valore da chiuso lo dichiara lo stato del componente, non i dati del
+   server:** appena salvato lo scontrino medio, l'intestazione chiusa dice già
+   48 € senza aspettare il giro di `router.refresh()`. Verificato dalla sonda.
+
+**Un difetto trovato solo premendo** (nessuna lettura del codice lo avrebbe
+dato): dentro un `<summary>` non va niente su cui si possa premere, perché il
+browser gira ogni clic sul summary. Il pulsante «Invita» messo
+nell'intestazione del blocco Team **chiudeva il blocco** invece di aprire il
+modulo d'invito. E `.tocco-comodo` su quella riga — la classe che allarga i
+bersagli con uno pseudo-elemento sovrapposto — intercettava i clic di tutto
+quello che conteneva. Il comando è passato dentro il corpo, e la classe è
+sparita da lì: quella riga è già alta 44 px.
 
 ### Brand · `/settings/brand`
 **Proposta (§56):** l'anteprima mostra le quattro superfici pubbliche vere —
@@ -953,6 +993,48 @@ gravità, ordina per **quando**. «Critico» non dice se devo alzarmi ora.
 impatto non si mostra. Il livello non è un modo per mostrarne di più: è un modo
 per ordinare quelli che già superano quella soglia.
 
+### Com'è stato costruito (9 settembre)
+
+I quattro livelli **si derivano**, non si aggiungono: `urgenza` — «fra quanti
+minuti questo avviso conta, zero = adesso» — c'era già su ogni avviso, e serviva
+a ordinare dentro la gravità. Zero è ADESSO, entro un quarto d'ora è FRA POCO,
+oltre è GUARDA, un'informazione è SAPERE. Undici regole su dodici non hanno
+dovuto dichiarare niente.
+
+La derivazione ha però fatto emergere **due cose che il documento non sapeva**.
+
+**Uno: `urgenza` diceva una bugia sui ritardi.** La regola dei no-show ci
+scriveva *il ritardo* — quaranta minuti di ritardo diventavano «conta fra
+quaranta minuti» — perché finché il campo serviva solo a ordinare dentro la
+stessa gravità l'effetto voluto (i ritardi più recenti per primi, quelli su cui
+la telefonata funziona ancora) usciva giusto per caso. Da quando il campo
+decide anche **quanto grande** si mostra un avviso, la bugia si vedeva: un
+ritardo di mezz'ora finiva fra le cose da guardare fra mezz'ora. Adesso i
+ritardi scrivono zero, che è la verità, e l'ordine dal più recente al più
+vecchio se lo tiene l'ordinamento stabile.
+
+**Due: il tempo non basta a decidere il livello, e questo documento aveva
+ragione a mettere i ritardi in GUARDA.** Con la sola derivazione temporale i
+ritardi diventavano ADESSO, ed è formalmente vero — la telefonata si fa ora —
+ma provandolo sui dati veri si vedeva l'errore in un secondo: quattro ritardi
+diventavano quattro cartelli grandi identici, e il tavolo libero con una
+famiglia in piedi finiva sotto. ADESSO è lo spazio delle **decisioni** — dove
+metto queste persone — e in una serata le decisioni sono una e i ritardi
+quattro. Quindi una regola può dichiarare il proprio `livello` e scavalcare la
+derivazione: oggi lo fa **una sola**, quella dei ritardi, con il motivo scritto
+accanto.
+
+**I segni visivi sono quelli della tabella:** barra piena a sinistra e azione
+come bersaglio per ADESSO, barra sottile per FRA POCO, riga compatta con il
+punto per GUARDA, riga compatta e testo tenue senza grassetto per SAPERE.
+Nessuna etichetta «ADESSO» scritta a parole: in una schermata dove il titolo
+dice già «in ritardo di 40 minuti» sarebbe la terza volta che si parla di tempo.
+
+**Misurato:** `/service` a 1440×900 e a 390×844, scorrimento pagina zero e
+scorrimento orizzontale zero; 915 test unitari verdi, di cui cinque nuovi sulla
+derivazione e due sull'ordine fra un'occasione che scade adesso e un problema
+fra mezz'ora.
+
 ## Le tre zone (§12 del prompt)
 
 | Device | Comportamento |
@@ -1072,6 +1154,35 @@ Sette blocchi, in quest'ordine — e l'ordine è la proposta:
 persona per il ristorante», e le prime quattro sezioni rispondono a quella
 domanda. Le ultime tre rispondono a «cosa ho di lei», che è un'altra.
 
+### Fatto il 9 settembre (primo giro)
+
+**La fascia del leggio, in cima.** Cinque cose, sempre le stesse: quanto è di
+casa, quante volte è venuta, quando l'ultima volta, cosa non può mangiare,
+quante volte non si è presentata — e l'ultima assenza **con la data**, perché
+due assenze di due anni fa non sono due assenze di un mese. Nessun dato nuovo:
+erano già tutti sulla pagina, sparsi in tre riquadri. Si mostra solo quello che
+c'è: una persona nuova senza allergie e senza assenze non vede una fascia
+vuota, non vede la fascia.
+
+**Relazione e affidabilità sono un blocco solo.** Erano due schede —
+«Relazione» e «Come prenota» — che rispondevano alla stessa domanda da due
+posti. E due delle otto caselle sono uscite: visite e ultima visita le dice la
+fascia, e ripetere un numero a cento pixel di distanza non lo rende più vero.
+
+**Il valore è passato a sinistra.** Punti, gift card e movimenti rispondono
+tutti alla stessa domanda — quanto vale questa persona — e stavano in due
+colonne diverse; intanto la colonna di sinistra finiva con quattrocento pixel
+di vuoto sotto «Contatti» mentre l'altra scorreva. I movimenti sono un blocco
+**chiuso** che da chiuso dice quanti sono: si guardano quando si cerca un
+pagamento, non ogni volta che si apre una scheda.
+
+**E gli otto suggerimenti di tag** («+ VIP», «+ Vegetariano»…) occupavano una
+riga intera in cima a ogni scheda per un gesto che si fa una volta ogni tanto:
+adesso compaiono quando il campo prende il fuoco.
+
+Resta da fare il resto del §28: preferenze e storia hanno ancora la forma di
+riquadri in fila.
+
 ## Tre linguaggi visivi per tre cose diverse (§29 del prompt)
 
 | Tipo | Esempi | Come si legge | Perché diverso |
@@ -1083,6 +1194,42 @@ domanda. Le ultime tre rispondono a «cosa ho di lei», che è un'altra.
 Oggi hanno tutti la stessa forma. Distinguerli non è decorazione: è dire a chi
 legge **quanto fidarsi**. È la stessa disciplina di misurato/stimato applicata
 alle etichette.
+
+### Fatto il 9 settembre
+
+Un componente (`ui/etichetta.tsx`) con i tre linguaggi, e la differenza è di
+**forma** prima che di colore — si distingue con le luci basse e da chi non
+separa il rosso dal verde:
+
+- **segnale**: quadrato, tinto, con l'icona. Non è una pillola, quindi si vede
+  prima di qualsiasi pillola;
+- **manuale**: pillola **piena**;
+- **calcolata**: pillola col solo **bordo**, testo tenue. Pesa meno perché vale
+  meno, e il perché resta nel suggerimento.
+
+Applicato in cinque punti: la lista ospiti (dove i tag erano testo separato da
+punti, indistinguibile dal resto della riga), la scheda ospite, l'editor dei
+tag, il profilo calcolato e la striscia di riconoscimento in nuova
+prenotazione.
+
+**La cosa che si è scoperta applicandolo:** il linguaggio non è una proprietà
+di *dove* si mostra un'etichetta, è una proprietà **dell'etichetta**. Quindi
+`GuestTag` non ha più `tone` (`neutral | good | warning`) ma `linguaggio`, e
+ogni regola dichiara il suo: il livello VIP è `manuale` — lo mette una persona,
+e il suo stesso «perché» diceva già «assegnato dal locale» — le abitudini sono
+`calcolata`, allergie, assenze ripetute e compleanno vicino sono `segnale`.
+`tone` diceva quanto una cosa fosse *bella*, non quanto fosse *affidabile*:
+«Inattivo» e «Allergie» erano entrambi `warning`, cioè lo stesso colore per una
+deduzione nostra e per un fatto che può mandare qualcuno all'ospedale.
+
+E i segnali ora sono **primi** perché il motore li ordina: prima erano
+nell'ordine in cui le regole stanno scritte nel file, che non è un ordine —
+«Allergie» finiva ultima, dopo «Abitué del martedì».
+
+**Un difetto misurato guardando:** `bg-current/15` per la pillola piena non si
+vede su verde scuro. Nella lista ospiti «fedele» sembrava testo normale. Il
+pieno adesso è un token del tema (`bg-secondary`), non una trasparenza del
+colore del testo.
 
 ## CRM nel contesto (§30 del prompt) — il punto più importante di questa sezione
 

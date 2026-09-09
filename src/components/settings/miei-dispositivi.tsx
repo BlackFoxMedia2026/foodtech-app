@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { readApiError } from "@/lib/api-client";
 
 /**
@@ -44,14 +44,15 @@ export function MieiDispositivi() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>I tuoi dispositivi</CardTitle>
-        <CardDescription>
-          Se hai lasciato l&apos;accesso aperto da qualche parte e non sai dove
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    /*
+      Qui non c'è un valore da dichiarare: quante sessioni siano aperte non lo
+      sappiamo — i token non stanno sul server (`strategy: "jwt"`), e inventare
+      un numero sarebbe peggio che non dirlo. Quindi da chiuso si legge cosa
+      fa il blocco, che è l'informazione vera.
+    */
+    <Blocco titolo="I tuoi dispositivi" valore="chiudi gli accessi aperti">
+      <BloccoNota>Se hai lasciato l&apos;accesso aperto da qualche parte e non sai dove.</BloccoNota>
+      <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
           Chiude tutte le sessioni aperte col tuo account, su ogni dispositivo — compreso questo. Non
           perdi niente: rientri con la tua password. Gli accessi scadono comunque da soli dopo sette
@@ -62,7 +63,7 @@ export function MieiDispositivi() {
           {inCorso ? "Chiudo…" : "Esci da tutti i dispositivi"}
         </Button>
         {errore && <p className="text-sm text-destructive">{errore}</p>}
-      </CardContent>
-    </Card>
+      </div>
+    </Blocco>
   );
 }

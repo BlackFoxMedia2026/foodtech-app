@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Info, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { livelloAvviso, type LivelloAvviso } from "@/lib/livello-avviso";
 import type { InsightSeverity, ServiceInsight } from "@/server/service-intelligence";
 
 /**
@@ -19,10 +20,52 @@ const PREFISSO: Record<InsightSeverity, string> = {
   info: "Effetto:",
 };
 
-const STILE: Record<InsightSeverity, { icona: typeof Info; classe: string; icona_classe: string }> = {
-  warning: { icona: AlertTriangle, classe: "border-accent/60", icona_classe: "text-accent" },
-  opportunity: { icona: Sparkles, classe: "border-sage/60", icona_classe: "text-sage" },
-  info: { icona: Info, classe: "border-border", icona_classe: "text-muted-foreground" },
+const STILE: Record<
+  InsightSeverity,
+  { icona: typeof Info; classe: string; icona_classe: string; fondo: string }
+> = {
+  warning: {
+    icona: AlertTriangle,
+    classe: "border-accent/60",
+    icona_classe: "text-accent",
+    fondo: "bg-accent/[0.07]",
+  },
+  /*
+    L'occasione non si tinge come il problema.
+
+    Prima il fondo era scritto a mano sulla card — `bg-accent/[0.07]` — perché
+    la card era solo per i `warning`. Adesso ci arriva anche un'opportunità che
+    conta adesso, e un tavolo libero da riempire con il colore di un allarme
+    dice la cosa sbagliata: la salvia è il colore del «si può fare», ed è quello
+    che il resto del prodotto usa già per le occasioni.
+  */
+  opportunity: {
+    icona: Sparkles,
+    classe: "border-sage/60",
+    icona_classe: "text-sage",
+    fondo: "bg-sage/[0.07]",
+  },
+  info: {
+    icona: Info,
+    classe: "border-border",
+    icona_classe: "text-muted-foreground",
+    fondo: "",
+  },
+};
+
+/**
+ * Il **quando**, detto senza parole: una barra a sinistra.
+ *
+ * Piena per quello che si decide adesso, sottile per quello che lo diventerà
+ * da solo, niente per il resto. Un'etichetta «ADESSO» direbbe la stessa cosa
+ * occupando una riga, e in una schermata dove il titolo già dice «in ritardo
+ * di 40 minuti» sarebbe la terza volta che si parla di tempo.
+ */
+const BARRA: Record<LivelloAvviso, string> = {
+  adesso: "border-l-4",
+  fra_poco: "border-l-2",
+  guarda: "",
+  sapere: "",
 };
 
 /**
@@ -51,7 +94,7 @@ export function ServiceInsights({
   }
 
   /**
-   * Gli urgenti pesano, gli altri no.
+   * Chi pesa e chi no — e la domanda è **quando**, non «quanto è grave».
    *
    * Prima erano tutti riquadri identici: «Riccardo in ritardo di 48 minuti» e
    * «una prenotazione non è mai arrivata» — la prima è una telefonata da
@@ -60,24 +103,40 @@ export function ServiceInsights({
    * come nessun cartello, ed è quello che l'audit visivo ha misurato dando 4
    * a questa schermata.
    *
-   * Adesso: **i warning per esteso e con il fondo**, tutto il resto in una
-   * riga con il «perché» dietro un dettaglio che si apre. Nessuna delle
-   * quattro parti si perde — problema, motivo, impatto e azione ci sono
-   * ancora tutte — ma solo l'urgente occupa lo spazio di un urgente.
+   * Poi la divisione era **per gravità**: i `warning` per esteso, tutto il
+   * resto compatto. E per gravità «un tavolo libero e una famiglia che
+   * aspetta» — un'occasione che dura cinque minuti e poi non c'è più —
+   * finiva in una riga sottile sotto quattro ritardi di mezz'ora che si
+   * recuperano con una telefonata.
+   *
+   * Adesso la divisione è **per quando conta**: sta per esteso quello che si
+   * risolve adesso o nei prossimi quindici minuti, qualunque sia la gravità;
+   * sta compatto quello che non cambia niente se lo leggi fra un'ora.
+   * Nessuna delle quattro parti si perde — problema, motivo, impatto e azione
+   * ci sono ancora tutte — ma solo quello che vale ora occupa lo spazio.
    */
-  const urgenti = insights.filter((i) => i.severity === "warning");
-  const altri = insights.filter((i) => i.severity !== "warning");
+  const subito = insights.filter((i) => {
+    const l = livelloAvviso(i);
+    return l === "adesso" || l === "fra_poco";
+  });
+  const altri = insights.filter((i) => !subito.includes(i));
 
   return (
     <div className="space-y-2">
-      <ul className={cn("grid gap-2", !compact && urgenti.length > 1 && "md:grid-cols-2")}>
-      {urgenti.map((i) => {
+      <ul className={cn("grid gap-2", !compact && subito.length > 1 && "md:grid-cols-2")}>
+      {subito.map((i) => {
         const stile = STILE[i.severity];
         const Icona = stile.icona;
+        const livello = livelloAvviso(i);
         return (
           <li
             key={i.id}
-            className={cn("surface rounded-md border p-2.5 lg:p-3", stile.classe, "bg-accent/[0.07]")}
+            className={cn(
+              "surface rounded-md border p-2.5 lg:p-3",
+              stile.classe,
+              stile.fondo,
+              BARRA[livello],
+            )}
           >
             <div className="flex items-start gap-2.5">
               <Icona className={cn("mt-0.5 h-4 w-4 shrink-0", stile.icona_classe)} aria-hidden="true" />
@@ -112,9 +171,20 @@ export function ServiceInsights({
                   <p className="mt-1 leading-relaxed">{i.motivo}</p>
                 </details>
                 {i.action && (
+                  /*
+                    Su quello che si decide adesso l'azione è un bersaglio, non
+                    un link: chi legge questa card ha una mano occupata e
+                    cinque secondi. Su «fra poco» resta un link — è la stessa
+                    azione, ma non è ancora il momento di premerla.
+                  */
                   <Link
                     href={i.action.href}
-                    className="mt-2 inline-flex min-h-[36px] items-center gap-1 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                    className={cn(
+                      "tocco-comodo mt-2 inline-flex min-h-[36px] items-center gap-1 text-sm font-medium text-foreground",
+                      livello === "adesso"
+                        ? "rounded-md border border-current/25 bg-current/[0.06] px-2.5 hover:bg-current/10"
+                        : "underline-offset-4 hover:underline",
+                    )}
                   >
                     {i.action.label}
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -132,6 +202,8 @@ export function ServiceInsights({
           {altri.map((i) => {
             const stile = STILE[i.severity];
             const Icona = stile.icona;
+            // «Da sapere» non chiede niente: non porta nemmeno il grassetto.
+            const soloContesto = livelloAvviso(i) === "sapere";
             return (
               <li key={i.id} className="px-3 py-2">
                 <div className="flex items-start gap-2.5">
@@ -140,8 +212,8 @@ export function ServiceInsights({
                     aria-hidden="true"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-snug">
-                      <span className="font-medium">{i.title}</span>{" "}
+                    <p className={cn("text-sm leading-snug", soloContesto && "text-muted-foreground")}>
+                      <span className={soloContesto ? undefined : "font-medium"}>{i.title}</span>{" "}
                       <span className="text-muted-foreground">— {i.impatto}</span>
                     </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-3">

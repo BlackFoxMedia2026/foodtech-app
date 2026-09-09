@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Plus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Etichetta } from "@/components/ui/etichetta";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +22,17 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [draft, setDraft] = useState("");
+  /*
+    I suggerimenti si vedono quando si sta scrivendo un tag, non sempre.
+
+    Otto pillole tratteggiate — «+ VIP», «+ Vegetariano», «+ Allergia
+    glutine»… — occupavano una riga intera in cima alla scheda di ogni ospite,
+    per un gesto che si fa una volta ogni tanto. Adesso compaiono quando il
+    campo prende il fuoco, cioè quando servono; il ritardo sul blur serve
+    perché il clic su un suggerimento passa dal blur del campo, e senza quello
+    la pillola spariva un istante prima di essere premuta.
+  */
+  const [scrivendo, setScrivendo] = useState(false);
 
   async function saveTags(next: string[]) {
     setPending(true);
@@ -54,8 +65,11 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
+        {/* Questi li ha scritti una persona del locale: pillola piena
+            (`linguaggio="manuale"`), diversa dal bordo vuoto dei tag che
+            calcoliamo noi. */}
         {tags.map((t) => (
-          <Badge key={t} tone="neutral" className="gap-1">
+          <Etichetta key={t} linguaggio="manuale">
             {t}
             <button
               type="button"
@@ -66,10 +80,12 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
             >
               <X className="h-3 w-3" />
             </button>
-          </Badge>
+          </Etichetta>
         ))}
         <Input
           value={draft}
+          onFocus={() => setScrivendo(true)}
+          onBlur={() => window.setTimeout(() => setScrivendo(false), 150)}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -92,7 +108,7 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
         </Button>
       </div>
 
-      {suggestions.length > 0 && (
+      {scrivendo && suggestions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-muted-foreground">Suggeriti:</span>
           {suggestions.map((s) => (

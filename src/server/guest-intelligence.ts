@@ -62,7 +62,23 @@ const GIORNI = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "ve
 export type GuestTag = {
   key: string;
   label: string;
-  tone: "neutral" | "good" | "warning";
+  /**
+   * **Chi lo dice** — ed è la cosa che chi legge deve sapere per decidere
+   * quanto fidarsi (§29 del brief, `components/ui/etichetta`).
+   *
+   * - `segnale` — un fatto che cambia il servizio adesso: un'allergia, due
+   *   assenze, un compleanno fra tre giorni;
+   * - `manuale` — l'ha deciso una persona del locale: il livello VIP;
+   * - `calcolata` — l'ha dedotta una formula con una soglia scelta da noi:
+   *   «abituale» sono quattro visite, «inattivo» sono centoventi giorni di
+   *   silenzio. Può sbagliarsi, e si vede che può sbagliarsi.
+   *
+   * Ha preso il posto di `tone` (`neutral | good | warning`), che diceva
+   * quanto la cosa fosse bella e non quanto fosse affidabile: «Inattivo» e
+   * «Allergie» erano entrambi `warning`, cioè lo stesso colore per una
+   * deduzione nostra e per un fatto che può mandare qualcuno all'ospedale.
+   */
+  linguaggio: "segnale" | "manuale" | "calcolata";
   /** Perché questo cliente ha questa etichetta: mostrato come suggerimento. */
   why: string;
 };
@@ -289,20 +305,26 @@ export function computeGuestTags(
     tags.push({
       key: "vip",
       label: "VIP",
-      tone: "good",
+      // Il livello lo mette una persona a mano: è un'opinione del locale.
+      linguaggio: "manuale",
       why: `Livello ${guest.loyaltyTier === "AMBASSADOR" ? "ambassador" : "VIP"} assegnato dal locale.`,
     });
   }
 
   if (p.visits === 0) {
-    tags.push({ key: "nuovo", label: "Nuovo", tone: "neutral", why: "Non è ancora venuto." });
+    tags.push({ key: "nuovo", label: "Nuovo", linguaggio: "calcolata", why: "Non è ancora venuto." });
   } else if (p.visits === 1) {
-    tags.push({ key: "prima_volta", label: "Prima visita", tone: "neutral", why: "È venuto una volta sola." });
+    tags.push({
+      key: "prima_volta",
+      label: "Prima visita",
+      linguaggio: "calcolata",
+      why: "È venuto una volta sola.",
+    });
   } else if (p.visits >= TAG_RULES.regularVisits) {
     tags.push({
       key: "abituale",
       label: "Abituale",
-      tone: "good",
+      linguaggio: "calcolata",
       why: `${p.visits} visite${p.avgDaysBetweenVisits ? `, in media una ogni ${p.avgDaysBetweenVisits} giorni` : ""}.`,
     });
   }
@@ -312,7 +334,7 @@ export function computeGuestTags(
       tags.push({
         key: "inattivo",
         label: "Inattivo",
-        tone: "warning",
+        linguaggio: "calcolata",
         why: `Non viene da ${p.daysSinceLastVisit} giorni.`,
       });
     } else if (
@@ -324,7 +346,7 @@ export function computeGuestTags(
       tags.push({
         key: "a_rischio",
         label: "A rischio",
-        tone: "warning",
+        linguaggio: "calcolata",
         why: `Era abituale (${p.visits} visite) e non viene da ${p.daysSinceLastVisit} giorni.`,
       });
     }
@@ -334,7 +356,8 @@ export function computeGuestTags(
     tags.push({
       key: "assenze",
       label: "Assenze ripetute",
-      tone: "warning",
+      // Due assenze cambiano come si tiene questa prenotazione: è un segnale.
+      linguaggio: "segnale",
       why: `${p.noShows} assenze su ${p.totalBookings} prenotazioni (${Math.round(p.noShowRate * 100)}%).`,
     });
   }
@@ -347,7 +370,7 @@ export function computeGuestTags(
       tags.push({
         key: "compleanno",
         label: giorni === 0 ? "Compleanno oggi" : `Compleanno fra ${giorni} giorni`,
-        tone: "good",
+        linguaggio: "segnale",
         why: "Data di nascita in scheda.",
       });
     }
@@ -357,7 +380,7 @@ export function computeGuestTags(
     tags.push({
       key: "gruppi",
       label: "Viene in gruppo",
-      tone: "neutral",
+      linguaggio: "calcolata",
       why: `In media ${p.avgPartySize} coperti per visita.`,
     });
   }
@@ -366,7 +389,7 @@ export function computeGuestTags(
     tags.push({
       key: `giorno_${p.preferredWeekday.weekday}`,
       label: `Abitué del ${p.preferredWeekday.label}`,
-      tone: "neutral",
+      linguaggio: "calcolata",
       why: `${Math.round(p.preferredWeekday.share * 100)}% delle visite di ${p.preferredWeekday.label}.`,
     });
   }
@@ -375,7 +398,7 @@ export function computeGuestTags(
     tags.push({
       key: `sala_${p.preferredRoom.roomId}`,
       label: `Affezionato a ${p.preferredRoom.name}`,
-      tone: "neutral",
+      linguaggio: "calcolata",
       why: `${Math.round(p.preferredRoom.share * 100)}% delle visite in ${p.preferredRoom.name}.`,
     });
   }
@@ -384,12 +407,19 @@ export function computeGuestTags(
     tags.push({
       key: "allergie",
       label: "Allergie",
-      tone: "warning",
+      linguaggio: "segnale",
       why: guest.allergies,
     });
   }
 
-  return tags;
+  /*
+    I segnali per primi, poi quello che ha deciso il locale, e per ultimo
+    quello che abbiamo dedotto noi. Prima l'ordine era quello in cui le regole
+    stanno scritte in questo file, che non è un ordine: «Allergie» finiva
+    ultima, dopo «Abitué del martedì».
+  */
+  const ORDINE = { segnale: 0, manuale: 1, calcolata: 2 } as const;
+  return tags.sort((a, b) => ORDINE[a.linguaggio] - ORDINE[b.linguaggio]);
 }
 
 /* -------------------------------------------------------------------------- */
