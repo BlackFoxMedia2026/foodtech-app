@@ -1825,6 +1825,39 @@ Anna», e oggi il cambiamento appare senza dire chi. Il dato c'è: il registro
 delle azioni ha attore, entità e ora. Da portare in una riga discreta, non in un
 avviso invasivo.
 
+### Fatto il 9 settembre
+
+Nell'intestazione del Servizio: **«Anna ha assegnato un tavolo a Marta Bianchi
+(T10)»**, e un tocco apre gli altri tre con l'ora. Nessuna colonna nuova: il
+registro delle azioni aveva già attore, entità e ora — serviva leggerlo.
+
+Quattro decisioni, e tre sono su **cosa non dire**:
+
+1. **le proprie azioni non si raccontano.** Chi ha assegnato quel tavolo l'ha
+    visto succedere: la riga serve a sapere cosa ha fatto *l'altro*. Il
+    servizio passa l'utente e la lettura lo esclude;
+2. **una riga per soggetto.** Tre tocchi sulla stessa prenotazione in un minuto
+    — arrivato, seduto, tavolo — sono tre righe di registro e **un** cambiamento
+    da leggere: si tiene la più recente;
+3. **solo le azioni del servizio in corso.** Un menu modificato o un coupon
+    creato non riguardano chi è in sala adesso. L'elenco è chiuso e sta nel
+    codice: aggiungere un'azione è una decisione, non un effetto collaterale;
+4. **il nome di battesimo.** In sala le persone si chiamano «Anna», non
+    «anna@ristorante.it» — e se il nome non c'è si usa la parte prima della
+    chiocciola, che è la cosa più vicina a un nome che abbiamo.
+
+**Cosa ha preso il posto di cosa.** La riga sostituisce «aggiornato alle
+21:14», che diceva che il programma funziona e non cosa è successo. L'ora resta
+nel suggerimento, e quando non è cambiato niente torna la frase di prima.
+
+**Un dettaglio che si vede solo provandolo:** il registro conserva un
+identificativo e non dice di che cosa. Per «ha chiuso il conto di Marta» il
+salto è doppio — l'identificativo è quello del conto, l'ospite sta sulla
+prenotazione a cui è attaccato — e senza quel passaggio la frase diventava «ha
+chiuso un conto». E quando il soggetto non c'è più (prenotazione cancellata
+dopo il cambiamento) ogni azione ha la sua frase senza soggetto, invece di una
+frase con un buco dentro.
+
 **Optimistic (§66):** presente in due punti. Va esteso ai cinque gesti veloci —
 arrivato, seduto, libera, avvisa, assegna — con ritorno indietro in caso di
 errore. Prerequisito: il componente Toast, che oggi non esiste.
@@ -1972,7 +2005,7 @@ gliene **prepara**: oggi una, e possono essere sei.
 21. Marketing hub per intenti
 22. Coupon ed Esperienze in righe
 23. Scala tipografica e tre livelli di densità applicati
-24. Attribuzione dei cambiamenti in tempo reale («assegnato da Anna»)
+24. ~~Attribuzione dei cambiamenti in tempo reale («assegnato da Anna»)~~ — **fatta il 9 settembre**
 25. ~~Ricerca globale~~ — **fatta il 9 settembre**
 26. Scheletri per componente
 27. Guest 360 riorganizzato

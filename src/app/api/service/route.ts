@@ -11,7 +11,9 @@ export async function GET(req: Request) {
   const nextWindowMin = [30, 60, 90].includes(finestra) ? finestra : 60;
 
   try {
-    return NextResponse.json(await getServiceSnapshot(ctx.venueId, { nextWindowMin }));
+    return NextResponse.json(
+      await getServiceSnapshot(ctx.venueId, { nextWindowMin, utente: ctx.userId }),
+    );
   } catch (err) {
     return apiErrorResponse(err);
   }

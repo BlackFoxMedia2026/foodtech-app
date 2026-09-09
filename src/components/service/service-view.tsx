@@ -12,6 +12,7 @@ import { ServiceSwitch } from "@/components/service/service-switch";
 import { ServiceInsights } from "@/components/service/service-insights";
 import type { ServiceInsight } from "@/server/service-intelligence";
 import { useServizioVivo } from "@/lib/use-servizio-vivo";
+import { CambiamentiRecenti } from "@/components/service/cambiamenti-recenti";
 
 type Colonna = "adesso" | "prossimi" | "attesa";
 
@@ -107,11 +108,29 @@ export function ServiceView({
 
         <div className="flex items-center gap-3">
           <ServiceSwitch />
-          {ultimo && (
-            <span className="hidden text-xs text-tertiary-foreground sm:inline">
-              aggiornato alle{" "}
-              {ultimo.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-            </span>
+          {/*
+            Chi ha cambiato cosa (§65).
+
+            La schermata si aggiorna da sola, e il cambiamento appariva senza
+            dire chi: due persone sullo stesso servizio da due tablet vedevano
+            un tavolo assegnarsi da solo, e la seconda rifaceva il lavoro della
+            prima o si fermava a chiedere. Adesso c'è scritto — e al posto
+            dell'ora dell'ultimo aggiornamento, che era la stessa cosa detta
+            senza informazione: «aggiornato alle 21:14» dice che il programma
+            funziona, non cosa è successo.
+
+            L'ora resta nel suggerimento, e quando non è cambiato niente torna
+            la frase di prima.
+          */}
+          {snapshot.cambiamenti.length > 0 ? (
+            <CambiamentiRecenti cambiamenti={snapshot.cambiamenti} ultimo={ultimo} />
+          ) : (
+            ultimo && (
+              <span className="hidden text-xs text-tertiary-foreground sm:inline">
+                aggiornato alle{" "}
+                {ultimo.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </span>
+            )
           )}
           <button
             type="button"
