@@ -117,6 +117,9 @@ export function RicercaGlobale() {
         }).format(new Date(p.quando)),
         `${p.partySize} ${p.partySize === 1 ? "coperto" : "coperti"}`,
         p.tavolo,
+        // Perché questa riga è qui: chi ha cercato una stringa non riconosce
+        // un nome, riconosce il riferimento che ha letto al telefono.
+        p.perRiferimento ? "trovata per riferimento" : null,
       ]
         .filter(Boolean)
         .join(" · "),
@@ -271,7 +274,8 @@ export function RicercaGlobale() {
               concludere «non c'è» a chi cerca un piatto o un coupon.
             */}
             <p className="t-nota">
-              Cerca fra ospiti e prenotazioni delle prossime settimane. ⌘K per riaprirla.
+              Cerca fra ospiti e prenotazioni delle prossime settimane — o il riferimento di una
+              prenotazione, in qualunque data. ⌘K per riaprirla.
             </p>
           </div>
         </DialogContent>

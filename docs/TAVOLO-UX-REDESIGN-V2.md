@@ -456,6 +456,30 @@ si scrive «nessun cliente trovato» mentre qualcuno sta ancora digitando.
 di campi: è che l'operatore deve chiedere dati che il locale ha già.
 
 ### Scheda prenotazione · `/bookings/[id]`
+
+**Due difetti trovati il 9 settembre guardando gli scatti dell'audit** (46
+schermate, e le misure non ne segnalavano nessuna: sono difetti che si vedono
+solo con l'occhio):
+
+1. **`REGULAR` in maiuscolo, e in oro.** La scheda mostrava
+   `<Badge tone="gold">{loyaltyTier}</Badge>`: il valore grezzo della colonna,
+   nel colore del VIP. Un cliente normale sembrava un cliente da trattare col
+   guanto bianco. `LoyaltyPill` aveva già deciso mesi prima che NEW e REGULAR
+   **non si mostrano** — sono deduzioni, e le deduzioni le fa il profilo dalle
+   prenotazioni vere — ma questa pagina non lo chiamava.
+2. **Il riferimento troncato a dieci caratteri.** Il cliente lo riceve
+   **intero**, nella pagina di conferma e nell'email; in sala se ne vedevano
+   dieci su venticinque. Quando telefonava leggendo la sua referenza, chi
+   rispondeva confrontava due stringhe diverse. Adesso è intero, copiabile, e
+   sotto c'è scritto che è quello che il cliente ha ricevuto.
+
+**E la conseguenza operativa:** la ricerca globale adesso trova una
+prenotazione **dal riferimento**, in qualunque data — la finestra di una
+settimana indietro e un mese avanti serve a non annegare nei nomi comuni, non a
+nascondere una prenotazione che qualcuno sta nominando per identificativo.
+Bastano sei caratteri, perché nessuno detta venticinque caratteri senza
+sbagliare, e la riga dice «trovata per riferimento» così chi ha cercato una
+stringa capisce perché quella riga è lì.
 **Problemi:** è una pagina, e ci si arriva da una lista: aprire e tornare perde
 la posizione. Contiene poco.
 **Proposta:** pannello laterale su scrivania e tablet, foglio dal basso su

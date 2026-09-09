@@ -17,6 +17,15 @@ export const MINIMO_CIFRE = 4;
 /** Quanti risultati per tipo. Chi cerca un nome non scorre trenta righe. */
 export const MAX_PER_TIPO = 6;
 
+/**
+ * Da quante lettere una domanda può essere un **riferimento** di prenotazione.
+ *
+ * Sei: è il numero di caratteri che una persona legge al telefono senza
+ * sbagliare, e sotto quella lunghezza un frammento di identificativo
+ * corrisponderebbe a mezzo archivio.
+ */
+export const MINIMO_RIFERIMENTO = 6;
+
 /** La finestra delle prenotazioni: una settimana indietro, un mese avanti. */
 export const GIORNI_INDIETRO = 7;
 export const GIORNI_AVANTI = 30;
@@ -34,6 +43,8 @@ export type OspiteTrovato = {
 export type PrenotazioneTrovata = {
   id: string;
   nome: string;
+  /** Vero quando è stata trovata per riferimento e non per nome. */
+  perRiferimento?: boolean;
   /** Arriva dal server come `Date`, e via JSON come stringa: si legge con `new Date`. */
   quando: Date | string;
   partySize: number;

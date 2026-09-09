@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LoyaltyPill } from "@/components/guests/loyalty-pill";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, SourceBadge } from "@/components/bookings/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -58,7 +60,23 @@ export default async function BookingDetail({ params }: { params: { id: string }
               {item.depositCents > 0 && (
                 <Info label="Caparra" value={formatCurrency(item.depositCents, ctx.venue.currency)} />
               )}
-              <Info label="Riferimento" value={item.reference.slice(0, 10)} />
+              {/*
+                Il riferimento **per intero**, e copiabile.
+
+                Era troncato a dieci caratteri, e il cliente invece lo riceve
+                completo — nella pagina di conferma e nell'email. Quindi quando
+                telefonava leggendo la sua referenza, in sala si vedeva una
+                stringa diversa: dieci caratteri su venticinque, impossibili da
+                confrontare a voce.
+              */}
+              <div className="col-span-2">
+                <p className="t-etichetta">Riferimento</p>
+                <div className="mt-0.5 flex items-center gap-1">
+                  <code className="break-all font-mono text-xs">{item.reference}</code>
+                  <CopyButton value={item.reference} variant="ghost" size="sm" aria-label="Copia il riferimento" />
+                </div>
+                <p className="t-nota">È quello che il cliente ha ricevuto per email.</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -78,9 +96,20 @@ export default async function BookingDetail({ params }: { params: { id: string }
                   <Mail className="h-4 w-4" /> {item.guest.email}
                 </p>
               )}
+              {/*
+                Il livello con la regola che vale in tutto il prodotto, non la
+                colonna del database.
+
+                Qui c'era una pillola d'oro con scritto «REGULAR»: il valore
+                grezzo del database, e in **oro**, che è il colore del VIP. Un
+                cliente normale sembrava un cliente da trattare col guanto
+                bianco. `LoyaltyPill` ha già deciso che NEW e REGULAR non si
+                mostrano — sono deduzioni, e le deduzioni le fa il profilo
+                dalle prenotazioni vere.
+              */}
               {item.guest && (
                 <div className="flex flex-wrap gap-2">
-                  <Badge tone="gold">{item.guest.loyaltyTier}</Badge>
+                  <LoyaltyPill tier={item.guest.loyaltyTier} />
                   <Badge tone="neutral">{item.guest.totalVisits} visite</Badge>
                 </div>
               )}
