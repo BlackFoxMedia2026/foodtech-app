@@ -182,6 +182,18 @@
   .riquadro {
     @apply rounded-md border border-border;
   }
+
+  /*
+    Il triangolo nativo di `<details>`.
+
+    Safari lo disegna con uno pseudo-elemento suo, che `list-style: none` non
+    tocca: restava un triangolino a sinistra del titolo, su una colonna dove
+    tutti gli altri titoli sono allineati con l'icona. Il verso lo dice la
+    freccia a destra, come nel resto del prodotto.
+  */
+  summary::-webkit-details-marker {
+    display: none;
+  }
   /*
     Tre densità, e si scelgono in base al **modo operativo**, non alla pagina.
 

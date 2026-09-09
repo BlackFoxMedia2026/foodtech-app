@@ -643,6 +643,46 @@ apre, con i valori correnti leggibili **da chiuso** — così si vede la
 configurazione senza aprire nulla, e si apre solo per cambiare.
 **Target:** 8,5.
 
+**Fatto il 9 settembre.** Un componente solo (`ui/blocco.tsx`), applicato a
+tredici blocchi. Misurato prima e dopo, a 1440×900:
+
+| Parte | Scorrimento interno prima | Dopo |
+|---|---|---|
+| Il locale | 345 px | 0 |
+| Prenotazioni | 225 px | 0 |
+| Ospiti | 466 px | 0 |
+| Sistema | 0 | 0 |
+
+Adesso «Ospiti» dice tutta la sua configurazione in quattro righe — *45 € a
+persona · attivo su «Aurora-Ospiti» · Google · restituisci il 5%* — dove prima
+per gli stessi quattro dati servivano quattro schede aperte e mezzo schermo di
+scorrimento. Anche su telefono (390×844) e tablet (834×1112) le parti stanno
+in una schermata.
+
+Tre decisioni che sono venute dal costruirlo:
+
+1. **Le due colonne sono sparite.** Servivano quando ogni blocco era una
+   scheda alta: affiancarne due riempiva la pagina. Con i blocchi chiusi il
+   Team aperto è alto quattro righe e «Locali del gruppo» una, e la griglia
+   lasciava quattrocento pixel di vuoto accanto a una riga sola.
+2. **Un blocco nasce aperto solo se il contenuto *è* l'informazione.** Il
+   Team, perché chi ha accesso al locale è un elenco che si guarda, non una
+   soglia da controllare una volta; e «Invii in corso» quando c'è qualcosa che
+   non è riuscito, perché un invio fallito nascosto dietro un'intestazione è
+   la cosa che si scopre tardi.
+3. **Il valore da chiuso lo dichiara lo stato del componente, non i dati del
+   server:** appena salvato lo scontrino medio, l'intestazione chiusa dice già
+   48 € senza aspettare il giro di `router.refresh()`. Verificato dalla sonda.
+
+**Un difetto trovato solo premendo** (nessuna lettura del codice lo avrebbe
+dato): dentro un `<summary>` non va niente su cui si possa premere, perché il
+browser gira ogni clic sul summary. Il pulsante «Invita» messo
+nell'intestazione del blocco Team **chiudeva il blocco** invece di aprire il
+modulo d'invito. E `.tocco-comodo` su quella riga — la classe che allarga i
+bersagli con uno pseudo-elemento sovrapposto — intercettava i clic di tutto
+quello che conteneva. Il comando è passato dentro il corpo, e la classe è
+sparita da lì: quella riga è già alta 44 px.
+
 ### Brand · `/settings/brand`
 **Proposta (§56):** l'anteprima mostra le quattro superfici pubbliche vere —
 modulo di prenotazione, menu, portale Wi-Fi, sondaggio — col brand applicato,

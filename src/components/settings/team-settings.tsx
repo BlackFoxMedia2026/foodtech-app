@@ -6,7 +6,7 @@ import { Copy, Check, LogOut, Trash2, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -95,22 +95,31 @@ export function TeamSettings({
     setTimeout(() => setCopiato(null), 2500);
   }
 
+  /*
+    Questo blocco nasce **aperto**, ed è l'unico della pagina.
+
+    La regola dei blocchi è «il valore da chiuso, si apre per cambiare», e per
+    una soglia o un numero funziona. Qui però il contenuto *è* l'informazione:
+    chi ha accesso al locale non è una configurazione da controllare una volta,
+    è un elenco che si guarda — e chiuderlo dietro «5 persone» vorrebbe dire
+    nascondere l'unica cosa che questa parte deve far vedere.
+  */
+  const riepilogo = `${membri.length} ${membri.length === 1 ? "persona" : "persone"}${
+    inviti.length > 0 ? ` · ${inviti.length} ${inviti.length === 1 ? "invito" : "inviti"} in attesa` : ""
+  }`;
+
   return (
-    <Card>
-      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
-        <div>
-          <CardTitle>Team</CardTitle>
-          <CardDescription>Chi ha accesso a questo locale, e con quale ruolo.</CardDescription>
-        </div>
+    <Blocco titolo="Team" valore={riepilogo} aperto>
+      <div className="flex items-start justify-between gap-3">
+        <BloccoNota>Chi ha accesso a questo locale, e con quale ruolo.</BloccoNota>
         {canManage && (
           <Button variant="outline" size="sm" onClick={() => setApri(!apri)}>
             <UserPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />
             {apri ? "Annulla" : "Invita"}
           </Button>
         )}
-      </CardHeader>
-
-      <CardContent className="space-y-3">
+      </div>
+      <div className="space-y-3">
         {apri && canManage && (
           <form onSubmit={invita} className="space-y-3 riquadro p-3">
             <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
@@ -291,7 +300,7 @@ export function TeamSettings({
         ))}
 
         {error && <p className="text-sm text-destructive">{error}</p>}
-      </CardContent>
-    </Card>
+      </div>
+    </Blocco>
   );
 }

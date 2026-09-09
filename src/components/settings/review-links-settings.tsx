@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -76,19 +76,25 @@ export function ReviewLinksSettings({
     router.refresh();
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Star className="h-4 w-4 text-accent" aria-hidden="true" /> Recensioni pubbliche
-        </CardTitle>
-        <CardDescription>
-          Dove mandiamo chi risponde 9 o 10 al «com&apos;è andata?». Chi dà un voto più basso non vede mai
-          questi collegamenti: quella risposta resta fra te e lui.
-        </CardDescription>
-      </CardHeader>
+  /*
+    Da chiuso: **dove** mandiamo chi è contento. Non «2 collegamenti» — il
+    numero non dice niente a chi vuole sapere se Google c'è.
+  */
+  const attive = righe.filter((r) => r.url.trim());
+  const riepilogo =
+    attive.length === 0
+      ? "nessun collegamento"
+      : attive
+          .map((r) => NOME_PIATTAFORMA[r.platform as keyof typeof NOME_PIATTAFORMA] ?? r.platform)
+          .join(" · ");
 
-      <CardContent className="space-y-4">
+  return (
+    <Blocco titolo="Recensioni pubbliche" icona={Star} valore={riepilogo}>
+      <BloccoNota>
+        Dove mandiamo chi risponde 9 o 10 al «com&apos;è andata?». Chi dà un voto più basso non vede mai
+        questi collegamenti: quella risposta resta fra te e lui.
+      </BloccoNota>
+      <div className="space-y-4">
         {righe.length === 0 && (
           <p className="text-sm text-muted-foreground">
             Nessun collegamento: oggi chi è contento riceve solo un grazie. Su Google, il link giusto è
@@ -180,7 +186,7 @@ export function ReviewLinksSettings({
           Togliere un collegamento non cancella i passaggi che ha raccolto: restano nei numeri di quel
           periodo. Quattro è il massimo — davanti a sei bottoni una persona contenta non sceglie, chiude.
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </Blocco>
   );
 }

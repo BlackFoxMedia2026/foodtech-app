@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { readApiError } from "@/lib/api-client";
@@ -57,46 +57,50 @@ export function AvgSpendSettings({
     router.refresh();
   }
 
+  /*
+    Il valore si legge da chiuso, e lo dice lo stato locale invece dei dati del
+    server: appena salvato il riepilogo è già quello nuovo, senza aspettare il
+    giro di `router.refresh()`.
+  */
+  const numero = Number(valore.replace(",", "."));
+  const riepilogo =
+    valore.trim() !== "" && Number.isFinite(numero) ? `${numero} € a persona` : "non impostato";
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Scontrino medio per persona</CardTitle>
-        <CardDescription>
-          Serve per stimare gli incassi in Panoramica e il valore di un cliente nella sua scheda.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={salva} method="post" className="space-y-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="avg-spend">Euro a persona</Label>
-              <Input
-                id="avg-spend"
-                inputMode="decimal"
-                value={valore}
-                onChange={(e) => setValore(e.target.value)}
-                placeholder="Es. 55"
-                disabled={!canManage}
-                className="w-32"
-              />
-            </div>
-            {canManage && (
-              <Button type="submit" variant="accent" disabled={salvando}>
-                {salvando ? "Salvo…" : "Salva"}
-              </Button>
-            )}
+    <Blocco titolo="Scontrino medio per persona" valore={riepilogo}>
+      <BloccoNota>
+        Serve per stimare gli incassi in Panoramica e il valore di un cliente nella sua scheda.
+      </BloccoNota>
+      <form onSubmit={salva} method="post" className="space-y-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="avg-spend">Euro a persona</Label>
+            <Input
+              id="avg-spend"
+              inputMode="decimal"
+              value={valore}
+              onChange={(e) => setValore(e.target.value)}
+              placeholder="Es. 55"
+              disabled={!canManage}
+              className="w-32"
+            />
           </div>
+          {canManage && (
+            <Button type="submit" variant="accent" disabled={salvando}>
+              {salvando ? "Salvo…" : "Salva"}
+            </Button>
+          )}
+        </div>
 
-          <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            Lasciandolo vuoto, Tavolo non mostra nessuna stima invece di mostrarne una inventata.
-            Quando saranno collegati ordini o incassi, il dato reale prenderà il posto della stima.
-          </p>
+        <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          Lasciandolo vuoto, Tavolo non mostra nessuna stima invece di mostrarne una inventata.
+          Quando saranno collegati ordini o incassi, il dato reale prenderà il posto della stima.
+        </p>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {salvato && !error && <p className="text-sm text-sage">Salvato.</p>}
-        </form>
-      </CardContent>
-    </Card>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {salvato && !error && <p className="text-sm text-sage">Salvato.</p>}
+      </form>
+    </Blocco>
   );
 }
