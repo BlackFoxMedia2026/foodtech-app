@@ -54,6 +54,16 @@ export function ForecastPanel({
   const conPrevisione = giorni.filter((g) => g.forecastCovers != null);
   const senzaStoria = conPrevisione.length === 0;
 
+  /*
+    La prima frase del «perché», quando è la stessa per tutti i giorni con una
+    previsione. `why` può contenere più frasi (la quota tipica, le assenze
+    attese, l'avvertimento sui pochi dati confrontabili): si sposta in alto
+    solo la parte comune, e le righe tengono il resto.
+  */
+  const primeFrasi = conPrevisione.map((g) => g.why.split(". ")[0] + ".");
+  const spiegazioneComune =
+    conPrevisione.length > 2 && new Set(primeFrasi).size === 1 ? primeFrasi[0] : null;
+
   return (
     <Card>
       <CardHeader>
@@ -68,6 +78,23 @@ export function ForecastPanel({
       </CardHeader>
 
       <CardContent className="space-y-5">
+        {/*
+          Se tutti i giorni hanno la stessa spiegazione, si dice una volta.
+
+          Nella demo si leggeva sette volte, riga per riga, la frase identica
+          «da te si prenota con anticipo: a questo punto il libro è già quasi
+          il totale della serata». Una spiegazione ripetuta sette volte non
+          spiega più niente: si smette di leggerla, e con lei si smette di
+          leggere le righe dove il ragionamento è **diverso** — che sono le
+          uniche che valeva la pena mettere.
+        */}
+        {spiegazioneComune && (
+          <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {spiegazioneComune} Vale per tutti e sette i giorni.
+          </p>
+        )}
+
         <ul className="divide-y divide-border">
           {giorni.map((g) => (
             <li key={g.dateKey} className="flex flex-col gap-1.5 py-3 first:pt-0">
@@ -99,7 +126,16 @@ export function ForecastPanel({
 
               {g.occupancyPct != null && <Barra pct={g.occupancyPct} forte={g.occupancyPct >= 85} />}
 
-              <p className="text-xs text-tertiary-foreground">{g.why}</p>
+              {/* Togliamo dalla riga la frase già detta sopra: quello che
+                  resta è ciò che distingue questo giorno dagli altri. */}
+              {(() => {
+                const resto = spiegazioneComune
+                  ? g.why.startsWith(spiegazioneComune)
+                    ? g.why.slice(spiegazioneComune.length).trim()
+                    : g.why
+                  : g.why;
+                return resto ? <p className="text-xs text-tertiary-foreground">{resto}</p> : null;
+              })()}
             </li>
           ))}
         </ul>

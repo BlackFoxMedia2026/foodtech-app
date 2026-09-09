@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { spesaPerOspite } from "./spesa-ospiti";
 
 const SLOT_BUCKETS = ["12-14", "14-17", "17-19", "19-21", "21-23", "23+"] as const;
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -71,31 +72,50 @@ function sourcesOf(bookings: BookingRow[]) {
   return Object.entries(sources).map(([source, count]) => ({ source, count }));
 }
 
-async function guestMetrics(bookings: BookingRow[], from: Date, to: Date) {
+async function guestMetrics(venueId: string, bookings: BookingRow[], from: Date, to: Date) {
   const guestIds = Array.from(
     new Set(bookings.map((b) => b.guestId).filter((id): id is string => Boolean(id))),
   );
   const guests = guestIds.length
     ? await db.guest.findMany({
         where: { id: { in: guestIds } },
-        select: { totalSpend: true, totalVisits: true, createdAt: true },
+        select: { id: true, totalVisits: true, createdAt: true },
       })
     : [];
 
   const newGuests = guests.filter((g) => g.createdAt >= from && g.createdAt < to).length;
   const repeatGuests = guests.filter((g) => g.totalVisits > 1).length;
-  const avgSpendCents = guests.length
+
+  /*
+    La spesa media per visita si calcolava da `Guest.totalSpend`, colonna che
+    nessuna parte del prodotto scrive: su un locale vero valeva zero, e questo
+    riquadro mostrava «0,00 €» con accanto una freccia di tendenza. Adesso è la
+    stessa formula dell'elenco ospiti — la somma dei conti chiusi — e la media
+    si fa **solo su chi ha almeno un conto chiuso**: dividere anche per chi non
+    ha ancora consumato niente abbasserebbe il numero senza dire perché.
+  */
+  const spesa = await spesaPerOspite(venueId, guests.map((g) => g.id));
+  const conConti = guests.filter((g) => spesa.has(g.id));
+  const avgSpendCents = conConti.length
     ? Math.round(
-        (guests.reduce((s, g) => s + Number(g.totalSpend) / Math.max(g.totalVisits, 1), 0) / guests.length) * 100,
+        conConti.reduce((s, g) => s + (spesa.get(g.id) ?? 0) / Math.max(g.totalVisits, 1), 0) /
+          conConti.length,
       )
     : 0;
 
-  return { newGuests, repeatGuests, totalGuests: guests.length, avgSpendCents };
+  return {
+    newGuests,
+    repeatGuests,
+    totalGuests: guests.length,
+    avgSpendCents,
+    /** Su quanti ospiti è calcolata la media: senza questo, zero e «non misurato» si confondono. */
+    ospitiConConti: conConti.length,
+  };
 }
 
 export async function getAnalytics(venueId: string, from: Date, to: Date) {
   const bookings = await fetchBookingsInRange(venueId, from, to);
-  const gm = await guestMetrics(bookings, from, to);
+  const gm = await guestMetrics(venueId, bookings, from, to);
 
   return {
     ...coreMetrics(bookings),
@@ -112,7 +132,7 @@ export async function getPreviousPeriodMetrics(venueId: string, from: Date, to: 
   const prevTo = from;
 
   const bookings = await fetchBookingsInRange(venueId, prevFrom, prevTo);
-  const gm = await guestMetrics(bookings, prevFrom, prevTo);
+  const gm = await guestMetrics(venueId, bookings, prevFrom, prevTo);
 
   return { ...coreMetrics(bookings), ...gm };
 }

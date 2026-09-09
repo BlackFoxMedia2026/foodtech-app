@@ -14,7 +14,15 @@ import { WeekBoard } from "@/components/bookings/week-board";
 import type { Settimana } from "@/server/booking-week";
 import { cn } from "@/lib/utils";
 
-export type Row = Booking & { guest: Guest | null; table: Table | null };
+/*
+  `Omit<Guest, "totalSpend">`: la spesa dell'ospite è un `Decimal` di Prisma, e
+  un `Decimal` non attraversa il confine fra server e componente client — Next
+  lo segnalava a ogni caricamento dell'elenco prenotazioni («Only plain objects
+  can be passed to Client Components»). Nessuna riga di questa tabella la
+  legge: l'unico posto dove la spesa si mostra è il CRM, e là si conta dai
+  conti chiusi (`server/spesa-ospiti.ts`).
+*/
+export type Row = Booking & { guest: Omit<Guest, "totalSpend"> | null; table: Table | null };
 type StatusFilter = "all" | "pending" | "confirmed";
 type RoomWithTables = {
   id: string;

@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { db } from "@/lib/db";
-import type { Prisma } from "@prisma/client";
+import type { LoyaltyTier, Prisma } from "@prisma/client";
+import { spesaPerOspite } from "./spesa-ospiti";
 
 export const GuestInput = z.object({
   firstName: z.string().min(1),
@@ -38,12 +39,36 @@ function whereOspiti(venueId: string, q?: string, tag?: string): Prisma.GuestWhe
 }
 
 export type PaginaOspiti = {
-  items: Awaited<ReturnType<typeof db.guest.findMany>>;
+  /**
+   * Le sole colonne che l'elenco mostra. Non la riga intera: `totalSpend` è
+   * un `Decimal` di Prisma e non attraversa il confine con i componenti
+   * client, e le note riservate non hanno ragione di uscire da qui.
+   */
+  items: {
+    id: string;
+    firstName: string;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+    tags: string[];
+    totalVisits: number;
+    lastVisitAt: Date | null;
+    loyaltyTier: LoyaltyTier;
+    allergies: string | null;
+    marketingOptIn: boolean;
+    anonymizedAt: Date | null;
+  }[];
   /** Quanti ne esistono in tutto, con questi filtri. */
   totale: number;
   pagina: number;
   pagine: number;
   perPagina: number;
+  /**
+   * Quanto ha speso ciascun ospite di **questa pagina**, in centesimi, contato
+   * dai conti chiusi. Chi non c'è dentro non ha conti chiusi: è «non ancora
+   * misurata», che non è lo stesso di «zero». Vedi `server/spesa-ospiti.ts`.
+   */
+  spesaCents: Map<string, number>;
 };
 
 /**
@@ -71,14 +96,45 @@ export async function listGuests(
   // un numero di pagina scritto a mano nell'indirizzo.
   const pagina = Math.min(pagine, Math.max(1, Math.floor(opts.pagina ?? 1)));
 
+  /*
+    Colonne scelte a mano, non la riga intera.
+
+    `Guest.totalSpend` è un `Decimal` di Prisma, e un `Decimal` non attraversa
+    il confine fra server e componente client: Next lo segnalava a ogni
+    caricamento dell'elenco («Only plain objects can be passed to Client
+    Components»). Adesso quella colonna non serve più a nessuno — la spesa si
+    conta dai conti chiusi — e non chiederla è più semplice che convertirla.
+  */
   const items = await db.guest.findMany({
     where,
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      tags: true,
+      totalVisits: true,
+      lastVisitAt: true,
+      loyaltyTier: true,
+      allergies: true,
+      marketingOptIn: true,
+      anonymizedAt: true,
+    },
     orderBy: [{ loyaltyTier: "desc" }, { lastVisitAt: "desc" }, { createdAt: "desc" }],
     skip: (pagina - 1) * perPagina,
     take: perPagina,
   });
 
-  return { items, totale, pagina, pagine, perPagina };
+  /*
+    La spesa non si legge da `Guest.totalSpend` — colonna che nessuno scrive —
+    ma si conta dai conti chiusi. Una query sola, e solo per i cinquanta ospiti
+    di questa pagina: l'aggregazione su tutto l'archivio per mostrarne
+    cinquanta sarebbe lavoro buttato.
+  */
+  const spesa = await spesaPerOspite(venueId, items.map((g) => g.id));
+
+  return { items, totale, pagina, pagine, perPagina, spesaCents: spesa };
 }
 
 /**

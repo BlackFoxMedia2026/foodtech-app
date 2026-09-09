@@ -99,6 +99,31 @@ Adesso: il locale **dichiara** la spesa media per coperto in Impostazioni, e la
 stima è detta stima. Senza quel valore, la casella resta vuota e dice cosa
 manca. Il valore reale arriverà con ordini o pagamenti.
 
+### Due formule per la stessa domanda, trovate riempiendo la demo
+
+**«Quanto sono pieno oggi?»** aveva due risposte che si contraddicevano sulla
+stessa giornata. La Panoramica prendeva la capienza di **un turno solo** —
+quello in corso, o il prossimo — e ci divideva i coperti di **tutta** la
+giornata: con turni da 60 (pranzo) e 90 (cena), 75 coperti facevano 125%, e un
+`Math.min(100, …)` trasformava l'errore in un tranquillo «100% pieno». La
+previsione, per lo stesso giorno, sommava i turni e diceva 44%. Il tetto a
+cento è la ragione per cui l'errore è vissuto a lungo: 125% si nota, 100% no.
+
+Adesso la capienza del giorno è la somma dei turni attivi, in un posto solo
+(`server/capienza-giorno.ts`), e la percentuale non ha più tetto — oltre il
+cento c'è un'informazione vera, perché il locale può accettare prenotazioni
+oltre la capienza. Dove non ci sono turni configurati la percentuale **non si
+mostra**: prima si divideva per 90, la capienza di un ristorante che non è
+questo.
+
+**«Quanto ha speso questo ospite?»** si leggeva da `Guest.totalSpend`, colonna
+che nessuna parte del prodotto scrive. Ora è la somma dei suoi conti chiusi,
+calcolata dalle righe in `server/spesa-ospiti.ts`, usata sia dall'elenco ospiti
+sia dalla spesa media in Analytics — che prima, su un locale vero, mostrava
+«0,00 €» con accanto una freccia di tendenza: il modo più efficace di far
+sembrare un dato mancante un dato brutto. Chi non ha conti chiusi legge «non
+ancora», che non è «zero».
+
 Lo stesso vizio era rimasto nel **seed della demo**: scriveva un `totalVisits`
 casuale, ne ricavava il livello fedeltà, e poi creava un numero diverso di
 prenotazioni. Nell'elenco ospiti si leggeva «Ambassador» accanto a «1 visita»:

@@ -243,11 +243,27 @@ export default async function InsightsPage({
             hint={`${giftCard.carte} ${giftCard.carte === 1 ? "carta" : "carte"} da onorare — già incassate, cena da servire`}
           />
         )}
+        {/*
+          La spesa media è **misurata sui conti chiusi**, e va detto su quanti
+          ospiti: prima si calcolava da una colonna che nessuno scrive, quindi
+          su un locale vero mostrava «0,00 €» con accanto una freccia di
+          tendenza — il modo più efficace di far sembrare un dato mancante un
+          dato brutto. Senza nemmeno un conto chiuso il riquadro dice cosa
+          manca invece di mostrare uno zero.
+        */}
         <StatCard
-          label="Spesa media"
-          value={formatCurrency(a.avgSpendCents, ctx.venue.currency)}
-          hint="Media storica ospiti attivi nel periodo"
-          trend={trendFor(a.avgSpendCents, prev.avgSpendCents)}
+          label="Spesa media per visita"
+          value={a.ospitiConConti > 0 ? formatCurrency(a.avgSpendCents, ctx.venue.currency) : "—"}
+          hint={
+            a.ospitiConConti > 0
+              ? `Sui conti chiusi di ${a.ospitiConConti} ${a.ospitiConConti === 1 ? "ospite" : "ospiti"}`
+              : "Nessun conto chiuso nel periodo: non c'è niente da misurare"
+          }
+          trend={
+            a.ospitiConConti > 0 && prev.ospitiConConti > 0
+              ? trendFor(a.avgSpendCents, prev.avgSpendCents)
+              : undefined
+          }
         />
       </section>
 
@@ -263,12 +279,17 @@ export default async function InsightsPage({
             <ComparisonStat label="Tasso completamento" current={a.occupancyRate} previous={prev.occupancyRate} format={(v) => `${v}%`} kind="rate" />
             <ComparisonStat label="No-show" current={a.noShowRate} previous={prev.noShowRate} format={(v) => `${v}%`} higherIsBetter={false} kind="rate" />
             <ComparisonStat label="Cancellazioni" current={a.cancelRate} previous={prev.cancelRate} format={(v) => `${v}%`} higherIsBetter={false} kind="rate" />
-            <ComparisonStat
-              label="Spesa media"
-              current={a.avgSpendCents}
-              previous={prev.avgSpendCents}
-              format={(v) => formatCurrency(v, ctx.venue.currency)}
-            />
+            {/* Un confronto fra due periodi ha senso solo se entrambi hanno
+                conti chiusi: «0 → 32 €» non è una crescita, è la comparsa
+                della misura. */}
+            {a.ospitiConConti > 0 && prev.ospitiConConti > 0 && (
+              <ComparisonStat
+                label="Spesa media"
+                current={a.avgSpendCents}
+                previous={prev.avgSpendCents}
+                format={(v) => formatCurrency(v, ctx.venue.currency)}
+              />
+            )}
           </div>
         </CardContent>
       </Card>

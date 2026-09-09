@@ -1,7 +1,33 @@
 /* eslint-disable no-console */
 import { PrismaClient, BookingStatus, BookingSource, Occasion, LoyaltyTier, TableShape } from "@prisma/client";
 import { contatoriDaPrenotazioni } from "../src/lib/visite";
+import { arricchisciVetrina } from "./demo-vetrina";
 import bcrypt from "bcryptjs";
+
+/*
+  Il freno che mancava.
+
+  Questo seed **deve** poter girare in produzione: la vetrina dimostrativa vive
+  là, ed è quella che vede chi valuta Tavolo. Ma finora girava in produzione
+  anche per sbaglio — un `DATABASE_URL` rimasto nel terminale, una variabile
+  ereditata — e scrive centinaia di righe e riscrive gli stati delle
+  prenotazioni dei locali demo. Il seed degli end-to-end (`seed-e2e.ts`) un
+  freno l'ha sempre avuto; questo no, e la differenza non era una scelta.
+
+  Quindi: su un database che non è di sviluppo o di prova serve dirlo a voce
+  alta, con la stessa forma già usata in questo file per lo spostamento delle
+  date (`SEED_ALLOW_DATE_SHIFT`). Non è una difesa contro un attacco: è una
+  difesa contro la fretta — e blocca solo l'esecuzione involontaria, non quella
+  voluta.
+*/
+const url = process.env.DATABASE_URL ?? "";
+if (!/dev|test/i.test(url) && process.env.SEED_DEMO_PRODUZIONE !== "1") {
+  throw new Error(
+    "Questo seed scrive centinaia di righe e riscrive gli stati delle prenotazioni dei locali demo.\n" +
+      "DATABASE_URL non contiene 'dev' né 'test': se è davvero il database di produzione e lo vuoi,\n" +
+      "ripeti il comando con SEED_DEMO_PRODUZIONE=1 davanti. Prima però fai una copia.",
+  );
+}
 
 const db = new PrismaClient();
 
@@ -365,12 +391,16 @@ async function creaMenuDemo(venueId: string) {
 async function main() {
   const existingOrg = await db.organization.findUnique({
     where: { slug: "casa-aurora" },
-    include: { venues: { select: { id: true } } },
+    // In ordine: senza `orderBy` Postgres restituisce i locali nell'ordine che
+    // gli conviene, e il registro del seed cambiava ordine a ogni esecuzione —
+    // il che rende impossibile confrontare due esecuzioni.
+    include: { venues: { select: { id: true, name: true }, orderBy: { name: "asc" } } },
   });
 
   if (existingOrg) {
     // Non ricrea niente, ma non se ne va a mani vuote: rinfresca la vetrina.
     const venueIds = existingOrg.venues.map((v) => v.id);
+    const nomi = new Map(existingOrg.venues.map((v) => [v.id, v.name]));
     await riallineaDateDemo(venueIds);
     for (const id of venueIds) await creaCamerieriDemo(id);
     // Anche il menu: chi ha la demo già installata deve vedere la carta senza
@@ -394,6 +424,18 @@ async function main() {
       });
     }
     console.log("→ Spesa media per coperto impostata a 45 € sui locali demo.");
+
+    /*
+      Le righe che mancavano: conti chiusi, orari delle cene, sondaggi, coda,
+      punti, coupon, contatti. Sta qui e non solo nel ramo di creazione perché
+      su un database dove la demo è già installata il seed non ricrea niente —
+      e un miglioramento che non arriva alla demo già installata non arriva a
+      nessuno. Vedi prisma/demo-vetrina.ts.
+    */
+    for (const id of venueIds) await arricchisciVetrina(db, id, nomi.get(id) ?? id);
+    // Visite e livelli si rifanno **dopo**: la sala di oggi ha appena fatto
+    // sedere qualcuno, e una persona a tavola adesso è una visita in corso.
+    for (const id of venueIds) await allineaContatoriOspiti(id);
 
     console.log("\n✓ Demo aggiornata.");
     return;
@@ -571,8 +613,15 @@ async function main() {
             source: pick<BookingSource>(["WIDGET", "PHONE", "WALK_IN", "GOOGLE", "SOCIAL", "CONCIERGE"]),
             occasion: Math.random() > 0.85 ? pick<Occasion>(["BIRTHDAY", "ANNIVERSARY", "BUSINESS", "DATE"]) : null,
             notes: pick(NOTES),
-            depositCents: Math.random() > 0.7 ? 2000 * partySize : 0,
-            depositStatus: Math.random() > 0.7 ? "HELD" : "NONE",
+            /*
+              Un solo lancio di dado per la caparra. Prima erano due
+              indipendenti, e una prenotazione su dieci finiva con
+              «trattenuti 0 €» oppure con una caparra di 60 € in stato
+              «nessuna»: due colonne che si contraddicono sulla stessa riga.
+            */
+            ...(Math.random() > 0.7
+              ? { depositCents: 2000 * partySize, depositStatus: "HELD" as const }
+              : { depositCents: 0, depositStatus: "NONE" as const }),
           },
         });
       }
@@ -628,10 +677,21 @@ async function main() {
         subject: "Ti aspettiamo per una serata dedicata",
         body: "Sono passati 90 giorni dalla tua ultima visita…",
         status: "SENT",
-        sentCount: 142,
-        openedCount: 81,
+        /*
+          Zero e zero: i due contatori li riscrive `sistemaCampagnaDemo` dal
+          conteggio dei messaggi che esistono. Qui c'erano 142 invii e 81
+          aperture su un locale con sessanta ospiti — due numeri inventati, e
+          per di più impossibili.
+        */
+        sentCount: 0,
+        openedCount: 0,
       },
     });
+
+    // E qui la vetrina: conti chiusi, orari, sondaggi, coda, punti, coupon.
+    await arricchisciVetrina(db, venue.id, venue.name);
+    // Di nuovo i contatori: la sala di oggi ha appena fatto sedere qualcuno.
+    await allineaContatoriOspiti(venue.id);
   }
 
   console.log("\n✓ Seed completato.");

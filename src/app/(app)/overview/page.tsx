@@ -111,7 +111,6 @@ export default async function OverviewPage() {
             estimatedRevenueCents={data.estimatedRevenueCents}
             incasso={data.incasso}
             currency={ctx.venue.currency}
-            occupancyPct={data.occupancyPct}
             expectedNoShow={data.expectedNoShow}
             comparisons={data.comparisons}
           />

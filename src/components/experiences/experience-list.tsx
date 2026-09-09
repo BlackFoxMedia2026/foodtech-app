@@ -68,7 +68,7 @@ export function ExperienceList({
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Programma</p>
           <h1 className="text-display text-3xl">Esperienze</h1>
@@ -88,7 +88,7 @@ export function ExperienceList({
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
       {items.length === 0 ? (
-        <div className="mt-6">
+        <div className="fill mt-6">
           <EmptyState
             icon={Sparkles}
             title="Nessuna esperienza"
@@ -105,7 +105,7 @@ export function ExperienceList({
           </EmptyState>
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="fill-scroll mt-6 grid gap-4 pr-0.5 md:grid-cols-2 xl:grid-cols-3">
           {items.map((e) => (
             <Card key={e.id} className="flex flex-col">
               <CardHeader>

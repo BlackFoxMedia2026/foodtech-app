@@ -36,11 +36,11 @@ export function WaitlistPageClient({
   const [addOpen, setAddOpen] = useState(false);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="schermo animate-fade-in gap-4">
       {/* Direzione C: qui si lavora, e chi guarda questa schermata ha
           qualcuno in piedi davanti. Il titolo si asciuga, il riassunto resta
           — è quello che serve. */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      <header className="fissa flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-baseline gap-2">
             <h1 className="text-lg font-semibold leading-none">Lista d&apos;attesa</h1>
@@ -71,7 +71,7 @@ export function WaitlistPageClient({
       </header>
 
       {entries.length > 0 && (
-        <section className="surface grid grid-cols-3 divide-x divide-border riquadro">
+        <section className="fissa surface grid grid-cols-3 divide-x divide-border riquadro">
           {/* «2 in attesa» accanto a «9 persone in coda» si leggeva come una
               contraddizione: sono gruppi, non persone. Un numero, un nome. */}
           <Stat icon={ListOrdered} label="Gruppi in attesa" value={summary.inAttesa} />
@@ -81,6 +81,7 @@ export function WaitlistPageClient({
       )}
 
       {entries.length === 0 ? (
+        <div className="fill">
         <EmptyState
           icon={ListOrdered}
           title="Nessuno in lista d'attesa"
@@ -95,8 +96,9 @@ export function WaitlistPageClient({
           Quando il locale è pieno, annota qui chi aspetta: Tavolo tiene il turno, calcola l&apos;attesa e
           ti dice appena si libera un tavolo che può accoglierli.
         </EmptyState>
+        </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className="fill-scroll space-y-2 pr-0.5">
           {entries.map((entry, i) => (
             <WaitlistRow
               key={entry.id}

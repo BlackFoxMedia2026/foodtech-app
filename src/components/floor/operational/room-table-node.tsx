@@ -16,7 +16,13 @@ import { LARGHEZZA_PER_PAROLA, TABLE_SIZE, visualSize, type LocalTable, type Tab
 import type { TableOperationalStatus } from "@/lib/table-status";
 
 export type RoomTableMode = "STAFF" | "RESERVATIONS" | "READONLY";
-export type FloorBooking = Booking & { guest: Guest | null };
+/*
+  Senza `totalSpend`: è un `Decimal` di Prisma, e i `Decimal` non attraversano
+  il confine fra server e componente client. Qui non serve — di un ospite, sulla
+  pianta della sala, contano il nome, le allergie e il livello, non quanto ha
+  speso. Vedi la nota in `bookings-page-client.tsx`.
+*/
+export type FloorBooking = Booking & { guest: Omit<Guest, "totalSpend"> | null };
 
 /** Perceived "thickness" of the table object — the bottom edge slab that
  * reads as depth (brief section 29: 4-8px), scaled a little by footprint so
