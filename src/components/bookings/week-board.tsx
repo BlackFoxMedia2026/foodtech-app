@@ -93,7 +93,7 @@ export function WeekBoard({ settimana }: { settimana: Settimana }) {
               )}
             >
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                <p className="t-etichetta">
                   {GIORNI[g.weekday].slice(0, 3)}{" "}
                   <span className="tabular-nums">{data.toLocaleDateString("it-IT", { day: "numeric" })}</span>
                   {g.oggi && <span className="text-accent-strong"> oggi</span>}
@@ -128,7 +128,7 @@ export function WeekBoard({ settimana }: { settimana: Settimana }) {
                     </p>
                   </>
                 ) : (
-                  <p className="text-xs text-tertiary-foreground">nessun turno configurato</p>
+                  <p className="t-nota">nessun turno configurato</p>
                 )}
 
                 {g.inAttesa > 0 && (
@@ -142,7 +142,7 @@ export function WeekBoard({ settimana }: { settimana: Settimana }) {
         })}
       </div>
 
-      <p className="text-xs text-tertiary-foreground">
+      <p className="t-nota">
         {/* Due schermate che rispondono a due domande diverse: dirlo evita che
             qualcuno le confronti e pensi che una delle due sbagli. */}
         Qui c&apos;è quello che è già prenotato, settimane passate comprese. La{" "}

@@ -111,7 +111,7 @@ export function BookingsPageClient({
         <div>
           <div className="flex items-baseline gap-2">
             <h1 className="text-lg font-semibold leading-none">Prenotazioni</h1>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
+            <p className="t-etichetta">Sala</p>
           </div>
           <p className="text-sm text-muted-foreground">
             {filteredRows.length} prenotazioni · {totalCovers} coperti

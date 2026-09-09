@@ -43,7 +43,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
     <div className="schermo animate-fade-in gap-4">
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing / Campagne</p>
+          <p className="t-etichetta">Marketing / Campagne</p>
           <h1 className="text-display text-3xl">{campaign.name}</h1>
         </div>
         <div className="flex items-center gap-2">

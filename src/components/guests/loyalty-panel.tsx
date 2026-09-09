@@ -142,7 +142,7 @@ export function LoyaltyPanel({
                 />
               </div>
             </div>
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Positivo aggiunge, negativo toglie. Il motivo resta scritto nella storia dei punti.
             </p>
             <Button

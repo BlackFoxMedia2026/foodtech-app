@@ -68,7 +68,7 @@ export function WaitlistPageClient({
         <div>
           <div className="flex items-baseline gap-2">
             <h1 className="text-lg font-semibold leading-none">Lista d&apos;attesa</h1>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
+            <p className="t-etichetta">Sala</p>
           </div>
           {entries.length > 0 && (
             <p className="mt-1 text-sm text-muted-foreground">

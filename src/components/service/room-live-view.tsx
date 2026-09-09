@@ -167,12 +167,12 @@ export function RoomLiveView({
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <h1 className="text-lg font-semibold leading-none">Sala</h1>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Servizio</p>
+          <p className="t-etichetta">Servizio</p>
         </div>
         <div className="flex items-center gap-3">
           <ServiceSwitch />
           {ultimo && (
-            <span className="hidden text-xs text-tertiary-foreground sm:inline">
+            <span className="hidden t-nota sm:inline">
               {ultimo.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
             </span>
           )}
@@ -233,7 +233,7 @@ export function RoomLiveView({
         dove esce quel numero — e va detto **qui**, una volta per schermata,
         invece che come etichetta su ogni tavolo.
       */}
-      <p className="text-xs text-tertiary-foreground">
+      <p className="t-nota">
         {live.durata
           ? `Le previsioni di liberazione usano la durata misurata in questo locale: ${durataUmana(
               live.durata.medianaMin,
@@ -295,7 +295,7 @@ export function RoomLiveView({
           <div className="fill-scroll space-y-4 pr-0.5 lg:hidden">
             {LIVE_STATUS_ORDER.filter((s) => (perStato.get(s)?.length ?? 0) > 0).map((stato) => (
               <section key={stato} className="space-y-2">
-                <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                <h2 className="flex items-center gap-2 t-etichetta font-medium">
                   {TABLE_LIVE_LABELS[stato]}
                   <span className="rounded-full bg-current/10 px-2 py-0.5 text-[11px]">
                     {perStato.get(stato)?.length}

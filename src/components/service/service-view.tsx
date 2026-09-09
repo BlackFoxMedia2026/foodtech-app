@@ -103,7 +103,7 @@ export function ServiceView({
       <header className="fissa flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <h1 className="text-lg font-semibold leading-none">Servizio</h1>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">{venueName}</p>
+          <p className="t-etichetta">{venueName}</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -126,7 +126,7 @@ export function ServiceView({
             <CambiamentiRecenti cambiamenti={snapshot.cambiamenti} ultimo={ultimo} />
           ) : (
             ultimo && (
-              <span className="hidden text-xs text-tertiary-foreground sm:inline">
+              <span className="hidden t-nota sm:inline">
                 aggiornato alle{" "}
                 {ultimo.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </span>
@@ -197,7 +197,7 @@ export function ServiceView({
           aria-label="Cosa sta per andare storto"
           className="fissa order-1 max-h-[34%] space-y-2 overflow-y-auto pr-0.5 lg:order-2"
         >
-          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          <h2 className="t-etichetta font-medium">
             Da tenere d&apos;occhio
           </h2>
           <ServiceInsights insights={insights} />
@@ -394,7 +394,7 @@ function Colonna1({
 }) {
   return (
     <section className={cn("space-y-3", !visibile && "hidden md:block")} aria-label={titolo}>
-      <h2 className="hidden items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground md:flex">
+      <h2 className="hidden items-center gap-2 t-etichetta font-medium md:flex">
         {titolo}
         <span className="rounded-full bg-current/10 px-2 py-0.5 text-[11px]">{conteggio}</span>
       </h2>

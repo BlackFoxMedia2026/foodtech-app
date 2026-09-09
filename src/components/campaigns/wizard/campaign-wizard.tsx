@@ -142,7 +142,7 @@ function WizardShell() {
     <div className="schermo mx-auto w-full max-w-4xl gap-4">
       <header className="fissa space-y-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Nuova campagna email</p>
+          <p className="t-etichetta">Nuova campagna email</p>
           <h1 className="text-display text-2xl">{state.name || "Senza nome"}</h1>
         </div>
         <Stepper

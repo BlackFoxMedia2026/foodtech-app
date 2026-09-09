@@ -23,7 +23,7 @@ export default async function CampaignsPage() {
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing</p>
+          <p className="t-etichetta">Marketing</p>
           <h1 className="text-display text-3xl">Campagne</h1>
         </div>
         <Button asChild variant="accent">
@@ -79,7 +79,7 @@ export default async function CampaignsPage() {
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="t-etichetta">{label}</p>
       <p className="text-display text-xl">{value}</p>
     </div>
   );

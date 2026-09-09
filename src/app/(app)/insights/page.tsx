@@ -187,7 +187,7 @@ export default async function InsightsPage({
       <header className="fissa flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <h1 className="text-lg font-semibold leading-none">Analytics</h1>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="t-etichetta">
             {VISTE.find((v) => v.id === vistaAttiva)!.sottotitolo}
           </p>
         </div>

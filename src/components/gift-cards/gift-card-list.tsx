@@ -69,7 +69,7 @@ export function GiftCardList({
     <>
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing / Gift card</p>
+          <p className="t-etichetta">Marketing / Gift card</p>
           <h1 className="text-display text-3xl">Gift card</h1>
           <p className="text-sm text-muted-foreground">
             Cene già pagate. Si scalano dal conto al tavolo, anche in più volte.
@@ -119,7 +119,7 @@ export function GiftCardList({
       )}
 
       {items.length > 0 && (
-        <p className="fissa flex items-start gap-2 text-xs text-tertiary-foreground">
+        <p className="fissa flex items-start gap-2 t-nota">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {/* Chiamare le cose col loro nome: questo denaro è già entrato, la
               cena no. Metterlo fra gli incassi del mese sarebbe contarlo due

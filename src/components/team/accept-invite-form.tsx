@@ -81,7 +81,7 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
   return (
     <form onSubmit={accetta} className="surface space-y-4 riquadro p-6">
       <div>
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Invito</p>
+        <p className="t-etichetta">Invito</p>
         <h1 className="mt-1 text-display text-2xl">{invito.venueName}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Ti hanno dato accesso come <strong>{NOME_RUOLO[invito.ruolo] ?? invito.ruolo}</strong>, con
@@ -117,7 +117,7 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
               minLength={10}
               autoComplete="new-password"
             />
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Almeno dieci caratteri. Serve a te per entrare: il locale non la vede.
             </p>
           </div>
@@ -130,7 +130,7 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <p className="text-center text-xs text-tertiary-foreground">
+      <p className="text-center t-nota">
         Non ti aspettavi questo invito?{" "}
         <Link href="/" className="underline">
           Chiudi questa pagina

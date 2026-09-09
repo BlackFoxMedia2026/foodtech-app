@@ -150,7 +150,7 @@ export function TeamSettings({
                 </Select>
               </div>
             </div>
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               {RUOLI.find((r) => r.valore === ruolo)?.cosa}. Creando l&apos;invito ottieni un{" "}
               <strong>link da consegnare</strong>: Tavolo non manda email finché non è configurato il
               fornitore, quindi il link si copia e si manda a mano. Vale sette giorni e una volta sola.
@@ -163,7 +163,7 @@ export function TeamSettings({
 
         {inviti.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            <p className="t-etichetta">
               Inviti in attesa
             </p>
             {inviti.map((i) => (

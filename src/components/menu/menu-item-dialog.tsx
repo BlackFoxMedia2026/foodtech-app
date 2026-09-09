@@ -142,7 +142,7 @@ export function MenuItemDialog({
                 onChange={(e) => setCosto(e.target.value)}
                 placeholder="facoltativo"
               />
-              <p className="text-xs text-tertiary-foreground">Se lo metti, vedi il margine sul piatto.</p>
+              <p className="t-nota">Se lo metti, vedi il margine sul piatto.</p>
             </div>
           </div>
 

@@ -100,7 +100,7 @@ export default async function MarketingPage() {
   return (
     <div className="schermo animate-fade-in gap-3">
       <header className="fissa">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing</p>
+        <p className="t-etichetta">Marketing</p>
         <h1 className="text-display text-3xl">Marketing</h1>
         <p className="text-sm text-muted-foreground">
           Cosa vuoi ottenere. Gli strumenti stanno sotto, con i loro numeri.

@@ -188,7 +188,7 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
 
       {data.shifts.map((shift) => (
         <fieldset key={shift.shiftId} className="space-y-2">
-          <legend className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <legend className="t-etichetta font-medium">
             {shift.name}
           </legend>
 

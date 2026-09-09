@@ -50,7 +50,7 @@ export function CambiamentiRecenti({
               })}`
             : undefined
         }
-        className="flex max-w-[22rem] items-center gap-1.5 text-xs text-tertiary-foreground transition-colors hover:text-muted-foreground"
+        className="flex max-w-[22rem] items-center gap-1.5 t-nota transition-colors hover:text-muted-foreground"
       >
         <Users className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span className="truncate">

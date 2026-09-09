@@ -134,7 +134,7 @@ export function WaiterContractSection({ waiterId, open }: { waiterId: string; op
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Contratto</p>
+        <p className="t-etichetta font-medium">Contratto</p>
         {mode === "view" && (
           <Button type="button" variant="outline" size="sm" onClick={startCreate}>
             <Plus className="h-3.5 w-3.5" /> Nuovo contratto

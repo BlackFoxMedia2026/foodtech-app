@@ -125,7 +125,7 @@ export function LoyaltySettings({
               disabled={!canManage}
               className="w-28"
             />
-            <p className="text-xs text-tertiary-foreground">In euro, quando il cliente lo spende.</p>
+            <p className="t-nota">In euro, quando il cliente lo spende.</p>
           </div>
         </div>
 
@@ -146,7 +146,7 @@ export function LoyaltySettings({
             di quello che incassi.
           </p>
         ) : (
-          <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+          <p className="flex items-start gap-2 t-nota">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             Senza entrambi i numeri la raccolta punti resta spenta, e nessun cliente accumula niente. Sono due
             decisioni tue: quanto premi la fedeltà e quanto ti costa.

@@ -135,7 +135,7 @@ export function ReviewLinksSettings({
                 placeholder="https://…"
               />
               {r.id && (
-                <p className="text-xs text-tertiary-foreground">
+                <p className="t-nota">
                   {r.clic30 === 0
                     ? "Nessuno ci è passato negli ultimi 30 giorni"
                     : `${r.clic30} ${r.clic30 === 1 ? "persona ci è passata" : "persone ci sono passate"} negli ultimi 30 giorni`}
@@ -182,7 +182,7 @@ export function ReviewLinksSettings({
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <p className="text-xs text-tertiary-foreground">
+        <p className="t-nota">
           Togliere un collegamento non cancella i passaggi che ha raccolto: restano nei numeri di quel
           periodo. Quattro è il massimo — davanti a sei bottoni una persona contenta non sceglie, chiude.
         </p>

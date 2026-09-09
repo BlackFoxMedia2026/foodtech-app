@@ -202,7 +202,7 @@ export function MenuEditor({
         <div className="min-w-0">
           <div className="flex items-baseline gap-2">
             <h1 className="text-lg font-semibold leading-none">Menu</h1>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
+            <p className="t-etichetta">Sala</p>
           </div>
           <p className="truncate text-sm text-muted-foreground">
             Quello che i clienti leggono dal QR sul tavolo. Un piatto finito sparisce dalla loro carta.
@@ -263,7 +263,7 @@ export function MenuEditor({
           </div>
 
           {filtrando && (
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Mentre cerchi, l&apos;ordine non si cambia: spostare un piatto in un elenco parziale
               riscriverebbe l&apos;ordine vero con quello che vedi adesso.
             </p>
@@ -427,7 +427,7 @@ export function MenuEditor({
                             )}
 
                             {(i.allergens.length > 0 || i.dietary.length > 0) && (
-                              <p className="mt-1 text-xs text-tertiary-foreground">
+                              <p className="mt-1 t-nota">
                                 {i.allergens.length > 0 && (
                                   <>Allergeni: {i.allergens.map(nomeAllergene).join(", ")}</>
                                 )}

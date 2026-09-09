@@ -154,7 +154,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
           )}
 
           {(automation.scartati.silenzio > 0 || automation.scartati.giaRicevuto > 0) && (
-            <p className="mt-2 text-xs text-tertiary-foreground">
+            <p className="mt-2 t-nota">
               Esclusi:{" "}
               {[
                 automation.scartati.giaRicevuto > 0 && `${automation.scartati.giaRicevuto} l'hanno già ricevuta`,
@@ -168,7 +168,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
           )}
 
           {automation.toccherebbeOggi === 0 && automation.active && (
-            <p className="mt-2 text-xs text-tertiary-foreground">
+            <p className="mt-2 t-nota">
               È normale: l&apos;automazione guarda solo chi ha appena superato la soglia, non tutto l&apos;archivio.
             </p>
           )}
@@ -297,7 +297,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
                 </div>
               </div>
 
-              <p className="text-xs text-tertiary-foreground">
+              <p className="t-nota">
                 Ogni persona riceve un <strong>codice suo</strong>, valido una volta e intestato a lei: un codice
                 uguale per tutti si gira agli amici e diventa uno sconto che non hai deciso. Il codice finisce
                 dentro il messaggio, e si usa al tavolo come gli altri coupon.
@@ -329,7 +329,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
           )}
         </div>
 
-        <p className="text-xs text-tertiary-foreground">
+        <p className="t-nota">
           {automation.inviatiUltimi30 > 0
             ? `${automation.inviatiUltimi30} ${
                 automation.inviatiUltimi30 === 1 ? "messaggio" : "messaggi"

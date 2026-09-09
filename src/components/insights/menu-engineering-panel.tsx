@@ -56,7 +56,7 @@ export function MenuEngineeringPanel({
           <div className="riquadro p-4 text-sm">
             <p className="font-medium">Ancora presto per dirlo.</p>
             <p className="mt-1 text-muted-foreground">{dati.perche}</p>
-            <p className="mt-1 text-xs text-tertiary-foreground">
+            <p className="mt-1 t-nota">
               Preferiamo dire «non lo so» che appiccicare a un piatto l&apos;etichetta di «cane» sulla base di
               due coperti.
             </p>
@@ -86,7 +86,7 @@ export function MenuEngineeringPanel({
               );
             })}
 
-            <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+            <p className="flex items-start gap-2 t-nota">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               Deciso su {dati.vendutiClassificati} piatti venduti: «rende» vuol dire sopra{" "}
               {euro(dati.margineMedioCents)} di margine a piatto, «piace» vuol dire almeno il{" "}
@@ -112,10 +112,10 @@ export function MenuEngineeringPanel({
                 </li>
               ))}
               {dati.esclusi.length > 8 && (
-                <li className="text-xs text-tertiary-foreground">e altri {dati.esclusi.length - 8}</li>
+                <li className="t-nota">e altri {dati.esclusi.length - 8}</li>
               )}
             </ul>
-            <p className="mt-2 text-xs text-tertiary-foreground">
+            <p className="mt-2 t-nota">
               I costi si dichiarano dal <Link href="/menu" className="underline">menu</Link>. Sotto{" "}
               {MINIMO_VENDITE_PIATTO} vendite non diciamo niente: il dato non direbbe niente nemmeno lui.
             </p>

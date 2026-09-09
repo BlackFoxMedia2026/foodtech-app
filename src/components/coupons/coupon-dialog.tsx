@@ -117,7 +117,7 @@ export function CouponDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder="Es. Benvenuto, Compleanno, Torna a trovarci"
             />
-            <p className="text-xs text-tertiary-foreground">È quello che legge il cliente.</p>
+            <p className="t-nota">È quello che legge il cliente.</p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -238,7 +238,7 @@ export function CouponDialog({
               {/* La frase seguiva la selezione solo per metà: con «mar»
                   acceso continuava a dire «nessuno selezionato», che è il
                   contrario di quello che si vedeva. Adesso dice cosa vale. */}
-              <p className="text-xs text-tertiary-foreground">
+              <p className="t-nota">
                 {giorni.length === 0
                   ? "Nessuno selezionato: vale tutti i giorni."
                   : `Vale solo ${giorni

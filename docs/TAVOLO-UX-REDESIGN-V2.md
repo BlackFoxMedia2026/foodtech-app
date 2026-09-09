@@ -1510,6 +1510,43 @@ i due dei confini fra locali.
 
 ---
 
+# 16-ter. La scala tipografica applicata (§23) — primo giro il 9 settembre
+
+**Misurato prima:** la scala per ruoli esisteva da giorni e non la usava
+nessuno. 501 `text-xs`, 467 `text-sm`, e **46** usi in tutto delle sette classi
+di ruolo. Una scala che nessuno chiama non è una scala: è un file di stile.
+
+Il difetto concreto, contato: **lo stesso ruolo scritto in tre modi**. L'etichetta
+piccola in maiuscoletto — quella di «OGGI, IN BREVE», «IN SALA · coperti»,
+«LISTA D'ATTESA» — compariva 43 volte con `tracking-widest` (0,1em), 40 con
+`tracking-wide` (0,025em) e 14 con `tracking-wider` (0,05em).
+
+**E la classe che doveva essere la regola era la quarta variante.**
+`DESIGN.md` dice «Label (500, 0.75rem, tracking **0.05em**, spesso
+maiuscolo)», cioè `tracking-wider`; `.t-etichetta` era scritta con
+`tracking-wide`. Il primo lavoro è stato allineare la classe al documento, non
+il contrario.
+
+**Cosa è cambiato:** 82 richiami dell'etichetta e 81 della nota
+(`text-xs text-tertiary-foreground`) diventano `t-etichetta` e `t-nota`, in 80
+file. La nota è un alias esatto — nessun cambiamento visivo, solo il nome del
+ruolo al posto di due utility. L'etichetta invece si sposta tutta sul valore
+del documento: 43 punti si stringono e 40 si allargano, e adesso la stessa cosa
+si legge uguale in tutto il prodotto.
+
+**Cosa resta, e perché non l'ho toccato.** Quindici punti usano una misura
+**sotto** la scala (`text-[10px]`, `text-[11px]`): undici sono nel costruttore
+della sala — fuori perimetro — e quattro sono micro-etichette in righe strette,
+dove portarle a 12 px vorrebbe dire rifare la riga. La scelta onesta è o un
+ruolo dichiarato in più o un cambio di misura, e nessuna delle due è una
+sostituzione: è una decisione di design.
+
+**Verificato:** sette schermate a 1440×900, 834×1112 e 390×844 — scorrimento
+pagina e orizzontale zero su tutte, nessuna etichetta che va a capo. 969 test e
+9 percorsi e2e verdi.
+
+---
+
 # 17. Menu Redesign
 
 **Backoffice, scrivania:** intestazione di categoria compatta (nome · numero di
@@ -2039,7 +2076,7 @@ gliene **prepara**: oggi una, e possono essere sei.
 20. Impostazioni: blocchi che mostrano il valore da chiusi
 21. Marketing hub per intenti
 22. Coupon ed Esperienze in righe
-23. Scala tipografica e tre livelli di densità applicati
+23. Scala tipografica e tre livelli di densità applicati — **primo giro fatto il 9 settembre** (etichette e note: 82 richiami)
 24. ~~Attribuzione dei cambiamenti in tempo reale («assegnato da Anna»)~~ — **fatta il 9 settembre**
 25. ~~Ricerca globale~~ — **fatta il 9 settembre**
 26. ~~Scheletri per componente~~ — **fatto il 9 settembre** (e la constatazione era mezza sbagliata: vedi la sezione 35-37)

@@ -76,7 +76,7 @@ export function Testa({ children }: { children: React.ReactNode }) {
     // scorrere cinquanta righe senza più sapere cosa sia ogni colonna è
     // peggio che scorrere. Il fondo è pieno, non trasparente, altrimenti le
     // righe si leggono attraverso l'intestazione.
-    <thead className="sticky top-0 z-10 border-b border-border bg-[#153a2d] text-xs uppercase tracking-wider text-muted-foreground">
+    <thead className="sticky top-0 z-10 border-b border-border bg-[#153a2d] t-etichetta">
       <tr>{children}</tr>
     </thead>
   );

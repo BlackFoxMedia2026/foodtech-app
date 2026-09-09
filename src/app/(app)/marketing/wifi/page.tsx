@@ -44,7 +44,7 @@ export default async function WifiLeadsPage({
     <div className="schermo animate-fade-in gap-3">
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing / Wi-Fi</p>
+          <p className="t-etichetta">Marketing / Wi-Fi</p>
           <h1 className="text-display text-3xl">Wi-Fi</h1>
           <p className="text-sm text-muted-foreground">
             {attivo
@@ -61,22 +61,22 @@ export default async function WifiLeadsPage({
         <>
           <div className="fissa grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="riquadro p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Contatti</p>
+              <p className="t-etichetta">Contatti</p>
               <p className="mt-1 text-display text-2xl tabular-nums">{stats.contatti}</p>
               <p className="text-xs text-muted-foreground">{stats.ultimi30} negli ultimi 30 giorni</p>
             </div>
             <div className="riquadro p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Poi venuti a mangiare</p>
+              <p className="t-etichetta">Poi venuti a mangiare</p>
               <p className="mt-1 text-display text-2xl tabular-nums text-accent">{stats.conPrenotazione}</p>
               <p className="text-xs text-muted-foreground">hanno almeno una prenotazione</p>
             </div>
             <div className="riquadro p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Consenso marketing</p>
+              <p className="t-etichetta">Consenso marketing</p>
               <p className="mt-1 text-display text-2xl tabular-nums">{stats.conMarketing}</p>
               <p className="text-xs text-muted-foreground">si possono scrivere</p>
             </div>
             <div className="riquadro p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Sconti</p>
+              <p className="t-etichetta">Sconti</p>
               <p className="mt-1 text-display text-2xl tabular-nums">
                 {stats.couponUsati}
                 <span className="text-base text-muted-foreground">/{stats.couponEmessi}</span>
@@ -85,7 +85,7 @@ export default async function WifiLeadsPage({
             </div>
           </div>
 
-          <p className="fissa flex items-start gap-2 text-xs text-tertiary-foreground">
+          <p className="fissa flex items-start gap-2 t-nota">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {/* Il numero onesto è il secondo. Un elenco di contatti è un
                 costo e una responsabilità finché non porta qualcuno a tavola. */}

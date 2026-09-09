@@ -89,7 +89,7 @@ export function ForecastPanel({
           uniche che valeva la pena mettere.
         */}
         {spiegazioneComune && (
-          <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+          <p className="flex items-start gap-2 t-nota">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {spiegazioneComune} Vale per tutti e sette i giorni.
           </p>
@@ -134,7 +134,7 @@ export function ForecastPanel({
                     ? g.why.slice(spiegazioneComune.length).trim()
                     : g.why
                   : g.why;
-                return resto ? <p className="text-xs text-tertiary-foreground">{resto}</p> : null;
+                return resto ? <p className="t-nota">{resto}</p> : null;
               })()}
             </li>
           ))}
@@ -194,7 +194,7 @@ export function ForecastPanel({
           </div>
         )}
 
-        <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+        <p className="flex items-start gap-2 t-nota">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           La previsione confronta ogni giorno con gli stessi giorni della settimana precedenti e guarda quanto era
           già prenotato alla stessa distanza dal servizio. Le assenze attese sono già sottratte. Dove la storia non

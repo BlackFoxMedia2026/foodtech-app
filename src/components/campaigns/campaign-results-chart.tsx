@@ -96,7 +96,7 @@ export function CampaignResultsChart({
         <p className="text-sm text-muted-foreground">Nessuna prenotazione dal link di questa campagna.</p>
       )}
 
-      <p className="text-xs text-tertiary-foreground">
+      <p className="t-nota">
         Contiamo le prenotazioni nate dal link di questa email entro {giorniFinestra} giorni dall&apos;invio,
         senza le disdette e chi non si è presentato: una prenotazione disdetta è arrivata dalla campagna ma non
         ha portato nessuno a tavola.

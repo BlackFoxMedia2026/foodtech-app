@@ -68,7 +68,7 @@ export function NpsPanel({
       <CardContent className="space-y-5">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">NPS</p>
+            <p className="t-etichetta">NPS</p>
             <p className="mt-0.5 text-display text-3xl">
               {stats.nps != null ? (stats.nps > 0 ? `+${stats.nps}` : stats.nps) : "—"}
             </p>
@@ -83,7 +83,7 @@ export function NpsPanel({
 
         {stats.trend.some((t) => t.responses > 0) && (
           <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            <p className="t-etichetta">
               Ultime quattro settimane
             </p>
             <div className="mt-2 grid grid-cols-4 gap-2">
@@ -107,7 +107,7 @@ export function NpsPanel({
              sappiamo — chi è arrivato sulla piattaforma — e si dice anche
              quello che non sappiamo, perché un clic non è una recensione. */
           <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            <p className="t-etichetta">
               Dai promotori alle recensioni
             </p>
             <p className="mt-1.5 text-sm">
@@ -129,7 +129,7 @@ export function NpsPanel({
 
         {stats.recentComments.length > 0 && (
           <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Cosa hanno scritto</p>
+            <p className="t-etichetta">Cosa hanno scritto</p>
             <ul className="mt-2 space-y-2">
               {stats.recentComments.map((c) => {
                 const t = TONO[c.sentiment];
@@ -161,7 +161,7 @@ export function NpsPanel({
           </div>
         )}
 
-        <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+        <p className="flex items-start gap-2 t-nota">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           L&apos;NPS va da -100 a +100 e non è una media di voti: è la quota di promotori (9-10) meno
           quella di detrattori (0-6). Un locale con metà clienti entusiasti e metà delusi fa zero.
@@ -184,7 +184,7 @@ function Conteggio({
 }) {
   return (
     <div>
-      <p className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+      <p className="flex items-center gap-1.5 t-etichetta">
         <Icona className={cn("h-3 w-3", classe)} aria-hidden="true" />
         {etichetta}
       </p>

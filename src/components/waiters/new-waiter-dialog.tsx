@@ -301,7 +301,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
               <>
                 <Separator />
                 <div className="space-y-3">
-                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Contratto (opzionale)</p>
+                  <p className="t-etichetta font-medium">Contratto (opzionale)</p>
                   <ContractFields idPrefix="new-contract" value={contractForm} onChange={setContractForm} errors={contractErrors} />
                 </div>
               </>

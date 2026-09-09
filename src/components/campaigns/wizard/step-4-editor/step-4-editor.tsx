@@ -103,7 +103,7 @@ export function Step4Editor() {
           />
         </div>
         <div className="min-w-0 space-y-2">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Anteprima live</p>
+          <p className="t-etichetta">Anteprima live</p>
           <div className="flex justify-center riquadro bg-secondary/30 p-3">
             <iframe
               title="Anteprima email"

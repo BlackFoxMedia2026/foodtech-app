@@ -63,7 +63,7 @@ export default async function GuestDetail({ params }: { params: { id: string } }
             <AvatarFallback className="text-base">{initials(name)}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Ospite</p>
+            <p className="t-etichetta">Ospite</p>
             <h1 className="text-display text-3xl">{name}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <LoyaltyPill tier={g.loyaltyTier} />

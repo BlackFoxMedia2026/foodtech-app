@@ -33,7 +33,7 @@ export default async function BookingDetail({ params }: { params: { id: string }
 
       <header className="fissa flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Prenotazione</p>
+          <p className="t-etichetta">Prenotazione</p>
           <h1 className="text-display text-3xl">{guestName}</h1>
           <p className="text-sm text-muted-foreground">{formatDateTime(item.startsAt)}</p>
         </div>
@@ -139,7 +139,7 @@ export default async function BookingDetail({ params }: { params: { id: string }
 function Info({ icon: Icon, label, value }: { icon?: React.ElementType; label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="t-etichetta">{label}</p>
       <p className="mt-1 flex items-center gap-2 text-base">
         {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
         {value}
