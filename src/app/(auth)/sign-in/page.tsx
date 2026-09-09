@@ -13,6 +13,15 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/shell/logo";
 
+/**
+ * Questa installazione è la vetrina dimostrativa pubblica?
+ *
+ * `NEXT_PUBLIC_` perché la pagina d'accesso è un componente client. Il valore
+ * per difetto è **no**: una variabile dimenticata lascia il prodotto sicuro,
+ * non aperto.
+ */
+const DEMO_PUBBLICA = process.env.NEXT_PUBLIC_DEMO_PUBBLICA === "1";
+
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const display = Fraunces({
   subsets: ["latin"],
@@ -29,6 +38,27 @@ function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  /**
+   * L'ingresso alla vetrina: le stesse credenziali di prima, ma per una
+   * scelta esplicita di chi le vuole, non precompilate nel modulo di tutti.
+   */
+  async function entraNellaDemo() {
+    setError(null);
+    setLoading(true);
+    const res = await signIn("credentials", {
+      email: "owner@tavolo.demo",
+      password: "tavolo2026",
+      redirect: false,
+    });
+    setLoading(false);
+    if (res?.error) {
+      setError("La vetrina dimostrativa non è disponibile su questa installazione.");
+      return;
+    }
+    router.push(callback);
+    router.refresh();
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -109,7 +139,6 @@ function SignInForm() {
                   type="email"
                   required
                   autoComplete="email"
-                  defaultValue="owner@tavolo.demo"
                   aria-invalid={!!error}
                   aria-describedby={error ? "sign-in-error" : undefined}
                   className="h-11 text-sm shadow-[inset_0_3px_8px_rgba(0,0,0,0.25)]"
@@ -124,7 +153,6 @@ function SignInForm() {
                     type={showPassword ? "text" : "password"}
                     required
                     autoComplete="current-password"
-                    defaultValue="tavolo2026"
                     aria-invalid={!!error}
                     aria-describedby={error ? "sign-in-error" : undefined}
                     className="h-11 pr-10 text-sm shadow-[inset_0_3px_8px_rgba(0,0,0,0.25)]"
@@ -159,9 +187,41 @@ function SignInForm() {
               {loading ? "Accesso in corso…" : "Entra in Tavolo"}
             </Button>
 
-            <p className="text-left text-xs text-card-foreground/65">
-              Accesso demo: <code>owner@tavolo.demo</code> · <code>tavolo2026</code>
-            </p>
+            {/*
+              La demo, se questa installazione è la demo.
+
+              Prima email e password erano **precompilate** in ogni
+              installazione, e stampate qui in chiaro, senza nessuna
+              condizione. Due conseguenze: un ristorante che compra Tavolo
+              avrebbe visto la propria pagina d'accesso riempita con le
+              credenziali della vetrina di qualcun altro; e chiunque apra
+              l'indirizzo pubblico entra e **scrive** — è la spiegazione più
+              probabile delle prenotazioni comparse mesi avanti nella demo,
+              che il 9 settembre avevano fatto sbagliare il riallineamento
+              delle date.
+
+              La vetrina resta a un tocco, perché per chi valuta il prodotto è
+              una buona cosa: ma è un pulsante dichiarato e separato dal
+              modulo, e c'è solo dove `NEXT_PUBLIC_DEMO_PUBBLICA` lo dice.
+              Il valore per difetto è «no»: un'installazione nuova non regala
+              un accesso a nessuno.
+            */}
+            {DEMO_PUBBLICA && (
+              <div className="space-y-2 border-t border-white/10 pt-4">
+                <p className="text-left text-xs text-card-foreground/65">
+                  Vuoi solo dare un&apos;occhiata? Questa è la vetrina dimostrativa.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading}
+                  onClick={() => entraNellaDemo()}
+                  className="h-11 w-full"
+                >
+                  Entra nella demo
+                </Button>
+              </div>
+            )}
           </form>
         </Card>
       </section>
