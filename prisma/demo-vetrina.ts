@@ -1239,6 +1239,62 @@ export async function rinfrescaListaAttesa(db: PrismaClient, venueId: string, ad
 }
 
 /* -------------------------------------------------------------------------- */
+/*  10-bis. Un conto sta all'ora della sua cena                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Rimette ogni conto all'orario della prenotazione a cui appartiene.
+ *
+ * Serve perché in produzione si è visto cosa succede quando non è vero: 708
+ * conti chiusi ad aprile-luglio per cene chiuse ad agosto-settembre. Analytics
+ * diceva «nessun conto chiuso nel periodo» **con settecento conti nel
+ * database**, il costo del cibo era vuoto, e la schermata che dovrebbe
+ * convincere un ristoratore mostrava un prodotto che non misura niente.
+ *
+ * La causa era il riallineamento delle date: spostava le prenotazioni e
+ * lasciava i conti dove erano. Quello è corretto alla fonte, ma questa
+ * funzione resta — ed è la parte che vale di più. Non applica un delta
+ * ricalcolato a mano: usa il **collegamento**. Un conto appartiene a una cena,
+ * quindi la sua ora è quella della cena, sempre. Scritta così ripara qualunque
+ * scostamento, anche uno futuro di cui non sappiamo ancora la causa.
+ *
+ * I conti senza prenotazione — l'asporto — non si toccano: non hanno una cena
+ * a cui appartenere.
+ */
+export async function ogniContoAllOraDellaSuaCena(db: PrismaClient, venueId: string) {
+  const conti = await db.order.findMany({
+    where: { venueId, bookingId: { not: null } },
+    select: {
+      id: true,
+      scheduledAt: true,
+      completedAt: true,
+      booking: { select: { startsAt: true, closedAt: true } },
+    },
+  });
+
+  let spostati = 0;
+  for (const c of conti) {
+    if (!c.booking) continue;
+    const quando = c.booking.startsAt;
+    // La chiusura del conto segue la chiusura della cena; se la cena non è
+    // ancora chiusa, il conto non ha una chiusura da mostrare.
+    const chiuso = c.booking.closedAt;
+
+    const oraSbagliata = c.scheduledAt.getTime() !== quando.getTime();
+    const chiusuraSbagliata = (c.completedAt?.getTime() ?? null) !== (chiuso?.getTime() ?? null);
+    if (!oraSbagliata && !chiusuraSbagliata) continue;
+
+    await db.order.update({
+      where: { id: c.id },
+      data: { scheduledAt: quando, completedAt: chiuso, createdAt: quando },
+    });
+    spostati++;
+  }
+
+  if (spostati > 0) console.log(`   ${spostati} conti rimessi all'ora della loro cena.`);
+}
+
+/* -------------------------------------------------------------------------- */
 /*  11-bis. Un tavolo a chi non ce l'ha                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -1782,6 +1838,9 @@ export async function arricchisciVetrina(db: PrismaClient, venueId: string, nome
   await scalaUnaGiftCard(db, venueId);
   await creaCouponDemo(db, venueId);
   await segnaCouponUsati(db, venueId);
+  // Prima di ricalcolare la spesa: se i conti sono all'ora sbagliata, anche
+  // le somme per periodo lo sono.
+  await ogniContoAllOraDellaSuaCena(db, venueId);
   await allineaSpesaOspiti(db, venueId);
   await creaSondaggiDemo(db, venueId);
   await rinfrescaListaAttesa(db, venueId);

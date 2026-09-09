@@ -134,6 +134,21 @@ motore di disponibilità invece di una seconda formula. Due restano senza, e
 restano perché sono tavolate da sette e il tavolo più grande è da sei:
 «da assegnare» è la verità, e unire due tavoli è un gesto che si fa a mano.
 
+**I conti non seguivano le loro cene.** Il riallineamento spostava le
+prenotazioni e lasciava i conti dov'erano: in produzione 708 conti chiusi ad
+aprile-luglio per cene chiuse ad agosto-settembre. Analytics diceva «nessun
+conto chiuso nel periodo» **con settecento conti nel database**, il costo del
+cibo era vuoto, e la schermata che dovrebbe convincere un ristoratore mostrava
+un prodotto che non misura niente. Lo stesso valeva in sviluppo — 482 conti
+fuori posto — e non si era mai notato, perché quel database si ricrea spesso.
+
+Corretto alla fonte (lo spostamento muove anche conti, voti, coda e invii), ma
+la parte che vale di più è l'invariante: `ogniContoAllOraDellaSuaCena` non
+applica un delta ricalcolato a mano, usa il **collegamento**. Un conto
+appartiene a una cena, quindi la sua ora è quella della cena, sempre. Scritta
+così ripara qualunque scostamento, anche uno futuro di cui non conosciamo
+ancora la causa.
+
 ### Due formule per la stessa domanda, trovate riempiendo la demo
 
 **«Quanto sono pieno oggi?»** aveva due risposte che si contraddicevano sulla

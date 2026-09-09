@@ -153,6 +153,39 @@ async function riallineaDateDemo(venueIds: string[]) {
     venueIds,
   );
 
+  /*
+    Anche i conti, i voti e la coda: un conto è un fatto legato all'orario
+    della sua cena, e se la cena si sposta di quattro mesi e il conto no, il
+    conto resta appeso a una serata che non esiste più.
+    
+    È il difetto che si è visto in produzione: 708 conti chiusi ad aprile-luglio
+    per cene chiuse ad agosto-settembre. Analytics diceva «nessun conto chiuso
+    nel periodo» con settecento conti nel database, e il costo del cibo era
+    vuoto — quindi la schermata che dovrebbe convincere un ristoratore mostrava
+    un prodotto che non misura niente.
+
+    Non basta spostare le prenotazioni: si sposta **tutto quello che è
+    ancorato a quelle prenotazioni** e che il seed non ricalcola da zero a
+    ogni giro.
+  */
+  const spostaAnche: [string, string[]][] = [
+    ["Order", ["scheduledAt", "createdAt", "preparedAt", "readyAt", "completedAt", "cancelledAt"]],
+    ["LoyaltyTransaction", ["createdAt"]],
+    ["Survey", ["sentAt", "respondedAt"]],
+    ["WaitlistEntry", ["desiredAt", "notifiedAt", "seatedAt", "cancelledAt", "createdAt"]],
+    ["MessageLog", ["sentAt", "deliveredAt", "failedAt", "createdAt"]],
+  ];
+  for (const [tabella, colonne] of spostaAnche) {
+    const set = colonne
+      .map((c) => `"${c}" = CASE WHEN "${c}" IS NULL THEN NULL ELSE "${c}" + $1::interval END`)
+      .join(", ");
+    await db.$executeRawUnsafe(
+      `UPDATE "${tabella}" SET ${set} WHERE "venueId" = ANY($2::text[])`,
+      intervallo,
+      venueIds,
+    );
+  }
+
   console.log(`→ Demo riallineata: ${pren} prenotazioni spostate di ${giorni} giorni.`);
 }
 
