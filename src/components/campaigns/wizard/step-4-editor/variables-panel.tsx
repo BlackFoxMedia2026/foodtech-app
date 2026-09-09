@@ -5,7 +5,7 @@ import { CAMPAIGN_VARIABLES } from "@/lib/campaign-blocks";
 export function VariablesPanel({ onInsert, disabled }: { onInsert: (token: string) => void; disabled: boolean }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">Variabili disponibili</p>
+      <p className="t-etichetta">Variabili disponibili</p>
       <div className="flex flex-wrap gap-1.5">
         {CAMPAIGN_VARIABLES.map((v) => (
           <button

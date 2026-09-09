@@ -51,7 +51,7 @@ export default function ErroreApplicazione({
       {error.digest && (
         // Il codice serve solo per ritrovare l'errore nei registri: si mostra
         // piccolo, senza spiegazioni che non aiutano nessuno.
-        <p className="mt-6 text-xs text-tertiary-foreground">Codice: {error.digest}</p>
+        <p className="mt-6 t-nota">Codice: {error.digest}</p>
       )}
     </div>
   );

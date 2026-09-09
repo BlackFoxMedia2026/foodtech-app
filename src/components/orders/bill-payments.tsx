@@ -197,7 +197,7 @@ function PannelloGiftCard({
             </Button>
           </div>
           {trovata.residuoCents > conto.pagamenti.daIncassareCents && (
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Scalando {euro(conto.pagamenti.daIncassareCents)} restano{" "}
               {euro(trovata.residuoCents - conto.pagamenti.daIncassareCents)} sulla carta, per un&apos;altra volta.
             </p>

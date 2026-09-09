@@ -96,7 +96,7 @@ export function ExperienceList({
     <>
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Programma</p>
+          <p className="t-etichetta">Programma</p>
           <h1 className="text-display text-3xl">Esperienze</h1>
           <p className="text-sm text-muted-foreground">
             {items.length === 0
@@ -170,7 +170,7 @@ export function ExperienceList({
                       </a>
                     </Button>
                   ) : (
-                    <span className="text-xs text-tertiary-foreground">Nessun link ai biglietti</span>
+                    <span className="t-nota">Nessun link ai biglietti</span>
                   )}
                   {canEdit && <Comandi e={prossima} busy={busy} onModifica={setInModifica} onElimina={elimina} />}
                 </div>
@@ -215,7 +215,7 @@ export function ExperienceList({
         </div>
       )}
 
-      <p className="mt-6 text-xs text-tertiary-foreground">
+      <p className="mt-6 t-nota">
         I biglietti non si vendono da Tavolo: servono i pagamenti, che arriveranno con le caparre. Nel frattempo
         il link porta dove li vendi tu.
       </p>

@@ -26,7 +26,7 @@ export default async function OverviewPage() {
     <div className="schermo animate-fade-in gap-4">
       <header className="fissa flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="hidden text-xs uppercase tracking-widest text-muted-foreground sm:block">
+          <p className="hidden t-etichetta sm:block">
             {ctx.venue.name}
           </p>
           {/* Sul telefono il saluto sta su una riga e la data si nasconde: due

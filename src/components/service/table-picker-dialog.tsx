@@ -230,7 +230,7 @@ export function TablePickerDialog({
                       <span className="font-medium">{t.label}</span>
                       <span className="text-xs text-muted-foreground">{t.seats} posti</span>
                       {t.roomName && (
-                        <span className="flex w-full items-center gap-1 text-xs text-tertiary-foreground">
+                        <span className="flex w-full items-center gap-1 t-nota">
                           <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
                           <span className="truncate">{t.roomName}</span>
                         </span>
@@ -259,7 +259,7 @@ export function TablePickerDialog({
                   onChange={(e) => setMotivo(e.target.value)}
                   placeholder="Es. si accontentano, restano poco"
                 />
-                <p className="text-xs text-tertiary-foreground">
+                <p className="t-nota">
                   Finisce nel registro con il tuo nome e l&apos;ora: serve a chi guarda dopo, non a controllarti.
                 </p>
               </div>

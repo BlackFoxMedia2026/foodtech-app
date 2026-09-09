@@ -397,7 +397,7 @@ export function BookingForm({
       <div className="space-y-1.5">
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" placeholder="ospite@email.com" />
-        <p className="text-xs text-tertiary-foreground">
+        <p className="t-nota">
           Serve solo per la conferma scritta e il promemoria: al telefono il numero basta.
         </p>
       </div>
@@ -436,10 +436,10 @@ export function BookingForm({
       </div>
 
       {durataNota && !durataToccata && (
-        <p className="text-xs text-tertiary-foreground">Durata proposta: {durataNota}</p>
+        <p className="t-nota">Durata proposta: {durataNota}</p>
       )}
       {durataToccata && (
-        <p className="text-xs text-tertiary-foreground">
+        <p className="t-nota">
           Durata scelta a mano: resta questa, la misura del locale non la corregge.
         </p>
       )}

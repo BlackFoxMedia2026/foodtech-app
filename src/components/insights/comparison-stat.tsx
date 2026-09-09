@@ -24,7 +24,7 @@ export function ComparisonStat({
 
   return (
     <div className="rounded-md border p-3">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="t-etichetta">{label}</p>
       <div className="mt-1 flex items-baseline gap-2">
         <p className="text-display text-xl">{fmt(current)}</p>
         {delta.available && (

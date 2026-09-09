@@ -84,13 +84,13 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
       <CardContent className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="riquadro p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Coperti persi</p>
+            <p className="t-etichetta">Coperti persi</p>
             <p className="mt-1 text-display text-2xl tabular-nums">{report.copertiPersi}</p>
             <p className="text-xs text-muted-foreground">tavoli tenuti e non usati</p>
           </div>
 
           <div className="riquadro p-3">
-            <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+            <p className="flex items-center gap-1.5 t-etichetta">
               {report.valoreCoperto.tipo === "misurato" ? "Valgono" : "Valore stimato"}
               {/*
                 Il segno dice da dove viene la cifra, sempre nello stesso
@@ -123,7 +123,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
           </div>
 
           <div className="riquadro p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Chi ripete</p>
+            <p className="t-etichetta">Chi ripete</p>
             <p className="mt-1 text-display text-2xl tabular-nums">{report.recidiviTotali}</p>
             <p className="text-xs text-muted-foreground">
               {report.recidiviTotali === 1 ? "cliente con due o più assenze" : "clienti con due o più assenze"}
@@ -132,14 +132,14 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
         </div>
 
         {report.valoreCoperto.tipo === "misurato" ? (
-          <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+          <p className="flex items-start gap-2 t-nota">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {/* Da dove viene la cifra: misurata, non dedotta. */}
             Il valore di un coperto è misurato sui {report.valoreCoperto.suContiChiusi}{" "}
             {report.valoreCoperto.suContiChiusi === 1 ? "conto chiuso" : "conti chiusi"} del periodo, non stimato.
           </p>
         ) : report.valoreCoperto.tipo === "dichiarato" ? (
-          <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+          <p className="flex items-start gap-2 t-nota">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             Questa cifra usa lo scontrino medio che hai dichiarato: è una stima. Diventa un numero misurato appena
             ci sono conti chiusi nel periodo.
@@ -195,7 +195,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
           </ul>
 
           {report.perGiorno.some((g) => g.prenotazioni > 0 && g.quota == null) && (
-            <p className="mt-2 text-xs text-tertiary-foreground">
+            <p className="mt-2 t-nota">
               {/* Una percentuale su due prenotazioni è vera e non significa
                   niente: meglio il conteggio nudo. */}
               Dove ci sono meno di {MINIMO_PER_QUOTA} prenotazioni la percentuale non si mostra: su numeri così
@@ -246,7 +246,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
                 </li>
               ))}
               {report.aRischioTotali > report.aRischio.length && (
-                <li className="text-xs text-tertiary-foreground">
+                <li className="t-nota">
                   e altre {report.aRischioTotali - report.aRischio.length}
                 </li>
               )}
@@ -278,7 +278,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
                 </li>
               ))}
               {report.recidiviTotali > report.recidivi.length && (
-                <li className="text-xs text-tertiary-foreground">
+                <li className="t-nota">
                   e altri {report.recidiviTotali - report.recidivi.length}
                 </li>
               )}

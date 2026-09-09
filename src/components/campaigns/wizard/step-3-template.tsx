@@ -113,7 +113,7 @@ export function Step3Template() {
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          <p className="t-etichetta">
             {hasSuggested && !showAll ? "Template consigliati" : "Tutti i template"}
           </p>
           {hasSuggested && (

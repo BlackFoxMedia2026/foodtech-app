@@ -134,7 +134,7 @@ export function ContractDocument({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Documento contratto</p>
+      <p className="t-etichetta font-medium">Documento contratto</p>
 
       {!document ? (
         <div

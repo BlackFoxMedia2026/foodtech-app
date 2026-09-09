@@ -232,7 +232,7 @@ export function BlockInspector({
             ancora supportato — prossimamente.
           </p>
           <div>
-            <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Colonna sinistra</p>
+            <p className="mb-1 t-etichetta">Colonna sinistra</p>
             {block.left.map((sub, i) => (
               <SimpleBlockFields
                 key={sub.id}
@@ -247,7 +247,7 @@ export function BlockInspector({
             ))}
           </div>
           <div>
-            <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Colonna destra</p>
+            <p className="mb-1 t-etichetta">Colonna destra</p>
             {block.right.map((sub, i) => (
               <SimpleBlockFields
                 key={sub.id}

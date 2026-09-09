@@ -187,7 +187,7 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettingsInitial }
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">Anteprima</p>
+        <p className="t-etichetta">Anteprima</p>
         <BrandPreviewCard name={name} logoUrl={logoUrl} primaryColor={primaryColor} secondaryColor={secondaryColor} />
       </div>
     </div>

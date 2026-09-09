@@ -50,17 +50,17 @@ export function RotazionePanel({ report }: { report: RotazioneReport }) {
           <>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="riquadro p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Durata media</p>
+                <p className="t-etichetta">Durata media</p>
                 <p className="mt-1 text-display text-2xl">{durataUmana(report.durataMediaMin!)}</p>
                 <p className="text-xs text-muted-foreground">dall&apos;arrivo alla chiusura del conto</p>
               </div>
               <div className="riquadro p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Durata prevista</p>
+                <p className="t-etichetta">Durata prevista</p>
                 <p className="mt-1 text-display text-2xl">{durataUmana(report.durataPrevistaMin!)}</p>
                 <p className="text-xs text-muted-foreground">quella impostata sulle prenotazioni</p>
               </div>
               <div className="riquadro p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Giri per tavolo</p>
+                <p className="t-etichetta">Giri per tavolo</p>
                 <p className="mt-1 text-display text-2xl tabular-nums">{report.giri ?? "—"}</p>
                 <p className="text-xs text-muted-foreground">
                   in un giorno di servizio, su {report.tavoliUsati}{" "}
@@ -112,7 +112,7 @@ export function RotazionePanel({ report }: { report: RotazioneReport }) {
           </>
         )}
 
-        <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+        <p className="flex items-start gap-2 t-nota">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           Contiamo solo quello che il servizio ha segnato: chi viene accomodato senza toccare Tavolo, o un
           conto chiuso a voce, qui non c&apos;è. È il motivo per cui accanto alla media c&apos;è sempre

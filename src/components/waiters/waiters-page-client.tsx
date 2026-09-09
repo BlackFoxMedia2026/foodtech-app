@@ -76,7 +76,7 @@ export function WaitersPageClient({
       <header className="fissa flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <h1 className="text-lg font-semibold leading-none">Camerieri</h1>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
+          <p className="t-etichetta">Sala</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 max-sm:w-full">
           <WaiterSearchBar query={query} onQueryChange={setQuery} />
@@ -141,7 +141,7 @@ export function WaitersPageClient({
             const Icon = GROUP_ICON[group.key];
             return (
               <section key={group.key} className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                <div className="flex items-center gap-2 t-etichetta font-medium">
                   <Icon className="h-3.5 w-3.5" />
                   {group.label}
                   <span className="text-muted-foreground/70">· {group.members.length}</span>

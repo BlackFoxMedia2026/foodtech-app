@@ -51,7 +51,7 @@ export default async function PaymentsPage() {
   return (
     <div className="schermo animate-fade-in gap-3">
       <header className="fissa">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Finanze</p>
+        <p className="t-etichetta">Finanze</p>
         <h1 className="text-display text-3xl">Pagamenti registrati</h1>
         {/* La parola «Incassato» qui contava solo le caparre e i ticket, e la
             Panoramica la usava per i conti al tavolo: due pagine, due numeri,
@@ -88,7 +88,7 @@ export default async function PaymentsPage() {
             </p>
           ) : (
             <table className="w-full text-sm">
-              <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+              <thead className="t-etichetta">
                 <tr>
                   <th className="px-3 py-2 text-left">Data</th>
                   <th className="px-3 py-2 text-left">Tipo</th>

@@ -127,7 +127,7 @@ export function BookingWindowSettings({
               />
               <span className="text-sm text-muted-foreground">giorni</span>
             </div>
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Vuoto vuol dire nessun limite. Chi lo mette di solito sceglie 60 o 90: oltre, i piani cambiano
               e le disdette aumentano.
             </p>
@@ -154,7 +154,7 @@ export function BookingWindowSettings({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Il tempo che serve alla cucina per contare i coperti. Chi arriva dopo legge che può chiamare.
             </p>
           </div>
@@ -177,7 +177,7 @@ export function BookingWindowSettings({
             />
             <span className="text-sm text-muted-foreground">% dei coperti del turno</span>
           </div>
-          <p className="text-xs text-tertiary-foreground">
+          <p className="t-nota">
             Una quota di prenotazioni non si presenta, e tenere i tavoli vuoti per prudenza costa serate. Su
             un turno da 90 coperti, il 10% vuol dire accettarne 99. Vale per tutti i canali, anche il
             telefono: è la capienza vera che sei disposto a vendere, non un trucco del sito. In sala gli
@@ -202,7 +202,7 @@ export function BookingWindowSettings({
             />
             <span className="text-sm text-muted-foreground">persone</span>
           </div>
-          <p className="text-xs text-tertiary-foreground">
+          <p className="t-nota">
             Sopra questo numero il modulo pubblico non fa compilare niente: dice di chiamare e mostra il
             tuo numero. Era fisso a dodici, che va bene per una trattoria e non per una sala che fa
             banchetti — il punto in cui una prenotazione diventa un&apos;organizzazione lo sai tu.

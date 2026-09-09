@@ -92,7 +92,7 @@ export default async function MenuPubblicoPage({
                     </div>
                     {i.description && <p className="mt-1 text-sm text-muted-foreground">{i.description}</p>}
                     {(i.dietary.length > 0 || i.allergens.length > 0) && (
-                      <p className="mt-1 text-xs text-tertiary-foreground">
+                      <p className="mt-1 t-nota">
                         {i.dietary.length > 0 && <>{i.dietary.map(nomeRegime).join(" · ")}</>}
                         {i.dietary.length > 0 && i.allergens.length > 0 && " — "}
                         {i.allergens.length > 0 && (
@@ -107,7 +107,7 @@ export default async function MenuPubblicoPage({
           ))
         )}
 
-        <footer className="border-t border-border pt-6 text-center text-xs text-tertiary-foreground">
+        <footer className="border-t border-border pt-6 text-center t-nota">
           Per intolleranze e allergie non elencate qui, parlane con il personale prima di ordinare.
         </footer>
       </div>

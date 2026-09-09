@@ -128,14 +128,14 @@ export function DoppioniList({ doppioni, canManage }: { doppioni: Doppione[]; ca
                       >
                         Tieni {d.duplicato.nome} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                       </Button>
-                      <p className="w-full text-xs text-tertiary-foreground">
+                      <p className="w-full t-nota">
                         La scheda che tieni prende prenotazioni, conti, punti, consensi e messaggi
                         dell&apos;altra; note e allergie si uniscono. L&apos;altra scheda viene cancellata:
                         non si torna indietro.
                       </p>
                     </div>
                   ) : (
-                    <p className="text-xs text-tertiary-foreground">
+                    <p className="t-nota">
                       Unire due schede lo può fare un Manager: cancella una scheda, e non si torna indietro.
                     </p>
                   )}

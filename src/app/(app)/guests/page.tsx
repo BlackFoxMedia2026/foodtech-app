@@ -41,7 +41,7 @@ export default async function GuestsPage({
     // dentro di sé.
     <div className="schermo animate-fade-in gap-4">
       <header className="fissa">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">CRM</p>
+        <p className="t-etichetta">CRM</p>
         <h1 className="text-display text-3xl">Ospiti</h1>
         <p className="text-sm text-muted-foreground">
           {/* Prima diceva soltanto «200 risultati» anche con cinquecento

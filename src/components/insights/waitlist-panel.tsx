@@ -48,7 +48,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="riquadro p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Si sono sedute</p>
+            <p className="t-etichetta">Si sono sedute</p>
             <p className="mt-1 text-display text-2xl tabular-nums">
               {report.sedute}
               {report.conversione != null && (
@@ -63,7 +63,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
           </div>
 
           <div className="riquadro p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Coperti recuperati</p>
+            <p className="t-etichetta">Coperti recuperati</p>
             <p className="mt-1 text-display text-2xl tabular-nums text-accent">{report.copertiRecuperati}</p>
             <p className="text-xs text-muted-foreground">
               persone che senza la lista sarebbero andate altrove
@@ -71,7 +71,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
           </div>
 
           <div className="riquadro p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Hanno aspettato</p>
+            <p className="t-etichetta">Hanno aspettato</p>
             <p className="mt-1 text-display text-2xl">
               {report.attesaMediaMin != null ? durataUmana(report.attesaMediaMin) : "—"}
             </p>
@@ -80,7 +80,7 @@ export function WaitlistPanel({ report }: { report: WaitlistReport }) {
         </div>
 
         {report.conversione == null && report.chiuse > 0 && (
-          <p className="text-xs text-tertiary-foreground">
+          <p className="t-nota">
             Troppe poche righe per una percentuale: {report.chiuse}{" "}
             {report.chiuse === 1 ? "persona non fa" : "persone non fanno"} un tasso di conversione.
           </p>

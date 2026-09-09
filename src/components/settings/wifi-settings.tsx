@@ -124,7 +124,7 @@ export function WifiSettings({
             </div>
           </div>
 
-          <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+          <p className="flex items-start gap-2 t-nota">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {/* Va detto, non nascosto: questa password la vede chiunque
                 compili il modulo. È la rete ospiti, non quella della cassa. */}
@@ -182,7 +182,7 @@ export function WifiSettings({
               placeholder="Chi tratta i dati, per cosa, per quanto tempo e come si chiede la cancellazione."
               disabled={!canManage}
             />
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Compare sotto la spunta obbligatoria. Il consenso al marketing è una spunta a parte e non è
               preselezionata: un consenso preso di nascosto dentro un&apos;altra spunta non è un consenso.
             </p>
@@ -196,7 +196,7 @@ export function WifiSettings({
               placeholder="https://… (facoltativo)"
               disabled={!canManage}
             />
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Il tuo sito, la carta, o l&apos;indirizzo con cui il tuo router sblocca la navigazione.
             </p>
           </div>
@@ -250,7 +250,7 @@ export function WifiSettings({
             </div>
           )}
 
-          <p className="text-xs text-tertiary-foreground">
+          <p className="t-nota">
             Il codice è <strong>intestato alla persona</strong> e vale una volta: un codice condiviso si gira agli
             amici e diventa uno sconto che non hai deciso tu. I codici e il loro utilizzo si vedono in{" "}
             <Link href="/marketing/coupons" className="underline">

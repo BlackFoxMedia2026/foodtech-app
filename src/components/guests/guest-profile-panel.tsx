@@ -191,7 +191,7 @@ export function GuestProfilePanel({
                 etichetta="Stima per visita"
                 valore={formatCurrency(p.estimatedValue.avgPerVisitCents, currency)}
               />
-              <p className="col-span-2 flex items-start gap-2 text-xs text-tertiary-foreground">
+              <p className="col-span-2 flex items-start gap-2 t-nota">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 Stima sui coperti, calcolata con la spesa media di{" "}
                 {formatCurrency(p.estimatedValue.basedOnAvgSpendCents, currency)} dichiarata in
@@ -227,12 +227,12 @@ function Dato({
 }) {
   return (
     <div>
-      <p className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+      <p className="flex items-center gap-1.5 t-etichetta">
         {Icona && <Icona className="h-3 w-3 shrink-0" aria-hidden="true" />}
         {etichetta}
       </p>
       <p className={cn("mt-0.5 text-lg", allarme ? "text-accent" : "text-foreground")}>{valore}</p>
-      {nota && <p className="text-xs text-tertiary-foreground">{nota}</p>}
+      {nota && <p className="t-nota">{nota}</p>}
     </div>
   );
 }
@@ -250,7 +250,7 @@ function Abitudine({
     <p className="flex items-center gap-2">
       <Icona className="h-3.5 w-3.5 shrink-0 text-tertiary-foreground" aria-hidden="true" />
       {testo}
-      <span className="text-xs text-tertiary-foreground">
+      <span className="t-nota">
         {Math.round(quota * 100)}% delle visite
       </span>
     </p>
@@ -299,7 +299,7 @@ export function GuestTimeline({
                   <div className="min-w-0">
                     <p className="text-sm">
                       <span className="font-medium">{e.title}</span>
-                      <span className="ml-2 text-xs text-tertiary-foreground">
+                      <span className="ml-2 t-nota">
                         {formatDate(new Date(e.at))}
                       </span>
                     </p>
@@ -311,7 +311,7 @@ export function GuestTimeline({
           </ol>
         )}
 
-        <p className="mt-4 flex items-start gap-2 text-xs text-tertiary-foreground">
+        <p className="mt-4 flex items-start gap-2 t-nota">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           Qui compaiono solo gli eventi che il sistema registra davvero: prenotazioni, visite, assenze,
           attese e messaggi. Ordini, pagamenti e recensioni si aggiungeranno quando esisteranno.

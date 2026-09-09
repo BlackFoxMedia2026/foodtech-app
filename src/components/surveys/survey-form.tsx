@@ -100,7 +100,7 @@ export function SurveyForm({ survey }: { survey: SurveyView }) {
 
   return (
     <div className="surface riquadro p-6">
-      <p className="text-xs uppercase tracking-widest text-muted-foreground">{survey.venueName}</p>
+      <p className="t-etichetta">{survey.venueName}</p>
       <h1 className="mt-1 text-display text-2xl">
         {survey.guestName ? `Ciao ${survey.guestName}` : "Com'è andata?"}
       </h1>
@@ -162,7 +162,7 @@ export function SurveyForm({ survey }: { survey: SurveyView }) {
           <Button type="submit" variant="accent" className="w-full" disabled={inCorso}>
             {inCorso ? "Un istante…" : "Invia"}
           </Button>
-          <p className="text-center text-xs text-tertiary-foreground">
+          <p className="text-center t-nota">
             Questa risposta resta fra te e {survey.venueName}.
           </p>
         </form>

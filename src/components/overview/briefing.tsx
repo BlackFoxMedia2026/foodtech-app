@@ -68,7 +68,7 @@ export function Briefing({
 
   return (
     <section className="riquadro bg-current/[0.04] p-4">
-      <p className="text-xs uppercase tracking-widest text-muted-foreground">Oggi, in breve</p>
+      <p className="t-etichetta">Oggi, in breve</p>
 
       <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-lg">
         <Users className="h-4 w-4 self-center text-muted-foreground" aria-hidden="true" />

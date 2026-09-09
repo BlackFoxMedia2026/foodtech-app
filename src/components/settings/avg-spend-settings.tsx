@@ -92,7 +92,7 @@ export function AvgSpendSettings({
           )}
         </div>
 
-        <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+        <p className="flex items-start gap-2 t-nota">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           Lasciandolo vuoto, Tavolo non mostra nessuna stima invece di mostrarne una inventata.
           Quando saranno collegati ordini o incassi, il dato reale prenderà il posto della stima.

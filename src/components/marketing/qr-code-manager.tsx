@@ -205,7 +205,7 @@ function QrCodeCard({ item, onChanged }: { item: QrCodeItem; onChanged: () => vo
             <p className="truncate font-medium">{item.name}</p>
             <Badge tone={item.isActive ? "success" : "neutral"}>{item.isActive ? "Attivo" : "Disattivo"}</Badge>
           </div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{CATEGORY_LABELS[item.category]}</p>
+          <p className="t-etichetta">{CATEGORY_LABELS[item.category]}</p>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -260,7 +260,7 @@ export function QrCodeManager({ items }: { items: QrCodeItem[] }) {
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing</p>
+          <p className="t-etichetta">Marketing</p>
           <h1 className="text-display text-3xl">QR Code</h1>
           <p className="text-sm text-muted-foreground">
             Crea QR code collegati a menu, prenotazioni, eventi o campagne.

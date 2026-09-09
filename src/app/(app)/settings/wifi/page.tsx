@@ -25,7 +25,7 @@ export default async function WifiSettingsPage() {
       </Button>
 
       <header className="fissa">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Impostazioni / Wi-Fi</p>
+        <p className="t-etichetta">Impostazioni / Wi-Fi</p>
         <h1 className="text-display text-3xl">Portale Wi-Fi</h1>
       </header>
 
@@ -37,7 +37,7 @@ export default async function WifiSettingsPage() {
         della vostra rete». Chi gestisce il locale ha il diritto di saperlo,
         e chi installa Tavolo ha il dovere di leggerlo.
       */}
-      <p className="fissa text-xs text-tertiary-foreground">
+      <p className="fissa t-nota">
         {cifraturaAttiva()
           ? "La password della rete è salvata cifrata: nel database non c'è il testo leggibile."
           : "La password della rete è salvata in chiaro: questa installazione non ha una chiave di cifratura configurata (CHIAVE_CIFRATURA). Il portale funziona comunque."}

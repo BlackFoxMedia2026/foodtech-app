@@ -162,7 +162,7 @@ export function ExperienceDialog({
               onChange={(e) => setTicketUrl(e.target.value)}
               placeholder="https://…"
             />
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               I biglietti non si vendono da Tavolo: metti il link a dove si comprano davvero, e comparirà sulla
               scheda dell&apos;esperienza.
             </p>

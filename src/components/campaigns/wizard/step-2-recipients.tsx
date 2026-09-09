@@ -93,7 +93,7 @@ export function Step2Recipients() {
       </div>
 
       <div>
-        <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">Segmenti rapidi</Label>
+        <Label className="mb-2 block t-etichetta">Segmenti rapidi</Label>
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((preset) => {
             // Confronto diretto con lo stato corrente: il pulsante resta "attivo"

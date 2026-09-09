@@ -67,17 +67,17 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
           <>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="riquadro p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Materie prime</p>
+                <p className="t-etichetta">Materie prime</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">{euro(report.costoCents)}</p>
                 <p className="text-xs text-muted-foreground">{report.foodCostPct}% del venduto coperto</p>
               </div>
               <div className="riquadro p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Resta</p>
+                <p className="t-etichetta">Resta</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums text-accent">{euro(report.margineCents)}</p>
                 <p className="text-xs text-muted-foreground">{100 - report.foodCostPct}% del venduto coperto</p>
               </div>
               <div className="riquadro p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Su quanto</p>
+                <p className="t-etichetta">Su quanto</p>
                 <p className="mt-1 flex items-center gap-1.5 text-2xl font-semibold tabular-nums">
                   {report.coperturaPct}%
                   <Base
@@ -90,7 +90,7 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
             </div>
 
             {report.coperturaPct < 100 && (
-              <p className="flex items-start gap-2 text-xs text-tertiary-foreground">
+              <p className="flex items-start gap-2 t-nota">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 {/* La differenza fra «il mio food cost è il 31%» e «il food cost
                     di quello che ho misurato è il 31%». La prima frase, se non
@@ -112,7 +112,7 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
             <div className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[420px] text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border text-left t-etichetta">
                     <th className="pb-2 font-medium">Piatto</th>
                     <th className="pb-2 text-right font-medium">Venduti</th>
                     <th className="pb-2 text-right font-medium">Incasso</th>
@@ -167,7 +167,7 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
                 </li>
               ))}
               {report.senzaCosto.length > 8 && (
-                <li className="text-xs text-tertiary-foreground">e altri {report.senzaCosto.length - 8}</li>
+                <li className="t-nota">e altri {report.senzaCosto.length - 8}</li>
               )}
             </ul>
 
@@ -194,7 +194,7 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
         )}
 
         {report.fuoriCartaCents > 0 && (
-          <p className="text-xs text-tertiary-foreground">
+          <p className="t-nota">
             {euro(report.fuoriCartaCents)} arrivano da righe scritte a mano sul conto: un costo non possono
             averlo, e restano fuori dal calcolo.
           </p>

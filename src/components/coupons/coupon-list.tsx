@@ -87,7 +87,7 @@ export function CouponList({
     <>
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketing / Coupon</p>
+          <p className="t-etichetta">Marketing / Coupon</p>
           <h1 className="text-display text-3xl">Coupon</h1>
           <p className="text-sm text-muted-foreground">
             Si usano al tavolo, dalla scheda della prenotazione in Servizio.
@@ -256,7 +256,7 @@ export function CouponList({
         </ul>
       )}
 
-      <p className="fissa mt-6 text-xs text-tertiary-foreground">
+      <p className="fissa mt-6 t-nota">
         Un coupon archiviato non si usa più ma resta negli utilizzi già fatti: la storia di uno sconto non si
         cancella. Gli utilizzi si possono annullare, uno per uno, dal tavolo.
       </p>

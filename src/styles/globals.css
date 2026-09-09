@@ -244,8 +244,19 @@
   .t-dato {
     @apply text-sm tabular-nums;
   }
+  /*
+    L'etichetta piccola in maiuscoletto, e la spaziatura la dice DESIGN.md:
+    «Label (500, 0.75rem, tracking 0.05em, spesso maiuscolo)». Cioè
+    `tracking-wider`, non `tracking-wide` (0,025em) come stava scritto qui: la
+    classe che doveva essere la regola era la quarta variante del difetto che
+    doveva risolvere.
+
+    Nel prodotto lo stesso ruolo era scritto in tre modi — 43 volte
+    `tracking-widest`, 40 `tracking-wide`, 14 `tracking-wider` — e nessuno dei
+    tre era quello del documento.
+  */
   .t-etichetta {
-    @apply text-xs uppercase tracking-wide text-muted-foreground;
+    @apply text-xs uppercase tracking-wider text-muted-foreground;
   }
   .t-nota {
     @apply text-xs text-tertiary-foreground;

@@ -171,7 +171,7 @@ export function ErasureDialog({ guestId, guestName }: { guestId: string; guestNa
                   onChange={(e) => setMotivo(e.target.value)}
                   placeholder="Es. richiesta via email del 7 settembre"
                 />
-                <p className="text-xs text-tertiary-foreground">
+                <p className="t-nota">
                   Resta nel registro con il tuo nome e l&apos;ora. Fra un anno è la sola cosa che distingue una
                   richiesta da un errore.
                 </p>

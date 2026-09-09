@@ -94,7 +94,7 @@ export function GiftCardDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                 </Button>
               ))}
             </div>
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               È la cifra che hai incassato vendendola, e quella che il cliente potrà spendere — anche in più volte.
             </p>
           </div>
@@ -129,7 +129,7 @@ export function GiftCardDialog({ open, onOpenChange }: { open: boolean; onOpenCh
               onChange={(e) => setRecipientEmail(e.target.value)}
               placeholder="Facoltativa"
             />
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Se è l&apos;indirizzo di un cliente che già conosciamo, l&apos;automazione «gift card ferma» potrà
               ricordargli il credito quando resta lì troppo a lungo. L&apos;invio della gift card per email non è
               attivo.
@@ -156,7 +156,7 @@ export function GiftCardDialog({ open, onOpenChange }: { open: boolean; onOpenCh
               onChange={(e) => setExpiresAt(e.target.value)}
               className="w-44"
             />
-            <p className="text-xs text-tertiary-foreground">
+            <p className="t-nota">
               Lasciandolo vuoto non scade. È il denaro di chi l&apos;ha comprata: una scadenza si mette solo se il
               locale ha deciso di metterla.
             </p>

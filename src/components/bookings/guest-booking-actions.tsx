@@ -60,7 +60,7 @@ export function GuestBookingActions({
 
   return (
     <div className="surface riquadro p-6">
-      <p className="text-xs uppercase tracking-widest text-muted-foreground">{booking.venueName}</p>
+      <p className="t-etichetta">{booking.venueName}</p>
       <h1 className="mt-1 text-display text-2xl">
         {booking.guestName ? `Ciao ${booking.guestName}` : "La tua prenotazione"}
       </h1>
@@ -117,7 +117,7 @@ export function GuestBookingActions({
           </Button>
 
           {booking.venuePhone && (
-            <p className="mt-4 text-center text-xs text-tertiary-foreground">
+            <p className="mt-4 text-center t-nota">
               Ti serve cambiare orario o numero di persone? Chiamaci allo {booking.venuePhone}.
             </p>
           )}
