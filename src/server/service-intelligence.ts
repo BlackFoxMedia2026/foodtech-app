@@ -5,6 +5,12 @@ import { checkAvailability, findShiftFor, zonedDayAndMinute } from "./availabili
 import { getFloorLive } from "./floor-live";
 import { frasePrevisione } from "@/lib/liberazione";
 import { listWaitlist } from "./waitlist";
+import {
+  ORDINE_LIVELLI,
+  livelloAvviso,
+  type GravitaAvviso,
+  type LivelloAvviso,
+} from "@/lib/livello-avviso";
 
 // Ri-esportata: il centro controllo è il posto dove ci si aspetta di trovarla.
 export { durataUmana };
@@ -26,7 +32,14 @@ export { durataUmana };
  * dice esplicitamente.
  */
 
-export type InsightSeverity = "warning" | "opportunity" | "info";
+/**
+ * La gravità e il **livello** stanno in `lib/livello-avviso`: li usa anche il
+ * client, e importarli da qui gli porterebbe dietro Prisma. Ri-esportati
+ * perché questo è il modulo dove il resto del prodotto si aspetta di trovarli.
+ */
+export type InsightSeverity = GravitaAvviso;
+export { livelloAvviso };
+export type { LivelloAvviso };
 
 export type ServiceInsight = {
   /** Stabile per tipo e soggetto: serve a non far ballare l'ordine fra due
@@ -74,11 +87,22 @@ export type ServiceInsight = {
   /**
    * Fra quanti minuti questo avviso conta davvero. Zero = adesso.
    *
-   * Serve a ordinare **dentro** la stessa gravità: fra otto ritardi, quello di
-   * venti minuti si recupera con una telefonata, quello di sette ore no. Prima
-   * l'ordine era quello di lettura delle prenotazioni, cioè nessun ordine.
+   * Decide **il livello** (`livelloAvviso`), quindi decide anche quanto grande
+   * si mostra: quello che conta adesso o entro un quarto d'ora sta per esteso,
+   * il resto sta in una riga. Per questo qui non va nient'altro che il tempo —
+   * un ritardo di quaranta minuti conta adesso e scrive zero, non quaranta.
+   *
+   * A parità di livello ordina dentro il livello: fra due tavoli in scadenza,
+   * prima quello che scade prima.
    */
   urgenza: number;
+  /**
+   * Il livello, quando il tempo da solo lo direbbe sbagliato.
+   *
+   * Normalmente si deriva da `urgenza` e dalla gravità. Lo scrive solo la
+   * regola che sa qualcosa che il tempo non dice — vedi `lib/livello-avviso`.
+   */
+  livello?: LivelloAvviso;
 };
 
 /** Da quanti coperti in venti minuti un arrivo diventa un picco da segnalare. */
@@ -163,6 +187,14 @@ function oraLocale(instant: Date, timezone: string) {
   );
 }
 
+/**
+ * A parità di livello e di urgenza, prima il problema e poi l'occasione.
+ *
+ * Serve come **terzo** criterio, non come primo: dentro «adesso» finiscono sia
+ * un tavolo scaduto sia una famiglia in attesa con un tavolo libero, entrambi
+ * con urgenza zero, e senza questo l'ordine fra i due dipendeva da come li
+ * avevano prodotti le regole — cioè cambiava senza motivo.
+ */
 const ORDINE: Record<InsightSeverity, number> = { warning: 0, opportunity: 1, info: 2 };
 
 export async function getServiceInsights(
@@ -373,7 +405,20 @@ export async function getServiceInsights(
     else inRitardo.push({ b, ritardo });
   }
 
-  // I più recenti per primi: sono quelli su cui si può ancora fare qualcosa.
+  /*
+    I più recenti per primi: sono quelli su cui si può ancora fare qualcosa —
+    e questo **è** l'ordine in cui vengono inseriti negli avvisi. Prima la
+    preferenza era espressa mettendo il ritardo in `urgenza`, cioè nel campo
+    che dice «fra quanti minuti conta»: un ritardo di quaranta minuti
+    dichiarava di contare fra quaranta minuti, mentre conta adesso. Finché
+    `urgenza` serviva solo a ordinare dentro la stessa gravità la bugia non si
+    vedeva; da quando decide anche **quanto grande** si mostra un avviso, un
+    ritardo di mezz'ora finiva fra le cose da guardare con calma.
+
+    L'ordinamento in JavaScript è stabile: a parità di chiave resta l'ordine
+    di inserimento, quindi i ritardi restano dal più recente al più vecchio
+    senza bisogno di raccontare un'attesa che non esiste.
+  */
   inRitardo.sort((x, y) => x.ritardo - y.ritardo);
 
   for (const { b, ritardo } of inRitardo.slice(0, RITARDI_IN_EVIDENZA)) {
@@ -382,7 +427,18 @@ export async function getServiceInsights(
       id: `no_show_risk:${b.id}`,
       kind: "no_show_risk",
       severity: "warning",
-      urgenza: ritardo,
+      // Conta adesso: la telefonata si fa ora o non serve più.
+      urgenza: 0,
+      /*
+        Ma non è una decisione: è una telefonata.
+
+        «Adesso» è lo spazio grande, e serve alle cose che si risolvono
+        mettendo qualcuno da qualche parte — un tavolo libero con una famiglia
+        in piedi, sei coperti senza tavolo. In una serata i ritardi sono
+        quattro e le decisioni una: se i ritardi prendono lo spazio grande,
+        quella decisione non si vede più. Provato sui dati veri, e si vedeva.
+      */
+      livello: "guarda",
       title: `${nome(b)} in ritardo di ${durataUmana(ritardo)}`,
       motivo:
         storici > 0
@@ -417,7 +473,10 @@ export async function getServiceInsights(
       id: "no_show_risk:altri",
       kind: "no_show_risk",
       severity: "warning",
-      urgenza: inRitardo[RITARDI_IN_EVIDENZA].ritardo,
+      // Anche questi contano adesso, e sono la stessa telefonata: stessa
+      // ragione, stesso livello.
+      urgenza: 0,
+      livello: "guarda",
       title:
         restanti === 1 ? "Un'altra prenotazione in ritardo" : `Altre ${restanti} prenotazioni in ritardo`,
       motivo: `Oltre a quelle qui sopra, altre ${restanti} hanno superato ${durataUmana(
@@ -794,7 +853,10 @@ export async function getServiceInsights(
   // conta quale dei due riguarda i prossimi minuti. Prima l'ordine dentro la
   // stessa gravità era quello di lettura delle prenotazioni, cioè nessuno.
   return insights.sort(
-    (a, b) => ORDINE[a.severity] - ORDINE[b.severity] || a.urgenza - b.urgenza,
+    (a, b) =>
+      ORDINE_LIVELLI[livelloAvviso(a)] - ORDINE_LIVELLI[livelloAvviso(b)] ||
+      a.urgenza - b.urgenza ||
+      ORDINE[a.severity] - ORDINE[b.severity],
   );
 }
 

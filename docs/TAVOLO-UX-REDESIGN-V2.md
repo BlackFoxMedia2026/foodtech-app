@@ -953,6 +953,48 @@ gravità, ordina per **quando**. «Critico» non dice se devo alzarmi ora.
 impatto non si mostra. Il livello non è un modo per mostrarne di più: è un modo
 per ordinare quelli che già superano quella soglia.
 
+### Com'è stato costruito (9 settembre)
+
+I quattro livelli **si derivano**, non si aggiungono: `urgenza` — «fra quanti
+minuti questo avviso conta, zero = adesso» — c'era già su ogni avviso, e serviva
+a ordinare dentro la gravità. Zero è ADESSO, entro un quarto d'ora è FRA POCO,
+oltre è GUARDA, un'informazione è SAPERE. Undici regole su dodici non hanno
+dovuto dichiarare niente.
+
+La derivazione ha però fatto emergere **due cose che il documento non sapeva**.
+
+**Uno: `urgenza` diceva una bugia sui ritardi.** La regola dei no-show ci
+scriveva *il ritardo* — quaranta minuti di ritardo diventavano «conta fra
+quaranta minuti» — perché finché il campo serviva solo a ordinare dentro la
+stessa gravità l'effetto voluto (i ritardi più recenti per primi, quelli su cui
+la telefonata funziona ancora) usciva giusto per caso. Da quando il campo
+decide anche **quanto grande** si mostra un avviso, la bugia si vedeva: un
+ritardo di mezz'ora finiva fra le cose da guardare fra mezz'ora. Adesso i
+ritardi scrivono zero, che è la verità, e l'ordine dal più recente al più
+vecchio se lo tiene l'ordinamento stabile.
+
+**Due: il tempo non basta a decidere il livello, e questo documento aveva
+ragione a mettere i ritardi in GUARDA.** Con la sola derivazione temporale i
+ritardi diventavano ADESSO, ed è formalmente vero — la telefonata si fa ora —
+ma provandolo sui dati veri si vedeva l'errore in un secondo: quattro ritardi
+diventavano quattro cartelli grandi identici, e il tavolo libero con una
+famiglia in piedi finiva sotto. ADESSO è lo spazio delle **decisioni** — dove
+metto queste persone — e in una serata le decisioni sono una e i ritardi
+quattro. Quindi una regola può dichiarare il proprio `livello` e scavalcare la
+derivazione: oggi lo fa **una sola**, quella dei ritardi, con il motivo scritto
+accanto.
+
+**I segni visivi sono quelli della tabella:** barra piena a sinistra e azione
+come bersaglio per ADESSO, barra sottile per FRA POCO, riga compatta con il
+punto per GUARDA, riga compatta e testo tenue senza grassetto per SAPERE.
+Nessuna etichetta «ADESSO» scritta a parole: in una schermata dove il titolo
+dice già «in ritardo di 40 minuti» sarebbe la terza volta che si parla di tempo.
+
+**Misurato:** `/service` a 1440×900 e a 390×844, scorrimento pagina zero e
+scorrimento orizzontale zero; 915 test unitari verdi, di cui cinque nuovi sulla
+derivazione e due sull'ordine fra un'occasione che scade adesso e un problema
+fra mezz'ora.
+
 ## Le tre zone (§12 del prompt)
 
 | Device | Comportamento |

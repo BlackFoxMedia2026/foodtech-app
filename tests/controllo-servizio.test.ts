@@ -7,6 +7,7 @@ import {
   SCOSTAMENTO_ROTAZIONE_MIN,
   getServiceInsights,
   getTopServiceInsights,
+  livelloAvviso,
 } from "@/server/service-intelligence";
 
 import { zonedDayAndMinute } from "@/server/availability";
@@ -484,15 +485,69 @@ describe("turno oltre la capienza", () => {
 });
 
 describe("ordine e quantità", () => {
-  it("i problemi vengono prima delle opportunità", async () => {
+  it("a parità di livello, i problemi vengono prima delle opportunità", async () => {
     await svuota();
-    await prenota({ minutiDaAdesso: -(NO_SHOW_RISK_MIN + 5), tableId: t2 });
+    // Sei coperti senza tavolo: una decisione da prendere adesso, ed è un
+    // problema. Una coppia in coda con un tavolo libero: adesso anche questa,
+    // ma è un'occasione. Stesso livello, quindi decide la gravità.
+    await prenota({ minutiDaAdesso: 30, partySize: 6, tableId: null });
     await inCoda("Attesa", 2);
 
-    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    const avvisi = (await getServiceInsights(venueId, { now: ADESSO })).filter(
+      (a) => livelloAvviso(a) === "adesso",
+    );
     const primoOpportunity = avvisi.findIndex((a) => a.severity === "opportunity");
     const ultimoWarning = avvisi.map((a) => a.severity).lastIndexOf("warning");
+    expect(primoOpportunity).toBeGreaterThanOrEqual(0);
     expect(ultimoWarning).toBeLessThan(primoOpportunity);
+  });
+
+  it("ma un'occasione che scade adesso viene prima di un problema fra mezz'ora", async () => {
+    await svuota();
+    /*
+      Il caso che ha fatto nascere i quattro livelli.
+
+      Sul C6 c'è una collisione: chi è seduto finisce fra cinquanta minuti e il
+      prossimo arriva fra venti. È un problema, ed è un problema di fra venti
+      minuti — si risolve spostando una prenotazione, con calma.
+
+      Intanto una coppia è in piedi all'ingresso e il C2 è libero. Non è un
+      problema: è un'occasione, e dura quanto dura la pazienza di chi aspetta.
+      Ordinando per gravità finiva sotto la collisione; ordinando per **quando
+      conta** sta sopra, che è dove serve.
+    */
+    await prenota({ minutiDaAdesso: -100, durationMin: 150, status: "SEATED", tableId: t6, partySize: 4 });
+    await prenota({ minutiDaAdesso: 20, tableId: t6, partySize: 4 });
+    await inCoda("Coppia Attesa", 2);
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    const occasione = avvisi.findIndex((a) => a.kind === "waitlist_match");
+    const collisione = avvisi.findIndex((a) => a.kind === "table_collision");
+    expect(occasione).toBeGreaterThanOrEqual(0);
+    expect(collisione).toBeGreaterThanOrEqual(0);
+    expect(occasione).toBeLessThan(collisione);
+    expect(livelloAvviso(avvisi[occasione])).toBe("adesso");
+    expect(livelloAvviso(avvisi[collisione])).toBe("guarda");
+    // E i ritardi non le passano davanti nemmeno stando in cima all'elenco.
+    for (const a of avvisi.filter((x) => x.kind === "no_show_risk")) {
+      expect(avvisi.indexOf(a)).toBeGreaterThan(occasione);
+    }
+  });
+
+  it("un ritardo conta adesso, ma non prende lo spazio di una decisione", async () => {
+    await svuota();
+    await prenota({ minutiDaAdesso: -40, tableId: t2 });
+
+    const avvisi = await getServiceInsights(venueId, { now: ADESSO });
+    const ritardo = avvisi.find((a) => a.kind === "no_show_risk");
+    // `urgenza` dice «fra quanti minuti conta»: per una telefonata da fare
+    // subito la risposta è zero. Ci scriveva il ritardo — quaranta — e un
+    // ritardo di mezz'ora finiva fra le cose da guardare fra mezz'ora.
+    expect(ritardo?.urgenza).toBe(0);
+    // Il livello però lo dichiara la regola: in una serata i ritardi sono
+    // quattro e le decisioni una, e se i quattro prendono lo spazio grande
+    // quella decisione non si vede più.
+    expect(livelloAvviso(ritardo!)).toBe("guarda");
   });
 
   it("la Panoramica ne riceve solo tre", async () => {
@@ -584,9 +639,12 @@ describe("il centro controllo non si autoaffoga", () => {
     const insights = await getServiceInsights(venueId, { now: ADESSO });
     const ritardi = insights.filter((i) => i.kind === "no_show_risk");
     expect(ritardi).toHaveLength(2);
-    // Su quello di quaranta minuti la telefonata funziona ancora.
-    expect(ritardi[0].urgenza).toBeLessThan(ritardi[1].urgenza);
+    // Su quello di quaranta minuti la telefonata funziona ancora, e l'ordine
+    // lo dice: non lo dice più `urgenza`, che adesso vuol dire «fra quanti
+    // minuti conta» e per un ritardo vale zero in entrambi i casi.
     expect(ritardi[0].title).toContain("40 minuti");
+    expect(ritardi[1].title).toContain("2 ore");
+    expect(ritardi.every((r) => r.urgenza === 0)).toBe(true);
   });
 
   it("non chiama «ritardo» un'assenza di nove ore", async () => {
