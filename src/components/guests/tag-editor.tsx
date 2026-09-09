@@ -22,6 +22,17 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [draft, setDraft] = useState("");
+  /*
+    I suggerimenti si vedono quando si sta scrivendo un tag, non sempre.
+
+    Otto pillole tratteggiate — «+ VIP», «+ Vegetariano», «+ Allergia
+    glutine»… — occupavano una riga intera in cima alla scheda di ogni ospite,
+    per un gesto che si fa una volta ogni tanto. Adesso compaiono quando il
+    campo prende il fuoco, cioè quando servono; il ritardo sul blur serve
+    perché il clic su un suggerimento passa dal blur del campo, e senza quello
+    la pillola spariva un istante prima di essere premuta.
+  */
+  const [scrivendo, setScrivendo] = useState(false);
 
   async function saveTags(next: string[]) {
     setPending(true);
@@ -73,6 +84,8 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
         ))}
         <Input
           value={draft}
+          onFocus={() => setScrivendo(true)}
+          onBlur={() => window.setTimeout(() => setScrivendo(false), 150)}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -95,7 +108,7 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
         </Button>
       </div>
 
-      {suggestions.length > 0 && (
+      {scrivendo && suggestions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-muted-foreground">Suggeriti:</span>
           {suggestions.map((s) => (

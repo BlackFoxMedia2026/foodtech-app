@@ -1154,6 +1154,35 @@ Sette blocchi, in quest'ordine — e l'ordine è la proposta:
 persona per il ristorante», e le prime quattro sezioni rispondono a quella
 domanda. Le ultime tre rispondono a «cosa ho di lei», che è un'altra.
 
+### Fatto il 9 settembre (primo giro)
+
+**La fascia del leggio, in cima.** Cinque cose, sempre le stesse: quanto è di
+casa, quante volte è venuta, quando l'ultima volta, cosa non può mangiare,
+quante volte non si è presentata — e l'ultima assenza **con la data**, perché
+due assenze di due anni fa non sono due assenze di un mese. Nessun dato nuovo:
+erano già tutti sulla pagina, sparsi in tre riquadri. Si mostra solo quello che
+c'è: una persona nuova senza allergie e senza assenze non vede una fascia
+vuota, non vede la fascia.
+
+**Relazione e affidabilità sono un blocco solo.** Erano due schede —
+«Relazione» e «Come prenota» — che rispondevano alla stessa domanda da due
+posti. E due delle otto caselle sono uscite: visite e ultima visita le dice la
+fascia, e ripetere un numero a cento pixel di distanza non lo rende più vero.
+
+**Il valore è passato a sinistra.** Punti, gift card e movimenti rispondono
+tutti alla stessa domanda — quanto vale questa persona — e stavano in due
+colonne diverse; intanto la colonna di sinistra finiva con quattrocento pixel
+di vuoto sotto «Contatti» mentre l'altra scorreva. I movimenti sono un blocco
+**chiuso** che da chiuso dice quanti sono: si guardano quando si cerca un
+pagamento, non ogni volta che si apre una scheda.
+
+**E gli otto suggerimenti di tag** («+ VIP», «+ Vegetariano»…) occupavano una
+riga intera in cima a ogni scheda per un gesto che si fa una volta ogni tanto:
+adesso compaiono quando il campo prende il fuoco.
+
+Resta da fare il resto del §28: preferenze e storia hanno ancora la forma di
+riquadri in fila.
+
 ## Tre linguaggi visivi per tre cose diverse (§29 del prompt)
 
 | Tipo | Esempi | Come si legge | Perché diverso |

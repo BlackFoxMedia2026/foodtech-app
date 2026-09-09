@@ -72,21 +72,25 @@ export function GuestProfilePanel({
         </div>
       )}
 
+      {/*
+        Relazione e affidabilità, in un blocco solo (§28: «la relazione e
+        l'affidabilità in cima, perché sono quelle che cambiano come lo si
+        accoglie»).
+
+        Erano due schede, «Relazione» e «Come prenota», e rispondevano alla
+        stessa domanda da due posti: da quanto viene, con che ritmo, e quanto
+        ci si può contare. Due delle otto caselle — visite e ultima visita —
+        sono uscite da qui: le dice la fascia in cima alla scheda, e ripetere
+        un numero a cento pixel di distanza non lo rende più vero.
+      */}
       <Card>
         <CardHeader>
-          <CardTitle>Relazione</CardTitle>
+          <CardTitle>Relazione e affidabilità</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Dato etichetta="Visite" valore={String(p.visits)} icona={Users} />
+        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Dato
             etichetta="Prima visita"
             valore={p.firstVisitAt ? formatDate(new Date(p.firstVisitAt)) : "—"}
-            icona={CalendarClock}
-          />
-          <Dato
-            etichetta="Ultima visita"
-            valore={p.lastVisitAt ? formatDate(new Date(p.lastVisitAt)) : "—"}
-            nota={p.daysSinceLastVisit != null ? `${p.daysSinceLastVisit} giorni fa` : undefined}
             icona={CalendarClock}
           />
           <Dato
@@ -95,14 +99,6 @@ export function GuestProfilePanel({
             nota={p.avgDaysBetweenVisits == null && p.visits < 2 ? "serve più di una visita" : undefined}
             icona={Repeat}
           />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Come prenota</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Dato
             etichetta="Coperti medi"
             valore={p.avgPartySize != null ? String(p.avgPartySize) : "—"}
