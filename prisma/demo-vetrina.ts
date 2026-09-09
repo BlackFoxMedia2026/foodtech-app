@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import type { PrismaClient, Prisma, StaffCapability } from "@prisma/client";
 import { dateKeyInVenue, todayInVenue } from "../src/lib/venue-time";
+import { bookingEnd, overlaps } from "../src/server/availability";
 
 /**
  * La vetrina della demo: le **righe** che mancavano.
@@ -1238,6 +1239,146 @@ export async function rinfrescaListaAttesa(db: PrismaClient, venueId: string, ad
 }
 
 /* -------------------------------------------------------------------------- */
+/*  10-bis. Un conto sta all'ora della sua cena                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Rimette ogni conto all'orario della prenotazione a cui appartiene.
+ *
+ * Serve perché in produzione si è visto cosa succede quando non è vero: 708
+ * conti chiusi ad aprile-luglio per cene chiuse ad agosto-settembre. Analytics
+ * diceva «nessun conto chiuso nel periodo» **con settecento conti nel
+ * database**, il costo del cibo era vuoto, e la schermata che dovrebbe
+ * convincere un ristoratore mostrava un prodotto che non misura niente.
+ *
+ * La causa era il riallineamento delle date: spostava le prenotazioni e
+ * lasciava i conti dove erano. Quello è corretto alla fonte, ma questa
+ * funzione resta — ed è la parte che vale di più. Non applica un delta
+ * ricalcolato a mano: usa il **collegamento**. Un conto appartiene a una cena,
+ * quindi la sua ora è quella della cena, sempre. Scritta così ripara qualunque
+ * scostamento, anche uno futuro di cui non sappiamo ancora la causa.
+ *
+ * I conti senza prenotazione — l'asporto — non si toccano: non hanno una cena
+ * a cui appartenere.
+ */
+export async function ogniContoAllOraDellaSuaCena(db: PrismaClient, venueId: string) {
+  const conti = await db.order.findMany({
+    where: { venueId, bookingId: { not: null } },
+    select: {
+      id: true,
+      scheduledAt: true,
+      completedAt: true,
+      booking: { select: { startsAt: true, closedAt: true } },
+    },
+  });
+
+  let spostati = 0;
+  for (const c of conti) {
+    if (!c.booking) continue;
+    const quando = c.booking.startsAt;
+    // La chiusura del conto segue la chiusura della cena; se la cena non è
+    // ancora chiusa, il conto non ha una chiusura da mostrare.
+    const chiuso = c.booking.closedAt;
+
+    const oraSbagliata = c.scheduledAt.getTime() !== quando.getTime();
+    const chiusuraSbagliata = (c.completedAt?.getTime() ?? null) !== (chiuso?.getTime() ?? null);
+    if (!oraSbagliata && !chiusuraSbagliata) continue;
+
+    await db.order.update({
+      where: { id: c.id },
+      data: { scheduledAt: quando, completedAt: chiuso, createdAt: quando },
+    });
+    spostati++;
+  }
+
+  if (spostati > 0) console.log(`   ${spostati} conti rimessi all'ora della loro cena.`);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  11-bis. Un tavolo a chi non ce l'ha                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Dà un tavolo alle prenotazioni che non ne hanno uno.
+ *
+ * «Tavolo da assegnare» è uno stato legittimo del prodotto: una prenotazione
+ * presa al telefono può restare senza tavolo finché chi accoglie non decide.
+ * Ma in produzione **tutte** le prenotazioni di Aurora Bistrot erano senza —
+ * erano nate quando quel locale non aveva un solo tavolo — e la pianta della
+ * sala mostrava diciassette tavoli tutti liberi mentre la giornata era piena.
+ * Una demo che mostra il contrario di quello che dice non serve a nessuno.
+ *
+ * Due cose che questa funzione **non** fa, di proposito:
+ *
+ * - **non riscrive un tavolo già scelto.** Se qualcuno l'ha assegnato a mano
+ *   durante una dimostrazione, resta suo;
+ * - **non mette due prenotazioni sullo stesso tavolo alla stessa ora.** La
+ *   sovrapposizione la calcola `overlaps` del motore di disponibilità, la
+ *   stessa che usa il prodotto per rifiutare una prenotazione: due formule per
+ *   la stessa domanda sono due risposte diverse che aspettano di divergere.
+ *
+ * Sceglie il tavolo **più piccolo che basta**, come farebbe un maître: mettere
+ * due persone al tavolo da sei significa non poterci più mettere sei.
+ */
+export async function daiUnTavoloAChiNonCeLHa(db: PrismaClient, venueId: string, adesso = new Date()) {
+  const inizio = new Date(adesso);
+  inizio.setHours(0, 0, 0, 0);
+
+  const [tavoli, prenotazioni] = await Promise.all([
+    db.table.findMany({
+      where: { venueId, active: true },
+      orderBy: [{ seats: "asc" }, { label: "asc" }],
+      select: { id: true, seats: true },
+    }),
+    db.booking.findMany({
+      where: {
+        venueId,
+        deletedAt: null,
+        startsAt: { gte: inizio },
+        status: { notIn: ["CANCELLED", "NO_SHOW"] },
+      },
+      orderBy: { startsAt: "asc" },
+      select: { id: true, startsAt: true, durationMin: true, partySize: true, tableId: true },
+    }),
+  ]);
+  if (tavoli.length === 0) return;
+
+  // Quello che è già occupato, tavolo per tavolo. Si parte dalle assegnazioni
+  // esistenti, e ogni scelta nuova entra qui: così la seconda prenotazione
+  // delle 20:00 non finisce sullo stesso tavolo della prima.
+  const occupato = new Map<string, { startsAt: Date; durationMin: number }[]>();
+  for (const b of prenotazioni) {
+    if (!b.tableId) continue;
+    const righe = occupato.get(b.tableId) ?? [];
+    righe.push({ startsAt: b.startsAt, durationMin: b.durationMin });
+    occupato.set(b.tableId, righe);
+  }
+
+  let dati = 0;
+  for (const b of prenotazioni) {
+    if (b.tableId) continue;
+
+    const scelto = tavoli.find((t) => {
+      if (t.seats < b.partySize) return false;
+      const righe = occupato.get(t.id) ?? [];
+      return !righe.some((r) => overlaps(b.startsAt, b.durationMin, r.startsAt, r.durationMin));
+    });
+    // Nessun tavolo che regga: resta «da assegnare», che è la verità. Una
+    // tavolata da dodici su tavoli da sei si unisce a mano, e il prodotto ha
+    // una funzione sua per farlo.
+    if (!scelto) continue;
+
+    await db.booking.update({ where: { id: b.id }, data: { tableId: scelto.id } });
+    const righe = occupato.get(scelto.id) ?? [];
+    righe.push({ startsAt: b.startsAt, durationMin: b.durationMin });
+    occupato.set(scelto.id, righe);
+    dati++;
+  }
+
+  if (dati > 0) console.log(`   ${dati} prenotazioni senza tavolo: assegnate.`);
+}
+
+/* -------------------------------------------------------------------------- */
 /*  12. Chi c'è in sala stasera                                               */
 /* -------------------------------------------------------------------------- */
 
@@ -1697,9 +1838,15 @@ export async function arricchisciVetrina(db: PrismaClient, venueId: string, nome
   await scalaUnaGiftCard(db, venueId);
   await creaCouponDemo(db, venueId);
   await segnaCouponUsati(db, venueId);
+  // Prima di ricalcolare la spesa: se i conti sono all'ora sbagliata, anche
+  // le somme per periodo lo sono.
+  await ogniContoAllOraDellaSuaCena(db, venueId);
   await allineaSpesaOspiti(db, venueId);
   await creaSondaggiDemo(db, venueId);
   await rinfrescaListaAttesa(db, venueId);
+  // Prima i tavoli alle prenotazioni, poi il personale ai tavoli: il secondo
+  // passo ha senso solo se il primo ha lasciato una sala popolata.
+  await daiUnTavoloAChiNonCeLHa(db, venueId);
   await assegnaPersonaleDiOggi(db, venueId);
   await sistemaCampagnaDemo(db, venueId);
   await arricchisciEsperienze(db, venueId);
