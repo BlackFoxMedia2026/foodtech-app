@@ -145,7 +145,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
             ci sono conti chiusi nel periodo.
           </p>
         ) : (
-          <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <p className="rounded-md border border-accent/40 bg-accent/10 p-3 text-sm text-foreground">
             Quanti coperti hai perso lo sappiamo; quanto valevano no. Si completa dichiarando lo scontrino medio in{" "}
             <Link href="/settings" className="underline">
               Impostazioni

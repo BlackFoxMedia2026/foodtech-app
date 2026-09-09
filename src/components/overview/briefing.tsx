@@ -110,7 +110,12 @@ export function Briefing({
                 href={href}
                 className={`tocco-comodo inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm transition-colors ${
                   forte
-                    ? "border-rose-300/50 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+                    ? // Il segnale ha un colore solo in tutto il prodotto:
+                      // l'accento. `CosaSapere` in Servizio, in Sala e sulla
+                      // prenotazione mostra l'allergia così; qui era rosa, e
+                      // la stessa allergia cambiava colore fra la Panoramica e
+                      // la riga del tavolo.
+                      "border-accent/50 bg-accent/15 text-foreground hover:bg-accent/25"
                     : "border-border hover:bg-current/5"
                 }`}
               >

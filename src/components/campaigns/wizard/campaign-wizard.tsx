@@ -154,7 +154,7 @@ function WizardShell() {
       </header>
 
       {localError && (
-        <div className="fissa rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
+        <div className="fissa rounded-md border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-foreground">
           {localError}
         </div>
       )}

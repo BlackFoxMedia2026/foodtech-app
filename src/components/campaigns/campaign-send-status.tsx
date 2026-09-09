@@ -65,7 +65,7 @@ export function CampaignSendStatus({
           Puoi chiudere questa pagina: il lavoro continua da solo e questa schermata si aggiorna da sé.
         </p>
         {progress?.ultimoErrore && (
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-accent">
             Ultimo tentativo non riuscito ({progress.tentativi}): {progress.ultimoErrore}. Ci riproviamo.
           </p>
         )}

@@ -56,7 +56,7 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
 
       <CardContent className="space-y-5">
         {report.foodCostPct == null ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="rounded-md border border-accent/40 bg-accent/10 p-4 text-sm text-foreground">
             <p className="font-medium">Non sappiamo il costo di nessuno dei piatti venduti.</p>
             <p className="mt-1">
               Il costo delle materie prime si mette dal <Link href="/menu" className="underline">menu</Link>, piatto

@@ -135,7 +135,7 @@ export function ErasureDialog({ guestId, guestName }: { guestId: string; guestNa
             </p>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground">
                 <p className="font-medium">Sparisce per sempre</p>
                 {vociSparisce.length === 0 ? (
                   <p className="mt-1">Nome e cognome. Non ci sono altri dati personali su questa scheda.</p>

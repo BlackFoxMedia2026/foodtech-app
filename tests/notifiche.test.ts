@@ -60,6 +60,22 @@ function fra(ore: number): string {
   return new Date(ADESSO.getTime() + ore * 3_600_000).toISOString();
 }
 
+/**
+ * Un orario nel futuro **vero**, non a partire da mezzogiorno.
+ *
+ * `fra()` conta da un mezzogiorno fisso, che è giusto per i casi in cui conta
+ * *in che giornata* cade una prenotazione. Per le disdette non basta: la
+ * regola guarda `Date.now()` — «una disdetta si annuncia solo se riguarda le
+ * prossime quarantott'ore **e** non è già passata» — quindi un orario alle
+ * 17:00 è nel futuro se i test girano a mezzogiorno e nel passato se girano
+ * di sera. Questi due test passavano di giorno e fallivano dopo le 17: sono
+ * stati scritti con l'ancora sbagliata, ed è la seconda volta che questo
+ * schema morde in questo progetto.
+ */
+function fraDavvero(ore: number): string {
+  return new Date(Date.now() + ore * 3_600_000).toISOString();
+}
+
 async function notifiche(kind?: string) {
   return db.notification.findMany({ where: { venueId, ...(kind ? { kind: kind as never } : {}) } });
 }
@@ -93,7 +109,7 @@ describe("una prenotazione che aspetta una decisione", () => {
 
 describe("una disdetta", () => {
   it("per stasera suona, e dice quanti coperti si liberano", async () => {
-    const b = await createBooking(venueId, { guestId, partySize: 6, startsAt: fra(5), source: "PHONE" });
+    const b = await createBooking(venueId, { guestId, partySize: 6, startsAt: fraDavvero(5), source: "PHONE" });
     await updateBooking(venueId, b.id, { status: "CANCELLED" });
 
     const avvisi = await notifiche("BOOKING_CANCELLED");
@@ -109,7 +125,7 @@ describe("una disdetta", () => {
   });
 
   it("annullare due volte non suona due volte", async () => {
-    const b = await createBooking(venueId, { guestId, partySize: 2, startsAt: fra(5), source: "PHONE" });
+    const b = await createBooking(venueId, { guestId, partySize: 2, startsAt: fraDavvero(5), source: "PHONE" });
     await updateBooking(venueId, b.id, { status: "CANCELLED" });
     await updateBooking(venueId, b.id, { status: "CANCELLED" });
     expect(await notifiche("BOOKING_CANCELLED")).toHaveLength(1);

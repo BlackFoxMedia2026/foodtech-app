@@ -444,10 +444,32 @@ stato, ospite, durata, prossima prenotazione, allergie, conto e le azioni
    viste di Analytics; il numero delle sospese resta in evidenza, perché
    quello è un'informazione e l'informazione non è la selezione.
 
-Restano **sedici** punti nel prodotto con un colore fuori tavolozza
-(`amber-*`), quasi tutti riquadri d'avvertimento su fondo giallo chiaro: sono
-un lavoro a parte, perché lì la domanda non è il colore ma **come si dice
-un'avvertenza** in un prodotto verde scuro.
+**I riquadri d'avvertimento, fatti subito dopo.** Erano sedici i punti con un
+colore fuori tavolozza, e la risposta non era una questione di gusto: la
+`DESIGN.md` l'aveva già data. «**La Regola dell'Accento Unico**: il terracotta è
+l'unico accento cromatico del sistema… le uniche eccezioni sono il sage per il
+positivo e il rosso per il distruttivo». E del terracotta dice: «stato attivo,
+badge, **ciò che avvisa**».
+
+Quindi i sette riquadri e testi d'avvertimento su fondo giallo chiaro
+(`bg-amber-50`) sono diventati riquadri con l'accento del tema, e i due
+riquadri distruttivi su rosa chiaro usano il rosso del sistema. Il trattamento
+giusto **esisteva già** nel prodotto — è quello degli avvisi del Servizio e del
+riquadro della rotazione: quei sedici punti semplicemente non lo chiamavano.
+
+Nella stessa passata: la pillola «2 allergie» della Panoramica era rosa mentre
+la stessa allergia, in Servizio e in Sala, è color accento. Un segnale che
+cambia colore da una schermata all'altra è due segnali.
+
+**Cosa resta, e perché non l'ho toccato.** Tre toni di `Badge`
+(`warning`/`danger`/`info`) sono ancora fuori tavolozza, e con loro i sette
+stati di una prenotazione: collassarli sui quattro colori del documento vuol
+dire **ridisegnare il sistema di stato** (§34) tenendoli distinguibili anche
+per chi non separa il rosso dal verde — è una decisione, non una sostituzione.
+E i venti `text-rose-600` degli errori: il rosso del sistema (#C32222) su verde
+molto scuro ha meno contrasto del rosa attuale, quindi cambiarlo **peggiora la
+leggibilità di un messaggio d'errore** se non si tocca anche il token. Le due
+cose vanno guardate insieme, con l'occhio di Luca.
 **Funzione:** «chi deve venire e quando». **Pressione: alta** — è la schermata
 aperta quando squilla il telefono.
 **Problemi:** la riga dice ora, ospite, coperti, tavolo, stato — e **non** dice

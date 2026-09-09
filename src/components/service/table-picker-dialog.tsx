@@ -242,7 +242,7 @@ export function TablePickerDialog({
             </ul>
 
             {scelti.length > 0 && (
-              <p className={cn("text-sm", bastano ? "text-muted-foreground" : "text-amber-700")}>
+              <p className={cn("text-sm", bastano ? "text-muted-foreground" : "text-accent")}>
                 {unione ? `${scelti.length} tavoli uniti: ` : ""}
                 {posti} {posti === 1 ? "posto" : "posti"} per {partySize}{" "}
                 {partySize === 1 ? "persona" : "persone"}
