@@ -8,8 +8,10 @@ import { MINIMO_MISURATE, type RotazioneReport } from "@/server/rotazione";
  *
  * Il confronto fra durata misurata e durata prevista è la parte che serve
  * davvero: quel numero decide quanti tavoli il motore accetta di vendere ogni
- * sera, e finora era una convenzione (105 minuti) che nessuno aveva mai
- * confrontato con la realtà del locale.
+ * sera, e all'inizio era una convenzione (105 minuti) che nessuno aveva mai
+ * confrontato con la realtà del locale. Adesso la durata la **misura**
+ * `durataConsigliata`, per gruppo e per fascia: questo quadro serve a vedere
+ * se la misura sta funzionando, non a girare una manopola.
  */
 export function RotazionePanel({ report }: { report: RotazioneReport }) {
   const scarto =
@@ -68,23 +70,43 @@ export function RotazionePanel({ report }: { report: RotazioneReport }) {
             </div>
 
             {scarto != null && Math.abs(scarto) >= 10 && (
-              /* Il consiglio operativo, non il numero: la durata prevista è ciò
-                 che decide quanti tavoli si vendono, e sbagliarla di venti
-                 minuti si sente su ogni servizio. */
+              /*
+                Cosa dice questo scarto, adesso che la durata la misura Tavolo.
+
+                Questa riga diceva «alzare la durata prevista costa qualche
+                coperto e toglie la coda all'ingresso»: un consiglio a
+                cambiare un'impostazione **che non esiste più**. Da quando
+                `durataConsigliata` misura la durata per gruppo, fascia e tipo
+                di giorno, una prenotazione nuova senza durata scritta a mano
+                prende già quella misurata, e il motore di disponibilità
+                calcola con la stessa.
+
+                Quindi lo scarto non è più una manopola da girare: è la
+                distanza fra quanto è **durato** e quanto era **scritto** su
+                queste prenotazioni — cioè quelle con la durata cambiata a
+                mano, o create prima che ci fosse una misura. Si chiude da sé.
+
+                È la regola dura del §16 applicata a una riga che c'era già:
+                un'azione si scrive solo se si può fare. «Non c'è niente da
+                fare, e perché» è un'informazione; un consiglio che non porta
+                da nessuna parte insegna a saltare la riga.
+              */
               <p className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm">
                 {scarto > 0 ? (
                   <>
-                    Le cene durano <strong>{durataUmana(scarto)} più</strong> di quanto è impostato: il motore
-                    vende tavoli che non si liberano in tempo, e in sala si accumulano ritardi. Alzare la
-                    durata prevista costa qualche coperto e toglie la coda all&apos;ingresso.
+                    Le cene sono durate <strong>{durataUmana(scarto)} più</strong> di quanto era scritto su
+                    queste prenotazioni: il motore ha venduto tavoli che non si liberavano in tempo, e in sala
+                    si sono accumulati ritardi.
                   </>
                 ) : (
                   <>
-                    Le cene durano <strong>{durataUmana(-scarto)} meno</strong> di quanto è impostato: il
-                    motore tiene occupati tavoli che sono già liberi. Abbassare la durata prevista fa entrare
-                    più gente senza toccare niente in cucina.
+                    Le cene sono durate <strong>{durataUmana(-scarto)} meno</strong> di quanto era scritto su
+                    queste prenotazioni: il motore ha tenuto occupati tavoli che erano già liberi.
                   </>
-                )}
+                )}{" "}
+                La durata delle prenotazioni nuove la misura Tavolo da sola, per gruppo e per fascia, quindi
+                questo scarto si chiude da sé: quello che resta sono le prenotazioni con la durata scritta a
+                mano.
               </p>
             )}
           </>

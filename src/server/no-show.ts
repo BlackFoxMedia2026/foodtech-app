@@ -62,6 +62,50 @@ export type Recidivo = {
   visite: number;
 };
 
+/**
+ * Una prenotazione che deve ancora arrivare, di qualcuno che è già mancato.
+ *
+ * È la **terza riga** che mancava all'analisi (§16 del brief): il quadro
+ * diceva cosa è successo — quante assenze, quanto sono costate, in che giorni —
+ * e su cosa era misurato, ma non cosa si puo' fare. Questo si puo' fare: una
+ * telefonata il giorno prima, o una conferma richiesta.
+ *
+ * Guarda **avanti**, quindi non dipende dal periodo scelto per l'analisi: le
+ * assenze si contano sul periodo, le prenotazioni a rischio sono quelle dei
+ * prossimi giorni, e nella schermata le due cose sono scritte così.
+ */
+export type PrenotazioneARischio = {
+  bookingId: string;
+  guestId: string;
+  nome: string;
+  quando: Date;
+  partySize: number;
+  /** Assenze sulla scheda, in tutto: è il motivo per cui è in questo elenco. */
+  assenze: number;
+  visite: number;
+};
+
+/** Fin quanto avanti si guarda per le prenotazioni a rischio. */
+export const GIORNI_AVANTI_RISCHIO = 14;
+
+/**
+ * Da quante assenze una prenotazione futura è «a rischio».
+ *
+ * **Due**, e la soglia è la cosa più importante di questa funzione. Con una
+ * sola assenza, sulla demo l'elenco veniva di **95 prenotazioni su 384**: un
+ * numero che non è un lavoro, è un rumore — «telefona a novantacinque
+ * persone» non lo fa nessuno, e la riga si impara a saltarla.
+ *
+ * Una volta si può mancare per mille motivi; due volte è un'abitudine. È
+ * anche la stessa soglia con cui questo quadro chiama qualcuno «chi ripete»,
+ * e la sua didascalia dice già cosa fare: «è a loro che conviene telefonare
+ * il giorno prima».
+ */
+export const ASSENZE_CHE_CONTANO = 2;
+
+/** Quante righe a rischio si mostrano, prima di contarle. */
+export const MAX_RISCHIO_IN_ELENCO = 5;
+
 export type ValoreCoperto =
   | { tipo: "misurato"; centesimi: number; suContiChiusi: number }
   | { tipo: "dichiarato"; centesimi: number }
@@ -83,10 +127,25 @@ export type NoShowReport = {
   recidivi: Recidivo[];
   /** Quanti clienti hanno almeno due assenze nel periodo, anche oltre l'elenco. */
   recidiviTotali: number;
+  /**
+   * Le prenotazioni dei prossimi giorni di clienti già mancati almeno una
+   * volta. Guardano avanti: non dipendono dal periodo dell'analisi.
+   */
+  aRischio: PrenotazioneARischio[];
+  /** Quante sono in tutto, anche oltre le righe mostrate. */
+  aRischioTotali: number;
+  /** Quanti coperti tengono impegnati quelle prenotazioni. */
+  aRischioCoperti: number;
 };
 
-export async function getNoShowReport(venueId: string, from: Date, to: Date): Promise<NoShowReport> {
-  const [prenotazioni, venue, contiChiusi] = await Promise.all([
+export async function getNoShowReport(
+  venueId: string,
+  from: Date,
+  to: Date,
+  opts: { now?: Date } = {},
+): Promise<NoShowReport> {
+  const adesso = opts.now ?? new Date();
+  const [prenotazioni, venue, contiChiusi, future] = await Promise.all([
     db.booking.findMany({
       where: { venueId, deletedAt: null, startsAt: { gte: from, lte: to } },
       select: {
@@ -104,6 +163,34 @@ export async function getNoShowReport(venueId: string, from: Date, to: Date): Pr
     db.order.findMany({
       where: { venueId, status: "COMPLETED", completedAt: { gte: from, lte: to } },
       select: { totalCents: true, booking: { select: { partySize: true } } },
+    }),
+    /*
+      Le prenotazioni che devono ancora arrivare, di chi è già mancato.
+
+      Il filtro sulle assenze sta nella query e non in memoria: `noShowCount`
+      è una colonna vera — la riallinea `refreshGuestStats` dalle prenotazioni
+      — e leggere tutte le prenotazioni future per scartarne il 95% sarebbe
+      lavoro buttato su un locale pieno.
+    */
+    db.booking.findMany({
+      where: {
+        venueId,
+        deletedAt: null,
+        startsAt: {
+          gte: adesso,
+          lte: new Date(adesso.getTime() + GIORNI_AVANTI_RISCHIO * 86_400_000),
+        },
+        status: { in: ["PENDING", "CONFIRMED"] },
+        guest: { noShowCount: { gte: ASSENZE_CHE_CONTANO } },
+      },
+      orderBy: { startsAt: "asc" },
+      select: {
+        id: true,
+        startsAt: true,
+        partySize: true,
+        guestId: true,
+        guest: { select: { firstName: true, lastName: true, noShowCount: true, totalVisits: true } },
+      },
     }),
   ]);
 
@@ -182,6 +269,19 @@ export async function getNoShowReport(venueId: string, from: Date, to: Date): Pr
     .filter((r) => r.assenzeNelPeriodo >= 2)
     .sort((a, b) => b.assenzeNelPeriodo - a.assenzeNelPeriodo);
 
+  /* ---- cosa si può fare: chi deve ancora venire ed è già mancato ---- */
+  const aRischio: PrenotazioneARischio[] = future
+    .filter((b) => b.guestId && b.guest)
+    .map((b) => ({
+      bookingId: b.id,
+      guestId: b.guestId!,
+      nome: `${b.guest!.firstName}${b.guest!.lastName ? ` ${b.guest!.lastName}` : ""}`,
+      quando: b.startsAt,
+      partySize: b.partySize,
+      assenze: b.guest!.noShowCount,
+      visite: b.guest!.totalVisits,
+    }));
+
   return {
     prenotazioni: prenotazioni.length,
     assenze: assenti.length,
@@ -193,5 +293,8 @@ export async function getNoShowReport(venueId: string, from: Date, to: Date): Pr
     giornoPeggiore: giornoPeggiore && quota != null && (giornoPeggiore.quota ?? 0) > quota ? giornoPeggiore : null,
     recidivi: recidivi.slice(0, 8),
     recidiviTotali: recidivi.length,
+    aRischio: aRischio.slice(0, MAX_RISCHIO_IN_ELENCO),
+    aRischioTotali: aRischio.length,
+    aRischioCoperti: aRischio.reduce((s, r) => s + r.partySize, 0),
   };
 }

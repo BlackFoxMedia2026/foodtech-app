@@ -3,7 +3,12 @@ import { CalendarX, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/utils";
-import { MINIMO_PER_QUOTA, type NoShowReport } from "@/server/no-show";
+import {
+  ASSENZE_CHE_CONTANO,
+  GIORNI_AVANTI_RISCHIO,
+  MINIMO_PER_QUOTA,
+  type NoShowReport,
+} from "@/server/no-show";
 import { Base } from "@/components/ui/base-del-numero";
 import { giornoConArticolo } from "@/server/no-show";
 
@@ -23,11 +28,6 @@ import { giornoConArticolo } from "@/server/no-show";
  * prenotazioni: un martedì con due prenotazioni e un'assenza fa «50%», che è
  * vero e non significa niente.
  */
-/** La prima lettera in maiuscolo, per una frase che comincia col giorno. */
-function maiuscola(t: string): string {
-  return t.charAt(0).toUpperCase() + t.slice(1);
-}
-
 export function NoShowPanel({ report, currency }: { report: NoShowReport; currency: string }) {
   const euro = (c: number) => formatCurrency(c, currency);
 
@@ -204,6 +204,56 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
           )}
         </div>
 
+        {/*
+          **La terza riga** (§16 del brief): cosa si puo' fare.
+
+          Il quadro diceva cosa è successo — quante assenze, quanto sono
+          costate, in che giorni — e su cosa era misurato. Mancava il gesto, e
+          la regola del brief è dura: l'azione si scrive solo se porta a una
+          schermata **con quelle righe dentro**. «Considera di introdurre una
+          caparra» è un consiglio, e i consigli generici insegnano a saltare la
+          riga.
+
+          Quindi le righe sono **qui**, ognuna con il suo giorno e il suo
+          numero di assenze, e ognuna apre la sua prenotazione. Guardano
+          avanti: le assenze si contano sul periodo scelto, queste sono le
+          prenotazioni dei prossimi giorni — ed è scritto nella riga, perché
+          due numeri con due basi diverse nello stesso riquadro vanno
+          dichiarati.
+        */}
+        {report.aRischioTotali > 0 && (
+          <div className="riquadro border-accent/50 bg-accent/[0.07] p-3">
+            <p className="text-sm font-medium">
+              {report.aRischioTotali === 1
+                ? "Una prenotazione dei prossimi giorni è di un cliente che è già mancato due volte"
+                : `${report.aRischioTotali} prenotazioni dei prossimi giorni sono di clienti mancati almeno ${ASSENZE_CHE_CONTANO} volte`}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {report.aRischioCoperti} {report.aRischioCoperti === 1 ? "coperto" : "coperti"} impegnati nei
+              prossimi {GIORNI_AVANTI_RISCHIO} giorni — non è il periodo dell&apos;analisi qui sopra, è quello
+              che deve ancora arrivare. Una telefonata il giorno prima costa meno di un tavolo vuoto.
+            </p>
+            <ul className="mt-2 space-y-1 text-sm">
+              {report.aRischio.map((r) => (
+                <li key={r.bookingId} className="flex items-baseline justify-between gap-3">
+                  <Link href={`/bookings/${r.bookingId}`} className="min-w-0 truncate underline">
+                    {r.nome}
+                  </Link>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {quando(r.quando)} · {r.partySize} {r.partySize === 1 ? "coperto" : "coperti"} ·{" "}
+                    {r.assenze} {r.assenze === 1 ? "assenza" : "assenze"}
+                  </span>
+                </li>
+              ))}
+              {report.aRischioTotali > report.aRischio.length && (
+                <li className="text-xs text-tertiary-foreground">
+                  e altre {report.aRischioTotali - report.aRischio.length}
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+
         {report.recidivi.length > 0 && (
           <div className="riquadro p-3">
             <p className="text-sm font-medium">
@@ -238,4 +288,20 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
       </CardContent>
     </Card>
   );
+}
+
+/** Giorno e ora, corti: «gio 11 set, 20:30». */
+function quando(d: Date): string {
+  return new Intl.DateTimeFormat("it-IT", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(d));
+}
+
+/** La prima lettera in maiuscolo, per una frase che comincia col giorno. */
+function maiuscola(t: string): string {
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }

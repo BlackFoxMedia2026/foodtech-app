@@ -332,3 +332,42 @@ describe("le medie non contano le settimane senza dati", () => {
     expect(riga.copertiMedi).toBe(30);
   });
 });
+
+describe("la confidenza si dichiara sempre, e i giorni si contano al plurale", () => {
+  /*
+    §16 del brief: «una confidenza dichiarata — quante giornate confrontabili
+    sostengono quel numero». Prima la solidità si diceva solo nel caso brutto,
+    quindi chi leggeva un numero senza avvertenze non sapeva se stava
+    guardando sei giornate confrontabili o due.
+
+    E la frase che la diceva era sgrammaticata: «Solo 2 sabato confrontabili».
+    Quattro giorni su sette in italiano sono invariabili e due no, e non c'è
+    una regola: c'è un elenco.
+  */
+  it("con abbastanza storia dice su quante giornate è misurata", async () => {
+    await turno(weekdayOfDateKey(BERSAGLIO), 80);
+    await storiaCon(0.6, 100);
+    await prenota(BERSAGLIO, 42, ORA);
+
+    const giorni = await getWeekForecast(venueId, { now: ORA, giorni: K + 1 });
+    const b = giorni.find((g) => g.dateKey === BERSAGLIO)!;
+    expect(b.confidenza).toBe("buona");
+    expect(b.why).toContain(`Su ${b.giorniComparabili}`);
+    expect(b.why).toContain("confrontabili");
+  });
+
+  it("con poca storia lo dice, e al plurale giusto", async () => {
+    await turno(weekdayOfDateKey(BERSAGLIO), 80);
+    // Sotto la soglia: confidenza scarsa, e la frase deve avvertire.
+    await storiaCon(0.6, 100, GIORNI_MINIMI - 1);
+    await prenota(BERSAGLIO, 20, ORA);
+
+    const giorni = await getWeekForecast(venueId, { now: ORA, giorni: K + 1 });
+    const b = giorni.find((g) => g.dateKey === BERSAGLIO)!;
+    expect(b.confidenza).toBe("scarsa");
+    expect(b.why).toContain("prendila con le molle");
+    // Il giorno bersaglio è un sabato: «2 sabati», non «2 sabato».
+    if (b.weekday === 6) expect(b.why).toContain("sabati");
+    expect(b.why).not.toMatch(/\d+ sabato /);
+  });
+});

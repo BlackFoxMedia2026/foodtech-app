@@ -1409,9 +1409,56 @@ No-show 13%
 righe dentro**. «Considera di introdurre una caparra» non è un'azione: è un
 consiglio, e i consigli generici insegnano a saltare la riga.
 
+### Fatto il 9 settembre
+
+**La terza riga sulle assenze, con le righe dentro il quadro.** «35 prenotazioni
+dei prossimi giorni sono di clienti mancati almeno 2 volte · 164 coperti
+impegnati nei prossimi 14 giorni», e sotto le cinque più imminenti, ognuna col
+suo giorno, i suoi coperti e le sue assenze, ognuna che apre la sua
+prenotazione. Le righe sono **nel quadro** perché così la regola dura si
+rispetta senza inventare una schermata: la destinazione di ogni riga è la
+prenotazione stessa, e quella pagina dice già «non si è presentato» (verificato
+premendo).
+
+Guarda **avanti**, e lo dichiara: le assenze si contano sul periodo scelto, le
+prenotazioni a rischio sono quelle dei prossimi quattordici giorni. Due numeri
+con due basi diverse nello stesso riquadro vanno dichiarati, ed è scritto nella
+riga.
+
+**La soglia è la cosa più importante di questa funzione.** Con una sola assenza
+l'elenco veniva di **95 prenotazioni su 384**: «telefona a novantacinque
+persone» non lo fa nessuno, e la riga si impara a saltarla. Con due — una volta
+si manca per mille motivi, due volte è un'abitudine — sono 35, che è un lavoro.
+È anche la stessa soglia con cui questo quadro chiama già qualcuno «chi
+ripete».
+
+**E un consiglio che era diventato falso.** Il quadro della rotazione diceva
+«alzare la durata prevista costa qualche coperto e toglie la coda
+all'ingresso»: un invito a girare **una manopola che non esiste più**. Da
+quando `durataConsigliata` misura la durata per gruppo, fascia e tipo di
+giorno, una prenotazione nuova senza durata scritta a mano prende già quella
+misurata, e il motore calcola con la stessa. Quello scarto non è una
+manopola: è la distanza fra quanto è durato e quanto era **scritto** su quelle
+prenotazioni, e si chiude da sé. Adesso lo dice. È la regola dura applicata a
+una riga che c'era già: dove non c'è niente da fare, «non c'è niente da fare, e
+perché» è un'informazione; un consiglio che non porta da nessuna parte insegna
+a saltare la riga.
+
 **Previsione (§34 del prompt):** già buona. Da aggiungere una **confidenza**
 dichiarata — quante giornate confrontabili sostengono quel numero — perché oggi
 la spiegazione dice il metodo ma non la solidità.
+
+**Fatto il 9 settembre.** Ogni riga della previsione dice su quante giornate
+confrontabili è misurata — «Su 5 domeniche confrontabili» — e non solo quando
+la storia è poca. Prima la solidità si diceva soltanto nel caso brutto, quindi
+chi leggeva un numero senza avvertenze non sapeva se stava guardando sei
+giornate o due.
+
+**Un difetto grammaticale trovato scrivendola:** la frase del caso brutto
+diceva «Solo 2 **sabato** confrontabili». Il nome del giorno veniva infilato in
+una frase al plurale senza cambiarlo. Quattro giorni su sette in italiano sono
+invariabili (lunedì, martedì, mercoledì, giovedì, venerdì) e due no: non c'è
+una regola, c'è un elenco, e adesso c'è.
 
 **Telefono (§33):** riquadri riassuntivi che si aprono. La sintesi resta
 sempre aperta: è quella che si legge in piedi.
