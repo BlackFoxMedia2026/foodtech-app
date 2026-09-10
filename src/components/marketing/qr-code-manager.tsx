@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/dialog";
 import { createQrCode, deleteQrCode, updateQrCode, type QrCodeInput } from "@/lib/qr-codes-api";
 import { QrCodePreview } from "./qr-code-preview";
+import { SuperficiPubbliche } from "./superfici-pubbliche";
+import type { Superficie } from "@/lib/qr-superfici";
 
 type Category = NonNullable<QrCodeInput["category"]>;
 
@@ -33,6 +35,16 @@ const CATEGORY_LABELS: Record<Category, string> = {
   SOCIAL: "Social",
   OTHER: "Altro",
 };
+
+/**
+ * Le scansioni sono contate?
+ *
+ * Oggi no: il QR porta direttamente all'indirizzo finale, quindi nessuna
+ * richiesta passa da Tavolo e `QrCode.scansCount` resta a zero per sempre
+ * (vedi il TODO nello schema). Diventa `true` quando esisterà il rimando
+ * tracciato `/r/[id]`.
+ */
+const SCANSIONI_CONTATE = false;
 
 export interface QrCodeItem {
   id: string;
@@ -214,9 +226,22 @@ function QrCodeCard({ item, onChanged }: { item: QrCodeItem; onChanged: () => vo
         <p className="truncate text-xs text-muted-foreground" title={item.destinationUrl}>
           {item.destinationUrl}
         </p>
+        {/*
+          «0 scansioni» era un numero che non poteva che dire zero: il QR punta
+          all'indirizzo finale, senza passare da un rimando tracciato, quindi
+          `scansCount` non viene **mai** scritto (c'è il TODO nello schema).
+          Un contatore fermo a zero non dice «nessuno l'ha inquadrato»: dice
+          «non lo so», e mostrarlo come un numero lo fa passare per una misura.
+
+          Quando esisterà il rimando tracciato basta togliere la costante qui
+          sotto e il numero torna al suo posto — con la sua base accanto.
+        */}
         <p className="text-xs text-muted-foreground">
-          {item.scansCount} scansioni · Creato {item.createdAtLabel}
+          {SCANSIONI_CONTATE ? `${item.scansCount} scansioni · ` : ""}Creato {item.createdAtLabel}
         </p>
+        {!SCANSIONI_CONTATE && (
+          <p className="t-nota">Le scansioni non si contano ancora.</p>
+        )}
         <div className="flex flex-wrap gap-2">
           <CopyButton value={item.destinationUrl} variant="outline" size="sm">
             Copia URL
@@ -252,7 +277,7 @@ function QrCodeCard({ item, onChanged }: { item: QrCodeItem; onChanged: () => vo
   );
 }
 
-export function QrCodeManager({ items }: { items: QrCodeItem[] }) {
+export function QrCodeManager({ items, superfici }: { items: QrCodeItem[]; superfici: Superficie[] }) {
   const router = useRouter();
   const refresh = () => router.refresh();
 
@@ -281,12 +306,18 @@ export function QrCodeManager({ items }: { items: QrCodeItem[] }) {
         />
       </header>
 
+      <SuperficiPubbliche superfici={superfici} />
+
       {items.length === 0 ? (
+        /* Lo stato vuoto non manda a un foglio bianco: manda al blocco qui
+           sopra, dove le pagine del locale sono già pronte da collegare. */
         <div className="rounded-md border border-dashed p-12 text-center">
           <QrCodeIcon className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
           <p className="font-medium">Nessun QR code creato</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Crea il tuo primo QR code per collegare menu, prenotazioni o campagne.
+            {superfici.some((s) => s.stato === "pronta")
+              ? "Le tue pagine pubbliche sono qui sopra: da lì diventano un QR con un tocco."
+              : "Crea il tuo primo QR code per collegare menu, prenotazioni o campagne."}
           </p>
         </div>
       ) : (
