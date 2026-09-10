@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { testoSu } from "@/lib/colore-leggibile";
 
 const HEX_RE = /^#[0-9a-fA-F]{6,8}$/;
 
@@ -65,6 +66,10 @@ export function BrandPreviewCard({
   const primary = primaryColor && HEX_RE.test(primaryColor) ? primaryColor : "#FFD400";
   const secondary = secondaryColor && HEX_RE.test(secondaryColor) ? secondaryColor : "#B6B6B6";
   const nome = name || "Il tuo ristorante";
+  /* Il testo sopra il colore scelto non è deciso qui: si deriva. L'anteprima
+     deve mostrare quello che vedranno i clienti, compreso il caso in cui il
+     colore scelto pretende testo scuro. */
+  const testoPrimario = testoSu(primary).colore;
 
   return (
     <div className="space-y-2">
@@ -114,7 +119,7 @@ export function BrandPreviewCard({
                     className="rounded-md px-2 py-1 text-xs"
                     style={
                       i === 1
-                        ? { backgroundColor: primary, color: "#fff" }
+                        ? { backgroundColor: primary, color: testoSu(primary).colore }
                         : { backgroundColor: `${secondary}33` }
                     }
                   >
@@ -126,8 +131,8 @@ export function BrandPreviewCard({
               <button
                 type="button"
                 disabled
-                className="w-full rounded-md px-3 py-2 text-sm font-medium text-white"
-                style={{ backgroundColor: primary }}
+                className="w-full rounded-md px-3 py-2 text-sm font-medium"
+                style={{ backgroundColor: primary, color: testoPrimario }}
               >
                 Prenota ora
               </button>
@@ -162,8 +167,8 @@ export function BrandPreviewCard({
               <button
                 type="button"
                 disabled
-                className="w-full rounded-md px-3 py-2 text-sm font-medium text-white"
-                style={{ backgroundColor: primary }}
+                className="w-full rounded-md px-3 py-2 text-sm font-medium"
+                style={{ backgroundColor: primary, color: testoPrimario }}
               >
                 Mostra la password
               </button>
@@ -185,7 +190,7 @@ export function BrandPreviewCard({
                     className="flex h-7 w-7 items-center justify-center rounded-full text-xs"
                     style={
                       n === 9
-                        ? { backgroundColor: primary, color: "#fff" }
+                        ? { backgroundColor: primary, color: testoPrimario }
                         : { backgroundColor: `${secondary}33` }
                     }
                   >

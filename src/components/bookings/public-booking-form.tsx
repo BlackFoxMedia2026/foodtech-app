@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SlotPicker } from "@/components/bookings/slot-picker";
 import { AlertCircle, Loader2, Mail, Phone } from "lucide-react";
 import { CAMPO_TRAPPOLA } from "@/lib/widget-trappola";
+import { testoSu } from "@/lib/colore-leggibile";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6,8}$/;
 
@@ -147,8 +148,13 @@ export function PublicBookingForm({
   };
 
   const today = new Date().toISOString().split("T")[0];
+  /* Il colore del testo si **deriva** dal fondo scelto dal ristoratore: con
+     «bianco» scritto una volta per tutte, chi sceglie un giallo o un azzurro
+     chiaro si ritrova questo pulsante illeggibile e non lo sa. */
   const buttonStyle =
-    primaryColor && HEX_COLOR_RE.test(primaryColor) ? { background: primaryColor } : undefined;
+    primaryColor && HEX_COLOR_RE.test(primaryColor)
+      ? { background: primaryColor, color: testoSu(primaryColor).colore }
+      : undefined;
 
   return (
     <form onSubmit={handleSubmit} method="post" className="space-y-6">

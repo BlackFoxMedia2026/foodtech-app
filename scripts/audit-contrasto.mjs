@@ -20,12 +20,63 @@ import { chromium } from "playwright";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const BASE = process.env.BASE ?? "https://foodtech-app.vercel.app";
-const SCHERMATE = [
-  ["panoramica", "/overview"], ["servizio", "/service"], ["prenotazioni", "/bookings"],
-  ["da-confermare", "/bookings?status=pending"], ["lista-attesa", "/waitlist"], ["ospiti", "/guests"],
-  ["analisi", "/insights?vista=andamento"], ["analisi-carta", "/insights?vista=carta"],
-  ["carta", "/menu"], ["marketing", "/marketing"], ["automazioni", "/marketing/automations"],
-  ["campagne", "/campaigns"], ["camerieri", "/waiters"], ["impostazioni", "/settings?parte=locale"],
+/** Le schermate dell'area operativa. `:id` viene sostituito con un
+ *  identificativo trovato navigando: se non si trova, la schermata risulta
+ *  **saltata** nel rapporto, non semplicemente assente. */
+const OPERATIVE = [
+  ["panoramica", "/overview"],
+  ["servizio", "/service"],
+  ["servizio-sala", "/service/room"],
+  ["prenotazioni", "/bookings"],
+  ["prenotazioni-sospese", "/bookings?status=pending"],
+  ["prenotazioni-confermate", "/bookings?status=confirmed"],
+  ["prenotazione-nuova", "/bookings/new"],
+  ["prenotazione-scheda", "/bookings/:prenotazione"],
+  ["lista-attesa", "/waitlist"],
+  ["ospiti", "/guests"],
+  ["ospite-scheda", "/guests/:ospite"],
+  ["ospiti-doppioni", "/guests/doppioni"],
+  ["analisi-andamento", "/insights?vista=andamento"],
+  ["analisi-carta", "/insights?vista=carta"],
+  ["analisi-servizio", "/insights?vista=servizio"],
+  ["analisi-domanda", "/insights?vista=domanda"],
+  ["analisi-30-giorni", "/insights?range=last30&vista=andamento"],
+  ["carta", "/menu"],
+  ["marketing", "/marketing"],
+  ["automazioni", "/marketing/automations"],
+  ["coupon", "/marketing/coupons"],
+  ["gift-card", "/marketing/gift-cards"],
+  ["codici-qr", "/marketing/qr-codes"],
+  ["wifi-contatti", "/marketing/wifi"],
+  ["campagne", "/campaigns"],
+  ["campagna-scheda", "/campaigns/:campagna"],
+  ["campagna-nuova", "/campaigns/new"],
+  ["esperienze", "/experiences"],
+  ["pagamenti", "/payments"],
+  ["camerieri", "/waiters"],
+  ["impostazioni-locale", "/settings?parte=locale"],
+  ["impostazioni-prenotazioni", "/settings?parte=prenotazioni"],
+  ["impostazioni-ospiti", "/settings?parte=ospiti"],
+  ["impostazioni-sistema", "/settings?parte=sistema"],
+  ["brand", "/settings/brand"],
+  ["portale-wifi", "/settings/wifi"],
+];
+
+/** Quello che vede il cliente, che non ha mai fatto l'accesso. */
+const PUBBLICHE = [
+  ["vetrina", "/"],
+  ["accesso", "/sign-in"],
+  ["menu-dal-qr", "/m/aurora-bistrot"],
+  ["portale-wifi-cliente", "/wifi/aurora-bistrot"],
+  ["prenota", "/book?venue=aurora-bistrot"],
+  ["link-scaduto", "/b/token-non-valido"],
+];
+
+/** I tre schermi su cui si lavora davvero. */
+const SCHERMI = [
+  ["scrivania", 1440, 900],
+  ["tablet", 834, 1112],
+  ["telefono", 390, 844],
 ];
 
 const MISURA = () => {
@@ -123,32 +174,102 @@ const BANCO = ({ base, toni }) => {
 };
 
 const b = await chromium.launch();
-const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
-await p.goto(`${BASE}/sign-in`, { waitUntil: "domcontentloaded" });
-await p.fill('input[type="email"]', "owner@tavolo.demo");
-await p.fill('input[type="password"]', "tavolo2026");
-await p.click('button[type="submit"]');
-await p.waitForURL((u) => !u.pathname.includes("sign-in"), { timeout: 45000 }).catch(() => {});
-if (p.url().includes("sign-in")) { console.log("ACCESSO FALLITO"); await b.close(); process.exit(1); }
+
+/** Un identificativo vero per ogni schermata di dettaglio: senza questi le
+ *  schede non si misurano, ed è proprio dove vivono i casi particolari.
+ *
+ *  Le prenotazioni non si prendono dall'interfaccia: nella lista «Apri» apre
+ *  un pannello e non lascia un collegamento in pagina. Si chiede all'API, che
+ *  usa la stessa sessione del browser. */
+async function scopriId(p) {
+  const daElenco = async (via, prefisso) => {
+    await p.goto(`${BASE}${via}`, { waitUntil: "domcontentloaded" }).catch(() => {});
+    await p.waitForTimeout(2200);
+    const href = await p.$$eval(`a[href^="${prefisso}"]`, (as) => as.map((a) => a.getAttribute("href"))).catch(() => []);
+    const buono = href.find((h) => new RegExp(`^${prefisso}[^/?#]+$`).test(h) && !/\/(new|doppioni)$/.test(h));
+    return buono ? buono.slice(prefisso.length) : null;
+  };
+
+  const daApi = async (via, prendi) => {
+    const r = await p.request.get(`${BASE}${via}`).catch(() => null);
+    if (!r || !r.ok()) return null;
+    const dati = await r.json().catch(() => null);
+    return dati ? (prendi(dati) ?? null) : null;
+  };
+
+  const primoId = (d) => {
+    const righe = Array.isArray(d) ? d : Array.isArray(d?.items) ? d.items : Array.isArray(d?.bookings) ? d.bookings : [];
+    const con = righe.find((x) => typeof x?.id === "string");
+    return con?.id;
+  };
+
+  return {
+    prenotazione: (await daApi("/api/bookings", primoId)) ?? (await daElenco("/bookings", "/bookings/")),
+    ospite: await daElenco("/guests", "/guests/"),
+    campagna: await daElenco("/campaigns", "/campaigns/"),
+  };
+}
+
+async function accedi(p) {
+  await p.goto(`${BASE}/sign-in`, { waitUntil: "domcontentloaded" });
+  await p.fill('input[type="email"]', "owner@tavolo.demo");
+  await p.fill('input[type="password"]', "tavolo2026");
+  await p.click('button[type="submit"]');
+  await p.waitForURL((u) => !u.pathname.includes("sign-in"), { timeout: 60000 }).catch(() => {});
+  return !p.url().includes("sign-in");
+}
+
+const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, locale: "it-IT", timezoneId: "Europe/Rome" });
+const primo = await ctx.newPage();
+if (!(await accedi(primo))) { console.log("ACCESSO FALLITO — probabilmente il limite di tentativi (10 ogni 10 minuti)"); await b.close(); process.exit(1); }
+const ID = await scopriId(primo);
+console.log("identificativi trovati:", Object.entries(ID).map(([k, v]) => `${k}=${v ?? "NESSUNO"}`).join("  "));
+const sessione = await ctx.storageState();
+await ctx.close();
 
 const tutto = {};
-for (const [nome, via] of SCHERMATE) {
-  await p.goto(`${BASE}${via}`, { waitUntil: "domcontentloaded" }).catch(() => {});
-  await p.waitForTimeout(2500);
-  tutto[nome] = await p.evaluate(MISURA);
-  const { buoni, incerti, spenti } = tutto[nome];
-  console.log(`${buoni.length ? "❌" : "✅"} ${nome.padEnd(16)} ${buoni.length} certi · ${incerti.length} da guardare · ${spenti.length} disattivati (esenti)`);
-}
-// il banco dei toni: misurato una volta, su una schermata qualsiasi
-const mappa = toniDelBadge();
-await p.evaluate(BANCO, mappa);
-await p.waitForTimeout(400);
-const daBanco = (await p.evaluate(MISURA)).buoni.filter((x) => mappa.toni.some((t) => t.nome === x.testo));
-console.log(`\n--- banco dei toni del Badge (${mappa.toni.length} toni resi a mano, dati o non dati) ---`);
-if (!daBanco.length) console.log("✅ tutti i toni sopra soglia");
-for (const x of daBanco) console.log(`❌ tono «${x.testo}» ${x.rapporto} : 1 (serve ${x.soglia})  ${x.colore} su ${x.fondo}`);
+const saltate = [];
+let daBanco = [];
 
-writeFileSync(process.env.OUT, JSON.stringify({ schermate: tutto, toni: daBanco }, null, 2));
+for (const [schermo, width, height] of SCHERMI) {
+  console.log(`\n===== ${schermo} (${width}×${height}) =====`);
+  const c = await b.newContext({ viewport: { width, height }, storageState: sessione, locale: "it-IT", timezoneId: "Europe/Rome" });
+  const p = await c.newPage();
+
+  for (const [nome, viaGrezza] of OPERATIVE) {
+    const via = viaGrezza.replace(/:(\w+)/g, (_, k) => ID[k] ?? "");
+    if (viaGrezza.includes(":") && /\/(\?|$)/.test(via)) { saltate.push(`${schermo}/${nome}`); console.log(`⊘ ${nome.padEnd(26)} saltata: nessun identificativo`); continue; }
+    await p.goto(`${BASE}${via}`, { waitUntil: "domcontentloaded" }).catch(() => {});
+    await p.waitForTimeout(2400);
+    const r = await p.evaluate(MISURA);
+    tutto[`${schermo}/${nome}`] = r;
+    console.log(`${r.buoni.length ? "❌" : "✅"} ${nome.padEnd(26)} ${r.buoni.length} certi · ${r.incerti.length} da guardare · ${r.spenti.length} esenti`);
+  }
+
+  for (const [nome, via] of PUBBLICHE) {
+    const pub = await (await b.newContext({ viewport: { width, height }, locale: "it-IT", timezoneId: "Europe/Rome" })).newPage();
+    await pub.goto(`${BASE}${via}`, { waitUntil: "domcontentloaded" }).catch(() => {});
+    await pub.waitForTimeout(2400);
+    const r = await pub.evaluate(MISURA);
+    tutto[`${schermo}/pubblica-${nome}`] = r;
+    console.log(`${r.buoni.length ? "❌" : "✅"} ${("(pubblica) " + nome).padEnd(26)} ${r.buoni.length} certi · ${r.incerti.length} da guardare · ${r.spenti.length} esenti`);
+    await pub.context().close();
+  }
+
+  // il banco dei toni: una volta per schermo, perché la tipografia cambia
+  const mappa = toniDelBadge();
+  await p.goto(`${BASE}/bookings`, { waitUntil: "domcontentloaded" }).catch(() => {});
+  await p.waitForTimeout(1500);
+  await p.evaluate(BANCO, mappa);
+  await p.waitForTimeout(400);
+  const q = (await p.evaluate(MISURA)).buoni.filter((x) => mappa.toni.some((t) => t.nome === x.testo));
+  console.log(`${q.length ? "❌" : "✅"} ${"banco degli " + mappa.toni.length + " toni"}`.padEnd(30) + (q.length ? q.map((x) => `${x.testo} ${x.rapporto}`).join(", ") : ""));
+  daBanco = daBanco.concat(q.map((x) => ({ ...x, schermo })));
+  await c.close();
+}
+
+writeFileSync(process.env.OUT, JSON.stringify({ schermate: tutto, toni: daBanco, saltate, identificativi: ID }, null, 2));
 const conta = (k) => Object.values(tutto).flatMap((x) => x[k]).length;
-console.log(`\nCERTI sotto soglia: ${conta("buoni") + daBanco.length}   DA GUARDARE: ${conta("incerti")}   DISATTIVATI (esenti): ${conta("spenti")}`);
+console.log(`\nSCHERMATE MISURATE: ${Object.keys(tutto).length}   SALTATE: ${saltate.length}`);
+console.log(`CERTI sotto soglia: ${conta("buoni") + daBanco.length}   DA GUARDARE: ${conta("incerti")}   DISATTIVATI (esenti): ${conta("spenti")}`);
 await b.close();
