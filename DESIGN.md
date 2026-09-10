@@ -310,6 +310,22 @@ essere letto** non è un ingresso di calcolo. I coperti medi di un ospite sono
 Chi moltiplica 252 × 7 trova 1.764 e un prodotto che si contraddice. Le stime
 derivate si ricavano dal **totale esatto**, non dalla media arrotondata.
 
+**La Regola della Base Minima** (10 settembre). Una percentuale su pochi casi
+**dice più di quello che sa**: una prenotazione mancata su una sola fa «100% di
+assenze», che è vero e non significa niente. Sotto dieci casi
+(`lib/quota.ts`, `MINIMO_PER_QUOTA`) la percentuale non si mostra: si mostra
+`—` e **perché** non c'è.
+
+E le due assenze si dicono in modo diverso, perché sono diverse:
+
+- **zero casi** → «Ancora nessuna prenotazione nel periodo». Non è «troppo
+  pochi»: non è ancora accaduto niente.
+- **pochi casi** → «Servono almeno 10 prenotazioni: su 3 una percentuale
+  direbbe più di quello che sa».
+
+Anche il **confronto** col periodo prima sparisce quando una delle due basi
+manca: variare da una percentuale inventata a un'altra non è una variazione.
+
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
 servono a dire di che materiale è fatta una superficie, non a decorare.

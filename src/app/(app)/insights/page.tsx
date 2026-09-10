@@ -33,6 +33,7 @@ import { getAnalytics, getPreviousPeriodMetrics } from "@/server/analytics";
 import { computeDelta } from "@/lib/period-delta";
 import { generateInsights, SOURCE_LABELS } from "@/lib/insight-rules";
 import { formatCurrency, startOfDay, endOfDay, cn } from "@/lib/utils";
+import { perchePercentualeAssente, quotaAffidabile } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
 
@@ -221,23 +222,49 @@ export default async function InsightsPage({
           hint="Somma dei posti prenotati"
           trend={trendFor(a.covers, prev.covers)}
         />
+        {/*
+          Queste tre sono **percentuali**, e una percentuale su pochi casi dice
+          piu' di quello che sa: una prenotazione mancata su una sola fa
+          «100% di assenze». Con zero prenotazioni scrivevano «0%», cioe'
+          «abbiamo misurato zero assenze» dove non c'era niente da misurare.
+
+          La regola era gia' scritta e applicata al pannello delle assenze, in
+          fondo a questa stessa pagina; queste tre schede la ignoravano. Ora
+          vive in `lib/quota.ts` e la rispettano entrambe.
+
+          Anche il confronto col periodo prima si mostra solo se **entrambi** i
+          periodi hanno una base: variare da una percentuale inventata a
+          un'altra non e' una variazione.
+        */}
         <StatCard
           label="Tasso completamento"
-          value={`${a.occupancyRate}%`}
-          hint="Prenotazioni completate"
-          trend={trendFor(a.occupancyRate, prev.occupancyRate, { kind: "rate" })}
+          value={quotaAffidabile(a.bookings) ? `${a.occupancyRate}%` : "—"}
+          hint={quotaAffidabile(a.bookings) ? "Prenotazioni completate" : perchePercentualeAssente(a.bookings)}
+          trend={
+            quotaAffidabile(a.bookings) && quotaAffidabile(prev.bookings)
+              ? trendFor(a.occupancyRate, prev.occupancyRate, { kind: "rate" })
+              : undefined
+          }
         />
         <StatCard
           label="No-show"
-          value={`${a.noShowRate}%`}
-          hint="Sul totale prenotazioni"
-          trend={trendFor(a.noShowRate, prev.noShowRate, { higherIsBetter: false, kind: "rate" })}
+          value={quotaAffidabile(a.bookings) ? `${a.noShowRate}%` : "—"}
+          hint={quotaAffidabile(a.bookings) ? "Sul totale prenotazioni" : perchePercentualeAssente(a.bookings)}
+          trend={
+            quotaAffidabile(a.bookings) && quotaAffidabile(prev.bookings)
+              ? trendFor(a.noShowRate, prev.noShowRate, { higherIsBetter: false, kind: "rate" })
+              : undefined
+          }
         />
         <StatCard
           label="Cancellazioni"
-          value={`${a.cancelRate}%`}
-          hint="Sul totale prenotazioni"
-          trend={trendFor(a.cancelRate, prev.cancelRate, { higherIsBetter: false, kind: "rate" })}
+          value={quotaAffidabile(a.bookings) ? `${a.cancelRate}%` : "—"}
+          hint={quotaAffidabile(a.bookings) ? "Sul totale prenotazioni" : perchePercentualeAssente(a.bookings)}
+          trend={
+            quotaAffidabile(a.bookings) && quotaAffidabile(prev.bookings)
+              ? trendFor(a.cancelRate, prev.cancelRate, { higherIsBetter: false, kind: "rate" })
+              : undefined
+          }
         />
         {giftCard.carte > 0 && (
           /* Non è un incasso del periodo: è denaro già incassato e non ancora
@@ -282,9 +309,12 @@ export default async function InsightsPage({
           <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
             <ComparisonStat label="Prenotazioni" current={a.bookings} previous={prev.bookings} />
             <ComparisonStat label="Coperti" current={a.covers} previous={prev.covers} />
-            <ComparisonStat label="Tasso completamento" current={a.occupancyRate} previous={prev.occupancyRate} format={(v) => `${v}%`} kind="rate" />
-            <ComparisonStat label="No-show" current={a.noShowRate} previous={prev.noShowRate} format={(v) => `${v}%`} higherIsBetter={false} kind="rate" />
-            <ComparisonStat label="Cancellazioni" current={a.cancelRate} previous={prev.cancelRate} format={(v) => `${v}%`} higherIsBetter={false} kind="rate" />
+            <ComparisonStat label="Tasso completamento" current={a.occupancyRate} previous={prev.occupancyRate} format={(v) => `${v}%`} kind="rate"
+              nonDisponibile={quotaAffidabile(a.bookings) ? undefined : perchePercentualeAssente(a.bookings)} />
+            <ComparisonStat label="No-show" current={a.noShowRate} previous={prev.noShowRate} format={(v) => `${v}%`} higherIsBetter={false} kind="rate"
+              nonDisponibile={quotaAffidabile(a.bookings) ? undefined : perchePercentualeAssente(a.bookings)} />
+            <ComparisonStat label="Cancellazioni" current={a.cancelRate} previous={prev.cancelRate} format={(v) => `${v}%`} higherIsBetter={false} kind="rate"
+              nonDisponibile={quotaAffidabile(a.bookings) ? undefined : perchePercentualeAssente(a.bookings)} />
             {/* Un confronto fra due periodi ha senso solo se entrambi hanno
                 conti chiusi: «0 → 32 €» non è una crescita, è la comparsa
                 della misura. */}

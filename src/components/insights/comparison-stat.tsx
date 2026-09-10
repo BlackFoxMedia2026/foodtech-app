@@ -9,6 +9,15 @@ interface ComparisonStatProps {
   format?: (value: number) => string;
   higherIsBetter?: boolean;
   kind?: "count" | "rate";
+  /**
+   * Perche' questo valore non si puo' dire.
+   *
+   * Serve alle **percentuali**: su pochi casi dicono piu' di quello che sanno,
+   * e su zero casi non dicono niente. Passando questo, il riquadro mostra il
+   * motivo invece del numero — e non mostra un confronto, perche' variare da
+   * una percentuale inventata a un'altra non e' una variazione.
+   */
+  nonDisponibile?: string;
 }
 
 export function ComparisonStat({
@@ -18,9 +27,20 @@ export function ComparisonStat({
   format,
   higherIsBetter = true,
   kind = "count",
+  nonDisponibile,
 }: ComparisonStatProps) {
   const delta = computeDelta(current, previous, { higherIsBetter, kind });
   const fmt = format ?? String;
+
+  if (nonDisponibile) {
+    return (
+      <div className="rounded-md border p-3">
+        <p className="t-etichetta">{label}</p>
+        <p className="mt-1 text-display text-xl">—</p>
+        <p className="text-xs text-muted-foreground">{nonDisponibile}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-md border p-3">
