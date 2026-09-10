@@ -282,6 +282,26 @@ sono scelte: con **zero** si usa il plurale, come si dice in italiano («0
 avvisati»); con un valore **non numerico** — «3/17 tavoli» — resta il plurale,
 perché su una frazione la coppia non ha senso.
 
+**La Regola della Freccia e del Colore** (10 settembre). In un confronto fra
+periodi ci sono **due fatti**, e vanno mostrati con due segni diversi:
+
+- la **freccia** dice *in che direzione* è andato il numero — viene dal segno
+  della variazione, sempre;
+- il **colore** dice *se è una buona notizia* — sage se lo è, rosso se non lo è.
+
+Schiacciarli in uno fa mentire la scheda. Le assenze salite dal 9% al 12%
+mostravano «▼ 3%», una freccia in giù su un numero salito, perché la freccia
+veniva da «è un bene?» — e la fascia di confronto due centimetri sotto, che
+usava la logica giusta, scriveva «↑ 3 pt». La stessa pagina si contraddiceva.
+
+Un numero **invariato** non ha né freccia né colore: scrive «invariato». E una
+freccia in giù **verde** è corretta: le assenze che scendono sono una buona
+notizia che va giù.
+
+**E i decimali si scrivono in italiano:** «1,6 giri per tavolo», non «1.6». Il
+punto in italiano separa le migliaia, e su una schermata che scrive «3.904,00 €»
+la stonatura si nota (`formatNumber`).
+
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
 servono a dire di che materiale è fatta una superficie, non a decorare.

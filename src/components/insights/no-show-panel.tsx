@@ -86,7 +86,15 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
           <div className="riquadro p-3">
             <p className="t-etichetta">Coperti persi</p>
             <p className="mt-1 text-display text-2xl tabular-nums">{report.copertiPersi}</p>
-            <p className="text-xs text-muted-foreground">tavoli tenuti e non usati</p>
+            {/* Il numero somma i **coperti** delle prenotazioni mancate. La riga
+                sotto diceva «tavoli tenuti e non usati», che è un'altra unità:
+                un numero con la base sbagliata sotto è un numero sbagliato.
+                Ora la base è quella vera — da quante prenotazioni arriva. */}
+            <p className="text-xs text-muted-foreground">
+              {report.assenze === 1
+                ? "da una prenotazione andata a vuoto"
+                : `dalle ${report.assenze} prenotazioni andate a vuoto`}
+            </p>
           </div>
 
           <div className="riquadro p-3">

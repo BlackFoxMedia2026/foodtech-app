@@ -2,6 +2,7 @@ import { Info, Timer } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { durataUmana } from "@/lib/durata";
 import { MINIMO_MISURATE, type RotazioneReport } from "@/server/rotazione";
+import { formatNumber } from "@/lib/utils";
 
 /**
  * Quanto stanno a tavola, e quante volte gira un tavolo.
@@ -61,11 +62,26 @@ export function RotazionePanel({ report }: { report: RotazioneReport }) {
               </div>
               <div className="riquadro p-3">
                 <p className="t-etichetta">Giri per tavolo</p>
-                <p className="mt-1 text-display text-2xl tabular-nums">{report.giri ?? "—"}</p>
-                <p className="text-xs text-muted-foreground">
-                  in un giorno di servizio, su {report.tavoliUsati}{" "}
-                  {report.tavoliUsati === 1 ? "tavolo usato" : "tavoli usati"}
+                <p className="mt-1 text-display text-2xl tabular-nums">
+                  {report.giri == null ? "—" : formatNumber(report.giri)}
                 </p>
+                {/*
+                  «— · su 0 tavoli usati» non distingue due cose diverse: «non
+                  ci sono abbastanza sedute» e «nessuna seduta ha un tavolo
+                  segnato». La seconda non è una mancanza di dati, è una cosa
+                  che si può sistemare — e allora si dice come.
+                */}
+                {report.tavoliUsati === 0 ? (
+                  <p className="text-xs text-accent-strong">
+                    Nessuna seduta ha un tavolo segnato: i giri si contano solo accomodando dalla
+                    sala o dalla lista d&apos;attesa.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    in un giorno di servizio, su {report.tavoliUsati}{" "}
+                    {report.tavoliUsati === 1 ? "tavolo usato" : "tavoli usati"}
+                  </p>
+                )}
               </div>
             </div>
 

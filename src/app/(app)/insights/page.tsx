@@ -67,7 +67,11 @@ function computeRange(searchParams: { range?: string; from?: string; to?: string
 
 function trendFor(current: number, previous: number, opts?: { higherIsBetter?: boolean; kind?: "count" | "rate" }) {
   const delta = computeDelta(current, previous, opts);
-  return delta.available ? { value: delta.value, positive: delta.isGood ?? true } : undefined;
+  /* `value` porta il **segno**, che diventa la freccia; `isGood` porta il
+     giudizio, che diventa il colore. Prima `positive` riceveva `isGood` e la
+     scheda ne ricavava la freccia: su ogni metrica «meglio se scende» la
+     freccia puntava dalla parte sbagliata. */
+  return delta.available ? { value: delta.value, buono: delta.isGood } : undefined;
 }
 
 function DeltaBadge({ current, previous }: { current: number; previous: number }) {

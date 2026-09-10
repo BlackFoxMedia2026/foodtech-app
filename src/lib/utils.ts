@@ -28,6 +28,18 @@ export function formatCurrency(cents: number, currency = "EUR", locale = "it-IT"
   }).format(cents / 100);
 }
 
+/**
+ * Un numero decimale come lo scrive l'italiano: la virgola.
+ *
+ * «1.6 giri per tavolo» in italiano si legge male — il punto è il separatore
+ * delle **migliaia**, e su una schermata che scrive «3.904,00 €» due centimetri
+ * più su è una stonatura che si nota. Restituisce al massimo `decimali` cifre
+ * dopo la virgola, senza zeri inutili in fondo.
+ */
+export function formatNumber(value: number, decimali = 1, locale = "it-IT") {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: decimali }).format(value);
+}
+
 export function formatDateTime(date: Date | string, locale = "it-IT") {
   return new Intl.DateTimeFormat(locale, {
     weekday: "short",
