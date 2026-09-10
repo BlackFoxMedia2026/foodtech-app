@@ -1,7 +1,7 @@
 import type { BookingStatus, BookingSource } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 
-type Tono = "neutral" | "gold" | "success" | "warning" | "danger" | "info" | "carbon";
+type Tono = "neutral" | "gold" | "success" | "success-soft" | "warning" | "danger" | "info";
 
 /**
  * I sette stati, in ordine di come una prenotazione li attraversa.
@@ -15,7 +15,7 @@ const STATUS: Record<BookingStatus, { label: string; tone: Tono; conclusa?: true
   PENDING: { label: "In attesa", tone: "warning" },
   CONFIRMED: { label: "Confermata", tone: "info" },
   ARRIVED: { label: "Arrivato", tone: "gold" },
-  SEATED: { label: "Seduto", tone: "carbon" },
+  SEATED: { label: "Seduto", tone: "success-soft" },
   COMPLETED: { label: "Completata", tone: "success", conclusa: true },
   CANCELLED: { label: "Cancellata", tone: "neutral", conclusa: true },
   NO_SHOW: { label: "No-show", tone: "danger", conclusa: true },
