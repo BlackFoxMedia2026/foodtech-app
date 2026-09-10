@@ -189,30 +189,44 @@ sotto soglia.
 
 **La Regola della Pillola in Tinta** (decisa il 10 settembre). Ogni tono del
 `Badge` è una **tinta del tema con il testo crema sopra**, e nessuno viene da
-fuori tavolozza. I toni non sono sette colori diversi: sono tre famiglie a
-intensità diverse, più il quieto.
+fuori tavolozza.
 
 | tono | tinta | dice | contrasto |
 |---|---|---|---:|
-| `warning` | accento 20% | **avvisa** — l'unico che chiama | 7,09 |
+| `warning` | accento 50% | **avvisa** — l'unico che chiama | 5,12 |
 | `gold` | accento 10% | c'è, ma non chiede niente | 7,80 |
-| `success` | sage 20% | è andata bene | 6,50 |
+| `info` | solo contorno | il più silenzioso | 8,54 |
+| `success-soft` | sage 20% | sta andando bene, adesso | 6,50 |
+| `success` | sage 40% | è andata bene | 4,94 |
 | `danger` | destructive 25% | è andata male | 8,53 |
-| `carbon` | crema 20% | neutro solido, presente | 5,12 |
-| `info` | crema 5% | neutro silenzioso | 7,53 |
 | `neutral` | tenue 5%, testo tenue | spento | 4,71 |
 
-Due avvertenze che costano care:
+Fuori restano solo `pearl` e `carbon`, i due toni di **materiale**: la
+madreperla e la carta nera dei livelli di fedeltà. Dicono di che cosa è fatta
+la tessera, non che cosa sta accadendo — per questo possono stare fuori
+tavolozza.
+
+Tre avvertenze, e tutte tre sono costate un giro:
 
 1. **Le velature stanno solo sui passi della scala di Tailwind** (5, 10, 15,
    20…). `bg-cream/6` e `bg-accent/22` **non vengono generati**: la classe non
-   esiste, il fondo resta trasparente e non c'è alcun errore da nessuna parte.
-2. **Con sette tinte vicine il fondo distingue poco**: il pallino della pillola
-   porta il resto dell'informazione — pieno finché la prenotazione è viva, ad
-   anello quando è conclusa (`.badge-dot-anello`).
+   esiste, il fondo resta trasparente e non c'è alcun errore da nessuna parte —
+   né dal compilatore, né dal linter, né dalla build. Si scoprono solo
+   cercandole nel CSS costruito.
+2. **Il contrasto misura se il testo si legge, non se lo stato si riconosce.**
+   La prima versione di questa tabella teneva tutte le tinte fra il 5% e il
+   20%: passava ogni soglia, e quattro pillole su sette erano
+   *indistinguibili*. I sette toni devono essere sette **pesi** diversi, non
+   sette sfumature dello stesso verde. Questo si vede solo guardando.
+3. **Un pieno di terracotta non può portare testo.** Crema su accento pieno fa
+   2,99 : 1 e l'inchiostro scuro 4,31: è il motivo per cui `warning` è una
+   velatura al 50% e non un pieno. Sul verde scuro quella velatura vira
+   all'ottone più che al terracotta — è il prezzo, ed è quello che la rende
+   l'unica pillola su cui l'occhio cade.
 
-L'unica eccezione resta `pearl`, la madreperla dei livelli di fedeltà: è un
-**materiale**, non un significato, e per questo può stare fuori tavolozza.
+E il fondo non è tutto: **il pallino porta il resto dell'informazione** — pieno
+finché la prenotazione è viva, ad anello quando è conclusa
+(`.badge-dot-anello`).
 
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:

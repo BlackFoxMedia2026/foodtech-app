@@ -2118,9 +2118,20 @@ doveva togliere. Rifatta con soli colori del tema, e applicata ai **toni del
 componente** invece che alla sola mappa delle prenotazioni — così esce dalla
 tavolozza estranea anche nei pagamenti, nelle campagne e nei contratti.
 
-Sette toni, tre famiglie a intensità diverse più il quieto, il peggiore a
-**4,71 : 1**: la tabella sta in `DESIGN.md`, «La Regola della Pillola in
-Tinta».
+Sette toni, il peggiore a **4,71 : 1**: la tabella sta in `DESIGN.md`, «La
+Regola della Pillola in Tinta».
+
+**E poi le ho guardate, e la prima versione era da rifare.** Passava ogni
+soglia — e quattro pillole su sette erano *indistinguibili*: «In attesa»,
+«Confermata», «Arrivato» e «Seduto» erano quattro pastiglie verdi identiche,
+perché le avevo tenute tutte fra il 5% e il 20% di velatura. Lo stato che
+chiede di agire non si distingueva da quello più normale del servizio.
+
+Il contrasto misura se il **testo si legge**, non se lo **stato si riconosce**:
+sono due cose diverse, e la seconda non la misura nessuno script. Rifatte come
+sette **pesi** invece che sette sfumature dello stesso verde — terracotta piena
+/ solo contorno / terracotta accennata / verde leggero / verde pieno / spento /
+rosso — e adesso l'occhio cade su «In attesa», che è il punto.
 
 **Due cose trovate strada facendo:**
 
