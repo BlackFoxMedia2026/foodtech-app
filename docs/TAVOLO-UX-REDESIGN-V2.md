@@ -2106,7 +2106,37 @@ prima.**
    il motivo per cui i riquadri d'avvertimento rifatti (accento tenue + testo
    crema) sono corretti, mentre un numero «accento su accento» non lo era.
 
-**E la ragione per cui le pillole di stato restano come sono:** i loro fondi
+### Le pillole di stato: scelta la «strada B» (10 settembre)
+
+Gli avevo preparato tre varianti affiancate, con il contrasto misurato di
+ciascuna pillola. Luca ha scelto la **B — ogni tono è una tinta del tema con
+il testo crema sopra**, contro la C che consigliavo io.
+
+E la B come l'avevo disegnata aveva un difetto mio: per «Confermata» ci avevo
+messo un **azzurro**, cioè esattamente il colore fuori tavolozza che la B
+doveva togliere. Rifatta con soli colori del tema, e applicata ai **toni del
+componente** invece che alla sola mappa delle prenotazioni — così esce dalla
+tavolozza estranea anche nei pagamenti, nelle campagne e nei contratti.
+
+Sette toni, tre famiglie a intensità diverse più il quieto, il peggiore a
+**4,71 : 1**: la tabella sta in `DESIGN.md`, «La Regola della Pillola in
+Tinta».
+
+**Due cose trovate strada facendo:**
+
+1. **Sei velature su otto non esistevano.** `bg-cream/6`, `bg-accent/22`,
+   `bg-destructive/24`… Tailwind genera solo i passi della sua scala (5, 10,
+   15, 20…): le altre classi non vengono emesse, il fondo resta trasparente e
+   **non c'è alcun errore**. Le ho scoperte solo cercandole nel CSS costruito,
+   una per una.
+2. **«Cancellata» era sotto soglia da sempre** (4,33 : 1) e nessuna sonda
+   l'aveva mai vista, perché nelle schermate misurate non c'erano prenotazioni
+   cancellate. Il fondo di quel tono è una velatura *del colore del testo*:
+   più è spessa, meno contrasto resta, e quanto ne resta dipende da ciò che
+   eredita. Ora il colore è dichiarato e la sonda ha un **banco** che rende
+   tutti i toni a mano, dati o non dati.
+
+**Perché la misura precedente diceva che andavano bene:** i loro fondi
 chiari con testo scuro fanno 4,84–5,72 : 1, cioè **passano**. Trasformarle in
 tinte del tema con il colore come testo le porterebbe a 2,07–3,36 — un
 peggioramento. Se si vuole toglierle dalla tavolozza esterna, la strada

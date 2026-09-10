@@ -383,6 +383,14 @@
     content: "";
     @apply mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current;
   }
+  /* Con sette tinte del tema il fondo da solo distingue poco: il pallino porta
+     il resto dell'informazione. Pieno = la prenotazione è ancora in corso,
+     anello = è conclusa (completata, cancellata, no-show). Scritta subito dopo
+     `.badge-dot` perché ha la stessa specificità: vince l'ultima. */
+  .badge-dot-anello::before {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px currentColor;
+  }
   .dropdown-content {
     transform-origin: var(--radix-dropdown-menu-content-transform-origin);
     opacity: 0;

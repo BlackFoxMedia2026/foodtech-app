@@ -17,7 +17,7 @@
  * Uso:  BASE=http://localhost:3100 OUT=/tmp/contrasto.json node scripts/audit-contrasto.mjs
  */
 import { chromium } from "playwright";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const BASE = process.env.BASE ?? "https://foodtech-app.vercel.app";
 const SCHERMATE = [
@@ -35,7 +35,7 @@ const MISURA = () => {
   const sopra = (f, d) => { const a = f[3]; return [0, 1, 2].map((i) => Math.round(f[i] * a + d[i] * (1 - a))); };
   const tutti = [...document.querySelectorAll("body *")];
 
-  const buoni = [], incerti = [];
+  const buoni = [], incerti = [], spenti = [];
   for (const el of tutti) {
     const testo = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(" ").trim();
     if (!testo) continue;
@@ -69,6 +69,11 @@ const MISURA = () => {
       if (haFondo && c.visibility !== "hidden" && Number(c.opacity) > 0) { dietro = `${n.tagName}.${(n.className || "").toString().slice(0, 60)}`; break; }
     }
 
+    /** I controlli disattivati sono esenti (WCAG 1.4.3 esclude i componenti
+     *  inattivi): non sono difetti, ma non sono nemmeno leggibili — vanno in
+     *  un secchio a parte, non nascosti. */
+    const disattivato = !!el.closest("[disabled], [aria-disabled='true'], fieldset[disabled]");
+
     const px = parseFloat(s.fontSize);
     const grande = px >= 24 || (px >= 18.66 && Number(s.fontWeight) >= 700);
     const soglia = grande ? 3 : 4.5;
@@ -76,10 +81,45 @@ const MISURA = () => {
     const v = Math.round(rap(primo, bg) * 100) / 100;
     const voce = { testo: testo.slice(0, 70), rapporto: v, soglia, colore: s.color, fondo: `rgb(${bg.join(", ")})`, px: Math.round(px), peso: s.fontWeight, classi: (el.className || "").toString().slice(0, 110) };
     if (v >= soglia) continue;
-    if (gradiente || dietro) incerti.push({ ...voce, motivo: gradiente ? `gradiente — ${gradiente}` : `dipinto dietro — ${dietro}` });
+    if (disattivato) spenti.push(voce);
+    else if (gradiente || dietro) incerti.push({ ...voce, motivo: gradiente ? `gradiente — ${gradiente}` : `dipinto dietro — ${dietro}` });
     else buoni.push(voce);
   }
-  return { buoni, incerti };
+  return { buoni, incerti, spenti };
+};
+
+/** I toni del badge, letti dal componente: così il banco non va fuori sincrono. */
+const toniDelBadge = () => {
+  const src = readFileSync(new URL("../src/components/ui/badge.tsx", import.meta.url), "utf8");
+  const blocco = src.match(/tone:\s*\{([\s\S]*?)\n\s{6}\}/);
+  if (!blocco) throw new Error("mappa dei toni non trovata in badge.tsx: l'audit dei toni va aggiornato");
+  const base = src.match(/cva\(\s*\n?\s*"([^"]+)"/);
+  const voci = [...blocco[1].matchAll(/^\s*(?:\/\*[\s\S]*?\*\/\s*)?([a-z]+):\s*"([^"]*)"/gm)];
+  return { base: base ? base[1] : "", toni: voci.map((m) => ({ nome: m[1], classi: m[2] })) };
+};
+
+/**
+ * Gli stati rari non compaiono nelle schermate se nei dati non ci sono: la
+ * pillola «Cancellata» era sotto soglia da sempre e nessuna sonda l'aveva mai
+ * incontrata. Questo banco rende OGNI tono dentro una scheda vera, con il CSS
+ * vero, così l'assenza di dati non diventa assenza di difetti.
+ */
+const BANCO = ({ base, toni }) => {
+  const scheda = document.createElement("div");
+  scheda.className = "surface riquadro";
+  scheda.style.cssText = "position:fixed;left:8px;top:8px;z-index:99999;padding:16px;display:flex;flex-direction:column;gap:8px";
+  scheda.setAttribute("data-banco", "1");
+  for (const t of toni) {
+    const riga = document.createElement("div");
+    const p = document.createElement("span");
+    p.className = `${base} ${t.classi}`;
+    p.textContent = t.nome;
+    p.setAttribute("data-tono", t.nome);
+    riga.appendChild(p);
+    scheda.appendChild(riga);
+  }
+  document.body.appendChild(scheda);
+  return toni.length;
 };
 
 const b = await chromium.launch();
@@ -96,10 +136,19 @@ for (const [nome, via] of SCHERMATE) {
   await p.goto(`${BASE}${via}`, { waitUntil: "domcontentloaded" }).catch(() => {});
   await p.waitForTimeout(2500);
   tutto[nome] = await p.evaluate(MISURA);
-  const { buoni, incerti } = tutto[nome];
-  console.log(`${buoni.length ? "❌" : "✅"} ${nome.padEnd(16)} ${buoni.length} certi · ${incerti.length} da guardare`);
+  const { buoni, incerti, spenti } = tutto[nome];
+  console.log(`${buoni.length ? "❌" : "✅"} ${nome.padEnd(16)} ${buoni.length} certi · ${incerti.length} da guardare · ${spenti.length} disattivati (esenti)`);
 }
-writeFileSync(process.env.OUT, JSON.stringify(tutto, null, 2));
-const c = Object.values(tutto).flatMap((x) => x.buoni).length, i = Object.values(tutto).flatMap((x) => x.incerti).length;
-console.log(`\nCERTI sotto soglia: ${c}   DA GUARDARE: ${i}`);
+// il banco dei toni: misurato una volta, su una schermata qualsiasi
+const mappa = toniDelBadge();
+await p.evaluate(BANCO, mappa);
+await p.waitForTimeout(400);
+const daBanco = (await p.evaluate(MISURA)).buoni.filter((x) => mappa.toni.some((t) => t.nome === x.testo));
+console.log(`\n--- banco dei toni del Badge (${mappa.toni.length} toni resi a mano, dati o non dati) ---`);
+if (!daBanco.length) console.log("✅ tutti i toni sopra soglia");
+for (const x of daBanco) console.log(`❌ tono «${x.testo}» ${x.rapporto} : 1 (serve ${x.soglia})  ${x.colore} su ${x.fondo}`);
+
+writeFileSync(process.env.OUT, JSON.stringify({ schermate: tutto, toni: daBanco }, null, 2));
+const conta = (k) => Object.values(tutto).flatMap((x) => x[k]).length;
+console.log(`\nCERTI sotto soglia: ${conta("buoni") + daBanco.length}   DA GUARDARE: ${conta("incerti")}   DISATTIVATI (esenti): ${conta("spenti")}`);
 await b.close();
