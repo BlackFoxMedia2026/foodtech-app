@@ -76,7 +76,12 @@ export function TodayTimeline({ bookings }: { bookings: Row[] }) {
               <span className={cn("z-10 h-2.5 w-2.5 shrink-0 rounded-full", DOT_TONE[status.tone])} aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-card-foreground">{name}</p>
-                <p className="truncate text-xs text-card-foreground/65">
+                {/* Questa riga va a capo: dice «Tavolo da assegnare», cioè la
+                    cosa su cui si agisce, e tagliata a 12px sul telefono ne
+                    perdeva la fine. Il nome sopra resta `truncate` per
+                    sicurezza sui nomi molto lunghi — lì la parola dello stato
+                    è già stata togliata per fargli spazio. */}
+                <p className="text-xs text-card-foreground/65">
                   {b.partySize} {b.partySize === 1 ? "persona" : "persone"} · {b.table ? `Tavolo ${b.table.label}` : "Tavolo da assegnare"}
                 </p>
               </div>
