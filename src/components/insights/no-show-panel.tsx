@@ -213,7 +213,7 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
         </div>
 
         {/*
-          **La terza riga** (§16 del brief): cosa si puo' fare.
+          **La terza riga** (§16 del brief): cosa si può fare.
 
           Il quadro diceva cosa è successo — quante assenze, quanto sono
           costate, in che giorni — e su cosa era misurato. Mancava il gesto, e

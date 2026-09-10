@@ -224,17 +224,17 @@ export default async function InsightsPage({
         />
         {/*
           Queste tre sono **percentuali**, e una percentuale su pochi casi dice
-          piu' di quello che sa: una prenotazione mancata su una sola fa
-          «100% di assenze». Con zero prenotazioni scrivevano «0%», cioe'
+          più di quello che sa: una prenotazione mancata su una sola fa
+          «100% di assenze». Con zero prenotazioni scrivevano «0%», cioè
           «abbiamo misurato zero assenze» dove non c'era niente da misurare.
 
-          La regola era gia' scritta e applicata al pannello delle assenze, in
+          La regola era già scritta e applicata al pannello delle assenze, in
           fondo a questa stessa pagina; queste tre schede la ignoravano. Ora
           vive in `lib/quota.ts` e la rispettano entrambe.
 
           Anche il confronto col periodo prima si mostra solo se **entrambi** i
           periodi hanno una base: variare da una percentuale inventata a
-          un'altra non e' una variazione.
+          un'altra non è una variazione.
         */}
         <StatCard
           label="Tasso completamento"

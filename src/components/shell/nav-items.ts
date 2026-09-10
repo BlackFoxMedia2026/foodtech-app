@@ -81,7 +81,7 @@ export const PRIMARY_NAV: NavItem[] = [
 
 export const SECONDARY_NAV: NavItem[] = [
   // I camerieri si configurano prima del servizio, non durante: da qui in poi
-  // e' lavoro da ufficio, e la barra ha spazio per sei voci, non per sette.
+  // è lavoro da ufficio, e la barra ha spazio per sei voci, non per sette.
   { href: "/waiters", label: "Camerieri", icon: UserRound, gruppo: "locale" },
   { href: "/menu", label: "Menu", icon: UtensilsCrossed, gruppo: "locale" },
   { href: "/experiences", label: "Esperienze", icon: Sparkles, gruppo: "locale" },

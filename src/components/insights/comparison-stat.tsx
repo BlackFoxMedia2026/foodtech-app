@@ -10,12 +10,12 @@ interface ComparisonStatProps {
   higherIsBetter?: boolean;
   kind?: "count" | "rate";
   /**
-   * Perche' questo valore non si puo' dire.
+   * Perche' questo valore non si può dire.
    *
-   * Serve alle **percentuali**: su pochi casi dicono piu' di quello che sanno,
+   * Serve alle **percentuali**: su pochi casi dicono più di quello che sanno,
    * e su zero casi non dicono niente. Passando questo, il riquadro mostra il
-   * motivo invece del numero — e non mostra un confronto, perche' variare da
-   * una percentuale inventata a un'altra non e' una variazione.
+   * motivo invece del numero — e non mostra un confronto, perché variare da
+   * una percentuale inventata a un'altra non è una variazione.
    */
   nonDisponibile?: string;
 }
