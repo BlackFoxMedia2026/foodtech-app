@@ -38,7 +38,7 @@ const FUTURO_GIORNI = 14;
 const FIRST = ["Lorenzo", "Giulia", "Matteo", "Sofia", "Andrea", "Camilla", "Tommaso", "Chiara", "Federico", "Alessia", "Marco", "Beatrice", "Riccardo", "Elena", "Davide", "Martina"];
 const LAST = ["Ferri", "Conti", "Greco", "Russo", "Marini", "Bianchi", "De Luca", "Romano", "Esposito", "Ricci", "Galli", "Moretti", "Costa", "Vitale"];
 const NOTES = [
-  "Prefer table near the window",
+  "Preferisce un tavolo vicino alla finestra",
   "Allergico ai crostacei",
   "Compleanno della moglie",
   "Cliente abituale dello chef",
