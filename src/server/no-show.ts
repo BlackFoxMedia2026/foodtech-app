@@ -1,4 +1,9 @@
 import { db } from "@/lib/db";
+/* La soglia vive in `lib/quota.ts`: la usano anche le pagine che decidono
+   se mostrare una percentuale. Due costanti con lo stesso valore sono due
+   costanti che un giorno divergono. */
+import { MINIMO_PER_QUOTA } from "@/lib/quota";
+export { MINIMO_PER_QUOTA };
 
 /**
  * Quanto costano le assenze.
@@ -23,8 +28,6 @@ import { db } from "@/lib/db";
  * «50% di assenze», che è vero e non significa niente.
  */
 
-/** Sotto questo numero di prenotazioni una percentuale è rumore. */
-export const MINIMO_PER_QUOTA = 10;
 
 const GIORNI = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 
