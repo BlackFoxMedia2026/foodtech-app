@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { accorda, type Parola } from "@/lib/accordo";
 
 /**
  * Una cella della fascia dei numeri, quella che si guarda di sfuggita mentre
@@ -16,6 +17,11 @@ import { cn } from "@/lib/utils";
  *
  * Un numero senza la sua base non è un numero, e su questo prodotto è una
  * regola scritta: se lo spazio non basta, si prende una riga in più.
+ *
+ * **E la base concorda col numero.** Etichetta e nota accettano anche la
+ * coppia `[singolare, plurale]`: «1 confermati · stanno arrivando» non è
+ * italiano, e un prodotto che lo scrive sembra fatto da una macchina. Dove la
+ * parola non cambia («coperti», «entro 60 min») si passa una stringa sola.
  */
 export function CellaNumero({
   icona: Icona,
@@ -26,13 +32,15 @@ export function CellaNumero({
   className,
 }: {
   icona: LucideIcon;
-  etichetta: string;
+  etichetta: Parola;
   valore: number | string;
   /** La base del numero: «persone», «coperti», «entro 60 min». */
-  nota?: string;
+  nota?: Parola;
   allarme?: boolean;
   className?: string;
 }) {
+  const etichettaResa = accorda(etichetta, valore);
+  const notaResa = nota === undefined ? undefined : accorda(nota, valore);
   return (
     <div className={cn("flex items-start gap-2 px-3 py-2", className)}>
       <Icona
@@ -44,8 +52,8 @@ export function CellaNumero({
           {valore}
         </p>
         <p className="mt-1 text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">
-          {etichetta}
-          {nota && <span className="normal-case tracking-normal text-tertiary-foreground"> · {nota}</span>}
+          {etichettaResa}
+          {notaResa && <span className="normal-case tracking-normal text-tertiary-foreground"> · {notaResa}</span>}
         </p>
       </div>
     </div>

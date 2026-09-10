@@ -271,6 +271,17 @@ prenotazioni visibili in meno. Ma va scritto perché.
 Lo misura `scripts/audit-leggibilita.mjs`, che segnala ogni testo con i puntini
 e dice **quanta parte se ne vede**: erano 29 su tablet e telefono, ora zero.
 
+**La Regola dell'Accordo** (10 settembre). Una parola che segue un numero
+**concorda** con quel numero: «1 confermati · stanno arrivando» non è italiano,
+e un prodotto che lo scrive sembra fatto da una macchina. Le etichette dei
+contatori erano plurali fissi, e con un solo gruppo in coda si leggeva così.
+
+`lib/accordo.ts` prende una parola sola quando non cambia («coperti», «entro
+60 min») o la coppia `[singolare, plurale]` quando cambia. Due convenzioni, e
+sono scelte: con **zero** si usa il plurale, come si dice in italiano («0
+avvisati»); con un valore **non numerico** — «3/17 tavoli» — resta il plurale,
+perché su una frazione la coppia non ha senso.
+
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
 servono a dire di che materiale è fatta una superficie, non a decorare.
