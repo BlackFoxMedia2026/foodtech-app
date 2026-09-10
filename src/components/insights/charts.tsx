@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
+import { interpola } from "@/lib/colore-leggibile";
 import {
   Bar,
   BarChart,
@@ -62,6 +63,28 @@ export function SlotChart({ data }: { data: { slot: string; covers: number }[] }
 }
 
 const WEEKDAY_ORDER = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+/**
+ * La scala dei coperti resta **scura da un capo all'altro**, e questo non è
+ * estetica: è la ragione per cui i numeri si leggono.
+ *
+ * Prima era una velatura d'oro sul fondo della scheda, dal 15% al 100%, con il
+ * numero in `text-carbon-900` fisso. Una velatura fa viaggiare l'intensità
+ * sulla **luminosità**, che è esattamente ciò di cui ha bisogno anche il testo
+ * sopra: le celle scure avevano numeri a **2,09 : 1**. E non bastava derivare
+ * il colore del testo, perché quella scala attraversa una **fascia morta** fra
+ * il 40% e il 78% in cui *né* il crema *né* l'inchiostro arrivano a 4,5 : 1.
+ *
+ * Così l'intensità viaggia sulla **tinta**: dal verde della scheda a una
+ * terracotta profonda, entrambe scure. Il crema regge su tutta la scala —
+ * 8,54 : 1 in fondo, 5,87 : 1 in cima — e la separazione fra il primo e
+ * l'ultimo gradino è quasi il doppio di quella che aveva la velatura capata.
+ *
+ * Chi cambia l'arrivo della scala deve rimisurare: già a `hsl(24 68% 38%)` il
+ * crema scende a 4,45 e i numeri tornano illeggibili.
+ */
+const SCALA_DA = "#224639";
+const SCALA_A = "#834821";
+
 const SLOT_ORDER = ["12-14", "14-17", "17-19", "19-21", "21-23", "23+"];
 
 export function WeekdayHeatmap({ data }: { data: { weekday: string; slot: string; covers: number }[] }) {
@@ -91,13 +114,13 @@ export function WeekdayHeatmap({ data }: { data: { weekday: string; slot: string
               <div className="flex items-center text-muted-foreground">{weekday}</div>
               {SLOT_ORDER.map((slot) => {
                 const covers = byKey.get(`${weekday}|${slot}`) ?? 0;
-                const alpha = covers === 0 ? 0 : 0.15 + 0.85 * (covers / max);
+                const intensita = covers / max;
                 return (
                   <div
                     key={`${weekday}-${slot}`}
                     title={`${weekday} ${slot}: ${covers} coperti`}
-                    className="flex h-10 items-center justify-center rounded-md font-medium text-carbon-900"
-                    style={{ backgroundColor: covers === 0 ? "hsl(var(--secondary))" : `rgba(201, 162, 90, ${alpha})` }}
+                    className="flex h-10 items-center justify-center font-medium text-cream rounded-md"
+                    style={{ backgroundColor: covers === 0 ? "hsl(var(--secondary))" : interpola(SCALA_DA, SCALA_A, intensita) }}
                   >
                     {covers > 0 ? covers : ""}
                   </div>
@@ -110,8 +133,8 @@ export function WeekdayHeatmap({ data }: { data: { weekday: string; slot: string
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span>Meno coperti</span>
         <div className="flex h-3 w-24 overflow-hidden rounded-full">
-          {[0.15, 0.35, 0.55, 0.75, 1].map((a) => (
-            <div key={a} className="flex-1" style={{ backgroundColor: `rgba(201, 162, 90, ${a})` }} />
+          {[0, 0.25, 0.5, 0.75, 1].map((q) => (
+            <div key={q} className="flex-1" style={{ backgroundColor: interpola(SCALA_DA, SCALA_A, q) }} />
           ))}
         </div>
         <span>Più coperti</span>

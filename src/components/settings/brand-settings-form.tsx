@@ -115,7 +115,7 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettingsInitial }
             <CardDescription>Usati per bottoni, accenti e materiali brandizzati.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ColorField label="Colore principale" value={primaryColor} onChange={setPrimaryColor} />
+            <ColorField label="Colore principale" value={primaryColor} onChange={setPrimaryColor} portaTesto />
             <ColorField label="Colore secondario (opzionale)" value={secondaryColor} onChange={setSecondaryColor} placeholder="#B6B6B6" />
             <div className="space-y-1.5">
               <Label>Stile tipografico (opzionale)</Label>

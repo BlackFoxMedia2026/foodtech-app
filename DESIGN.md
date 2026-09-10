@@ -228,6 +228,27 @@ E il fondo non è tutto: **il pallino porta il resto dell'informazione** — pie
 finché la prenotazione è viva, ad anello quando è conclusa
 (`.badge-dot-anello`).
 
+**La Regola del Colore che Porta un Numero** (10 settembre). Quando un fondo
+**varia** e sopra ci va del testo, il colore del testo non si scrive: si
+**deriva** (`lib/colore-leggibile.ts`). Due casi, e sono diversi:
+
+1. **Il fondo lo scegli tu, e il testo lo calcola il prodotto.** Il colore del
+   marchio scelto dal ristoratore finisce sul pulsante «Prenota» dei suoi
+   clienti: `testoSu(colore)` restituisce crema o inchiostro, quello che si
+   legge meglio. E quando **nessuno dei due** arriva a 4,5 : 1, glielo si dice
+   mentre sceglie, invece di lasciarlo scoprire ai suoi clienti.
+2. **Una scala d'intensità non può essere una velatura.** Una velatura fa
+   viaggiare l'intensità sulla **luminosità**, che è esattamente ciò di cui ha
+   bisogno anche il numero sopra: alzando l'intensità il numero sparisce. E
+   spesso non basta derivarlo, perché una scala che va dal fondo scuro a un
+   colore chiaro attraversa una **fascia morta** — su verde scuro, la velatura
+   d'oro fra il 40% e il 78% non regge *né* il crema *né* l'inchiostro.
+   La scala va fatta **fra due colori entrambi scuri**, così l'intensità
+   viaggia sulla tinta e un solo colore di testo basta: la mappa dei coperti va
+   dal verde della scheda a una terracotta profonda (`#224639` → `#834821`), il
+   crema regge da 8,54 a 5,87 : 1, e la separazione fra il primo e l'ultimo
+   gradino è **quasi il doppio** di quella della velatura capata.
+
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
 servono a dire di che materiale è fatta una superficie, non a decorare.
