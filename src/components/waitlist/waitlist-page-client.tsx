@@ -99,9 +99,9 @@ export function WaitlistPageClient({
         <section className="fissa surface grid grid-cols-3 divide-x divide-border riquadro">
           {/* «2 in attesa» accanto a «9 persone in coda» si leggeva come una
               contraddizione: sono gruppi, non persone. Un numero, un nome. */}
-          <CellaNumero icona={ListOrdered} etichetta="Gruppi in attesa" valore={summary.inAttesa} />
-          <CellaNumero icona={Clock} etichetta="Avvisati" valore={summary.avvisati} nota="tavolo tenuto" />
-          <CellaNumero icona={Users} etichetta="Confermati" valore={summary.confermati} nota="stanno arrivando" />
+          <CellaNumero icona={ListOrdered} etichetta={["Gruppo in attesa", "Gruppi in attesa"]} valore={summary.inAttesa} />
+          <CellaNumero icona={Clock} etichetta={["Avvisato", "Avvisati"]} valore={summary.avvisati} nota="tavolo tenuto" />
+          <CellaNumero icona={Users} etichetta={["Confermato", "Confermati"]} valore={summary.confermati} nota={["sta arrivando", "stanno arrivando"]} />
         </section>
       )}
 

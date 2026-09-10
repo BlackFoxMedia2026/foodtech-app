@@ -159,7 +159,7 @@ export function ServiceView({
           icona={Users}
           etichetta="In sala"
           valore={c.copertiPresenti}
-          nota="coperti"
+          nota={["coperto", "coperti"]}
           className="hidden md:flex"
         />
         <CellaNumero
@@ -175,9 +175,9 @@ export function ServiceView({
           etichetta="In ritardo"
           valore={c.inRitardo}
           allarme={c.inRitardo > 0}
-          nota={c.nonArrivate > 0 ? `+${c.nonArrivate} mai arrivate` : undefined}
+          nota={c.nonArrivate > 0 ? `+${c.nonArrivate} mai ${c.nonArrivate === 1 ? "arrivata" : "arrivate"}` : undefined}
         />
-        <CellaNumero icona={ListOrdered} etichetta="In attesa" valore={c.personeInAttesa} nota="persone" />
+        <CellaNumero icona={ListOrdered} etichetta="In attesa" valore={c.personeInAttesa} nota={["persona", "persone"]} />
         <CellaNumero
           icona={UserCheck}
           etichetta="Walk-in"
