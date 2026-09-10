@@ -77,6 +77,11 @@ const PUBBLICHE = [
   ["portale-wifi-cliente", "/wifi/aurora-bistrot"],
   ["prenota", "/book?venue=aurora-bistrot"],
   ["link-scaduto", "/b/token-non-valido"],
+  /* La conferma della prenotazione: la pagina che il cliente vede subito dopo
+     aver prenotato. Non era mai stata misurata perché serve un identificativo
+     — e infatti era rimasta all'epoca precedente del prodotto, con il titolo
+     quasi nero su verde scuro e il riferimento che sbordava dalla pagina. */
+  ["conferma-prenotazione", "/book/confirmation?bookingId=:prenotazione"],
 ];
 
 /** I tre schermi su cui si lavora davvero. */
@@ -266,7 +271,9 @@ for (const [schermo, width, height] of SCHERMI) {
     console.log(`${r.buoni.length ? "❌" : "✅"} ${nome.padEnd(26)} ${r.buoni.length} certi · ${r.incerti.length} da guardare · ${r.spenti.length} esenti · ${r.tagliati.length} tagliati`);
   }
 
-  for (const [nome, via] of PUBBLICHE) {
+  for (const [nome, viaGrezza] of PUBBLICHE) {
+    const via = viaGrezza.replace(/:(\w+)/g, (_, k) => ID[k] ?? "");
+    if (viaGrezza.includes(":") && !via.split("=").pop()) { saltate.push(`${schermo}/pubblica-${nome}`); console.log(`⊘ ${("(pubblica) " + nome).padEnd(26)} saltata: nessun identificativo`); continue; }
     const pub = await (await b.newContext({ viewport: { width, height }, locale: "it-IT", timezoneId: "Europe/Rome" })).newPage();
     await pub.goto(`${BASE}${via}`, { waitUntil: "domcontentloaded" }).catch(() => {});
     await pub.waitForTimeout(2400);

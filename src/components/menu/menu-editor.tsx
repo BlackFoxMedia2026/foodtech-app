@@ -450,7 +450,7 @@ export function MenuEditor({
                               Prima era «Allergeni: Latte · Vegetariano, Senza
                               glutine»: i due elenchi erano attaccati sotto
                               l'unica etichetta «Allergeni», e vegetariano non
-                              e' un allergene. Su una faccenda dove la parola
+                              è un allergene. Su una faccenda dove la parola
                               sbagliata conta, la forma la decide la pagina
                               pubblica, non l'editor.
                             */}

@@ -70,7 +70,7 @@ export type Recidivo = {
  *
  * È la **terza riga** che mancava all'analisi (§16 del brief): il quadro
  * diceva cosa è successo — quante assenze, quanto sono costate, in che giorni —
- * e su cosa era misurato, ma non cosa si puo' fare. Questo si puo' fare: una
+ * e su cosa era misurato, ma non cosa si può fare. Questo si può fare: una
  * telefonata il giorno prima, o una conferma richiesta.
  *
  * Guarda **avanti**, quindi non dipende dal periodo scelto per l'analisi: le

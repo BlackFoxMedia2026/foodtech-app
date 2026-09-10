@@ -166,8 +166,12 @@ export function PublicBookingForm({
       )}
 
       {error && (
-        <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
-          <AlertCircle className="h-5 w-5" />
+        /* Era `bg-red-50` con `text-red-800`: un riquadro bianco su una
+           pagina verde scuro, e tre rossi che non stanno nella tavolozza.
+           Ora è la tinta del distruttivo con il crema sopra, come le pillole
+           di stato — e questa è una pagina che vede il cliente. */
+        <div className="flex items-start gap-3 rounded-md border border-destructive/50 bg-destructive/25 p-3 text-cream">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
           <span className="text-sm">{error}</span>
         </div>
       )}
@@ -176,7 +180,7 @@ export function PublicBookingForm({
         Prenotazione presso <strong>{venueName}</strong>
       </p>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="date">Data *</Label>
           <Input
@@ -292,7 +296,7 @@ export function PublicBookingForm({
         <p className="text-xs text-muted-foreground">Servono a confermarti il tavolo.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="firstName">Nome *</Label>
           <Input id="firstName" name="firstName" required placeholder="Mario" />

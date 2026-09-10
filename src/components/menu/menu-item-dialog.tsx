@@ -57,7 +57,7 @@ export function MenuItemDialog({
   /**
    * Il margine dei numeri che sono nel modulo adesso.
    *
-   * `null` quando uno dei due manca o non e' un numero: un'anteprima su un
+   * `null` quando uno dei due manca o non è un numero: un'anteprima su un
    * campo mezzo scritto direbbe cose che cambiano a ogni tasto.
    */
   const anteprimaMargine = (() => {
@@ -165,9 +165,9 @@ export function MenuItemDialog({
               />
               {/* Il margine si vede **mentre si scrive**, non dopo aver
                   salvato. Il costo lo digita una persona su un tastierino, e
-                  un costo piu' alto del prezzo e' un piatto venduto in
-                  perdita che finisce nelle analisi del food cost: se e' un
-                  errore di battitura va detto adesso, se e' voluto resta
+                  un costo più alto del prezzo è un piatto venduto in
+                  perdita che finisce nelle analisi del food cost: se è un
+                  errore di battitura va detto adesso, se è voluto resta
                   scritto e nessuno si allarma. */}
               {anteprimaMargine ? (
                 <p
