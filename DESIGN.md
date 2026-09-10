@@ -326,6 +326,22 @@ E le due assenze si dicono in modo diverso, perché sono diverse:
 Anche il **confronto** col periodo prima sparisce quando una delle due basi
 manca: variare da una percentuale inventata a un'altra non è una variazione.
 
+**La Regola dell'Editor che Mostra il Pubblico.** Dove il locale **scrive**
+una cosa che il cliente **legge**, l'editor la mostra con le stesse parole e
+nello stesso ordine della pagina pubblica. Nella carta l'editor scriveva
+«Allergeni: Latte · Vegetariano, Senza glutine» — i due elenchi attaccati sotto
+un'unica etichetta, e vegetariano non è un allergene — mentre la pagina del
+cliente scriveva già, giustamente, «Vegetariano · Senza glutine — Contiene:
+Latte». Su una materia dove la parola sbagliata conta, la forma la decide la
+pagina pubblica.
+
+**E un numero in perdita non si scrive come uno che guadagna.** Il margine di
+un piatto compariva sempre nello stesso grigio tenue, anche negativo: un piatto
+venduto sotto costo aveva l'aspetto di uno che rende. Il costo lo digita una
+persona su un tastierino, e quel numero finisce nelle analisi del food cost —
+quindi «in perdita 5,00 €» si legge in `destructive-soft`, e il margine si
+vede **mentre si scrive**, non dopo aver salvato (`lib/margine.ts`).
+
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
 servono a dire di che materiale è fatta una superficie, non a decorare.

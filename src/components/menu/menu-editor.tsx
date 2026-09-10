@@ -22,7 +22,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { readApiError } from "@/lib/api-client";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
   ALLERGENI,
   REGIMI,
@@ -39,6 +39,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { fraseMargine, statoMargine } from "@/lib/margine";
 
 /**
  * Il menu, da dentro.
@@ -397,9 +398,24 @@ export function MenuEditor({
                               </span>
                               <span className="tabular-nums">{formatCurrency(i.priceCents, currency)}</span>
                               {!i.available && <Badge tone="warning">Finito</Badge>}
-                              {i.marginPct != null && (
-                                <span className="text-xs text-muted-foreground">
-                                  margine {formatCurrency(i.marginCents!, currency)} · {i.marginPct}%
+                              {/* Un piatto venduto in perdita non si scrive
+                                  nello stesso grigio di uno che rende: qui il
+                                  costo lo digita una persona, e un dito
+                                  sbagliato resta nelle analisi per mesi. */}
+                              {i.marginCents != null && (
+                                <span
+                                  className={cn(
+                                    "text-xs",
+                                    statoMargine(i.marginCents) === "perdita"
+                                      ? "font-medium text-destructive-soft"
+                                      : statoMargine(i.marginCents) === "pari"
+                                        ? "text-accent-strong"
+                                        : "text-muted-foreground",
+                                  )}
+                                >
+                                  {fraseMargine(i.marginCents, i.marginPct, (c) =>
+                                    formatCurrency(c, currency),
+                                  )}
                                 </span>
                               )}
                             </div>
@@ -426,13 +442,25 @@ export function MenuEditor({
                               </p>
                             )}
 
+                            {/*
+                              Nello stesso ordine e con le stesse parole della
+                              pagina che legge il cliente (`/m/[slug]`): qui si
+                              deve vedere **quello che vede lui**.
+
+                              Prima era «Allergeni: Latte · Vegetariano, Senza
+                              glutine»: i due elenchi erano attaccati sotto
+                              l'unica etichetta «Allergeni», e vegetariano non
+                              e' un allergene. Su una faccenda dove la parola
+                              sbagliata conta, la forma la decide la pagina
+                              pubblica, non l'editor.
+                            */}
                             {(i.allergens.length > 0 || i.dietary.length > 0) && (
                               <p className="mt-1 t-nota">
+                                {i.dietary.length > 0 && <>{i.dietary.map(nomeRegime).join(" · ")}</>}
+                                {i.dietary.length > 0 && i.allergens.length > 0 && " — "}
                                 {i.allergens.length > 0 && (
-                                  <>Allergeni: {i.allergens.map(nomeAllergene).join(", ")}</>
+                                  <>Contiene: {i.allergens.map(nomeAllergene).join(", ")}</>
                                 )}
-                                {i.allergens.length > 0 && i.dietary.length > 0 && " · "}
-                                {i.dietary.map(nomeRegime).join(", ")}
                               </p>
                             )}
                           </div>
