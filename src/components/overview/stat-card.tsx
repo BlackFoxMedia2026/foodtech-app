@@ -16,7 +16,20 @@ export function StatCard({
   label: string;
   value: string;
   hint?: string;
-  trend?: { value: number; positive?: boolean };
+  /**
+   * Il confronto col periodo prima.
+   *
+   * Sono **due fatti separati**, e prima erano schiacciati in uno: la freccia
+   * diceva «è un bene?» invece di «in che direzione è andato». Così le assenze
+   * salite dal 9% al 12% mostravano «▼ 3%» — una freccia in giù su un numero
+   * che era salito — mentre la fascia di confronto due centimetri sotto
+   * scriveva «↑ 3 pt». La stessa pagina si contraddiceva.
+   *
+   * Ora: la **freccia** viene dal segno di `value` (dove è andato), il
+   * **colore** da `buono` (se è una buona notizia). Con `value` a zero non si
+   * mostra freccia: non è andato da nessuna parte.
+   */
+  trend?: { value: number; buono?: boolean | null };
   /** Colors the value text (and trend/progress fill). With `fill`, the same tone also fills the whole card instead of just the text. */
   tone?: "accent" | "cream" | "sage" | "brown-medium" | "brown-dark" | "brown-light";
   /** Solidly fills the card with the tone color (caramel → white text, cream/sage → dark forest text) instead of just tinting the value. Reserve for the 1-2 KPIs that should visually dominate the row. */
@@ -76,10 +89,16 @@ export function StatCard({
         <p
           className={cn(
             "mt-3 inline-flex items-center gap-1 font-mono text-xs font-medium",
-            caramelFill || lightFill || brownFill ? valueColor : trend.positive ? "text-sage-strong" : "text-destructive-soft",
+            caramelFill || lightFill || brownFill
+              ? valueColor
+              : trend.buono == null
+                ? labelColor
+                : trend.buono
+                  ? "text-sage-strong"
+                  : "text-destructive-soft",
           )}
         >
-          {trend.positive ? "▲" : "▼"} {Math.abs(trend.value)}%
+          {trend.value === 0 ? "invariato" : `${trend.value > 0 ? "▲" : "▼"} ${Math.abs(trend.value)}%`}
         </p>
       )}
       {typeof progressPct === "number" && (
