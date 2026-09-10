@@ -187,6 +187,33 @@ accento su tinta accento al 15% fa 2,61 : 1; crema sulla stessa tinta fa
 7,80 : 1. Una pillola tinta che ripete il proprio colore nel testo è sempre
 sotto soglia.
 
+**La Regola della Pillola in Tinta** (decisa il 10 settembre). Ogni tono del
+`Badge` è una **tinta del tema con il testo crema sopra**, e nessuno viene da
+fuori tavolozza. I toni non sono sette colori diversi: sono tre famiglie a
+intensità diverse, più il quieto.
+
+| tono | tinta | dice | contrasto |
+|---|---|---|---:|
+| `warning` | accento 20% | **avvisa** — l'unico che chiama | 7,09 |
+| `gold` | accento 10% | c'è, ma non chiede niente | 7,80 |
+| `success` | sage 20% | è andata bene | 6,50 |
+| `danger` | destructive 25% | è andata male | 8,53 |
+| `carbon` | crema 20% | neutro solido, presente | 5,12 |
+| `info` | crema 5% | neutro silenzioso | 7,53 |
+| `neutral` | tenue 5%, testo tenue | spento | 4,71 |
+
+Due avvertenze che costano care:
+
+1. **Le velature stanno solo sui passi della scala di Tailwind** (5, 10, 15,
+   20…). `bg-cream/6` e `bg-accent/22` **non vengono generati**: la classe non
+   esiste, il fondo resta trasparente e non c'è alcun errore da nessuna parte.
+2. **Con sette tinte vicine il fondo distingue poco**: il pallino della pillola
+   porta il resto dell'informazione — pieno finché la prenotazione è viva, ad
+   anello quando è conclusa (`.badge-dot-anello`).
+
+L'unica eccezione resta `pearl`, la madreperla dei livelli di fedeltà: è un
+**materiale**, non un significato, e per questo può stare fuori tavolozza.
+
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
 servono a dire di che materiale è fatta una superficie, non a decorare.

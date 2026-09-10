@@ -1,14 +1,24 @@
 import type { BookingStatus, BookingSource } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 
-const STATUS: Record<BookingStatus, { label: string; tone: "neutral" | "gold" | "success" | "warning" | "danger" | "info" | "carbon" }> = {
-  CONFIRMED: { label: "Confermata", tone: "info" },
+type Tono = "neutral" | "gold" | "success" | "warning" | "danger" | "info" | "carbon";
+
+/**
+ * I sette stati, in ordine di come una prenotazione li attraversa.
+ *
+ * `conclusa` non è un dato in più: è il pallino della pillola. Pieno finché la
+ * prenotazione è viva, ad anello quando è finita — con sette tinte del tema
+ * («strada B») il fondo da solo distingue poco, e il pallino dice a colpo
+ * d'occhio se quella riga è ancora roba di stasera.
+ */
+const STATUS: Record<BookingStatus, { label: string; tone: Tono; conclusa?: true }> = {
   PENDING: { label: "In attesa", tone: "warning" },
+  CONFIRMED: { label: "Confermata", tone: "info" },
   ARRIVED: { label: "Arrivato", tone: "gold" },
   SEATED: { label: "Seduto", tone: "carbon" },
-  COMPLETED: { label: "Completata", tone: "success" },
-  CANCELLED: { label: "Cancellata", tone: "neutral" },
-  NO_SHOW: { label: "No-show", tone: "danger" },
+  COMPLETED: { label: "Completata", tone: "success", conclusa: true },
+  CANCELLED: { label: "Cancellata", tone: "neutral", conclusa: true },
+  NO_SHOW: { label: "No-show", tone: "danger", conclusa: true },
 };
 
 const SOURCE: Record<BookingSource, string> = {
@@ -24,7 +34,7 @@ const SOURCE: Record<BookingSource, string> = {
 export function StatusBadge({ status }: { status: BookingStatus }) {
   const s = STATUS[status];
   return (
-    <Badge tone={s.tone} className="badge-dot">
+    <Badge tone={s.tone} className={s.conclusa ? "badge-dot badge-dot-anello" : "badge-dot"}>
       {s.label}
     </Badge>
   );
