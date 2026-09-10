@@ -1,7 +1,7 @@
 import { AlertTriangle, Cake, CalendarClock, Clock, Info, MapPin, Repeat, Sparkles, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Etichetta } from "@/components/ui/etichetta";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { GuestProfile } from "@/server/guest-intelligence";
 
@@ -101,13 +101,19 @@ export function GuestProfilePanel({
           />
           <Dato
             etichetta="Coperti medi"
-            valore={p.avgPartySize != null ? String(p.avgPartySize) : "—"}
+            valore={p.avgPartySize != null ? formatNumber(p.avgPartySize) : "—"}
             icona={Users}
           />
           <Dato
             etichetta="Anticipo"
-            valore={p.avgLeadTimeDays != null ? `${p.avgLeadTimeDays} gg` : "—"}
-            nota="fra prenotazione e visita"
+            valore={p.avgLeadTimeDays != null ? `${formatNumber(p.avgLeadTimeDays)} gg` : "—"}
+            nota={
+              p.avgLeadTimeDays == null
+                ? "fra prenotazione e visita"
+                : `fra prenotazione e visita, su ${p.avgLeadTimeMeasuredOn} ${
+                    p.avgLeadTimeMeasuredOn === 1 ? "prenotazione" : "prenotazioni"
+                  }`
+            }
             icona={Clock}
           />
           <Dato

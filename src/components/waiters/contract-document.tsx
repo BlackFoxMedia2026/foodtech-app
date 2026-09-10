@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 
 export type ContractDocumentInfo = {
   id: string;
@@ -21,7 +22,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 function formatFileSize(bytes: number) {
   const mb = bytes / (1024 * 1024);
-  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return mb >= 1 ? `${formatNumber(mb)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 function formatKind(mimeType: string) {
