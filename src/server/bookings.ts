@@ -373,6 +373,55 @@ const ARRIVATO_DA: BookingStatus[] = ["ARRIVED", "SEATED", "COMPLETED"];
 const SEDUTO_DA: BookingStatus[] = ["SEATED", "COMPLETED"];
 const CHIUSO_DA: BookingStatus[] = ["COMPLETED", "NO_SHOW", "CANCELLED"];
 
+/**
+ * Se una modifica a una prenotazione richiede di **rivalidare la
+ * disponibilità**.
+ *
+ * Serve quando la modifica può creare un conflitto: spostare l'orario,
+ * allungare la durata, cambiare tavolo o coperti, oppure **riportare in vita**
+ * una prenotazione che il tavolo non lo teneva più — nel frattempo quel posto
+ * può essere stato dato a qualcun altro.
+ *
+ * **Non** serve per un cambio di stato che va avanti su una prenotazione che
+ * il tavolo lo teneva già. Prima contava qualsiasi cambio di stato, e la
+ * conseguenza era una trappola: una prenotazione in uno stato che viola già
+ * una regola — tre persone su un tavolo da due, che in sala si risolve
+ * aggiungendo una sedia — non si poteva più muovere. Segnarla «Arrivato»
+ * rispondeva «Il tavolo T8 ha 2 posti, non bastano per 3 persone», e l'unica
+ * azione che passava era **cancellarla**.
+ *
+ * Ci si finisce dentro senza fare niente di strano: basta che il locale
+ * riduca i posti di un tavolo nella piantina, e ogni prenotazione più grande
+ * su quel tavolo diventa immobile.
+ *
+ * La rotta del Servizio l'aveva già aggirato con `skipAvailabilityCheck`; era
+ * una toppa su una rotta su due, e il posto giusto è questo.
+ */
+export function richiedeVerificaDisponibilita(
+  modifica: {
+    startsAt?: unknown;
+    durationMin?: unknown;
+    partySize?: unknown;
+    tableId?: unknown;
+    status?: BookingStatus;
+  },
+  statoAttuale: BookingStatus,
+): boolean {
+  if (
+    modifica.startsAt !== undefined ||
+    modifica.durationMin !== undefined ||
+    modifica.partySize !== undefined ||
+    modifica.tableId !== undefined
+  ) {
+    return true;
+  }
+  if (modifica.status === undefined) return false;
+  const tenevaIlTavolo = OCCUPYING_STATUSES.includes(
+    statoAttuale as (typeof OCCUPYING_STATUSES)[number],
+  );
+  return !tenevaIlTavolo;
+}
+
 export async function updateBooking(
   venueId: string,
   id: string,
@@ -383,18 +432,9 @@ export async function updateBooking(
   const existing = await db.booking.findFirst({ where: { id, venueId } });
   if (!existing) throw new Error("not_found");
 
-  // Ricontrolla solo quando la modifica può creare un conflitto: spostare l'orario,
-  // allungare la durata, cambiare tavolo o coperti, oppure riportare in vita una
-  // prenotazione annullata. Cambiare le note non richiede alcuna verifica.
-  const touchesAvailability =
-    data.startsAt !== undefined ||
-    data.durationMin !== undefined ||
-    data.partySize !== undefined ||
-    data.tableId !== undefined ||
-    data.status !== undefined;
-
   const nextStatus = data.status ?? existing.status;
   const stillOccupies = OCCUPYING_STATUSES.includes(nextStatus as (typeof OCCUPYING_STATUSES)[number]);
+  const touchesAvailability = richiedeVerificaDisponibilita(data, existing.status);
 
   if (!opts.skipAvailabilityCheck && touchesAvailability && stillOccupies) {
     await assertAvailability(venueId, {

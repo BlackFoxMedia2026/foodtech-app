@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Users, Clock, Phone, Mail, NotebookText } from "lucide-react";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
+import { can } from "@/lib/abilities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LoyaltyPill } from "@/components/guests/loyalty-pill";
@@ -12,9 +13,13 @@ import { StatusBadge, SourceBadge } from "@/components/bookings/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { cosaSapere, etichettaOccasione } from "@/lib/cosa-sapere";
 import { CosaSapere } from "@/components/guests/cosa-sapere";
+import { AzioniStato } from "@/components/bookings/azioni-stato";
 
 export default async function BookingDetail({ params }: { params: { id: string } }) {
   const ctx = await getActiveVenue();
+  /* Le azioni si mostrano solo a chi può farle: l'API chiede `manage_bookings`,
+     e un pulsante che risponde «non puoi» è peggio di un pulsante che non c'è. */
+  const canManage = can(ctx.role, "manage_bookings");
   const item = await db.booking.findFirst({
     where: { id: params.id, venueId: ctx.venueId },
     include: { guest: true, table: true, payments: true },
@@ -39,9 +44,15 @@ export default async function BookingDetail({ params }: { params: { id: string }
           <h1 className="text-display text-3xl">{guestName}</h1>
           <p className="text-sm text-muted-foreground">{formatDateTime(item.startsAt)}</p>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Da un link condiviso questa pagina si poteva leggere e non fare:
+            nessuna azione sulla prenotazione, mentre la lista le aveva. Sono
+            le **stesse** azioni, dallo stesso componente — approvare una
+            prenotazione in attesa è il gesto più frequente che ci sia, e non
+            deve dipendere da come si è arrivati qui. */}
+        <div className="flex flex-wrap items-center gap-2">
           <SourceBadge source={item.source} />
           <StatusBadge status={item.status} />
+          {canManage && <AzioniStato bookingId={item.id} stato={item.status} nome={guestName} />}
         </div>
       </header>
 
