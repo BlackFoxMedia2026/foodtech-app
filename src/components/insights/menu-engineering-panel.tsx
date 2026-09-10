@@ -74,8 +74,8 @@ export function MenuEngineeringPanel({
                   <p className="mt-0.5 text-xs text-muted-foreground">{SPIEGAZIONE_QUADRANTE[q]}</p>
                   <ul className="mt-2 space-y-1 text-sm">
                     {gruppo.map((p) => (
-                      <li key={p.menuItemId ?? p.name} className="flex items-baseline justify-between gap-3">
-                        <span className="min-w-0 truncate">{p.name}</span>
+                      <li key={p.menuItemId ?? p.name} className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                        <span className="min-w-0 break-words">{p.name}</span>
                         <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                           {p.quantita} venduti · {euro(p.margineUnitCents)} a piatto
                         </span>
@@ -102,8 +102,8 @@ export function MenuEngineeringPanel({
             </p>
             <ul className="mt-2 space-y-1 text-sm">
               {dati.esclusi.slice(0, 8).map((e) => (
-                <li key={e.name} className="flex items-baseline justify-between gap-3">
-                  <span className="min-w-0 truncate">{e.name}</span>
+                <li key={e.name} className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                  <span className="min-w-0 break-words">{e.name}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {e.motivo === "senza_costo"
                       ? "costo non dichiarato"

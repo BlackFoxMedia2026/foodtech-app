@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CellaNumero } from "@/components/ui/cella-numero";
 import { useRouter } from "next/navigation";
 import { Clock, ListOrdered, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -98,9 +99,9 @@ export function WaitlistPageClient({
         <section className="fissa surface grid grid-cols-3 divide-x divide-border riquadro">
           {/* «2 in attesa» accanto a «9 persone in coda» si leggeva come una
               contraddizione: sono gruppi, non persone. Un numero, un nome. */}
-          <Stat icon={ListOrdered} label="Gruppi in attesa" value={summary.inAttesa} />
-          <Stat icon={Clock} label="Avvisati" value={summary.avvisati} hint="tavolo tenuto" />
-          <Stat icon={Users} label="Confermati" value={summary.confermati} hint="stanno arrivando" />
+          <CellaNumero icona={ListOrdered} etichetta="Gruppi in attesa" valore={summary.inAttesa} />
+          <CellaNumero icona={Clock} etichetta="Avvisati" valore={summary.avvisati} nota="tavolo tenuto" />
+          <CellaNumero icona={Users} etichetta="Confermati" valore={summary.confermati} nota="stanno arrivando" />
         </section>
       )}
 
@@ -148,28 +149,3 @@ export function WaitlistPageClient({
   );
 }
 
-function Stat({
-  icon: Icon,
-  label,
-  value,
-  hint,
-}: {
-  icon: typeof Clock;
-  label: string;
-  value: number;
-  hint?: string;
-}) {
-  /** Una cella di una fascia, come i numeri del Servizio: sans e tabellari. */
-  return (
-    <div className="flex items-center gap-2 px-3 py-2">
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <div className="min-w-0">
-        <p className="text-lg font-semibold leading-none tabular-nums">{value}</p>
-        <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">
-          {label}
-          {hint && <span className="normal-case tracking-normal text-tertiary-foreground"> · {hint}</span>}
-        </p>
-      </div>
-    </div>
-  );
-}

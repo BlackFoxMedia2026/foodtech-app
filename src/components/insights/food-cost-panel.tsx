@@ -159,8 +159,8 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
             </p>
             <ul className="mt-2 space-y-1 text-sm">
               {report.senzaCosto.slice(0, 8).map((p) => (
-                <li key={p.menuItemId} className="flex items-baseline justify-between gap-3">
-                  <span className="min-w-0 truncate">{p.name}</span>
+                <li key={p.menuItemId} className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                  <span className="min-w-0 break-words">{p.name}</span>
                   <span className="shrink-0 text-muted-foreground tabular-nums">
                     {p.quantita} × · {euro(p.incassoCents)}
                   </span>

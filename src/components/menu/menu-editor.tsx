@@ -204,7 +204,7 @@ export function MenuEditor({
             <h1 className="text-lg font-semibold leading-none">Menu</h1>
             <p className="t-etichetta">Sala</p>
           </div>
-          <p className="truncate text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Quello che i clienti leggono dal QR sul tavolo. Un piatto finito sparisce dalla loro carta.
           </p>
         </div>
