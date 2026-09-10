@@ -1,5 +1,12 @@
 /**
- * Misura il contrasto di ogni testo visibile, schermata per schermata.
+ * Misura se il testo del prodotto **si può leggere**, schermata per schermata.
+ * Due modi di non poterlo, e sono indipendenti:
+ *
+ *   - il **contrasto** con il fondo che ha davvero dietro;
+ *   - il **taglio**: `truncate` nasconde la fine di una frase con «…», e
+ *     quello che sparisce è spesso la parte che dà senso al resto — su Tavolo
+ *     era la *base dei numeri* del servizio («12 in attesa · persone» tagliato
+ *     dopo «attesa», accanto a una pillola che diceva «Attesa 3»).
  *
  * Due trappole, che questo script evita entrambe (vedi DESIGN.md, «Come si
  * misura il contrasto qui»):
@@ -14,7 +21,7 @@
  *     casi finiscono in «da guardare», non fra i difetti: la sonda dichiara
  *     di non saperli misurare invece di inventare un numero.
  *
- * Uso:  BASE=http://localhost:3100 OUT=/tmp/contrasto.json node scripts/audit-contrasto.mjs
+ * Uso:  BASE=http://localhost:3100 OUT=/tmp/contrasto.json node scripts/audit-leggibilita.mjs
  */
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -86,7 +93,7 @@ const MISURA = () => {
   const sopra = (f, d) => { const a = f[3]; return [0, 1, 2].map((i) => Math.round(f[i] * a + d[i] * (1 - a))); };
   const tutti = [...document.querySelectorAll("body *")];
 
-  const buoni = [], incerti = [], spenti = [];
+  const buoni = [], incerti = [], spenti = [], tagliati = [];
   for (const el of tutti) {
     const testo = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(" ").trim();
     if (!testo) continue;
@@ -127,6 +134,19 @@ const MISURA = () => {
 
     const px = parseFloat(s.fontSize);
     const grande = px >= 24 || (px >= 18.66 && Number(s.fontWeight) >= 700);
+
+    /* Testo tagliato: `truncate` mette i puntini e nasconde il resto. Non è
+       sempre un difetto — un nome lungo in una riga stretta va tagliato — ma
+       quando ciò che sparisce è un'unità, una base o una condizione, il numero
+       accanto diventa muto. Vanno guardati, non contati come corretti. */
+    if (s.textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1) {
+      tagliati.push({
+        testo: testo.slice(0, 90),
+        visibileFinoA: Math.round((el.clientWidth / el.scrollWidth) * 100),
+        px: Math.round(px),
+        classi: (el.className || "").toString().slice(0, 110),
+      });
+    }
     const soglia = grande ? 3 : 4.5;
     const primo = col[3] < 1 ? sopra(col, bg) : col.slice(0, 3);
     const v = Math.round(rap(primo, bg) * 100) / 100;
@@ -136,7 +156,7 @@ const MISURA = () => {
     else if (gradiente || dietro) incerti.push({ ...voce, motivo: gradiente ? `gradiente — ${gradiente}` : `dipinto dietro — ${dietro}` });
     else buoni.push(voce);
   }
-  return { buoni, incerti, spenti };
+  return { buoni, incerti, spenti, tagliati };
 };
 
 /** I toni del badge, letti dal componente: così il banco non va fuori sincrono. */
@@ -243,7 +263,7 @@ for (const [schermo, width, height] of SCHERMI) {
     await p.waitForTimeout(2400);
     const r = await p.evaluate(MISURA);
     tutto[`${schermo}/${nome}`] = r;
-    console.log(`${r.buoni.length ? "❌" : "✅"} ${nome.padEnd(26)} ${r.buoni.length} certi · ${r.incerti.length} da guardare · ${r.spenti.length} esenti`);
+    console.log(`${r.buoni.length ? "❌" : "✅"} ${nome.padEnd(26)} ${r.buoni.length} certi · ${r.incerti.length} da guardare · ${r.spenti.length} esenti · ${r.tagliati.length} tagliati`);
   }
 
   for (const [nome, via] of PUBBLICHE) {
@@ -252,7 +272,7 @@ for (const [schermo, width, height] of SCHERMI) {
     await pub.waitForTimeout(2400);
     const r = await pub.evaluate(MISURA);
     tutto[`${schermo}/pubblica-${nome}`] = r;
-    console.log(`${r.buoni.length ? "❌" : "✅"} ${("(pubblica) " + nome).padEnd(26)} ${r.buoni.length} certi · ${r.incerti.length} da guardare · ${r.spenti.length} esenti`);
+    console.log(`${r.buoni.length ? "❌" : "✅"} ${("(pubblica) " + nome).padEnd(26)} ${r.buoni.length} certi · ${r.incerti.length} da guardare · ${r.spenti.length} esenti · ${r.tagliati.length} tagliati`);
     await pub.context().close();
   }
 
@@ -271,5 +291,5 @@ for (const [schermo, width, height] of SCHERMI) {
 writeFileSync(process.env.OUT, JSON.stringify({ schermate: tutto, toni: daBanco, saltate, identificativi: ID }, null, 2));
 const conta = (k) => Object.values(tutto).flatMap((x) => x[k]).length;
 console.log(`\nSCHERMATE MISURATE: ${Object.keys(tutto).length}   SALTATE: ${saltate.length}`);
-console.log(`CERTI sotto soglia: ${conta("buoni") + daBanco.length}   DA GUARDARE: ${conta("incerti")}   DISATTIVATI (esenti): ${conta("spenti")}`);
+console.log(`CERTI sotto soglia: ${conta("buoni") + daBanco.length}   DA GUARDARE: ${conta("incerti")}   DISATTIVATI (esenti): ${conta("spenti")}   TAGLIATI: ${conta("tagliati")}`);
 await b.close();

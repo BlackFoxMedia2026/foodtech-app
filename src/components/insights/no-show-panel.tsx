@@ -235,8 +235,8 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
             </p>
             <ul className="mt-2 space-y-1 text-sm">
               {report.aRischio.map((r) => (
-                <li key={r.bookingId} className="flex items-baseline justify-between gap-3">
-                  <Link href={`/bookings/${r.bookingId}`} className="min-w-0 truncate underline">
+                <li key={r.bookingId} className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                  <Link href={`/bookings/${r.bookingId}`} className="min-w-0 break-words underline">
                     {r.nome}
                   </Link>
                   <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
@@ -266,8 +266,8 @@ export function NoShowPanel({ report, currency }: { report: NoShowReport; curren
             </p>
             <ul className="mt-2 space-y-1 text-sm">
               {report.recidivi.map((r) => (
-                <li key={r.guestId} className="flex items-baseline justify-between gap-3">
-                  <Link href={`/guests/${r.guestId}`} className="min-w-0 truncate underline">
+                <li key={r.guestId} className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                  <Link href={`/guests/${r.guestId}`} className="min-w-0 break-words underline">
                     {r.nome}
                   </Link>
                   <span className="shrink-0 text-xs text-muted-foreground tabular-nums">

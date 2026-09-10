@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, ListOrdered, RefreshCw, Timer, UserCheck, Users, UtensilsCrossed } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CellaNumero } from "@/components/ui/cella-numero";
 import type { ServiceSnapshot } from "@/server/service";
 import { ServiceBookingCard } from "@/components/service/service-booking-card";
 import { ServiceWaitlistCard } from "@/components/service/service-waitlist-card";
@@ -153,30 +155,30 @@ export function ServiceView({
         Il tablet non è un telefono grande.
       */}
       <section className="fissa surface riquadro order-2 grid grid-cols-3 divide-x divide-border md:grid-cols-6 lg:order-1">
-        <Numero
+        <CellaNumero
           icona={Users}
           etichetta="In sala"
           valore={c.copertiPresenti}
           nota="coperti"
           className="hidden md:flex"
         />
-        <Numero
+        <CellaNumero
           icona={UtensilsCrossed}
           etichetta="Tavoli"
           valore={`${c.tavoliOccupati}/${c.tavoliTotali}`}
           nota="occupati"
           className="hidden md:flex"
         />
-        <Numero icona={Clock} etichetta="In arrivo" valore={c.inArrivo} nota={`entro ${window_} min`} />
-        <Numero
+        <CellaNumero icona={Clock} etichetta="In arrivo" valore={c.inArrivo} nota={`entro ${window_} min`} />
+        <CellaNumero
           icona={Timer}
           etichetta="In ritardo"
           valore={c.inRitardo}
           allarme={c.inRitardo > 0}
           nota={c.nonArrivate > 0 ? `+${c.nonArrivate} mai arrivate` : undefined}
         />
-        <Numero icona={ListOrdered} etichetta="In attesa" valore={c.personeInAttesa} nota="persone" />
-        <Numero
+        <CellaNumero icona={ListOrdered} etichetta="In attesa" valore={c.personeInAttesa} nota="persone" />
+        <CellaNumero
           icona={UserCheck}
           etichetta="Walk-in"
           valore={c.walkInOggi}
@@ -309,9 +311,38 @@ export function ServiceView({
           )}
 
           {snapshot.seated.length === 0 && snapshot.arrived.length === 0 && snapshot.late.length === 0 && (
-            <EmptyState icon={Users} title="Sala vuota" compact>
-              Nessuno è ancora seduto. Appena il primo ospite arriva, lo segni qui con un tocco e la sala
-              si aggiorna da sola.
+            /* Con la sala vuota e gente in coda, il fatto su cui si può agire
+               non è che nessuno è seduto: è che qualcuno aspetta. Lo stato
+               vuoto lo dice e ci porta, invece di descrivere l'attesa e
+               lasciare mezzo schermo bianco. E dice **due** numeri, perché
+               sono due cose diverse: i gruppi in coda e le persone che sono. */
+            <EmptyState
+              icon={Users}
+              title="Sala vuota"
+              compact
+              action={
+                snapshot.waitlist.length > 0 ? (
+                  <Button size="sm" variant="accent" onClick={() => setColonna("attesa")}>
+                    Vedi la coda
+                  </Button>
+                ) : undefined
+              }
+            >
+              {snapshot.waitlist.length > 0 ? (
+                <>
+                  Nessuno è ancora seduto, ma{" "}
+                  {snapshot.waitlist.length === 1
+                    ? "c'è un gruppo che aspetta"
+                    : `ci sono ${snapshot.waitlist.length} gruppi che aspettano`}
+                  {c.personeInAttesa > 0 ? `, ${c.personeInAttesa} persone in tutto` : ""}. Da lì si
+                  accomoda il primo tavolo.
+                </>
+              ) : (
+                <>
+                  Nessuno è ancora seduto. Appena il primo ospite arriva, lo segni qui con un tocco e la
+                  sala si aggiorna da sola.
+                </>
+              )}
             </EmptyState>
           )}
         </Colonna1>
@@ -422,52 +453,3 @@ function Gruppo({
   );
 }
 
-function Numero({
-  icona: Icona,
-  etichetta,
-  valore,
-  nota,
-  allarme = false,
-  className,
-}: {
-  icona: typeof Users;
-  etichetta: string;
-  valore: number | string;
-  nota?: string;
-  allarme?: boolean;
-  /** Serve a tenerne alcuni fuori dal telefono: là contano le azioni. */
-  className?: string;
-}) {
-  /**
-   * Una cella di una fascia, non un riquadro.
-   *
-   * Sei riquadri con la loro cornice e il loro respiro erano 110 px di
-   * altezza per dire sei numeri. In una fascia sola sono 52, e i numeri si
-   * leggono meglio: **sans e tabellari**, non serif. Il serif nei numeri è la
-   * cosa che l'audit visivo ha segnalato come «premium che costa
-   * leggibilità» — e un numero che si guarda di sfuggita mentre si cammina
-   * non è il posto dove fare bella figura.
-   */
-  return (
-    <div className={cn("flex items-center gap-2 px-3 py-2", className)}>
-      <Icona
-        className={cn("h-4 w-4 shrink-0", allarme ? "text-accent-strong" : "text-muted-foreground")}
-        aria-hidden="true"
-      />
-      <div className="min-w-0">
-        <p
-          className={cn(
-            "text-lg font-semibold leading-none tabular-nums",
-            allarme && "text-accent-strong",
-          )}
-        >
-          {valore}
-        </p>
-        <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">
-          {etichetta}
-          {nota && <span className="normal-case tracking-normal text-tertiary-foreground"> · {nota}</span>}
-        </p>
-      </div>
-    </div>
-  );
-}

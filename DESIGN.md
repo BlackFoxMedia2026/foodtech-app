@@ -249,6 +249,28 @@ finché la prenotazione è viva, ad anello quando è conclusa
    crema regge da 8,54 a 5,87 : 1, e la separazione fra il primo e l'ultimo
    gradino è **quasi il doppio** di quella della velatura capata.
 
+**La Regola di Ciò che Non si Taglia** (10 settembre). `truncate` non è un
+modo di far stare le cose: è una scelta su **cosa nascondere**, e nasconde
+sempre la fine. Tre cose non si tagliano mai, e vanno a capo:
+
+1. **La base di un numero.** «In attesa · persone» tagliato dopo «attesa»
+   lasciava un 12 muto accanto a una pillola che diceva «Attesa 3»: due numeri
+   veri che sembravano contraddirsi solo perché l'unità era sparita. Sul
+   telefono dell'etichetta si vedeva il 64-80%.
+2. **Il titolo di un blocco.** È ciò che dice di che cosa si parla: «Portale
+   Wi-Fi» si vedeva al 38%.
+3. **L'identità di una riga** — il nome dell'ospite, il nome del piatto. Di
+   «Camilla Romano» si leggeva «Cam…» (36%), perché accanto c'era un dettaglio
+   `shrink-0` che prendeva la larghezza. Su schermo stretto quelle righe si
+   **impilano** invece di dividersi lo spazio.
+
+Si può tagliare quello che è ornamento o cortesia — il saluto della panoramica
+è `truncate` per scelta, perché due righe di intestazione costano due
+prenotazioni visibili in meno. Ma va scritto perché.
+
+Lo misura `scripts/audit-leggibilita.mjs`, che segnala ogni testo con i puntini
+e dice **quanta parte se ne vede**: erano 29 su tablet e telefono, ora zero.
+
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
 servono a dire di che materiale è fatta una superficie, non a decorare.

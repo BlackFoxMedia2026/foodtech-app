@@ -65,9 +65,13 @@ export function Blocco({
   children?: ReactNode;
 }) {
   const nome = (
-    <span className="flex min-w-0 items-center gap-2">
-      {Icona && <Icona className="h-4 w-4 shrink-0 text-accent-strong" />}
-      <span className="t-titolo-scheda truncate">{titolo}</span>
+    <span className="flex min-w-0 items-start gap-2">
+      {Icona && <Icona className="mt-0.5 h-4 w-4 shrink-0 text-accent-strong" />}
+      {/* Il titolo va a capo, non si taglia: sul telefono «Portale Wi-Fi» si
+          vedeva al 38% e «Widget di prenotazione» al 61%. Il titolo di un
+          blocco è ciò che dice di che cosa si parla — è l'ultima cosa da
+          sacrificare, non la prima. */}
+      <span className="t-titolo-scheda break-words">{titolo}</span>
     </span>
   );
 
