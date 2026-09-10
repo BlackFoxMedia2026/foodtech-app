@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { readApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { ALLERGENI, REGIMI, type Allergene, type MenuItemView, type Regime } from "@/server/menu";
+import { fraseMargine, statoMargine } from "@/lib/margine";
 
 /**
  * Un piatto.
@@ -52,6 +53,26 @@ export function MenuItemDialog({
   const [description, setDescription] = useState(item?.description ?? "");
   const [prezzo, setPrezzo] = useState(item ? String(item.priceCents / 100) : "");
   const [costo, setCosto] = useState(item?.costCents != null ? String(item.costCents / 100) : "");
+
+  /**
+   * Il margine dei numeri che sono nel modulo adesso.
+   *
+   * `null` quando uno dei due manca o non e' un numero: un'anteprima su un
+   * campo mezzo scritto direbbe cose che cambiano a ogni tasto.
+   */
+  const anteprimaMargine = (() => {
+    const p = Number(prezzo.replace(",", "."));
+    const c = Number(costo.replace(",", "."));
+    if (costo.trim() === "" || !Number.isFinite(p) || !Number.isFinite(c) || p <= 0) return null;
+    const margineCents = Math.round(p * 100) - Math.round(c * 100);
+    const pct = Math.round((margineCents / Math.round(p * 100)) * 100);
+    return {
+      stato: statoMargine(margineCents),
+      frase: fraseMargine(margineCents, pct, (cents) =>
+        new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(cents / 100),
+      ),
+    };
+  })();
   const [available, setAvailable] = useState(item?.available ?? true);
   const [allergeni, setAllergeni] = useState<Allergene[]>(item?.allergens ?? []);
   const [regimi, setRegimi] = useState<Regime[]>(item?.dietary ?? []);
@@ -142,7 +163,27 @@ export function MenuItemDialog({
                 onChange={(e) => setCosto(e.target.value)}
                 placeholder="facoltativo"
               />
-              <p className="t-nota">Se lo metti, vedi il margine sul piatto.</p>
+              {/* Il margine si vede **mentre si scrive**, non dopo aver
+                  salvato. Il costo lo digita una persona su un tastierino, e
+                  un costo piu' alto del prezzo e' un piatto venduto in
+                  perdita che finisce nelle analisi del food cost: se e' un
+                  errore di battitura va detto adesso, se e' voluto resta
+                  scritto e nessuno si allarma. */}
+              {anteprimaMargine ? (
+                <p
+                  className={
+                    anteprimaMargine.stato === "perdita"
+                      ? "text-xs font-medium text-destructive-soft"
+                      : anteprimaMargine.stato === "pari"
+                        ? "text-xs text-accent-strong"
+                        : "t-nota"
+                  }
+                >
+                  {anteprimaMargine.frase}
+                </p>
+              ) : (
+                <p className="t-nota">Se lo metti, vedi il margine sul piatto.</p>
+              )}
             </div>
           </div>
 
