@@ -399,3 +399,65 @@ describe("tre linguaggi per tre cose diverse (§29)", () => {
     expect(linguaggi.indexOf("manuale")).toBeLessThan(linguaggi.indexOf("calcolata"));
   });
 });
+
+describe("la stima di valore torna con se stessa", () => {
+  /**
+   * La stima per visita nasceva dai **coperti medi arrotondati**, non dal
+   * totale: 39 coperti su 7 visite fa 5,571, mostrato «5,6», e 45 € × 5,6 =
+   * 252 €, mentre il totale diceva 1.755 € — cioè 250,71 € per visita. Chi
+   * moltiplicava 252 × 7 trovava 1.764 e un prodotto che si contraddice.
+   *
+   * Un valore **mostrato** non è un ingresso di calcolo.
+   */
+  const visite = [7, 7, 6, 2, 7, 5, 5].map((partySize, i) =>
+    pren({ startsAt: giorniPrima(30 - i * 4), partySize }),
+  );
+
+  it("il totale per visita, moltiplicato per le visite, torna al totale", () => {
+    const p = computeGuestProfile(OSPITE, visite, { now: ORA, avgSpendCents: 4500 });
+    const v = p.estimatedValue!;
+    expect(v.totalCents).toBe(4500 * 39);
+    // al centesimo: la divisione può perdere un resto, non nove euro
+    expect(Math.abs(v.avgPerVisitCents * p.visits - v.totalCents)).toBeLessThanOrEqual(p.visits);
+  });
+
+  it("non usa i coperti medi arrotondati come ingresso", () => {
+    const p = computeGuestProfile(OSPITE, visite, { now: ORA, avgSpendCents: 4500 });
+    expect(p.avgPartySize).toBe(5.6); // il valore mostrato resta arrotondato
+    expect(p.estimatedValue!.avgPerVisitCents).not.toBe(4500 * 5.6); // ma non lo usa
+    expect(p.estimatedValue!.avgPerVisitCents).toBe(Math.round((4500 * 39) / 7));
+  });
+
+  it("senza spesa media dichiarata non c'è stima, invece di uno zero", () => {
+    const p = computeGuestProfile(OSPITE, visite, { now: ORA });
+    expect(p.estimatedValue).toBeNull();
+  });
+});
+
+describe("l'anticipo dichiara su quante prenotazioni è misurato", () => {
+  it("conta solo quelle prenotate prima dell'orario, e lo dice", () => {
+    const p = computeGuestProfile(
+      OSPITE,
+      [
+        pren({ startsAt: giorniPrima(20), createdAt: giorniPrima(27) }),
+        pren({ startsAt: giorniPrima(10), createdAt: giorniPrima(13) }),
+        // un walk-in segnato a cose fatte: creato DOPO l'orario, non è un anticipo
+        pren({ startsAt: giorniPrima(5), createdAt: giorniPrima(4) }),
+      ],
+      { now: ORA },
+    );
+    expect(p.avgLeadTimeMeasuredOn).toBe(2);
+    expect(p.avgLeadTimeDays).toBe(5);
+  });
+
+  it("senza nessun anticipo misurabile la base è zero e il numero è nullo", () => {
+    const p = computeGuestProfile(
+      OSPITE,
+      [pren({ startsAt: giorniPrima(5), createdAt: giorniPrima(4) })],
+      { now: ORA },
+    );
+    expect(p.avgLeadTimeDays).toBeNull();
+    expect(p.avgLeadTimeMeasuredOn).toBe(0);
+  });
+});
+

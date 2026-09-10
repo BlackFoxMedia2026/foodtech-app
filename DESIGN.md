@@ -300,7 +300,15 @@ notizia che va giù.
 
 **E i decimali si scrivono in italiano:** «1,6 giri per tavolo», non «1.6». Il
 punto in italiano separa le migliaia, e su una schermata che scrive «3.904,00 €»
-la stonatura si nota (`formatNumber`).
+la stonatura si nota (`formatNumber`). Vale per ogni numero non intero mostrato:
+coperti medi, giorni d'anticipo, voto medio, dimensione di un file.
+
+**La Regola del Valore Mostrato** (10 settembre). Un numero **arrotondato per
+essere letto** non è un ingresso di calcolo. I coperti medi di un ospite sono
+5,571 e si mostrano «5,6»: moltiplicare *quel* 5,6 per la spesa media dava
+252 € per visita, mentre il totale diceva 1.755 € su 7 visite, cioè 250,71 €.
+Chi moltiplica 252 × 7 trova 1.764 e un prodotto che si contraddice. Le stime
+derivate si ricavano dal **totale esatto**, non dalla media arrotondata.
 
 **La Regola della Texture sulla Superficie.** `finish-parchment`, `table-pearl` e
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:

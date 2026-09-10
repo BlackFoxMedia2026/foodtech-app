@@ -95,6 +95,8 @@ export type GuestProfile = {
   avgPartySize: number | null;
   /** Giorni medi fra la prenotazione e la visita: dice quanto si organizza. */
   avgLeadTimeDays: number | null;
+  /** Su quante prenotazioni è misurato `avgLeadTimeDays`. */
+  avgLeadTimeMeasuredOn: number;
   totalBookings: number;
   cancellations: number;
   noShows: number;
@@ -214,6 +216,11 @@ export function computeGuestProfile(
   const mediaAnticipo = anticipi.length
     ? Math.round((anticipi.reduce((a, b) => a + b, 0) / anticipi.length) * 10) / 10
     : null;
+  /* Su quante prenotazioni è fatta questa media. Non è sempre `bookings.length`:
+     il filtro qui sopra scarta quelle create **dopo** l'orario (un walk-in
+     segnato a cose fatte), e una media che nasconde la sua base è un numero
+     che non si può verificare. */
+  const anticipoMisuratoSu = anticipi.length;
 
   const giornoPreferito = moda(visite.map((b) => b.startsAt.getDay()));
   const fasciaPreferita = moda(visite.map((b) => (b.startsAt.getHours() < 17 ? "pranzo" : "cena")));
@@ -240,6 +247,7 @@ export function computeGuestProfile(
     avgDaysBetweenVisits: mediaFra,
     avgPartySize: mediaCoperti,
     avgLeadTimeDays: mediaAnticipo,
+    avgLeadTimeMeasuredOn: anticipoMisuratoSu,
     totalBookings: bookings.length,
     cancellations: cancellate,
     noShows: assenze,
@@ -273,7 +281,16 @@ export function computeGuestProfile(
             totalCents: Math.round(
               opts.avgSpendCents * visite.reduce((n, b) => n + b.partySize, 0),
             ),
-            avgPerVisitCents: Math.round(opts.avgSpendCents * (mediaCoperti ?? 0)),
+            /* Dal **totale**, non dai coperti medi. `mediaCoperti` è
+               arrotondato a un decimale per essere mostrato, e usarlo come
+               ingresso faceva sì che i due numeri non tornassero: 39 coperti
+               su 7 visite fa 5,571, mostrato «5,6», e 45 € × 5,6 = 252 €,
+               mentre il totale diceva 1.755 € — cioè 250,71 € per visita.
+               Chi moltiplica 252 × 7 trovava 1.764 e un prodotto che si
+               contraddice. Un valore mostrato non è un ingresso di calcolo. */
+            avgPerVisitCents: Math.round(
+              (opts.avgSpendCents * visite.reduce((n, b) => n + b.partySize, 0)) / visite.length,
+            ),
             basedOnAvgSpendCents: opts.avgSpendCents,
           }
         : null,

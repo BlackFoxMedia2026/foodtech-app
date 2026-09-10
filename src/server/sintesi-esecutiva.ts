@@ -1,4 +1,5 @@
 import { durataUmana } from "@/lib/durata";
+import { formatNumber } from "@/lib/utils";
 
 /**
  * Cinque righe che dicono com'è andata, e cosa è andato storto.
@@ -158,7 +159,7 @@ export function sintesiEsecutiva(d: DatiSintesi): RigaSintesi[] {
   if (d.voti.averageScore != null && d.voti.responses > 0) {
     const basso = d.voti.averageScore < 4;
     righe.push({
-      testo: `Voto medio ${d.voti.averageScore.toFixed(1)} su ${d.voti.responses} ${
+      testo: `Voto medio ${formatNumber(d.voti.averageScore)} su ${d.voti.responses} ${
         d.voti.responses === 1 ? "risposta" : "risposte"
       }.`,
       tono: basso ? "problema" : "bene",
