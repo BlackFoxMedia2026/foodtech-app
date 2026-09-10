@@ -2569,3 +2569,33 @@ tavolo.
 
 Alle 21:15 di sabato non serve un prodotto che sappia più cose. Serve un
 prodotto che dica quelle che sa, un secondo prima.
+
+---
+
+## I QR code partivano da un foglio bianco (10 settembre)
+
+La pagina diceva «Nessun QR code creato» e poi toccava al ristoratore sapere
+quali pagine pubbliche il suo locale ha e a quale indirizzo stanno. Ma quegli
+indirizzi il prodotto li conosce tutti: il menu al tavolo, la pagina di
+prenotazione, il portale Wi-Fi, il collegamento delle recensioni.
+
+Ora sono un blocco che **dichiara il suo valore da chiuso** — «3 da creare» —
+e ogni superficie diventa un QR con un tocco.
+
+**Una superficie che non è pronta non si nasconde: si dice.** Se la carta non
+ha piatti disponibili, o il portale Wi-Fi non è configurato, la riga resta in
+elenco e dice *che cosa manca* con il collegamento a dove si sistema.
+Nasconderla lascerebbe il ristoratore a chiedersi perché non la vede — e
+proporre il QR di una pagina vuota sarebbe una bugia stampata su un tavolo.
+
+Il conto dei piatti visibili usa **la stessa regola** con cui il menu pubblico
+decide cosa mostrare (categoria attiva, piatto disponibile): un menu «pieno» di
+piatti tutti esauriti non è una superficie pronta.
+
+**E un contatore che non poteva che dire zero.** Ogni scheda mostrava
+«0 scansioni». Il QR punta all'indirizzo finale senza passare da un rimando
+tracciato, quindi `scansCount` non viene **mai** scritto — c'è il TODO nello
+schema. Zero non significava «nessuno l'ha inquadrato», significava «non lo
+so», e mostrarlo come numero lo faceva passare per una misura. Ora la scheda
+dice «Le scansioni non si contano ancora», e una costante sola riporta il
+numero al suo posto quando il rimando esisterà.
