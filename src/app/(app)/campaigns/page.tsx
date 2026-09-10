@@ -40,7 +40,12 @@ export default async function CampaignsPage() {
           </p>
         )}
         {items.map((c) => {
-          const openRate = c.sentCount > 0 ? Math.round((c.openedCount / c.sentCount) * 100) : 0;
+          /* «APERTE 0%» su una bozza è una misura di qualcosa che non è
+             accaduto: zero per cento di nessun invio. Su una campagna non
+             ancora partita i risultati non si mostrano — si dice che non è
+             partita, che è l'unica cosa vera. */
+          const partita = c.sentCount > 0;
+          const openRate = partita ? Math.round((c.openedCount / c.sentCount) * 100) : null;
           const href = c.status === "DRAFT" ? `/campaigns/${c.id}/edit` : `/campaigns/${c.id}`;
           return (
             <Link key={c.id} href={href}>
@@ -62,11 +67,25 @@ export default async function CampaignsPage() {
                 {/* «Prenotazioni» leggeva `bookedCount`, un campo che nessuno
                     scriveva: zero su ogni campagna, cioè una bocciatura
                     inventata. Ora è l'attribuzione vera. */}
-                <CardContent className="grid grid-cols-3 gap-3 text-sm">
-                  <Metric label="Inviate" value={c.sentCount} />
-                  <Metric label="Aperte" value={`${openRate}%`} />
-                  <Metric label="Prenotazioni" value={c.attribuite} />
-                </CardContent>
+                {partita ? (
+                  <CardContent className="grid grid-cols-3 gap-3 text-sm">
+                    <Metric label="Inviate" value={c.sentCount} />
+                    <Metric label="Aperte" value={`${openRate}%`} />
+                    <Metric label="Prenotazioni" value={c.attribuite} />
+                  </CardContent>
+                ) : (
+                  <CardContent>
+                    {/* Due assenze diverse, e non vanno dette allo stesso modo:
+                        una bozza non è partita, una programmata o consegnata è
+                        partita ma il fornitore non ci ha ancora detto quante.
+                        Vedi la nota in `lib/campaign-status.ts`. */}
+                    <p className="t-nota">
+                      {c.status === "DRAFT"
+                        ? "Non ancora inviata: i risultati appariranno qui."
+                        : "Nessun esito ancora: il fornitore non ci ha detto quante sono partite."}
+                    </p>
+                  </CardContent>
+                )}
               </Card>
             </Link>
           );
