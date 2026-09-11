@@ -300,7 +300,7 @@ export function FloorRoomsView({
         </div>
       </header>
 
-      <div className="surface relative min-h-0 flex-1 overflow-hidden rounded-xl">
+      <div className="relative min-h-0 flex-1">
         <RoomTransition roomKey={activeRoom.id}>
           <FloorCanvas
             ref={canvasRef}

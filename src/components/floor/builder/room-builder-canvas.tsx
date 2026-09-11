@@ -11,9 +11,12 @@ import { boundingBox, formatMeters, isTableRef, isWall } from "@/lib/room-layout
 import { RoomLayoutRenderer } from "./room-layout-renderer";
 import type { RoomBuilder } from "./use-room-builder";
 
+export type LayerVisibility = { tables: boolean; structure: boolean; areas: boolean };
+
 export function RoomBuilderCanvas({
   builder,
   referenceImageUrl,
+  layerVisibility,
 }: {
   builder: RoomBuilder;
   /** The originally-uploaded plan, if this room started from an upload
@@ -21,6 +24,9 @@ export function RoomBuilderCanvas({
    * full-strength on demand via the "Vedi originale" toggle. Never
    * persisted or mutated here; purely a visual reference. */
   referenceImageUrl?: string | null;
+  /** "Livelli" panel toggles — hide a whole category on canvas without
+   * touching the underlying data. Defaults to fully visible. */
+  layerVisibility?: LayerVisibility;
 }) {
   const [previewPoint, setPreviewPoint] = useState<{ x: number; y: number } | null>(null);
   const [showOriginal, setShowOriginal] = useState(false);
@@ -34,8 +40,9 @@ export function RoomBuilderCanvas({
   });
 
   const drawing = builder.tool.mode === "drawing-wall";
+  const drawingDivider = builder.tool.mode === "drawing-divider";
   const placedTableIds = new Set(builder.elements.filter(isTableRef).map((e) => e.tableId));
-  const placedTables = builder.tables.filter((t) => placedTableIds.has(t.id));
+  const placedTables = (layerVisibility?.tables ?? true) ? builder.tables.filter((t) => placedTableIds.has(t.id)) : [];
   const walls = builder.elements.filter(isWall);
   // Discreet overall-size quotes on the generated perimeter (brief §31-32).
   // Derived straight from the wall bounding box every render, so they track
@@ -44,7 +51,7 @@ export function RoomBuilderCanvas({
 
   function onPointerMove(e: React.PointerEvent) {
     gestures.onPointerMove(e);
-    if (drawing) setPreviewPoint(builder.toWorld(e.clientX, e.clientY));
+    if (drawing || drawingDivider) setPreviewPoint(builder.toWorld(e.clientX, e.clientY));
   }
 
   return (
@@ -53,7 +60,7 @@ export function RoomBuilderCanvas({
       data-testid="room-builder-canvas"
       className={cn(
         "relative h-full w-full touch-none select-none overflow-hidden rounded-lg border border-border bg-[#F4EFE4]",
-        gestures.isPanning ? "cursor-grabbing" : drawing ? "cursor-crosshair" : "cursor-grab",
+        gestures.isPanning ? "cursor-grabbing" : drawing || drawingDivider ? "cursor-crosshair" : "cursor-grab",
       )}
       onPointerDown={gestures.onPointerDown}
       onPointerMove={onPointerMove}
@@ -94,6 +101,7 @@ export function RoomBuilderCanvas({
             onUpdateElement={builder.updateElementLive}
             onDragStart={builder.beginTransaction}
             onCommit={builder.endTransaction}
+            layerVisibility={layerVisibility ? { structure: layerVisibility.structure, areas: layerVisibility.areas } : undefined}
           />
 
           {wallBox && (
@@ -160,6 +168,16 @@ export function RoomBuilderCanvas({
             )}
           </svg>
         )}
+
+        {drawingDivider && (
+          <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width={builder.dims.width} height={builder.dims.height}>
+            {builder.dividerStart && previewPoint && (
+              <line x1={builder.dividerStart.x} y1={builder.dividerStart.y} x2={previewPoint.x} y2={previewPoint.y} stroke="#AF7944" strokeDasharray="6 4" strokeWidth={2} />
+            )}
+            {builder.dividerStart && <circle cx={builder.dividerStart.x} cy={builder.dividerStart.y} r={6} fill="#AF7944" stroke="white" strokeWidth={1.5} />}
+            {!builder.dividerStart && previewPoint && <circle cx={previewPoint.x} cy={previewPoint.y} r={5} fill="#AF7944" opacity={0.5} />}
+          </svg>
+        )}
       </div>
 
       {drawing && (
@@ -175,6 +193,22 @@ export function RoomBuilderCanvas({
               <Check className="h-3.5 w-3.5" /> Chiudi forma
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={builder.cancelDrawing}>
+              <X className="h-3.5 w-3.5" /> Annulla
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {drawingDivider && (
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
+          <div
+            className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-card/95 px-3 py-1.5 text-xs text-card-foreground shadow-lg backdrop-blur-sm"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <span className="text-muted-foreground">
+              {builder.dividerStart ? "Clicca il punto finale per tracciare il divisorio" : "Clicca il punto di inizio del divisorio"}
+            </span>
+            <Button type="button" size="sm" variant="ghost" onClick={builder.cancelDivider}>
               <X className="h-3.5 w-3.5" /> Annulla
             </Button>
           </div>

@@ -27,6 +27,7 @@ export function formatCm(px: number) {
 }
 
 export const AREA_TYPES = [
+  "AREA_ZONE",
   "AREA_KITCHEN",
   "AREA_BAR",
   "AREA_WC",
@@ -34,10 +35,12 @@ export const AREA_TYPES = [
   "AREA_PRIVATE",
   "AREA_ENTRANCE",
   "AREA_TERRACE",
+  "AREA_STAIRS",
 ] as const;
 export type AreaType = (typeof AREA_TYPES)[number];
 
 export const AREA_LABELS: Record<AreaType, string> = {
+  AREA_ZONE: "Zona",
   AREA_KITCHEN: "Cucina",
   AREA_BAR: "Bancone",
   AREA_WC: "WC",
@@ -45,6 +48,7 @@ export const AREA_LABELS: Record<AreaType, string> = {
   AREA_PRIVATE: "Zona privata",
   AREA_ENTRANCE: "Ingresso",
   AREA_TERRACE: "Terrazza / Dehors",
+  AREA_STAIRS: "Scala",
 };
 
 const idSchema = z.string().min(1);

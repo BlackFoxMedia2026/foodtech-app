@@ -48,6 +48,7 @@ export function RoomLayoutRenderer({
   onDragStart,
   onCommit,
   variant = "builder",
+  layerVisibility,
 }: {
   elements: RoomElement[];
   width: number;
@@ -64,11 +65,17 @@ export function RoomLayoutRenderer({
    * the daily Sala/Prenotazioni view: no dashed technical stroke, WC/
    * storage areas hidden, a soft drop-shadow for perceived depth. */
   variant?: "builder" | "operational";
+  /** Editor-only "Livelli" toggles (brief: pannello Livelli) — hides whole
+   * categories without touching the underlying data. Defaults to fully
+   * visible so operational callers never need to pass this. */
+  layerVisibility?: { structure: boolean; areas: boolean };
 }) {
-  const walls = elements.filter(isWall);
+  const showStructure = layerVisibility?.structure ?? true;
+  const showAreas = layerVisibility?.areas ?? true;
+  const walls = showStructure ? elements.filter(isWall) : [];
   const isOperational = variant === "operational";
   const isClean = isOperational;
-  const areas = elements.filter(isArea).filter((el) => !isOperational || !OPERATIONAL_HIDDEN_AREAS.has(el.type));
+  const areas = showAreas ? elements.filter(isArea).filter((el) => !isOperational || !OPERATIONAL_HIDDEN_AREAS.has(el.type)) : [];
 
   const startDrag = useCallback(
     (
@@ -139,7 +146,7 @@ export function RoomLayoutRenderer({
         />
       ))}
 
-      {elements.filter(isColumn).map((el) => (
+      {showStructure && elements.filter(isColumn).map((el) => (
         <ColumnShape
           key={el.id}
           el={el}
@@ -186,7 +193,7 @@ export function RoomLayoutRenderer({
         />
       ))}
 
-      {elements.filter(isDoor).map((el) => (
+      {showStructure && elements.filter(isDoor).map((el) => (
         <OpeningShape
           key={el.id}
           el={el}
@@ -207,7 +214,7 @@ export function RoomLayoutRenderer({
         />
       ))}
 
-      {elements.filter(isWindow).map((el) => (
+      {showStructure && elements.filter(isWindow).map((el) => (
         <OpeningShape
           key={el.id}
           el={el}
@@ -232,6 +239,7 @@ export function RoomLayoutRenderer({
 }
 
 const AREA_FILL: Record<string, string> = {
+  AREA_ZONE: "rgba(175, 121, 68, 0.12)",
   AREA_KITCHEN: "rgba(175, 102, 72, 0.16)",
   AREA_BAR: "rgba(138, 159, 96, 0.18)",
   AREA_WC: "rgba(90, 110, 120, 0.16)",
@@ -239,8 +247,10 @@ const AREA_FILL: Record<string, string> = {
   AREA_PRIVATE: "rgba(175, 121, 68, 0.16)",
   AREA_ENTRANCE: "rgba(138, 159, 96, 0.12)",
   AREA_TERRACE: "rgba(61, 92, 52, 0.14)",
+  AREA_STAIRS: "rgba(90, 110, 120, 0.14)",
 };
 const AREA_STROKE: Record<string, string> = {
+  AREA_ZONE: "#AF7944",
   AREA_KITCHEN: "#AF6648",
   AREA_BAR: "#8A9F60",
   AREA_WC: "#5A6E78",
@@ -248,6 +258,7 @@ const AREA_STROKE: Record<string, string> = {
   AREA_PRIVATE: "#AF7944",
   AREA_ENTRANCE: "#8A9F60",
   AREA_TERRACE: "#3D5C34",
+  AREA_STAIRS: "#5A6E78",
 };
 /** The reference mockup draws a room already enclosed by walls with just a
  * small floor label, never a tinted box — the tint is only worth keeping
@@ -413,21 +424,26 @@ function WallShape({
 }) {
   const midX = (el.startX + el.endX) / 2;
   const midY = (el.startY + el.endY) / 2;
-  const isClean = variant === "operational";
+  // A real wall (perimeter/room dividers, thickness ~10) gets the full
+  // bevel treatment; a thin "Divisorio" (thickness ~4) stays a plain line
+  // on purpose — it reads as a lighter partition, not load-bearing.
+  const isThickWall = el.thickness >= 8;
   return (
     <g>
-      {/* Depth cue for a wall: an offset duplicate line drawn underneath,
-          not an SVG filter — feDropShadow's objectBoundingBox region
+      {/* Depth cue for a wall: offset duplicate lines drawn above/below the
+          body, not an SVG filter — feDropShadow's objectBoundingBox region
           collapses to nothing on a perfectly axis-aligned <line> (zero
-          width or height bbox), which silently made every wall invisible
-          in Chromium. A plain offset line has no such degenerate case. */}
-      {isClean && (
+          width or height bbox), which silently made every wall invisible in
+          Chromium. Plain offset lines have no such degenerate case, and give
+          the same "thick bevelled wall" depth in both Modifica and
+          Anteprima instead of only the read-only view. */}
+      {isThickWall && (
         <line
           x1={el.startX}
-          y1={el.startY + 1.5}
+          y1={el.startY + 2}
           x2={el.endX}
-          y2={el.endY + 1.5}
-          stroke="rgba(0,0,0,0.35)"
+          y2={el.endY + 2}
+          stroke="rgba(0,0,0,0.4)"
           strokeWidth={el.thickness}
           strokeLinecap="square"
         />
@@ -437,12 +453,24 @@ function WallShape({
         y1={el.startY}
         x2={el.endX}
         y2={el.endY}
-        stroke={selected ? "#AF7944" : "#3a3b42"}
+        stroke={selected ? "#AF7944" : "#242530"}
         strokeWidth={el.thickness}
         strokeLinecap="square"
         className={interactive ? "cursor-move" : undefined}
         onPointerDown={interactive ? onPointerDownBody : undefined}
       />
+      {isThickWall && !selected && (
+        <line
+          x1={el.startX}
+          y1={el.startY - el.thickness / 2 + 1.5}
+          x2={el.endX}
+          y2={el.endY - el.thickness / 2 + 1.5}
+          stroke="rgba(242,231,208,0.16)"
+          strokeWidth={2}
+          strokeLinecap="square"
+          style={{ pointerEvents: "none" }}
+        />
+      )}
       {selected && interactive && (
         <text
           x={midX}

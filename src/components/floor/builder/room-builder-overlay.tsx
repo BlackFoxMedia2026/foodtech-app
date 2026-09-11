@@ -5,15 +5,17 @@ import type { Table } from "@prisma/client";
 import { ArrowLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 import type { RoomElement } from "@/lib/room-layout";
 import { DEFAULT_WIZARD_FORM, ShapeWizard, type WizardFormState } from "./shape-wizard";
 import { WizardStepper, type WizardStepDef } from "./wizard-stepper";
-import { ElementLibraryPanel, type ToolCategory } from "./element-library-panel";
+import { ElementLibraryPanel } from "./element-library-panel";
 import { ElementInspectorPanel } from "./element-inspector-panel";
-import { RoomBuilderCanvas } from "./room-builder-canvas";
-import { ToolRail } from "./tool-rail";
+import { RoomBuilderCanvas, type LayerVisibility } from "./room-builder-canvas";
+import { RoomInfoCard, LayersCard, OriginalImageCard } from "./room-builder-info-panels";
 import { useRoomBuilder } from "./use-room-builder";
+import { SalaTabs, type SalaTab } from "../sala-tabs";
+
+const DEFAULT_LAYER_VISIBILITY: LayerVisibility = { tables: true, structure: true, areas: true };
 
 const MIN_WIDTH_PX = 1024;
 
@@ -34,6 +36,7 @@ export function RoomBuilderOverlay({
   allTables,
   onSaved,
   referenceImageUrl,
+  onNavigateTab,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,6 +52,10 @@ export function RoomBuilderOverlay({
    * and the user opens "Modifica" to correct them, or when it failed
    * entirely and this is the manual-completion fallback. */
   referenceImageUrl?: string | null;
+  /** SCREEN 1's Modifica/Anteprima/Vedi originale tabs live in this header
+   * too — picking "Anteprima" or "Vedi originale" closes the overlay and
+   * asks the page (FloorCanvas) to show that tab instead. */
+  onNavigateTab?: (tab: Exclude<SalaTab, "modifica">) => void;
 }) {
   const [tooSmall, setTooSmall] = useState(false);
   // Lifted out of ShapeWizard so shape/width/depth survive it being
@@ -132,6 +139,7 @@ export function RoomBuilderOverlay({
           onClose={() => onOpenChange(false)}
           onSaved={onSaved}
           referenceImageUrl={referenceImageUrl}
+          onNavigateTab={onNavigateTab}
         />
       )}
     </div>
@@ -150,6 +158,7 @@ function RoomBuilderShell({
   onClose,
   onSaved,
   referenceImageUrl,
+  onNavigateTab,
 }: {
   roomId: string;
   roomName: string;
@@ -162,6 +171,7 @@ function RoomBuilderShell({
   onClose: () => void;
   onSaved: () => void;
   referenceImageUrl?: string | null;
+  onNavigateTab?: (tab: Exclude<SalaTab, "modifica">) => void;
 }) {
   const builder = useRoomBuilder({
     roomId,
@@ -176,11 +186,8 @@ function RoomBuilderShell({
     },
   });
   const [confirmEditShape, setConfirmEditShape] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<ToolCategory>("structure");
-
-  // Inspector opens only when there's something to show (brief §30): a
-  // selected element/table, or an armed tool with instructions to display.
-  const inspectorOpen = builder.selectedId !== null || builder.tool.mode !== "idle";
+  // Editor-only "Livelli" toggles — never persisted, never sent to save().
+  const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>(DEFAULT_LAYER_VISIBILITY);
 
   async function handleSave() {
     await builder.save();
@@ -204,24 +211,22 @@ function RoomBuilderShell({
         onEditShape={requestEditShape}
         onSave={handleSave}
         saving={builder.saving}
+        onNavigateTab={onNavigateTab}
       />
       <div className="flex min-h-0 flex-1 gap-3 overflow-hidden p-3">
-        <ToolRail active={activeCategory} onChange={setActiveCategory} />
         <div className="w-[228px] shrink-0 overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
-          <ElementLibraryPanel builder={builder} category={activeCategory} />
+          <ElementLibraryPanel builder={builder} />
         </div>
         <div className="min-w-0 flex-1">
-          <RoomBuilderCanvas builder={builder} referenceImageUrl={referenceImageUrl} />
+          <RoomBuilderCanvas builder={builder} referenceImageUrl={referenceImageUrl} layerVisibility={layerVisibility} />
         </div>
-        <div
-          className={cn(
-            "shrink-0 overflow-hidden rounded-lg border border-border bg-card text-card-foreground transition-[width] duration-200",
-            inspectorOpen ? "w-[260px]" : "w-0 border-transparent",
-          )}
-        >
-          <div className="h-full w-[260px] overflow-y-auto">
+        <div className="flex w-[260px] shrink-0 flex-col gap-3 overflow-y-auto">
+          <div className="overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
             <ElementInspectorPanel builder={builder} />
           </div>
+          <RoomInfoCard roomName={roomName} builder={builder} />
+          <LayersCard visibility={layerVisibility} onChange={setLayerVisibility} />
+          <OriginalImageCard referenceImageUrl={referenceImageUrl} onShowOriginal={() => onNavigateTab?.("vedi-originale")} />
         </div>
       </div>
 
@@ -260,6 +265,7 @@ function OverlayHeader({
   onEditShape,
   onSave,
   saving,
+  onNavigateTab,
 }: {
   roomName: string;
   onClose: () => void;
@@ -268,8 +274,13 @@ function OverlayHeader({
   onEditShape?: () => void;
   onSave?: () => void;
   saving?: boolean;
+  onNavigateTab?: (tab: Exclude<SalaTab, "modifica">) => void;
 }) {
   const [confirmClose, setConfirmClose] = useState(false);
+  // Once past the shape/dimensions wizard, this IS the Sala editor (SCREEN
+  // 1) — the eyebrow reads "SALA" and the wizard's step dots give way to the
+  // Modifica/Anteprima/Vedi originale tabs, which double as the way out.
+  const inEditor = stepIndex === 2;
 
   function requestClose() {
     if (isDirty()) setConfirmClose(true);
@@ -280,10 +291,14 @@ function OverlayHeader({
     <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-2.5 text-card-foreground">
       <div className="flex flex-wrap items-center gap-4">
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Costruisci la sala</p>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{inEditor ? "Sala" : "Costruisci la sala"}</p>
           <h1 className="text-display text-base font-semibold">{roomName}</h1>
         </div>
-        <WizardStepper steps={WIZARD_STEPS} currentIndex={stepIndex} />
+        {inEditor ? (
+          <SalaTabs active="modifica" onSelect={(tab) => tab !== "modifica" && onNavigateTab?.(tab)} />
+        ) : (
+          <WizardStepper steps={WIZARD_STEPS} currentIndex={stepIndex} />
+        )}
       </div>
 
       {confirmClose ? (

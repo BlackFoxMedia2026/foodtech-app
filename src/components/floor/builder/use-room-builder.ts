@@ -21,8 +21,15 @@ export type PlaceableType = "DOOR" | "WINDOW" | "COLUMN" | AreaType;
 export type Tool =
   | { mode: "idle" }
   | { mode: "drawing-wall" }
+  | { mode: "drawing-divider" }
   | { mode: "placing"; elementType: PlaceableType }
   | { mode: "placing-table"; shape: Table["shape"]; seats: number };
+
+/** Divisorio: a single thin open wall segment (no loop to close), unlike the
+ * exterior-perimeter "Parete" tool which always produces a closed shape via
+ * wallsFromPoints. Kept at a distinct thickness so it reads as a lighter
+ * internal partition once drawn. */
+const DIVIDER_THICKNESS = 4;
 
 const CLOSE_THRESHOLD = 18;
 
@@ -68,11 +75,13 @@ export function useRoomBuilder({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toolState, setToolState] = useState<Tool>(startTool === "drawing-wall" ? { mode: "drawing-wall" } : { mode: "idle" });
   const [drawPoints, setDrawPoints] = useState<Point[]>([]);
+  const [dividerStart, setDividerStart] = useState<Point | null>(null);
   const [saving, setSaving] = useState(false);
 
   function setTool(next: Tool) {
     setToolState(next);
     if (next.mode !== "drawing-wall") setDrawPoints([]);
+    if (next.mode !== "drawing-divider") setDividerStart(null);
   }
 
   const dragStartRef = useRef<EditorState | null>(null);
@@ -161,10 +170,37 @@ export function useRoomBuilder({
     closeShape(drawPoints);
   }
 
+  // --- Divisorio: two clicks, one open thin wall, no shape to close ---
+  function addDividerPoint(point: Point) {
+    if (!dividerStart) {
+      setDividerStart(point);
+      return;
+    }
+    const wall: RoomElement = {
+      id: crypto.randomUUID(),
+      type: "WALL",
+      startX: Math.round(dividerStart.x),
+      startY: Math.round(dividerStart.y),
+      endX: Math.round(point.x),
+      endY: Math.round(point.y),
+      thickness: DIVIDER_THICKNESS,
+    };
+    const next = { ...stateRef.current, elements: [...stateRef.current.elements, wall] };
+    history.commit(stateRef.current, next);
+    setDividerStart(null);
+    setTool({ mode: "idle" });
+  }
+
+  function cancelDivider() {
+    setDividerStart(null);
+    setTool({ mode: "idle" });
+  }
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape" || toolState.mode === "idle") return;
       if (toolState.mode === "drawing-wall") cancelDrawing();
+      else if (toolState.mode === "drawing-divider") cancelDivider();
       else setTool({ mode: "idle" });
     }
     window.addEventListener("keydown", onKeyDown);
@@ -337,6 +373,10 @@ export function useRoomBuilder({
       addDrawPoint(world);
       return;
     }
+    if (toolState.mode === "drawing-divider") {
+      addDividerPoint(world);
+      return;
+    }
     if (toolState.mode === "placing") {
       createElementAt(toolState.elementType, world);
       setTool({ mode: "idle" });
@@ -415,6 +455,8 @@ export function useRoomBuilder({
     tool: toolState,
     setTool,
     drawPoints,
+    dividerStart,
+    cancelDivider,
     saving,
     canUndo: history.canUndo,
     canRedo: history.canRedo,

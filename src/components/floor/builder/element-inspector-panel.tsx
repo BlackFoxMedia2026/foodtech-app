@@ -27,6 +27,7 @@ const PLACING_TOOL_COPY: Record<PlaceableType, { title: string; body: string }> 
   DOOR: { title: "Aggiungi una porta", body: "Clicca o trascinala sopra una parete: si aggancerà automaticamente." },
   WINDOW: { title: "Aggiungi una finestra", body: "Clicca o trascinala sopra una parete: si aggancerà automaticamente." },
   COLUMN: { title: "Aggiungi una colonna", body: "Clicca sulla piantina nel punto in cui vuoi posizionarla." },
+  AREA_ZONE: { title: "Aggiungi una Zona", body: PLACE_ON_CANVAS_HINT },
   AREA_KITCHEN: { title: "Aggiungi l'area Cucina", body: PLACE_ON_CANVAS_HINT },
   AREA_BAR: { title: "Aggiungi l'area Bancone", body: PLACE_ON_CANVAS_HINT },
   AREA_WC: { title: "Aggiungi l'area WC", body: PLACE_ON_CANVAS_HINT },
@@ -34,6 +35,7 @@ const PLACING_TOOL_COPY: Record<PlaceableType, { title: string; body: string }> 
   AREA_PRIVATE: { title: "Aggiungi la Zona privata", body: PLACE_ON_CANVAS_HINT },
   AREA_ENTRANCE: { title: "Aggiungi l'Ingresso", body: PLACE_ON_CANVAS_HINT },
   AREA_TERRACE: { title: "Aggiungi la Terrazza / Dehors", body: PLACE_ON_CANVAS_HINT },
+  AREA_STAIRS: { title: "Aggiungi la Scala", body: PLACE_ON_CANVAS_HINT },
 };
 
 /** Contextual properties panel for the selected element — minimal fields per
@@ -52,6 +54,18 @@ export function ElementInspectorPanel({ builder }: { builder: RoomBuilder }) {
         <ToolInstructions
           title="Disegna una parete"
           body="Clicca sulla piantina per iniziare, poi clicca di nuovo per aggiungere ogni segmento. Clicca sul primo punto per chiudere la forma."
+        />
+      );
+    }
+    if (builder.tool.mode === "drawing-divider") {
+      return (
+        <ToolInstructions
+          title="Disegna un divisorio"
+          body={
+            builder.dividerStart
+              ? "Clicca il punto finale per tracciare il divisorio."
+              : "Clicca il punto di inizio, poi il punto finale: un divisorio sottile non richiede di chiudere una forma."
+          }
         />
       );
     }

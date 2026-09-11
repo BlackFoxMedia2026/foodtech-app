@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Table } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Plus, Save, Check, MapIcon, MoreHorizontal } from "lucide-react";
+import { Plus, Save, Check, MapIcon, MoreHorizontal, UploadCloud } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +18,12 @@ import { OperationalRoomView } from "./operational/operational-room-view";
 import { ManagePlanDialog } from "./manage-plan-dialog";
 import { AssignStaffDialog } from "./assign-staff-dialog";
 import { NewTableDialog } from "./new-table-dialog";
+import { SalaTabs, type SalaTab } from "./sala-tabs";
 import { parseRoomLayoutElements, getRoomBounds } from "@/lib/room-layout";
 import type { TableOperationalStatus } from "@/lib/table-status";
 import type { RoomLayoutMode } from "@prisma/client";
+
+type PageTab = Exclude<SalaTab, "modifica">;
 
 type CoverageFilter = "all" | "assigned" | "unassigned";
 
@@ -72,9 +75,23 @@ export const FloorCanvas = forwardRef<
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
   const [managePlanOpen, setManagePlanOpen] = useState(false);
+  const [managePlanStartInBuilder, setManagePlanStartInBuilder] = useState(false);
   const [newTableOpen, setNewTableOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [assignStaffTableId, setAssignStaffTableId] = useState<string | null>(null);
+  // SCREEN 1's Modifica/Anteprima/Vedi originale tabs — "Modifica" is a
+  // momentary trigger (opens the full-screen Room Builder, see below) rather
+  // than a third value here, since there's no page content behind it to show.
+  const [activeTab, setActiveTab] = useState<PageTab>("anteprima");
+
+  function selectTab(tab: SalaTab) {
+    if (tab === "modifica") {
+      setManagePlanStartInBuilder(true);
+      setManagePlanOpen(true);
+      return;
+    }
+    setActiveTab(tab);
+  }
 
   const parsedLayoutElements = useMemo(() => parseRoomLayoutElements(roomLayoutElements), [roomLayoutElements]);
   const roomBounds = useMemo(
@@ -145,138 +162,177 @@ export const FloorCanvas = forwardRef<
   );
 
   const onSelect = useCallback((id: string) => setSelectedId(id), []);
+  const hasPlan = Boolean(floorPlanUrl) || activeLayoutMode === "BUILDER";
 
   return (
-    <OperationalRoomView
-      width={width}
-      height={height}
-      roomBounds={roomBounds}
-      floorPlanUrl={floorPlanUrl}
-      activeLayoutMode={activeLayoutMode}
-      roomLayoutElements={parsedLayoutElements}
-      tables={tables}
-      onBackgroundClick={() => setSelectedId(null)}
-      emptyPlanSlot={
-        <>
-          Nessuna piantina caricata.
-          <button type="button" className="font-medium text-accent-strong hover:underline" onClick={() => setManagePlanOpen(true)}>
-            Crea la tua sala
-          </button>
-        </>
-      }
-      renderTable={(t, ctx) => {
-        const isSelected = selectedId === t.id;
-        const staff = staffByTableId?.[t.id];
-        const isAssigned = Boolean(staff?.TABLE_RESPONSIBLE);
-        const matchesFilter =
-          !staffByTableId ||
-          coverageFilter === "all" ||
-          (coverageFilter === "assigned" && isAssigned) ||
-          (coverageFilter === "unassigned" && !isAssigned);
-        return (
-          <RoomTableNode
-            key={t.id}
-            table={t}
-            mode="STAFF"
-            status={statusByTableId?.[t.id]}
-            isSelected={isSelected}
-            matchesFilter={matchesFilter}
-            staff={staff}
-            lod={ctx.lod}
-            onSelect={onSelect}
-            onDelete={deleteTable}
-            menu={
-              isSelected
-                ? {
-                    menuOpen,
-                    onMenuOpenChange: setMenuOpen,
-                    onOpenAssignStaff: (tableId) => {
-                      setMenuOpen(false);
-                      setAssignStaffTableId(tableId);
-                    },
-                  }
-                : undefined
-            }
-          />
-        );
-      }}
-    >
-      <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start gap-2">
-        {staffByTableId && (
-          <div
-            className="pointer-events-auto flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 text-xs shadow-lg backdrop-blur-sm"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            {(["all", "assigned", "unassigned"] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setCoverageFilter(f)}
-                className={cn(
-                  "rounded px-2 py-1 transition-colors",
-                  coverageFilter === f ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
-                )}
-              >
-                {f === "all" ? "Tutti" : f === "assigned" ? "Assegnati" : "Non assegnati"}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div
-          className="pointer-events-auto ml-auto flex flex-wrap items-center justify-end gap-2"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      {/* Static toolbar row (SCREEN 1): Modifica/Anteprima/Vedi originale on
+          the left, room actions on the right — no longer floating over the
+          canvas like before. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SalaTabs active={activeTab} onSelect={selectTab} />
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="hidden shadow-lg sm:inline-flex"
-            onClick={() => setManagePlanOpen(true)}
+            className="hidden sm:inline-flex"
+            onClick={() => {
+              setManagePlanStartInBuilder(false);
+              setManagePlanOpen(true);
+            }}
           >
-            <MapIcon className="h-4 w-4" /> {floorPlanUrl || activeLayoutMode === "BUILDER" ? "Gestisci piantina" : "Carica piantina"}
+            <MapIcon className="h-4 w-4" /> {hasPlan ? "Gestisci piantina" : "Carica piantina"}
           </Button>
-          <Button variant="subtle" size="sm" className="hidden shadow-lg sm:inline-flex" onClick={() => setNewTableOpen(true)}>
-            <Plus className="h-4 w-4" /> Nuovo tavolo
-          </Button>
+          {activeTab === "anteprima" && (
+            <Button variant="subtle" size="sm" className="hidden sm:inline-flex" onClick={() => setNewTableOpen(true)}>
+              <Plus className="h-4 w-4" /> Nuovo tavolo
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" size="icon" variant="outline" className="shadow-lg sm:hidden" aria-label="Altre azioni">
+              <Button type="button" size="icon" variant="outline" className="sm:hidden" aria-label="Altre azioni">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setManagePlanOpen(true)}>
-                <MapIcon className="h-4 w-4" /> {floorPlanUrl || activeLayoutMode === "BUILDER" ? "Gestisci piantina" : "Carica piantina"}
+              <DropdownMenuItem
+                onSelect={() => {
+                  setManagePlanStartInBuilder(false);
+                  setManagePlanOpen(true);
+                }}
+              >
+                <MapIcon className="h-4 w-4" /> {hasPlan ? "Gestisci piantina" : "Carica piantina"}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setNewTableOpen(true)}>
-                <Plus className="h-4 w-4" /> Nuovo tavolo
-              </DropdownMenuItem>
+              {activeTab === "anteprima" && (
+                <DropdownMenuItem onSelect={() => setNewTableOpen(true)}>
+                  <Plus className="h-4 w-4" /> Nuovo tavolo
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            variant="accent"
-            size="sm"
-            onClick={persist}
-            disabled={saving}
-            className={cn("shadow-lg transition-colors duration-300", justSaved && "bg-sage text-forest hover:bg-sage")}
-          >
-            {justSaved ? (
-              <>
-                <Check className="h-4 w-4" /> Sala salvata
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" /> {saving ? "Salvataggio…" : "Salva sala"}
-              </>
-            )}
-          </Button>
+          {activeTab === "anteprima" && (
+            <Button
+              variant="accent"
+              size="sm"
+              onClick={persist}
+              disabled={saving}
+              className={cn("transition-colors duration-300", justSaved && "bg-sage text-forest hover:bg-sage")}
+            >
+              {justSaved ? (
+                <>
+                  <Check className="h-4 w-4" /> Sala salvata
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" /> {saving ? "Salvataggio…" : "Salva sala"}
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden sm:block">
-        <span className="rounded-md border border-border bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground/80 backdrop-blur-sm">
-          Trascina lo sfondo per navigare · clicca un tavolo per i dettagli
-        </span>
+      <div className="surface relative min-h-0 flex-1 overflow-hidden rounded-xl">
+        {activeTab === "vedi-originale" ? (
+          <OriginalPlanView
+            floorPlanUrl={floorPlanUrl}
+            onUpload={() => {
+              setManagePlanStartInBuilder(false);
+              setManagePlanOpen(true);
+            }}
+          />
+        ) : (
+          <OperationalRoomView
+            width={width}
+            height={height}
+            roomBounds={roomBounds}
+            floorPlanUrl={floorPlanUrl}
+            activeLayoutMode={activeLayoutMode}
+            roomLayoutElements={parsedLayoutElements}
+            tables={tables}
+            onBackgroundClick={() => setSelectedId(null)}
+            emptyPlanSlot={
+              <>
+                Nessuna piantina caricata.
+                <button
+                  type="button"
+                  className="font-medium text-accent-strong hover:underline"
+                  onClick={() => {
+                    setManagePlanStartInBuilder(false);
+                    setManagePlanOpen(true);
+                  }}
+                >
+                  Crea la tua sala
+                </button>
+              </>
+            }
+            renderTable={(t, ctx) => {
+              const isSelected = selectedId === t.id;
+              const staff = staffByTableId?.[t.id];
+              const isAssigned = Boolean(staff?.TABLE_RESPONSIBLE);
+              const matchesFilter =
+                !staffByTableId ||
+                coverageFilter === "all" ||
+                (coverageFilter === "assigned" && isAssigned) ||
+                (coverageFilter === "unassigned" && !isAssigned);
+              return (
+                <RoomTableNode
+                  key={t.id}
+                  table={t}
+                  mode="STAFF"
+                  status={statusByTableId?.[t.id]}
+                  isSelected={isSelected}
+                  matchesFilter={matchesFilter}
+                  staff={staff}
+                  lod={ctx.lod}
+                  onSelect={onSelect}
+                  onDelete={deleteTable}
+                  menu={
+                    isSelected
+                      ? {
+                          menuOpen,
+                          onMenuOpenChange: setMenuOpen,
+                          onOpenAssignStaff: (tableId) => {
+                            setMenuOpen(false);
+                            setAssignStaffTableId(tableId);
+                          },
+                        }
+                      : undefined
+                  }
+                />
+              );
+            }}
+          >
+            {staffByTableId && (
+              <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start gap-2">
+                <div
+                  className="pointer-events-auto flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 text-xs shadow-lg backdrop-blur-sm"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  {(["all", "assigned", "unassigned"] as const).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setCoverageFilter(f)}
+                      className={cn(
+                        "rounded px-2 py-1 transition-colors",
+                        coverageFilter === f ? "bg-accent-strong text-white" : "text-muted-foreground hover:bg-secondary",
+                      )}
+                    >
+                      {f === "all" ? "Tutti" : f === "assigned" ? "Assegnati" : "Non assegnati"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden sm:block">
+              <span className="rounded-md border border-border bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground/80 backdrop-blur-sm">
+                Trascina lo sfondo per navigare · clicca un tavolo per i dettagli
+              </span>
+            </div>
+          </OperationalRoomView>
+        )}
       </div>
 
       <ManagePlanDialog
@@ -290,6 +346,8 @@ export const FloorCanvas = forwardRef<
         roomWidth={width}
         roomHeight={height}
         allTables={tables}
+        startInBuilder={managePlanStartInBuilder}
+        onNavigateTab={setActiveTab}
       />
 
       <NewTableDialog
@@ -312,6 +370,28 @@ export const FloorCanvas = forwardRef<
         service={service ?? ""}
         onChanged={() => router.refresh()}
       />
-    </OperationalRoomView>
+    </div>
   );
 });
+
+/** "Vedi originale" tab content — the uploaded plan this room started from
+ * (Room.floorPlanUrl), shown full-size and read-only. Purely a viewer: the
+ * upload/replace flow stays in ManagePlanDialog. */
+function OriginalPlanView({ floorPlanUrl, onUpload }: { floorPlanUrl: string | null; onUpload: () => void }) {
+  if (!floorPlanUrl) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+        <p className="max-w-xs text-sm text-muted-foreground">Nessuna immagine originale caricata per questa sala.</p>
+        <Button type="button" variant="outline" size="sm" onClick={onUpload}>
+          <UploadCloud className="h-4 w-4" /> Carica piantina
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-full w-full items-center justify-center overflow-auto p-4">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={floorPlanUrl} alt="Piantina originale della sala" className="max-h-full max-w-full rounded-lg object-contain" />
+    </div>
+  );
+}

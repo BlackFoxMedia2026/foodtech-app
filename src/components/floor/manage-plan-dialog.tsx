@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Table } from "@prisma/client";
 import { Camera, Hammer, UploadCloud } from "lucide-react";
@@ -11,6 +11,7 @@ import type { RoomElement } from "@/lib/room-layout";
 import type { RoomLayoutMode } from "@prisma/client";
 import { FloorPlanDialog } from "./floor-plan-dialog";
 import { RoomBuilderOverlay } from "./builder/room-builder-overlay";
+import type { SalaTab } from "./sala-tabs";
 
 type Step = "choice" | "upload" | "builder";
 
@@ -31,6 +32,8 @@ export function ManagePlanDialog({
   roomWidth,
   roomHeight,
   allTables,
+  startInBuilder,
+  onNavigateTab,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -42,10 +45,20 @@ export function ManagePlanDialog({
   roomWidth: number;
   roomHeight: number;
   allTables: Table[];
+  /** The Sala page's "Modifica" tab opened this — when a Builder layout
+   * already exists, jump straight into the editor instead of showing the
+   * "come vuoi creare la sala?" choice again. */
+  startInBuilder?: boolean;
+  onNavigateTab?: (tab: Exclude<SalaTab, "modifica">) => void;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("choice");
+  const [step, setStep] = useState<Step>(startInBuilder && activeLayoutMode === "BUILDER" ? "builder" : "choice");
   const [confirmSwitch, setConfirmSwitch] = useState(false);
+
+  useEffect(() => {
+    if (open && startInBuilder && activeLayoutMode === "BUILDER") setStep("builder");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, startInBuilder]);
 
   function reset(next: boolean) {
     onOpenChange(next);
@@ -140,6 +153,10 @@ export function ManagePlanDialog({
         initialHeight={roomHeight}
         allTables={allTables}
         onSaved={() => router.refresh()}
+        onNavigateTab={(tab) => {
+          reset(false);
+          onNavigateTab?.(tab);
+        }}
         referenceImageUrl={referenceImageUrl}
       />
     </>
