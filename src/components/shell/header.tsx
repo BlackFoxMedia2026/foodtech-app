@@ -185,10 +185,13 @@ export function Header({
         {/* Su telefono il gruppo di destra si allarga per riempire lo spazio
             lasciato libero dalla navigazione. */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {/* La ricerca sta a sinistra dell'agente: è la cosa che si usa più
-              spesso delle tre, e il pollice sul telefono arriva prima qui. */}
-          <RicercaGlobale />
+          {/* L'agente apre il gruppo. È l'unico dei quattro che non è
+              un'icona ma un oggetto con un alone, e in mezzo agli altri
+              quell'alone finiva addosso al cerchio della ricerca: adesso ha un
+              confine libero alla sua sinistra, dove c'è solo il vuoto fra la
+              navigazione e questo gruppo. */}
           <Agent />
+          <RicercaGlobale />
           <NotificationBell />
           <ProfileMenu user={user} />
         </div>

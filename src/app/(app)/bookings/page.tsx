@@ -1,4 +1,6 @@
 import { db } from "@/lib/db";
+import { startOfDay } from "@/lib/utils";
+import { assenzeAttese } from "@/server/assenze-attese";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { listBookingsForDay } from "@/server/bookings";
 import { getSettimana } from "@/server/booking-week";
@@ -63,6 +65,23 @@ export default async function BookingsPage({
 
   const totalCovers = filteredRows.filter((r) => r.status !== "CANCELLED").reduce((s, b) => s + b.partySize, 0);
   const pendingCount = rows.filter((r) => r.status === "PENDING").length;
+  // Il totale **della giornata**, non del filtro: serve a dire la verità
+  // quando il filtro non trova niente ma la giornata è piena, e a contare le
+  // assenze attese su tutta la giornata invece che sul sottoinsieme mostrato.
+  const totaleDelGiorno = rows.filter((r) => r.status !== "CANCELLED").length;
+
+  /*
+    Le assenze attese, dove prima stavano in Panoramica.
+
+    Solo da oggi in avanti: su una giornata già passata le assenze non si
+    prevedono, si contano — e le righe qui sotto dicono già chi non è
+    arrivato. Una previsione su ieri sarebbe un numero che nessuno può usare.
+  */
+  const oggi = new Date();
+  const giornoPassato = startOfDay(day).getTime() < startOfDay(oggi).getTime();
+  const assenzeDelGiorno = giornoPassato
+    ? 0
+    : await assenzeAttese({ venueId: ctx.venueId, prenotazioni: totaleDelGiorno, oggi });
 
   const roomsWithTables = rooms.map((r) => ({
     id: r.id,
@@ -88,9 +107,8 @@ export default async function BookingsPage({
       }))}
       totalCovers={totalCovers}
       pendingCount={pendingCount}
-      // Il totale **della giornata**, non del filtro: serve a dire la verità
-      // quando il filtro non trova niente ma la giornata è piena.
-      totaleDelGiorno={rows.filter((r) => r.status !== "CANCELLED").length}
+      totaleDelGiorno={totaleDelGiorno}
+      assenzeAttese={assenzeDelGiorno}
       tables={tables}
       service={service}
       serviceOptions={serviceOptions}

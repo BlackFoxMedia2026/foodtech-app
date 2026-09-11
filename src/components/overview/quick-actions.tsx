@@ -2,23 +2,57 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ListPlus, Search, UtensilsCrossed } from "lucide-react";
+import { ListPlus, Plus, Search, UtensilsCrossed } from "lucide-react";
 import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
+import { cn } from "@/lib/utils";
 
 /**
- * Tre gesti in una riga, non quattro riquadri in due file.
+ * I gesti della Panoramica, in testata e a riposo ridotti alla sola icona.
  *
- * Occupavano 268 px in una colonna che ne ha 586 in tutto, e uno dei quattro
- * — «Nuova prenotazione» — è **lo stesso pulsante che sta in testata**, dieci
- * centimetri più su. Prima di comprimere una pagina si cerca il doppione.
+ * Erano quattro riquadri larghi in mezzo alla pagina — tre più «Nuova
+ * prenotazione» in testata, che è **lo stesso gesto** dieci centimetri più su
+ * — e occupavano 268 px nella colonna di destra: lo spazio in cui adesso ci
+ * sta il grafico dell'andamento senza far scorrere niente. Un pulsante grande
+ * non è più facile da trovare di un'icona in testata, se la testata è il posto
+ * dove i comandi stanno in tutte le altre schermate.
  *
- * Restano i tre gesti che la testata non ha, in una riga di bersagli larghi
- * (44 px di altezza, tocco pieno) invece di quattro piastrelle da 84.
+ * Perché espandere invece di mostrare un tooltip: il testo esce **dentro** il
+ * pulsante, quindi il bersaglio cresce con l'etichetta e il gesto si può
+ * completare senza rimettere a fuoco. E non c'è il ritardo di 700 ms del
+ * tooltip su una schermata che si usa durante il servizio.
+ *
+ * Le tre regole che lo rendono usabile e non solo animato:
+ *
+ * - **il nome accessibile non dipende dall'espansione**: `aria-label` sta sul
+ *   comando e vale sempre, anche col testo chiuso (che non è nascosto a
+ *   schermo ma tagliato, e comunque non si legge);
+ * - **si apre anche col tabulatore**, non solo col puntatore: `focus-visible`
+ *   fa lo stesso lavoro di `hover`, quindi chi naviga da tastiera vede la
+ *   parola prima di premere invio;
+ * - **niente scatti**: cresce `max-width` e il margine del testo, e il gruppo
+ *   è ancorato a destra — quindi si allarga verso il saluto, che è troncabile,
+ *   invece di spingere fuori schermo i pulsanti accanto. Con
+ *   `prefers-reduced-motion` la transizione non c'è e il testo appare secco.
  */
-const TILE =
-  "finish-sage-tile flex min-h-[44px] min-w-[9rem] flex-1 items-center justify-center gap-2 rounded-xl border border-[#2f5b4a] px-2.5 py-2 text-center text-cream transition-colors hover:brightness-110";
+const COMANDO =
+  "group/azione tocco-comodo inline-flex h-10 items-center justify-center rounded-full px-2.5 transition-[filter,box-shadow] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-const LINKS = [
+/** Il gesto principale porta il tono delle chiamate all'azione: crema su verde. */
+const TONO_PRIMARIO = "bg-cream text-clay-ink shadow-[0_10px_24px_rgba(0,0,0,0.35)]";
+const TONO = "finish-sage-tile border border-[#2f5b4a] text-cream";
+
+/*
+  `max-w-0` + `overflow-hidden` invece di `hidden`: una larghezza si può
+  animare, un `display` no. Il margine entra nella transizione insieme alla
+  larghezza, altrimenti a riposo resterebbero 8 px di aria dopo l'icona e i
+  pulsanti chiusi non sarebbero tondi.
+*/
+const ETICHETTA =
+  "max-w-0 overflow-hidden whitespace-nowrap text-xs font-semibold uppercase tracking-wider opacity-0 transition-[max-width,opacity,margin] duration-200 ease-out motion-reduce:transition-none group-hover/azione:ml-2 group-hover/azione:max-w-[12rem] group-hover/azione:opacity-100 group-focus-visible/azione:ml-2 group-focus-visible/azione:max-w-[12rem] group-focus-visible/azione:opacity-100";
+
+const ICONA = "h-5 w-5 shrink-0";
+
+const COLLEGAMENTI = [
   { href: "/waitlist", label: "Lista d'attesa", icon: ListPlus },
   { href: "/guests", label: "Cerca ospite", icon: Search },
 ];
@@ -27,13 +61,28 @@ export function QuickActions() {
   const [walkInOpen, setWalkInOpen] = useState(false);
 
   return (
-    // `flex-wrap`: nella colonna stretta del tablet tre bersagli in fila
-    // sforavano a destra. Vanno a capo invece di essere tagliati.
-    <div className="flex flex-wrap gap-2">
-      {LINKS.map(({ href, label, icon: Icon }) => (
-        <Link key={href} href={href} className={TILE}>
-          <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="truncate text-sm font-medium">{label}</span>
+    <div className="flex shrink-0 items-center justify-end gap-1.5">
+      {/* Sotto `md` questo comando non c'è: la barra in basso ha il «+»
+          grande, e la sua prima voce è proprio «Nuova prenotazione». Erano due
+          bersagli per la stessa cosa. Gli altri tre restano anche sul telefono
+          — chiusi sono tre tondi da 40 px, e il saluto accanto tronca. */}
+      <Link
+        href="/bookings/new"
+        aria-label="Nuova prenotazione"
+        className={cn(COMANDO, TONO_PRIMARIO, "hidden md:inline-flex")}
+      >
+        <Plus className={ICONA} aria-hidden="true" />
+        <span className={ETICHETTA} aria-hidden="true">
+          Prenotazione
+        </span>
+      </Link>
+
+      {COLLEGAMENTI.map(({ href, label, icon: Icon }) => (
+        <Link key={href} href={href} aria-label={label} className={cn(COMANDO, TONO)}>
+          <Icon className={ICONA} aria-hidden="true" />
+          <span className={ETICHETTA} aria-hidden="true">
+            {label}
+          </span>
         </Link>
       ))}
 
@@ -45,11 +94,13 @@ export function QuickActions() {
       <button
         type="button"
         onClick={() => setWalkInOpen(true)}
-        className={TILE}
         aria-label="Accomoda walk-in"
+        className={cn(COMANDO, TONO)}
       >
-        <UtensilsCrossed className="h-4 w-4 shrink-0" aria-hidden="true" />
-        <span className="truncate text-sm font-medium">Walk-in</span>
+        <UtensilsCrossed className={ICONA} aria-hidden="true" />
+        <span className={ETICHETTA} aria-hidden="true">
+          Walk-in
+        </span>
       </button>
 
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />

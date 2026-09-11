@@ -4,7 +4,22 @@
 
 @layer base {
   :root {
-    --background: 160 46% 11%;
+    /*
+      Il verde più scuro del prodotto.
+
+      Era #0F2920, e distava troppo poco dal verde delle schede (#163C2F): la
+      schermata si leggeva come un unico blocco verde, e sul bordo basso del
+      gradiente delle schede lo stacco era di **1,03 : 1** — la scheda
+      letteralmente svaniva nel fondo. Ora è #0B1511, cioè
+      `hsl(156 31.25% 6.27%)`: la conversione esatta dell'esadecimale, non un
+      tono ripescato a occhio. Lo stacco passa a 1,24 : 1 sul bordo basso e
+      1,52 : 1 su quello alto, e il testo crema guadagna un terzo di
+      contrasto (12,60 → 15,15 : 1).
+
+      Vale su tutto: lo shell operativo, l'accesso, la vetrina, le pagine
+      pubbliche e quella d'errore dipingono tutte `bg-background`.
+    */
+    --background: 156 31.25% 6.27%;
     --foreground: 41 59% 88%;
     --card: 160 46% 16%;
     --card-foreground: 41 59% 88%;
@@ -92,7 +107,7 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    background-color: #0f2a21;
+    background-color: #0b1511;
     background-image:
       var(--noise),
       repeating-linear-gradient(
@@ -103,7 +118,7 @@
         transparent 10px
       ),
       radial-gradient(130% 110% at 12% -10%, rgba(255, 255, 255, 0.07), transparent 55%),
-      linear-gradient(180deg, #0f2a21 0%, #17382c 100%);
+      linear-gradient(180deg, #0b1511 0%, #17382c 100%);
     background-blend-mode: overlay, normal, normal, normal;
     background-size: 240px 240px, 100% 10px, auto, auto;
     background-attachment: fixed;
@@ -373,6 +388,58 @@
      background-color/tint the chip already has. */
   .finish-metal-chip {
     background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.25), transparent 50%), linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08));
+  }
+
+  /*
+    Il vetro: un contorno che prende luce, invece di una linea disegnata.
+
+    `.riquadro` traccia il bordo con un colore solo, e va benissimo dentro una
+    scheda. Ma su una card **senza riempimento** appoggiata al fondo quasi
+    nero, quel bordo è l'unica cosa che disegna l'oggetto: 1px uniforme si
+    legge come un tratto vettoriale, non come uno spigolo illuminato. E
+    `--border` lì fa 2,09 : 1 — sotto la soglia di 3 : 1 per un contorno che
+    porta la forma.
+
+    Quindi lo spigolo è una sfumatura a 135° fra tre toni che sono
+    `--border-strong` (#46675B) scalato per canale ×1,35 / ×1 / ×0,75: la
+    stessa regola dei `finish-*` qui sopra, che conserva la tinta **per
+    costruzione** invece di ripescare un verde scelto a occhio — è ciò che
+    aveva fatto derivare i marroni verso il pesca. La luce batte in alto a
+    sinistra (4,83 : 1 sul fondo) e si spegne in basso a destra (2,03 : 1):
+    il perimetro non è mai uniforme, ed è questo che lo fa leggere come
+    materiale.
+
+    Sopra la sfumatura va la `--noise` in `overlay`: su un bordo di un pixel
+    fa quel tanto di irregolarità che gli toglie l'aria di tratto vettoriale.
+
+    Il bordo sta su uno `::before` mascherato e non su `border` perché
+    `border` non prende un gradiente insieme a un raggio. Il raggio lo
+    **eredita** da chi porta la classe, quindi `.vetro` vale sia sul riquadro
+    con la spalla (`.card-notch`) sia sul dischetto tondo, senza varianti.
+
+    NB: `.tocco-comodo` usa `::after`, quindi le due classi convivono.
+  */
+  .vetro {
+    position: relative;
+    background-image: radial-gradient(120% 100% at 15% 0%, rgba(255, 255, 255, 0.05), transparent 55%);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+  .vetro::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background-image: var(--noise), linear-gradient(135deg, #5e8b7b 0%, #46675b 42%, #344d44 100%);
+    background-blend-mode: overlay, normal;
+    background-size: 240px 240px, auto;
+    -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+    mask-composite: exclude;
+    pointer-events: none;
   }
   .text-display {
     @apply font-display tracking-tight;

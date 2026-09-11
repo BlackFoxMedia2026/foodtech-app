@@ -1,11 +1,8 @@
 import Link from "next/link";
-import { Plus, CalendarRange } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Briefing } from "@/components/overview/briefing";
-import { TodayTimeline } from "@/components/overview/today-timeline";
+import { ProssimePrenotazioni } from "@/components/overview/prossime-prenotazioni";
 import { QuickActions } from "@/components/overview/quick-actions";
-import { KpiGrid } from "@/components/overview/kpi-grid";
 import { WeekTrend } from "@/components/overview/week-trend";
 import { getActiveVenue } from "@/lib/tenant";
 import { getOverview } from "@/server/insights";
@@ -38,107 +35,111 @@ export default async function OverviewPage() {
             </span>
           </h1>
         </div>
-        {/* Sotto `md` questo pulsante non c'è: la barra in basso ha il «+»
-            grande, e la sua prima voce è proprio «Nuova prenotazione». Erano
-            due bersagli per la stessa cosa, e quello in testata si mangiava
-            metà della riga — il saluto finiva a «Buona giornata…». */}
-        <Button asChild variant="accent" className="hidden md:inline-flex">
-          <Link href="/bookings/new">
-            <Plus className="h-4 w-4" />
-            Nuova prenotazione
-          </Link>
-        </Button>
+
+        {/* I gesti stanno qui, dove stanno i comandi in ogni altra schermata:
+            a riposo quattro icone, il nome esce passandoci sopra o arrivandoci
+            col tabulatore. Prima erano tre riquadri larghi in mezzo alla
+            pagina, e lo spazio che liberano è quello in cui ora ci sta il
+            grafico dell'andamento senza far scorrere niente. */}
+        <QuickActions />
       </header>
 
-      {/* Prima cosa in pagina: la frase che si dice alla brigata prima di
-          aprire. I numeri restano sotto — servono, ma dopo. */}
+      {/* Prima cosa in pagina: i numeri che si dicono alla brigata prima di
+          aprire — prenotazioni, coperti, pienezza, incasso — un blocco per
+          numero. `fissa` perché è la riga che la pagina promette di tenere
+          ferma: in una colonna flex senza `shrink-0` sarebbe la prima cosa
+          che si schiaccia su uno schermo basso. */}
       <Briefing
         prenotazioni={data.todayBookings.length}
         coperti={data.totalCovers}
         occupancyPct={data.occupancyPct}
-        vip={data.alertCounts.vip}
-        compleanni={data.alertCounts.birthdays}
-        allergie={data.alertCounts.allergies}
-        daConfermare={data.alertCounts.pendingConfirmations}
-        picco={data.picco}
+        estimatedRevenueCents={data.estimatedRevenueCents}
+        incasso={data.incasso}
+        currency={ctx.venue.currency}
+        deltaIncasso={data.comparisons.revenue}
       />
 
       {/*
-        Qui c'era «Prenotazioni 14 · Coperti 50 · Occupazione 56%»: gli stessi
-        due numeri della frase qui sopra, in 140 px di riquadri. Prima di
-        comprimere una pagina si cerca il doppione — e il conto delle
-        prenotazioni è finito nella frase, dove serviva.
-      */}
-      {/*
         Due colonne **da tablet in su**. Impilate a 820 px diventavano due
         regioni che scorrono una sopra l'altra — due barre di scorrimento in
-        una schermata che non dovrebbe averne nemmeno una.
+        una schermata che non dovrebbe averne nemmeno una. Sul telefono una
+        regione sola, con tutto dentro: due colonne su 390 px diventano due
+        finestrelle da settanta pixel, inservibili.
+
+        Le due card finiscono **alla stessa altezza** e arrivano **in fondo
+        alla schermata**. Le card sono direttamente le celle della griglia,
+        quindi si stirano all'altezza della riga per conto loro
+        (`align-items: stretch`), e la riga si stira all'altezza della fascia.
+
+        Qui c'era `content-start`, e il motivo per cui c'era non vale più.
+        Teneva la riga alta quanto il suo contenuto perché altrimenti il
+        grafico scendeva fino in fondo mentre le prenotazioni restavano alte
+        quanto le loro tre righe: due card accostate che finivano in due punti
+        diversi. Il prezzo però si vedeva su ogni schermo alto — una fascia di
+        pagina vuota sotto le due card, che su un 27 pollici erano trecento
+        pixel di niente. Adesso si stirano **tutte e due**: il grafico lo
+        faceva già, la finestra delle prenotazioni ha imparato a farlo
+        (`rotazione.tsx`), e la schermata è piena come promette di essere una
+        schermata che non scorre.
+
+        E lo scorrimento, se serve, è **della sezione**: su uno schermo basso
+        (1152 × 720, con i quattro numeri su due file) la riga è più alta
+        dello spazio che avanza, e con `overflow-hidden` il fondo della card
+        delle prenotazioni veniva tagliato senza modo di raggiungerlo. Una
+        barra sola per la fascia tiene anche le due card allineate mentre
+        scorre.
       */}
-      {/*
-        Sul telefono **una** regione che scorre, con tutto dentro: due
-        regioni affiancate su 390 px diventano due finestrelle da settanta
-        pixel, inservibili. Da tablet in su le colonne si affiancano e
-        scorrono ognuna per sé.
-      */}
-      <section className="fill min-h-0 space-y-4 overflow-y-auto md:grid md:grid-cols-[1.4fr_1fr] md:gap-4 md:space-y-0 md:overflow-hidden">
-        {/* Le prenotazioni di oggi: sono l'unica cosa di questa pagina che
-            per natura non ha una lunghezza massima, quindi scorre lei. */}
-        <Card className="card-notch recessed flex flex-col md:min-h-0">
-          <CardHeader className="fissa flex flex-row items-center justify-between py-3">
-            <div>
-              <CardTitle className="text-base">Prenotazioni di oggi</CardTitle>
-              <CardDescription>Aggiornate in tempo reale</CardDescription>
-            </div>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/bookings">
-                <CalendarRange className="h-4 w-4" />
-                Calendario
-              </Link>
-            </Button>
+      <section className="fill min-h-0 space-y-4 overflow-y-auto md:grid md:grid-cols-[1.4fr_1fr] md:gap-4 md:space-y-0">
+        {/*
+          A sinistra le prenotazioni. Prima qui c'era **tutta** la giornata in
+          una lista alta quanto la schermata, e a metà servizio erano quasi
+          tutte «Completata»: il posto migliore della pagina raccontava cose
+          già finite. Ora il mazzo tiene le tre che riguardano i prossimi
+          minuti e «Calendario» porta a tutte — quindi la colonna è alta quanto
+          basta, e l'andamento può starle **accanto** invece che sotto.
+        */}
+        <ProssimePrenotazioni bookings={data.todayBookings} picco={data.picco} />
+
+        {/*
+          A destra l'andamento, alto quanto le prenotazioni. Il grafico stava
+          in fondo alla colonna sinistra, cioè sotto la linea dello schermo:
+          per vedere come va la settimana bisognava scorrere una pagina che non
+          dovrebbe scorrere. Qui è la prima cosa che si vede a destra, e della
+          larghezza ci fa qualcosa — sette punti su una colonna stretta stavano
+          schiacciati.
+
+          Le assenze attese, che stavano qui sotto in un riquadro loro, si
+          leggono in Prenotazioni: sono un fatto sulle prenotazioni della
+          giornata, e là stanno nella riga che le conta.
+        */}
+        {/* `flex flex-col` sul riquadro e `min-h-0` in tutta la catena: è il
+            grafico che si allunga fino a pareggiare la card accanto. Senza
+            `min-h-0` a ogni livello un elemento flex non scende sotto
+            l'altezza del proprio contenuto, e la colonna sforerebbe invece di
+            adattarsi. */}
+        <Card className="card-notch md:flex md:min-h-0 md:flex-col">
+          <CardHeader className="py-3">
+            <CardTitle className="text-base">Andamento settimanale</CardTitle>
+            <CardDescription>
+              Coperti ·{" "}
+              <span className={data.weekComparisonPct >= 0 ? "text-sage-strong" : "text-destructive-soft"}>
+                {data.weekComparisonPct >= 0 ? "▲" : "▼"} {Math.abs(data.weekComparisonPct)}% sulla
+                settimana scorsa
+              </span>
+            </CardDescription>
           </CardHeader>
-          <CardContent className="pt-0 md:min-h-0 md:flex-1 md:overflow-y-auto">
-            <TodayTimeline bookings={data.todayBookings} />
+          <CardContent className="pt-0 md:flex md:min-h-0 md:flex-1 md:flex-col">
+            <WeekTrend data={data.trend} />
+            <Link
+              href="/insights"
+              /* Non è un collegamento dentro una frase: è l'unica uscita
+                 dal riquadro, quindi ha diritto a un bersaglio vero. */
+              className="tocco-comodo mt-2 inline-flex min-h-[36px] items-center text-xs font-medium text-surface-brown-light hover:underline"
+            >
+              Vedi report completo
+            </Link>
           </CardContent>
         </Card>
-
-        {/* La colonna di destra: azioni, numeri, andamento. Se non ci sta
-            tutto — succede a 1280 e sul tablet — scorre questa colonna, non
-            la pagina. */}
-        <div className="space-y-4 pr-0.5 md:min-h-0 md:flex-1 md:overflow-y-auto">
-          <QuickActions />
-          <KpiGrid
-            totalCovers={data.totalCovers}
-            estimatedRevenueCents={data.estimatedRevenueCents}
-            incasso={data.incasso}
-            currency={ctx.venue.currency}
-            expectedNoShow={data.expectedNoShow}
-            comparisons={data.comparisons}
-          />
-
-          <Card className="card-notch">
-            <CardHeader className="py-3">
-              <CardTitle className="text-base">Andamento settimanale</CardTitle>
-              <CardDescription>
-                Coperti ·{" "}
-                <span className={data.weekComparisonPct >= 0 ? "text-sage-strong" : "text-destructive-soft"}>
-                  {data.weekComparisonPct >= 0 ? "▲" : "▼"} {Math.abs(data.weekComparisonPct)}% sulla
-                  settimana scorsa
-                </span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <WeekTrend data={data.trend} />
-              <Link
-                href="/insights"
-                /* Non è un collegamento dentro una frase: è l'unica uscita
-                   dal riquadro, quindi ha diritto a un bersaglio vero. */
-                className="tocco-comodo mt-2 inline-flex min-h-[36px] items-center text-xs font-medium text-surface-brown-light hover:underline"
-              >
-                Vedi report completo
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
       </section>
     </div>
   );

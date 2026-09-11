@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay } from "@/lib/utils";
 import { dateKeyInVenue } from "@/lib/venue-time";
+import { assenzeAttese } from "./assenze-attese";
 import { incassoDelGiorno } from "./orders";
 import { capienzaDelGiorno, quantoPieno } from "./capienza-giorno";
 
@@ -88,23 +89,15 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
 
   /**
    * Assenze attese: la quota storica di no-show di questo locale applicata
-   * alle prenotazioni di oggi. Prima si moltiplicava la media di
-   * `Guest.noShowCount` (mai aggiornato) per un fattore 0,1 scelto a occhio.
-   * Ora è una proporzione su fatti: quante prenotazioni sono finite in assenza
-   * negli ultimi novanta giorni.
+   * alle prenotazioni di oggi. Il calcolo sta in `server/assenze-attese.ts`
+   * perché lo stesso numero si legge anche in Prenotazioni, accanto al
+   * conteggio della giornata.
    */
-  const novantaGiorni = new Date(startOfDay(day));
-  novantaGiorni.setDate(novantaGiorni.getDate() - 90);
-  const [storiche, storicheAssenti] = await Promise.all([
-    db.booking.count({
-      where: { venueId, startsAt: { gte: novantaGiorni, lt: startOfDay(day) }, status: { not: "CANCELLED" } },
-    }),
-    db.booking.count({
-      where: { venueId, startsAt: { gte: novantaGiorni, lt: startOfDay(day) }, status: "NO_SHOW" },
-    }),
-  ]);
-  const quotaAssenze = storiche > 0 ? storicheAssenti / storiche : 0;
-  const expectedNoShow = Math.round(quotaAssenze * today.bookings.length);
+  const expectedNoShow = await assenzeAttese({
+    venueId,
+    prenotazioni: today.bookings.length,
+    oggi: day,
+  });
 
   // Trend ultimi 7 giorni (per il grafico "Andamento settimanale")
   const weekAgo = new Date(startOfDay(day));
@@ -151,12 +144,19 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
    * Il momento più affollato della giornata, se c'è.
    *
    * Finestra di venti minuti, come nel centro controllo: «trentasette persone
-   * in un'ora» non è un problema, «trentasette in venti minuti» sì. Serve alla
-   * frase del briefing — quella che un direttore direbbe alla brigata prima di
-   * aprire — e non richiede nessun dato nuovo.
+   * in un'ora» non è un problema, «trentasette in venti minuti» sì. Non
+   * richiede nessun dato nuovo.
+   *
+   * Porta anche `inizio`, l'istante da cui parte la finestra — che è sempre
+   * lo `startsAt` di una prenotazione vera, perché la finestra si apre su una
+   * di esse. Serve a «Prenotazioni di oggi» per segnare il punto **dentro la
+   * lista** invece di dirlo in una frase a parte. Va passato come istante e
+   * non come `ora` già scritta: `ora` è formattata nel fuso del locale,
+   * `formatTime` nella timeline no, e su un locale in un altro fuso le due
+   * stringhe non coinciderebbero.
    */
   const presenti = today.bookings.filter((b) => b.status !== "CANCELLED" && b.status !== "NO_SHOW");
-  let picco: { ora: string; coperti: number } | null = null;
+  let picco: { ora: string; inizio: Date; coperti: number } | null = null;
   for (const b of presenti) {
     const fine = new Date(b.startsAt.getTime() + 20 * 60_000);
     const coperti = presenti
@@ -164,6 +164,7 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
       .reduce((n, x) => n + x.partySize, 0);
     if (!picco || coperti > picco.coperti) {
       picco = {
+        inizio: b.startsAt,
         ora: new Intl.DateTimeFormat("it-IT", {
           timeZone: fuso,
           hour: "2-digit",

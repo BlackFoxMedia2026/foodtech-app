@@ -44,6 +44,7 @@ export function BookingsPageClient({
   totalCovers,
   pendingCount,
   totaleDelGiorno,
+  assenzeAttese,
   tables,
   service,
   serviceOptions,
@@ -59,6 +60,12 @@ export function BookingsPageClient({
   pendingCount: number;
   /** Quante prenotazioni ha la giornata, **prima** del filtro. */
   totaleDelGiorno: number;
+  /**
+   * Quante assenze aspettarsi sulle prenotazioni di questa giornata, dalla
+   * quota storica del locale (`server/assenze-attese.ts`). Zero sulle
+   * giornate passate: là le assenze si contano, non si prevedono.
+   */
+  assenzeAttese: number;
   tables: { id: string; label: string; seats: number }[];
   service: string;
   serviceOptions: string[];
@@ -136,6 +143,17 @@ export function BookingsPageClient({
             */}
             {pendingCount > 0 && (
               <span className="ml-2 font-semibold text-accent-strong">({pendingCount} da approvare)</span>
+            )}
+            {/*
+              Le assenze attese stanno in questa riga e non in un riquadro
+              suo: è un fatto **su queste prenotazioni**, e qui sta accanto ai
+              numeri di cui parla. Solo se ce n'è almeno una — «0 assenze
+              attese» è una riga che non fa cambiare niente a nessuno.
+            */}
+            {assenzeAttese > 0 && (
+              <span className="ml-2 text-muted-foreground">
+                · {assenzeAttese} {assenzeAttese === 1 ? "assenza attesa" : "assenze attese"}
+              </span>
             )}
           </p>
         </div>

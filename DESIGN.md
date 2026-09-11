@@ -3,7 +3,7 @@ name: Tavolo
 description: Gestionale ospitalità multi-locale — prenotazioni, sala, CRM, marketing, pagamenti, analytics
 colors:
   forest: "#13332C"
-  forest-deep: "#0F2920"
+  forest-deep: "#0B1511"
   forest-card: "#163C2F"
   forest-raised: "#284D3F"
   cream: "#F2E7D0"
@@ -98,7 +98,7 @@ components:
 **Creative North Star: "La sala di sera"**
 
 Tavolo ha il colore di un ristorante a luci basse: un **verde bosco profondo**
-(`#0F2920`) come fondo di ogni schermata, testo e superfici chiare in **crema**
+(`#0B1511`) come fondo di ogni schermata, testo e superfici chiare in **crema**
 (`#F2E7D0`), e un accento **terracotta** (`#AF6648`) sul poco che deve chiedere
 attenzione. Non è un tool enterprise freddo e non è nemmeno un tema scuro
 generico: è caldo perché il verde è saturo e il crema è avorio, non bianco.
@@ -129,7 +129,9 @@ delle superfici chiare, il **terracotta** degli accenti. Le tinte marroni
 (`surface-brown`) sono la scala di raccordo fra crema e terracotta.
 
 ### Fondi (verde)
-- **Forest Deep** (`#0F2920`, token `--background`): il fondo di ogni schermata.
+- **Forest Deep** (`#0B1511`, token `--background`): il fondo di ogni schermata.
+  Era `#0F2920` fino al 10 settembre 2026: distava troppo poco da Forest Card,
+  e sul bordo basso del gradiente delle card lo stacco era di 1,03 : 1.
 - **Forest Card** (`#163C2F`, token `--card`): le card di contenuto operativo.
 - **Forest Raised** (`#284D3F`, token `--secondary`/`--muted`/`--popover`): il
   livello sopra la card — menu a comparsa, campi, pill inattivi.
