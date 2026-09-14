@@ -58,10 +58,11 @@ test("dal sito al conto chiuso, e il cliente compare nel CRM coi suoi punti", as
   // prodotto, non un caso, e vale la pena verificarla qui.
   await expect(riga).toContainText(/attesa/i);
 
-  // Una prenotazione da confermare non ha il menu degli stati: ha due
-  // pulsanti espliciti, «Approva» e «Rifiuta». È la scelta giusta — su quella
-  // riga c'è una decisione da prendere, non uno stato da correggere — e il
-  // percorso segue il prodotto, non il contrario.
+  // Lo stato si cambia dalla pillola dello stato, che è un menu. Ma su una
+  // riga in attesa c'è una **decisione** da prendere, non uno stato da
+  // correggere, e approvare è il gesto più frequente della pagina: resta a un
+  // clic, accanto alla pillola. «Rifiuta» invece sta nel menu, dove si chiama
+  // «Cancellata» — era un secondo pulsante su ogni riga per un gesto raro.
   await riga.getByRole("button", { name: "Approva" }).click();
   await expect(riga).toContainText(/confermat/i, { timeout: 20_000 });
 

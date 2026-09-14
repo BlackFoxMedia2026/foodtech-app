@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Booking, Guest, RoomLayoutMode, Table } from "@prisma/client";
-import { CalendarRange, List, Map as MapIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { DayPicker } from "@/components/bookings/day-picker";
 import { NewBookingButton } from "@/components/bookings/new-booking-button";
 import { BookingsTable } from "@/components/bookings/bookings-table";
+import { ALTEZZA, BarraPrenotazioni, FiltroStato, SelettoreVista } from "@/components/bookings/barra-prenotazioni";
 import { BookingServiceSelect } from "@/components/bookings/floor/booking-service-select";
 import { BookingsFloorView } from "@/components/bookings/floor/bookings-floor-view";
 import { WeekBoard } from "@/components/bookings/week-board";
@@ -41,10 +40,8 @@ export function BookingsPageClient({
   dayString,
   statusFilter,
   filteredRows,
-  totalCovers,
   pendingCount,
   totaleDelGiorno,
-  assenzeAttese,
   tables,
   service,
   serviceOptions,
@@ -56,16 +53,9 @@ export function BookingsPageClient({
   dayString: string;
   statusFilter: StatusFilter;
   filteredRows: Row[];
-  totalCovers: number;
   pendingCount: number;
   /** Quante prenotazioni ha la giornata, **prima** del filtro. */
   totaleDelGiorno: number;
-  /**
-   * Quante assenze aspettarsi sulle prenotazioni di questa giornata, dalla
-   * quota storica del locale (`server/assenze-attese.ts`). Zero sulle
-   * giornate passate: là le assenze si contano, non si prevedono.
-   */
-  assenzeAttese: number;
   tables: { id: string; label: string; seats: number }[];
   service: string;
   serviceOptions: string[];
@@ -113,130 +103,35 @@ export function BookingsPageClient({
   }
 
   return (
-    // Niente scroll di pagina: testata, giorno e filtri restano fissi, e la
-    // vista scelta — elenco, mappa o settimana — prende l'altezza che avanza.
-    // Qui si lavora, quindi l'intestazione è compatta (direzione C).
+    // Niente scroll di pagina: la barra dei comandi e i filtri restano fissi in
+    // cima, e la vista scelta — elenco, mappa o settimana — prende l'altezza che
+    // avanza. Qui si lavora, quindi l'intestazione è compatta.
     <div className="schermo animate-fade-in gap-3">
-      <header className="fissa flex flex-wrap items-center justify-between gap-3">
-        <div>
-          {/* Il titolo sta nella testata: qui resta il conteggio, che è la
-              cosa che cambia mentre si lavora. */}
-          <p className="text-sm text-muted-foreground">
-            {/*
-              Il conteggio dice **su cosa** è: con un filtro acceso «0
-              prenotazioni · 0 coperti» era vero del filtro e falso della
-              giornata, che ne aveva tredici. Un numero senza la sua base è la
-              cosa che questo prodotto non fa da nessuna parte.
-            */}
-            {statusFilter === "all"
-              ? `${filteredRows.length} prenotazioni`
-              : `${filteredRows.length} ${statusFilter === "pending" ? "in sospeso" : "confermate"} su ${totaleDelGiorno}`}{" "}
-            · {totalCovers} coperti
-            {/*
-              Un colore della tavolozza **che si legge**: misurato sulla
-              scheda, l'oro del tema fa 5,11 : 1 e l'accento 3,32 : 1 — sotto
-              la soglia per un testo piccolo, e perfino sotto il grigio delle
-              note (4,45). Il giallo di prima (`amber-600`, fuori tavolozza)
-              faceva 3,83.
-            */}
-            {pendingCount > 0 && (
-              <span className="ml-2 font-semibold text-accent-strong">({pendingCount} da approvare)</span>
-            )}
-            {/*
-              Le assenze attese stanno in questa riga e non in un riquadro
-              suo: è un fatto **su queste prenotazioni**, e qui sta accanto ai
-              numeri di cui parla. Solo se ce n'è almeno una — «0 assenze
-              attese» è una riga che non fa cambiare niente a nessuno.
-            */}
-            {assenzeAttese > 0 && (
-              <span className="ml-2 text-muted-foreground">
-                · {assenzeAttese} {assenzeAttese === 1 ? "assenza attesa" : "assenze attese"}
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <DayPicker value={dayString} />
-          {/* Always visible regardless of view (brief section 3) — it stayed
-              conditional on the Mappa view before, which made the header
-              visibly shift when switching views. */}
-          <BookingServiceSelect service={service} serviceOptions={serviceOptions} />
-          <NewBookingButton tables={tables} />
-        </div>
-      </header>
-
-      <div className="fissa flex flex-wrap items-center justify-between gap-3">
-        {/*
-          Un solo modo di dire «questa è scelta».
-
-          Su questa schermata ce n'erano tre: crema per «Tutte» e
-          «Confermate», arancione (`bg-amber-600`) per «In sospeso», e un
-          quarto colore per la vista scelta qui a destra. Tre modi di dire la
-          stessa cosa nello stesso posto si leggono come tre cose diverse — e
-          l'arancione su un filtro sembrava un allarme, non una selezione.
-
-          Il numero delle sospese resta in evidenza: è un'informazione, e
-          l'informazione non è la selezione.
-        */}
-        <div className="flex gap-2">
-          <Button variant={statusFilter === "all" ? "default" : "outline"} asChild>
-            <Link href={getStatusFilterUrl("all")}>Tutte</Link>
-          </Button>
-          <Button variant={statusFilter === "confirmed" ? "default" : "outline"} asChild>
-            <Link href={getStatusFilterUrl("confirmed")}>Confermate</Link>
-          </Button>
-          <Button variant={statusFilter === "pending" ? "default" : "outline"} asChild>
-            <Link href={getStatusFilterUrl("pending")}>
-              In sospeso
-              {pendingCount > 0 && (
-                <span
-                  className={cn(
-                    "ml-2 rounded-full px-1.5 text-xs font-semibold tabular-nums",
-                    // Sulla tinta dell'accento il testo accento non si legge
-                    // (2,85 : 1): sopra una tinta va il crema, che fa 8,52.
-                    statusFilter === "pending" ? "bg-forest/15 text-clay-ink" : "bg-accent/20 text-foreground",
-                  )}
-                >
-                  {pendingCount}
-                </span>
-              )}
-            </Link>
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-1 riquadro bg-card p-1">
-          <button
-            type="button"
-            onClick={() => changeView("elenco")}
+      {/*
+        Il titolo della pagina non è qui e non ci torna: la barra di navigazione
+        scrive già «Prenotazioni» con l'indicatore attivo. E non c'è più nemmeno
+        la riga di conteggi che stava al suo posto — «16 prenotazioni · 69
+        coperti · 2 assenze attese» era la prima cosa che si leggeva su una
+        pagina dove la prima cosa da sapere è che giorno è.
+      */}
+      <BarraPrenotazioni
+        giorno={<DayPicker value={dayString} />}
+        servizio={
+          /* Sempre visibile, in ogni vista: restava legato alla Mappa, e la
+             barra si spostava sotto gli occhi cambiando vista. */
+          <BookingServiceSelect
+            service={service}
+            serviceOptions={serviceOptions}
             className={cn(
-              "tocco-comodo flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
-              view === "elenco" ? "bg-cream text-clay-ink" : "text-muted-foreground hover:bg-secondary",
+              ALTEZZA,
+              "w-auto shrink-0 gap-1.5 rounded-full border-border/70 bg-card/70 px-2.5 text-[0.9375rem] font-medium shadow-none transition-colors hover:border-border-strong/70 hover:bg-cream/[0.06] min-[1280px]:px-3 min-[1440px]:text-base min-[1500px]:gap-2 min-[1500px]:px-4",
             )}
-          >
-            <List className="h-4 w-4" /> Elenco
-          </button>
-          <button
-            type="button"
-            onClick={() => changeView("mappa")}
-            className={cn(
-              "tocco-comodo flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
-              view === "mappa" ? "bg-cream text-clay-ink" : "text-muted-foreground hover:bg-secondary",
-            )}
-          >
-            <MapIcon className="h-4 w-4" /> Mappa
-          </button>
-          <button
-            type="button"
-            onClick={() => changeView("settimana")}
-            className={cn(
-              "tocco-comodo flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
-              view === "settimana" ? "bg-cream text-clay-ink" : "text-muted-foreground hover:bg-secondary",
-            )}
-          >
-            <CalendarRange className="h-4 w-4" /> Settimana
-          </button>
-        </div>
-      </div>
+          />
+        }
+        filtro={<FiltroStato attivo={statusFilter} url={getStatusFilterUrl} inSospeso={pendingCount} />}
+        vista={<SelettoreVista vista={view} onVista={changeView} />}
+        azione={<NewBookingButton tables={tables} className={cn(ALTEZZA, "px-3.5 text-[0.9375rem] font-semibold sm:px-4 min-[1440px]:text-base min-[1500px]:px-6")} />}
+      />
 
       {/*
         La vista prende l'altezza che avanza. L'elenco delle prenotazioni non
@@ -245,12 +140,19 @@ export function BookingsPageClient({
       */}
       {view === "settimana" ? (
         <div className="fill-scroll">
-          <WeekBoard settimana={settimana} />
+          {/* Aprire un giorno dalla settimana significa andare a vedere **chi
+              c'è**: la data da sola lasciava la settimana a schermo, cioè lo
+              stesso disegno con una scheda evidenziata diversa. */}
+          <WeekBoard settimana={settimana} onApriGiorno={() => changeView("elenco")} />
         </div>
       ) : view === "elenco" ? (
         <BookingsTable
           rows={rows}
           fill
+          /* Il selettore di stato chiama un'API che vuole `manage_bookings`:
+             a chi non ce l'ha la pillola resta di sola lettura, invece di
+             rispondere «non puoi» dopo il clic. */
+          canManage={canManageBookings}
           vuoto={
             /*
               «Nessuna prenotazione per questa data» era falso quando la

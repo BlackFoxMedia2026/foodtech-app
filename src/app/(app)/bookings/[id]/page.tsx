@@ -13,7 +13,7 @@ import { StatusBadge, SourceBadge } from "@/components/bookings/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { cosaSapere, etichettaOccasione } from "@/lib/cosa-sapere";
 import { CosaSapere } from "@/components/guests/cosa-sapere";
-import { AzioniStato } from "@/components/bookings/azioni-stato";
+import { ApprovaPrenotazione, SelettoreStato } from "@/components/bookings/selettore-stato";
 
 export default async function BookingDetail({ params }: { params: { id: string } }) {
   const ctx = await getActiveVenue();
@@ -48,11 +48,24 @@ export default async function BookingDetail({ params }: { params: { id: string }
             nessuna azione sulla prenotazione, mentre la lista le aveva. Sono
             le **stesse** azioni, dallo stesso componente — approvare una
             prenotazione in attesa è il gesto più frequente che ci sia, e non
-            deve dipendere da come si è arrivati qui. */}
+            deve dipendere da come si è arrivati qui.
+
+            E sono lo stesso **oggetto**: la pillola dello stato è il comando
+            che lo cambia. Prima qui c'erano due cose accostate — la pillola che
+            diceva lo stato e i tre puntini che lo cambiavano — cioè lo stesso
+            dato scritto due volte, una delle quali premibile senza dirlo. */}
         <div className="flex flex-wrap items-center gap-2">
           <SourceBadge source={item.source} />
-          <StatusBadge status={item.status} />
-          {canManage && <AzioniStato bookingId={item.id} stato={item.status} nome={guestName} />}
+          {canManage ? (
+            <>
+              <SelettoreStato bookingId={item.id} stato={item.status} nome={guestName} />
+              {item.status === "PENDING" && (
+                <ApprovaPrenotazione bookingId={item.id} nome={guestName} />
+              )}
+            </>
+          ) : (
+            <StatusBadge status={item.status} />
+          )}
         </div>
       </header>
 
