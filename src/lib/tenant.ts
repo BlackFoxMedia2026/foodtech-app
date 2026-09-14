@@ -46,8 +46,11 @@ export const resolveActiveVenue = cache(async function resolveActiveVenue(): Pro
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!session || !userId) return { state: "unauthenticated" };
 
+  // Un'appartenenza disattivata (`disabledAt`) non conta: la persona resta in
+  // organico e nel registro, ma da questo locale non entra. Vedi
+  // `server/staff-account.ts`.
   const memberships = await db.venueMembership.findMany({
-    where: { userId },
+    where: { userId, disabledAt: null },
     include: { venue: { include: { org: true } }, user: { select: { sessionsRevokedAt: true } } },
     orderBy: { createdAt: "asc" },
   });

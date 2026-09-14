@@ -15,6 +15,7 @@ export const STAFF_CONTRACT_TYPES: { value: StaffContractType; label: string }[]
   { value: "APPRENDISTATO", label: "Apprendistato" },
   { value: "COLLABORAZIONE", label: "Collaborazione" },
   { value: "A_CHIAMATA", label: "A chiamata" },
+  { value: "STAGE", label: "Stage" },
   { value: "ALTRO", label: "Altro" },
 ];
 

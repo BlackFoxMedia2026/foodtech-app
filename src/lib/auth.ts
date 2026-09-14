@@ -46,6 +46,12 @@ export const authOptions: NextAuthOptions = {
         if (!user?.passwordHash) return null;
         const ok = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!ok) return null;
+        // L'ultimo accesso, per la scheda del dipendente. Una scrittura per
+        // login, non una per richiesta; e se fallisce non impedisce di
+        // entrare — è un'informazione, non un controllo.
+        db.user
+          .update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+          .catch(() => {});
         return { id: user.id, email: user.email, name: user.name ?? undefined };
       },
     }),

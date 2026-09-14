@@ -36,7 +36,45 @@ export const WaiterInput = z.object({
   // Override del reparto: normalmente nullo, il reparto si deduce dal ruolo
   // (ROLE_DEPARTMENT in @/lib/staff-roles). Nessuna schermata lo scrive oggi.
   department: z.nativeEnum(StaffDepartment).nullable().optional(),
+  // L'anagrafica estesa della scheda HR. Tutto facoltativo: una persona
+  // creata da «Nuova persona» ne ha zero, e la scheda si completa dopo.
+  fiscalCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .max(32)
+    .regex(/^[A-Z0-9]*$/, "invalid_fiscal_code")
+    .nullable()
+    .optional(),
+  birthPlace: testo(120),
+  nationality: testo(80),
+  address: testo(200),
+  postalCode: testo(16),
+  city: testo(120),
+  province: z.string().trim().toUpperCase().max(8).nullable().optional(),
+  emergencyContactName: testo(120),
+  emergencyContactPhone: testo(40),
+  /** Le caratteristiche: tag liberi, senza doppioni e senza vuoti. */
+  skills: z
+    .array(z.string().trim().min(1).max(40))
+    .max(40)
+    .transform((tags) => [...new Set(tags)])
+    .optional(),
+  /** Il responsabile diretto: un'altra persona dello stesso locale. */
+  managerId: z.string().min(1).nullable().optional(),
 });
+
+/** Un campo di testo facoltativo: vuoto diventa nullo, così un modulo che
+ * manda "" per un campo non compilato non scrive stringhe vuote in tabella. */
+function testo(max: number) {
+  return z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .optional();
+}
 
 export const WaiterUpdateInput = WaiterInput.partial().extend({
   status: z.nativeEnum(WaiterStatus).optional(),
@@ -89,6 +127,57 @@ export async function getWaiter(venueId: string, id: string) {
   return db.waiter.findFirst({ where: { id, venueId } });
 }
 
+/**
+ * Tutto quello che la scheda della persona mostra in testata e in
+ * Panoramica, in una lettura sola: l'anagrafica, l'account, il responsabile,
+ * i contratti con il loro documento, i corsi, le visite e i documenti.
+ *
+ * Le note e lo storico restano fuori: le note le vede solo chi ha
+ * `manage_staff` (vedi `staff-note.ts`), e lo storico è un'interrogazione
+ * sul registro che si fa solo quando si apre quella tab.
+ */
+export async function getWaiterScheda(venueId: string, id: string) {
+  return db.waiter.findFirst({
+    where: { id, venueId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          lastLoginAt: true,
+          passwordResetExpiresAt: true,
+          venueMemberships: {
+            where: { venueId },
+            select: { id: true, role: true, permissions: true, customPermissions: true, disabledAt: true },
+          },
+        },
+      },
+      manager: { select: { id: true, firstName: true, lastName: true, primaryRole: true } },
+      contracts: {
+        include: {
+          document: { select: { id: true, originalFileName: true, mimeType: true, fileSize: true, createdAt: true } },
+        },
+        orderBy: { startDate: "desc" },
+      },
+      trainings: { orderBy: [{ kind: "asc" }, { completedAt: "desc" }], include: { certificate: { select: { id: true, name: true, originalFileName: true, mimeType: true } } } },
+      medicalChecks: { orderBy: { examinedAt: "desc" }, include: { certificate: { select: { id: true, name: true, originalFileName: true, mimeType: true } } } },
+      documents: { orderBy: { createdAt: "desc" } },
+    },
+  });
+}
+
+export type WaiterScheda = NonNullable<Awaited<ReturnType<typeof getWaiterScheda>>>;
+
+/** Le persone fra cui scegliere un responsabile: tutte tranne sé stessi. */
+export async function listPossibiliResponsabili(venueId: string, escludiId: string) {
+  return db.waiter.findMany({
+    where: { venueId, NOT: { id: escludiId } },
+    select: { id: true, firstName: true, lastName: true, primaryRole: true },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+  });
+}
+
 export async function createWaiter(venueId: string, raw: unknown, actor?: AuditActor) {
   const data = WaiterInput.parse(raw);
   const role = resolveRole(data);
@@ -105,6 +194,13 @@ export async function updateWaiter(venueId: string, id: string, raw: unknown, ac
   const data = WaiterUpdateInput.parse(raw);
   const existing = await db.waiter.findFirst({ where: { id, venueId } });
   if (!existing) throw new Error("not_found");
+  // Il responsabile deve essere di questo locale e non la persona stessa: il
+  // locale lo decide la sessione, mai il corpo della richiesta.
+  if (data.managerId) {
+    if (data.managerId === id) throw new Error("manager_is_self");
+    const manager = await db.waiter.findFirst({ where: { id: data.managerId, venueId }, select: { id: true } });
+    if (!manager) throw new Error("manager_not_found");
+  }
   const role = data.role ?? (data.primaryRole ? staffPrimaryRoleLabel(data.primaryRole) : undefined);
   const updated = await db.waiter.update({ where: { id }, data: { ...data, ...(role ? { role } : {}) } });
   const diff = fieldDiff(existing, updated);

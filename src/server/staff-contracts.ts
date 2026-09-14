@@ -11,6 +11,9 @@ export const StaffContractInput = z
     endDate: z.coerce.date().nullable().optional(),
     weeklyHours: z.coerce.number().min(0, "negative_hours").nullable().optional(),
     contractualRole: z.string().trim().max(120).nullable().optional(),
+    level: z.string().trim().max(120).nullable().optional(),
+    workingDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
+    probationEndDate: z.coerce.date().nullable().optional(),
     notes: z.string().trim().max(2000).nullable().optional(),
   })
   .refine((data) => !data.endDate || data.endDate >= data.startDate, {

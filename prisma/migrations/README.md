@@ -160,3 +160,19 @@ questo tipo:
 Fra il passo 1 e il passo 2 il database ha una colonna in più di quelle
 dichiarate nello schema, e `prisma migrate diff` lo segnala. È voluto, e dura
 una pubblicazione.
+
+## La scheda HR del dipendente (14 settembre)
+
+`20260914120000_scheda_dipendente` porta la scheda personale da modale a
+pagina (`/staff/[id]`): quattro tabelle nuove — `StaffDocument`,
+`StaffTraining`, `StaffMedicalCheck`, `StaffNote` — e colonne nullabili o con
+default vuoto su `Waiter` (anagrafica estesa, caratteristiche, responsabile),
+`StaffContract` (inquadramento, giorni, periodo di prova), `venue_membership`
+(permessi per persona, disattivazione) e `User` (ultimo accesso, link di reset
+password). Un valore d'enum in più (`STAGE`) e quattro enum nuovi.
+
+Tutta additiva: passa il freno delle anteprime e si può applicare prima del
+deploy del codice. Il documento del **contratto** resta in `ContractDocument`;
+gli attestati e i certificati medici sono righe di `StaffDocument` collegate
+al corso o alla visita, così un file sta in un posto solo. Lo storico della
+scheda non ha una tabella: è `AuditLog`.

@@ -50,7 +50,7 @@ export function StaffPageClient({
   canManageStaff,
   canManageContracts,
   assignmentSummaryByStaffId,
-  contractAttentionByStaffId,
+  avvisiPerPersona,
   giorno,
   oggi,
   turniDelGiorno,
@@ -63,7 +63,9 @@ export function StaffPageClient({
   canManageStaff: boolean;
   canManageContracts: boolean;
   assignmentSummaryByStaffId: Record<string, string>;
-  contractAttentionByStaffId: Record<string, { status: "EXPIRING_SOON" | "EXPIRED"; detail: string }>;
+  /** L'avviso di scadenza per persona — contratto, visita medica, corsi,
+   * documenti — solo per chi ne ha uno scaduto o vicino. */
+  avvisiPerPersona: Record<string, { stato: "scaduto" | "in_scadenza"; testo: string }>;
   /** Il giorno scelto nel mini-calendario: decide il filtro «stato» e i tre
    * numeri della colonna, non l'elenco delle persone. */
   giorno: string;
@@ -253,8 +255,7 @@ export function StaffPageClient({
                           tables={tables}
                           serviceOptions={serviceOptions}
                           canManageStaff={canManageStaff}
-                          canManageContracts={canManageContracts}
-                          contractAttention={contractAttentionByStaffId[p.id] ?? null}
+                          avviso={avvisiPerPersona[p.id] ?? null}
                         />
                       ))}
                     </div>

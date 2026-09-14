@@ -33,6 +33,11 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname === "/api/public/invite") {
     return { rule: RATE_LIMITS.publicBooking, bucket: "invite", methods: ["POST"] };
   }
+  // Reimpostare la password da un link: severo come l'invito, per lo stesso
+  // motivo — è un endpoint su cui si potrebbero provare token a caso.
+  if (pathname === "/api/public/reimposta-password") {
+    return { rule: RATE_LIMITS.publicBooking, bucket: "reimposta-password", methods: ["POST"] };
+  }
   if (pathname === "/api/public/booking-action") {
     return { rule: RATE_LIMITS.publicBooking, bucket: "booking-action", methods: ["POST"] };
   }
@@ -52,7 +57,14 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname.startsWith("/api/agent/")) {
     return { rule: RATE_LIMITS.agent, bucket: "agent", methods: ["POST"] };
   }
-  if (pathname.endsWith("/upload-image") || pathname.endsWith("/photo") || pathname.endsWith("/document")) {
+  if (
+    pathname.endsWith("/upload-image") ||
+    pathname.endsWith("/photo") ||
+    pathname.endsWith("/document") ||
+    pathname.endsWith("/documents") ||
+    pathname.endsWith("/attestato") ||
+    pathname.endsWith("/certificato")
+  ) {
     return { rule: RATE_LIMITS.upload, bucket: "upload", methods: ["POST", "PUT"] };
   }
 

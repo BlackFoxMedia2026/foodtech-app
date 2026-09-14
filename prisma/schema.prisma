@@ -8,12 +8,12 @@ datasource db {
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  email              String              @unique
-  name               String?
-  passwordHash       String?
-  image              String?
-  createdAt          DateTime            @default(now())
+  id                     String              @id @default(cuid())
+  email                  String              @unique
+  name                   String?
+  passwordHash           String?
+  image                  String?
+  createdAt              DateTime            @default(now())
   /// Istante da cui le sessioni **emesse prima** non valgono più.
   ///
   /// Le sessioni sono token firmati, non righe: non si possono cancellare una
@@ -21,22 +21,31 @@ model User {
   /// emessi prima di adesso, su qualunque dispositivo, smettono di funzionare
   /// al primo controllo. Serve nei due momenti in cui serve davvero: un
   /// tablet perso in sala, e una persona che non lavora più qui.
-  sessionsRevokedAt  DateTime?
-  totpEnabled        Boolean             @default(false)
-  totpSecret         String?
-  recoveryCodesHash  String[]            @default([])
-  sessions           Session[]
-  orgMemberships     OrgMembership[]
-  venueMemberships   VenueMembership[]
-  agentConversations AgentConversation[]
+  sessionsRevokedAt      DateTime?
+  totpEnabled            Boolean             @default(false)
+  totpSecret             String?
+  recoveryCodesHash      String[]            @default([])
+  /// L'ultimo accesso riuscito. Si scrive in `authorize` (lib/auth.ts), una
+  /// volta per login, non a ogni richiesta: serve alla scheda del dipendente
+  /// per dire «è entrato ieri sera», non a misurare l'attività.
+  lastLoginAt            DateTime?
+  /// Il link per reimpostare la password, quando un responsabile ne ha
+  /// generato uno. Si conserva l'hash e non il token: chi legge il database
+  /// non deve poter entrare al posto di qualcuno. Vale una volta e scade.
+  passwordResetHash      String?             @unique
+  passwordResetExpiresAt DateTime?
+  sessions               Session[]
+  orgMemberships         OrgMembership[]
+  venueMemberships       VenueMembership[]
+  agentConversations     AgentConversation[]
   /// I profili di personale collegati a questo account, uno per locale.
   ///
   /// Nullo su quasi tutti i `Waiter` di oggi: si popola solo quando la
   /// persona riceve davvero un accesso. Un profilo senza account resta un
   /// profilo pieno — il lavapiatti che non usa il gestionale esiste lo
   /// stesso in organico.
-  staffProfiles      Waiter[]
-  reviewedRequests   StaffRequest[]      @relation("StaffRequestReviewer")
+  staffProfiles          Waiter[]
+  reviewedRequests       StaffRequest[]      @relation("StaffRequestReviewer")
 }
 
 model Session {
@@ -224,6 +233,10 @@ model Venue {
   staffRequests         StaffRequest[]
   staffContracts        StaffContract[]
   contractDocuments     ContractDocument[]
+  staffDocuments        StaffDocument[]
+  staffTrainings        StaffTraining[]
+  staffMedicalChecks    StaffMedicalCheck[]
+  staffNotes            StaffNote[]
 
   @@unique([orgId, slug])
 }
@@ -257,13 +270,24 @@ model VenueInvite {
 }
 
 model VenueMembership {
-  id        String    @id @default(cuid())
-  userId    String
-  venueId   String
-  role      StaffRole @default(RECEPTION)
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  venue     Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  id                String            @id @default(cuid())
+  userId            String
+  venueId           String
+  role              StaffRole         @default(RECEPTION)
+  /// I permessi nel gestionale, uno per uno. Vuoto finché `customPermissions`
+  /// è falso: allora valgono quelli predefiniti del ruolo
+  /// (`PERMESSI_PREDEFINITI` in lib/scheda-dipendente.ts). Quando un
+  /// responsabile ne cambia anche uno solo, l'elenco intero si scrive qui e
+  /// il ruolo smette di decidere.
+  permissions       StaffPermission[] @default([])
+  customPermissions Boolean           @default(false)
+  /// Account disattivato per questo locale. Non si cancella la riga — la
+  /// persona può tornare, e la storia di chi ha fatto cosa deve restare —
+  /// ma `resolveActiveVenue` non la considera più: non entra.
+  disabledAt        DateTime?
+  createdAt         DateTime          @default(now())
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue             Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@unique([userId, venueId])
   @@map("venue_membership")
@@ -1324,41 +1348,66 @@ model ReviewLinkClick {
 // cambiato: qui dentro ci stanno anche l'executive chef e il lavapiatti. Nel
 // prodotto si chiama **Staff**, e cosi' si chiama ovunque nell'interfaccia.
 model Waiter {
-  id               String             @id @default(cuid())
-  venueId          String
-  firstName        String
-  lastName         String
-  birthday         DateTime
-  phone            String
-  email            String?
+  id                    String              @id @default(cuid())
+  venueId               String
+  firstName             String
+  lastName              String
+  birthday              DateTime
+  phone                 String
+  email                 String?
   /// Testo libero, storico. Oggi lo scrive `resolveRole()` a partire da
   /// `primaryRole`: nessuna schermata lo fa piu' digitare. Resta perche' le
   /// anagrafiche create prima dell'enum hanno qui l'unico ruolo che esiste.
-  role             String
-  primaryRole      StaffPrimaryRole?
+  role                  String
+  primaryRole           StaffPrimaryRole?
   /// Override del reparto. **Quasi sempre nullo**: il reparto si deriva dal
   /// ruolo (`ROLE_DEPARTMENT` in src/lib/staff-roles.ts), una fonte sola.
   /// Esiste per i ruoli custom futuri, che avranno un reparto ma non un
   /// valore d'enum — non per correggere a mano il reparto di un maitre.
-  department       StaffDepartment?
-  capabilities     StaffCapability[]  @default([])
-  status           WaiterStatus       @default(ACTIVE)
-  hireDate         DateTime?
-  photoUrl         String?
+  department            StaffDepartment?
+  capabilities          StaffCapability[]   @default([])
+  status                WaiterStatus        @default(ACTIVE)
+  hireDate              DateTime?
+  photoUrl              String?
+  /// L'anagrafica completa, come la chiede una scheda HR: tutto nullabile,
+  /// perché le persone in organico oggi hanno solo nome, nascita e telefono
+  /// e la scheda deve restare valida anche vuota.
+  fiscalCode            String?             @db.VarChar(32)
+  birthPlace            String?             @db.VarChar(120)
+  nationality           String?             @db.VarChar(80)
+  address               String?             @db.VarChar(200)
+  postalCode            String?             @db.VarChar(16)
+  city                  String?             @db.VarChar(120)
+  province              String?             @db.VarChar(8)
+  emergencyContactName  String?             @db.VarChar(120)
+  emergencyContactPhone String?             @db.VarChar(40)
+  /// Le caratteristiche: «Sommelier», «Inglese», «Apertura locale», «Auto
+  /// propria». Testo libero e non enum, perché ogni locale ne inventa le sue;
+  /// i suggerimenti stanno in lib/scheda-dipendente.ts. Diverse dalle
+  /// `capabilities`, che dicono a cosa si può essere **assegnati** in sala.
+  skills                String[]            @default([])
+  /// Il responsabile diretto, quando è una persona dell'organico.
+  managerId             String?
   /// L'account con cui questa persona entra in Tavolo, quando ne ha uno.
   /// Serve alla vista dipendente: e' il ponte fra «Mario Rossi, cameriere»
   /// e «chi sta guardando questo schermo». Cancellare l'account non cancella
   /// la persona dall'organico, quindi SetNull e non Cascade.
-  userId           String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  venue            Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
-  assignments      WaiterAssignment[]
-  staffAssignments StaffAssignment[]
-  contracts        StaffContract[]
-  shifts           WorkShift[]
-  requests         StaffRequest[]
+  userId                String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  venue                 Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  user                  User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assignments           WaiterAssignment[]
+  staffAssignments      StaffAssignment[]
+  contracts             StaffContract[]
+  shifts                WorkShift[]
+  requests              StaffRequest[]
+  manager               Waiter?             @relation("StaffManager", fields: [managerId], references: [id], onDelete: SetNull)
+  reports               Waiter[]            @relation("StaffManager")
+  documents             StaffDocument[]
+  trainings             StaffTraining[]
+  medicalChecks         StaffMedicalCheck[]
+  notes                 StaffNote[]
 
   @@unique([venueId, userId])
   @@index([venueId, createdAt])
@@ -1398,21 +1447,29 @@ enum WaiterStatus {
 // end date. "Current" contract is picked at query time (see
 // src/lib/staff-contracts.ts), never stored — status/label included.
 model StaffContract {
-  id              String                  @id @default(cuid())
-  venueId         String
-  waiterId        String
-  contractType    StaffContractType
-  startDate       DateTime
-  endDate         DateTime?
-  weeklyHours     Float?
-  contractualRole String?
-  notes           String?                 @db.VarChar(2000)
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  venue           Venue                   @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  waiter          Waiter                  @relation(fields: [waiterId], references: [id], onDelete: Cascade)
-  reminders       StaffContractReminder[]
-  document        ContractDocument?
+  id               String                  @id @default(cuid())
+  venueId          String
+  waiterId         String
+  contractType     StaffContractType
+  startDate        DateTime
+  endDate          DateTime?
+  weeklyHours      Float?
+  contractualRole  String?
+  /// Livello o inquadramento («4° livello CCNL Turismo»): testo, perché i
+  /// contratti collettivi sono decine e ogni locale scrive il suo.
+  level            String?                 @db.VarChar(120)
+  /// I giorni della settimana previsti dal contratto, come `Shift.weekday`:
+  /// 0 = domenica. Vuoto = non specificato.
+  workingDays      Int[]                   @default([])
+  /// Fine del periodo di prova, quando c'è.
+  probationEndDate DateTime?
+  notes            String?                 @db.VarChar(2000)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  venue            Venue                   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter           Waiter                  @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  reminders        StaffContractReminder[]
+  document         ContractDocument?
 
   @@index([venueId, waiterId, startDate])
   @@index([venueId, endDate])
@@ -1452,6 +1509,7 @@ enum StaffContractType {
   APPRENDISTATO
   COLLABORAZIONE
   A_CHIAMATA
+  STAGE
   ALTRO
 }
 
@@ -1474,6 +1532,159 @@ enum StaffContractReminderType {
   DAYS_7
   DUE_TODAY
   EXPIRED
+}
+
+// ---------------------------------------------------------------------------
+// La scheda HR del dipendente (settembre 2026).
+//
+// Quattro tabelle nuove e nessuna che duplichi una cosa che c'era già:
+//
+//   StaffDocument      = un file della persona (carta d'identità, permesso di
+//                        soggiorno, busta paga, attestato...). Il documento
+//                        del **contratto** resta in ContractDocument, perché
+//                        appartiene a un contratto e non alla persona.
+//   StaffTraining      = un corso o adempimento (sicurezza, HACCP, antincendio,
+//                        primo soccorso), con la sua scadenza e l'attestato.
+//   StaffMedicalCheck  = una visita del medico competente, con l'idoneità.
+//   StaffNote          = una nota interna, che il dipendente non vede.
+//
+// Le **caratteristiche** sono `Waiter.skills`; lo **storico** è `AuditLog`
+// (entityType "waiter", entityId = la persona), che si scriveva già; i
+// **permessi** sono `VenueMembership.permissions`. Tre cose che esistevano
+// e che qui si leggono, non si rifanno.
+//
+// Attestati e certificati sono righe di StaffDocument collegate: così la tab
+// «Documenti» li mostra tutti, e un file sta in un posto solo.
+// ---------------------------------------------------------------------------
+
+enum StaffDocumentCategory {
+  CONTRATTO
+  CARTA_IDENTITA
+  CODICE_FISCALE
+  PERMESSO_SOGGIORNO
+  CERTIFICAZIONE
+  ATTESTATO
+  CERTIFICATO_MEDICO
+  BUSTA_PAGA
+  ALTRO
+}
+
+model StaffDocument {
+  id               String                @id @default(cuid())
+  venueId          String
+  waiterId         String
+  category         StaffDocumentCategory @default(ALTRO)
+  /// Il nome con cui si legge in elenco («Carta d'identità», «Busta paga
+  /// agosto 2026»), diverso dal nome del file.
+  name             String                @db.VarChar(160)
+  /// Percorso interno nel Blob, mai un URL pubblico: si legge solo passando
+  /// da /api/waiters/[id]/documents/[docId], che controlla sessione, locale e
+  /// permesso — come ContractDocument.
+  storageKey       String
+  originalFileName String
+  mimeType         String
+  fileSize         Int
+  expiresAt        DateTime?
+  notes            String?               @db.VarChar(500)
+  uploadedBy       String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  venue            Venue                 @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter           Waiter                @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  training         StaffTraining?
+  medicalCheck     StaffMedicalCheck?
+
+  @@index([venueId, waiterId, createdAt])
+  @@index([venueId, expiresAt])
+}
+
+enum StaffTrainingKind {
+  SICUREZZA_LAVORO
+  HACCP
+  ANTINCENDIO
+  PRIMO_SOCCORSO
+  ALTRO
+}
+
+model StaffTraining {
+  id                    String            @id @default(cuid())
+  venueId               String
+  waiterId              String
+  kind                  StaffTrainingKind
+  /// Il nome, quando `kind` è ALTRO o quando il corso ha un titolo suo.
+  name                  String?           @db.VarChar(160)
+  completedAt           DateTime?
+  expiresAt             DateTime?
+  provider              String?           @db.VarChar(160)
+  certificateNumber     String?           @db.VarChar(80)
+  notes                 String?           @db.VarChar(1000)
+  certificateDocumentId String?           @unique
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  venue                 Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter                Waiter            @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  certificate           StaffDocument?    @relation(fields: [certificateDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, waiterId])
+  @@index([venueId, expiresAt])
+}
+
+enum StaffMedicalFitness {
+  IDONEO
+  IDONEO_CON_LIMITAZIONI
+  NON_IDONEO
+  IN_ATTESA
+}
+
+model StaffMedicalCheck {
+  id                    String              @id @default(cuid())
+  venueId               String
+  waiterId              String
+  examinedAt            DateTime
+  fitness               StaffMedicalFitness @default(IDONEO)
+  expiresAt             DateTime?
+  doctorName            String?             @db.VarChar(160)
+  notes                 String?             @db.VarChar(1000)
+  certificateDocumentId String?             @unique
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  venue                 Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter                Waiter              @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  certificate           StaffDocument?      @relation(fields: [certificateDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, waiterId, examinedAt])
+  @@index([venueId, expiresAt])
+}
+
+model StaffNote {
+  id           String   @id @default(cuid())
+  venueId      String
+  waiterId     String
+  body         String   @db.VarChar(2000)
+  /// Chi l'ha scritta, come si legge: nome o email al momento della nota.
+  /// Denormalizzato di proposito — se l'account viene tolto, la nota resta
+  /// firmata.
+  authorUserId String?
+  authorLabel  String   @db.VarChar(160)
+  createdAt    DateTime @default(now())
+  venue        Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter       Waiter   @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, waiterId, createdAt])
+}
+
+// Cosa può fare una persona dentro il gestionale, voce per voce. Il ruolo
+// (`StaffRole`) ne dà un preset; questa lista permette di scostarsene.
+enum StaffPermission {
+  VIEW_OWN_SHIFTS
+  REQUEST_LEAVE
+  VIEW_ANNOUNCEMENTS
+  VIEW_BOOKINGS
+  EDIT_BOOKINGS
+  VIEW_FLOOR
+  VIEW_GUESTS
+  VIEW_REPORTS
+  MANAGE_MENU
 }
 
 // Job title (what this person primarily is). Distinct from StaffCapability

@@ -11,6 +11,11 @@ export type ContractFormValues = {
   noExpiry: boolean;
   weeklyHours: string;
   contractualRole: string;
+  /** Livello o inquadramento, testo libero. */
+  level: string;
+  /** 0 = domenica, come `Shift.weekday`. */
+  workingDays: number[];
+  probationEndDate: string;
   notes: string;
 };
 
@@ -21,10 +26,15 @@ export const EMPTY_CONTRACT_FORM: ContractFormValues = {
   noExpiry: false,
   weeklyHours: "",
   contractualRole: "",
+  level: "",
+  workingDays: [],
+  probationEndDate: "",
   notes: "",
 };
 
-export type ContractFormErrors = Partial<Record<"contractType" | "startDate" | "endDate" | "weeklyHours", string>>;
+export type ContractFormErrors = Partial<
+  Record<"contractType" | "startDate" | "endDate" | "weeklyHours" | "probationEndDate", string>
+>;
 
 export function validateContractForm(v: ContractFormValues): ContractFormErrors {
   const errors: ContractFormErrors = {};
@@ -38,6 +48,9 @@ export function validateContractForm(v: ContractFormValues): ContractFormErrors 
   if (v.weeklyHours && Number(v.weeklyHours) < 0) {
     errors.weeklyHours = "Le ore settimanali non possono essere negative.";
   }
+  if (v.probationEndDate && v.startDate && v.probationEndDate < v.startDate) {
+    errors.probationEndDate = "Il periodo di prova non può finire prima dell'inizio del contratto.";
+  }
   return errors;
 }
 
@@ -48,6 +61,9 @@ export function contractFormToPayload(v: ContractFormValues) {
     endDate: v.noExpiry ? null : v.endDate || null,
     weeklyHours: v.weeklyHours.trim() ? Number(v.weeklyHours) : null,
     contractualRole: v.contractualRole.trim() || null,
+    level: v.level.trim() || null,
+    workingDays: v.workingDays,
+    probationEndDate: v.probationEndDate || null,
     notes: v.notes.trim() || null,
   };
 }
@@ -58,6 +74,9 @@ export function contractToFormValues(contract: {
   endDate: Date | null;
   weeklyHours: number | null;
   contractualRole: string | null;
+  level?: string | null;
+  workingDays?: number[];
+  probationEndDate?: Date | null;
   notes: string | null;
 }): ContractFormValues {
   return {
@@ -67,6 +86,9 @@ export function contractToFormValues(contract: {
     noExpiry: !contract.endDate,
     weeklyHours: contract.weeklyHours != null ? String(contract.weeklyHours) : "",
     contractualRole: contract.contractualRole ?? "",
+    level: contract.level ?? "",
+    workingDays: contract.workingDays ?? [],
+    probationEndDate: contract.probationEndDate ? new Date(contract.probationEndDate).toISOString().slice(0, 10) : "",
     notes: contract.notes ?? "",
   };
 }
@@ -82,6 +104,9 @@ export function isContractFormDirty(v: ContractFormValues) {
     v.noExpiry ||
     v.weeklyHours !== "" ||
     v.contractualRole !== "" ||
+    v.level !== "" ||
+    v.workingDays.length > 0 ||
+    v.probationEndDate !== "" ||
     v.notes !== ""
   );
 }

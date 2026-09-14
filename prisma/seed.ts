@@ -399,6 +399,101 @@ async function creaOrganicoDemo(venueId: string) {
 }
 
 /**
+ * La scheda HR del maître, per la demo.
+ *
+ * Senza questa, la scheda di ogni persona si apre con tutte le scadenze
+ * «Non presente»: vero per un locale che comincia, ma non fa vedere la cosa
+ * per cui la pagina esiste — una visita medica che scade fra due mesi, un
+ * HACCP valido, un antincendio che manca. Si compila **una** persona sola,
+ * Marco Bellini: così si vede anche la differenza con una scheda vuota.
+ *
+ * Le date sono relative a oggi, perché una demo con la visita «scaduta nel
+ * 2026» diventa un errore l'anno dopo. Idempotente: aggiunge solo se manca.
+ */
+async function creaSchedaDemo(venueId: string) {
+  const marco = await db.waiter.findFirst({
+    where: { venueId, firstName: "Marco", lastName: "Bellini" },
+    include: { contracts: true, trainings: true, medicalChecks: true, notes: true },
+  });
+  if (!marco) return;
+
+  const oggi = new Date();
+  const fra = (giorni: number) => new Date(oggi.getTime() + giorni * 86_400_000);
+  const utc = (anno: number, mese: number, giorno: number) => new Date(Date.UTC(anno, mese - 1, giorno));
+
+  if (!marco.fiscalCode) {
+    await db.waiter.update({
+      where: { id: marco.id },
+      data: {
+        fiscalCode: "BLLMRC88C15A794X",
+        birthPlace: "Bergamo",
+        nationality: "Italiana",
+        address: "Via Borgo Palazzo 42",
+        postalCode: "24125",
+        city: "Bergamo",
+        province: "BG",
+        emergencyContactName: "Laura Bellini (moglie)",
+        emergencyContactPhone: "+39 340 5566778",
+        hireDate: marco.hireDate ?? utc(2024, 3, 12),
+        skills: ["Responsabile", "Inglese", "Francese", "Apertura locale", "Chiusura locale", "Gestione cassa"],
+      },
+    });
+  }
+
+  if (marco.contracts.length === 0) {
+    await db.staffContract.create({
+      data: {
+        venueId,
+        waiterId: marco.id,
+        contractType: "TEMPO_INDETERMINATO",
+        startDate: marco.hireDate ?? utc(2024, 3, 12),
+        endDate: null,
+        weeklyHours: 40,
+        contractualRole: "Maître di sala",
+        level: "3° livello CCNL Turismo",
+        workingDays: [2, 3, 4, 5, 6, 0],
+        probationEndDate: utc(2024, 9, 12),
+      },
+    });
+  }
+
+  if (marco.trainings.length === 0) {
+    await db.staffTraining.createMany({
+      data: [
+        // Valido: fra quattro anni.
+        { venueId, waiterId: marco.id, kind: "SICUREZZA_LAVORO", completedAt: fra(-365), expiresAt: fra(4 * 365), provider: "Ente Bilaterale Turismo", certificateNumber: "SIC-2025-0418" },
+        // Vicino: fra quaranta giorni, così si vede l'oro.
+        { venueId, waiterId: marco.id, kind: "HACCP", completedAt: fra(-2 * 365 + 40), expiresAt: fra(40), provider: "ASL Bergamo" },
+        // Antincendio e primo soccorso mancano di proposito: «Non presente».
+      ],
+    });
+  }
+
+  if (marco.medicalChecks.length === 0) {
+    await db.staffMedicalCheck.create({
+      data: {
+        venueId,
+        waiterId: marco.id,
+        examinedAt: fra(-300),
+        fitness: "IDONEO",
+        expiresAt: fra(65),
+        doctorName: "Dr. Mario Rossi",
+      },
+    });
+  }
+
+  if (marco.notes.length === 0) {
+    await db.staffNote.createMany({
+      data: [
+        { venueId, waiterId: marco.id, body: "Ottimo nella gestione della sala durante gli eventi numerosi: sabato ha tenuto 90 coperti con due camerieri in meno.", authorLabel: "Direzione", createdAt: fra(-20) },
+        { venueId, waiterId: marco.id, body: "Periodo di prova superato senza rilievi. Da valutare per la responsabilità della cantina.", authorLabel: "Direzione", createdAt: fra(-700) },
+      ],
+    });
+  }
+  console.log("→ Scheda HR demo di Marco Bellini compilata.");
+}
+
+/**
  * Una settimana di turni, per la demo.
  *
  * Senza questa il calendario si apre su una griglia vuota, e una griglia vuota
@@ -668,6 +763,7 @@ async function main() {
     await riallineaDateDemo(venueIds);
     await nelFuturoNonSiHaCenato(venueIds);
     for (const id of venueIds) await creaOrganicoDemo(id);
+    for (const id of venueIds) await creaSchedaDemo(id);
     for (const id of venueIds) await creaTurniDemo(id, lunediDi(todayInVenue()));
     // Anche il menu: chi ha la demo già installata deve vedere la carta senza
     // dover ricreare tutto da zero.
@@ -889,6 +985,7 @@ async function main() {
     await allineaContatoriOspiti(venue.id);
 
     await creaOrganicoDemo(venue.id);
+    await creaSchedaDemo(venue.id);
     await creaTurniDemo(venue.id, lunediDi(todayInVenue()));
 
     await creaMenuDemo(venue.id);
