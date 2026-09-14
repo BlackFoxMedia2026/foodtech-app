@@ -42,12 +42,14 @@ export const GRUPPI_PROFILO: { key: GruppoProfilo; label: string }[] = [
  * La barra centrale: **soltanto ciò che si tocca a servizio aperto**.
  *
  * Il criterio è una domanda sola — «lo apro mentre il locale lavora?». Le
- * sette voci sono i gesti di una serata: guardare la giornata, stare sul
- * servizio, rispondere al telefono, sistemare la sala, cercare un cliente,
- * sapere chi è in turno, controllare un piatto.
+ * prime sette voci sono i gesti di una serata: guardare la giornata, stare
+ * sul servizio, rispondere al telefono, sistemare la sala, cercare un
+ * cliente, sapere chi è in turno, controllare un piatto. Marketing è
+ * l'eccezione voluta: non è un gesto di servizio, ma è salita in barra su
+ * richiesta esplicita, spostata dal menu del profilo.
  *
- * Tutto il resto — esperienze, campagne, analisi, incassi, impostazioni — è
- * lavoro da ufficio, che si fa la mattina dopo: sta nel menu del profilo
+ * Tutto il resto — esperienze, analisi, incassi, impostazioni — è lavoro da
+ * ufficio, che si fa la mattina dopo: sta nel menu del profilo
  * (`PROFILE_NAV`), che è il posto delle cose che si aprono una volta a
  * settimana. Il dropdown «Altro» in mezzo alla barra non esiste più: era un
  * terzo posto dove guardare, con dentro sia roba quotidiana (Staff, Menu) sia
@@ -95,6 +97,7 @@ export const PRIMARY_NAV: NavItem[] = [
     per i contratti in scadenza continuano ad aprirsi.
   */
   { href: "/staff", label: "Staff", icon: Users },
+  { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"] },
   { href: "/menu", label: "Menu", icon: UtensilsCrossed },
 ];
 
@@ -108,7 +111,6 @@ export const PRIMARY_NAV: NavItem[] = [
  */
 export const PROFILE_NAV: NavItem[] = [
   { href: "/experiences", label: "Esperienze", icon: Sparkles, gruppo: "gestione" },
-  { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"], gruppo: "gestione" },
   { href: "/insights", label: "Analytics", icon: LineChart, gruppo: "gestione" },
   { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "gestione" },
   /*

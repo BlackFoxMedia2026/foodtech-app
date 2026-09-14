@@ -28,7 +28,7 @@ import { cn, initials } from "@/lib/utils";
  * impostazioni, quindi non c'è niente da insegnare — e l'avatar c'è su tutti
  * gli schermi, telefono compreso, dove la barra in alto non porta voci.
  *
- * Tre cose lo tengono leggibile con sei voci invece di due:
+ * Tre cose lo tengono leggibile con cinque voci invece di due:
  *
  * - **due gruppi con l'etichetta**, «Gestione» e «Account»: il ristorante che
  *   cresce da una parte, chi sta usando il prodotto dall'altra;
@@ -41,10 +41,11 @@ export function ProfileMenu({ user }: { user: { name?: string | null; email?: st
   const pathname = usePathname();
   const gruppi = profiloPerGruppo();
   /*
-    Chi sta dentro Marketing non ha nessuna voce accesa in barra: l'unico
-    segno di dove si trova è l'avatar. Un anello crema — lo stesso colore
-    della pillola attiva — e la domanda «da dove ci sono arrivato?» ha una
-    risposta visibile senza aprire niente.
+    Chi sta dentro una voce del menu profilo (Esperienze, Analytics,
+    Pagamenti, Attesa, Impostazioni) non ha nessuna voce accesa in barra:
+    l'unico segno di dove si trova è l'avatar. Un anello crema — lo stesso
+    colore della pillola attiva — e la domanda «da dove ci sono arrivato?» ha
+    una risposta visibile senza aprire niente.
   */
   const dentroIlMenu = PROFILE_NAV.some((item) => isNavActive(pathname, item));
 
