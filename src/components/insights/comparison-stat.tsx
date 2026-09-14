@@ -18,6 +18,19 @@ interface ComparisonStatProps {
    * una percentuale inventata a un'altra non è una variazione.
    */
   nonDisponibile?: string;
+  /**
+   * Sotto questo valore, il periodo precedente non regge un confronto.
+   *
+   * `computeDelta` si difende già dallo zero, ma non dall'uno: un piatto
+   * passato da 1 a 134 porzioni produce «+13300%», che è aritmeticamente
+   * esatto e non significa niente — nel periodo prima quel piatto non si
+   * vendeva, punto. È la stessa regola che il menu engineering applica alle
+   * classifiche: sotto un minimo di vendite il dato non dice niente.
+   *
+   * Il valore corrente resta scritto — è misurato, e serve: sparisce solo la
+   * freccia, e la didascalia dice qual era il numero di prima.
+   */
+  minPrecedente?: number;
 }
 
 export function ComparisonStat({
@@ -28,8 +41,12 @@ export function ComparisonStat({
   higherIsBetter = true,
   kind = "count",
   nonDisponibile,
+  minPrecedente,
 }: ComparisonStatProps) {
-  const delta = computeDelta(current, previous, { higherIsBetter, kind });
+  const confrontabile = minPrecedente === undefined || previous >= minPrecedente;
+  const delta = confrontabile
+    ? computeDelta(current, previous, { higherIsBetter, kind })
+    : ({ available: false } as const);
   const fmt = format ?? String;
 
   if (nonDisponibile) {
@@ -67,7 +84,11 @@ export function ComparisonStat({
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        {delta.available ? `vs ${fmt(previous)} periodo precedente` : "Confronto non disponibile"}
+        {delta.available
+          ? `vs ${fmt(previous)} periodo precedente`
+          : confrontabile
+            ? "Confronto non disponibile"
+            : `Nel periodo precedente: ${fmt(previous)} — troppo poco per un confronto`}
       </p>
     </div>
   );

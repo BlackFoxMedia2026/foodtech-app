@@ -97,7 +97,6 @@ export function ExperienceList({
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="t-etichetta">Programma</p>
-          <h1 className="text-display text-3xl">Esperienze</h1>
           <p className="text-sm text-muted-foreground">
             {items.length === 0
               ? "Nessuna esperienza in calendario"

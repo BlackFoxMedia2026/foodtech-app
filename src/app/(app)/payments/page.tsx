@@ -51,13 +51,11 @@ export default async function PaymentsPage() {
   return (
     <div className="schermo animate-fade-in gap-3">
       <header className="fissa">
-        <p className="t-etichetta">Finanze</p>
-        <h1 className="text-display text-3xl">Pagamenti registrati</h1>
-        {/* La parola «Incassato» qui contava solo le caparre e i ticket, e la
+        {/* Il titolo sta nella testata. La parola «Incassato» qui contava solo le caparre e i ticket, e la
             Panoramica la usava per i conti al tavolo: due pagine, due numeri,
             la stessa parola. Chi leggeva «Incassato 0 €» qui e «Incasso 73 €»
             là aveva ragione a non fidarsi di nessuno dei due. */}
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+        <p className="max-w-2xl text-sm text-muted-foreground">
           Caparre, ticket, pacchetti e rimborsi. <strong>I conti al tavolo non passano da qui</strong>: l&apos;incasso
           del servizio si legge in{" "}
           <Link href="/overview" className="underline">

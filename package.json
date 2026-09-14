@@ -16,6 +16,7 @@
     "db:status": "prisma migrate status",
     "db:seed": "tsx prisma/seed.ts",
     "db:refresh-guests": "tsx scripts/refresh-guest-stats.ts",
+    "staff:accounts": "tsx scripts/account-staff-demo.ts",
     "db:studio": "prisma studio",
     "check:availability": "tsx scripts/check-availability-rules.ts",
     "db:deploy-safe": "tsx scripts/migrate-safe.ts",

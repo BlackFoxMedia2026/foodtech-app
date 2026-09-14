@@ -1,6 +1,8 @@
 /* eslint-disable no-console */
 import { PrismaClient, BookingStatus, BookingSource, Occasion, LoyaltyTier, TableShape, VenueKind } from "@prisma/client";
 import { contatoriDaPrenotazioni } from "../src/lib/visite";
+import { lunediDi } from "../src/lib/turni";
+import { shiftDateKey, todayInVenue } from "../src/lib/venue-time";
 import { arricchisciVetrina } from "./demo-vetrina";
 import bcrypt from "bcryptjs";
 
@@ -337,20 +339,46 @@ async function creaSalaDemo(venueId: string, kind: VenueKind, nome: string) {
   console.log(`   Sala di ${nome}: creati ${tableDefs.length} tavoli (non ce n'erano).`);
 }
 
-async function creaCamerieriDemo(venueId: string) {
-  const esistenti = await db.waiter.count({ where: { venueId } });
-  if (esistenti > 0) return;
-
+/**
+ * L'organico demo: sala **e** cucina.
+ *
+ * Fino alla riscrittura della sezione Staff qui c'erano sei persone, tutte di
+ * sala — che era giusto quando la pagina si chiamava «Camerieri». Adesso la
+ * pagina raggruppa per reparto, e una demo con un reparto solo non mostra la
+ * cosa principale che il modulo sa fare.
+ *
+ * Gli stati sono volutamente misti: una in ferie e uno a riposo. Una demo in
+ * cui sono tutti verdi non fa vedere come si legge una squadra vera.
+ */
+async function creaOrganicoDemo(venueId: string) {
   const squadra = [
     { firstName: "Marco", lastName: "Bellini", primaryRole: "MAITRE" as const, role: "Maître", capabilities: ["MAITRE", "ROOM_SUPERVISOR"] as const },
     { firstName: "Sara", lastName: "Fontana", primaryRole: "CHEF_DE_RANG" as const, role: "Chef de rang", capabilities: ["TABLE_RESPONSIBLE"] as const },
     { firstName: "Luca", lastName: "Perini", primaryRole: "CAMERIERE" as const, role: "Cameriere", capabilities: ["TABLE_RESPONSIBLE", "TABLE_SUPPORT"] as const },
     { firstName: "Elisa", lastName: "Nardi", primaryRole: "SOMMELIER" as const, role: "Sommelier", capabilities: ["SOMMELIER"] as const },
-    { firstName: "Davide", lastName: "Sanna", primaryRole: "RUNNER" as const, role: "Runner", capabilities: ["RUNNER"] as const },
+    { firstName: "Davide", lastName: "Sanna", primaryRole: "RUNNER" as const, role: "Runner", capabilities: ["RUNNER"] as const, status: "RESTING" as const },
     { firstName: "Giorgia", lastName: "Milani", primaryRole: "HOST" as const, role: "Host", capabilities: ["HOST"] as const },
+    { firstName: "Nicola", lastName: "Ferraro", primaryRole: "EXECUTIVE_CHEF" as const, role: "Executive Chef", capabilities: [] as const },
+    { firstName: "Chiara", lastName: "Lombardi", primaryRole: "SOUS_CHEF" as const, role: "Sous-chef", capabilities: [] as const },
+    { firstName: "Youssef", lastName: "Amrani", primaryRole: "CHEF_DE_PARTIE" as const, role: "Chef de Partie", capabilities: [] as const },
+    { firstName: "Martina", lastName: "Greco", primaryRole: "CHEF_DE_PARTIE" as const, role: "Chef de Partie", capabilities: [] as const, status: "VACATION" as const },
+    { firstName: "Andrea", lastName: "Rizzo", primaryRole: "COMMIS_CUCINA" as const, role: "Commis di cucina", capabilities: [] as const },
+    { firstName: "Ionut", lastName: "Danciu", primaryRole: "LAVAPIATTI" as const, role: "Lavapiatti", capabilities: [] as const },
+    { firstName: "Federico", lastName: "Conti", primaryRole: "BARTENDER" as const, role: "Bartender", capabilities: ["BARTENDER"] as const },
   ];
 
+  /* Si aggiunge chi manca, invece di saltare tutto se c'è già qualcuno: le
+     demo esistenti hanno le sei persone di sala di prima, e un `return`
+     anticipato le lascerebbe per sempre senza cucina. */
+  const giaPresenti = new Set(
+    (await db.waiter.findMany({ where: { venueId }, select: { firstName: true, lastName: true } })).map(
+      (w) => `${w.firstName} ${w.lastName}`,
+    ),
+  );
+
+  let creati = 0;
   for (const [i, persona] of squadra.entries()) {
+    if (giaPresenti.has(`${persona.firstName} ${persona.lastName}`)) continue;
     await db.waiter.create({
       data: {
         venueId,
@@ -359,12 +387,74 @@ async function creaCamerieriDemo(venueId: string) {
         role: persona.role,
         primaryRole: persona.primaryRole,
         capabilities: [...persona.capabilities],
-        birthday: new Date(Date.UTC(1988 + i, (i * 3) % 12, 5 + i)),
-        phone: `+39 34${i} ${1000000 + i * 111111}`,
+        status: "status" in persona ? persona.status : "ACTIVE",
+        birthday: new Date(Date.UTC(1988 + (i % 12), (i * 3) % 12, 5 + (i % 20))),
+        hireDate: new Date(Date.UTC(2021 + (i % 5), (i * 2) % 12, 1 + (i % 27))),
+        phone: `+39 34${i % 10} ${1000000 + i * 111111}`,
       },
     });
+    creati++;
   }
-  console.log(`→ Creati ${squadra.length} camerieri demo.`);
+  if (creati > 0) console.log(`→ Creati ${creati} membri dello staff demo (sala, cucina, bar).`);
+}
+
+/**
+ * Una settimana di turni, per la demo.
+ *
+ * Senza questa il calendario si apre su una griglia vuota, e una griglia vuota
+ * non fa vedere la cosa per cui esiste: **chi c'è e chi no, a colpo d'occhio**.
+ *
+ * Lo schema è quello vero di un ristorante: la sala lavora a cena tutti i
+ * giorni tranne il riposo settimanale, la cucina entra prima, e i riposi sono
+ * sfalsati fra le persone — perché se riposassero tutti lo stesso giorno il
+ * locale sarebbe chiuso, e un calendario in cui il lunedì è una colonna di
+ * «Riposo» non insegna a leggere niente.
+ */
+async function creaTurniDemo(venueId: string, lunedi: string) {
+  const esistenti = await db.workShift.count({ where: { venueId } });
+  if (esistenti > 0) return;
+
+  const squadra = await db.waiter.findMany({
+    where: { venueId },
+    select: { id: true, primaryRole: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (squadra.length === 0) return;
+
+  const CUCINA = ["EXECUTIVE_CHEF", "SOUS_CHEF", "CHEF_DE_PARTIE", "COMMIS_CUCINA", "LAVAPIATTI"];
+
+  const righe = [];
+  for (const [i, persona] of squadra.entries()) {
+    const inCucina = persona.primaryRole ? CUCINA.includes(persona.primaryRole) : false;
+    // Il riposo ruota: la persona i-esima riposa il giorno i % 7. Così ogni
+    // giorno manca qualcuno ma non manca mai la stessa metà della squadra.
+    const giornoDiRiposo = i % 7;
+
+    for (let g = 0; g < 7; g++) {
+      const date = new Date(`${shiftDateKey(lunedi, g)}T00:00:00.000Z`);
+      if (g === giornoDiRiposo) {
+        righe.push({ venueId, waiterId: persona.id, date, kind: "REST" as const });
+        continue;
+      }
+      righe.push({
+        venueId,
+        waiterId: persona.id,
+        date,
+        kind: "WORK" as const,
+        // La cucina entra alle 17, la sala alle 18: la mise en place non si fa
+        // mentre arrivano gli ospiti.
+        startMinute: inCucina ? 17 * 60 : 18 * 60,
+        // 1440 = mezzanotte del giorno dopo. Vedi src/lib/turni.ts.
+        endMinute: 24 * 60,
+        breakMinutes: 30,
+        department: inCucina ? ("CUCINA" as const) : ("SALA" as const),
+        service: "Cena",
+      });
+    }
+  }
+
+  await db.workShift.createMany({ data: righe });
+  console.log(`\u2192 Creati ${righe.length} turni demo sulla settimana del ${lunedi}.`);
 }
 
 /**
@@ -577,7 +667,8 @@ async function main() {
 
     await riallineaDateDemo(venueIds);
     await nelFuturoNonSiHaCenato(venueIds);
-    for (const id of venueIds) await creaCamerieriDemo(id);
+    for (const id of venueIds) await creaOrganicoDemo(id);
+    for (const id of venueIds) await creaTurniDemo(id, lunediDi(todayInVenue()));
     // Anche il menu: chi ha la demo già installata deve vedere la carta senza
     // dover ricreare tutto da zero.
     for (const id of venueIds) await creaMenuDemo(id);
@@ -797,7 +888,8 @@ async function main() {
 
     await allineaContatoriOspiti(venue.id);
 
-    await creaCamerieriDemo(venue.id);
+    await creaOrganicoDemo(venue.id);
+    await creaTurniDemo(venue.id, lunediDi(todayInVenue()));
 
     await creaMenuDemo(venue.id);
 

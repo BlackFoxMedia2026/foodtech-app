@@ -190,12 +190,9 @@ export default async function InsightsPage({
   return (
     <div className="schermo animate-fade-in gap-3">
       <header className="fissa flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-baseline gap-2">
-          <h1 className="text-lg font-semibold leading-none">Analytics</h1>
-          <p className="t-etichetta">
-            {VISTE.find((v) => v.id === vistaAttiva)!.sottotitolo}
-          </p>
-        </div>
+        {/* Il titolo è nella testata: qui resta il sottotitolo, che dice
+            quale delle viste si sta guardando. */}
+        <p className="t-etichetta">{VISTE.find((v) => v.id === vistaAttiva)!.sottotitolo}</p>
         <PeriodSelector range={range} from={from.toISOString().slice(0, 10)} to={to.toISOString().slice(0, 10)} />
       </header>
 

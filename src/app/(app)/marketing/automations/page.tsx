@@ -17,7 +17,6 @@ export default async function AutomationsPage() {
     <div className="schermo animate-fade-in gap-3">
       <header className="fissa">
         <p className="t-etichetta">Marketing / Automazioni</p>
-        <h1 className="text-display text-3xl">Automazioni</h1>
         <p className="text-sm text-muted-foreground">
           Tre messaggi che partono da soli, quando ha senso mandarli. Non sono un costruttore di regole: sono tre
           cose che funzionano, e che puoi spegnere in un tocco.

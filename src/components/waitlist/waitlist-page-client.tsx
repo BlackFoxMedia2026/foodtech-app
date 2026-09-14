@@ -62,17 +62,12 @@ export function WaitlistPageClient({
 
   return (
     <div className="schermo animate-fade-in gap-4">
-      {/* Direzione C: qui si lavora, e chi guarda questa schermata ha
-          qualcuno in piedi davanti. Il titolo si asciuga, il riassunto resta
-          — è quello che serve. */}
+      {/* Il titolo è nella testata: qui chi ha qualcuno in piedi davanti
+          legge il riassunto, che è la cosa che serve. */}
       <header className="fissa flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-lg font-semibold leading-none">Lista d&apos;attesa</h1>
-            <p className="t-etichetta">Sala</p>
-          </div>
           {entries.length > 0 && (
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {summary.personeInCoda} {summary.personeInCoda === 1 ? "persona" : "persone"} in coda
               {summary.attesaMediaMin > 0 && ` · attesa media ${durataUmana(summary.attesaMediaMin)}`}
               {summary.inRitardo > 0 && ` · ${summary.inRitardo} oltre la stima`}

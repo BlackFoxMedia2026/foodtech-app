@@ -23,6 +23,19 @@
     --foreground: 41 59% 88%;
     --card: 160 46% 16%;
     --card-foreground: 41 59% 88%;
+    /*
+      Il piano **incassato**: una superficie di contenuto che deve stare sotto
+      la cornice, non accanto.
+
+      `--card` (#163C2F) e la capsula della barra in alto (`bg-muted/70` sopra
+      il fondo, cioè #1F3C31) sono lo stesso verde a occhio: in Staff le schede
+      di reparto sembravano altrettanti pezzi del menu di navigazione. Questo
+      tono (#102B22) è la stessa tinta di `--card` abbassata di luminosità,
+      non un verde scelto a parte: resta un piano visibile sopra il fondo
+      (1,53 : 1) ma stacca dalla capsula (1,82 : 1), che è il doppio dello
+      stacco di prima (1,04 : 1).
+    */
+    --card-sunken: 160 46% 11%;
     --popover: 157 32% 23%;
     --popover-foreground: 41 59% 88%;
     --primary: 41 59% 88%;
@@ -61,6 +74,42 @@
     --input: 157 19% 26%;
     --ring: 30 44% 48%;
     --radius: 1.2rem;
+
+    /*
+      I colori del planning dei turni: **uno per reparto**.
+
+      Prima erano le tre fasce della giornata — mattina, pranzo, sera. Sembrava
+      giusto perché il tempo è l'asse del calendario, ed era sbagliato per la
+      stessa ragione: *quando* si lavora è già scritto due volte, nella riga in
+      cui sta la card e nell'orario dentro. Il colore ripeteva, e una schermata
+      in cui l'unica cosa colorata ripete quello che c'è scritto non aiuta
+      nessuno.
+
+      Il reparto invece non è scritto da nessun'altra parte in modo visibile, e
+      è la domanda che il responsabile fa per prima: *stasera in cucina siamo
+      abbastanza?* Con un colore per area, una colonna si legge senza leggerla —
+      quanto blu c'è è la sala, quanto oro è la cucina.
+
+      Le tinte stanno fra 58% e 68% di luminosità, ed è una misura: sul fondo
+      #0B1511 fanno da 6 a 9,5 : 1, cioè si leggono come **testo** dentro la
+      card e non solo come campitura.
+
+      Il verde del bar è **giallo-verde** (tinta 84) e non un verde qualsiasi:
+      il fondo del prodotto è verde foresta (tinta 156), e un verde vicino a
+      quello sparirebbe dentro lo sfondo invece di staccarsene. Settantadue
+      gradi di distanza sono quello che lo rende una tinta e non un'ombra.
+
+      Si usano sempre come `hsl(var(--turno-x) / α)`: la card riempie a 0,17,
+      borda a 0,5. Niente `glow`: quello che separa una card dall'altra è il
+      bordo, non l'alone.
+    */
+    --turno-sala: 208 45% 62%;
+    --turno-cucina: 38 62% 60%;
+    --turno-bar: 84 42% 60%;
+    --turno-direzione: 275 32% 68%;
+    --turno-altro: 40 12% 62%;
+    --turno-riposo: 150 8% 58%;
+    --turno-assenza: 6 46% 63%;
 
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
        surfaces below — this is what turns a flat gradient into a "brushed"/
@@ -388,6 +437,120 @@
      background-color/tint the chip already has. */
   .finish-metal-chip {
     background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.25), transparent 50%), linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08));
+  }
+
+  /*
+    La fascia dei numeri del Servizio: sei vetri tonali.
+
+    Era una striscia sola — un `.riquadro` diviso da sei righe verticali, celle
+    da 44 px di contenuto. Funzionava come indice, non come testata: il numero
+    stava in `text-lg`, cioè la stessa misura del titolo della pagina, e sei
+    dati diversi avevano lo stesso identico aspetto. Per sapere quanti
+    aspettano si leggeva l'etichetta, non il numero — che è l'opposto di come
+    si guarda una fascia di KPI mentre si cammina.
+
+    Tre regole, e sono le stesse del resto del materiale di Tavolo:
+
+    1. **Il colore distingue, non decora.** Sei tinte, tutte dentro la coppia
+       verde/oro del prodotto: nessun rosso, nessun blu. Il ritardo non fa
+       eccezione — si segnala con l'oro `accent-strong`, che qui è già il
+       colore dell'allarme leggibile (5,44 : 1), non con un rosso che sulla
+       fascia sarebbe l'unica tinta estranea alla marca.
+    2. **Il vetro dà profondità, non luce.** Velatura alta ~0,7, sfocatura di
+       otto pixel, bordo di un pixel, e una sola ombra corta. Niente aloni,
+       niente bordi luminosi: su una schermata che si guarda per un secondo il
+       bagliore compete col dato, e il dato perde.
+    3. **Le tinte sono derivate, non ripescate.** Ogni tono dichiara quattro
+       variabili e basta; la meccanica sta qui una volta sola. È la stessa
+       ragione per cui i marroni sono scalati per canale invece che scelti a
+       occhio (vedi `finish-brown-*`).
+  */
+  .kpi-vetro {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--kpi-bordo);
+    /* Senza `--noise`. La grana è materia sulle superfici **grandi** — il
+       fondo della pagina, una scheda da 400 px — ma su un rettangolo da
+       156 px le stesse 240 px di trama si vedono per intero, e una carta di
+       vetro con dentro la sabbia non è vetro: è rumore sopra un numero. */
+    background-image:
+      radial-gradient(120% 90% at 12% 0%, rgba(255, 255, 255, 0.06), transparent 58%),
+      linear-gradient(160deg, var(--kpi-alto) 0%, var(--kpi-basso) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 4px 12px rgba(0, 0, 0, 0.16);
+    transition:
+      border-color 200ms ease,
+      transform 200ms ease,
+      box-shadow 200ms ease;
+  }
+  /* Il passaggio del puntatore: il bordo prende un grado di luce e la carta
+     si alza di un pixel. Sul telefono non esiste — `hover: hover` — perché lì
+     lo stato appiccicato dopo il tocco fa sembrare selezionata una carta che
+     non lo è. */
+  @media (hover: hover) {
+    .kpi-vetro:hover {
+      border-color: var(--kpi-bordo-vivo);
+      transform: translateY(-1px);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.07),
+        0 7px 16px rgba(0, 0, 0, 0.2);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .kpi-vetro {
+      transition: none;
+    }
+    .kpi-vetro:hover {
+      transform: none;
+    }
+  }
+
+  /* Verde bosco profondo — chi è dentro. */
+  .kpi-bosco {
+    --kpi-alto: rgba(30, 88, 66, 0.58);
+    --kpi-basso: rgba(15, 42, 33, 0.4);
+    --kpi-bordo: rgba(126, 186, 158, 0.18);
+    --kpi-bordo-vivo: rgba(126, 186, 158, 0.32);
+  }
+  /* Bronzo scuro — i tavoli, l'unico oro pieno della fascia. */
+  .kpi-bronzo {
+    --kpi-alto: rgba(126, 95, 46, 0.52);
+    --kpi-basso: rgba(60, 45, 22, 0.36);
+    --kpi-bordo: rgba(226, 201, 138, 0.22);
+    --kpi-bordo-vivo: rgba(226, 201, 138, 0.38);
+  }
+  /* Verde petrolio — quello che sta arrivando. */
+  .kpi-petrolio {
+    --kpi-alto: rgba(16, 92, 90, 0.56);
+    --kpi-basso: rgba(9, 48, 47, 0.38);
+    --kpi-bordo: rgba(110, 190, 180, 0.18);
+    --kpi-bordo-vivo: rgba(110, 190, 180, 0.32);
+  }
+  /* Verde oliva con sottotono oro — il ritardo. Il bordo è già oro perché
+     quando il numero si accende in `accent-strong` la carta lo accompagna
+     invece di contraddirlo. */
+  .kpi-oliva {
+    --kpi-alto: rgba(100, 104, 44, 0.46);
+    --kpi-basso: rgba(52, 55, 23, 0.34);
+    --kpi-bordo: rgba(201, 162, 90, 0.22);
+    --kpi-bordo-vivo: rgba(201, 162, 90, 0.38);
+  }
+  /* Salvia spenta — la coda. */
+  .kpi-salvia {
+    --kpi-alto: rgba(92, 118, 82, 0.48);
+    --kpi-basso: rgba(48, 66, 45, 0.34);
+    --kpi-bordo: rgba(182, 198, 149, 0.18);
+    --kpi-bordo-vivo: rgba(182, 198, 149, 0.32);
+  }
+  /* Verde con accento oro — i walk-in. */
+  .kpi-alloro {
+    --kpi-alto: rgba(64, 96, 52, 0.52);
+    --kpi-basso: rgba(32, 52, 28, 0.36);
+    --kpi-bordo: rgba(201, 162, 90, 0.24);
+    --kpi-bordo-vivo: rgba(201, 162, 90, 0.38);
   }
 
   /*

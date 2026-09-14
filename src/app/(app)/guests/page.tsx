@@ -35,26 +35,26 @@ export default async function GuestsPage({
   const primo = elenco.totale === 0 ? 0 : (elenco.pagina - 1) * elenco.perPagina + 1;
   const ultimo = (elenco.pagina - 1) * elenco.perPagina + elenco.items.length;
 
+  /*
+    «Da 1 a 50 di 65» — la stessa frase che stava in cima, scritta una volta.
+
+    Si legge **dopo** aver guardato l'elenco, non prima: è la risposta a «ne
+    manca altra?», che è una domanda che viene in fondo alla pagina. Lassù
+    occupava la prima riga della schermata per dire una cosa che nessuno stava
+    ancora chiedendo.
+  */
+  const conteggio =
+    elenco.totale === 0
+      ? "Nessun risultato"
+      : elenco.pagine === 1
+        ? `${elenco.totale} ${elenco.totale === 1 ? "ospite" : "ospiti"}`
+        : `Da ${primo} a ${ultimo} di ${elenco.totale}`;
+
   return (
-    // Niente scroll di pagina: testata, avviso e paginazione restano fissi,
+    // Niente scroll di pagina: comandi, avviso e paginazione restano fissi,
     // e la lista — che per natura non ha una lunghezza massima — scorre
     // dentro di sé.
     <div className="schermo animate-fade-in gap-4">
-      <header className="fissa">
-        <p className="t-etichetta">CRM</p>
-        <h1 className="text-display text-3xl">Ospiti</h1>
-        <p className="text-sm text-muted-foreground">
-          {/* Prima diceva soltanto «200 risultati» anche con cinquecento
-              clienti in archivio: chi cercava i trecento mancanti pensava che
-              la ricerca fosse rotta. */}
-          {elenco.totale === 0
-            ? "Nessun risultato"
-            : elenco.pagine === 1
-              ? `${elenco.totale} ${elenco.totale === 1 ? "ospite" : "ospiti"}`
-              : `Da ${primo} a ${ultimo} di ${elenco.totale}`}
-        </p>
-      </header>
-
       {/*
         L'avviso compare **solo se ci sono doppioni**: una voce di menù sempre
         presente per un lavoro che si fa una volta ogni tanto sarebbe una voce
@@ -63,7 +63,7 @@ export default async function GuestsPage({
       {doppioni > 0 && (
         <Link
           href="/guests/doppioni"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-4 text-sm transition-colors hover:border-accent/60"
+          className="fissa flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-4 text-sm transition-colors hover:border-accent/60"
         >
           <span>
             <span className="font-medium">
@@ -89,9 +89,26 @@ export default async function GuestsPage({
         spesaCents={Object.fromEntries(elenco.spesaCents)}
       />
 
-      {elenco.pagine > 1 && (
-        <nav className="fissa flex items-center justify-between gap-3" aria-label="Pagine degli ospiti">
-          <Button asChild variant="outline" size="sm" disabled={elenco.pagina === 1}>
+      {/*
+        La riga di fondo, e c'è **sempre**.
+
+        Prima esisteva solo con più di una pagina, perché serviva solo ai due
+        pulsanti. Adesso porta anche il conteggio, che vale anche quando la
+        pagina è una sola — «12 ospiti» dopo una ricerca è esattamente ciò che
+        si stava cercando di sapere.
+
+        La distribuzione: i pulsanti agli estremi, e in mezzo le due frasi
+        vicine fra loro ma staccate dal bordo — il conteggio sta prima di
+        «Successivi» come chiesto, senza appiccicarcisi. Sul telefono la riga
+        si impila e il conteggio va in fondo, dove non contende lo spazio ai
+        due bersagli che si toccano.
+      */}
+      <nav
+        className="fissa flex flex-wrap items-center gap-x-4 gap-y-3"
+        aria-label="Pagine degli ospiti"
+      >
+        {elenco.pagine > 1 ? (
+          <Button asChild variant="outline" size="sm" className="order-1" disabled={elenco.pagina === 1}>
             <Link
               href={href(searchParams, elenco.pagina - 1)}
               aria-disabled={elenco.pagina === 1}
@@ -100,12 +117,29 @@ export default async function GuestsPage({
               <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Precedenti
             </Link>
           </Button>
+        ) : (
+          // Un segnaposto vuoto tiene il conteggio dove sta sempre: senza,
+          // con una pagina sola scivolerebbe a sinistra e la riga di fondo
+          // cambierebbe forma a ogni ricerca.
+          <span aria-hidden="true" />
+        )}
 
-          <span className="text-sm text-muted-foreground">
-            Pagina {elenco.pagina} di {elenco.pagine}
-          </span>
+        {/* Sul telefono le due frasi prendono una riga tutta loro, sotto i
+            pulsanti: in fila con loro spingevano «Successivi» a capo da solo,
+            e il pulsante che serve finiva staccato da quello che lo precede.
+            Da `sm` tornano in mezzo, dove il conteggio sta subito prima di
+            «Successivi». */}
+        <div className="order-3 flex w-full items-center justify-center gap-6 text-sm text-muted-foreground sm:order-2 sm:ml-auto sm:w-auto sm:justify-end">
+          {elenco.pagine > 1 && (
+            <span>
+              Pagina {elenco.pagina} di {elenco.pagine}
+            </span>
+          )}
+          <span className="tabular-nums">{conteggio}</span>
+        </div>
 
-          <Button asChild variant="outline" size="sm">
+        {elenco.pagine > 1 && (
+          <Button asChild variant="outline" size="sm" className="order-2 ml-auto sm:order-3 sm:ml-0">
             <Link
               href={href(searchParams, elenco.pagina + 1)}
               aria-disabled={elenco.pagina === elenco.pagine}
@@ -114,8 +148,8 @@ export default async function GuestsPage({
               Successivi <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </Button>
-        </nav>
-      )}
+        )}
+      </nav>
     </div>
   );
 }

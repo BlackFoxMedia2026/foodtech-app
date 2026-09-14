@@ -70,7 +70,6 @@ export function GiftCardList({
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="t-etichetta">Marketing / Gift card</p>
-          <h1 className="text-display text-3xl">Gift card</h1>
           <p className="text-sm text-muted-foreground">
             Cene già pagate. Si scalano dal conto al tavolo, anche in più volte.
           </p>

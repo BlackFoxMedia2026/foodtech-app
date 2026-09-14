@@ -243,6 +243,22 @@ export const ItemInput = z.object({
   dietary: z.array(z.enum(CHIAVI_REGIMI)).max(5).optional(),
   /** Il costo di produzione, se il locale lo conosce. Serve al food cost. */
   costCents: z.coerce.number().int().min(0).max(1_000_00).optional().nullable(),
+  /**
+   * La foto del piatto.
+   *
+   * Arriva da `/api/menu/upload-image`, che la deposita su Vercel Blob e
+   * restituisce l'indirizzo: qui si salva solo quello. Stringa vuota e
+   * `null` sono la stessa cosa — «non c'è foto» — perché un campo svuotato
+   * nel modulo manda `""`, e salvare una stringa vuota vorrebbe dire
+   * ritrovarsi un `<img src="">` che il browser risolve sulla pagina stessa.
+   */
+  imageUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
 });
 
 export async function createItem(venueId: string, raw: unknown, opts: { actor?: AuditActor } = {}) {
@@ -270,6 +286,7 @@ export async function createItem(venueId: string, raw: unknown, opts: { actor?: 
       available: data.available ?? true,
       allergens: data.allergens ?? [],
       dietary: data.dietary ?? [],
+      imageUrl: data.imageUrl ?? null,
       ordering: (ultimo?.ordering ?? -1) + 1,
     },
   });
@@ -312,6 +329,7 @@ export async function updateItem(venueId: string, id: string, raw: unknown, opts
       ...(data.available !== undefined && { available: data.available }),
       ...(data.allergens !== undefined && { allergens: data.allergens }),
       ...(data.dietary !== undefined && { dietary: data.dietary }),
+      ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
     },
   });
 
@@ -409,6 +427,8 @@ export type MenuItemView = {
   available: boolean;
   allergens: Allergene[];
   dietary: Regime[];
+  /** La foto del piatto, se è stata caricata. */
+  imageUrl: string | null;
   /** Il costo di produzione dichiarato, se c'è. */
   costCents: number | null;
   /** Quanto resta sul piatto, in centesimi. Nullo senza costo dichiarato. */
@@ -460,6 +480,7 @@ export async function getMenu(venueId: string, menuKey = "main"): Promise<MenuCa
         available: i.available,
         allergens: i.allergens as Allergene[],
         dietary: i.dietary as Regime[],
+        imageUrl: i.imageUrl,
         costCents,
         marginCents,
         marginPct:
@@ -479,6 +500,261 @@ export async function listMenuKeys(venueId: string): Promise<string[]> {
   });
   const chiavi = righe.map((r) => r.menuKey);
   return chiavi.includes("main") ? chiavi : ["main", ...chiavi];
+}
+
+/* -------------------------------------------------------------------------- */
+/*  La scheda di un piatto                                                    */
+/* -------------------------------------------------------------------------- */
+
+/** Una categoria, come voce di una tendina. */
+export type CategoriaSceltaView = { id: string; name: string; active: boolean };
+
+export type MenuItemDettaglio = {
+  item: MenuItemView;
+  categoryId: string;
+  categoryName: string;
+  menuKey: string;
+  /** Le categorie della stessa carta: si può spostare il piatto solo lì. */
+  categorie: CategoriaSceltaView[];
+  /**
+   * Gli identificativi dei piatti della categoria, **nell'ordine vero**.
+   *
+   * Servono a spostarlo di un posto: `reorder` vuole l'elenco completo, ed è
+   * l'unico modo di non lasciare due piatti con lo stesso numero d'ordine
+   * quando due persone salvano nello stesso momento.
+   */
+  fratelli: string[];
+  /** Che posto occupa adesso, da 1. */
+  posizione: number;
+};
+
+/**
+ * Un piatto solo, con intorno quello che serve per gestirlo.
+ *
+ * La lista e la scheda leggono **la stessa** `MenuItemView`: due forme dello
+ * stesso piatto sono il modo in cui prezzo e allergeni finiscono per
+ * divergere fra due schermate della stessa applicazione.
+ */
+export async function getMenuItemDettaglio(venueId: string, id: string): Promise<MenuItemDettaglio | null> {
+  const item = await db.menuItem.findFirst({
+    where: { id, venueId },
+    include: { MenuCategory: { select: { id: true, name: true, menuKey: true } } },
+  });
+  if (!item) return null;
+
+  const [costo, fratelli, categorie] = await Promise.all([
+    db.menuItemCost.findUnique({ where: { menuItemId: id }, select: { costCents: true } }),
+    db.menuItem.findMany({
+      where: { categoryId: item.categoryId },
+      orderBy: { ordering: "asc" },
+      select: { id: true },
+    }),
+    listCategorie(venueId, item.MenuCategory.menuKey),
+  ]);
+
+  const costCents = costo?.costCents ?? null;
+  const marginCents = costCents != null ? item.priceCents - costCents : null;
+
+  return {
+    item: {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      priceCents: item.priceCents,
+      available: item.available,
+      allergens: item.allergens as Allergene[],
+      dietary: item.dietary as Regime[],
+      imageUrl: item.imageUrl,
+      costCents,
+      marginCents,
+      marginPct:
+        marginCents != null && item.priceCents > 0 ? Math.round((marginCents / item.priceCents) * 100) : null,
+    },
+    categoryId: item.categoryId,
+    categoryName: item.MenuCategory.name,
+    menuKey: item.MenuCategory.menuKey,
+    categorie,
+    fratelli: fratelli.map((f) => f.id),
+    posizione: fratelli.findIndex((f) => f.id === id) + 1,
+  };
+}
+
+/** Le categorie di una carta, per la tendina della scheda piatto. */
+export async function listCategorie(venueId: string, menuKey = "main"): Promise<CategoriaSceltaView[]> {
+  return db.menuCategory.findMany({
+    where: { venueId, menuKey },
+    orderBy: { ordering: "asc" },
+    select: { id: true, name: true, active: true },
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Quanto è andato, un piatto                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Le vendite di un piatto: **solo quello che è scritto nei conti**.
+ *
+ * Si contano le righe d'ordine collegate a questo piatto dentro i conti
+ * **chiusi** (`COMPLETED`), esattamente come fa il costo del cibo: un conto
+ * aperto è una serata in corso, uno annullato non è una vendita. La data di
+ * riferimento è quella della chiusura, non quella in cui l'ordine è entrato.
+ *
+ * `ciSonoConti` esiste per una ragione precisa, già costata una correzione in
+ * questo progetto: su un locale che non ha ancora chiuso nemmeno un conto,
+ * «0 venduti» si legge come una bocciatura del piatto, mentre la verità è che
+ * non c'è ancora niente da misurare. Le due frasi sono diverse e vanno dette
+ * diverse.
+ *
+ * Niente qui è stimato: quantità, incasso e date vengono dalle righe salvate.
+ */
+/** Quante settimane di andamento si guardano. Tre mesi: una stagione. */
+export const SETTIMANE_ANDAMENTO = 12;
+
+export type RendimentoPiatto = {
+  /** Falso quando il locale non ha ancora **nessun** conto chiuso. */
+  ciSonoConti: boolean;
+  /** Quante porzioni sono uscite, in tutto. */
+  quantitaTotale: number;
+  quantita30: number;
+  quantita7: number;
+  /**
+   * Le porzioni dei trenta giorni **prima** degli ultimi trenta.
+   *
+   * È l'unico modo di dire se un piatto sta salendo o scendendo. Vale zero
+   * anche quando il piatto non era ancora in carta, e per questo chi legge
+   * questo numero deve distinguere «zero» da «non confrontabile»: lo fa
+   * `computeDelta`, che su un precedente a zero non inventa un +100%.
+   */
+  quantita30Precedenti: number;
+  /** Su quanti conti diversi è comparso: non è lo stesso delle porzioni. */
+  contiTotali: number;
+  /** Quanto ha incassato, ai prezzi con cui è stato battuto. */
+  incassoCents: number;
+  ultimaVendita: Date | null;
+  /** Porzioni per settimana, dalla più vecchia alla settimana in corso. */
+  settimane: { inizio: Date; quantita: number }[];
+  /**
+   * Come va rispetto agli altri piatti della sua categoria, negli ultimi
+   * trenta giorni. Nullo quando in quel periodo la categoria non ha venduto
+   * niente: una quota su zero non è una quota.
+   */
+  nellaCategoria: {
+    categoria: string;
+    porzioni: number;
+    porzioniCategoria: number;
+    /** 1 = il più venduto della categoria. */
+    posizione: number;
+    /** Quanti piatti ha la categoria, venduti o no. */
+    quantiPiatti: number;
+  } | null;
+};
+
+export async function getRendimentoPiatto(venueId: string, id: string): Promise<RendimentoPiatto | null> {
+  const piatto = await db.menuItem.findFirst({
+    where: { id, venueId },
+    select: { id: true, categoryId: true, MenuCategory: { select: { name: true } } },
+  });
+  if (!piatto) return null;
+
+  const adesso = Date.now();
+  const giorni = (n: number) => new Date(adesso - n * 24 * 60 * 60 * 1000);
+  const da7 = giorni(7);
+  const da30 = giorni(30);
+  const da60 = giorni(60);
+
+  const [contiChiusiDelLocale, righe, righeCategoria, quantiPiatti] = await Promise.all([
+    db.order.count({ where: { venueId, status: "COMPLETED" } }),
+    db.orderItem.findMany({
+      where: { menuItemId: id, Order: { venueId, status: "COMPLETED" } },
+      select: {
+        orderId: true,
+        quantity: true,
+        priceCents: true,
+        Order: { select: { completedAt: true, createdAt: true } },
+      },
+    }),
+    /* I vicini di categoria, per dire che posto occupa. Il confronto è
+       fra piatti che stanno nella stessa parte della carta: dire che una
+       tartare vende meno del pane sarebbe vero e inutile. */
+    db.orderItem.findMany({
+      where: {
+        MenuItem: { categoryId: piatto.categoryId },
+        Order: { venueId, status: "COMPLETED", completedAt: { gte: da30 } },
+      },
+      select: { menuItemId: true, quantity: true },
+    }),
+    db.menuItem.count({ where: { categoryId: piatto.categoryId } }),
+  ]);
+
+  let quantitaTotale = 0;
+  let quantita30 = 0;
+  let quantita7 = 0;
+  let quantita30Precedenti = 0;
+  let incassoCents = 0;
+  let ultimaVendita: Date | null = null;
+  const conti = new Set<string>();
+
+  /* Le settimane, dalla più vecchia alla corrente: ogni secchio è di sette
+     giorni e finisce adesso, così l'ultimo è la settimana che si sta
+     vivendo — non un lunedì che non è ancora arrivato. */
+  const settimane = Array.from({ length: SETTIMANE_ANDAMENTO }, (_, n) => ({
+    inizio: giorni((SETTIMANE_ANDAMENTO - n) * 7),
+    quantita: 0,
+  }));
+  const inizioSerie = settimane[0].inizio.getTime();
+
+  for (const riga of righe) {
+    // `completedAt` è scritto quando il conto si chiude; il ripiego su
+    // `createdAt` serve solo a non perdere una riga se mancasse.
+    const quando = riga.Order.completedAt ?? riga.Order.createdAt;
+    quantitaTotale += riga.quantity;
+    incassoCents += riga.priceCents * riga.quantity;
+    conti.add(riga.orderId);
+    if (quando >= da30) quantita30 += riga.quantity;
+    else if (quando >= da60) quantita30Precedenti += riga.quantity;
+    if (quando >= da7) quantita7 += riga.quantity;
+    if (!ultimaVendita || quando > ultimaVendita) ultimaVendita = quando;
+
+    if (quando.getTime() >= inizioSerie) {
+      const n = Math.min(
+        SETTIMANE_ANDAMENTO - 1,
+        Math.floor((quando.getTime() - inizioSerie) / (7 * 24 * 60 * 60 * 1000)),
+      );
+      settimane[n].quantita += riga.quantity;
+    }
+  }
+
+  const perPiatto = new Map<string, number>();
+  for (const riga of righeCategoria) {
+    if (!riga.menuItemId) continue;
+    perPiatto.set(riga.menuItemId, (perPiatto.get(riga.menuItemId) ?? 0) + riga.quantity);
+  }
+  const porzioniCategoria = [...perPiatto.values()].reduce((n, q) => n + q, 0);
+  const mie = perPiatto.get(id) ?? 0;
+
+  return {
+    ciSonoConti: contiChiusiDelLocale > 0,
+    quantitaTotale,
+    quantita30,
+    quantita7,
+    quantita30Precedenti,
+    contiTotali: conti.size,
+    incassoCents,
+    ultimaVendita,
+    settimane,
+    nellaCategoria:
+      porzioniCategoria > 0
+        ? {
+            categoria: piatto.MenuCategory.name,
+            porzioni: mie,
+            porzioniCategoria,
+            // Quanti vendono più di lui, più uno: a pari merito stesso posto.
+            posizione: [...perPiatto.values()].filter((q) => q > mie).length + 1,
+            quantiPiatti,
+          }
+        : null,
+  };
 }
 
 /* -------------------------------------------------------------------------- */

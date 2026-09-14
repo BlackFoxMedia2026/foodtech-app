@@ -39,7 +39,7 @@ export function DiningTableIcon({ size = 24, className, strokeWidth = 2 }: IconP
  * Head-and-shoulders bust with a small centered bow tie — used for "Ospiti".
  * The silhouette matches lucide's own `UserRound` icon exactly (same circle
  * and shoulder arc), so it reads as the elegant variant of the plain person
- * icon used for "Camerieri", not an unrelated glyph — the bow tie is the
+ * icon used elsewhere in the nav, not an unrelated glyph — the bow tie is the
  * only difference between the two.
  */
 export function TuxedoGuestIcon({ size = 24, className, strokeWidth = 2 }: IconProps) {

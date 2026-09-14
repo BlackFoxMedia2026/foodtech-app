@@ -286,7 +286,6 @@ export function QrCodeManager({ items, superfici }: { items: QrCodeItem[]; super
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="t-etichetta">Marketing</p>
-          <h1 className="text-display text-3xl">QR Code</h1>
           <p className="text-sm text-muted-foreground">
             Crea QR code collegati a menu, prenotazioni, eventi o campagne.
           </p>

@@ -1,6 +1,6 @@
-import type { StaffPrimaryRole } from "@prisma/client";
-import { staffPrimaryRoleLabel } from "@/lib/staff-roles";
-import { getStaffRoleGroupKey, getStaffRoleGroupLabel } from "@/lib/staff-role-groups";
+import type { StaffDepartment, StaffPrimaryRole } from "@prisma/client";
+import { staffDepartmentOf, staffPrimaryRoleLabel } from "@/lib/staff-roles";
+import { staffDepartmentLabel } from "@/lib/staff-departments";
 
 const DIACRITICS = /[̀-ͯ]/g;
 
@@ -12,16 +12,48 @@ function normalize(text: string): string {
   return text.toLowerCase().normalize("NFD").replace(DIACRITICS, "").trim();
 }
 
+/**
+ * Come si cerca davvero una persona.
+ *
+ * Chi scrive nella casella scrive il plurale e la parola di tutti i giorni:
+ * «camerieri», «cuochi», «chef». L'etichetta del ruolo è al singolare e in
+ * francese — «Cameriere», «Chef de Partie» — quindi una ricerca per sottostringa
+ * sul solo nome del ruolo non trova niente proprio nei casi in cui serve.
+ *
+ * Questi sinonimi coprono lo scarto. Non sono un dizionario: sono le parole
+ * che un ristoratore digita quando cerca «chi mi copre la cucina stasera».
+ */
+const ROLE_ALIASES: Partial<Record<StaffPrimaryRole, string>> = {
+  RESTAURANT_MANAGER: "manager direttore responsabile",
+  MAITRE: "maitre responsabile sala",
+  CHEF_DE_RANG: "camerieri cameriere rango",
+  CAMERIERE: "camerieri",
+  COMMIS_SALA: "commis camerieri",
+  SOMMELIER: "sommelier vini cantina",
+  HEAD_SOMMELIER: "sommelier vini cantina",
+  RUNNER: "runner",
+  BUSSER: "busser",
+  HOST: "host hostess accoglienza",
+  BARTENDER: "bartender barman barista bar",
+  EXECUTIVE_CHEF: "chef cuochi cuoco cucina executive",
+  SOUS_CHEF: "chef cuochi cuoco cucina sous",
+  CHEF_DE_PARTIE: "chef cuochi cuoco cucina capo partita",
+  COMMIS_CUCINA: "commis cuochi cuoco cucina",
+  LAVAPIATTI: "lavapiatti piatti cucina",
+};
+
 export type SearchableStaff = {
   firstName: string;
   lastName: string;
   role: string;
   primaryRole: StaffPrimaryRole | null;
+  department?: StaffDepartment | null;
 };
 
-/** Case/accent-insensitive match on first name, last name, full name,
- * legacy role text, the structured primaryRole label, and the role's group
- * label — so "Camerieri" also surfaces a Chef de rang (brief sections 20/23). */
+/** Case/accent-insensitive match on first name, last name, full name, legacy
+ * role text, the structured primaryRole label, its everyday synonyms, and the
+ * department — so "cucina" surfaces the whole brigata and "camerieri" also
+ * surfaces a Chef de rang. */
 export function matchesStaffQuery(staff: SearchableStaff, rawQuery: string): boolean {
   const query = normalize(rawQuery);
   if (!query) return true;
@@ -32,7 +64,8 @@ export function matchesStaffQuery(staff: SearchableStaff, rawQuery: string): boo
     `${staff.firstName} ${staff.lastName}`,
     staff.role,
     staff.primaryRole ? staffPrimaryRoleLabel(staff.primaryRole) : "",
-    getStaffRoleGroupLabel(getStaffRoleGroupKey(staff.primaryRole)),
+    staff.primaryRole ? ROLE_ALIASES[staff.primaryRole] ?? "" : "",
+    staffDepartmentLabel(staffDepartmentOf(staff)),
   ]
     .map(normalize)
     .join(" ");

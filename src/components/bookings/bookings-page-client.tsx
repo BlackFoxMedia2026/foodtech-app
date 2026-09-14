@@ -119,10 +119,8 @@ export function BookingsPageClient({
     <div className="schermo animate-fade-in gap-3">
       <header className="fissa flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-lg font-semibold leading-none">Prenotazioni</h1>
-            <p className="t-etichetta">Sala</p>
-          </div>
+          {/* Il titolo sta nella testata: qui resta il conteggio, che è la
+              cosa che cambia mentre si lavora. */}
           <p className="text-sm text-muted-foreground">
             {/*
               Il conteggio dice **su cosa** è: con un filtro acceso «0

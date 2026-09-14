@@ -1,37 +1,52 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { readApiError } from "@/lib/api-client";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Camera, CheckCircle2, Trash2 } from "lucide-react";
-import type { StaffCapability, StaffPrimaryRole } from "@prisma/client";
+import type { StaffCapability, StaffDepartment, StaffPrimaryRole, WaiterStatus } from "@prisma/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { CapabilityPicker } from "@/components/waiters/capability-picker";
-import { WaiterContractSection } from "@/components/waiters/waiter-contract-section";
-import { DEFAULT_CAPABILITIES_BY_ROLE, STAFF_PRIMARY_ROLES } from "@/lib/staff-roles";
+import { CapabilityPicker } from "@/components/staff/capability-picker";
+import { StaffContractSection } from "@/components/staff/staff-contract-section";
+import { DEFAULT_CAPABILITIES_BY_ROLE, ROLE_DEPARTMENT, STAFF_ROLE_DESCRIPTIONS, staffDepartmentOf } from "@/lib/staff-roles";
+import { ROLE_OPTIONS_BY_DEPARTMENT, staffDepartmentLabel } from "@/lib/staff-departments";
+import { staffStatusLabel, staffStatusTone } from "@/lib/staff-status";
+import { Badge } from "@/components/ui/badge";
 import { initials } from "@/lib/utils";
 
-type FieldErrors = Partial<Record<"firstName" | "lastName" | "birthday" | "phone" | "primaryRole", string>>;
+type FieldErrors = Partial<Record<"firstName" | "lastName" | "birthday" | "phone" | "email" | "primaryRole", string>>;
 
-type ProfileWaiter = {
+type ProfilePerson = {
   id: string;
   firstName: string;
   lastName: string;
   birthday: Date;
   phone: string;
+  email: string | null;
+  hireDate: Date | null;
   role: string;
   primaryRole: StaffPrimaryRole | null;
+  department: StaffDepartment | null;
   capabilities: StaffCapability[];
+  status: WaiterStatus;
   photoUrl: string | null;
+  /** L'account con cui questa persona entra, se ne ha uno. */
+  user: { email: string } | null;
 };
+
+/** `<input type="date">` vuole «2026-09-11» e niente altro. Un Date nullo
+ * diventa stringa vuota, non «Invalid Date». */
+function toDateInput(value: Date | null): string {
+  return value ? new Date(value).toISOString().slice(0, 10) : "";
+}
 
 function calculateAge(birthday: string): number | null {
   if (!birthday) return null;
@@ -50,23 +65,58 @@ function isValidPhone(phone: string) {
   return (trimmed.match(/\d/g)?.length ?? 0) >= 6;
 }
 
-export function WaiterProfileDialog({
-  waiter,
+/**
+ * La scheda di una persona.
+ *
+ * Divisa in **dati personali** e **dati lavorativi**, e non è un vezzo
+ * grafico: erano otto campi in fila dove la data di nascita stava accanto al
+ * ruolo operativo, cioè una cosa che non cambia mai accanto a una che cambia
+ * ogni stagione. Due blocchi con un titolo dicono anche **chi può guardare
+ * cosa**, il giorno in cui i permessi diventeranno più fini.
+ *
+ * Si apre in due modi: con un `children` che fa da trigger (l'avatar e il nome
+ * nell'elenco), oppure controllata da fuori con `open`/`onOpenChange` (dal
+ * menu contestuale della riga, dove un trigger annidato litigherebbe con il
+ * menu).
+ */
+export function StaffProfileDialog({
+  person,
   children,
   canManageContracts = false,
+  canManageStaff = true,
+  open: controlledOpen,
+  onOpenChange,
 }: {
-  waiter: ProfileWaiter;
-  children: React.ReactNode;
+  person: ProfilePerson;
+  children?: React.ReactNode;
   canManageContracts?: boolean;
+  canManageStaff?: boolean;
+  open?: boolean;
+  onOpenChange?: (next: boolean) => void;
 }) {
+  const waiter = person;
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
+  /* Stabile fra un render e l'altro: senza `useCallback` questa funzione è
+     nuova ogni volta, e l'effetto che apre la scheda da un link profondo
+     (`?waiterId=…`) la vedrebbe cambiata a ogni giro — cioè girerebbe di
+     continuo. */
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (controlled) onOpenChange?.(next);
+      else setUncontrolledOpen(next);
+    },
+    [controlled, onOpenChange],
+  );
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [birthday, setBirthday] = useState(waiter.birthday.toISOString().slice(0, 10));
+  const [birthday, setBirthday] = useState(toDateInput(waiter.birthday));
+  const [hireDate, setHireDate] = useState(toDateInput(waiter.hireDate));
   const [primaryRole, setPrimaryRole] = useState<StaffPrimaryRole | null>(waiter.primaryRole);
   const [capabilities, setCapabilities] = useState<StaffCapability[]>(waiter.capabilities);
   const capabilitiesTouchedRef = useRef(false);
@@ -83,12 +133,17 @@ export function WaiterProfileDialog({
   const today = useVenueToday();
   const age = useMemo(() => calculateAge(birthday), [birthday]);
   const fullName = `${waiter.firstName} ${waiter.lastName}`;
+  /* Il reparto segue il ruolo **mentre lo si sta scegliendo**, non quello
+     salvato: chi sposta una persona da «Cameriere» a «Sous-chef» deve vedere
+     subito che sta cambiando reparto, prima di salvare. */
+  const reparto = staffDepartmentOf({ primaryRole, department: waiter.department });
+  const mostraCapability = reparto === "SALA" || reparto === "BAR" || reparto === "DIREZIONE";
 
   // Deep-link from a notification's "Visualizza profilo" (brief section 12):
   // ?waiterId=<id> opens this profile directly when it matches.
   useEffect(() => {
     if (searchParams.get("waiterId") === waiter.id) setOpen(true);
-  }, [searchParams, waiter.id]);
+  }, [searchParams, waiter.id, setOpen]);
 
   function handlePrimaryRoleChange(next: StaffPrimaryRole) {
     setPrimaryRole(next);
@@ -136,6 +191,7 @@ export function WaiterProfileDialog({
     const firstName = ((fd.get("firstName") as string) || "").trim();
     const lastName = ((fd.get("lastName") as string) || "").trim();
     const phone = ((fd.get("phone") as string) || "").trim();
+    const email = ((fd.get("email") as string) || "").trim();
 
     const errors: FieldErrors = {};
     if (!firstName) errors.firstName = "Inserisci il nome.";
@@ -150,6 +206,10 @@ export function WaiterProfileDialog({
     } else if (!isValidPhone(phone)) {
       errors.phone = "Numero di telefono non valido.";
     }
+    // L'email è facoltativa — metà di una brigata non ne ha una di lavoro — ma
+    // se c'è deve essere scritta bene: è l'indirizzo su cui un giorno
+    // arriverà l'invito all'account.
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errors.email = "Indirizzo email non valido.";
     if (!primaryRole) errors.primaryRole = "Seleziona un ruolo principale.";
 
     if (Object.keys(errors).length > 0) {
@@ -161,7 +221,16 @@ export function WaiterProfileDialog({
     setSubmitting(true);
     const res = await fetch(`/api/waiters/${waiter.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ firstName, lastName, birthday, phone, primaryRole, capabilities }),
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        birthday,
+        phone,
+        email: email || null,
+        hireDate: hireDate || null,
+        primaryRole,
+        capabilities,
+      }),
       headers: { "content-type": "application/json" },
     });
     setSubmitting(false);
@@ -201,7 +270,7 @@ export function WaiterProfileDialog({
           if (!next) resetTransientState();
         }}
       >
-        <DialogTrigger asChild>{children}</DialogTrigger>
+        {children && <DialogTrigger asChild>{children}</DialogTrigger>}
         <DialogContent
           className="max-h-[85vh] max-w-[560px] overflow-y-auto"
           onOpenAutoFocus={(e) => {
@@ -212,7 +281,7 @@ export function WaiterProfileDialog({
           aria-describedby="waiter-profile-description"
         >
           <DialogHeader>
-            <DialogTitle id="waiter-profile-title">Profilo cameriere</DialogTitle>
+            <DialogTitle id="waiter-profile-title">Scheda personale</DialogTitle>
             <DialogDescription id="waiter-profile-description">Visualizza e modifica i dati di {fullName}.</DialogDescription>
           </DialogHeader>
 
@@ -221,7 +290,21 @@ export function WaiterProfileDialog({
               {photoUrl && <AvatarImage src={photoUrl} alt={fullName} />}
               <AvatarFallback className="text-base">{initials(fullName)}</AvatarFallback>
             </Avatar>
-            <div className="space-y-1">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={staffStatusTone(waiter.status)}>{staffStatusLabel(waiter.status)}</Badge>
+                <span className="t-etichetta text-muted-foreground">
+                  {staffDepartmentLabel(reparto)}
+                </span>
+              </div>
+              {/* L'accesso, in una riga. `Waiter.userId` esisteva da sempre e
+                  non si vedeva da nessuna parte: senza, non c'era modo di
+                  sapere chi di questa squadra può entrare nel gestionale — e
+                  un ordine o una comanda si attribuiscono a un account, non a
+                  un'anagrafica. */}
+              <p className="t-nota truncate">
+                {waiter.user ? `Accede con ${waiter.user.email}` : "Nessun accesso a Tavolo"}
+              </p>
               <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto}>
                 <Camera className="h-3.5 w-3.5" />
                 {uploadingPhoto ? "Carico…" : photoUrl ? "Cambia foto" : "Carica foto"}
@@ -238,6 +321,7 @@ export function WaiterProfileDialog({
           </div>
 
           <form onSubmit={onSubmit} method="post" className="space-y-5" noValidate>
+            <p className="t-etichetta">Dati personali</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="firstName">Nome</Label>
@@ -302,7 +386,7 @@ export function WaiterProfileDialog({
                 <p className="text-xs text-muted-foreground">Calcolata automaticamente dalla data di nascita.</p>
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="phone">Numero di cellulare</Label>
                 <Input
                   id="phone"
@@ -319,37 +403,121 @@ export function WaiterProfileDialog({
                 )}
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="primaryRole">Ruolo principale</Label>
-                <Select
-                  value={primaryRole ?? undefined}
-                  onValueChange={(v) => handlePrimaryRoleChange(v as StaffPrimaryRole)}
-                >
-                  <SelectTrigger id="primaryRole" aria-invalid={!!fieldErrors.primaryRole}>
-                    <SelectValue placeholder="Seleziona un ruolo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STAFF_PRIMARY_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fieldErrors.primaryRole && <p className="text-xs text-destructive">{fieldErrors.primaryRole}</p>}
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  defaultValue={waiter.email ?? ""}
+                  placeholder="Facoltativa"
+                  aria-invalid={!!fieldErrors.email}
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                />
+                {fieldErrors.email && (
+                  <p id="email-error" className="text-xs text-destructive">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
+            </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Competenze operative</Label>
-                <CapabilityPicker value={capabilities} onChange={handleCapabilitiesChange} />
-                <p className="text-xs text-muted-foreground">Determinano a quali ruoli tavolo può essere assegnato.</p>
+            <Separator />
+
+            <div className="space-y-3">
+              <p className="t-etichetta">Dati lavorativi</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="primaryRole">Ruolo</Label>
+                  <Select
+                    value={primaryRole ?? undefined}
+                    onValueChange={(v) => handlePrimaryRoleChange(v as StaffPrimaryRole)}
+                  >
+                    <SelectTrigger id="primaryRole" aria-invalid={!!fieldErrors.primaryRole}>
+                      <SelectValue placeholder="Seleziona un ruolo" />
+                    </SelectTrigger>
+                    {/*
+                      I ruoli sono sedici, e un elenco piatto di sedici voci in
+                      un menu a tendina si scorre due volte per trovarne una.
+                      Raggruppati per reparto se ne leggono quattro alla volta —
+                      ed e\u0300 anche il modo in cui si capisce che scegliere
+                      «Sous-chef» sposta la persona in cucina.
+                    */}
+                    <SelectContent>
+                      {ROLE_OPTIONS_BY_DEPARTMENT.map((gruppo) => (
+                        <SelectGroup key={gruppo.department}>
+                          <SelectLabel>{gruppo.label}</SelectLabel>
+                          {gruppo.roles.map((r) => (
+                            <SelectItem key={r.value} value={r.value}>
+                              {r.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldErrors.primaryRole && <p className="text-xs text-destructive">{fieldErrors.primaryRole}</p>}
+                  {primaryRole && STAFF_ROLE_DESCRIPTIONS[primaryRole] && (
+                    <p className="text-xs text-muted-foreground">{STAFF_ROLE_DESCRIPTIONS[primaryRole]}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="department">Reparto</Label>
+                  <Input
+                    id="department"
+                    readOnly
+                    aria-readonly="true"
+                    value={staffDepartmentLabel(reparto)}
+                    className="cursor-not-allowed bg-muted text-muted-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground">Determinato dal ruolo.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="hireDate">Data di assunzione</Label>
+                  <Input
+                    id="hireDate"
+                    name="hireDate"
+                    type="date"
+                    value={hireDate}
+                    onChange={(e) => setHireDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="statoAttuale">Stato</Label>
+                  <Input
+                    id="statoAttuale"
+                    readOnly
+                    aria-readonly="true"
+                    value={staffStatusLabel(waiter.status)}
+                    className="cursor-not-allowed bg-muted text-muted-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground">Si cambia dall&apos;elenco, senza aprire la scheda.</p>
+                </div>
+
+                {/*
+                  Le competenze contano solo per chi puo\u0300 stare su un tavolo.
+                  Un lavapiatti non ha capability, e mostrargli dieci caselle
+                  vuote da spuntare gli farebbe sembrare la scheda incompleta —
+                  oltre a invitare a spuntarne una, cosa che lo farebbe comparire
+                  fra i candidati quando il maitre assegna la sala.
+                */}
+                {mostraCapability && (
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Competenze operative</Label>
+                    <CapabilityPicker value={capabilities} onChange={handleCapabilitiesChange} />
+                    <p className="text-xs text-muted-foreground">Determinano a quali ruoli tavolo può essere assegnato.</p>
+                  </div>
+                )}
               </div>
             </div>
 
             {canManageContracts && (
               <>
                 <Separator />
-                <WaiterContractSection waiterId={waiter.id} open={open} />
+                <StaffContractSection waiterId={waiter.id} open={open} />
               </>
             )}
 

@@ -88,7 +88,6 @@ export function CouponList({
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="t-etichetta">Marketing / Coupon</p>
-          <h1 className="text-display text-3xl">Coupon</h1>
           <p className="text-sm text-muted-foreground">
             Si usano al tavolo, dalla scheda della prenotazione in Servizio.
           </p>

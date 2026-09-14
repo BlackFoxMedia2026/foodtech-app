@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fieldDiff, recordAudit, type AuditActor } from "./audit";
-import { StaffCapability, StaffPrimaryRole } from "@prisma/client";
+import { StaffCapability, StaffDepartment, StaffPrimaryRole, WaiterStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { staffPrimaryRoleLabel } from "@/lib/staff-roles";
 
@@ -31,10 +31,15 @@ export const WaiterInput = z.object({
   role: z.string().trim().min(1).optional(),
   primaryRole: z.nativeEnum(StaffPrimaryRole).nullable().optional(),
   capabilities: z.array(z.nativeEnum(StaffCapability)).optional(),
+  email: z.string().trim().toLowerCase().email("invalid_email").max(200).nullable().optional(),
+  hireDate: z.coerce.date().nullable().optional(),
+  // Override del reparto: normalmente nullo, il reparto si deduce dal ruolo
+  // (ROLE_DEPARTMENT in @/lib/staff-roles). Nessuna schermata lo scrive oggi.
+  department: z.nativeEnum(StaffDepartment).nullable().optional(),
 });
 
 export const WaiterUpdateInput = WaiterInput.partial().extend({
-  status: z.enum(["ACTIVE", "RESTING"]).optional(),
+  status: z.nativeEnum(WaiterStatus).optional(),
   photoUrl: z.string().url().nullable().optional(),
 });
 
@@ -48,7 +53,36 @@ function resolveRole(data: { role?: string; primaryRole?: StaffPrimaryRole | nul
 }
 
 export async function listWaiters(venueId: string) {
-  return db.waiter.findMany({ where: { venueId }, orderBy: { createdAt: "desc" } });
+  return db.waiter.findMany({
+    where: { venueId },
+    orderBy: { createdAt: "desc" },
+    // L'account collegato, quando c'è. Serve alla scheda della persona per
+    // rispondere a «questo qui entra in Tavolo, e con che indirizzo?» — che
+    // finché `Waiter.userId` non si vedeva da nessuna parte era una domanda
+    // a cui si poteva rispondere solo dal database.
+    include: { user: { select: { email: true } } },
+  });
+}
+
+/** Quante persone per stato, per la fascia in cima a Staff. Un conteggio solo
+ * in una query sola: l'elenco è già in memoria, ma contare lì dentro vorrebbe
+ * dire contare **le persone filtrate**, e i numeri in testata devono parlare
+ * di tutto l'organico anche mentre si sta cercando qualcuno. */
+export async function countWaitersByStatus(venueId: string) {
+  const righe = await db.waiter.groupBy({
+    by: ["status"],
+    where: { venueId },
+    _count: { _all: true },
+  });
+  const per = Object.fromEntries(righe.map((r) => [r.status, r._count._all])) as Partial<
+    Record<WaiterStatus, number>
+  >;
+  return {
+    totale: righe.reduce((n, r) => n + r._count._all, 0),
+    inServizio: per.ACTIVE ?? 0,
+    aRiposo: per.RESTING ?? 0,
+    assenti: (per.VACATION ?? 0) + (per.SICK_LEAVE ?? 0) + (per.UNAVAILABLE ?? 0),
+  };
 }
 
 export async function getWaiter(venueId: string, id: string) {

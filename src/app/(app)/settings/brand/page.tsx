@@ -12,7 +12,6 @@ export default async function BrandSettingsPage() {
     <div className="schermo animate-fade-in gap-3">
       <header className="fissa">
         <p className="t-etichetta">Impostazioni</p>
-        <h1 className="text-display text-3xl">Brand</h1>
         <p className="text-sm text-muted-foreground">
           Carica il logo, scegli i colori e imposta le informazioni principali del tuo ristorante.
         </p>

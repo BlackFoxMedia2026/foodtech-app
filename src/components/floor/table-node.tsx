@@ -1,5 +1,7 @@
 "use client";
 
+import { isAssignable } from "@/lib/staff-status";
+import type { WaiterStatus } from "@prisma/client";
 import { memo } from "react";
 import type { StaffCapability, Table, TableShape } from "@prisma/client";
 import { cn } from "@/lib/utils";
@@ -15,7 +17,7 @@ import { TABLE_ROLE_ICONS } from "./staff-role-icons";
 
 export type LocalTable = Table & { dirty?: boolean };
 
-export type TableStaffPerson = { id: string; name: string; status: "ACTIVE" | "RESTING" };
+export type TableStaffPerson = { id: string; name: string; status: WaiterStatus };
 export type TableStaffMap = Partial<Record<(typeof TABLE_ASSIGNABLE_CAPABILITIES)[number], TableStaffPerson>>;
 
 export const TABLE_SIZE: Record<TableShape, { w: number; h: number }> = {
@@ -284,7 +286,7 @@ export const TableNode = memo(function TableNode({
                     return (
                       <span key={role} title={`${TABLE_ROLE_LABELS[role]}: ${person.name}`} className="shrink-0">
                         <Icon
-                          className={cn("h-3.5 w-3.5", person.status === "RESTING" ? "text-destructive" : "text-accent-strong")}
+                          className={cn("h-3.5 w-3.5", !isAssignable(person.status) ? "text-destructive" : "text-accent-strong")}
                         />
                       </span>
                     );

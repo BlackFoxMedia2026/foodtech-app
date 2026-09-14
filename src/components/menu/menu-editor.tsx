@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
   Check,
-  EyeOff,
   ExternalLink,
-  MoreHorizontal,
   Pencil,
   Plus,
   Search,
+  SlidersHorizontal,
   Trash2,
   UtensilsCrossed,
 } from "lucide-react";
@@ -24,40 +24,46 @@ import { Switch } from "@/components/ui/switch";
 import { readApiError } from "@/lib/api-client";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
-  ALLERGENI,
-  REGIMI,
   nomeAllergene,
   nomeRegime,
   type MenuCategoryView,
   type MenuItemView,
 } from "@/server/menu";
-import { MenuItemDialog } from "@/components/menu/menu-item-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { fraseMargine, statoMargine } from "@/lib/margine";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /**
  * Il menu, da dentro.
  *
- * L'ordine si cambia con due frecce e non trascinando: durante un servizio si
- * lavora col pollice su un tablet, e il trascinamento è il gesto che sbaglia
- * più spesso. Le frecce sono anche l'unica versione che funziona con la
- * tastiera.
+ * **La lista mostra il piatto, non il conto.** Il margine stava sulla riga
+ * accanto al prezzo — «margine 11,50 € · 72%» — ed è il numero di
+ * un'altra domanda: quando si apre la carta si cerca un piatto per cambiarne
+ * il prezzo o per segnarlo finito, non per valutarne la resa. Costo e margine
+ * restano dove si scrivono e dove si leggono davvero: nella scheda del piatto
+ * e in Analisi. Il filtro «Senza costo» continua a funzionare — legge lo
+ * stesso dato, che qui non si stampa.
  *
- * Il margine compare solo dove il costo è dichiarato. È l'unico numero in euro
- * di questa applicazione che non è una stima: prezzo e costo li scrive il
- * locale, non li deduciamo noi.
+ * **Due comandi per riga.** Erano quattro — su, giù, modifica, elimina — e il
+ * cestino accanto alla matita è il modo in cui si cancella un piatto volendo
+ * cambiargli il prezzo. Restano l'interruttore della disponibilità, che è il
+ * gesto che si fa ogni sera in cucina, e «Modifica», che porta alla scheda:
+ * lì stanno ordine, foto, allergeni ed eliminazione.
+ *
+ * L'ordine delle **categorie** si cambia ancora con due frecce e non
+ * trascinando: durante un servizio si lavora col pollice su un tablet, e il
+ * trascinamento è il gesto che sbaglia più spesso. Le frecce sono anche
+ * l'unica versione che funziona con la tastiera.
  *
  * **Cercare e filtrare compaiono solo quando servono.** Su dodici piatti si
  * legge tutto; su centoventi, trovare «tagliata» scorrendo è il momento in cui
  * si smette di tenere aggiornato il menu. E quando un filtro è acceso le
- * frecce spariscono: riordinare un elenco parziale manderebbe al server un
- * ordine che non è quello vero.
+ * frecce delle categorie spariscono: riordinare un elenco parziale manderebbe
+ * al server un ordine che non è quello vero.
  */
 
 /** Da quanti piatti in su la ricerca serve più di quanto ingombri. */
@@ -95,9 +101,6 @@ export function MenuEditor({
 }) {
   const router = useRouter();
   const [nuovaCategoria, setNuovaCategoria] = useState("");
-  const [dialogo, setDialogo] = useState<{ categoryId: string; categoryName: string; item?: MenuItemView } | null>(
-    null,
-  );
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ricerca, setRicerca] = useState("");
@@ -116,6 +119,10 @@ export function MenuEditor({
   const [filtro, setFiltro] = useState<Filtro>(
     FILTRI.some((f) => f.chiave === filtroIniziale) ? (filtroIniziale as Filtro) : "tutti",
   );
+  /* Il popover dei filtri si chiude appena se ne sceglie uno: la scelta è
+     una sola, e restare aperto sopra la lista nasconde proprio il risultato
+     che si è appena chiesto di vedere. */
+  const [filtriAperti, setFiltriAperti] = useState(false);
 
   async function chiama(chiave: string, url: string, init: RequestInit, fallback: string) {
     setBusy(chiave);
@@ -197,81 +204,146 @@ export function MenuEditor({
 
   return (
     <>
-      {/* Testata e ricerca restano fisse: si cerca fra centoventi piatti
-          senza perdere il campo di ricerca sotto lo scorrimento. */}
-      <header className="fissa flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-lg font-semibold leading-none">Menu</h1>
-            <p className="t-etichetta">Sala</p>
-          </div>
+      {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+
+      {/*
+        Una riga sola: cerca a sinistra, comandi a destra.
+
+        La barra è la prima cosa della pagina: il titolo lo dice la testata, e
+        la frase che spiegava a cosa serve il menu era una riga che si legge
+        una volta sola e poi si scavalca ogni giorno.
+
+        Prima erano tre righe — ricerca, quattro pillole di filtro, il
+        collegamento al menu pubblico in testata — e occupavano in verticale
+        quanto due piatti. I quattro filtri stanno dentro un popover perché è
+        raro che se ne cambi uno: il novanta per cento delle volte si scrive
+        un nome. Quello che si usa sempre prende lo spazio, quello che si usa
+        di rado prende un'icona.
+      */}
+      <TooltipProvider delayDuration={200}>
+        <div className="fissa flex items-center gap-2">
+          {cercabile ? (
+            <div className="relative min-w-0 flex-1">
+              <Search
+                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                value={ricerca}
+                onChange={(e) => setRicerca(e.target.value)}
+                placeholder={`Cerca fra ${totalePiatti} piatti`}
+                aria-label="Cerca un piatto"
+                className="h-12 rounded-lg pl-10 pr-3 text-sm"
+              />
+            </div>
+          ) : (
+            /* Sotto la soglia la ricerca non serve, ma la riga resta: il
+               menu pubblico si apre da qui in ogni caso. */
+            <div className="min-w-0 flex-1" />
+          )}
+
+          {cercabile && (
+            <Popover open={filtriAperti} onOpenChange={setFiltriAperti}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={
+                        filtro === "tutti"
+                          ? "Filtri"
+                          : `Filtri — attivo: ${FILTRI.find((f) => f.chiave === filtro)?.etichetta}`
+                      }
+                      className={cn(
+                        "relative grid h-12 w-12 shrink-0 place-items-center rounded-lg border transition-colors",
+                        filtro === "tutti"
+                          ? "border-border text-muted-foreground hover:border-cream/40 hover:text-foreground"
+                          : "border-accent text-accent-strong",
+                      )}
+                    >
+                      <SlidersHorizontal className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
+                      {/* Un filtro acceso si vede anche senza aprire il popover. */}
+                      {filtro !== "tutti" && (
+                        <span
+                          className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-accent-strong"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Filtri</TooltipContent>
+              </Tooltip>
+
+              <PopoverContent align="end" className="w-56 p-1.5">
+                <p className="px-2 pb-1.5 pt-1 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  Mostra
+                </p>
+                {FILTRI.map((f) => (
+                  <button
+                    key={f.chiave}
+                    type="button"
+                    aria-pressed={filtro === f.chiave}
+                    onClick={() => {
+                      setFiltro(f.chiave);
+                      setFiltriAperti(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors",
+                      filtro === f.chiave
+                        ? "bg-cream text-clay-ink"
+                        : "text-muted-foreground hover:bg-current/10 hover:text-foreground",
+                    )}
+                  >
+                    {f.etichetta}
+                    {filtro === f.chiave && <Check className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                href={`/m/${venueSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Vedi il menu pubblico"
+                className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-cream/40 hover:text-foreground"
+              >
+                <ExternalLink className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
+              </a>
+            </TooltipTrigger>
+            <TooltipContent>Vedi il menu pubblico</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+
+      {cercabile && filtrando && (
+        <div className="fissa mt-2 space-y-1">
           <p className="text-sm text-muted-foreground">
-            Quello che i clienti leggono dal QR sul tavolo. Un piatto finito sparisce dalla loro carta.
+            {trovati === 0
+              ? "Nessun piatto"
+              : `${trovati} ${trovati === 1 ? "piatto" : "piatti"} su ${totalePiatti}`}
+            {" · "}
+            <button
+              type="button"
+              onClick={() => {
+                setRicerca("");
+                setFiltro("tutti");
+              }}
+              className="underline"
+            >
+              mostra tutto
+            </button>
+          </p>
+          <p className="t-nota">
+            Mentre cerchi, l&apos;ordine non si cambia: spostare un piatto in un elenco parziale
+            riscriverebbe l&apos;ordine vero con quello che vedi adesso.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <a href={`/m/${venueSlug}`} target="_blank" rel="noopener noreferrer">
-            Vedi il menu pubblico <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
-          </a>
-        </Button>
-      </header>
-
-      {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-
-      {cercabile && (
-        <div className="fissa mt-3 space-y-2">
-          <div className="relative max-w-sm">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              value={ricerca}
-              onChange={(e) => setRicerca(e.target.value)}
-              placeholder={`Cerca fra ${totalePiatti} piatti`}
-              aria-label="Cerca un piatto"
-              className="pl-9"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {FILTRI.map((f) => (
-              <button
-                key={f.chiave}
-                type="button"
-                aria-pressed={filtro === f.chiave}
-                onClick={() => setFiltro(f.chiave)}
-                className={`min-h-[36px] rounded-full border px-3 text-sm transition-colors ${
-                  filtro === f.chiave
-                    ? "border-cream bg-cream text-clay-ink"
-                    : "border-border text-muted-foreground hover:bg-current/10"
-                }`}
-              >
-                {f.etichetta}
-              </button>
-            ))}
-            {filtrando && (
-              <span className="text-sm text-muted-foreground">
-                {trovati === 0
-                  ? "Nessun piatto"
-                  : `${trovati} ${trovati === 1 ? "piatto" : "piatti"} su ${totalePiatti}`}
-                {" · "}
-                <button type="button" onClick={() => { setRicerca(""); setFiltro("tutti"); }} className="underline">
-                  mostra tutto
-                </button>
-              </span>
-            )}
-          </div>
-
-          {filtrando && (
-            <p className="t-nota">
-              Mentre cerchi, l&apos;ordine non si cambia: spostare un piatto in un elenco parziale
-              riscriverebbe l&apos;ordine vero con quello che vedi adesso.
-            </p>
-          )}
-        </div>
       )}
-
       {categorie.length === 0 ? (
         <div className="mt-6 space-y-4">
           <EmptyState icon={UtensilsCrossed} title="Il menu è vuoto">
@@ -389,190 +461,150 @@ export function MenuEditor({
                     </p>
                   ) : (
                     <ul className="divide-y divide-border">
-                      {c.items.map((i, indice) => (
-                        <li key={i.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={i.available ? "font-medium" : "font-medium line-through opacity-60"}>
-                                {i.name}
-                              </span>
-                              <span className="tabular-nums">{formatCurrency(i.priceCents, currency)}</span>
-                              {!i.available && <Badge tone="warning">Finito</Badge>}
-                              {/* Un piatto venduto in perdita non si scrive
-                                  nello stesso grigio di uno che rende: qui il
-                                  costo lo digita una persona, e un dito
-                                  sbagliato resta nelle analisi per mesi. */}
-                              {i.marginCents != null && (
-                                <span
-                                  className={cn(
-                                    "text-xs",
-                                    statoMargine(i.marginCents) === "perdita"
-                                      ? "font-medium text-destructive-soft"
-                                      : statoMargine(i.marginCents) === "pari"
-                                        ? "text-accent-strong"
-                                        : "text-muted-foreground",
-                                  )}
-                                >
-                                  {fraseMargine(i.marginCents, i.marginPct, (c) =>
-                                    formatCurrency(c, currency),
-                                  )}
-                                </span>
-                              )}
-                            </div>
+                      {c.items.map((i) => (
+                        <li key={i.id} className="flex items-start gap-3 py-4 sm:items-center sm:gap-4">
+                          {/*
+                            La foto, e perché è grande.
 
-                            {/*
-                              La descrizione **da tablet in su**, non sul
-                              telefono.
-
-                              Questa è una lista amministrativa: chi la apre
-                              cerca un piatto per cambiargli il prezzo o per
-                              segnarlo finito, e la descrizione completa la
-                              conosce già — l'ha scritta lui. Su 390 px
-                              costava due o tre righe per piatto, e con
-                              quaranta piatti sono cento righe di testo fra
-                              chi cerca e quello che cerca.
-
-                              Resta intera nell'editor del piatto, dove la si
-                              scrive, e nel menu pubblico, dove la legge chi
-                              deve scegliere.
-                            */}
-                            {i.description && (
-                              <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
-                                {i.description}
-                              </p>
-                            )}
-
-                            {/*
-                              Nello stesso ordine e con le stesse parole della
-                              pagina che legge il cliente (`/m/[slug]`): qui si
-                              deve vedere **quello che vede lui**.
-
-                              Prima era «Allergeni: Latte · Vegetariano, Senza
-                              glutine»: i due elenchi erano attaccati sotto
-                              l'unica etichetta «Allergeni», e vegetariano non
-                              è un allergene. Su una faccenda dove la parola
-                              sbagliata conta, la forma la decide la pagina
-                              pubblica, non l'editor.
-                            */}
-                            {(i.allergens.length > 0 || i.dietary.length > 0) && (
-                              <p className="mt-1 t-nota">
-                                {i.dietary.length > 0 && <>{i.dietary.map(nomeRegime).join(" · ")}</>}
-                                {i.dietary.length > 0 && i.allergens.length > 0 && " — "}
-                                {i.allergens.length > 0 && (
-                                  <>Contiene: {i.allergens.map(nomeAllergene).join(", ")}</>
+                            Una carta si gestisce riconoscendo i piatti, non
+                            leggendoli: chi ci lavora dentro sa già cosa c'è
+                            scritto. Una miniatura da 40 px non fa
+                            riconoscere niente — è un'icona travestita da
+                            foto — quindi qui è un rettangolo 4:3 che occupa
+                            spazio davvero. Misura fissa per tutti: righe di
+                            altezza diversa si scorrono peggio di righe
+                            uguali.
+                          */}
+                          <div className="riquadro relative aspect-[4/3] w-24 shrink-0 overflow-hidden bg-secondary/40 sm:w-32 md:w-40 lg:w-44">
+                            {i.imageUrl ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={i.imageUrl}
+                                alt=""
+                                className={cn(
+                                  "h-full w-full object-cover",
+                                  !i.available && "opacity-45 grayscale",
                                 )}
-                              </p>
+                              />
+                            ) : (
+                              <div className="grid h-full w-full place-items-center text-muted-foreground">
+                                <UtensilsCrossed className="h-6 w-6 opacity-40" aria-hidden="true" />
+                              </div>
                             )}
                           </div>
 
-                          {/*
-                            Su telefono un piatto portava **quattro** pulsanti
-                            a icona: su, giù, modifica, elimina. Quattro
-                            bersagli da 36 px per riga su un elenco di
-                            centoventi piatti è un muro di frecce, e il piatto
-                            — che è la cosa importante — diventa il testo
-                            fra le icone.
-                            
-                            Da telefono c'è un solo pulsante «⋯» con le stesse
-                            azioni scritte a parole; da tablet in su restano in
-                            fila, dove il mouse le raggiunge senza aprire
-                            niente.
-                          */}
-                          {canEdit && (
-                            <MenuAzioniPiatto
-                              nome={i.name}
-                              disponibile={i.available}
-                              primo={indice === 0}
-                              ultimo={indice === c.items.length - 1}
-                              filtrando={filtrando}
-                              occupato={busy !== null}
-                              onModifica={() => setDialogo({ categoryId: c.id, categoryName: c.name, item: i })}
-                              onSu={() => sposta("piatti", idPiatti, indice, indice - 1)}
-                              onGiu={() => sposta("piatti", idPiatti, indice, indice + 1)}
-                              onDisponibilita={() =>
-                                chiama(
-                                  i.id,
-                                  `/api/menu/items/${i.id}`,
-                                  json({ available: !i.available }),
-                                  "Non siamo riusciti ad aggiornare il piatto.",
-                                )
-                              }
-                              onElimina={() =>
-                                chiama(
-                                  i.id,
-                                  `/api/menu/items/${i.id}`,
-                                  { method: "DELETE" },
-                                  "Non siamo riusciti a eliminare il piatto.",
-                                )
-                              }
-                            />
-                          )}
+                          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                {/* Il nome è il titolo della riga: più grande
+                                    di tutto il resto. Il prezzo gli sta
+                                    accanto in terracotta — si legge subito,
+                                    ma non compete. */}
+                                <span
+                                  className={cn(
+                                    "t-titolo-scheda text-base md:text-lg",
+                                    !i.available && "line-through opacity-60",
+                                  )}
+                                >
+                                  {i.name}
+                                </span>
+                                <span className="tabular-nums text-accent-strong">
+                                  {formatCurrency(i.priceCents, currency)}
+                                </span>
+                                {!i.available && <Badge tone="warning">Finito</Badge>}
+                              </div>
 
-                          {canEdit && (
-                            <div className="hidden items-center gap-1 md:flex">
-                              {!filtrando && (
-                              <>
-                              <button
-                                type="button"
-                                aria-label={`Sposta ${i.name} in su`}
-                                disabled={indice === 0 || busy !== null}
-                                onClick={() => sposta("piatti", idPiatti, indice, indice - 1)}
-                                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10 disabled:opacity-30"
-                              >
-                                <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
-                              </button>
-                              <button
-                                type="button"
-                                aria-label={`Sposta ${i.name} in giù`}
-                                disabled={indice === c.items.length - 1 || busy !== null}
-                                onClick={() => sposta("piatti", idPiatti, indice, indice + 1)}
-                                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10 disabled:opacity-30"
-                              >
-                                <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
-                              </button>
-                              </>
+                              {i.description && (
+                                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                                  {i.description}
+                                </p>
                               )}
-                              <button
-                                type="button"
-                                aria-label={`Modifica ${i.name}`}
-                                disabled={busy !== null}
-                                onClick={() =>
-                                  setDialogo({ categoryId: c.id, categoryName: c.name, item: i })
-                                }
-                                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
-                              >
-                                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                              </button>
-                              <button
-                                type="button"
-                                aria-label={`Elimina ${i.name}`}
-                                disabled={busy !== null}
-                                onClick={() =>
-                                  chiama(
-                                    i.id,
-                                    `/api/menu/items/${i.id}`,
-                                    { method: "DELETE" },
-                                    "Non siamo riusciti a eliminare il piatto.",
-                                  )
-                                }
-                                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                              </button>
+
+                              {/*
+                                Nello stesso ordine e con le stesse parole della
+                                pagina che legge il cliente (`/m/[slug]`): qui si
+                                deve vedere **quello che vede lui**.
+
+                                Prima era «Allergeni: Latte · Vegetariano, Senza
+                                glutine»: i due elenchi erano attaccati sotto
+                                l'unica etichetta «Allergeni», e vegetariano non
+                                è un allergene. Su una faccenda dove la parola
+                                sbagliata conta, la forma la decide la pagina
+                                pubblica, non l'editor.
+                              */}
+                              {(i.dietary.length > 0 || i.allergens.length > 0) && (
+                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                  {i.dietary.map((d) => (
+                                    <span
+                                      key={d}
+                                      className="rounded-full border border-sage/40 bg-sage/15 px-2.5 py-0.5 text-xs text-cream"
+                                    >
+                                      {nomeRegime(d)}
+                                    </span>
+                                  ))}
+                                  {i.allergens.length > 0 && (
+                                    <span className="t-nota">
+                                      Contiene: {i.allergens.map(nomeAllergene).join(" · ")}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          )}
+
+                            {/*
+                              Due comandi, non quattro.
+
+                              Frecce ed eliminazione sono passate nella scheda
+                              del piatto: qui restavano quattro bersagli per
+                              riga, e il cestino accanto a «modifica» è il modo
+                              in cui si cancella un piatto volendone cambiare
+                              il prezzo. Quello che resta è quello che si fa
+                              ogni giorno — segnare un piatto finito — e la
+                              porta per tutto il resto.
+                            */}
+                            {canEdit && (
+                              <div className="flex shrink-0 items-center gap-3">
+                                <label
+                                  htmlFor={`piatto-disp-${i.id}`}
+                                  className="flex min-h-[44px] cursor-pointer items-center px-1"
+                                  title={i.available ? "Segna come finito" : "Rimetti disponibile"}
+                                >
+                                  <Switch
+                                    id={`piatto-disp-${i.id}`}
+                                    checked={i.available}
+                                    disabled={busy !== null}
+                                    aria-label={
+                                      i.available ? `Segna ${i.name} come finito` : `Rimetti ${i.name} disponibile`
+                                    }
+                                    onCheckedChange={() =>
+                                      chiama(
+                                        i.id,
+                                        `/api/menu/items/${i.id}`,
+                                        json({ available: !i.available }),
+                                        "Non siamo riusciti ad aggiornare il piatto.",
+                                      )
+                                    }
+                                  />
+                                </label>
+
+                                <Button asChild variant="outline" size="sm">
+                                  <Link href={`/menu/${i.id}`}>
+                                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Modifica
+                                  </Link>
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </li>
                       ))}
                     </ul>
                   )}
 
                   {canEdit && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDialogo({ categoryId: c.id, categoryName: c.name })}
-                    >
-                      <Plus className="h-4 w-4" aria-hidden="true" /> Aggiungi un piatto
+                    <Button asChild variant="ghost" size="sm">
+                      <Link href={`/menu/nuovo?categoria=${c.id}`}>
+                        <Plus className="h-4 w-4" aria-hidden="true" /> Aggiungi un piatto
+                      </Link>
                     </Button>
                   )}
                 </CardContent>
@@ -598,101 +630,6 @@ export function MenuEditor({
         </div>
       )}
 
-      {dialogo && (
-        <MenuItemDialog
-          open
-          onOpenChange={(v) => !v && setDialogo(null)}
-          categoryId={dialogo.categoryId}
-          categoryName={dialogo.categoryName}
-          item={dialogo.item}
-        />
-      )}
     </>
-  );
-}
-
-/**
- * Le azioni di un piatto, da telefono: un pulsante e le voci scritte.
- *
- * Le stesse quattro azioni della fila da scrivania, più una che da telefono
- * serve più di tutte: **segnare un piatto finito**. È il gesto che si fa in
- * cucina alle nove di sera con una mano, ed era raggiungibile solo aprendo
- * la scheda del piatto.
- *
- * Le voci sono **parole, non icone**: dentro un menù non c'è l'ambiguità di
- * un simbolo, e «Elimina il piatto» dice più di un cestino. Sta in fondo,
- * dopo una riga di separazione, perché è l'unica che non si disfa.
- *
- * Le frecce non compaiono mentre un filtro è acceso, per la stessa ragione
- * per cui spariscono dalla fila: riordinare un elenco parziale manderebbe al
- * server un ordine che non è quello vero.
- */
-function MenuAzioniPiatto({
-  nome,
-  disponibile,
-  primo,
-  ultimo,
-  filtrando,
-  occupato,
-  onModifica,
-  onSu,
-  onGiu,
-  onDisponibilita,
-  onElimina,
-}: {
-  nome: string;
-  disponibile: boolean;
-  primo: boolean;
-  ultimo: boolean;
-  filtrando: boolean;
-  occupato: boolean;
-  onModifica: () => void;
-  onSu: () => void;
-  onGiu: () => void;
-  onDisponibilita: () => void;
-  onElimina: () => void;
-}) {
-  return (
-    <div className="md:hidden">
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label={`Azioni per ${nome}`}
-          disabled={occupato}
-          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10 disabled:opacity-40"
-        >
-          <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem onSelect={onModifica} className="flex items-center gap-2">
-            <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onDisponibilita} className="flex items-center gap-2">
-            {disponibile ? (
-              <>
-                <EyeOff className="h-4 w-4" aria-hidden="true" /> Segna come finito
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4" aria-hidden="true" /> Rimetti disponibile
-              </>
-            )}
-          </DropdownMenuItem>
-          {!filtrando && (
-            <>
-              <DropdownMenuItem onSelect={onSu} disabled={primo} className="flex items-center gap-2">
-                <ArrowUp className="h-4 w-4" aria-hidden="true" /> Sposta in su
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={onGiu} disabled={ultimo} className="flex items-center gap-2">
-                <ArrowDown className="h-4 w-4" aria-hidden="true" /> Sposta in giù
-              </DropdownMenuItem>
-            </>
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={onElimina} className="flex items-center gap-2 text-accent-strong">
-            <Trash2 className="h-4 w-4" aria-hidden="true" /> Elimina il piatto
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
   );
 }

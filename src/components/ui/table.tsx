@@ -22,11 +22,67 @@ import { cn } from "@/lib/utils";
  * più vicine, perché la cosa che conta è quante ne stanno in uno schermo.
  */
 
-export type Densita = "comoda" | "densa";
+export type Densita = "comoda" | "densa" | "ariosa";
 
 const CELLA: Record<Densita, string> = {
   comoda: "px-4 py-3",
   densa: "px-2 py-2.5 md:px-4",
+  /*
+    Il terzo passo, per le tabelle che si **consultano** invece di scorrerle.
+
+    Nasce dagli ospiti: sei colonne di informazioni tutte in `text-sm` e
+    dodici pixel di aria verticale, e chi cercava il telefono di qualcuno
+    doveva appoggiare il dito sullo schermo per non perdere la riga. Qui la
+    riga è alta abbastanza da contenere due misure di testo — il nome grande e
+    i dati sotto — senza che si tocchino.
+
+    Non è «comoda con più padding»: è la densità di una tabella dove le righe
+    sono poche decine e ognuna è una persona, non un evento della serata.
+
+    Il passo **orizzontale** cresce con lo schermo, quello verticale no: su
+    tablet le sei colonne degli ospiti stanno in 784 px solo se i fianchi si
+    stringono, e stringere i fianchi non toglie niente a chi legge — toglie
+    aria fra una colonna e l'altra, che a quella larghezza è esattamente ciò
+    che avanza. L'altezza della riga resta quella ovunque: è lei a rendere la
+    tabella leggibile, ed è la ragione per cui questa densità esiste.
+  */
+  ariosa: "px-3 py-4 lg:px-5",
+};
+
+/**
+ * Su che piano sta la tabella.
+ *
+ * `--card` (#163C2F) e la capsula della barra in alto sono lo stesso verde a
+ * occhio: una tabella a tutta pagina dipinta con `card` si legge come un
+ * pezzo della navigazione che continua nel contenuto, ed è esattamente il
+ * difetto che in Staff aveva portato a `--card-sunken` (#102B22, vedi la nota
+ * in `globals.css`). Stessa tinta, luminosità più bassa: stacca dalla capsula
+ * (1,82 : 1 contro 1,04 : 1) restando un piano visibile sopra il fondo.
+ *
+ * `incassato` è quel piano. Non è una variante estetica da scegliere a gusto:
+ * vale per le tabelle che **occupano la pagina**, dove il rischio di
+ * confondersi con la barra c'è. Una tabella dentro una card resta `card`,
+ * perché lì la card è già lo stacco.
+ */
+export type Piano = "card" | "incassato";
+
+const FONDO: Record<Piano, string> = {
+  card: "bg-card",
+  incassato: "bg-card-sunken",
+};
+
+/*
+  L'intestazione è sempre **un gradino sotto** il corpo della tabella.
+
+  Deve essere piena e non trasparente — è appiccicata in alto mentre le righe
+  le scorrono sotto — e deve distinguersi dalla prima riga senza diventare un
+  secondo colore. Per il piano incassato è la stessa tinta di `--card-sunken`
+  abbassata di due punti di luminosità: la regola dei `finish-*`, dove le
+  variazioni si costruiscono dalla tinta invece di ripescarle a occhio.
+*/
+const TESTATA: Record<Piano, string> = {
+  card: "bg-[#153a2d]",
+  incassato: "bg-[hsl(160_46%_9%)]",
 };
 
 export function Tabella({
@@ -42,6 +98,7 @@ export function Tabella({
    * altrimenti si scorre e non si sa più cosa sia ogni colonna.
    */
   fill = false,
+  piano = "card",
   className,
 }: {
   children: React.ReactNode;
@@ -49,12 +106,15 @@ export function Tabella({
   /** Larghezza minima: sotto, la tabella scorre invece di comprimersi. */
   minWidth?: string;
   fill?: boolean;
+  /** Il fondo su cui poggia. Vedi `Piano`. */
+  piano?: Piano;
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card",
+        "rounded-xl border border-border",
+        FONDO[piano],
         fill ? "fill-scroll overflow-x-auto" : "overflow-x-auto",
         className,
       )}
@@ -70,13 +130,20 @@ export function Tabella({
   );
 }
 
-export function Testa({ children }: { children: React.ReactNode }) {
+export function Testa({
+  children,
+  piano = "card",
+}: {
+  children: React.ReactNode;
+  /** Deve essere lo stesso passato a `Tabella`, altrimenti stonano. */
+  piano?: Piano;
+}) {
   return (
     // `sticky` vale solo dentro una tabella che scorre (`fill`), e lì serve:
     // scorrere cinquanta righe senza più sapere cosa sia ogni colonna è
     // peggio che scorrere. Il fondo è pieno, non trasparente, altrimenti le
     // righe si leggono attraverso l'intestazione.
-    <thead className="sticky top-0 z-10 border-b border-border bg-[#153a2d] t-etichetta">
+    <thead className={cn("sticky top-0 z-10 border-b border-border t-etichetta", TESTATA[piano])}>
       <tr>{children}</tr>
     </thead>
   );
@@ -122,14 +189,27 @@ export function Riga({
    * scuro un rosso da tema chiaro rende il testo illeggibile.
    */
   daDecidere = false,
+  onClick,
   className,
 }: {
   children: React.ReactNode;
   daDecidere?: boolean;
+  /**
+   * Tutta la riga porta da qualche parte.
+   *
+   * **Non sostituisce il link**: dentro la riga deve restare un `<a>` vero
+   * sulla cosa che si apre, perché è quello che la tastiera raggiunge, che
+   * si apre in una scheda nuova col comando, e che un lettore di schermo
+   * annuncia. Questo aggiunge solo la comodità del bersaglio grande per chi
+   * usa il mouse — e per questo non porta `role="button"` né `tabIndex`, che
+   * duplicherebbero il link nell'ordine di tabulazione.
+   */
+  onClick?: () => void;
   className?: string;
 }) {
   return (
     <tr
+      onClick={onClick}
       className={cn(
         "transition-colors hover:bg-secondary/30",
         daDecidere && "border-l-2 border-l-accent bg-accent/[0.07]",

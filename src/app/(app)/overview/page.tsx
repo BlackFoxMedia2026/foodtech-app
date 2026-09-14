@@ -23,17 +23,18 @@ export default async function OverviewPage() {
     <div className="schermo animate-fade-in gap-4">
       <header className="fissa flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="hidden t-etichetta sm:block">
-            {ctx.venue.name}
-          </p>
-          {/* Sul telefono il saluto sta su una riga e la data si nasconde: due
-              righe di intestazione qui sono due prenotazioni in meno visibili. */}
-          <h1 className="truncate text-display text-xl md:text-2xl">
+          {/* Il nome del locale sta nella testata, accanto al titolo: qui
+              resta il saluto, che non è il titolo della pagina ma il modo in
+              cui questa schermata comincia.
+
+              Sul telefono sta su una riga e la data si nasconde: due righe di
+              intestazione qui sono due prenotazioni in meno visibili. */}
+          <p className="truncate text-display text-xl md:text-2xl">
             Buona giornata, {ctx.session.user?.name?.split(" ")[0] ?? "ospite"}.
             <span className="ml-2 hidden align-middle text-sm font-normal capitalize text-muted-foreground lg:inline">
               {today}
             </span>
-          </h1>
+          </p>
         </div>
 
         {/* I gesti stanno qui, dove stanno i comandi in ogni altra schermata:

@@ -1,5 +1,7 @@
 "use client";
 
+import type { WaiterStatus } from "@prisma/client";
+import { isAssignable, staffStatusLabel, staffStatusTone } from "@/lib/staff-status";
 import { useEffect, useRef, useState } from "react";
 import { readApiError } from "@/lib/api-client";
 import type { StaffCapability } from "@prisma/client";
@@ -11,7 +13,7 @@ import { TABLE_ROLE_ICONS } from "./staff-role-icons";
 
 type Assignment = {
   assignmentType: StaffCapability;
-  waiter: { id: string; firstName: string; lastName: string; status: "ACTIVE" | "RESTING" };
+  waiter: { id: string; firstName: string; lastName: string; status: WaiterStatus };
 };
 
 type EligibleWaiter = { id: string; firstName: string; lastName: string };
@@ -174,7 +176,9 @@ export function AssignStaffDialog({
                       <span className="text-sm font-medium text-card-foreground">
                         {current.waiter.firstName} {current.waiter.lastName}
                       </span>
-                      {current.waiter.status === "RESTING" && <Badge tone="warning">A riposo</Badge>}
+                      {!isAssignable(current.waiter.status) && (
+                        <Badge tone={staffStatusTone(current.waiter.status)}>{staffStatusLabel(current.waiter.status)}</Badge>
+                      )}
                     </div>
                   ) : (
                     <span className="text-sm italic text-muted-foreground">Non assegnato</span>

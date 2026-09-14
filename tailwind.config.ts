@@ -110,6 +110,9 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",
           foreground: "hsl(var(--card-foreground) / <alpha-value>)",
+          /** Il piano incassato: sotto la cornice, non accanto. Vedi la nota
+           * su `--card-sunken` in `globals.css`. */
+          sunken: "hsl(var(--card-sunken) / <alpha-value>)",
         },
         popover: {
           DEFAULT: "hsl(var(--popover) / <alpha-value>)",

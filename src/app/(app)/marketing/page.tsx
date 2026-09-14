@@ -100,8 +100,8 @@ export default async function MarketingPage() {
   return (
     <div className="schermo animate-fade-in gap-3">
       <header className="fissa">
-        <p className="t-etichetta">Marketing</p>
-        <h1 className="text-display text-3xl">Marketing</h1>
+        {/* Il titolo sta nella testata: qui resta la frase che dice come si
+            legge la pagina. */}
         <p className="text-sm text-muted-foreground">
           Cosa vuoi ottenere. Gli strumenti stanno sotto, con i loro numeri.
         </p>

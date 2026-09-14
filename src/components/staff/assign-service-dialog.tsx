@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,8 @@ export function AssignServiceDialog({
   serviceOptions,
   triggerLabel,
   disabled,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   waiter: { id: string; firstName: string; lastName: string };
   mode: Mode;
@@ -37,10 +39,36 @@ export function AssignServiceDialog({
   serviceOptions: string[];
   triggerLabel: string;
   disabled?: boolean;
+  /**
+   * Modo controllato: chi chiama tiene lo stato e **non** viene reso nessun
+   * pulsante di apertura.
+   *
+   * Serve alla riga dell'elenco Staff, dove «Assegna servizio» sta dentro un
+   * menu contestuale. Un Dialog innestato dentro un DropdownMenu di Radix è
+   * una di quelle cose che funzionano finché non le prova qualcuno con la
+   * tastiera: i due componenti si contendono il fuoco alla chiusura, e il
+   * menu che si smonta porta via con sé il dialogo appena aperto. Il menu si
+   * chiude e basta, il dialogo lo apre chi lo possiede.
+   */
+  open?: boolean;
+  onOpenChange?: (next: boolean) => void;
 }) {
   const router = useRouter();
   const today = useVenueToday();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
+  /* Stabile fra un render e l'altro: senza `useCallback` questa funzione è
+     nuova ogni volta, e l'effetto che apre la scheda da un link profondo
+     (`?waiterId=…`) la vedrebbe cambiata a ogni giro — cioè girerebbe di
+     continuo. */
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (controlled) onOpenChange?.(next);
+      else setUncontrolledOpen(next);
+    },
+    [controlled, onOpenChange],
+  );
   const [date, setDate] = useState(today);
   const [service, setService] = useState(serviceOptions[0] ?? "");
   const [roomId, setRoomId] = useState<string>("");
@@ -155,22 +183,24 @@ export function AssignServiceDialog({
   return (
     <>
       <Dialog open={open && !disabled} onOpenChange={(next) => setOpen(next && !disabled)}>
-        <DialogTrigger asChild>
-          <Button
-            type="button"
-            variant="accent"
-            size="sm"
-            disabled={disabled}
-            title={disabled ? "Cameriere a riposo: non assegnabile" : undefined}
-          >
-            <CalendarCheck className="h-4 w-4" /> {triggerLabel}
-          </Button>
-        </DialogTrigger>
+        {!controlled && (
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              variant="accent"
+              size="sm"
+              disabled={disabled}
+              title={disabled ? "Non assegnabile: la persona non è in servizio" : undefined}
+            >
+              <CalendarCheck className="h-4 w-4" /> {triggerLabel}
+            </Button>
+          </DialogTrigger>
+        )}
         <DialogContent className="max-w-[560px]" aria-labelledby="assign-service-title" aria-describedby="assign-service-description">
           <DialogHeader>
             <DialogTitle id="assign-service-title">Assegna servizio</DialogTitle>
             <DialogDescription id="assign-service-description">
-              Definisci dove lavorerà questo cameriere durante il servizio.
+              Definisci dove lavorerà questa persona durante il servizio.
             </DialogDescription>
             <p className="text-sm font-medium text-card-foreground">
               {waiter.firstName} {waiter.lastName}

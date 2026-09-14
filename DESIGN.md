@@ -613,3 +613,30 @@ tipo.
 **Il ritardo non è uno stato**, è una proprietà di `IN_ARRIVO`: un tavolo il cui
 ospite è in ritardo è ancora in arrivo, e trattarlo come stato a sé
 raddoppierebbe i casi senza aggiungere informazione.
+
+## 13. Il titolo della pagina sta nella testata
+
+Ogni schermata cominciava col proprio nome: una riga di titolo, spesso con
+sotto il nome del locale e un'etichetta di sezione. Tre righe prima del
+lavoro, uguali su tutte le pagine, e nella testata — alta 64 px — a sinistra
+c'era un quadratino da 36 e poi il vuoto.
+
+**Il titolo sta accanto al marchio del locale** (`VenueSwitcher`), e lo decide
+il percorso: `titoloPagina()` in `components/shell/nav-items.ts` prende il nome
+dalla voce di navigazione, con un elenco a parte per le sottopagine che hanno
+un nome loro. Due misure dello stesso nome — intero e abbreviato — perché sul
+telefono, fra il marchio e le quattro icone a destra, restano meno di cento
+pixel: la forma corta è **la stessa parola** della barra in basso, mai un
+sinonimo.
+
+**Chi tocca il marchio sceglie il locale, e il titolo scivola via.** Le due
+cose vivono nello stesso angolo e non si contendono lo spazio: 400 ms, la
+stessa curva del selettore che si apre. Chi sta scegliendo il locale non ha
+bisogno di leggere in che pagina si trova.
+
+**Le pagine non scrivono più il proprio nome.** Quello che resta sotto la
+testata è ciò che cambia mentre si lavora: il conteggio delle prenotazioni, la
+coda in attesa, la frase che dice a cosa serve la pagina. Un nome lo scrive
+ancora **solo chi ne ha uno vero e proprio**: un ospite, una prenotazione, una
+campagna, una sala. Quelli non sono titoli di pagina, sono il soggetto di
+quella schermata.

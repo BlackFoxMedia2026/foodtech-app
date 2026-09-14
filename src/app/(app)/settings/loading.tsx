@@ -20,11 +20,6 @@ import { IndiceParti } from "@/components/settings/indice-parti";
 export default function Loading() {
   return (
     <div className="schermo animate-fade-in gap-3">
-      <header className="fissa flex items-baseline gap-2">
-        <h1 className="text-lg font-semibold leading-none">Impostazioni</h1>
-        <p className="t-etichetta">Configurazione</p>
-      </header>
-
       <IndiceParti />
 
       <div className="fill-scroll space-y-3 pr-0.5" aria-busy="true" aria-label="Carico le impostazioni">

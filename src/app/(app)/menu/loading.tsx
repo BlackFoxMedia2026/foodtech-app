@@ -21,13 +21,18 @@ export default function Loading() {
               <Skeleton className="h-5 w-32" />
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* La stessa forma della riga vera: foto a sinistra, testo
+                  accanto, comandi a destra. Uno scheletro che non somiglia a
+                  quello che arriva fa saltare la pagina quando arriva. */}
               {Array.from({ length: 3 }).map((_, j) => (
-                <div key={j} className="flex items-start justify-between gap-3">
-                  <div className="w-full space-y-1.5">
-                    <Skeleton className="h-4 w-56" />
+                <div key={j} className="flex items-center gap-4 py-2">
+                  <Skeleton className="aspect-[4/3] w-28 shrink-0 rounded-md md:w-36" />
+                  <div className="w-full space-y-2">
+                    <Skeleton className="h-5 w-56" />
                     <Skeleton className="h-3 w-72" />
+                    <Skeleton className="h-3 w-40" />
                   </div>
-                  <Skeleton className="h-4 w-14 shrink-0" />
+                  <Skeleton className="h-9 w-24 shrink-0 rounded-md" />
                 </div>
               ))}
             </CardContent>

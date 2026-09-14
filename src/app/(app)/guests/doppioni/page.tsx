@@ -34,8 +34,6 @@ export default async function DoppioniPage() {
       </div>
 
       <header>
-        <p className="t-etichetta">CRM</p>
-        <h1 className="text-display text-3xl">Possibili doppioni</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Due schede con la stessa email o lo stesso telefono sono quasi sempre la stessa persona: e tre
           copie di una persona sono tre saldi punti che non si sommano e tre conteggi di visite che dicono

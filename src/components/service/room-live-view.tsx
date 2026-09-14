@@ -11,7 +11,6 @@ import {
   Clock,
   Link2,
   Receipt,
-  RefreshCw,
   Sparkles,
   Timer,
   UtensilsCrossed,
@@ -125,7 +124,7 @@ export function RoomLiveView({
     if (res.ok) setLive(await res.json());
   }, []);
 
-  const { ultimo, aggiornando, aggiornaOra: aggiorna } = useServizioVivo(scarica);
+  const { ultimo, aggiornaOra: aggiorna } = useServizioVivo(scarica);
 
   const dopoAzione = useCallback(() => {
     setSelezionato(null);
@@ -162,13 +161,10 @@ export function RoomLiveView({
 
   return (
     <div className="schermo animate-fade-in gap-3">
-      {/* Come in Servizio: qui si lavora, e ottanta pixel di titolo sono
-          spazio tolto alla mappa. L'identità editoriale resta dove si legge. */}
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-baseline gap-2">
-          <h1 className="text-lg font-semibold leading-none">Sala</h1>
-          <p className="t-etichetta">Servizio</p>
-        </div>
+      {/* Nessun titolo: la testata dice «Servizio» e l'interruttore qui
+          accanto dice quale delle due viste si sta guardando. Scriverlo una
+          terza volta sarebbe spazio tolto alla mappa. */}
+      <header className="flex flex-wrap items-center justify-end gap-3">
         <div className="flex items-center gap-3">
           <ServiceSwitch />
           {ultimo && (
@@ -176,14 +172,6 @@ export function RoomLiveView({
               {ultimo.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
             </span>
           )}
-          <button
-            type="button"
-            onClick={aggiorna}
-            aria-label="Aggiorna adesso"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground"
-          >
-            <RefreshCw className={cn("h-4 w-4", aggiornando && "animate-spin")} aria-hidden="true" />
-          </button>
         </div>
       </header>
 

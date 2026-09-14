@@ -7,9 +7,13 @@ import {
   deleteCategory,
   deleteItem,
   getMenu,
+  getMenuItemDettaglio,
   getMenuPubblico,
+  getRendimentoPiatto,
+  listCategorie,
   listMenuKeys,
   reorder,
+  SETTIMANE_ANDAMENTO,
   updateCategory,
   updateItem,
 } from "@/server/menu";
@@ -279,5 +283,200 @@ describe("più carte", () => {
 
   it("«main» c'è sempre nell'elenco delle carte, anche a menu vuoto", async () => {
     expect(await listMenuKeys(venueId)).toContain("main");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+describe("la foto del piatto", () => {
+  it("si salva, si cambia e si toglie", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    const p = await createItem(venueId, piatto(c.id, { imageUrl: "https://esempio.test/a.jpg" }));
+    expect(p.imageUrl).toBe("https://esempio.test/a.jpg");
+
+    const cambiato = await updateItem(venueId, p.id, { imageUrl: "https://esempio.test/b.jpg" });
+    expect(cambiato.imageUrl).toBe("https://esempio.test/b.jpg");
+
+    // Il modulo svuotato manda una stringa vuota: deve diventare «nessuna
+    // foto», non un `<img src="">` che il browser risolve sulla pagina stessa.
+    const tolta = await updateItem(venueId, p.id, { imageUrl: "" });
+    expect(tolta.imageUrl).toBeNull();
+  });
+
+  it("arriva fino alla carta di gestione", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    await createItem(venueId, piatto(c.id, { imageUrl: "https://esempio.test/a.jpg" }));
+    const menu = await getMenu(venueId);
+    expect(menu[0].items[0].imageUrl).toBe("https://esempio.test/a.jpg");
+  });
+});
+
+describe("la scheda di un piatto", () => {
+  it("porta con sé la categoria, le sorelle e il posto che occupa", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    await createCategory(venueId, { name: "Dolci" });
+    const uno = await createItem(venueId, piatto(c.id, { name: "Uno" }));
+    const due = await createItem(venueId, piatto(c.id, { name: "Due" }));
+
+    const scheda = await getMenuItemDettaglio(venueId, due.id);
+    expect(scheda?.item.name).toBe("Due");
+    expect(scheda?.categoryName).toBe("Primi");
+    expect(scheda?.posizione).toBe(2);
+    expect(scheda?.fratelli).toEqual([uno.id, due.id]);
+    // Le categorie della stessa carta, per spostarcelo dentro.
+    expect(scheda?.categorie.map((x) => x.name)).toEqual(["Primi", "Dolci"]);
+  });
+
+  it("il piatto di un altro locale non si apre", async () => {
+    const altrui = await createCategory(altroVenueId, { name: "Loro" });
+    const loro = await createItem(altroVenueId, piatto(altrui.id));
+    expect(await getMenuItemDettaglio(venueId, loro.id)).toBeNull();
+    expect(await getRendimentoPiatto(venueId, loro.id)).toBeNull();
+  });
+
+  it("le categorie di un'altra carta non compaiono nella tendina", async () => {
+    await createCategory(venueId, { name: "Primi", menuKey: "main" });
+    await createCategory(venueId, { name: "Rossi", menuKey: "vini" });
+    expect((await listCategorie(venueId)).map((c) => c.name)).toEqual(["Primi"]);
+    expect((await listCategorie(venueId, "vini")).map((c) => c.name)).toEqual(["Rossi"]);
+  });
+});
+
+describe("le vendite di un piatto", () => {
+  /** Un conto chiuso `giorniFa`, con dentro `quantita` porzioni del piatto. */
+  async function contoChiuso(menuItemId: string, giorniFa: number, quantita: number, priceCents = 1400) {
+    const quando = new Date(Date.now() - giorniFa * 24 * 60 * 60 * 1000);
+    return db.order.create({
+      data: {
+        reference: `${PREFISSO}${crypto.randomUUID()}`,
+        venueId,
+        status: "COMPLETED",
+        scheduledAt: quando,
+        completedAt: quando,
+        totalCents: priceCents * quantita,
+        OrderItem: { create: [{ menuItemId, name: "Tagliatelle al ragù", priceCents, quantity: quantita }] },
+      },
+    });
+  }
+
+  beforeEach(async () => {
+    await db.order.deleteMany({ where: { venueId } });
+  });
+
+  it("senza nemmeno un conto chiuso non si dice «zero venduti»", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    const p = await createItem(venueId, piatto(c.id));
+    const r = await getRendimentoPiatto(venueId, p.id);
+    // «0 venduti» su un locale che non ha ancora chiuso un conto si legge come
+    // una bocciatura del piatto, e non è quello che i dati dicono.
+    expect(r?.ciSonoConti).toBe(false);
+    expect(r?.quantitaTotale).toBe(0);
+  });
+
+  it("conta porzioni, conti, incasso e finestre di 7 e 30 giorni", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    const p = await createItem(venueId, piatto(c.id));
+
+    await contoChiuso(p.id, 2, 3);
+    await contoChiuso(p.id, 20, 2);
+    await contoChiuso(p.id, 60, 5);
+
+    const r = await getRendimentoPiatto(venueId, p.id);
+    expect(r?.ciSonoConti).toBe(true);
+    expect(r?.quantitaTotale).toBe(10);
+    expect(r?.quantita30).toBe(5);
+    expect(r?.quantita7).toBe(3);
+    expect(r?.contiTotali).toBe(3);
+    expect(r?.incassoCents).toBe(10 * 1400);
+    expect(r?.ultimaVendita?.getTime()).toBeGreaterThan(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  });
+
+  it("un conto aperto o annullato non è una vendita", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    const p = await createItem(venueId, piatto(c.id));
+
+    const aperto = await contoChiuso(p.id, 1, 4);
+    await db.order.update({ where: { id: aperto.id }, data: { status: "RECEIVED", completedAt: null } });
+    const annullato = await contoChiuso(p.id, 1, 7);
+    await db.order.update({ where: { id: annullato.id }, data: { status: "CANCELLED" } });
+    await contoChiuso(p.id, 1, 1);
+
+    const r = await getRendimentoPiatto(venueId, p.id);
+    expect(r?.quantitaTotale).toBe(1);
+    expect(r?.contiTotali).toBe(1);
+  });
+
+  it("le settimane sono dodici, e l'ultima è quella in corso", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    const p = await createItem(venueId, piatto(c.id));
+
+    await contoChiuso(p.id, 1, 4); // questa settimana
+    await contoChiuso(p.id, 40, 6); // dentro le dodici settimane
+    await contoChiuso(p.id, 200, 9); // fuori: sta nei totali, non nella serie
+
+    const r = await getRendimentoPiatto(venueId, p.id);
+    expect(r?.settimane).toHaveLength(SETTIMANE_ANDAMENTO);
+    expect(r?.settimane.at(-1)?.quantita).toBe(4);
+    expect(r?.settimane.reduce((n, s) => n + s.quantita, 0)).toBe(10);
+    // Il piatto vecchio resta contato dove è vero che è stato venduto.
+    expect(r?.quantitaTotale).toBe(19);
+  });
+
+  it("il periodo precedente sono i trenta giorni prima, non tutto il passato", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    const p = await createItem(venueId, piatto(c.id));
+
+    await contoChiuso(p.id, 5, 3); // ultimi 30
+    await contoChiuso(p.id, 45, 7); // i trenta prima
+    await contoChiuso(p.id, 120, 50); // più indietro: non è un confronto
+
+    const r = await getRendimentoPiatto(venueId, p.id);
+    expect(r?.quantita30).toBe(3);
+    expect(r?.quantita30Precedenti).toBe(7);
+  });
+
+  it("la quota è sulla sua categoria, e il posto si legge a pari merito", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    const altra = await createCategory(venueId, { name: "Dolci" });
+    const a = await createItem(venueId, piatto(c.id, { name: "A" }));
+    const b = await createItem(venueId, piatto(c.id, { name: "B" }));
+    const dolce = await createItem(venueId, piatto(altra.id, { name: "Tiramisù" }));
+
+    await contoChiuso(a.id, 3, 10);
+    await contoChiuso(b.id, 3, 4);
+    // Il dolce vende più di tutti, ma sta in un'altra parte della carta: non
+    // entra nella quota, altrimenti il confronto sarebbe fra cose diverse.
+    await contoChiuso(dolce.id, 3, 99);
+
+    const r = await getRendimentoPiatto(venueId, a.id);
+    expect(r?.nellaCategoria).toEqual({
+      categoria: "Primi",
+      porzioni: 10,
+      porzioniCategoria: 14,
+      posizione: 1,
+      quantiPiatti: 2,
+    });
+
+    const secondo = await getRendimentoPiatto(venueId, b.id);
+    expect(secondo?.nellaCategoria?.posizione).toBe(2);
+  });
+
+  it("una categoria che non ha venduto niente non ha una quota", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    const p = await createItem(venueId, piatto(c.id));
+    // Venduto, ma quattro mesi fa: negli ultimi trenta giorni la categoria è
+    // ferma, e una quota su zero è una divisione per zero travestita da dato.
+    await contoChiuso(p.id, 120, 5);
+    expect((await getRendimentoPiatto(venueId, p.id))?.nellaCategoria).toBeNull();
+  });
+
+  it("l'incasso è ai prezzi con cui è stato battuto, non a quello di oggi", async () => {
+    const c = await createCategory(venueId, { name: "Primi" });
+    const p = await createItem(venueId, piatto(c.id, { priceCents: 1400 }));
+    await contoChiuso(p.id, 5, 1, 1200);
+    await updateItem(venueId, p.id, { priceCents: 1800 });
+
+    const r = await getRendimentoPiatto(venueId, p.id);
+    expect(r?.incassoCents).toBe(1200);
   });
 });

@@ -8,7 +8,13 @@ const SECTION_ROUTES: Record<string, string> = {
   // dal Servizio, con la sua linguetta.
   sala: "/floor",
   piantina: "/floor",
-  camerieri: "/waiters",
+  // «Camerieri» resta una chiave anche se la sezione ora si chiama Staff:
+  // è la parola che la gente dice, e toglierla romperebbe un comando che
+  // funzionava.
+  staff: "/staff",
+  personale: "/staff",
+  camerieri: "/staff",
+  cucina: "/staff",
   ospiti: "/guests",
   esperienze: "/experiences",
   marketing: "/marketing",

@@ -10,12 +10,13 @@ import type { StaffCapability, StaffPrimaryRole } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { CapabilityPicker } from "@/components/waiters/capability-picker";
-import { ContractFields } from "@/components/waiters/contract-fields";
-import { DEFAULT_CAPABILITIES_BY_ROLE, STAFF_PRIMARY_ROLES } from "@/lib/staff-roles";
+import { CapabilityPicker } from "@/components/staff/capability-picker";
+import { ContractFields } from "@/components/staff/contract-fields";
+import { DEFAULT_CAPABILITIES_BY_ROLE, STAFF_ROLE_DESCRIPTIONS, staffDepartmentOf } from "@/lib/staff-roles";
+import { ROLE_OPTIONS_BY_DEPARTMENT, staffDepartmentLabel } from "@/lib/staff-departments";
 import {
   EMPTY_CONTRACT_FORM,
   contractFormToPayload,
@@ -24,7 +25,7 @@ import {
   type ContractFormErrors,
 } from "@/lib/contract-form";
 
-type FieldErrors = Partial<Record<"firstName" | "lastName" | "birthday" | "phone" | "primaryRole", string>>;
+type FieldErrors = Partial<Record<"firstName" | "lastName" | "birthday" | "phone" | "email" | "primaryRole", string>>;
 
 function calculateAge(birthday: string): number | null {
   if (!birthday) return null;
@@ -43,7 +44,15 @@ function isValidPhone(phone: string) {
   return (trimmed.match(/\d/g)?.length ?? 0) >= 6;
 }
 
-export function NewWaiterDialog({ canManageContracts = false }: { canManageContracts?: boolean }) {
+export function NewStaffDialog({
+  canManageContracts = false,
+  className,
+}: {
+  canManageContracts?: boolean;
+  /** Nella colonna di sinistra il pulsante va a tutta larghezza; nella riga
+   * compatta sotto `xl` no. */
+  className?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +66,9 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const [contractForm, setContractForm] = useState(EMPTY_CONTRACT_FORM);
   const [contractErrors, setContractErrors] = useState<ContractFormErrors>({});
+
+  const reparto = staffDepartmentOf({ primaryRole, department: null });
+  const mostraCapability = reparto === "SALA" || reparto === "BAR" || reparto === "DIREZIONE";
 
   const today = useVenueToday();
   const age = useMemo(() => calculateAge(birthday), [birthday]);
@@ -87,6 +99,8 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
     const firstName = ((fd.get("firstName") as string) || "").trim();
     const lastName = ((fd.get("lastName") as string) || "").trim();
     const phone = ((fd.get("phone") as string) || "").trim();
+    const email = ((fd.get("email") as string) || "").trim();
+    const hireDate = ((fd.get("hireDate") as string) || "").trim();
 
     const errors: FieldErrors = {};
     if (!firstName) errors.firstName = "Inserisci il nome.";
@@ -101,6 +115,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
     } else if (!isValidPhone(phone)) {
       errors.phone = "Numero di telefono non valido.";
     }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errors.email = "Indirizzo email non valido.";
     if (!primaryRole) errors.primaryRole = "Seleziona un ruolo principale.";
 
     // The contract section is optional here (brief section 4) — only
@@ -119,13 +134,22 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
     setSubmitting(true);
     const res = await fetch("/api/waiters", {
       method: "POST",
-      body: JSON.stringify({ firstName, lastName, birthday, phone, primaryRole, capabilities }),
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        birthday,
+        phone,
+        email: email || null,
+        hireDate: hireDate || null,
+        primaryRole,
+        capabilities,
+      }),
       headers: { "content-type": "application/json" },
     });
 
     if (!res.ok) {
       setSubmitting(false);
-      setFormError(await readApiError(res, "Impossibile salvare il cameriere. Verifica i dati e riprova."));
+      setFormError(await readApiError(res, "Impossibile salvare la persona. Verifica i dati e riprova."));
       return;
     }
 
@@ -139,7 +163,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
       });
       if (!contractRes.ok) {
         setSubmitting(false);
-        setFormError(await readApiError(contractRes, "Cameriere registrato, ma il contratto non è stato salvato. Aggiungilo dal profilo."));
+        setFormError(await readApiError(contractRes, "Persona registrata, ma il contratto non è stato salvato. Aggiungilo dal profilo."));
         return;
       }
     }
@@ -167,8 +191,8 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
         }}
       >
         <DialogTrigger asChild>
-          <Button variant="accent">
-            <Plus className="h-4 w-4" /> Nuovo cameriere
+          <Button variant="accent" className={className}>
+            <Plus className="h-4 w-4" /> Nuova persona
           </Button>
         </DialogTrigger>
         <DialogContent
@@ -181,9 +205,9 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
           aria-describedby="new-waiter-description"
         >
           <DialogHeader>
-            <DialogTitle id="new-waiter-title">Nuovo cameriere</DialogTitle>
+            <DialogTitle id="new-waiter-title">Nuova persona</DialogTitle>
             <DialogDescription id="new-waiter-description">
-              Aggiungi un nuovo membro dello staff di sala.
+              Aggiungi una persona all’organico: sala, cucina, bar o direzione.
             </DialogDescription>
           </DialogHeader>
 
@@ -253,7 +277,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
                 <p className="text-xs text-muted-foreground">Calcolata automaticamente dalla data di nascita.</p>
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="phone">Numero di cellulare</Label>
                 <Input
                   id="phone"
@@ -270,8 +294,25 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
                 )}
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="primaryRole">Ruolo principale</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="Facoltativa"
+                  aria-invalid={!!fieldErrors.email}
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                />
+                {fieldErrors.email && (
+                  <p id="email-error" className="text-xs text-destructive">
+                    {fieldErrors.email}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="primaryRole">Ruolo</Label>
                 <Select
                   value={primaryRole ?? undefined}
                   onValueChange={(v) => handlePrimaryRoleChange(v as StaffPrimaryRole)}
@@ -280,21 +321,39 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
                     <SelectValue placeholder="Seleziona un ruolo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {STAFF_PRIMARY_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
+                    {ROLE_OPTIONS_BY_DEPARTMENT.map((gruppo) => (
+                      <SelectGroup key={gruppo.department}>
+                        <SelectLabel>{gruppo.label}</SelectLabel>
+                        {gruppo.roles.map((r) => (
+                          <SelectItem key={r.value} value={r.value}>
+                            {r.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
                   </SelectContent>
                 </Select>
                 {fieldErrors.primaryRole && <p className="text-xs text-destructive">{fieldErrors.primaryRole}</p>}
+                {primaryRole && STAFF_ROLE_DESCRIPTIONS[primaryRole] && (
+                  <p className="text-xs text-muted-foreground">{STAFF_ROLE_DESCRIPTIONS[primaryRole]}</p>
+                )}
               </div>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Competenze operative</Label>
-                <CapabilityPicker value={capabilities} onChange={handleCapabilitiesChange} />
-                <p className="text-xs text-muted-foreground">Determinano a quali ruoli tavolo può essere assegnato.</p>
+              <div className="space-y-1.5">
+                <Label htmlFor="hireDate">Data di assunzione</Label>
+                <Input id="hireDate" name="hireDate" type="date" />
+                <p className="text-xs text-muted-foreground">
+                  {primaryRole ? `Reparto: ${staffDepartmentLabel(reparto)}` : "Il reparto segue il ruolo."}
+                </p>
               </div>
+
+              {mostraCapability && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Competenze operative</Label>
+                  <CapabilityPicker value={capabilities} onChange={handleCapabilitiesChange} />
+                  <p className="text-xs text-muted-foreground">Determinano a quali ruoli tavolo può essere assegnato.</p>
+                </div>
+              )}
             </div>
 
             {canManageContracts && (
@@ -314,7 +373,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
                 Annulla
               </Button>
               <Button type="submit" variant="accent" disabled={submitting}>
-                {submitting ? "Salvataggio…" : "Registra cameriere"}
+                {submitting ? "Salvataggio…" : "Registra persona"}
               </Button>
             </div>
           </form>
@@ -330,7 +389,7 @@ export function NewWaiterDialog({ canManageContracts = false }: { canManageContr
             className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 riquadro bg-card px-4 py-3 text-sm text-card-foreground shadow-2xl animate-fade-in"
           >
             <CheckCircle2 className="h-4 w-4 text-accent-strong" />
-            Cameriere registrato correttamente
+            Persona registrata correttamente
           </div>,
           document.body,
         )}

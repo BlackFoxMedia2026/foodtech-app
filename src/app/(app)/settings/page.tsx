@@ -84,11 +84,6 @@ export default async function SettingsPage({
 
   return (
     <div className="schermo animate-fade-in gap-3">
-      <header className="fissa flex items-baseline gap-2">
-        <h1 className="text-lg font-semibold leading-none">Impostazioni</h1>
-        <p className="t-etichetta">Configurazione</p>
-      </header>
-
       {ctx.venue.onboardingStatus === "SKIPPED" && (
         <div className="fissa flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent/10 p-3">
           <p className="text-sm font-medium">Completa la personalizzazione del brand</p>

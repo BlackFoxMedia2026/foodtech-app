@@ -3,6 +3,7 @@ import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { db } from "@/lib/db";
 import type { LoyaltyTier, Prisma } from "@prisma/client";
 import { spesaPerOspite } from "./spesa-ospiti";
+import { formattaCodiceTessera, sembraCodiceTessera } from "@/lib/tessera";
 
 export const GuestInput = z.object({
   firstName: z.string().min(1),
@@ -31,6 +32,21 @@ function whereOspiti(venueId: string, q?: string, tag?: string): Prisma.GuestWhe
       { email: { contains: q, mode: "insensitive" } },
       { phone: { contains: q } },
     ];
+    /*
+      Il numero di tessera, quando quello che è stato scritto **è** un numero
+      di tessera.
+
+      È ciò che dà uno sbocco al QR sulla fidelity card: si inquadra, si
+      incolla qui, si trova la persona. Senza questo passaggio il codice
+      sarebbe un disegno sulla scheda e niente più.
+
+      Si aggiunge solo se il testo ha la forma giusta (`sembraCodiceTessera`),
+      e si cerca sulla forma normalizzata: chi detta «tv 4k7p 9rx2» al telefono
+      e chi incolla `TV-4K7P-9RX2` stanno cercando la stessa persona.
+    */
+    if (sembraCodiceTessera(q)) {
+      where.OR.push({ loyaltyCardCode: formattaCodiceTessera(q.trim()) });
+    }
   }
   if (tag) {
     where.tags = { has: tag };

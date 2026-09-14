@@ -9,8 +9,8 @@ import type { StaffContractType } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ContractFields } from "@/components/waiters/contract-fields";
-import { ContractDocument, type ContractDocumentInfo } from "@/components/waiters/contract-document";
+import { ContractFields } from "@/components/staff/contract-fields";
+import { ContractDocument, type ContractDocumentInfo } from "@/components/staff/contract-document";
 import {
   EMPTY_CONTRACT_FORM,
   contractFormToPayload,
@@ -43,7 +43,7 @@ function toDates(c: Contract) {
   return { ...c, startDate: new Date(c.startDate), endDate: c.endDate ? new Date(c.endDate) : null };
 }
 
-export function WaiterContractSection({ waiterId, open }: { waiterId: string; open: boolean }) {
+export function StaffContractSection({ waiterId, open }: { waiterId: string; open: boolean }) {
   const today = useVenueToday();
   const router = useRouter();
   const [contracts, setContracts] = useState<Contract[] | null>(null);
@@ -188,7 +188,7 @@ export function WaiterContractSection({ waiterId, open }: { waiterId: string; op
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Nessun contratto registrato per questo cameriere. Crea un contratto per poter caricare anche il documento.
+              Nessun contratto registrato per questa persona. Crea un contratto per poter caricare anche il documento.
             </p>
           )}
 

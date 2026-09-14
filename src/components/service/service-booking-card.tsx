@@ -7,6 +7,7 @@ import {
   Check,
   CircleUser,
   CreditCard,
+  MoreHorizontal,
   Phone,
   Receipt,
   Ticket,
@@ -14,6 +15,7 @@ import {
   UserX,
   UtensilsCrossed,
   Unlink,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
@@ -26,6 +28,7 @@ import { TablePickerDialog } from "@/components/service/table-picker-dialog";
 import { RedeemCouponDialog } from "@/components/coupons/redeem-dialog";
 import { BillDialog } from "@/components/orders/bill-dialog";
 import { useAvvisi } from "@/components/ui/avvisi";
+import { clicSullaCard, GrigliaAzioni, type AzioneCard } from "@/components/service/azioni-card";
 
 /**
  * Una riga della modalità Servizio.
@@ -54,6 +57,7 @@ export function ServiceBookingCard({
   const [contoAperto, setContoAperto] = useState(false);
   const [couponAperto, setCouponAperto] = useState(false);
   const [pickerFor, setPickerFor] = useState<"seat" | "move" | null>(null);
+  const [azioniAperte, setAzioniAperte] = useState(false);
   const avvisi = useAvvisi();
 
   /*
@@ -146,10 +150,165 @@ export function ServiceBookingCard({
     await cambiaStato("seat", "SEATED", `${chiSi} è a tavola`);
   }
 
+  /**
+   * Tutto quello che si può fare con questa prenotazione, in un elenco solo.
+   *
+   * Prima erano due grammatiche diverse sulla stessa card: una o due pillole
+   * per le azioni di stato, e una fila di tondini da 36 px senza etichetta per
+   * tutto il resto. Le seconde si sbagliavano — due pixel di distanza, sei
+   * glifi grigi uguali — e si dimenticavano, perché non c'era scritto cosa
+   * fossero.
+   *
+   * Adesso sono una lista sola, e la differenza fra «quella che fai stasera
+   * cinquanta volte» e «quella che fai due volte» la porta `principale`: la
+   * prima resta anche sulla card chiusa, le altre si aprono toccando la card.
+   */
+  const azioni: AzioneCard[] = [];
+  if (canManage) {
+    if (booking.status === "CONFIRMED" || booking.status === "PENDING") {
+      azioni.push({
+        chiave: "arrived",
+        etichetta: "Segna come arrivato",
+        corta: "Arrivato",
+        icona: Check,
+        principale: true,
+        disabilitato: busy !== null,
+        onClick: () => {
+          setAzioniAperte(false);
+          cambiaStato("arrived", "ARRIVED", `Arrivo segnato per ${chiSi}`);
+        },
+      });
+      if (booking.lateBy > 0) {
+        azioni.push({
+          chiave: "noshow",
+          etichetta: "Segna come no-show",
+          corta: "No-show",
+          icona: UserX,
+          disabilitato: busy !== null,
+          onClick: () => {
+            setAzioniAperte(false);
+            cambiaStato("noshow", "NO_SHOW", `Assenza segnata per ${chiSi}`);
+          },
+        });
+      }
+    }
+
+    if (booking.status === "ARRIVED") {
+      azioni.push({
+        chiave: "seat",
+        etichetta: "Accomoda al tavolo",
+        corta: "Accomoda",
+        icona: UtensilsCrossed,
+        principale: true,
+        disabilitato: busy !== null,
+        onClick: () => {
+          setAzioniAperte(false);
+          accomoda();
+        },
+      });
+    }
+
+    if (booking.status === "SEATED") {
+      azioni.push({
+        chiave: "done",
+        etichetta: "Libera il tavolo",
+        corta: "Libera",
+        icona: Timer,
+        principale: true,
+        disabilitato: busy !== null,
+        onClick: () => {
+          setAzioniAperte(false);
+          cambiaStato("done", "COMPLETED", `Tavolo di ${chiSi} liberato`);
+        },
+      });
+    }
+
+    if (booking.tavoliUniti.length > 0 && booking.status !== "COMPLETED") {
+      azioni.push({
+        chiave: "split",
+        etichetta: "Dividi la tavolata: resta il primo tavolo, gli altri tornano liberi",
+        corta: "Dividi",
+        icona: Unlink,
+        disabilitato: busy !== null,
+        onClick: () => {
+          setAzioniAperte(false);
+          void dividi();
+        },
+      });
+    }
+
+    if (booking.tableId && booking.status !== "COMPLETED") {
+      azioni.push({
+        chiave: "move",
+        etichetta: "Cambia tavolo",
+        corta: "Tavolo",
+        icona: ArrowLeftRight,
+        onClick: () => {
+          setAzioniAperte(false);
+          setPickerFor("move");
+        },
+      });
+    }
+
+    if (booking.status === "SEATED" || booking.status === "ARRIVED") {
+      azioni.push({
+        chiave: "conto",
+        etichetta: `Apri il conto di ${booking.guestName}`,
+        corta: "Conto",
+        icona: Receipt,
+        onClick: () => {
+          setAzioniAperte(false);
+          setContoAperto(true);
+        },
+      });
+    }
+
+    if (booking.status !== "COMPLETED") {
+      azioni.push({
+        chiave: "coupon",
+        etichetta: `Usa un coupon per ${booking.guestName}`,
+        corta: "Coupon",
+        icona: Ticket,
+        onClick: () => {
+          setAzioniAperte(false);
+          setCouponAperto(true);
+        },
+      });
+    }
+
+    if (booking.phone) {
+      azioni.push({
+        chiave: "tel",
+        etichetta: `Chiama ${booking.guestName}`,
+        corta: "Chiama",
+        icona: Phone,
+        href: `tel:${booking.phone}`,
+      });
+    }
+
+    if (booking.guestId) {
+      azioni.push({
+        chiave: "scheda",
+        etichetta: `Apri la scheda di ${booking.guestName}`,
+        corta: "Scheda",
+        icona: CircleUser,
+        href: `/guests/${booking.guestId}`,
+      });
+    }
+  }
+
+  const principale = azioni.find((a) => a.principale);
+  const secondarie = azioni.filter((a) => !a.principale);
+
   return (
     <article
+      onClick={(e) => {
+        if (!clicSullaCard(e) || secondarie.length === 0) return;
+        setAzioniAperte((v) => !v);
+      }}
       className={cn(
         "surface rounded-md border p-3",
+        secondarie.length > 0 && "cursor-pointer",
         booking.lateBy > 0
           ? "border-accent/60"
           : booking.status === "SEATED" && (booking.minutesToFree ?? 1) <= 0
@@ -179,167 +338,96 @@ export function ServiceBookingCard({
             )}
           </div>
 
-          <p className="mt-1 text-sm text-muted-foreground">
-            {booking.partySize} {booking.partySize === 1 ? "persona" : "persone"}
-            {booking.liberoVerso && (
-              <>
-                {" · "}
-                <span
-                  className={cn(booking.liberoVerso.minuti <= 0 && "text-accent-strong")}
-                  title={frasePrevisione(booking.liberoVerso, timezone).dettaglio}
-                >
-                  {frasePrevisione(booking.liberoVerso, timezone).testo}
-                </span>
-              </>
-            )}
-            {booking.lateBy > 0 && (
-              <>
-                {" · "}
-                <span className="text-accent-strong">in ritardo di {durataUmana(booking.lateBy)}</span>
-              </>
-            )}
-            {booking.status !== "SEATED" &&
-              booking.lateBy === 0 &&
-              booking.minutesToArrival > 0 && <> · fra {booking.minutesToArrival} min</>}
-          </p>
+          {/* Aperte le azioni, i dettagli si tacciono: restano l'ora e il nome
+              — che dicono *su chi* si sta per agire — e sotto ci sono i
+              bersagli. Tenere tutto vorrebbe dire una card alta il doppio, e
+              chi ha appena toccato la card sta guardando i pulsanti. */}
+          {!azioniAperte && (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {booking.partySize} {booking.partySize === 1 ? "persona" : "persone"}
+                {booking.liberoVerso && (
+                  <>
+                    {" · "}
+                    <span
+                      className={cn(booking.liberoVerso.minuti <= 0 && "text-accent-strong")}
+                      title={frasePrevisione(booking.liberoVerso, timezone).dettaglio}
+                    >
+                      {frasePrevisione(booking.liberoVerso, timezone).testo}
+                    </span>
+                  </>
+                )}
+                {booking.lateBy > 0 && (
+                  <>
+                    {" · "}
+                    <span className="text-accent-strong">in ritardo di {durataUmana(booking.lateBy)}</span>
+                  </>
+                )}
+                {booking.status !== "SEATED" &&
+                  booking.lateBy === 0 &&
+                  booking.minutesToArrival > 0 && <> · fra {booking.minutesToArrival} min</>}
+              </p>
 
-          {/*
-            Allergie e occasione stavano qui come due pillole fra le altre.
-            Adesso sono le prime due righe di «cosa sapere», che è lo stesso
-            elenco che si legge in Sala: una persona deve leggersi uguale in
-            tutte le schermate, o la seconda volta non la si guarda.
-          */}
-          <CosaSapere righe={booking.daSapere} className="mt-1.5" />
+              {/*
+                Allergie e occasione stavano qui come due pillole fra le altre.
+                Adesso sono le prime due righe di «cosa sapere», che è lo stesso
+                elenco che si legge in Sala: una persona deve leggersi uguale in
+                tutte le schermate, o la seconda volta non la si guarda.
+              */}
+              <CosaSapere righe={booking.daSapere} className="mt-1.5" />
 
-          {(booking.notes || booking.depositCents > 0) && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-              {booking.depositCents > 0 && (
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <CreditCard className="h-3 w-3" aria-hidden="true" />
-                  caparra {(booking.depositCents / 100).toFixed(0)} €
-                </span>
+              {(booking.notes || booking.depositCents > 0) && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  {booking.depositCents > 0 && (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <CreditCard className="h-3 w-3" aria-hidden="true" />
+                      caparra {(booking.depositCents / 100).toFixed(0)} €
+                    </span>
+                  )}
+                  {booking.notes && <span className="text-tertiary-foreground">{booking.notes}</span>}
+                </div>
               )}
-              {booking.notes && <span className="text-tertiary-foreground">{booking.notes}</span>}
-            </div>
+            </>
           )}
         </div>
 
         {canManage && (
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
-            {(booking.status === "CONFIRMED" || booking.status === "PENDING") && (
-              <>
-                <Button
-                  size="sm" className="tocco-comodo"
-                  variant="accent"
-                  disabled={busy !== null}
-                  onClick={() => cambiaStato("arrived", "ARRIVED", `Arrivo segnato per ${chiSi}`)}
-                >
-                  <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                  {busy === "arrived" ? "…" : "Arrivato"}
-                </Button>
-                {booking.lateBy > 0 && (
-                  <Button
-                    size="sm" className="tocco-comodo"
-                    variant="ghost"
-                    disabled={busy !== null}
-                    onClick={() => cambiaStato("noshow", "NO_SHOW", `Assenza segnata per ${chiSi}`)}
-                  >
-                    <UserX className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                    {busy === "noshow" ? "…" : "No-show"}
-                  </Button>
-                )}
-              </>
-            )}
-
-            {booking.status === "ARRIVED" && (
-              <Button size="sm" className="tocco-comodo" variant="accent" disabled={busy !== null} onClick={accomoda}>
-                <UtensilsCrossed className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                {busy === "seat" ? "…" : "Accomoda"}
-              </Button>
-            )}
-
-            {booking.status === "SEATED" && (
+          <div className="flex shrink-0 items-center gap-1.5">
+            {/* Chiusa: l'azione di stasera per esteso. Aperta: solo la via
+                d'uscita, perché l'azione di stasera è la prima piastrella. */}
+            {!azioniAperte && principale && (
               <Button
-                size="sm" className="tocco-comodo"
-                variant="outline"
-                disabled={busy !== null}
-                onClick={() => cambiaStato("done", "COMPLETED", `Tavolo di ${chiSi} liberato`)}
+                size="sm"
+                className="tocco-comodo"
+                variant={principale.chiave === "done" ? "outline" : "accent"}
+                disabled={principale.disabilitato}
+                onClick={principale.onClick}
               >
-                <Timer className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                {busy === "done" ? "…" : "Libera tavolo"}
+                <principale.icona className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                {busy !== null && busy === principale.chiave ? "…" : principale.corta}
               </Button>
             )}
 
-            <div className="flex items-center gap-0.5">
-              {booking.tavoliUniti.length > 0 && booking.status !== "COMPLETED" && (
-                <button
-                  type="button"
-                  disabled={busy !== null}
-                  onClick={() => void dividi()}
-                  aria-label="Dividi la tavolata"
-                  title="Dividi la tavolata: resta il primo tavolo, gli altri tornano liberi"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
-                >
-                  <Unlink className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              )}
-              {booking.tableId && booking.status !== "COMPLETED" && (
-                <button
-                  type="button"
-                  onClick={() => setPickerFor("move")}
-                  aria-label="Cambia tavolo"
-                  title="Cambia tavolo"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
-                >
-                  <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              )}
-              {canManage && (booking.status === "SEATED" || booking.status === "ARRIVED") && (
-                <button
-                  type="button"
-                  onClick={() => setContoAperto(true)}
-                  aria-label={`Apri il conto di ${booking.guestName}`}
-                  title="Conto del tavolo"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
-                >
-                  <Receipt className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              )}
-              {canManage && booking.status !== "COMPLETED" && (
-                <button
-                  type="button"
-                  onClick={() => setCouponAperto(true)}
-                  aria-label={`Usa un coupon per ${booking.guestName}`}
-                  title="Usa un coupon"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
-                >
-                  <Ticket className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              )}
-              {booking.phone && (
-                <a
-                  href={`tel:${booking.phone}`}
-                  aria-label={`Chiama ${booking.guestName}`}
-                  title="Chiama"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
-                >
-                  <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-                </a>
-              )}
-              {booking.guestId && (
-                <Link
-                  href={`/guests/${booking.guestId}`}
-                  aria-label={`Apri la scheda di ${booking.guestName}`}
-                  title="Apri scheda ospite"
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
-                >
-                  <CircleUser className="h-3.5 w-3.5" aria-hidden="true" />
-                </Link>
-              )}
-            </div>
+            {secondarie.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAzioniAperte((v) => !v)}
+                aria-expanded={azioniAperte}
+                aria-label={azioniAperte ? "Chiudi le azioni" : `Altre azioni per ${booking.guestName}`}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-current/10 hover:text-foreground"
+              >
+                {azioniAperte ? (
+                  <X className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {azioniAperte && <GrigliaAzioni azioni={azioni} />}
 
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
 

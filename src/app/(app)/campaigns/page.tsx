@@ -22,10 +22,9 @@ export default async function CampaignsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="t-etichetta">Marketing</p>
-          <h1 className="text-display text-3xl">Campagne</h1>
-        </div>
+        {/* Il titolo sta nella testata: qui resta la briciola che dice da
+            quale sezione si arriva. */}
+        <p className="t-etichetta">Marketing</p>
         <Button asChild variant="accent">
           <Link href="/campaigns/new">
             <Plus className="h-4 w-4" /> Nuova campagna

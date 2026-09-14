@@ -29,6 +29,14 @@ model User {
   orgMemberships     OrgMembership[]
   venueMemberships   VenueMembership[]
   agentConversations AgentConversation[]
+  /// I profili di personale collegati a questo account, uno per locale.
+  ///
+  /// Nullo su quasi tutti i `Waiter` di oggi: si popola solo quando la
+  /// persona riceve davvero un accesso. Un profilo senza account resta un
+  /// profilo pieno — il lavapiatti che non usa il gestionale esiste lo
+  /// stesso in organico.
+  staffProfiles      Waiter[]
+  reviewedRequests   StaffRequest[]      @relation("StaffRequestReviewer")
 }
 
 model Session {
@@ -65,12 +73,12 @@ model OrgMembership {
 }
 
 model Venue {
-  id                     String                @id @default(cuid())
+  id                     String    @id @default(cuid())
   orgId                  String
   name                   String
   slug                   String
-  kind                   VenueKind             @default(RESTAURANT)
-  timezone               String                @default("Europe/Rome")
+  kind                   VenueKind @default(RESTAURANT)
+  timezone               String    @default("Europe/Rome")
   /// Quanti punti fedeltà per ogni euro speso. Nullo = raccolta punti spenta.
   ///
   /// Sta qui e non in una costante perché è una decisione commerciale del
@@ -86,7 +94,7 @@ model Venue {
   /// cena omaggio» è la frase che riporta le persone. Nulli = nessun premio,
   /// e i punti restano solo uno sconto.
   loyaltyRewardPoints    Int?
-  loyaltyRewardLabel     String?               @db.VarChar(120)
+  loyaltyRewardLabel     String?   @db.VarChar(120)
   /// Quanti giorni prima si può prenotare online. Nullo = nessun limite.
   bookingWindowDays      Int?
   /// Quanti minuti prima dell'orario si chiude la prenotazione online. Nullo = fino all'ultimo.
@@ -98,24 +106,24 @@ model Venue {
   /// Guest.totalSpend, un campo che nessuna parte del codice aggiorna — quindi
   /// la stima era finzione presentata come dato.
   avgSpendCents          Int?
-  currency               String                @default("EUR")
+  currency               String    @default("EUR")
   address                String?
   city                   String?
   country                String?
   phone                  String?
   email                  String?
   coverImage             String?
-  active                 Boolean               @default(true)
-  createdAt              DateTime              @default(now())
-  depositPerPersonCents  Int                   @default(2000)
-  depositThreshold       Int                   @default(8)
-  wifiAutoCouponDays     Int                   @default(30)
-  wifiAutoCouponEnabled  Boolean               @default(false)
-  wifiAutoCouponPercent  Int                   @default(10)
-  wifiPortalAccent       String?               @db.VarChar(9)
-  wifiPortalLegal        String?               @db.VarChar(2000)
+  active                 Boolean   @default(true)
+  createdAt              DateTime  @default(now())
+  depositPerPersonCents  Int       @default(2000)
+  depositThreshold       Int       @default(8)
+  wifiAutoCouponDays     Int       @default(30)
+  wifiAutoCouponEnabled  Boolean   @default(false)
+  wifiAutoCouponPercent  Int       @default(10)
+  wifiPortalAccent       String?   @db.VarChar(9)
+  wifiPortalLegal        String?   @db.VarChar(2000)
   wifiPortalLogoUrl      String?
-  wifiPortalWelcome      String?               @db.VarChar(500)
+  wifiPortalWelcome      String?   @db.VarChar(500)
   wifiSetupAt            DateTime?
   /// Il nome della rete e la password che il cliente riceve dopo aver
   /// lasciato il contatto.
@@ -125,7 +133,7 @@ model Venue {
   /// raccoglierebbe un indirizzo email senza dare niente in cambio. È la
   /// password della rete ospiti, cioè una cosa nata per essere data a
   /// chiunque entri nel locale.
-  wifiNetworkName        String?               @db.VarChar(64)
+  wifiNetworkName        String?   @db.VarChar(64)
   /// La password della rete, **cifrata a riposo** (AES-256-GCM, vedi
   /// `lib/cifratura`). Non è un'impronta: va riletta e mostrata a chi lascia
   /// un contatto, ed è il motivo per cui il portale esiste.
@@ -140,80 +148,82 @@ model Venue {
   /// Era una costante nel modulo pubblico (dodici), e dodici va bene per una
   /// trattoria e non per una sala che fa banchetti: il punto in cui una
   /// prenotazione «diventa un'organizzazione» lo sa il locale, non noi.
-  largePartyFrom         Int                   @default(12)
+  largePartyFrom         Int       @default(12)
 
-  wifiPassword           String?
+  wifiPassword          String?
   /// Dove mandare la persona dopo: il sito del locale, la carta, oppure
   /// l'indirizzo con cui il router del locale sblocca la navigazione.
-  wifiRedirectUrl        String?
-  calendarToken          String?               @unique
-  googlePlaceId          String?
-  brevoFolderId          Int?
-  brandAccent            String?               @db.VarChar(9)
-  brandFootnote          String?               @db.VarChar(280)
-  brandLogoUrl           String?
-  brandSecondaryColor    String?               @db.VarChar(9)
-  brandBackgroundColor   String?               @db.VarChar(9)
-  brandTypography        BrandTypography?
-  websiteUrl             String?
-  instagramUrl           String?
-  facebookUrl            String?
-  googleBusinessUrl      String?
-  onboardingStatus       BrandOnboardingStatus @default(NOT_STARTED)
-  onboardingCompletedAt  DateTime?
-  onboardingSkippedAt    DateTime?
-  serviceAssignmentMode  ServiceAssignmentMode @default(ROOMS)
-  agentConversations     AgentConversation[]
-  agentUsages            AgentUsage[]
-  ApiToken               ApiToken[]
-  AutomationWorkflow     AutomationWorkflow[]
-  BackgroundJob          BackgroundJob[]
-  bookings               Booking[]
-  CallLog                CallLog[]
-  campaigns              Campaign[]
-  ChatSession            ChatSession[]
-  Connector              Connector[]
-  ConsentLog             ConsentLog[]
-  CostEntry              CostEntry[]
-  Coupon                 Coupon[]
-  CouponRedemption       CouponRedemption[]
-  experiences            Experience[]
-  FloorDecor             FloorDecor[]
-  GiftCard               GiftCard[]
-  guests                 Guest[]
-  GuestProviderLink      GuestProviderLink[]
-  MenuCategory           MenuCategory[]
-  MenuItem               MenuItem[]
-  MenuItemCost           MenuItemCost[]
-  MenuScan               MenuScan[]
-  MessageLog             MessageLog[]
-  MessageTemplate        MessageTemplate[]
-  MissedCall             MissedCall[]
-  Notification           Notification[]
-  Order                  Order[]
-  POSConnector           POSConnector[]
-  payments               Payment[]
-  QrCode                 QrCode[]
-  Review                 Review[]
-  ReviewLink             ReviewLink[]
-  ReviewLinkClick        ReviewLinkClick[]
-  rooms                  Room[]
-  shifts                 Shift[]
-  StaffShift             StaffShift[]
-  Survey                 Survey[]
-  tables                 Table[]
-  blocks                 TableBlock[]
-  org                    Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  WaitlistEntry          WaitlistEntry[]
-  WifiLead               WifiLead[]
-  WifiSession            WifiSession[]
-  members                VenueMembership[]
-  invites                VenueInvite[]
-  waiters                Waiter[]
-  waiterAssignments      WaiterAssignment[]
-  staffAssignments       StaffAssignment[]
-  staffContracts         StaffContract[]
-  contractDocuments      ContractDocument[]
+  wifiRedirectUrl       String?
+  calendarToken         String?               @unique
+  googlePlaceId         String?
+  brevoFolderId         Int?
+  brandAccent           String?               @db.VarChar(9)
+  brandFootnote         String?               @db.VarChar(280)
+  brandLogoUrl          String?
+  brandSecondaryColor   String?               @db.VarChar(9)
+  brandBackgroundColor  String?               @db.VarChar(9)
+  brandTypography       BrandTypography?
+  websiteUrl            String?
+  instagramUrl          String?
+  facebookUrl           String?
+  googleBusinessUrl     String?
+  onboardingStatus      BrandOnboardingStatus @default(NOT_STARTED)
+  onboardingCompletedAt DateTime?
+  onboardingSkippedAt   DateTime?
+  serviceAssignmentMode ServiceAssignmentMode @default(ROOMS)
+  agentConversations    AgentConversation[]
+  agentUsages           AgentUsage[]
+  ApiToken              ApiToken[]
+  AutomationWorkflow    AutomationWorkflow[]
+  BackgroundJob         BackgroundJob[]
+  bookings              Booking[]
+  CallLog               CallLog[]
+  campaigns             Campaign[]
+  ChatSession           ChatSession[]
+  Connector             Connector[]
+  ConsentLog            ConsentLog[]
+  CostEntry             CostEntry[]
+  Coupon                Coupon[]
+  CouponRedemption      CouponRedemption[]
+  experiences           Experience[]
+  FloorDecor            FloorDecor[]
+  GiftCard              GiftCard[]
+  guests                Guest[]
+  GuestProviderLink     GuestProviderLink[]
+  MenuCategory          MenuCategory[]
+  MenuItem              MenuItem[]
+  MenuItemCost          MenuItemCost[]
+  MenuScan              MenuScan[]
+  MessageLog            MessageLog[]
+  MessageTemplate       MessageTemplate[]
+  MissedCall            MissedCall[]
+  Notification          Notification[]
+  Order                 Order[]
+  POSConnector          POSConnector[]
+  payments              Payment[]
+  QrCode                QrCode[]
+  Review                Review[]
+  ReviewLink            ReviewLink[]
+  ReviewLinkClick       ReviewLinkClick[]
+  rooms                 Room[]
+  shifts                Shift[]
+  StaffShift            StaffShift[]
+  Survey                Survey[]
+  tables                Table[]
+  blocks                TableBlock[]
+  org                   Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  WaitlistEntry         WaitlistEntry[]
+  WifiLead              WifiLead[]
+  WifiSession           WifiSession[]
+  members               VenueMembership[]
+  invites               VenueInvite[]
+  waiters               Waiter[]
+  waiterAssignments     WaiterAssignment[]
+  staffAssignments      StaffAssignment[]
+  workShifts            WorkShift[]
+  staffRequests         StaffRequest[]
+  staffContracts        StaffContract[]
+  contractDocuments     ContractDocument[]
 
   @@unique([orgId, slug])
 }
@@ -228,20 +238,20 @@ model Venue {
 /// voce a chi è nella stanza accanto — perché l'email di Tavolo è spenta e una
 /// funzione che dipende da una chiave che non c'è è una funzione che non c'è.
 model VenueInvite {
-  id        String     @id @default(cuid())
-  venueId   String
+  id         String    @id @default(cuid())
+  venueId    String
   /// A chi è destinato: accettando, l'accesso nasce con questo indirizzo.
-  email     String
-  role      StaffRole  @default(RECEPTION)
+  email      String
+  role       StaffRole @default(RECEPTION)
   /// Segreto del link. Unico e imprevedibile: è l'unica prova che serve.
-  token     String     @unique
-  expiresAt DateTime
+  token      String    @unique
+  expiresAt  DateTime
   /// Quando è stato usato. Un invito vale **una volta**.
   acceptedAt DateTime?
   /// Chi l'ha creato, per il registro.
-  invitedBy String?
-  createdAt DateTime   @default(now())
-  venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  invitedBy  String?
+  createdAt  DateTime  @default(now())
+  venue      Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@index([venueId, acceptedAt])
 }
@@ -372,6 +382,19 @@ model Guest {
   blockedAt          DateTime?
   blockedReason      String?              @db.VarChar(400)
   loyaltyPoints      Int                  @default(0)
+  /// Il numero della tessera: l'unico identificativo di questo cliente che è
+  /// fatto per **uscire dal database** — stamparlo su una card, metterlo in un
+  /// QR, dettarlo al telefono.
+  ///
+  /// Serviva perché non ce n'era nessuno. L'unica chiave era il `cuid`, che è
+  /// un identificatore interno: metterlo in un codice a barre significa dare
+  /// al cliente la chiave primaria di una riga, e poi non poterla più cambiare.
+  ///
+  /// Nullo finché non serve: si assegna la prima volta che qualcuno apre la
+  /// scheda o crea l'ospite (`lib/tessera.ts`), non a tutti in blocco. Un
+  /// codice generato per chi non lo userà mai è solo un numero in più da
+  /// mantenere unico.
+  loyaltyCardCode    String?              @unique
   anonymizedAt       DateTime?
   anonymizedBy       String?
   bookings           Booking[]
@@ -1296,6 +1319,10 @@ model ReviewLinkClick {
   @@index([venueId, createdAt])
 }
 
+// Una persona in organico. Il nome del modello e' rimasto `Waiter` per non
+// riscrivere quindici relazioni e una migrazione distruttiva, ma il dominio e'
+// cambiato: qui dentro ci stanno anche l'executive chef e il lavapiatti. Nel
+// prodotto si chiama **Staff**, e cosi' si chiama ovunque nell'interfaccia.
 model Waiter {
   id               String             @id @default(cuid())
   venueId          String
@@ -1303,24 +1330,66 @@ model Waiter {
   lastName         String
   birthday         DateTime
   phone            String
+  email            String?
+  /// Testo libero, storico. Oggi lo scrive `resolveRole()` a partire da
+  /// `primaryRole`: nessuna schermata lo fa piu' digitare. Resta perche' le
+  /// anagrafiche create prima dell'enum hanno qui l'unico ruolo che esiste.
   role             String
   primaryRole      StaffPrimaryRole?
+  /// Override del reparto. **Quasi sempre nullo**: il reparto si deriva dal
+  /// ruolo (`ROLE_DEPARTMENT` in src/lib/staff-roles.ts), una fonte sola.
+  /// Esiste per i ruoli custom futuri, che avranno un reparto ma non un
+  /// valore d'enum — non per correggere a mano il reparto di un maitre.
+  department       StaffDepartment?
   capabilities     StaffCapability[]  @default([])
   status           WaiterStatus       @default(ACTIVE)
+  hireDate         DateTime?
   photoUrl         String?
+  /// L'account con cui questa persona entra in Tavolo, quando ne ha uno.
+  /// Serve alla vista dipendente: e' il ponte fra «Mario Rossi, cameriere»
+  /// e «chi sta guardando questo schermo». Cancellare l'account non cancella
+  /// la persona dall'organico, quindi SetNull e non Cascade.
+  userId           String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   venue            Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   assignments      WaiterAssignment[]
   staffAssignments StaffAssignment[]
   contracts        StaffContract[]
+  shifts           WorkShift[]
+  requests         StaffRequest[]
 
+  @@unique([venueId, userId])
   @@index([venueId, createdAt])
+  @@index([venueId, status])
 }
 
+// Dove lavora una persona, non cosa fa. Distinto da StaffPrimaryRole perche'
+// e' l'unica cosa che tiene leggibile l'elenco: con sedici ruoli in fila si
+// legge riga per riga, con quattro reparti l'occhio salta al punto giusto.
+//
+// ALTRO **non e' il cestino dei ruoli nuovi**: ogni ruolo che arriva prende il
+// suo reparto (un bar manager va in BAR, un addetto delivery portera' con se'
+// il suo reparto). ALTRO raccoglie solo le anagrafiche storiche senza
+// `primaryRole`, che hanno il ruolo scritto a mano e nient'altro.
+enum StaffDepartment {
+  SALA
+  CUCINA
+  BAR
+  DIREZIONE
+  ALTRO
+}
+
+// Disponibilita' della persona, non il suo turno di oggi. Il turno sta in
+// WorkShift ed e' datato; questo e' lo stato corrente del profilo, quello che
+// risponde a «posso metterlo in squadra domani?».
 enum WaiterStatus {
   ACTIVE
   RESTING
+  VACATION
+  SICK_LEAVE
+  UNAVAILABLE
 }
 
 // Employment contract for a Waiter. One-to-many on purpose (brief section 22):
@@ -1422,6 +1491,11 @@ enum StaffPrimaryRole {
   BUSSER
   HOST
   BARTENDER
+  EXECUTIVE_CHEF
+  SOUS_CHEF
+  CHEF_DE_PARTIE
+  COMMIS_CUCINA
+  LAVAPIATTI
 }
 
 // Shared vocabulary for both "what a waiter can do" (Waiter.capabilities)
@@ -1492,6 +1566,116 @@ model StaffAssignment {
   @@index([waiterId, date, service])
 }
 
+// Chi lavora, quando. Il **turno**, che e' una cosa diversa dalle due che gia'
+// esistono e che non vanno confuse:
+//
+//   Shift            = le fasce di apertura del locale (lun, 19:00-23:00, 80 coperti)
+//   StaffAssignment  = **dove** sta una persona durante un servizio (sala B, tavoli T1-T7)
+//   WorkShift        = **quando** lavora una persona (martedi' 18:00-00:00), o non lavora
+//
+// Un riposo e' una riga come le altre, con `kind` diverso e gli orari nulli:
+// «non lavora» e' un fatto pianificato, e in un calendario deve occupare una
+// casella, non essere un buco indistinguibile da «non ancora pianificato».
+model WorkShift {
+  id           String           @id @default(cuid())
+  venueId      String
+  waiterId     String
+  /// Il giorno, a mezzanotte UTC. Solo data: l'orario sta nei minuti sotto.
+  date         DateTime         @db.Date
+  kind         WorkShiftKind    @default(WORK)
+  /// Minuti da mezzanotte, come `Shift.startMinute`. Non un DateTime, e il
+  /// motivo e' il turno serale: 18:00-00:00 si scrive 1080-1440, e 1440 e'
+  /// «mezzanotte di domani» senza doverci ragionare. Con due DateTime lo
+  /// stesso turno avrebbe la fine su un giorno diverso dall'inizio, e ogni
+  /// query sulla settimana dovrebbe saperlo. Nulli quando `kind` non e' WORK.
+  startMinute  Int?
+  endMinute    Int?
+  breakMinutes Int?
+  /// Il reparto in cui si lavora **questo** turno. Nullo = quello della
+  /// persona: serve solo quando un commis di sala copre una sera al bar.
+  department   StaffDepartment?
+  /// Il servizio, dallo stesso vocabolario di `listServiceOptions()` —
+  /// «Pranzo», «Cena». Testo e non enum perche' quelle etichette le decide il
+  /// locale nelle sue fasce, e un enum qui si disallineerebbe al primo
+  /// «Aperitivo».
+  service      String?
+  notes        String?          @db.VarChar(500)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  venue        Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter       Waiter           @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  requests     StaffRequest[]
+
+  @@index([venueId, date])
+  @@index([waiterId, date])
+}
+
+enum WorkShiftKind {
+  WORK
+  REST
+  VACATION
+  LEAVE
+  SICK_LEAVE
+  UNAVAILABLE
+}
+
+// La richiesta di un dipendente, e la sua approvazione.
+//
+// La regola che giustifica una tabella a se' invece di due colonne su
+// WorkShift: **il turno non cambia finche' qualcuno non approva**. Una
+// richiesta pendente non deve toccare il calendario, altrimenti il
+// responsabile legge una settimana che nessuno ha deciso. Qui la richiesta
+// vive accanto al turno, e solo l'approvazione lo riscrive.
+model StaffRequest {
+  id                   String             @id @default(cuid())
+  venueId              String
+  waiterId             String
+  /// Il turno a cui si riferisce, quando ce n'e' uno. Nullo per una ferie
+  /// chiesta su giorni non ancora pianificati.
+  shiftId              String?
+  type                 StaffRequestType
+  /// Cosa si chiede. Un intervallo di giorni per le ferie, un giorno solo per
+  /// il cambio turno; gli orari sono valorizzati solo su SHIFT_CHANGE.
+  requestedFrom        DateTime?          @db.Date
+  requestedTo          DateTime?          @db.Date
+  requestedStartMinute Int?
+  requestedEndMinute   Int?
+  reason               String?            @db.VarChar(1000)
+  status               StaffRequestStatus @default(PENDING)
+  reviewedByUserId     String?
+  reviewedAt           DateTime?
+  reviewNote           String?            @db.VarChar(1000)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  venue                Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter               Waiter             @relation(fields: [waiterId], references: [id], onDelete: Cascade)
+  shift                WorkShift?         @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  reviewedBy           User?              @relation("StaffRequestReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, status, createdAt])
+  @@index([waiterId, createdAt])
+}
+
+enum StaffRequestType {
+  SHIFT_CHANGE
+  DAY_OFF
+  VACATION
+  LEAVE
+  UNAVAILABILITY
+}
+
+enum StaffRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+// Modello morto: nessun riferimento in tutto src/ ne' negli script. Era un
+// abbozzo di costo del lavoro (nome scritto a mano, ore, paga oraria) mai
+// collegato a niente. Non e' il turno di WorkShift, che e' qui sopra. Resta in
+// piedi solo perche' toglierlo e' una migrazione distruttiva, e quelle
+// bloccano le migrazioni in attesa sulle anteprime (vedi scripts/migrate-safe.ts).
 model StaffShift {
   id          String   @id @default(cuid())
   venueId     String
@@ -2175,7 +2359,7 @@ model BackgroundJob {
   /// una prenotazione arrivata alle 20:01: il cliente aspettava il suo
   /// messaggio dietro una spedizione pubblicitaria. Le due cose hanno urgenze
   /// diverse, e ora l'ordine lo dice (vedi `PRIORITA_PER_TIPO`).
-  priority    Int                 @default(100)
+  priority Int @default(100)
 
   status      BackgroundJobStatus @default(PENDING)
   /// Da quando è eseguibile: adesso per il lavoro immediato, più tardi per

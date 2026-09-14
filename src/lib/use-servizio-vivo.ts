@@ -82,6 +82,27 @@ function programma(ms: number) {
   timer = setTimeout(controlla, ms);
 }
 
+/**
+ * Rimette la sonda al passo minimo e la fa ripartire **subito**.
+ *
+ * Serve perché l'attesa cresce fino a un minuto quando la rete salta, e da
+ * quando non c'è più un pulsante «aggiorna» quella è l'unica strada di
+ * ritorno: senza, uno che riapre il portatile dopo un'interruzione di rete
+ * potrebbe restare fino a sessanta secondi davanti a una fotografia vecchia
+ * senza avere niente da premere.
+ *
+ * Si chiama quando la scheda torna visibile e quando il sistema operativo
+ * dice che la rete è tornata.
+ */
+function risveglia() {
+  attesa = ATTESA_MINIMA_MS;
+  if (timer !== null) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  programma(0);
+}
+
 function fermaSeNessuno() {
   if (iscritti.size === 0 && timer !== null) {
     clearTimeout(timer);
@@ -119,18 +140,39 @@ function fermaSeNessuno() {
  * - **Non chiede niente a scheda nascosta.** Si riparte, con un aggiornamento
  *   immediato, quando la scheda torna visibile — perché il servizio è andato
  *   avanti senza di noi.
- * - **Una richiesta alla volta per componente.** Se il caricamento è lento, il
- *   successivo non parte: due fotografie in volo tornano in ordine casuale, e
- *   la più vecchia può sovrascrivere la più nuova.
+ * - **Una richiesta alla volta per componente, ma nessuna persa.** Due
+ *   fotografie in volo tornano in ordine casuale e la più vecchia
+ *   sovrascriverebbe la più nuova, quindi si aspetta; ma quella arrivata nel
+ *   frattempo si rifà subito dopo invece di essere scartata.
  * - **Se la rete salta, la fotografia resta.** Non si svuota la schermata: si
  *   tiene l'ultima buona con l'ora a cui è stata presa, e si riprova più
- *   piano.
+ *   piano — fino a un minuto, e si torna al passo minimo appena la scheda
+ *   torna davanti o la rete risponde.
+ *
+ * Messe insieme, queste quattro cose sono il motivo per cui **non c'è un
+ * pulsante «aggiorna»**: non c'è niente che quel pulsante faccia e che non
+ * succeda già da solo.
  */
 export function useServizioVivo(scarica: () => Promise<void>) {
   const [ultimo, setUltimo] = useState<Date | null>(null);
   const [aggiornando, setAggiornando] = useState(false);
 
   const inCorso = useRef(false);
+  /**
+   * Una richiesta arrivata mentre un'altra era in volo **non si butta via**.
+   *
+   * Prima si scartava, e nel caso che conta era proprio quella giusta: si
+   * preme «Accomoda» mentre sta scendendo la fotografia della sonda, il
+   * ricaricamento dell'azione viene scartato, e sullo schermo resta lo stato
+   * di prima finché non ripassa la sonda. Cioè l'azione dell'utente sembrava
+   * non aver fatto niente per qualche secondo — che è esattamente il motivo
+   * per cui uno ricarica la pagina a mano.
+   *
+   * Adesso si segna che ne serve un'altra e si rifà appena finita la prima.
+   * Restano **una alla volta** — due fotografie in volo tornano in ordine
+   * casuale, e la più vecchia sovrascriverebbe la più nuova.
+   */
+  const daRifare = useRef(false);
   // `scarica` cambia a ogni rendering nei componenti che la costruiscono con
   // useCallback su uno stato: tenerla in un riferimento evita di riscrivere
   // l'iscrizione a ogni battito.
@@ -138,12 +180,18 @@ export function useServizioVivo(scarica: () => Promise<void>) {
   scaricaRef.current = scarica;
 
   const aggiornaOra = useCallback(async () => {
-    if (inCorso.current) return;
+    if (inCorso.current) {
+      daRifare.current = true;
+      return;
+    }
     inCorso.current = true;
     setAggiornando(true);
     try {
-      await scaricaRef.current();
-      setUltimo(new Date());
+      do {
+        daRifare.current = false;
+        await scaricaRef.current();
+        setUltimo(new Date());
+      } while (daRifare.current);
     } finally {
       inCorso.current = false;
       setAggiornando(false);
@@ -161,15 +209,22 @@ export function useServizioVivo(scarica: () => Promise<void>) {
   }, [aggiornaOra]);
 
   // Tornando sulla scheda dopo una pausa non si aspetta il prossimo controllo:
-  // si ricarica subito, e si riparte da quella versione.
+  // si ricarica subito, e si riparte da quella versione. Lo stesso quando il
+  // sistema dice che la rete è tornata: è il momento in cui l'attesa è
+  // cresciuta di più, ed è il momento in cui serve di meno.
   useEffect(() => {
-    async function onVisible() {
+    async function riprendi() {
       if (document.visibilityState !== "visible") return;
       versione = null;
+      risveglia();
       await aggiornaOra();
     }
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    document.addEventListener("visibilitychange", riprendi);
+    window.addEventListener("online", riprendi);
+    return () => {
+      document.removeEventListener("visibilitychange", riprendi);
+      window.removeEventListener("online", riprendi);
+    };
   }, [aggiornaOra]);
 
   return { ultimo, aggiornando, aggiornaOra };

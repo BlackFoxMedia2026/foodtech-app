@@ -45,7 +45,6 @@ export default async function WifiLeadsPage({
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="t-etichetta">Marketing / Wi-Fi</p>
-          <h1 className="text-display text-3xl">Wi-Fi</h1>
           <p className="text-sm text-muted-foreground">
             {attivo
               ? `Portale attivo sulla rete «${ctx.venue.wifiNetworkName}».`

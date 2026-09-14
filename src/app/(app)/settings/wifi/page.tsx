@@ -26,7 +26,6 @@ export default async function WifiSettingsPage() {
 
       <header className="fissa">
         <p className="t-etichetta">Impostazioni / Wi-Fi</p>
-        <h1 className="text-display text-3xl">Portale Wi-Fi</h1>
       </header>
 
       {/*

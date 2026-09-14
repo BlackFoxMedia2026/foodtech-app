@@ -1,4 +1,4 @@
-import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Radio, Settings, Sparkles, UserRound, UtensilsCrossed } from "lucide-react";
+import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Radio, Settings, Sparkles, Users, UtensilsCrossed } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 
 export type NavItem = {
@@ -21,37 +21,38 @@ export type NavItem = {
    * non rompere il wizard esistente. */
   matchPrefixes?: string[];
   /**
-   * Il gruppo dentro «Altro».
+   * Il gruppo dentro il menu del profilo.
    *
-   * Sette voci in fila, tutte con la stessa importanza, si leggono una per
-   * una fino a trovare quella giusta. Divise in tre gruppetti con
-   * un'etichetta, l'occhio salta direttamente alla parte che c'entra: «il
-   * locale» sono le cose da configurare, «crescita» quelle da guardare,
-   * «sistema» quelle che non riguardano il ristorante.
+   * Un elenco piatto di voci amministrative si legge una per una fino a
+   * trovare quella giusta. Diviso in due gruppetti con un'etichetta, l'occhio
+   * salta direttamente alla parte che c'entra: «gestione» è il ristorante che
+   * cresce, «account» è chi sta usando il prodotto.
    */
-  gruppo?: GruppoSecondario;
+  gruppo?: GruppoProfilo;
 };
 
-export type GruppoSecondario = "locale" | "crescita" | "sistema";
+export type GruppoProfilo = "gestione" | "account";
 
-export const GRUPPI_SECONDARI: { key: GruppoSecondario; label: string }[] = [
-  { key: "locale", label: "Il locale" },
-  { key: "crescita", label: "Crescita" },
-  { key: "sistema", label: "Sistema" },
+export const GRUPPI_PROFILO: { key: GruppoProfilo; label: string }[] = [
+  { key: "gestione", label: "Gestione" },
+  { key: "account", label: "Account" },
 ];
 
 /**
- * Le voci in due gruppi, e il criterio è una domanda sola: **serve mentre il
- * servizio è aperto?**
+ * La barra centrale: **soltanto ciò che si tocca a servizio aperto**.
  *
- * Le prime sei sono i gesti di una serata: guardare la giornata, vedere chi
- * viene, sistemare la sala, gestire chi aspetta, sapere chi è in turno,
- * cercare un cliente. Le altre sono lavoro da ufficio, che si fa la mattina
- * dopo — e stanno sotto «Altro».
+ * Il criterio è una domanda sola — «lo apro mentre il locale lavora?». Le
+ * sette voci sono i gesti di una serata: guardare la giornata, stare sul
+ * servizio, rispondere al telefono, sistemare la sala, cercare un cliente,
+ * sapere chi è in turno, controllare un piatto.
  *
- * Non è solo una questione di gusto: con dieci voci tutte in fila la barra non
- * ci stava più nemmeno a 1440 px, e «Analytics» finiva tagliata sotto la sfera
- * dell'agente.
+ * Tutto il resto — esperienze, campagne, analisi, incassi, impostazioni — è
+ * lavoro da ufficio, che si fa la mattina dopo: sta nel menu del profilo
+ * (`PROFILE_NAV`), che è il posto delle cose che si aprono una volta a
+ * settimana. Il dropdown «Altro» in mezzo alla barra non esiste più: era un
+ * terzo posto dove guardare, con dentro sia roba quotidiana (Staff, Menu) sia
+ * roba amministrativa, cioè esattamente la confusione che questa divisione
+ * toglie.
  */
 export const PRIMARY_NAV: NavItem[] = [
   { href: "/overview", label: "Panoramica", icon: LayoutDashboard },
@@ -75,23 +76,54 @@ export const PRIMARY_NAV: NavItem[] = [
     Servizio, con la linguetta «Sala».
   */
   { href: "/floor", label: "Sala", icon: DiningTableIcon },
-  { href: "/waitlist", label: "Attesa", icon: ListOrdered },
   { href: "/guests", label: "Ospiti", icon: TuxedoGuestIcon },
+  /*
+    «Staff», non più «Camerieri».
+
+    Il nome vecchio descriveva metà della pagina: lì dentro ci sono i ruoli di
+    cucina, i reparti, i contratti e i turni, cioè gente che in sala non ci va
+    mai. E la pagina si apre **durante** il servizio — «chi è in turno
+    stasera, chi copre quali tavoli» è la prima fascia della schermata — quindi
+    sta in barra, non fra le cose amministrative.
+
+    L'icona cambia con il nome: `Users` è un gruppo di persone, `UserRound` era
+    la singola persona ed è la stessa silhouette di «Ospiti», che ora le sta
+    accanto in barra. Due sagome identiche a due voci di distanza non sono
+    un'icona, sono una macchia.
+
+    Il percorso è `/staff`, con `/waiters` che reindirizza: i link già mandati
+    per i contratti in scadenza continuano ad aprirsi.
+  */
+  { href: "/staff", label: "Staff", icon: Users },
+  { href: "/menu", label: "Menu", icon: UtensilsCrossed },
 ];
 
-export const SECONDARY_NAV: NavItem[] = [
-  // I camerieri si configurano prima del servizio, non durante: da qui in poi
-  // è lavoro da ufficio, e la barra ha spazio per sei voci, non per sette.
-  { href: "/waiters", label: "Camerieri", icon: UserRound, gruppo: "locale" },
-  { href: "/menu", label: "Menu", icon: UtensilsCrossed, gruppo: "locale" },
-  { href: "/experiences", label: "Esperienze", icon: Sparkles, gruppo: "locale" },
-  { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"], gruppo: "crescita" },
-  { href: "/insights", label: "Analytics", icon: LineChart, gruppo: "crescita" },
-  { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "sistema" },
-  { href: "/settings", label: "Impostazioni", icon: Settings, gruppo: "sistema" },
+/**
+ * Il menu del profilo: configurazione, crescita, amministrazione.
+ *
+ * Non è «il resto»: è un secondo piano di navigazione con un criterio suo —
+ * le cose che si aprono a locale chiuso. Sta sotto l'avatar perché è lì che
+ * chiunque cerca le impostazioni, e perché tenere queste voci fuori dalla
+ * barra è tutto il punto della divisione.
+ */
+export const PROFILE_NAV: NavItem[] = [
+  { href: "/experiences", label: "Esperienze", icon: Sparkles, gruppo: "gestione" },
+  { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"], gruppo: "gestione" },
+  { href: "/insights", label: "Analytics", icon: LineChart, gruppo: "gestione" },
+  { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "gestione" },
+  /*
+    «Attesa» non è nelle sette, e non è nemmeno una funzione amministrativa:
+    è qui perché la coda **è già dentro Servizio**, che è la seconda voce
+    della barra. La schermata del servizio ha tre zone e la terza è l'attesa,
+    con i gruppi e le azioni: chi è in sala non passa da `/waitlist`, ce l'ha
+    davanti. Questa voce resta perché la pagina esiste e deve avere una casa
+    — non perché sia il modo previsto di arrivarci.
+  */
+  { href: "/waitlist", label: "Attesa", icon: ListOrdered, gruppo: "gestione" },
+  { href: "/settings", label: "Impostazioni", icon: Settings, gruppo: "account" },
 ];
 
-export const ALL_NAV = [...PRIMARY_NAV, ...SECONDARY_NAV];
+export const ALL_NAV = [...PRIMARY_NAV, ...PROFILE_NAV];
 
 /**
  * Le quattro voci della barra in basso su telefono.
@@ -107,8 +139,6 @@ export const ALL_NAV = [...PRIMARY_NAV, ...SECONDARY_NAV];
  *    tre zone e la terza è «Attesa», con i gruppi e le azioni. Chi è in
  *    servizio non passa da `/waitlist`: ce l'ha davanti.
  * 3. Una vista delle prenotazioni del giorno dentro Servizio non esiste.
- *
- * Attesa non esce dal prodotto: resta sotto «Altro» e dentro Servizio.
  */
 export const MOBILE_NAV: NavItem[] = [
   PRIMARY_NAV[0], // Panoramica
@@ -130,11 +160,6 @@ function sottoA(pathname: string, href: string) {
  * e la navigazione diceva due cose diverse nello stesso momento. La regola
  * resta perché vale in generale — domani una sottopagina di una voce
  * esistente non richiede di venire a scrivere un'eccezione qui.
- *
- * La regola generale invece di un'eccezione scritta a mano su «Servizio»:
- * se un'altra voce corrisponde con un indirizzo più lungo, è la sua. Così
- * aggiungere domani una sottopagina a una voce esistente non richiede di
- * ricordarsi di venire a scrivere un'esclusione qui.
  */
 export function isNavActive(pathname: string, item: NavItem) {
   const proprio = sottoA(pathname, item.href)
@@ -151,10 +176,74 @@ export function isNavActive(pathname: string, item: NavItem) {
   });
 }
 
-/** Le voci di «Altro», raggruppate e nell'ordine dei gruppi. */
-export function secondarioPerGruppo(): { label: string; voci: NavItem[] }[] {
-  return GRUPPI_SECONDARI.map((g) => ({
+/** Le voci del menu profilo, raggruppate e nell'ordine dei gruppi. */
+export function profiloPerGruppo(): { label: string; voci: NavItem[] }[] {
+  return GRUPPI_PROFILO.map((g) => ({
     label: g.label,
-    voci: SECONDARY_NAV.filter((v) => v.gruppo === g.key),
+    voci: PROFILE_NAV.filter((v) => v.gruppo === g.key),
   })).filter((g) => g.voci.length > 0);
+}
+
+/** Le voci principali che non stanno nella barra in basso del telefono. */
+export function primarieFuoriDallaBarra(): NavItem[] {
+  return PRIMARY_NAV.filter((v) => !MOBILE_NAV.includes(v));
+}
+
+/**
+ * Il titolo di una pagina: **per intero** e **abbreviato**.
+ *
+ * Due misure per lo stesso nome, come per le voci in barra: sul telefono, fra
+ * il marchio del locale e le quattro icone a destra, restano meno di cento
+ * pixel, e «Prenotazioni» ci finisce dentro con i puntini. La parola
+ * accorciata è sempre **la stessa parola** — mai un sinonimo — altrimenti si
+ * torna ai due vocabolari che la barra in basso ha già smesso di avere.
+ */
+export type TitoloPagina = { lungo: string; breve: string };
+
+/**
+ * I titoli delle pagine che **non** hanno una voce di navigazione tutta loro,
+ * o che ne hanno una che direbbe la cosa sbagliata.
+ *
+ * Le pagine di dettaglio — un ospite, una prenotazione, una campagna — non
+ * stanno qui di proposito: lì il titolo è il nome di chi si sta guardando,
+ * lo scrive la pagina, e la testata dice la sezione da cui si viene.
+ */
+const TITOLI_EXTRA: Record<string, string | [lungo: string, breve: string]> = {
+  "/bookings/new": ["Nuova prenotazione", "Nuova prenot."],
+  "/guests/doppioni": ["Possibili doppioni", "Doppioni"],
+  "/staff/turni": "Turni",
+  "/settings/brand": "Brand",
+  "/settings/wifi": ["Portale Wi-Fi", "Wi-Fi"],
+  "/marketing/automations": "Automazioni",
+  "/marketing/coupons": "Coupon",
+  "/marketing/gift-cards": "Gift card",
+  "/marketing/qr-codes": "QR Code",
+  "/marketing/wifi": "Wi-Fi",
+  "/campaigns": "Campagne",
+  "/campaigns/new": ["Nuova campagna", "Nuova camp."],
+};
+
+/**
+ * Il titolo della pagina, **per la testata**.
+ *
+ * Il titolo non sta più in cima al contenuto: sta accanto al marchio del
+ * locale, e scivola via quando si apre il selettore dei locali. Una riga in
+ * meno su ogni schermata, e su quelle operative quella riga era la prima
+ * prenotazione che non si vedeva.
+ *
+ * Vince la corrispondenza più lunga, come per la voce accesa in barra: una
+ * sottopagina dichiarata qui batte la sezione che la contiene.
+ */
+export function titoloPagina(pathname: string): TitoloPagina | null {
+  const extra = Object.keys(TITOLI_EXTRA)
+    .filter((p) => pathname === p || pathname.startsWith(`${p}/`))
+    .sort((a, b) => b.length - a.length)[0];
+  if (extra) {
+    const voce = TITOLI_EXTRA[extra];
+    return typeof voce === "string" ? { lungo: voce, breve: voce } : { lungo: voce[0], breve: voce[1] };
+  }
+
+  const voce = ALL_NAV.find((item) => isNavActive(pathname, item));
+  if (!voce) return null;
+  return { lungo: voce.label, breve: voce.shortLabel ?? voce.label };
 }

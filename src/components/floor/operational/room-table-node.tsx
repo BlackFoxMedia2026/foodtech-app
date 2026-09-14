@@ -1,5 +1,6 @@
 "use client";
 
+import { isAssignable } from "@/lib/staff-status";
 import { forwardRef, memo } from "react";
 import type { Booking, Guest, Table } from "@prisma/client";
 import { Circle, Lock, MoreHorizontal, Trash2, Users } from "lucide-react";
@@ -387,7 +388,7 @@ export const RoomTableNode = memo(
                       return (
                         <span key={role} title={`${TABLE_ROLE_LABELS[role]}: ${person.name}`} className="shrink-0">
                           <Icon
-                            className={cn("h-3.5 w-3.5", person.status === "RESTING" ? "text-destructive" : "text-accent-strong")}
+                            className={cn("h-3.5 w-3.5", !isAssignable(person.status) ? "text-destructive" : "text-accent-strong")}
                           />
                         </span>
                       );

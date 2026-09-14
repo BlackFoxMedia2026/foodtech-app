@@ -18,7 +18,6 @@ export default async function ServicePage() {
     <ServiceView
       initial={snapshot}
       insights={insights}
-      venueName={ctx.venue.name}
       canManage={can(ctx.role, "manage_bookings")}
     />
   );

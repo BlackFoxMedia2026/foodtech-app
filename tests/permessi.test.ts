@@ -23,11 +23,12 @@ const CAPACITA: Ability[] = [
   "edit_marketing",
   "manage_staff",
   "manage_contracts",
+  "manage_shifts",
 ];
 
 /** La verità attesa, scritta per esteso: leggibile anche da chi non conosce il codice. */
 const ATTESO: Record<StaffRole, Ability[]> = {
-  MANAGER: ["manage_venue", "manage_bookings", "view_revenue", "edit_marketing", "manage_staff", "manage_contracts"],
+  MANAGER: ["manage_venue", "manage_bookings", "view_revenue", "edit_marketing", "manage_staff", "manage_contracts", "manage_shifts"],
   RECEPTION: ["manage_bookings"],
   WAITER: ["manage_bookings"],
   MARKETING: ["edit_marketing", "view_revenue"],
