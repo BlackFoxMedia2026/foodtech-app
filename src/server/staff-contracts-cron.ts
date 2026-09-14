@@ -51,7 +51,7 @@ export async function runStaffContractExpiryCheck(today: Date = new Date()) {
       : daysRemaining === 0
         ? `Il contratto di ${waiterName} scade oggi.`
         : `Il contratto di ${waiterName} scade tra ${daysRemaining} giorni.`;
-    const link = `/staff?waiterId=${contract.waiterId}`;
+    const link = `/staff/${contract.waiterId}?tab=lavoro`;
 
     await createNotification(contract.venueId, {
       kind: isExpired ? "STAFF_CONTRACT_EXPIRED" : "STAFF_CONTRACT_EXPIRING",

@@ -88,9 +88,10 @@ describe("una voce sola accesa", () => {
 });
 
 describe("la barra centrale", () => {
-  it("porta sette voci, in quest'ordine", () => {
+  it("porta le sette voci di servizio più Marketing, in quest'ordine", () => {
     // L'ordine è il giro di una serata: la giornata, il servizio, il telefono,
-    // la sala, il cliente, chi è in turno, il piatto.
+    // la sala, il cliente, chi è in turno, il piatto — con Marketing spostata
+    // qui dal menu del profilo, prima di Menu.
     expect(PRIMARY_NAV.map((v) => v.label)).toEqual([
       "Panoramica",
       "Servizio",
@@ -98,15 +99,17 @@ describe("la barra centrale", () => {
       "Sala",
       "Ospiti",
       "Staff",
+      "Marketing",
       "Menu",
     ]);
   });
 
   it("non porta niente di amministrativo: quello sta sotto l'avatar", () => {
     // Se una di queste tornasse in barra, il criterio («lo apro mentre il
-    // locale lavora?») smetterebbe di spiegare la divisione.
+    // locale lavora?») smetterebbe di spiegare la divisione. Marketing è
+    // l'eccezione voluta e non fa parte di questo controllo.
     const inBarra = new Set(PRIMARY_NAV.map((v) => v.href));
-    for (const href of ["/experiences", "/marketing", "/insights", "/payments", "/settings"]) {
+    for (const href of ["/experiences", "/insights", "/payments", "/settings"]) {
       expect(inBarra.has(href)).toBe(false);
     }
   });
@@ -132,7 +135,7 @@ describe("il menu del profilo", () => {
     const gruppi = profiloPerGruppo();
     expect(gruppi.map((g) => g.label)).toEqual(["Gestione", "Account"]);
     const gestione = gruppi[0].voci.map((v) => v.href);
-    for (const href of ["/experiences", "/marketing", "/insights", "/payments"]) {
+    for (const href of ["/experiences", "/insights", "/payments"]) {
       expect(gestione).toContain(href);
     }
     expect(gruppi[1].voci.map((v) => v.href)).toEqual(["/settings"]);
@@ -204,7 +207,7 @@ describe("la barra in basso del telefono", () => {
     // Le sezioni amministrative stanno sotto l'avatar, che su telefono c'è
     // come su scrivania: elencarle anche qui sarebbe la stessa pagina
     // raggiungibile da due strade sullo stesso schermo.
-    expect(primarieFuoriDallaBarra().map((v) => v.label)).toEqual(["Ospiti", "Staff", "Menu"]);
+    expect(primarieFuoriDallaBarra().map((v) => v.label)).toEqual(["Ospiti", "Staff", "Marketing", "Menu"]);
     expect(primarieFuoriDallaBarra().every((v) => PRIMARY_NAV.includes(v))).toBe(true);
   });
 });

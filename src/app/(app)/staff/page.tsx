@@ -1,10 +1,11 @@
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { listWaiters } from "@/server/waiters";
 import { listRooms } from "@/server/rooms";
 import { listAssignmentsForDate, listServiceOptions } from "@/server/waiter-assignments";
 import { listStaffAssignmentsForDate } from "@/server/staff-assignments";
-import { listAttentionNeededContracts } from "@/server/staff-contracts";
+import { avvisiScadenzePerPersona } from "@/server/staff-scadenze";
 import { listShiftsForRange } from "@/server/work-shifts";
 import { todayInVenue } from "@/lib/venue-time";
 import { formatTableSelectionLabel } from "@/lib/table-range";
@@ -12,8 +13,15 @@ import { StaffPageClient } from "@/components/staff/staff-page-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function StaffPage({ searchParams }: { searchParams: { g?: string } }) {
+export default async function StaffPage({ searchParams }: { searchParams: { g?: string; waiterId?: string } }) {
   const ctx = await getActiveVenue();
+
+  /*
+    Il vecchio link profondo. Le notifiche di contratto in scadenza già nel
+    database mandano a `/staff?waiterId=…`, che apriva la scheda in una
+    modale. La scheda adesso è una pagina: si va lì.
+  */
+  if (searchParams.waiterId) redirect(`/staff/${encodeURIComponent(searchParams.waiterId)}`);
 
   /*
     Il giorno scelto viaggia nell'indirizzo, come nella vista Turni.
@@ -29,7 +37,7 @@ export default async function StaffPage({ searchParams }: { searchParams: { g?: 
   const canManageStaff = can(ctx.role, "manage_staff");
   const canManageContracts = can(ctx.role, "manage_contracts");
 
-  const [waiters, rooms, tables, serviceOptions, todayAssignments, assegnazioniTavolo, contractAttention, turniDelGiorno] = await Promise.all([
+  const [waiters, rooms, tables, serviceOptions, todayAssignments, assegnazioniTavolo, avvisi, turniDelGiorno] = await Promise.all([
     listWaiters(ctx.venueId),
     listRooms(ctx.venueId),
     db.table.findMany({
@@ -42,7 +50,9 @@ export default async function StaffPage({ searchParams }: { searchParams: { g?: 
     // Le assegnazioni fatte dalla piantina: un'altra tabella per lo stesso
     // fatto. Vedi la nota su `listStaffAssignmentsForDate`.
     listStaffAssignmentsForDate(ctx.venueId, new Date()),
-    canManageContracts ? listAttentionNeededContracts(ctx.venueId) : Promise.resolve(new Map()),
+    // Le scadenze della scheda — contratto, visita medica, corsi, documenti —
+    // alimentano la card: una riga sola per persona, solo se serve.
+    canManageStaff ? avvisiScadenzePerPersona(ctx.venueId) : Promise.resolve(new Map()),
     listShiftsForRange(ctx.venueId, giorno, giorno),
   ]);
 
@@ -115,7 +125,7 @@ export default async function StaffPage({ searchParams }: { searchParams: { g?: 
       canManageStaff={canManageStaff}
       canManageContracts={canManageContracts}
       assignmentSummaryByStaffId={riepilogoPerPersona}
-      contractAttentionByStaffId={Object.fromEntries(contractAttention)}
+      avvisiPerPersona={Object.fromEntries(avvisi)}
       giorno={giorno}
       oggi={oggi}
       turniDelGiorno={turniDelGiorno.map((t) => ({ waiterId: t.waiterId, kind: t.kind }))}

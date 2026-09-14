@@ -16,14 +16,14 @@ import { RicercaGlobale } from "./ricerca-globale";
  * spariscono e il loro posto lo prende la barra in basso
  * (`MobileNav`), che sta sotto il pollice.
  *
- * Porta sette voci e **nient'altro**: niente dropdown «Altro» in mezzo alla
- * fila. Quel menu teneva insieme cose che si aprono durante il servizio
- * (Staff, Menu) e cose che si aprono a locale chiuso (campagne, incassi,
- * impostazioni): era un terzo posto dove guardare, e non rispondeva a nessuna
- * domanda precisa. Le voci amministrative stanno sotto l'avatar
+ * Porta le voci di `PRIMARY_NAV` e **nient'altro**: niente dropdown «Altro»
+ * in mezzo alla fila. Quel menu teneva insieme cose che si aprono durante il
+ * servizio (Staff, Menu) e cose che si aprono a locale chiuso (campagne,
+ * incassi, impostazioni): era un terzo posto dove guardare, e non rispondeva
+ * a nessuna domanda precisa. Le voci amministrative stanno sotto l'avatar
  * (`ProfileMenu`), che è già il posto dove si cercano le impostazioni.
  *
- * Le sette voci non entrano in fila con il nome intero prima dei 1536 px: sotto
+ * Le voci non entrano in fila con il nome intero prima dei 1536 px: sotto
  * quella soglia si accorcia l'etichetta, e sotto i 1280 px il nome va **sotto**
  * l'icona, come nella barra del telefono. Stessa gerarchia su tutti gli
  * schermi, nessuna voce che sparisce e nessuna fila che scorre di lato.

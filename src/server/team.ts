@@ -260,6 +260,22 @@ export async function accettaInvito(
       data: { acceptedAt: new Date() },
     });
 
+    /*
+      Il ponte con l'organico.
+
+      Se in questo locale c'è una persona in organico con lo stesso indirizzo
+      e senza account, quell'account è il suo: si collega qui, nello stesso
+      istante in cui nasce. Prima non lo faceva nessuno, e `Waiter.userId`
+      restava vuoto anche dopo che il maître aveva accettato l'invito — cioè
+      la scheda continuava a dire «nessun accesso» a una persona che entrava
+      tutte le sere.
+    */
+    const profilo = await tx.waiter.findFirst({
+      where: { venueId: invito.venueId, userId: null, email: { equals: invito.email, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (profilo) await tx.waiter.update({ where: { id: profilo.id }, data: { userId: utente.id } });
+
     return { userId: utente.id, nuovoAccesso: !esistente };
   });
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, MoreHorizontal } from "lucide-react";
 import type { StaffCapability, StaffDepartment, StaffPrimaryRole, WaiterStatus } from "@prisma/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +18,6 @@ import { isAssignable, staffStatusLabel, staffStatusTone } from "@/lib/staff-sta
 import { staffPrimaryRoleLabel } from "@/lib/staff-roles";
 import { cn, initials } from "@/lib/utils";
 import { AssignServiceDialog } from "./assign-service-dialog";
-import { StaffProfileDialog } from "./staff-profile-dialog";
 import { StaffStatusSelect } from "./staff-status-select";
 
 type Mode = "ROOMS" | "TABLES";
@@ -62,8 +63,7 @@ export function StaffRow({
   tables,
   serviceOptions,
   canManageStaff = false,
-  canManageContracts = false,
-  contractAttention = null,
+  avviso = null,
 }: {
   person: StaffRowPerson;
   assignmentSummary: string | null;
@@ -72,11 +72,16 @@ export function StaffRow({
   tables: { id: string; label: string; seats: number }[];
   serviceOptions: string[];
   canManageStaff?: boolean;
-  canManageContracts?: boolean;
-  contractAttention?: { status: "EXPIRING_SOON" | "EXPIRED"; detail: string } | null;
+  /**
+   * L'unica scadenza da scrivere sulla card: «HACCP scaduto», «Visita medica
+   * tra 15 giorni». Una sola, e solo se scaduta o vicina — vedi
+   * `avvisiScadenzePerPersona`. La card deve restare pulita.
+   */
+  avviso?: { stato: "scaduto" | "in_scadenza"; testo: string } | null;
 }) {
+  const router = useRouter();
   const [assignOpen, setAssignOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const scheda = `/staff/${person.id}`;
   const fullName = `${person.firstName} ${person.lastName}`;
   const available = isAssignable(person.status);
   const roleLabel = person.primaryRole ? staffPrimaryRoleLabel(person.primaryRole) : person.role;
@@ -94,28 +99,26 @@ export function StaffRow({
         !available && "opacity-70",
       )}
     >
-      {/* Chi */}
-      <StaffProfileDialog person={person} canManageContracts={canManageContracts} canManageStaff={canManageStaff}>
-        <button
-          type="button"
-          className="col-start-1 row-start-1 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={`Apri la scheda di ${fullName}`}
-        >
-          <Avatar className="h-9 w-9">
-            {person.photoUrl && <AvatarImage src={person.photoUrl} alt="" />}
-            <AvatarFallback>{initials(fullName)}</AvatarFallback>
-          </Avatar>
-        </button>
-      </StaffProfileDialog>
+      {/* Chi. La scheda è una pagina (`/staff/<id>`), non più una modale:
+          ha un indirizzo, si apre in un'altra linguetta, e ha lo spazio per
+          documenti, corsi, visita medica, account e storico. */}
+      <Link
+        href={scheda}
+        className="col-start-1 row-start-1 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={`Apri la scheda di ${fullName}`}
+      >
+        <Avatar className="h-9 w-9">
+          {person.photoUrl && <AvatarImage src={person.photoUrl} alt="" />}
+          <AvatarFallback>{initials(fullName)}</AvatarFallback>
+        </Avatar>
+      </Link>
 
       <div className="col-start-2 row-start-1 min-w-0">
-        <StaffProfileDialog person={person} canManageContracts={canManageContracts} canManageStaff={canManageStaff}>
-          <button type="button" className="block max-w-full truncate text-left">
-            <span className="text-sm font-medium text-card-foreground underline-offset-2 hover:underline">
-              {fullName}
-            </span>
-          </button>
-        </StaffProfileDialog>
+        <Link href={scheda} className="block max-w-full truncate text-left">
+          <span className="text-sm font-medium text-card-foreground underline-offset-2 hover:underline">
+            {fullName}
+          </span>
+        </Link>
         <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
       </div>
 
@@ -138,10 +141,13 @@ export function StaffRow({
         ) : assignable && available ? (
           <p className="text-xs text-muted-foreground/60">Nessuna assegnazione</p>
         ) : null}
-        {contractAttention && (
-          <Badge tone={contractAttention.status === "EXPIRED" ? "danger" : "warning"} className="mt-1">
-            {contractAttention.detail}
-          </Badge>
+        {avviso && (
+          <Link href={`${scheda}`} className="mt-1 inline-block">
+            <Badge tone={avviso.stato === "scaduto" ? "danger" : "warning"} className="gap-1">
+              <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+              {avviso.testo}
+            </Badge>
+          </Link>
         )}
       </div>
 
@@ -170,7 +176,7 @@ export function StaffRow({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onSelect={() => setProfileOpen(true)}>Apri la scheda</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push(scheda)}>Apri la scheda</DropdownMenuItem>
               {assignable && (
                 <DropdownMenuItem disabled={!available} onSelect={() => setAssignOpen(true)}>
                   {assignmentSummary ? "Modifica assegnazione" : "Assegna servizio"}
@@ -194,13 +200,6 @@ export function StaffRow({
             onOpenChange={setAssignOpen}
           />
         )}
-        <StaffProfileDialog
-          person={person}
-          canManageContracts={canManageContracts}
-          canManageStaff={canManageStaff}
-          open={profileOpen}
-          onOpenChange={setProfileOpen}
-        />
       </div>
     </div>
   );

@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import type { ContractFormErrors, ContractFormValues } from "@/lib/contract-form";
 import { CONTRACT_STATUS_BADGE_TONE, CONTRACT_STATUS_LABELS, STAFF_CONTRACT_TYPES, getContractStatus, getContractStatusDetail } from "@/lib/staff-contracts";
+import { GIORNI_SETTIMANA } from "@/lib/scheda-dipendente";
+import { cn } from "@/lib/utils";
 
 export function ContractFields({
   idPrefix,
@@ -106,6 +108,63 @@ export function ContractFields({
           value={value.contractualRole}
           onChange={(e) => onChange({ ...value, contractualRole: e.target.value })}
         />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor={`${idPrefix}-level`}>Livello / inquadramento</Label>
+        <Input
+          id={`${idPrefix}-level`}
+          placeholder="Es. 4° livello CCNL Turismo"
+          value={value.level}
+          onChange={(e) => onChange({ ...value, level: e.target.value })}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${idPrefix}-probationEndDate`}>Fine periodo di prova</Label>
+        <Input
+          id={`${idPrefix}-probationEndDate`}
+          type="date"
+          min={value.startDate || undefined}
+          value={value.probationEndDate}
+          onChange={(e) => onChange({ ...value, probationEndDate: e.target.value })}
+          aria-invalid={!!errors.probationEndDate}
+        />
+        {errors.probationEndDate ? (
+          <p className="text-xs text-destructive">{errors.probationEndDate}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">Vuoto se non previsto.</p>
+        )}
+      </div>
+
+      {/* I giorni della settimana come sette interruttori, non una tendina a
+          scelta multipla: si vede a colpo d'occhio quali sono accesi. */}
+      <div className="space-y-1.5 sm:col-span-2">
+        <Label>Giorni lavorativi</Label>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Giorni lavorativi">
+          {GIORNI_SETTIMANA.map((g) => {
+            const attivo = value.workingDays.includes(g.value);
+            return (
+              <button
+                key={g.value}
+                type="button"
+                aria-pressed={attivo}
+                aria-label={g.label}
+                onClick={() =>
+                  onChange({
+                    ...value,
+                    workingDays: attivo ? value.workingDays.filter((d) => d !== g.value) : [...value.workingDays, g.value],
+                  })
+                }
+                className={cn(
+                  "h-9 min-w-[3rem] rounded-full border px-3 text-xs font-medium transition-colors",
+                  attivo ? "border-accent/40 bg-accent/15 text-accent-strong" : "border-border text-muted-foreground hover:bg-secondary",
+                )}
+              >
+                {g.breve}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {previewStatus && (
