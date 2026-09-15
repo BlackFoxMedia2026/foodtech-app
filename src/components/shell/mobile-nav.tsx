@@ -3,9 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarPlus, ListPlus, MoreHorizontal, Plus, UtensilsCrossed, X } from "lucide-react";
+import { CalendarPlus, ChevronDown, ListPlus, MoreHorizontal, Plus, UtensilsCrossed, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MOBILE_NAV, isNavActive, primarieFuoriDallaBarra } from "@/components/shell/nav-items";
+import {
+  MOBILE_NAV,
+  isNavActive,
+  primarieFuoriDallaBarra,
+  sottovoceAttiva,
+  type NavItem,
+} from "@/components/shell/nav-items";
 import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
 
 /**
@@ -24,16 +30,29 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
   const pathname = usePathname();
   const router = useRouter();
   const [altroOpen, setAltroOpen] = useState(false);
+  /*
+    Quale sezione di «Altro» è aperta a fisarmonica — oggi solo Marketing, che
+    ha sette strumenti dentro. Sul telefono non si usa il pannello della
+    scrivania: un menu che esce da un elenco già dentro una tendina finirebbe
+    fuori schermo o sotto il pollice. Qui l'elenco si allunga, che è il gesto
+    che il telefono conosce.
+  */
+  const [sezioneAperta, setSezioneAperta] = useState<string | null>(null);
   const [azioniOpen, setAzioniOpen] = useState(false);
   const [walkInOpen, setWalkInOpen] = useState(false);
 
   /*
     «Altro» porta **solo** le voci principali che non entrano nella barra —
-    Ospiti, Staff, Menu. Le sezioni amministrative (campagne, incassi,
+    Ospiti, Staff, Marketing, Menu. Le sezioni amministrative (incassi,
     impostazioni) stanno sotto l'avatar in alto a destra, che su telefono c'è
     come su scrivania: metterle anche qui vorrebbe dire due strade per la
     stessa pagina sullo stesso schermo, e nessuna delle due che insegna dove
     stanno le cose.
+
+    Marketing è l'unica che non porta a una pagina: si allunga e mostra i suoi
+    sette strumenti. Sono gli stessi sette del pannello della scrivania, con
+    gli stessi nomi e le stesse descrizioni — la lista vive in un posto solo,
+    `MARKETING_NAV`.
   */
   const altreSezioni = primarieFuoriDallaBarra();
   const altroAttivo = altreSezioni.some((i) => isNavActive(pathname, i));
@@ -100,6 +119,55 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
             {altreSezioni.map((item) => {
               const Icon = item.icon;
               const active = isNavActive(pathname, item);
+
+              if (item.sottovoci) {
+                const aperta = sezioneAperta === item.href;
+                const dentro = sottovoceAttiva(pathname, item);
+                return (
+                  <li key={item.href}>
+                    <button
+                      type="button"
+                      aria-expanded={aperta}
+                      onClick={() => setSezioneAperta(aperta ? null : item.href)}
+                      className={cn(
+                        "flex min-h-[52px] w-full items-center gap-3 px-4 text-left text-sm",
+                        active ? "bg-current/10 font-medium text-foreground" : "text-muted-foreground",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="flex-1">{item.label}</span>
+                      {/* Quando la fisarmonica è chiusa, il nome dello
+                          strumento aperto: chi torna qui da «Coupon» vede da
+                          dove viene senza dover riaprire l'elenco. */}
+                      {!aperta && dentro && (
+                        <span className="truncate text-xs text-accent-strong">{dentro.label}</span>
+                      )}
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={cn(
+                          "h-4 w-4 shrink-0 opacity-60 transition-transform duration-200",
+                          aperta && "rotate-180",
+                        )}
+                      />
+                    </button>
+
+                    {aperta && (
+                      <ul className="border-t border-border bg-black/15 py-1">
+                        {item.sottovoci.map((voce) => (
+                          <li key={voce.href}>
+                            <SottovoceAltro
+                              voce={voce}
+                              attiva={dentro?.href === voce.href}
+                              onNavigate={() => setAltroOpen(false)}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
+
               return (
                 <li key={item.href}>
                   <Link
@@ -166,7 +234,18 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
               aria-expanded={altroOpen}
               onClick={() => {
                 setAzioniOpen(false);
-                setAltroOpen((v) => !v);
+                setAltroOpen((v) => {
+                  /* Chi è già dentro il marketing trova la sua sezione
+                     aperta: altrimenti il primo gesto dopo aver aperto
+                     «Altro» è riaprire la cosa in cui si trova. */
+                  if (!v) {
+                    const dentro = altreSezioni.find(
+                      (i) => i.sottovoci && isNavActive(pathname, i),
+                    );
+                    setSezioneAperta(dentro?.href ?? null);
+                  }
+                  return !v;
+                });
               }}
               className={cn(
                 "flex min-h-[56px] w-full flex-col items-center justify-center gap-1 px-1 py-2 text-[11px]",
@@ -239,5 +318,46 @@ function AzioneRapida({
         <span className="block text-xs text-muted-foreground">{hint}</span>
       </span>
     </button>
+  );
+}
+
+/**
+ * Uno strumento dentro la fisarmonica di «Altro».
+ *
+ * Rientrato di un gradino e con la descrizione sotto il nome, come nel
+ * pannello della scrivania: gli stessi sette nomi e le stesse sette frasi su
+ * tutti e due gli schermi. I 48 px di altezza sono il minimo perché un dito
+ * prenda la riga giusta in una lista fitta.
+ */
+function SottovoceAltro({
+  voce,
+  attiva,
+  onNavigate,
+}: {
+  voce: NavItem;
+  attiva: boolean;
+  onNavigate: () => void;
+}) {
+  const Icon = voce.icon;
+  return (
+    <Link
+      href={voce.href}
+      onClick={onNavigate}
+      aria-current={attiva ? "page" : undefined}
+      className={cn(
+        "flex min-h-[48px] items-start gap-3 py-2 pl-11 pr-4",
+        attiva ? "text-accent-strong" : "text-muted-foreground",
+      )}
+    >
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="min-w-0">
+        <span className={cn("block text-sm leading-tight", attiva ? "font-medium" : "text-foreground")}>
+          {voce.label}
+        </span>
+        {voce.descrizione && (
+          <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{voce.descrizione}</span>
+        )}
+      </span>
+    </Link>
   );
 }

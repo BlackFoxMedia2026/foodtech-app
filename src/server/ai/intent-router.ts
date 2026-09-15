@@ -17,8 +17,18 @@ const SECTION_ROUTES = [
   "sala",
   "camerieri",
   "ospiti",
-  "esperienze",
+  // «esperienze» è uscita con la sezione: vedi `ai/tools/navigation.ts`.
   "marketing",
+  // Gli strumenti dentro il menu Marketing: «apri i coupon» adesso apre i
+  // coupon invece dell'indice da cui si ricominciava. Una parola ciascuno,
+  // perché la regola qui sotto ne cattura una sola.
+  "campagne",
+  "automazioni",
+  "coupon",
+  "sconti",
+  "buoni",
+  "wifi",
+  "qr",
   "pagamenti",
   "analytics",
 ];

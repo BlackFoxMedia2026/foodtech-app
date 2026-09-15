@@ -16,8 +16,35 @@ const SECTION_ROUTES: Record<string, string> = {
   camerieri: "/staff",
   cucina: "/staff",
   ospiti: "/guests",
-  esperienze: "/experiences",
-  marketing: "/marketing",
+  // «esperienze» non c'è: la sezione è sospesa e fuori dalla navigazione
+  // (vedi `PROFILE_NAV`). Aprirla da qui sarebbe l'unica strada rimasta per
+  // arrivarci, cioè il contrario di sospenderla.
+  /*
+    «Vai in marketing» apre le campagne, che è dove porta adesso anche la voce
+    in barra: `/marketing` non è più una pagina ma un menu, e il suo percorso
+    reindirizza qui. Mandare l'agente su un redirect funzionerebbe lo stesso —
+    è una fermata in più per niente.
+  */
+  marketing: "/campaigns",
+  campagne: "/campaigns",
+  /*
+    Gli strumenti del menu Marketing, con le parole che la gente dice. Prima
+    «apri i coupon» non era un comando: l'unica chiave era «marketing» e
+    portava all'indice, da cui bisognava ricominciare a mano — cioè
+    esattamente il passaggio che quell'indice non fa più fare a nessuno.
+
+    Solo nomi di **una parola**: la regola che le riconosce cattura un token
+    solo (`intent-router.ts`), quindi «gift card» e «QR code» qui sarebbero
+    chiavi che non si possono pronunciare. Al loro posto le parole che si
+    dicono davvero — «buoni», «qr» — e ogni chiave sta anche in
+    `SECTION_ROUTES` del router, altrimenti non arriva mai fin qui.
+  */
+  automazioni: "/marketing/automations",
+  coupon: "/marketing/coupons",
+  sconti: "/marketing/coupons",
+  buoni: "/marketing/gift-cards",
+  wifi: "/marketing/wifi",
+  qr: "/marketing/qr-codes",
   pagamenti: "/payments",
   analytics: "/insights",
 };
