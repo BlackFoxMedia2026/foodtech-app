@@ -186,3 +186,206 @@ export async function sendContractExpiredEmail(
     console.error(`[EMAIL] Failed to send contract expired email to ${recipientEmail}:`, error);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Pagamento al tavolo col QR                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Il testo che finisce dentro un attributo o un corpo HTML, reso innocuo.
+ *
+ * Le email più vecchie di questo file interpolano i nomi direttamente nel
+ * markup. Lì i valori arrivano da campi che compila lo staff, quindi il danno
+ * possibile è un'email sformattata. Qui no: il nome del locale e soprattutto
+ * **l'indirizzo scritto dal cliente al tavolo** sono testo che arriva da
+ * fuori, e un `<` di troppo in un messaggio che il ristoratore apre nella
+ * propria casella non è un difetto estetico.
+ */
+function testoSicuro(v: string | null | undefined): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+const EURO = (cents: number, currency: string) =>
+  new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(cents / 100);
+
+export type EmailPagamentoTavolo = {
+  locale: string;
+  localeEmail: string | null;
+  clienteEmail: string | null;
+  tavolo: string;
+  currency: string;
+  billCents: number;
+  tipCents: number;
+  residuoCents: number;
+  saldato: boolean;
+  metodo: string | null;
+  quando: Date;
+};
+
+/**
+ * Le due email di un pagamento al tavolo: una al locale, una al cliente.
+ *
+ * Partono insieme e falliscono separatamente: se l'indirizzo che il cliente ha
+ * digitato sul telefono è sbagliato — e a volte lo è — il ristoratore deve
+ * comunque ricevere la sua. Per questo `allSettled` e non `all`.
+ *
+ * Al cliente si scrive **solo se ha lasciato un indirizzo**. Non è un
+ * ripiego: chiedere un'email per poter pagare un conto già consumato sarebbe
+ * raccogliere contatti con la leva sbagliata, e questo prodotto ha già i modi
+ * onesti per farlo.
+ */
+export async function sendTablePaymentEmails(dati: EmailPagamentoTavolo): Promise<void> {
+  if (!resend) {
+    console.log(`[EMAIL] Pagamento al tavolo (Resend non configurato): tavolo ${dati.tavolo}`);
+    return;
+  }
+
+  const locale = testoSicuro(dati.locale);
+  const tavolo = testoSicuro(dati.tavolo);
+  const totale = dati.billCents + dati.tipCents;
+  const ora = dati.quando.toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
+
+  const riga = (etichetta: string, valore: string, forte = false) => `
+    <tr>
+      <td style="padding:6px 0;color:#4F351B;font-size:14px;">${testoSicuro(etichetta)}</td>
+      <td style="padding:6px 0;text-align:right;font-size:14px;color:#2F1F11;${
+        forte ? "font-weight:700;" : ""
+      }">${testoSicuro(valore)}</td>
+    </tr>`;
+
+  const invii: Promise<unknown>[] = [];
+
+  /* --- Al ristorante: è denaro entrato senza che nessuno in sala l'abbia visto. --- */
+  if (dati.localeEmail) {
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <h1 style="color:#AF6648;font-size:22px;">Pagamento al tavolo ${tavolo}</h1>
+        <p style="font-size:16px;color:#333;">
+          Un cliente ha pagato dal proprio telefono, inquadrando il QR del tavolo.
+        </p>
+        <table style="width:100%;background:#F2E7D0;border-radius:12px;padding:16px;margin:20px 0;">
+          ${riga("Conto", EURO(dati.billCents, dati.currency))}
+          ${dati.tipCents > 0 ? riga("Mancia", EURO(dati.tipCents, dati.currency)) : ""}
+          ${riga("Totale transazione", EURO(totale, dati.currency), true)}
+          ${dati.metodo ? riga("Metodo", dati.metodo) : ""}
+          ${riga("Quando", ora)}
+          ${
+            dati.saldato
+              ? riga("Stato", "Conto saldato", true)
+              : riga("Ancora da incassare", EURO(dati.residuoCents, dati.currency), true)
+          }
+        </table>
+        ${
+          dati.saldato
+            ? `<p style="font-size:15px;color:#13332C;"><strong>Il tavolo ha saldato.</strong> Non deve passare in cassa.</p>`
+            : ""
+        }
+        <p style="font-size:13px;color:#666;margin-top:28px;">${locale} · Tavolo</p>
+      </div>`;
+
+    invii.push(
+      resend.emails
+        .send({
+          from: FROM_EMAIL,
+          to: dati.localeEmail,
+          subject: dati.saldato
+            ? `Tavolo ${tavolo} saldato — ${EURO(dati.billCents, dati.currency)}`
+            : `Pagamento tavolo ${tavolo} — ${EURO(dati.billCents, dati.currency)}`,
+          html,
+        })
+        .catch((e) => console.error("[EMAIL] pagamento al tavolo, copia al locale:", e)),
+    );
+  }
+
+  /* --- Al cliente: la ricevuta che ha chiesto lasciando l'indirizzo. --- */
+  if (dati.clienteEmail) {
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <h1 style="color:#13332C;font-size:22px;">Pagamento riuscito</h1>
+        <p style="font-size:16px;color:#333;">
+          Grazie. Ecco la conferma del pagamento al tavolo ${tavolo} di <strong>${locale}</strong>.
+        </p>
+        <table style="width:100%;background:#F2E7D0;border-radius:12px;padding:16px;margin:20px 0;">
+          ${riga("Conto", EURO(dati.billCents, dati.currency))}
+          ${dati.tipCents > 0 ? riga("Mancia", EURO(dati.tipCents, dati.currency)) : ""}
+          ${riga("Hai pagato", EURO(totale, dati.currency), true)}
+          ${riga("Quando", ora)}
+        </table>
+        ${
+          dati.saldato
+            ? `<p style="font-size:15px;color:#13332C;">Il conto del tavolo è saldato.</p>`
+            : `<p style="font-size:15px;color:#4F351B;">Sul conto del tavolo restano ${EURO(
+                dati.residuoCents,
+                dati.currency,
+              )} a carico degli altri commensali.</p>`
+        }
+        <p style="font-size:13px;color:#666;margin-top:28px;">
+          Questa è una conferma di pagamento, non una fattura fiscale: per quella chiedi al locale.
+        </p>
+      </div>`;
+
+    invii.push(
+      resend.emails
+        .send({
+          from: FROM_EMAIL,
+          to: dati.clienteEmail,
+          subject: `Pagamento riuscito — ${locale}`,
+          html,
+        })
+        .catch((e) => console.error("[EMAIL] ricevuta al cliente:", e)),
+    );
+  }
+
+  await Promise.allSettled(invii);
+}
+
+/**
+ * L'email amministrativa del modulo DEM.
+ *
+ * Una sola forma per tutte — pagamento non riuscito, dominio pronto, invii
+ * sospesi — perché sono tutte la stessa cosa: un fatto successo mentre nessuno
+ * guardava, e un posto dove andare a vederlo. Un modello per ciascuna avrebbe
+ * prodotto cinque impaginazioni leggermente diverse della stessa busta.
+ *
+ * Non nomina mai chi spedisce per noi: il servizio è Foodtech, e da dove
+ * escono materialmente le email non è una cosa che riguarda il ristoratore.
+ */
+export async function sendDemOperationalEmail(opts: {
+  to: string;
+  nome: string;
+  venueName: string;
+  titolo: string;
+  testo: string;
+  link?: string;
+}) {
+  if (!resend) {
+    console.log(`[EMAIL] DEM (Resend not configured): ${opts.to} — ${opts.titolo}`);
+    return;
+  }
+
+  const saluto = opts.nome ? `Ciao ${testoSicuro(opts.nome)},` : "Ciao,";
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h1 style="color: #1a1a1a; font-size: 20px;">${testoSicuro(opts.titolo)}</h1>
+      <p style="font-size: 16px; color: #333;">${saluto}</p>
+      <p style="font-size: 16px; color: #333;">${testoSicuro(opts.testo)}</p>
+      ${opts.link ? `<p style="font-size: 14px;"><a href="${opts.link}">Apri Foodtech</a></p>` : ""}
+      <p style="font-size: 14px; color: #666; margin-top: 30px;">${testoSicuro(opts.venueName)}</p>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: opts.to,
+      subject: opts.titolo,
+      html: htmlContent,
+    });
+  } catch (error) {
+    console.error(`[EMAIL] Failed to send DEM email to ${opts.to}:`, error);
+  }
+}

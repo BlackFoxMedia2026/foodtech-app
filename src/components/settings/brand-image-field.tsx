@@ -8,7 +8,7 @@ import { uploadBrandImage } from "@/lib/venue-brand-api";
 
 /**
  * Stesso pattern già costruito per i blocchi immagine dell'editor email
- * (ImageField in block-inspector.tsx): un'unica azione primaria ("Carica"),
+ * (vedi media-picker.tsx): un'unica azione primaria ("Carica"),
  * niente campo URL sempre visibile — qui non serve nemmeno quello manuale,
  * i loghi/copertine si caricano sempre da file.
  */

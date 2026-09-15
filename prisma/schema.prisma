@@ -180,63 +180,104 @@ model Venue {
   onboardingCompletedAt DateTime?
   onboardingSkippedAt   DateTime?
   serviceAssignmentMode ServiceAssignmentMode @default(ROOMS)
-  agentConversations    AgentConversation[]
-  agentUsages           AgentUsage[]
-  ApiToken              ApiToken[]
-  AutomationWorkflow    AutomationWorkflow[]
-  BackgroundJob         BackgroundJob[]
-  bookings              Booking[]
-  CallLog               CallLog[]
-  campaigns             Campaign[]
-  ChatSession           ChatSession[]
-  Connector             Connector[]
-  ConsentLog            ConsentLog[]
-  CostEntry             CostEntry[]
-  Coupon                Coupon[]
-  CouponRedemption      CouponRedemption[]
-  experiences           Experience[]
-  FloorDecor            FloorDecor[]
-  GiftCard              GiftCard[]
-  guests                Guest[]
-  GuestProviderLink     GuestProviderLink[]
-  MenuCategory          MenuCategory[]
-  MenuItem              MenuItem[]
-  MenuItemCost          MenuItemCost[]
-  MenuScan              MenuScan[]
-  MessageLog            MessageLog[]
-  MessageTemplate       MessageTemplate[]
-  MissedCall            MissedCall[]
-  Notification          Notification[]
-  Order                 Order[]
-  POSConnector          POSConnector[]
-  payments              Payment[]
-  QrCode                QrCode[]
-  Review                Review[]
-  ReviewLink            ReviewLink[]
-  ReviewLinkClick       ReviewLinkClick[]
-  rooms                 Room[]
-  shifts                Shift[]
-  StaffShift            StaffShift[]
-  Survey                Survey[]
-  tables                Table[]
-  blocks                TableBlock[]
-  org                   Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  WaitlistEntry         WaitlistEntry[]
-  WifiLead              WifiLead[]
-  WifiSession           WifiSession[]
-  members               VenueMembership[]
-  invites               VenueInvite[]
-  waiters               Waiter[]
-  waiterAssignments     WaiterAssignment[]
-  staffAssignments      StaffAssignment[]
-  workShifts            WorkShift[]
-  staffRequests         StaffRequest[]
-  staffContracts        StaffContract[]
-  contractDocuments     ContractDocument[]
-  staffDocuments        StaffDocument[]
-  staffTrainings        StaffTraining[]
-  staffMedicalChecks    StaffMedicalCheck[]
-  staffNotes            StaffNote[]
+
+  // --- Pagamento al tavolo col QR (vedi server/pagamenti-tavolo.ts) ---
+
+  /// L'account Stripe **del ristorante**, non di Tavolo.
+  ///
+  /// Gli incassi di una cena sono del locale che l'ha servita: farli arrivare
+  /// sull'account della piattaforma renderebbe Tavolo l'incassante legale di
+  /// ogni coperto dei suoi clienti, con tutto quello che ne segue in fatto di
+  /// antiriciclaggio e fiscalità. Quindi Connect, e gli addebiti nascono
+  /// direttamente sull'account del locale.
+  ///
+  /// Qui sta **solo** questo identificativo (`acct_...`), che non è un
+  /// segreto: le chiavi del ristorante non passano mai da Tavolo e non
+  /// esistono in questo database, in chiaro o cifrate.
+  stripeAccountId      String?
+  /// Se Stripe ha finito di verificare il locale e accetta incassi. Lo dice
+  /// Stripe, non noi: si aggiorna dal webhook `account.updated`. Un
+  /// `stripeAccountId` presente non basta — un onboarding lasciato a metà
+  /// produce un account che esiste e rifiuta ogni pagamento.
+  stripeChargesEnabled Boolean   @default(false)
+  stripePayoutsEnabled Boolean   @default(false)
+  stripeOnboardedAt    DateTime?
+  /// L'interruttore generale del pagamento al tavolo per questo locale.
+  qrPaymentsEnabled    Boolean   @default(false)
+  /// Se chiedere la mancia prima di pagare. In Italia non è scontato volerla
+  /// chiedere, e un locale che la trova fuori luogo deve poterla spegnere
+  /// senza rinunciare al resto.
+  tipsEnabled          Boolean   @default(true)
+  /// Le percentuali proposte, in ordine. Vuoto = solo «importo mio».
+  tipPresets           Int[]     @default([5, 10, 15])
+  /// Il minimo che ha senso incassare con carta: sotto questa cifra la
+  /// commissione si mangia il pagamento. In centesimi.
+  minPaymentCents      Int       @default(100)
+
+  agentConversations AgentConversation[]
+  agentUsages        AgentUsage[]
+  ApiToken           ApiToken[]
+  AutomationWorkflow AutomationWorkflow[]
+  BackgroundJob      BackgroundJob[]
+  bookings           Booking[]
+  CallLog            CallLog[]
+  campaigns          Campaign[]
+  ChatSession        ChatSession[]
+  Connector          Connector[]
+  ConsentLog         ConsentLog[]
+  CostEntry          CostEntry[]
+  Coupon             Coupon[]
+  CouponRedemption   CouponRedemption[]
+  experiences        Experience[]
+  FloorDecor         FloorDecor[]
+  GiftCard           GiftCard[]
+  guests             Guest[]
+  GuestProviderLink  GuestProviderLink[]
+  MenuCategory       MenuCategory[]
+  MenuItem           MenuItem[]
+  MenuItemCost       MenuItemCost[]
+  MenuScan           MenuScan[]
+  MessageLog         MessageLog[]
+  MessageTemplate    MessageTemplate[]
+  MissedCall         MissedCall[]
+  Notification       Notification[]
+  Order              Order[]
+  POSConnector       POSConnector[]
+  payments           Payment[]
+  QrCode             QrCode[]
+  Review             Review[]
+  ReviewLink         ReviewLink[]
+  ReviewLinkClick    ReviewLinkClick[]
+  rooms              Room[]
+  shifts             Shift[]
+  StaffShift         StaffShift[]
+  Survey             Survey[]
+  tables             Table[]
+  blocks             TableBlock[]
+  org                Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  WaitlistEntry      WaitlistEntry[]
+  WifiLead           WifiLead[]
+  WifiSession        WifiSession[]
+  members            VenueMembership[]
+  invites            VenueInvite[]
+  waiters            Waiter[]
+  waiterAssignments  WaiterAssignment[]
+  staffAssignments   StaffAssignment[]
+  workShifts         WorkShift[]
+  staffRequests      StaffRequest[]
+  staffContracts     StaffContract[]
+  contractDocuments  ContractDocument[]
+  staffDocuments     StaffDocument[]
+  staffTrainings     StaffTraining[]
+  staffMedicalChecks StaffMedicalCheck[]
+  staffNotes         StaffNote[]
+  demSubscription    DemSubscription?
+  demUsagePeriods    DemUsagePeriod[]
+  demSuppressions    DemSuppression[]
+  demDomain          DemDomain?
+  demSesTenant       DemSesTenant?
+  campaignRecipients CampaignRecipient[]
+  campaignEvents     CampaignEvent[]
 
   @@unique([orgId, slug])
 }
@@ -344,11 +385,37 @@ model Table {
   active           Boolean           @default(true)
   height           Int?
   width            Int?
+  /// Il segreto stampato sull'adesivo del tavolo: chi lo inquadra apre il
+  /// proprio conto senza registrarsi.
+  ///
+  /// Non è l'identificativo del tavolo e non gli assomiglia. Un `cuid()` in
+  /// un URL pubblico si può provare a indovinare e soprattutto si può
+  /// **confrontare**: due QR di due tavoli vicini mostrerebbero due stringhe
+  /// che si somigliano, e da lì si arriva a leggere il conto del tavolo
+  /// accanto. Sono 32 caratteri da un generatore crittografico, vedi
+  /// `lib/pay-token.ts`.
+  ///
+  /// È nullo finché il locale non accende il pagamento al tavolo: un segreto
+  /// generato per ogni tavolo di ogni locale, compresi quelli che non useranno
+  /// mai questa funzione, è superficie d'attacco creata per niente.
+  payQrToken       String?           @unique
+  /// Se questo tavolo accetta pagamenti dal QR. Spento, il link risponde
+  /// «non attivo» invece di 404: il QR resta incollato al tavolo anche quando
+  /// il locale sospende la funzione, e chi lo inquadra merita una frase, non
+  /// una pagina d'errore.
+  payQrEnabled     Boolean           @default(false)
+  /// Quando il segreto è stato rigenerato l'ultima volta. Serve a rispondere
+  /// «da quando il vecchio adesivo non funziona più».
+  payQrRotatedAt   DateTime?
+  /// L'ultima volta che qualcuno ha inquadrato **questo** QR. È la sola prova
+  /// che l'adesivo sul tavolo è ancora leggibile e attaccato dov'era.
+  payQrLastSeenAt  DateTime?
   bookings         Booking[]
   room             Room?             @relation(fields: [roomId], references: [id], onDelete: Restrict)
   venue            Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
   blocks           TableBlock[]
   staffAssignments StaffAssignment[]
+  payments         Payment[]
 
   @@unique([venueId, label])
 }
@@ -382,30 +449,44 @@ model Shift {
 }
 
 model Guest {
-  id                 String               @id @default(cuid())
-  venueId            String
-  firstName          String
-  lastName           String?
-  email              String?
-  phone              String?
-  birthday           DateTime?
-  language           String               @default("it")
-  loyaltyTier        LoyaltyTier          @default(NEW)
-  totalVisits        Int                  @default(0)
-  totalSpend         Decimal              @default(0) @db.Decimal(12, 2)
-  noShowCount        Int                  @default(0)
-  lastVisitAt        DateTime?
-  preferences        Json?
-  allergies          String?
-  privateNotes       String?
-  tags               String[]             @default([])
-  marketingOptIn     Boolean              @default(false)
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  blocked            Boolean              @default(false)
-  blockedAt          DateTime?
-  blockedReason      String?              @db.VarChar(400)
-  loyaltyPoints      Int                  @default(0)
+  id                     String               @id @default(cuid())
+  venueId                String
+  firstName              String
+  lastName               String?
+  email                  String?
+  phone                  String?
+  birthday               DateTime?
+  language               String               @default("it")
+  loyaltyTier            LoyaltyTier          @default(NEW)
+  totalVisits            Int                  @default(0)
+  totalSpend             Decimal              @default(0) @db.Decimal(12, 2)
+  noShowCount            Int                  @default(0)
+  lastVisitAt            DateTime?
+  preferences            Json?
+  allergies              String?
+  privateNotes           String?
+  tags                   String[]             @default([])
+  marketingOptIn         Boolean              @default(false)
+  /// Quando e da dove è arrivato il consenso.
+  ///
+  /// `marketingOptIn` da solo dice «sì» e non dice quando né perché: davanti a
+  /// una contestazione è una casella spuntata da nessuno. `ConsentLog` conserva
+  /// la storia completa; queste due colonne sono l'ultimo stato, perché
+  /// filtrare un segmento non può voler dire leggere il registro di ogni
+  /// cliente.
+  marketingConsentAt     DateTime?
+  /// `wifi`, `prenotazione`, `import`, `manuale`, `widget`.
+  marketingConsentSource String?              @db.VarChar(40)
+  /// Quando si è disiscritto. La scheda resta — un cliente disiscritto è
+  /// sempre un cliente — e il CRM continua a mostrarla: cambia solo che non
+  /// riceve più campagne.
+  unsubscribedAt         DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  blocked                Boolean              @default(false)
+  blockedAt              DateTime?
+  blockedReason          String?              @db.VarChar(400)
+  loyaltyPoints          Int                  @default(0)
   /// Il numero della tessera: l'unico identificativo di questo cliente che è
   /// fatto per **uscire dal database** — stamparlo su una card, metterlo in un
   /// QR, dettarlo al telefono.
@@ -418,22 +499,23 @@ model Guest {
   /// scheda o crea l'ospite (`lib/tessera.ts`), non a tutti in blocco. Un
   /// codice generato per chi non lo userà mai è solo un numero in più da
   /// mantenere unico.
-  loyaltyCardCode    String?              @unique
-  anonymizedAt       DateTime?
-  anonymizedBy       String?
-  bookings           Booking[]
-  ConsentLog         ConsentLog[]
-  Coupon             Coupon[]
-  CouponRedemption   CouponRedemption[]
-  venue              Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  GuestProviderLink  GuestProviderLink[]
-  LoyaltyTransaction LoyaltyTransaction[]
-  MessageLog         MessageLog[]
-  Order              Order[]
-  payments           Payment[]
-  WifiLead           WifiLead[]
-  waitlistEntries    WaitlistEntry[]
-  surveys            Survey[]
+  loyaltyCardCode        String?              @unique
+  anonymizedAt           DateTime?
+  anonymizedBy           String?
+  bookings               Booking[]
+  ConsentLog             ConsentLog[]
+  Coupon                 Coupon[]
+  CouponRedemption       CouponRedemption[]
+  venue                  Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  GuestProviderLink      GuestProviderLink[]
+  LoyaltyTransaction     LoyaltyTransaction[]
+  MessageLog             MessageLog[]
+  Order                  Order[]
+  payments               Payment[]
+  WifiLead               WifiLead[]
+  waitlistEntries        WaitlistEntry[]
+  surveys                Survey[]
+  campaignRecipients     CampaignRecipient[]
 
   @@index([venueId, email])
   @@index([venueId, phone])
@@ -539,30 +621,62 @@ model Ticket {
 }
 
 model Campaign {
-  id             String          @id @default(cuid())
-  venueId        String
-  name           String
-  channel        CampaignChannel @default(EMAIL)
-  segment        Json?
-  subject        String?
-  body           String?
-  contentBlocks  Json?
-  previewText    String?
-  scheduledAt    DateTime?
-  status         CampaignStatus  @default(DRAFT)
-  providerId     String?
-  providerListId Int?
-  sentCount      Int             @default(0)
-  openedCount    Int             @default(0)
+  id                String              @id @default(cuid())
+  venueId           String
+  name              String
+  channel           CampaignChannel     @default(EMAIL)
+  segment           Json?
+  subject           String?
+  body              String?
+  contentBlocks     Json?
+  previewText       String?
+  scheduledAt       DateTime?
+  status            CampaignStatus      @default(DRAFT)
+  providerId        String?
+  providerListId    Int?
+  sentCount         Int                 @default(0)
+  openedCount       Int                 @default(0)
+  /// La fotografia dei destinatari: quanti ne ha questa campagna dopo
+  /// consensi, soppressioni e doppioni. È il numero che si paga, ed è quello
+  /// che si mostra prima di chiedere conferma.
+  recipientsCount   Int                 @default(0)
+  /// Quota ancora impegnata da questa campagna. Scende mentre l'invio
+  /// procede, e torna a zero quando la campagna finisce o viene annullata.
+  reservedCount     Int                 @default(0)
+  /// Il ciclo di consumo da cui la quota è stata presa (`2026-09`): serve a
+  /// restituirla nel posto giusto se la campagna viene annullata dopo un
+  /// cambio di mese.
+  usagePeriod       String?             @db.VarChar(7)
+  deliveredCount    Int                 @default(0)
+  clickedCount      Int                 @default(0)
+  bouncedCount      Int                 @default(0)
+  complainedCount   Int                 @default(0)
+  unsubscribedCount Int                 @default(0)
+  failedCount       Int                 @default(0)
+  /// Quanti invii di prova sono partiti da questa campagna. Contati perché
+  /// costano quota come gli altri, e limitati perché «Invia test» non deve
+  /// diventare il modo di spedire una campagna senza pagarla.
+  testSendCount     Int                 @default(0)
+  /// La cronologia, per l'assistenza e per il cliente: creata, programmata,
+  /// partita, finita.
+  readyAt           DateTime?
+  queuedAt          DateTime?
+  sendingStartedAt  DateTime?
+  sentAt            DateTime?
+  pausedAt          DateTime?
+  cancelledAt       DateTime?
+  cancelledBy       String?
   /// C'era `bookedCount`, che nessuno scriveva: mostrava zero prenotazioni
   /// generate su ogni campagna, cioè una bocciatura inventata. Il merito vero
   /// si calcola da `Booking.campaignId`. Tolto dal codice il 7 settembre 2026
   /// e cancellato dal database subito dopo, in due pubblicazioni separate —
   /// vedi `prisma/migrations/20260907230000_via_bookedcount`.
-  createdAt      DateTime        @default(now())
-  venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  MessageLog     MessageLog[]
-  bookings       Booking[]
+  createdAt         DateTime            @default(now())
+  venue             Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  MessageLog        MessageLog[]
+  bookings          Booking[]
+  recipients        CampaignRecipient[]
+  events            CampaignEvent[]
 
   @@index([venueId, status, createdAt])
 }
@@ -622,28 +736,137 @@ model WebhookEvent {
 }
 
 model Payment {
-  id                String        @id @default(cuid())
-  venueId           String
-  bookingId         String?
-  guestId           String?
-  amountCents       Int
-  currency          String        @default("EUR")
-  kind              PaymentKind   @default(DEPOSIT)
-  status            PaymentStatus @default(PENDING)
-  stripePaymentId   String?
-  createdAt         DateTime      @default(now())
-  refundedAt        DateTime?
-  deletedAt         DateTime?
-  deletedBy         String?
-  fxAmountBaseCents Int?
-  fxBaseCurrency    String?       @db.VarChar(3)
-  fxRateToBase      Decimal?      @db.Decimal(12, 6)
-  booking           Booking?      @relation(fields: [bookingId], references: [id])
-  guest             Guest?        @relation(fields: [guestId], references: [id])
-  venue             Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  id                      String              @id @default(cuid())
+  venueId                 String
+  bookingId               String?
+  guestId                 String?
+  /// Il conto al tavolo che questo pagamento salda, in tutto o in parte.
+  ///
+  /// Un conto ha molti pagamenti — è il punto dell'intera funzione: sei
+  /// persone a tavola sono sei pagamenti sullo stesso `Order`. Quanto è stato
+  /// pagato e quanto resta **non stanno in colonna**: si sommano da qui. Un
+  /// totale copiato accanto alle righe che lo compongono è un totale che
+  /// prima o poi le contraddice, e qui contraddirlo significa incassare due
+  /// volte la stessa cena o non incassarla affatto.
+  orderId                 String?
+  /// Il tavolo da cui è partito. Il conto conosce già la prenotazione, ma non
+  /// il tavolo come riga: `Order.tableLabel` è una stringa, e una stringa non
+  /// risponde a «quanto incassa il tavolo 12».
+  tableId                 String?
+  /// Il totale della transazione: quello che il cliente vede addebitato, ed è
+  /// **conto + mancia**.
+  amountCents             Int
+  /// Quanto di quel totale è mancia.
+  ///
+  /// Il conto si ricava per differenza — `amountCents - tipCents` — invece di
+  /// stare in una terza colonna. Tre numeri di cui uno è la somma degli altri
+  /// due sono un'occasione di scriverne uno sbagliato: il giorno in cui
+  /// `billCents + tipCents != amountCents`, nessuno saprebbe quale dei tre
+  /// credere, e la risposta cambierebbe il residuo del tavolo.
+  tipCents                Int                 @default(0)
+  currency                String              @default("EUR")
+  kind                    PaymentKind         @default(DEPOSIT)
+  status                  PaymentStatus       @default(PENDING)
+  stripePaymentId         String?
+  /// La sessione di pagamento di Stripe. È unica perché è la chiave con cui
+  /// si ritrova il pagamento quando arriva il webhook, ed è il motivo per cui
+  /// lo stesso evento consegnato due volte non incassa due volte.
+  stripeCheckoutSessionId String?             @unique
+  /// Come ha pagato, come lo racconta Stripe: `card`, `apple_pay`, `link`.
+  /// Serve al locale per riconciliare col proprio estratto conto.
+  paymentMethod           String?             @db.VarChar(40)
+  /// L'indirizzo che il cliente ha lasciato per la ricevuta, se l'ha lasciato.
+  /// È facoltativo di proposito: chiedere un'email per poter pagare il conto
+  /// che si è già consumato sarebbe raccogliere contatti con la leva
+  /// sbagliata.
+  customerEmail           String?             @db.VarChar(200)
+  /// Quando il denaro è stato confermato **da Stripe**. Diverso da
+  /// `createdAt`, che è quando il cliente ha premuto «paga»: fra i due c'è il
+  /// tempo in cui il pagamento poteva ancora fallire.
+  paidAt                  DateTime?
+  failedAt                DateTime?
+  /// Fino a quando questo tentativo tiene impegnato il residuo del conto.
+  ///
+  /// Un pagamento avviato e mai concluso — il cliente chiude la pagina di
+  /// Stripe, o il telefono muore — bloccherebbe per sempre la sua parte di
+  /// conto, e gli altri commensali resterebbero davanti a un residuo che non
+  /// possono pagare. Scaduto, quanto era impegnato torna disponibile.
+  expiresAt               DateTime?
+  /// Quanto è già stato restituito, in centesimi: un rimborso parziale non è
+  /// un rimborso, e segnare solo `REFUNDED` cancellerebbe dall'incasso anche
+  /// la parte che il locale ha tenuto.
+  refundedCents           Int                 @default(0)
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @default(now()) @updatedAt
+  refundedAt              DateTime?
+  deletedAt               DateTime?
+  deletedBy               String?
+  fxAmountBaseCents       Int?
+  fxBaseCurrency          String?             @db.VarChar(3)
+  fxRateToBase            Decimal?            @db.Decimal(12, 6)
+  booking                 Booking?            @relation(fields: [bookingId], references: [id])
+  guest                   Guest?              @relation(fields: [guestId], references: [id])
+  venue                   Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  order                   Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  table                   Table?              @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  allocations             PaymentAllocation[]
 
   @@index([venueId, createdAt])
   @@index([venueId, deletedAt])
+  /// L'indice che regge il calcolo del residuo: «tutti i pagamenti di questo
+  /// conto, per stato». Lo si interroga a ogni apertura della pagina pubblica
+  /// e dentro ogni transazione che incassa.
+  @@index([orderId, status])
+  @@index([tableId, createdAt])
+}
+
+/// Un pezzo di conto **impegnato** da un tentativo di pagamento.
+///
+/// Esiste per una scena precisa: due persone allo stesso tavolo selezionano
+/// entrambe la stessa bottiglia e premono «paga» a pochi secondi di distanza.
+/// Senza una riga che dica «questa unità è già di qualcuno», Stripe incassa
+/// due volte lo stesso Barolo — e il locale se ne accorge dal reclamo.
+///
+/// La quantità è per **unità**, non per riga: tre calici su una riga sola
+/// devono poter essere pagati da tre persone diverse, che è il motivo per cui
+/// qui c'è `quantity` e non un semplice legame all'`OrderItem`.
+///
+/// Le prenotazioni scadono da sole (vedi `Payment.expiresAt`): un impegno che
+/// non si libera mai è peggio di nessun impegno, perché blocca il tavolo
+/// invece di proteggerlo.
+model PaymentAllocation {
+  id          String           @id @default(cuid())
+  paymentId   String
+  orderId     String
+  orderItemId String
+  /// Quante unità di quella riga: 1 dei 3 calici.
+  quantity    Int
+  /// Quanto valgono quelle unità, fotografato adesso. Se il cameriere corregge
+  /// il prezzo della riga mentre il cliente è sulla pagina di Stripe, si
+  /// incassa quello che gli è stato mostrato.
+  amountCents Int
+  status      AllocationStatus @default(RESERVED)
+  createdAt   DateTime         @default(now())
+  payment     Payment          @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  order       Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem   OrderItem        @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  /// «Quante unità di questa riga sono già prese»: la domanda di ogni
+  /// apertura della pagina e di ogni tentativo di pagamento.
+  @@index([orderItemId, status])
+  @@index([orderId, status])
+  @@index([paymentId])
+}
+
+enum AllocationStatus {
+  /// Impegnata da un pagamento in corso, non ancora incassata.
+  RESERVED
+  /// Pagata: da qui non torna più indietro se non con un rimborso.
+  PAID
+  /// Liberata perché il pagamento è stato abbandonato o è fallito.
+  RELEASED
+  /// Liberata perché nessuno l'ha conclusa in tempo.
+  EXPIRED
 }
 
 model ApiToken {
@@ -1196,8 +1419,8 @@ model Notification {
 }
 
 model Order {
-  id            String        @id @default(cuid())
-  reference     String        @unique
+  id            String              @id @default(cuid())
+  reference     String              @unique
   venueId       String
   guestId       String?
   /// La prenotazione a cui questo conto appartiene, quando è un conto al
@@ -1205,9 +1428,9 @@ model Order {
   /// non si poteva ricondurre alla serata di nessuno — e sono i coperti di
   /// una prenotazione a trasformare un totale in un incasso attribuibile.
   bookingId     String?
-  kind          OrderKind     @default(TAKEAWAY)
-  status        OrderStatus   @default(RECEIVED)
-  paymentStatus PaymentStatus @default(PENDING)
+  kind          OrderKind           @default(TAKEAWAY)
+  status        OrderStatus         @default(RECEIVED)
+  paymentStatus PaymentStatus       @default(PENDING)
   /// Obbligatori per l'asporto e la consegna, senza senso per un conto al
   /// tavolo: lì il cliente è la prenotazione. Erano `NOT NULL`, e l'unico modo
   /// di aprire un conto al tavolo sarebbe stato inventare un nome e un
@@ -1218,21 +1441,23 @@ model Order {
   email         String?
   address       String?
   scheduledAt   DateTime
-  totalCents    Int           @default(0)
-  currency      String        @default("EUR")
+  totalCents    Int                 @default(0)
+  currency      String              @default("EUR")
   notes         String?
   stripeId      String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
   preparedAt    DateTime?
   readyAt       DateTime?
   completedAt   DateTime?
   cancelledAt   DateTime?
-  tableLabel    String?       @db.VarChar(40)
-  Guest         Guest?        @relation(fields: [guestId], references: [id])
-  Venue         Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  booking       Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  tableLabel    String?             @db.VarChar(40)
+  Guest         Guest?              @relation(fields: [guestId], references: [id])
+  Venue         Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  booking       Booking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   OrderItem     OrderItem[]
+  payments      Payment[]
+  allocations   PaymentAllocation[]
 
   @@index([venueId, createdAt])
   @@index([venueId, status, scheduledAt])
@@ -1240,15 +1465,16 @@ model Order {
 }
 
 model OrderItem {
-  id         String    @id @default(cuid())
-  orderId    String
-  menuItemId String?
-  name       String
-  priceCents Int
-  quantity   Int       @default(1)
-  notes      String?
-  MenuItem   MenuItem? @relation(fields: [menuItemId], references: [id])
-  Order      Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id          String              @id @default(cuid())
+  orderId     String
+  menuItemId  String?
+  name        String
+  priceCents  Int
+  quantity    Int                 @default(1)
+  notes       String?
+  MenuItem    MenuItem?           @relation(fields: [menuItemId], references: [id])
+  Order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  allocations PaymentAllocation[]
 
   @@index([orderId])
 }
@@ -2143,13 +2369,24 @@ enum CampaignChannel {
 
 enum CampaignStatus {
   DRAFT
+  /// Contenuto e destinatari decisi: manca solo il via. È lo stato in cui la
+  /// campagna ha una fotografia dei destinatari e un costo noto.
+  READY
   SCHEDULED
-  /// Presa in carico dalla coda: i contatti si stanno sincronizzando.
+  /// In coda: la quota è riservata, l'invio non è ancora cominciato.
+  QUEUED
+  /// Presa in carico dalla coda: i messaggi stanno partendo.
   SENDING
   SENT
+  /// Fermata a metà — da chi la manda o da una protezione della reputazione.
+  /// Riprende da dove era: i destinatari già serviti non si riservono.
+  PAUSED
   /// La coda ha esaurito i tentativi. Lo stato esiste perché «inviata» su una
   /// campagna che non e' partita e' la bugia peggiore che possa dire.
   FAILED
+  /// Annullata prima di partire. Resta in elenco: una campagna sparita è una
+  /// domanda senza risposta fra un mese.
+  CANCELLED
   ARCHIVED
 }
 
@@ -2159,13 +2396,32 @@ enum PaymentKind {
   TICKET
   REFUND
   PACKAGE
+  /// Un pagamento fatto dal cliente al tavolo, inquadrando il QR.
+  /// Vedi `server/pagamenti-tavolo.ts`.
+  TABLE_QR
 }
 
+/// Gli stati di un pagamento.
+///
+/// I primi quattro esistevano per le caparre, dove fra «creato» e «riuscito»
+/// non c'era niente da raccontare: le segnava a mano un umano. Un pagamento
+/// con carta ha invece una vita in mezzo — il cliente è sulla pagina di
+/// Stripe, il denaro è impegnato e non ancora incassato — e quel momento va
+/// nominato, perché è esattamente il momento in cui **un altro commensale non
+/// deve poter pagare la stessa cosa**.
 enum PaymentStatus {
   PENDING
+  /// Il cliente è sulla pagina di pagamento: gli importi sono impegnati.
+  PROCESSING
   SUCCEEDED
   FAILED
+  /// Abbandonato: il cliente è tornato indietro senza pagare.
+  CANCELLED
+  /// Nessuno ha completato entro il tempo massimo, e quanto era impegnato
+  /// torna disponibile per gli altri.
+  EXPIRED
   REFUNDED
+  PARTIALLY_REFUNDED
 }
 
 enum AutomationRunStatus {
@@ -2394,6 +2650,24 @@ enum NotificationKind {
   VIP_UNASSIGNED
   STAFF_CONTRACT_EXPIRING
   STAFF_CONTRACT_EXPIRED
+  /// Un cliente ha pagato dal tavolo col QR. È denaro che si muove senza che
+  /// nessuno in sala l'abbia toccato: se non lo dice una notifica, il locale
+  /// lo scopre solo andando a guardare.
+  TABLE_PAYMENT
+  /// Il tavolo ha saldato tutto: si può sparecchiare senza passare in cassa.
+  TABLE_SETTLED
+  /// Le soglie del consumo DEM. Tre categorie e non una sola con un numero
+  /// dentro: la campanella le mostra con titoli diversi, e «hai finito» non è
+  /// una versione più grande di «ti stai avvicinando».
+  DEM_QUOTA_WARNING
+  DEM_QUOTA_NEAR_LIMIT
+  DEM_QUOTA_EXHAUSTED
+  DEM_DOMAIN_VERIFIED
+  DEM_DOMAIN_PROBLEM
+  DEM_CAMPAIGN_SENT
+  /// Invii fermati per proteggere la reputazione del dominio.
+  DEM_SENDING_PAUSED
+  DEM_PAYMENT_FAILED
 }
 
 enum OrderKind {
@@ -2600,5 +2874,415 @@ enum BackgroundJobStatus {
   DONE
   /// Tentativi esauriti: resta in tabella, perché un invio non riuscito che
   /// scompare è peggio di uno che resta visibile.
+  FAILED
+}
+
+// ==========================================================================
+// DEM — piani, consumo, invio, dominio
+// --------------------------------------------------------------------------
+// Il modulo campagne esisteva già (Campaign, Guest, MessageLog, ConsentLog) e
+// resta dov'è: qui si aggiunge ciò che mancava per farne un prodotto vendibile
+// — quanto si può inviare, quanto è stato inviato, a chi esattamente, com'è
+// andata, e da quale dominio si esce.
+//
+// Una regola attraversa tutte queste tabelle: **ogni riga appartiene a un
+// locale**. Non c'è una sola query di questo modulo che possa rispondere senza
+// `venueId`, ed è quello che impedisce a un ristorante di leggere le campagne
+// di un altro cambiando un identificativo nell'indirizzo.
+// ==========================================================================
+
+/// Un piano DEM, così come lo vende Foodtech.
+///
+/// Sta in tabella e non in una costante perché i prezzi cambiano, e cambiarli
+/// in un file significa una pubblicazione per ogni ritocco commerciale. Qui li
+/// cambia il Super Admin, e le sottoscrizioni già attive non si toccano da sole
+/// (vedi la nota su `stripePriceId`).
+model DemPlan {
+  id            String            @id @default(cuid())
+  /// Il nome stabile su cui il codice può fare affidamento: `incluso`,
+  /// `start`, `business`, `pro`, `premium`. Il nome visibile invece si cambia
+  /// quando si vuole, ed è `name`.
+  slug          String            @unique @db.VarChar(40)
+  name          String            @db.VarChar(80)
+  /// Quanti destinatari al mese. Non campagne: destinatari.
+  monthlyEmails Int
+  priceCents    Int               @default(0)
+  currency      String            @default("EUR") @db.VarChar(3)
+  /// Mensile oggi; annuale è già esprimibile senza toccare lo schema.
+  interval      DemPlanInterval   @default(MONTH)
+  /// Il prezzo corrispondente su Stripe. Nullo sul piano incluso, che non si
+  /// compra.
+  ///
+  /// Cambiare il prezzo di un piano **non** cambia gli abbonamenti già
+  /// attivi: su Stripe un prezzo è immutabile, se ne crea uno nuovo e si
+  /// migrano le sottoscrizioni con una procedura esplicita. Scriverlo qui e
+  /// sperare non basta, e il Super Admin lo legge scritto accanto al campo.
+  stripePriceId String?           @db.VarChar(120)
+  active        Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  description   String?           @db.VarChar(300)
+  /// «Più scelto», «Consigliato». Nullo quasi sempre.
+  badge         String?           @db.VarChar(40)
+  /// I piani `PRIVATE` esistono ma non compaiono nel confronto: è il posto per
+  /// un enterprise trattato a mano, senza inventare una seconda tabella.
+  visibility    DemPlanVisibility @default(PUBLIC)
+  /// Spazio per ciò che verrà — sconti, pacchetti extra, promozioni a tempo —
+  /// senza che una colonna vuota per cliente stia in tabella da oggi.
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  subscriptions DemSubscription[] @relation("DemSubscriptionPlan")
+  scheduledFor  DemSubscription[] @relation("DemSubscriptionScheduledPlan")
+
+  @@index([active, sortOrder])
+}
+
+enum DemPlanInterval {
+  MONTH
+  YEAR
+}
+
+enum DemPlanVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+/// Il piano di un locale, e lo stato del suo abbonamento.
+///
+/// Stripe non è la verità: è il modo con cui si incassa. La verità applicativa
+/// — quale piano vale adesso, quanto si può inviare, se gli invii sono sospesi
+/// — sta qui, perché un webhook che non arriva non deve poter spegnere un
+/// prodotto.
+model DemSubscription {
+  id                   String                @id @default(cuid())
+  venueId              String                @unique
+  planId               String
+  status               DemSubscriptionStatus @default(ACTIVE)
+  /// La quota concordata con questo cliente, quando è diversa da quella del
+  /// suo piano. Nulla quasi sempre: quando c'è, vince sul piano.
+  customMonthlyLimit   Int?
+  /// Il piano che entrerà in vigore al prossimo rinnovo.
+  ///
+  /// È il downgrade: chi passa da Business a Start ha pagato Business fino a
+  /// fine periodo e Business deve restare acceso fino a lì. Togliergli la
+  /// quota il giorno del clic sarebbe vendergli un mese e dargliene mezzo.
+  scheduledPlanId      String?
+  scheduledChangeAt    DateTime?
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean               @default(false)
+  stripeCustomerId     String?               @db.VarChar(120)
+  stripeSubscriptionId String?               @unique @db.VarChar(120)
+  stripePriceId        String?               @db.VarChar(120)
+  /// Invii fermi: o l'abbiamo deciso noi per proteggere la reputazione, o li
+  /// ha fermati il fornitore. In entrambi i casi non si cancella niente —
+  /// campagne, contatti e statistiche restano — si smette solo di inviare.
+  sendingPausedAt      DateTime?
+  sendingPausedReason  String?               @db.VarChar(200)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  venue         Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  plan          DemPlan  @relation("DemSubscriptionPlan", fields: [planId], references: [id])
+  scheduledPlan DemPlan? @relation("DemSubscriptionScheduledPlan", fields: [scheduledPlanId], references: [id])
+
+  @@index([status, currentPeriodEnd])
+}
+
+enum DemSubscriptionStatus {
+  ACTIVE
+  /// Pagamento non riuscito: il piano resta, l'invio continua entro il periodo
+  /// già pagato, e al cliente lo si dice.
+  PAST_DUE
+  CANCELLED
+  /// Checkout aperto e non concluso: non dà diritto a niente.
+  INCOMPLETE
+}
+
+/// Quanto è stato inviato in un mese, e quanto era il limite in quel mese.
+///
+/// Una riga per locale e per ciclo, e le righe vecchie **non si cancellano**:
+/// «settembre 32.480, agosto 28.920» è una domanda che un cliente fa, e un
+/// contatore azzerato al rinnovo non sa rispondere.
+///
+/// `monthlyLimit` è congelato nella riga e non letto dal piano: se a ottobre il
+/// prezzo di Business cambia, settembre deve continuare a dire quale limite
+/// aveva settembre.
+model DemUsagePeriod {
+  id           String   @id @default(cuid())
+  venueId      String
+  /// `2026-09`, come già fa AgentUsage: ordinabile come stringa, leggibile a
+  /// occhio in una query fatta a mano.
+  yearMonth    String   @db.VarChar(7)
+  periodStart  DateTime
+  periodEnd    DateTime
+  monthlyLimit Int
+  planSlug     String   @db.VarChar(40)
+  /// Invii già entrati nel processo di invio verso il fornitore.
+  used         Int      @default(0)
+  /// Invii impegnati da campagne programmate o in corso, non ancora partiti.
+  ///
+  /// Senza questa colonna due schede aperte insieme programmano due campagne
+  /// da ottomila invii su diecimila disponibili, e partono entrambe: il
+  /// controllo «ce n'è abbastanza?» sarebbe vero per tutte e due nello stesso
+  /// istante. Disponibili = limite − usati − riservati.
+  reserved     Int      @default(0)
+  /// Le soglie di avviso già comunicate in questo ciclo (80, 95, 100).
+  /// Un avviso che si ripete a ogni invio smette di essere un avviso.
+  notified     Int[]    @default([])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, yearMonth])
+  @@index([venueId, periodStart])
+}
+
+/// Un destinatario di una campagna, congelato prima della partenza.
+///
+/// È la fotografia di §3: chi riceve davvero questa email. Si costruisce una
+/// volta, prima di riservare la quota, ed è quella che si paga — non il
+/// segmento, che intanto può cambiare.
+///
+/// L'unicità su `[campaignId, email]` è il deduplicatore: due contatti con lo
+/// stesso indirizzo dentro lo stesso segmento sono una email sola, e un invio
+/// solo da scalare.
+model CampaignRecipient {
+  id                String                  @id @default(cuid())
+  campaignId        String
+  venueId           String
+  guestId           String?
+  email             String                  @db.VarChar(320)
+  /// I dati personali al momento dello scatto: servono a comporre l'email
+  /// anche se nel frattempo la scheda cliente cambia o viene anonimizzata.
+  firstName         String?                 @db.VarChar(120)
+  lastName          String?                 @db.VarChar(120)
+  vars              Json?
+  status            CampaignRecipientStatus @default(PENDING)
+  /// L'identificativo che il fornitore restituisce accettando il messaggio: è
+  /// il filo che lega questa riga agli eventi che arriveranno dopo.
+  providerMessageId String?                 @db.VarChar(200)
+  queuedAt          DateTime?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  openedAt          DateTime?
+  clickedAt         DateTime?
+  bouncedAt         DateTime?
+  complainedAt      DateTime?
+  unsubscribedAt    DateTime?
+  failedAt          DateTime?
+  /// Quante volte, non solo se: l'interfaccia mostra «aperta», ma una metrica
+  /// corretta ha bisogno del conteggio.
+  openCount         Int                     @default(0)
+  clickCount        Int                     @default(0)
+  error             String?                 @db.VarChar(300)
+  createdAt         DateTime                @default(now())
+
+  campaign Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  venue    Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest    Guest?          @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  events   CampaignEvent[]
+
+  @@unique([campaignId, email])
+  @@index([campaignId, status])
+  @@index([venueId, createdAt])
+  @@index([providerMessageId])
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  SENDING
+  SENT
+  DELIVERED
+  BOUNCED
+  COMPLAINED
+  FAILED
+  /// Escluso prima di partire: disiscritto, soppresso o senza consenso al
+  /// momento del controllo finale. Non è un errore, e non costa quota.
+  SKIPPED
+}
+
+/// Un evento del fornitore, salvato una volta sola.
+///
+/// Amazon consegna lo stesso evento più volte: è dichiarato, non è un guasto.
+/// Se le statistiche si incrementassero a ogni consegna, un'apertura
+/// riconsegnata tre volte diventerebbe tre aperture. `providerEventId` unico è
+/// il modo più economico di rendere l'operazione ripetibile: la seconda
+/// scrittura sbatte contro il vincolo e non succede niente.
+model CampaignEvent {
+  id              String       @id @default(cuid())
+  venueId         String
+  campaignId      String
+  recipientId     String?
+  type            DemEventType
+  providerEventId String       @unique @db.VarChar(250)
+  occurredAt      DateTime
+  /// Per i click: dove si è andati.
+  url             String?      @db.VarChar(600)
+  /// Il sottotipo tecnico — `Permanent/General`, `abuse` — che al cliente non
+  /// si mostra e all'assistenza serve.
+  detail          String?      @db.VarChar(300)
+  createdAt       DateTime     @default(now())
+
+  venue     Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  campaign  Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipient CampaignRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, type])
+  @@index([venueId, occurredAt])
+  @@index([recipientId, type])
+}
+
+enum DemEventType {
+  SEND
+  DELIVERY
+  OPEN
+  CLICK
+  BOUNCE
+  COMPLAINT
+  DELIVERY_DELAY
+  REJECT
+  SUBSCRIPTION
+  RENDERING_FAILURE
+}
+
+/// Gli indirizzi a cui questo locale non scrive più.
+///
+/// Separata dal consenso di proposito. `Guest.marketingOptIn` è una scelta del
+/// cliente finale; questa tabella è anche il rifiuto tecnico — un indirizzo che
+/// non esiste, una segnalazione di spam — e vale per un indirizzo, non per una
+/// scheda: la stessa email può stare su due schede doppione, e deve restare
+/// soppressa su entrambe.
+///
+/// È per locale: un indirizzo che rimbalza per il Ristorante A non è un
+/// problema del Ristorante B, e sopprimerlo per tutti significherebbe far
+/// pagare a un cliente la lista sporca di un altro.
+model DemSuppression {
+  id        String               @id @default(cuid())
+  venueId   String
+  email     String               @db.VarChar(320)
+  reason    DemSuppressionReason
+  detail    String?              @db.VarChar(300)
+  /// Chi l'ha messo qui: `ses_bounce`, `unsubscribe_link`, `import`, `manuale`.
+  source    String?              @db.VarChar(60)
+  createdAt DateTime             @default(now())
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, email])
+  @@index([venueId, reason])
+}
+
+enum DemSuppressionReason {
+  HARD_BOUNCE
+  COMPLAINT
+  UNSUBSCRIBE
+  MANUAL
+  INVALID
+}
+
+/// Il dominio da cui escono le newsletter di un locale.
+///
+/// Non il dominio principale del cliente: un **sottodominio** dedicato. Il sito
+/// e la posta aziendale restano dove sono e non si toccano — cambiare gli MX di
+/// `ristorante.it` per mandare una newsletter significa poter spegnere la
+/// casella su cui quel ristorante riceve le prenotazioni.
+model DemDomain {
+  id             String          @id @default(cuid())
+  venueId        String          @unique
+  /// `ristorante.it` — serve solo per proporre il sottodominio e per leggere
+  /// il DMARC, che si pubblica sul dominio organizzativo.
+  rootDomain     String          @db.VarChar(253)
+  /// `news.ristorante.it` — il dominio del mittente.
+  sendingDomain  String          @unique @db.VarChar(253)
+  /// `bounce.news.ristorante.it` — il Return-Path.
+  ///
+  /// Sottodominio **suo**, distinto da quello del mittente: il custom MAIL
+  /// FROM richiede un record MX, e metterlo sullo stesso nome che un domani
+  /// potrebbe ricevere posta è il modo di rompere le due cose insieme.
+  mailFromDomain String?         @db.VarChar(253)
+  /// La parte prima della chiocciola: `newsletter@news.ristorante.it`.
+  fromLocalPart  String          @default("newsletter") @db.VarChar(64)
+  fromName       String?         @db.VarChar(120)
+  /// Dove finiscono le risposte. Separato dal mittente perché nessuno legge
+  /// una casella che serve solo a spedire, e un cliente che risponde a una
+  /// newsletter si aspetta che qualcuno la legga.
+  replyTo        String?         @db.VarChar(320)
+  status         DemDomainStatus @default(PENDING)
+  dkimStatus     DemRecordStatus @default(UNKNOWN)
+  spfStatus      DemRecordStatus @default(UNKNOWN)
+  dmarcStatus    DemRecordStatus @default(UNKNOWN)
+  /// La politica DMARC trovata sul dominio, se c'è. Non la scriviamo noi: il
+  /// cliente potrebbe avere già altri servizi che spediscono per suo conto, e
+  /// sovrascrivere il suo DMARC significherebbe farglieli rifiutare.
+  dmarcPolicy    String?         @db.VarChar(30)
+  /// I record da configurare, come li ha generati il fornitore. Json e non
+  /// colonne: sono tre CNAME oggi, potrebbero essere altro domani, e
+  /// l'interfaccia li mostra in tabella senza doverli conoscere.
+  dnsRecords     Json?
+  lastCheckedAt  DateTime?
+  verifiedAt     DateTime?
+  /// L'errore tecnico per l'assistenza. Al cliente si dice un'altra cosa.
+  lastError      String?         @db.VarChar(400)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+enum DemDomainStatus {
+  PENDING
+  VERIFYING
+  VERIFIED
+  FAILED
+}
+
+enum DemRecordStatus {
+  UNKNOWN
+  PENDING
+  OK
+  MISSING
+  FAILED
+}
+
+/// Lo spazio isolato del locale presso il fornitore di invio.
+///
+/// Sta in una tabella sua e non dentro `DemDomain` perché le due cose hanno
+/// vite diverse: un cliente può cambiare dominio di invio, e il suo spazio —
+/// con dentro la lista dei soppressi e la storia della sua reputazione — non
+/// deve nascere di nuovo da zero.
+///
+/// Il nome è prevedibile e ricavato dall'identificativo del locale, perché
+/// ritrovarlo non deve dipendere da una riga scritta bene.
+model DemSesTenant {
+  id               String          @id @default(cuid())
+  venueId          String          @unique
+  tenantName       String          @unique @db.VarChar(64)
+  configurationSet String          @unique @db.VarChar(64)
+  status           DemTenantStatus @default(ACTIVE)
+  /// Percentuali calcolate all'ultimo controllo: servono all'elenco del Super
+  /// Admin, che altrimenti dovrebbe contare gli eventi di ogni cliente per
+  /// disegnare una riga.
+  bounceRate       Float?
+  complaintRate    Float?
+  lastCheckedAt    DateTime?
+  pausedAt         DateTime?
+  pausedReason     String?         @db.VarChar(200)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+enum DemTenantStatus {
+  ACTIVE
+  /// Fermato da noi o dal fornitore. Non cancella niente.
+  PAUSED
   FAILED
 }

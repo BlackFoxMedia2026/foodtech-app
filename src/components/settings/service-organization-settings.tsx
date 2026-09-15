@@ -6,9 +6,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DoorOpen, LayoutGrid, Pencil, Plus, Trash2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  GruppoImpostazioni,
+  RigaImpostazione,
+  RigaLibera,
+} from "@/components/settings/righe-impostazioni";
 
 type Mode = "ROOMS" | "TABLES";
 
@@ -109,137 +113,171 @@ export function ServiceOrganizationSettings({
     router.refresh();
   }
 
-  const riepilogo =
-    mode === "ROOMS"
-      ? `per sale · ${rooms.length} ${rooms.length === 1 ? "sala" : "sale"}`
-      : `per tavoli · ${tablesCount} ${tablesCount === 1 ? "tavolo" : "tavoli"}`;
-
   return (
-    <Blocco titolo="Organizzazione del servizio" valore={riepilogo}>
-      <BloccoNota>Scegli come suddividere il lavoro dello staff durante il servizio.</BloccoNota>
-      <div className="space-y-5">
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => changeMode("ROOMS")}
-            disabled={switching}
-            className={cn(
-              "flex items-start gap-3 rounded-lg border p-4 text-left transition-colors disabled:opacity-60",
-              mode === "ROOMS" ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
-            )}
-          >
-            <DoorOpen className={cn("mt-0.5 h-5 w-5 shrink-0", mode === "ROOMS" ? "text-accent-strong" : "text-muted-foreground")} />
-            <div>
-              <p className="text-sm font-medium">Per sale</p>
-              <p className="text-xs text-muted-foreground">Assegna lo staff a sale come Sala principale, Dehor, Terrazza.</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => changeMode("TABLES")}
-            disabled={switching}
-            className={cn(
-              "flex items-start gap-3 rounded-lg border p-4 text-left transition-colors disabled:opacity-60",
-              mode === "TABLES" ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
-            )}
-          >
-            <LayoutGrid className={cn("mt-0.5 h-5 w-5 shrink-0", mode === "TABLES" ? "text-accent-strong" : "text-muted-foreground")} />
-            <div>
-              <p className="text-sm font-medium">Per tavoli</p>
-              <p className="text-xs text-muted-foreground">Assegna lo staff a uno o più tavoli specifici.</p>
-            </div>
-          </button>
+    <GruppoImpostazioni
+      titolo="Organizzazione del servizio"
+      descrizione="Come si divide il lavoro dello staff durante il servizio."
+    >
+      {/*
+        Le due modalità erano due riquadri alti mezza schermata, uno accanto
+        all'altro. Sono una scelta fra due, cioè la stessa cosa che altrove nel
+        prodotto è un interruttore: qui restano due bottoni perché i nomi non
+        si spiegano da soli, ma occupano la colonna di destra come qualunque
+        altro controllo, e la differenza fra i due è scritta una volta a
+        sinistra invece di due volte dentro di loro.
+      */}
+      <RigaImpostazione
+        nome="Come si divide il lavoro"
+        descrizione="Per sale, lo staff è assegnato ad ambienti come Sala principale, Dehor, Terrazza. Per tavoli, a uno o più tavoli precisi."
+      >
+        <div
+          role="radiogroup"
+          aria-label="Organizzazione del servizio"
+          className="flex rounded-full border border-border p-1"
+        >
+          {([
+            { valore: "ROOMS", nome: "Per sale", icona: DoorOpen },
+            { valore: "TABLES", nome: "Per tavoli", icona: LayoutGrid },
+          ] as const).map((scelta) => {
+            const Icona = scelta.icona;
+            const attiva = mode === scelta.valore;
+            return (
+              <button
+                key={scelta.valore}
+                type="button"
+                role="radio"
+                aria-checked={attiva}
+                onClick={() => changeMode(scelta.valore)}
+                disabled={switching}
+                className={cn(
+                  "flex min-h-[36px] items-center gap-2 rounded-full px-3 text-sm transition-colors disabled:opacity-60",
+                  attiva
+                    ? "bg-cream font-medium text-clay-ink"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icona className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {scelta.nome}
+              </button>
+            );
+          })}
         </div>
+      </RigaImpostazione>
 
-        {notice && (
-          <p className="rounded-md border border-accent/30 bg-accent/10 p-3 text-xs text-card-foreground">{notice}</p>
-        )}
-        {error && <p className="text-sm text-destructive">{error}</p>}
+      {notice && (
+        <RigaLibera>
+          <p className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-card-foreground">
+            {notice}
+          </p>
+        </RigaLibera>
+      )}
+      {error && (
+        <RigaLibera>
+          <p className="text-sm text-destructive-soft">{error}</p>
+        </RigaLibera>
+      )}
 
-        {mode === "ROOMS" ? (
-          <div className="space-y-2 border-t border-border pt-4">
-            {rooms.length === 0 && <p className="text-sm text-muted-foreground">Nessuna sala configurata ancora.</p>}
-            {rooms.map((room) => (
-              <div key={room.id} className="flex items-center justify-between gap-2 riquadro p-3 text-sm">
-                {editingId === room.id ? (
-                  <div className="flex flex-1 items-center gap-2">
-                    <Input
-                      autoFocus
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveRename(room.id);
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                    />
-                    <Button type="button" size="icon" variant="ghost" onClick={() => saveRename(room.id)}>
-                      <Check className="h-4 w-4" />
+      {mode === "ROOMS" ? (
+        <>
+          {rooms.length === 0 && (
+            <RigaImpostazione
+              nome="Nessuna sala configurata"
+              descrizione="Finché non ce n'è almeno una, lo staff non si può assegnare a niente."
+            />
+          )}
+
+          {rooms.map((room) =>
+            editingId === room.id ? (
+              <RigaImpostazione
+                key={room.id}
+                nome="Nome della sala"
+                htmlFor={`sala-${room.id}`}
+              >
+                <Input
+                  id={`sala-${room.id}`}
+                  autoFocus
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveRename(room.id);
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                  className="w-full sm:w-56"
+                />
+                <Button type="button" size="icon" variant="ghost" aria-label="Salva il nome" onClick={() => saveRename(room.id)}>
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button type="button" size="icon" variant="ghost" aria-label="Annulla" onClick={() => setEditingId(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </RigaImpostazione>
+            ) : (
+              <RigaImpostazione key={room.id} nome={room.name}>
+                {confirmDeleteId === room.id ? (
+                  <>
+                    <span className="text-sm text-muted-foreground">Eliminare?</span>
+                    <Button type="button" size="sm" variant="destructive" onClick={() => confirmDelete(room.id)}>
+                      Elimina
                     </Button>
-                    <Button type="button" size="icon" variant="ghost" onClick={() => setEditingId(null)}>
-                      <X className="h-4 w-4" />
+                    <Button type="button" size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>
+                      Annulla
                     </Button>
-                  </div>
+                  </>
                 ) : (
                   <>
-                    <p className="font-medium">{room.name}</p>
-                    {confirmDeleteId === room.id ? (
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-muted-foreground">Eliminare?</span>
-                        <Button type="button" size="sm" variant="destructive" onClick={() => confirmDelete(room.id)}>
-                          Elimina
-                        </Button>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>
-                          Annulla
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => {
-                            setEditingId(room.id);
-                            setEditingName(room.name);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" onClick={() => setConfirmDeleteId(room.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Rinomina ${room.name}`}
+                      onClick={() => {
+                        setEditingId(room.id);
+                        setEditingName(room.name);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Elimina ${room.name}`}
+                      onClick={() => setConfirmDeleteId(room.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </>
                 )}
-              </div>
-            ))}
+              </RigaImpostazione>
+            ),
+          )}
 
-            <form onSubmit={addRoom} method="post" className="flex items-center gap-2 pt-1">
+          <RigaImpostazione nome="Aggiungi una sala" htmlFor="nuova-sala">
+            <form onSubmit={addRoom} method="post" className="flex w-full items-center gap-2 md:w-auto">
               <Input
+                id="nuova-sala"
                 value={newRoomName}
                 onChange={(e) => setNewRoomName(e.target.value)}
                 placeholder="Es. Sala privata"
+                className="w-full sm:w-56"
               />
-              <Button type="submit" variant="outline" disabled={adding || !newRoomName.trim()}>
-                <Plus className="h-4 w-4" /> Aggiungi sala
+              <Button type="submit" variant="outline" size="sm" disabled={adding || !newRoomName.trim()}>
+                <Plus className="h-4 w-4" /> Aggiungi
               </Button>
             </form>
-          </div>
-        ) : (
-          <div className="space-y-2 border-t border-border pt-4 text-sm">
-            <p className="text-muted-foreground">
-              {tablesCount > 0
-                ? `${tablesCount} tavoli configurati in Sala.`
-                : "Nessun tavolo configurato ancora."}
-            </p>
-            <Link href="/floor" className="text-accent-strong underline-offset-4 hover:underline">
-              Gestisci i tavoli nella mappa sala →
-            </Link>
-          </div>
-        )}
-      </div>
-    </Blocco>
+          </RigaImpostazione>
+        </>
+      ) : (
+        <RigaImpostazione
+          nome="Tavoli configurati"
+          descrizione="I tavoli si disegnano nella mappa della sala, non qui: lì si vede dove stanno."
+        >
+          <span className="text-sm tabular-nums text-card-foreground/80">{tablesCount}</span>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/floor">Apri la mappa sala</Link>
+          </Button>
+        </RigaImpostazione>
+      )}
+    </GruppoImpostazioni>
   );
 }

@@ -249,3 +249,90 @@ export function etichettaGiornoBreve(dateKey: string): string {
 
 /** Le iniziali dei sette giorni, per la testata del mini-calendario. */
 export const INIZIALI_GIORNI = ["L", "M", "M", "G", "V", "S", "D"];
+
+/* ------------------------------------------------------------------ *
+ *  I giorni della settimana, come li numera il database
+ * ------------------------------------------------------------------ */
+
+/**
+ * I sette giorni **nell'ordine del prodotto** — si comincia di lunedì — con
+ * accanto il numero con cui li scrive il database: 0 = domenica, come
+ * `Date.getUTCDay()` e `Shift.weekday`.
+ *
+ * I due ordini non coincidono, e l'unico modo di non sbagliarli è non
+ * riscriverli mai a mano: chi li mostra scorre questo elenco, chi li salva usa
+ * `weekday`.
+ */
+export const GIORNI_SETTIMANA = [
+  { weekday: 1, breve: "lun", nome: "lunedì", articolo: "il" },
+  { weekday: 2, breve: "mar", nome: "martedì", articolo: "il" },
+  { weekday: 3, breve: "mer", nome: "mercoledì", articolo: "il" },
+  { weekday: 4, breve: "gio", nome: "giovedì", articolo: "il" },
+  { weekday: 5, breve: "ven", nome: "venerdì", articolo: "il" },
+  { weekday: 6, breve: "sab", nome: "sabato", articolo: "il" },
+  { weekday: 0, breve: "dom", nome: "domenica", articolo: "la" },
+] as const;
+
+/** Gli stessi giorni, ordinati come li mostriamo: lunedì per primo. */
+export function ordinaGiorni(weekdays: number[]): number[] {
+  return GIORNI_SETTIMANA.filter((g) => weekdays.includes(g.weekday)).map((g) => g.weekday);
+}
+
+/**
+ * I giorni di una fascia, detti come li direbbe una persona: «tutti i
+ * giorni», «da lunedì a venerdì», «solo la domenica», e altrimenti l'elenco
+ * corto «lun · sab · dom».
+ *
+ * Sette caselle spuntate sotto ogni turno sarebbero sette caselle da leggere
+ * per capire una cosa che in italiano è una parola.
+ */
+export function descrizioneGiorni(weekdays: number[]): string {
+  const scelti = GIORNI_SETTIMANA.filter((g) => weekdays.includes(g.weekday));
+  if (scelti.length === 0) return "nessun giorno";
+  if (scelti.length === 7) return "tutti i giorni";
+  if (scelti.length === 1) return `solo ${scelti[0].articolo} ${scelti[0].nome}`;
+
+  const primo = GIORNI_SETTIMANA.indexOf(scelti[0]);
+  const ultimo = GIORNI_SETTIMANA.indexOf(scelti[scelti.length - 1]);
+  if (ultimo - primo === scelti.length - 1) {
+    return `da ${scelti[0].nome} a ${scelti[scelti.length - 1].nome}`;
+  }
+  return scelti.map((g) => g.breve).join(" · ");
+}
+
+/**
+ * Una fascia di servizio — «Cena, 19:00–23:00, 90 coperti, ogni 15 minuti,
+ * tutti i giorni» — cioè le righe `Shift` che dicono la stessa cosa in giorni
+ * diversi, raccolte in una.
+ *
+ * Nel database ogni giorno ha la sua riga, perché le prenotazioni si
+ * interrogano per giorno; ma un ristoratore non configura sette cene, ne
+ * configura una che si fa sette volte. `ids` tiene il filo fra le due letture:
+ * sono le righe da cui questa fascia è stata ricavata, e quelle che un
+ * salvataggio deve aggiornare.
+ */
+export type FasciaServizio = {
+  ids: string[];
+  nome: string;
+  inizioMinuti: number;
+  fineMinuti: number;
+  coperti: number;
+  minutiSlot: number;
+  /** I `weekday` in cui questa fascia si fa, già in ordine da lunedì. */
+  giorni: number[];
+};
+
+/**
+ * Quanti orari propone davvero una fascia, e qual è l'ultimo.
+ *
+ * Il motore delle disponibilità genera gli orari da `startMinute` a
+ * `endMinute` **inclusi** (vedi `slotsForDay` in `server/availability.ts`):
+ * «alle 15:00» non è l'ora di chiusura, è l'ultimo orario che un cliente può
+ * scegliere. È la sola cosa di questa schermata che non si indovina, quindi
+ * si scrive sotto i campi mentre li si tocca.
+ */
+export function orariProposti(inizioMinuti: number, fineMinuti: number, minutiSlot: number) {
+  const passo = Math.max(5, minutiSlot);
+  const quanti = Math.floor((fineMinuti - inizioMinuti) / passo) + 1;
+  return { quanti, ultimo: inizioMinuti + (quanti - 1) * passo };
+}

@@ -66,3 +66,36 @@ export function shiftDateKey(dateKey: string, days: number): string {
   base.setUTCDate(base.getUTCDate() + days);
   return base.toISOString().slice(0, 10);
 }
+
+/** Formattatori d'orario riusati, per fuso. Come sopra: costruirne uno a ogni
+ *  chiamata costa, e qui si chiama una volta per tavolo a ogni aggiornamento. */
+const oreFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * L'ora di un istante **nel fuso del locale**, come `20:30`.
+ *
+ * Era scritta dentro la mappa del Servizio, e il pannello del tavolo ne
+ * avrebbe avuta una seconda copia: due funzioni che devono dare la stessa
+ * risposta sulla stessa riga dello stesso schermo. `formatTime` di `lib/utils`
+ * non serve — usa il fuso di chi guarda, e un gestore che apre la sala dal
+ * telefono in vacanza leggerebbe orari che in sala non esistono.
+ */
+export function oraInVenue(
+  instant: Date | string,
+  timeZone: string = DEFAULT_VENUE_TIMEZONE,
+): string {
+  let f = oreFormatters.get(timeZone);
+  if (!f) {
+    try {
+      f = new Intl.DateTimeFormat("it-IT", { timeZone, hour: "2-digit", minute: "2-digit" });
+    } catch {
+      f = new Intl.DateTimeFormat("it-IT", {
+        timeZone: DEFAULT_VENUE_TIMEZONE,
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+    oreFormatters.set(timeZone, f);
+  }
+  return f.format(typeof instant === "string" ? new Date(instant) : instant);
+}

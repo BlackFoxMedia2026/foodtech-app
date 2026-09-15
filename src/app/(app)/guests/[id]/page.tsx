@@ -1,20 +1,12 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  AlertTriangle,
-  ArrowLeft,
-  Cake,
   CreditCard,
-  Download,
   History,
-  Mail,
   NotebookPen,
-  Phone,
   Sparkles,
   TrendingUp,
   UtensilsCrossed,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getGuestProfile } from "@/server/guest-intelligence";
 import { getCrmOspite } from "@/server/guest-crm";
@@ -22,13 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { Etichetta } from "@/components/ui/etichetta";
 import { Base } from "@/components/ui/base-del-numero";
 import { Blocco } from "@/components/ui/blocco";
-import { Button } from "@/components/ui/button";
-import { LoyaltyPill } from "@/components/guests/loyalty-pill";
-import { EditGuestDialog } from "@/components/guests/edit-guest-dialog";
-import { TagEditor } from "@/components/guests/tag-editor";
+import { TestataOspite } from "@/components/guests/testata-ospite";
 import { FidelityCard } from "@/components/guests/fidelity-card";
 import { VisiteChart } from "@/components/guests/visite-chart";
 import { NoteServizio } from "@/components/guests/note-servizio";
+import { TagEditor } from "@/components/guests/tag-editor";
 import {
   AbitudiniCliente,
   CategoriePreferite,
@@ -41,29 +31,18 @@ import {
 import { can, getActiveVenue } from "@/lib/tenant";
 import { getSaldoFedelta } from "@/server/loyalty";
 import { LoyaltyPanel } from "@/components/guests/loyalty-panel";
-import { ErasureDialog } from "@/components/guests/erasure-dialog";
 import { getGuest } from "@/server/guests";
 import { assicuraCodiceTessera, qrTessera } from "@/server/tessera-fedelta";
 import { formattaCodiceTessera } from "@/lib/tessera";
-import { formatCurrency, formatDate, formatDateTime, initials } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { notaPreferenze } from "@/lib/cosa-sapere";
 
+import {
+  ETICHETTA_TIPO as PAYMENT_KIND_LABEL,
+  TONO_STATO as PAYMENT_STATUS_TONE,
+} from "@/lib/pagamento-vista";
+
 export const dynamic = "force-dynamic";
-
-const PAYMENT_KIND_LABEL = {
-  DEPOSIT: "Caparra",
-  PREAUTH: "Preautorizzazione",
-  TICKET: "Ticket",
-  REFUND: "Rimborso",
-  PACKAGE: "Pacchetto",
-} as const;
-
-const PAYMENT_STATUS_TONE = {
-  PENDING: "warning",
-  SUCCEEDED: "success",
-  FAILED: "danger",
-  REFUNDED: "neutral",
-} as const;
 
 /**
  * La scheda cliente: **chi è, quanto torna, quanto spende, cosa compra**.
@@ -122,124 +101,30 @@ export default async function GuestDetail({ params }: { params: { id: string } }
   const valuta = ctx.venue.currency;
 
   return (
-    <div className="schermo animate-fade-in gap-4">
-      <Button asChild variant="ghost" size="sm" className="fissa self-start">
-        <Link href="/guests"><ArrowLeft className="h-4 w-4" /> CRM ospiti</Link>
-      </Button>
-
+    <div className="schermo animate-fade-in gap-3">
       {/* ------------------------------------------------------------ testata */}
-      <header className="fissa flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-        <div className="flex min-w-0 items-start gap-4">
-          <Avatar className="h-16 w-16 shrink-0">
-            <AvatarFallback className="text-lg">{initials(name)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <h1 className="text-display text-2xl leading-tight md:text-3xl">{name}</h1>
-
-            {/*
-              Lo stato del cliente sta accanto al nome, prima di tutto il
-              resto: è l'unica cosa in questa testata che dice **cosa fare**.
-              «Da riattivare» accanto a un nome è una decisione; in fondo alla
-              pagina, dentro un riquadro, è una statistica.
-            */}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <StatoPillola stato={crm.stato} />
-              <LoyaltyPill tier={g.loyaltyTier} />
-              {g.anonymizedAt && (
-                <Badge tone="neutral" className="text-muted-foreground">
-                  dati cancellati su richiesta
-                </Badge>
-              )}
-              {/* Un'allergia non è un tag: è un fatto che cambia il servizio
-                  adesso. Forma quadrata e icona — il linguaggio dei segnali —
-                  così non si legge come «VIP», che è un'opinione. */}
-              {g.allergies && (
-                <Etichetta linguaggio="segnale" icona={AlertTriangle}>
-                  {g.allergies}
-                </Etichetta>
-              )}
-            </div>
-
-            {/*
-              I contatti stanno nella testata e non in un riquadro tutto loro.
-
-              Erano una card da sola in cima alla colonna sinistra, con tre
-              righe dentro e trecento pixel di vuoto sotto: una scheda intera
-              per due stringhe che si leggono insieme al nome. Qui stanno sulla
-              riga sotto, dove si guardano — perché chi cerca il telefono di
-              qualcuno lo cerca mentre legge il nome, non dopo aver scorso.
-            */}
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">
-              {g.email && (
-                <a
-                  href={`mailto:${g.email}`}
-                  className="flex items-center gap-1.5 hover:text-accent-strong"
-                >
-                  <Mail className="h-3.5 w-3.5 text-tertiary-foreground" aria-hidden="true" />
-                  {g.email}
-                </a>
-              )}
-              {g.phone && (
-                <a href={`tel:${g.phone}`} className="flex items-center gap-1.5 hover:text-accent-strong">
-                  <Phone className="h-3.5 w-3.5 text-tertiary-foreground" aria-hidden="true" />
-                  <span className="tabular-nums">{g.phone}</span>
-                </a>
-              )}
-              {g.birthday && (
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Cake className="h-3.5 w-3.5 text-tertiary-foreground" aria-hidden="true" />
-                  <span className="tabular-nums">{formatDate(g.birthday)}</span>
-                </span>
-              )}
-              <span className="text-tertiary-foreground">
-                {g.marketingOptIn ? "iscritto alle comunicazioni" : "non iscritto alle comunicazioni"}
-              </span>
-            </div>
-
-            <div className="mt-3">
-              <TagEditor guestId={g.id} tags={g.tags} />
-            </div>
-          </div>
-        </div>
-
-        {/*
-          Tre azioni, non quindici. «Modifica ospite» è quella che si usa; le
-          altre due sono operazioni sui dati personali e stanno dietro il
-          permesso del manager — cancellare i dati di una persona non è un
-          gesto da fare di corsa fra due tavoli.
-        */}
-        {/* `shrink-0` vale solo da `sm`: sul telefono i tre pulsanti sono più
-            larghi dello schermo, e un gruppo che non si restringe li spingeva
-            fuori a destra — «Modifica» finiva tagliato a metà. Da lì in giù
-            prendono una riga tutta loro e vanno a capo fra di sé. */}
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
-          {can(ctx.role, "manage_venue") && (
-            <Button asChild variant="outline" size="sm">
-              <a href={`/api/guests/${g.id}/export`} download>
-                <Download className="mr-2 h-3.5 w-3.5" aria-hidden="true" /> Esporta i dati
-              </a>
-            </Button>
-          )}
-          {can(ctx.role, "manage_venue") && !g.anonymizedAt && (
-            <ErasureDialog guestId={g.id} guestName={name} />
-          )}
-          <EditGuestDialog
-            guest={{
-              id: g.id,
-              firstName: g.firstName,
-              lastName: g.lastName,
-              email: g.email,
-              phone: g.phone,
-              birthday: g.birthday,
-              loyaltyTier: g.loyaltyTier,
-              allergies: g.allergies,
-              privateNotes: g.privateNotes,
-              marketingOptIn: g.marketingOptIn,
-              preferences: g.preferences,
-            }}
-          />
-        </div>
-      </header>
+      {/* Chi è, come si contatta, che stato ha, come lo abbiamo etichettato e
+          cosa ci si può fare: tutto in `TestataOspite`, su un asse verticale
+          solo. Il perché delle scelte sta lì. */}
+      <TestataOspite
+        ospite={{
+          id: g.id,
+          firstName: g.firstName,
+          lastName: g.lastName,
+          email: g.email,
+          phone: g.phone,
+          birthday: g.birthday,
+          loyaltyTier: g.loyaltyTier,
+          allergies: g.allergies,
+          privateNotes: g.privateNotes,
+          marketingOptIn: g.marketingOptIn,
+          preferences: g.preferences,
+          tags: g.tags,
+          anonymizedAt: g.anonymizedAt,
+        }}
+        stato={crm.stato}
+        canManage={can(ctx.role, "manage_venue")}
+      />
 
       {/* --------------------------------------------------------------- KPI */}
       {/*
@@ -257,7 +142,7 @@ export default async function GuestDetail({ params }: { params: { id: string } }
       */}
       <section
         aria-label="I numeri di questo cliente"
-        className="fissa riquadro grid grid-cols-2 gap-x-6 gap-y-5 bg-card-sunken p-4 md:grid-cols-4"
+        className="fissa riquadro grid grid-cols-2 gap-x-6 gap-y-3 bg-card-sunken px-4 py-3 md:grid-cols-4"
       >
         <Dato
           etichetta="Visite totali"
@@ -351,13 +236,29 @@ export default async function GuestDetail({ params }: { params: { id: string } }
                 <NotebookPen className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Note e preferenze
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-5">
               <NoteServizio
                 guestId={g.id}
                 allergies={g.allergies}
                 preferenze={notaPreferenze(g.preferences)}
                 privateNotes={g.privateNotes}
               />
+
+              {/*
+                I tag stanno qui e non più in testata.
+
+                In cima erano duecentotrenta pixel — «fedele ×» più «+ Aggiungi
+                tag» — su una riga che deve dire solo chi è questa persona e
+                come la si contatta: bastavano a mandarla a due righe. E questa
+                è comunque casa loro: un tag è una cosa che **il locale scrive
+                sul cliente**, esattamente come l'allergia, le preferenze e le
+                note riservate che stanno in questa scheda. In testata si legge,
+                qui si scrive.
+              */}
+              <div className="space-y-2 border-t border-border pt-4">
+                <p className="t-etichetta">Etichette</p>
+                <TagEditor guestId={g.id} tags={g.tags} />
+              </div>
             </CardContent>
           </Card>
 

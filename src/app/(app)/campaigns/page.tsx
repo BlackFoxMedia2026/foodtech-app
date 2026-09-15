@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getActiveVenue } from "@/lib/tenant";
 import { listCampaignsWithResults } from "@/server/campaigns";
+import { statoConsumo } from "@/server/dem/consumo";
+import { IndicatoreQuota } from "@/components/dem/indicatore-quota";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { statoCampagna } from "@/lib/campaign-status";
@@ -17,7 +19,10 @@ const CHANNEL_TONE = {
 
 export default async function CampaignsPage() {
   const ctx = await getActiveVenue();
-  const items = await listCampaignsWithResults(ctx.venueId);
+  const [items, quota] = await Promise.all([
+    listCampaignsWithResults(ctx.venueId),
+    statoConsumo(ctx.venueId),
+  ]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -25,11 +30,26 @@ export default async function CampaignsPage() {
         {/* Il titolo sta nella testata: qui resta la briciola che dice da
             quale sezione si arriva. */}
         <p className="t-etichetta">Marketing</p>
-        <Button asChild variant="accent">
-          <Link href="/campaigns/new">
-            <Plus className="h-4 w-4" /> Nuova campagna
-          </Link>
-        </Button>
+        {/*
+          Gli invii che restano, in una riga.
+
+          Sta qui e non in una scheda perché chi apre le Campagne vuole
+          scrivere una newsletter: il dato serve per decidere se si può
+          inviare, non per essere studiato. Al clic porta al piano, dove c'è
+          tutto il resto.
+        */}
+        <div className="ml-auto flex items-center gap-3">
+          <IndicatoreQuota
+            disponibili={quota.disponibili}
+            limite={quota.limite}
+            sospeso={quota.sospeso}
+          />
+          <Button asChild variant="accent">
+            <Link href="/campaigns/new">
+              <Plus className="h-4 w-4" /> Nuova campagna
+            </Link>
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -47,8 +67,12 @@ export default async function CampaignsPage() {
           const openRate = partita ? Math.round((c.openedCount / c.sentCount) * 100) : null;
           const href = c.status === "DRAFT" ? `/campaigns/${c.id}/edit` : `/campaigns/${c.id}`;
           return (
-            <Link key={c.id} href={href}>
-              <Card className="transition-colors hover:border-gilt-dark/50">
+            /* Le schede stanno in griglia: se ognuna prende l'altezza del
+               proprio contenuto, una bozza e una campagna con i risultati
+               finiscono a scalino. Altezza piena per tutte, e il blocco in
+               fondo spinto in basso da `mt-auto`: le basi si allineano. */
+            <Link key={c.id} href={href} className="block h-full">
+              <Card className="flex h-full flex-col transition-colors hover:border-gilt-dark/50">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <Badge tone={CHANNEL_TONE[c.channel]}>{c.channel}</Badge>
@@ -67,13 +91,13 @@ export default async function CampaignsPage() {
                     scriveva: zero su ogni campagna, cioè una bocciatura
                     inventata. Ora è l'attribuzione vera. */}
                 {partita ? (
-                  <CardContent className="grid grid-cols-3 gap-3 text-sm">
+                  <CardContent className="mt-auto grid grid-cols-3 gap-3 text-sm">
                     <Metric label="Inviate" value={c.sentCount} />
                     <Metric label="Aperte" value={`${openRate}%`} />
                     <Metric label="Prenotazioni" value={c.attribuite} />
                   </CardContent>
                 ) : (
-                  <CardContent>
+                  <CardContent className="mt-auto">
                     {/* Due assenze diverse, e non vanno dette allo stesso modo:
                         una bozza non è partita, una programmata o consegnata è
                         partita ma il fornitore non ci ha ancora detto quante.

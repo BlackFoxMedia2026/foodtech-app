@@ -91,6 +91,20 @@ export function apiErrorResponse(err: unknown) {
     return apiError(err.status, err.code, err.message, err.detail);
   }
 
+  /*
+    Stripe non configurato non è un guasto: è una funzione spenta su questa
+    installazione, e 503 lo dice — «non adesso», non «hai sbagliato tu». Il
+    messaggio evita la parola Stripe: chi usa Foodtech compra da Foodtech, e
+    il nome di chi incassa per noi non gli serve per capire cosa fare.
+  */
+  if (err instanceof Error && err.name === "StripeNonConfigurato") {
+    return apiError(
+      503,
+      "payments_unavailable",
+      "I pagamenti non sono ancora attivi su questa installazione. Scrivici e lo attiviamo.",
+    );
+  }
+
   if (err instanceof ZodError) {
     return apiError(422, "validation_failed", messaggioDiValidazione(err), err.flatten());
   }
@@ -100,10 +114,22 @@ export function apiErrorResponse(err: unknown) {
   const code = err instanceof Error && "code" in err ? String((err as { code?: unknown }).code) : "";
   const perCodice: Record<string, number> = {
     not_found: 404,
+    // Dati che Zod non può bocciare da solo perché il difetto sta nel
+    // rapporto fra due campi — l'ora di fine prima di quella di inizio — e si
+    // vede solo dopo averli letti entrambi. Resta un 422 come gli altri.
+    validation_failed: 422,
     no_table: 404,
     invalid_transition: 409,
     already_closed: 409,
     conflict: 409,
+    /*
+      Gli invii DEM finiti non sono un dato sbagliato né un conflitto: sono un
+      limite del piano, e 402 è l'unico status che lo dice. Il corpo porta i
+      numeri (disponibili, richiesti, mancanti) perché la schermata deve poter
+      scrivere «te ne mancano 2.390», non «errore».
+    */
+    dem_quota_insufficient: 402,
+    dem_sending_paused: 409,
   };
   if (code && perCodice[code]) {
     return apiError(perCodice[code], code, err instanceof Error ? err.message : "Operazione non possibile.",
@@ -157,6 +183,21 @@ export function apiErrorResponse(err: unknown) {
       409,
       "has_tickets",
       "Ci sono biglietti registrati per questa esperienza: riportala in bozza invece di eliminarla."
+    );
+  }
+  if (message === "dem_test_limit") {
+    return apiError(
+      429,
+      "dem_test_limit",
+      "Hai già mandato parecchie prove di questa campagna. Gli invii di prova partono davvero e " +
+        "scalano dal tuo piano: se il contenuto è pronto, mandala.",
+    );
+  }
+  if (message === "dem_plan_not_purchasable") {
+    return apiError(
+      422,
+      "dem_plan_not_purchasable",
+      "Questo piano non è ancora acquistabile. Riprova più tardi o scrivici.",
     );
   }
   if (message === "no_channel") {
