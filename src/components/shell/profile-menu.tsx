@@ -41,9 +41,9 @@ export function ProfileMenu({ user }: { user: { name?: string | null; email?: st
   const pathname = usePathname();
   const gruppi = profiloPerGruppo();
   /*
-    Chi sta dentro una voce del menu profilo (Esperienze, Analytics,
-    Pagamenti, Attesa, Impostazioni) non ha nessuna voce accesa in barra:
-    l'unico segno di dove si trova è l'avatar. Un anello crema — lo stesso
+    Chi sta dentro una voce del menu profilo (Esperienze, Pagamenti, Attesa,
+    Impostazioni) non ha nessuna voce accesa in barra: l'unico segno di dove si
+    trova è l'avatar. Un anello crema — lo stesso
     colore della pillola attiva — e la domanda «da dove ci sono arrivato?» ha
     una risposta visibile senza aprire niente.
   */

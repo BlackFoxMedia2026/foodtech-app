@@ -1,4 +1,4 @@
-import { CalendarRange, CreditCard, LayoutDashboard, LineChart, ListOrdered, Megaphone, Radio, Settings, Sparkles, Users, UtensilsCrossed } from "lucide-react";
+import { CalendarRange, CreditCard, Gift, LayoutDashboard, LineChart, Megaphone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 
 export type NavItem = {
@@ -17,8 +17,8 @@ export type NavItem = {
    */
   shortLabel?: string;
   /** Percorsi aggiuntivi che contano come "attivo" anche se l'href non corrisponde
-   * — es. Marketing resta evidenziata dentro /campaigns/*, rimasto al suo path per
-   * non rompere il wizard esistente. */
+   * — es. Marketing resta evidenziata dentro /campaigns/* e /insights/*, due
+   * sue sottovoci rimaste al loro percorso per non rompere link già mandati. */
   matchPrefixes?: string[];
   /**
    * Il gruppo dentro il menu del profilo.
@@ -29,6 +29,23 @@ export type NavItem = {
    * cresce, «account» è chi sta usando il prodotto.
    */
   gruppo?: GruppoProfilo;
+  /**
+   * Una riga che dice **cosa ci si fa**, per i menu dove il nome da solo non
+   * basta. In barra non compare mai: lì lo spazio è quello che è, e le otto
+   * voci principali si spiegano da sole.
+   */
+  descrizione?: string;
+  /**
+   * Le voci che stanno **dentro** questa: la voce diventa un menu, e cliccarla
+   * non porta da nessuna parte — apre l'elenco.
+   *
+   * L'unica che le ha è Marketing. Le sue sei funzioni non sono gesti di
+   * servizio e non stanno in barra una per una, ma erano dietro una pagina
+   * fatta di scorciatoie: si cliccava «Marketing», si leggeva un indice, si
+   * cliccava di nuovo. L'indice adesso è il menu, e il secondo clic è il
+   * primo che porta da qualche parte.
+   */
+  sottovoci?: NavItem[];
 };
 
 export type GruppoProfilo = "gestione" | "account";
@@ -36,6 +53,85 @@ export type GruppoProfilo = "gestione" | "account";
 export const GRUPPI_PROFILO: { key: GruppoProfilo; label: string }[] = [
   { key: "gestione", label: "Gestione" },
   { key: "account", label: "Account" },
+];
+
+/**
+ * Gli strumenti del marketing, **nell'ordine in cui si usano**.
+ *
+ * Prima erano sei card dentro `/marketing`: una pagina che non faceva niente
+ * se non elencare sei link, cioè un passaggio obbligato fra il volere una cosa
+ * e l'averla. Adesso sono il contenuto del menu che si apre dalla voce in
+ * barra, e `/marketing` reindirizza alle campagne.
+ *
+ * L'ordine è quello di prima e non è alfabetico: si parte da ciò che si manda
+ * (campagne, automazioni), si passa a ciò che si dà (coupon, gift card) e si
+ * finisce con ciò che si raccoglie o si stampa (Wi-Fi, QR).
+ *
+ * **Le campagne sono rimaste su `/campaigns`**, fuori da `/marketing`: il
+ * percorso è quello del wizard esistente e spostarlo romperebbe i link già
+ * mandati. La voce in barra resta accesa lo stesso — se ne occupa
+ * `matchPrefixes`.
+ *
+ * Nessuna di queste è dietro un permesso: le pagine si aprono per tutti i
+ * ruoli e `edit_marketing` decide solo se i pulsanti di modifica ci sono. Il
+ * menu fa la stessa cosa — mostra tutto — perché nasconderne una qui e
+ * lasciarla raggiungibile per link direbbe due cose diverse.
+ */
+export const MARKETING_NAV: NavItem[] = [
+  {
+    href: "/campaigns",
+    label: "Campagne email",
+    icon: Megaphone,
+    descrizione: "Crea e programma comunicazioni",
+  },
+  {
+    href: "/marketing/automations",
+    label: "Automazioni",
+    icon: Repeat,
+    descrizione: "Messaggi che partono da soli",
+  },
+  {
+    href: "/marketing/coupons",
+    label: "Coupon",
+    icon: Ticket,
+    descrizione: "Sconti e codici promozionali",
+  },
+  {
+    href: "/marketing/gift-cards",
+    label: "Gift card",
+    icon: Gift,
+    descrizione: "Buoni e credito del cliente",
+  },
+  {
+    href: "/marketing/wifi",
+    label: "Wi-Fi",
+    icon: Wifi,
+    descrizione: "I contatti raccolti dal portale",
+  },
+  {
+    href: "/marketing/qr-codes",
+    label: "QR Code",
+    icon: QrCode,
+    descrizione: "Codici da stampare e appendere",
+  },
+  /*
+    Analytics chiude l'elenco, ed è l'unica voce che non è uno strumento: è il
+    posto dove si guarda **com'è andata**. Stava sotto l'avatar, fra le cose
+    amministrative, e lì la si apriva per caso; qui sta accanto alle sei leve
+    che muovono i numeri che mostra, in fondo perché è la domanda che viene
+    dopo aver fatto qualcosa, non prima.
+
+    Il percorso resta `/insights` — nessun link cambia — e la voce in barra
+    che si accende diventa Marketing, via `matchPrefixes`. Il titolo della
+    pagina lo dà `TITOLI_EXTRA`: senza, una sezione intera si chiamerebbe
+    «Marketing» nella testata.
+  */
+  {
+    href: "/insights",
+    label: "Analytics",
+    icon: LineChart,
+    descrizione: "Incassi, ospiti, andamenti",
+  },
 ];
 
 /**
@@ -48,10 +144,9 @@ export const GRUPPI_PROFILO: { key: GruppoProfilo; label: string }[] = [
  * l'eccezione voluta: non è un gesto di servizio, ma è salita in barra su
  * richiesta esplicita, spostata dal menu del profilo.
  *
- * Tutto il resto — esperienze, analisi, incassi, impostazioni — è lavoro da
- * ufficio, che si fa la mattina dopo: sta nel menu del profilo
- * (`PROFILE_NAV`), che è il posto delle cose che si aprono una volta a
- * settimana. Il dropdown «Altro» in mezzo alla barra non esiste più: era un
+ * Tutto il resto — incassi, impostazioni — è lavoro da ufficio, che si fa la
+ * mattina dopo: sta nel menu del profilo (`PROFILE_NAV`), che è il posto
+ * delle cose che si aprono una volta a settimana. Il dropdown «Altro» in mezzo alla barra non esiste più: era un
  * terzo posto dove guardare, con dentro sia roba quotidiana (Staff, Menu) sia
  * roba amministrativa, cioè esattamente la confusione che questa divisione
  * toglie.
@@ -97,7 +192,13 @@ export const PRIMARY_NAV: NavItem[] = [
     per i contratti in scadenza continuano ad aprirsi.
   */
   { href: "/staff", label: "Staff", icon: Users },
-  { href: "/marketing", label: "Marketing", icon: Megaphone, matchPrefixes: ["/campaigns"] },
+  {
+    href: "/marketing",
+    label: "Marketing",
+    icon: Megaphone,
+    matchPrefixes: ["/campaigns", "/insights"],
+    sottovoci: MARKETING_NAV,
+  },
   { href: "/menu", label: "Menu", icon: UtensilsCrossed },
 ];
 
@@ -110,18 +211,26 @@ export const PRIMARY_NAV: NavItem[] = [
  * barra è tutto il punto della divisione.
  */
 export const PROFILE_NAV: NavItem[] = [
-  { href: "/experiences", label: "Esperienze", icon: Sparkles, gruppo: "gestione" },
-  { href: "/insights", label: "Analytics", icon: LineChart, gruppo: "gestione" },
-  { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "gestione" },
   /*
-    «Attesa» non è nelle sette, e non è nemmeno una funzione amministrativa:
-    è qui perché la coda **è già dentro Servizio**, che è la seconda voce
-    della barra. La schermata del servizio ha tre zone e la terza è l'attesa,
-    con i gruppi e le azioni: chi è in sala non passa da `/waitlist`, ce l'ha
-    davanti. Questa voce resta perché la pagina esiste e deve avere una casa
-    — non perché sia il modo previsto di arrivarci.
+    Due voci sono uscite di qui il 15 settembre, e per due ragioni diverse.
+
+    **«Attesa» era la stessa cosa detta due volte.** La coda sta dentro
+    Servizio — la schermata ha tre zone e la terza è l'attesa, con i gruppi e
+    le azioni — quindi chi è in sala ce l'ha già davanti. La voce nel menu
+    dava a una vista duplicata la dignità di una sezione, e la domanda «qual è
+    quella buona?» non ha una risposta utile. La pagina `/waitlist` resta
+    dov'è: ci si arriva dai due gesti che **aggiungono** qualcuno alla coda
+    (l'azione in Panoramica e il «+» della barra del telefono), che in
+    Servizio non esistono.
+
+    **«Esperienze» è sospesa, non tolta.** La sezione c'è e funziona, ma non
+    è ancora decisa: finché non lo è, non sta nella navigazione. Per
+    rimetterla basta questa riga —
+    `{ href: "/experiences", label: "Esperienze", icon: Sparkles, gruppo: "gestione" }`
+    — più la chiave `esperienze` nelle due tabelle dell'assistente
+    (`ai/tools/navigation.ts` e `ai/intent-router.ts`).
   */
-  { href: "/waitlist", label: "Attesa", icon: ListOrdered, gruppo: "gestione" },
+  { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "gestione" },
   { href: "/settings", label: "Impostazioni", icon: Settings, gruppo: "account" },
 ];
 
@@ -178,6 +287,17 @@ export function isNavActive(pathname: string, item: NavItem) {
   });
 }
 
+/**
+ * La sottovoce aperta dentro una voce-menu, se ce n'è una.
+ *
+ * Serve al menu Marketing: la voce in barra dice «sei nel marketing», questa
+ * dice **in quale dei sette strumenti** — altrimenti si apre l'elenco e
+ * niente distingue quello che si sta già guardando dagli altri sei.
+ */
+export function sottovoceAttiva(pathname: string, item: NavItem): NavItem | undefined {
+  return item.sottovoci?.find((v) => sottoA(pathname, v.href));
+}
+
 /** Le voci del menu profilo, raggruppate e nell'ordine dei gruppi. */
 export function profiloPerGruppo(): { label: string; voci: NavItem[] }[] {
   return GRUPPI_PROFILO.map((g) => ({
@@ -221,6 +341,9 @@ const TITOLI_EXTRA: Record<string, string | [lungo: string, breve: string]> = {
   "/marketing/gift-cards": "Gift card",
   "/marketing/qr-codes": "QR Code",
   "/marketing/wifi": "Wi-Fi",
+  /* Analytics vive nel menu Marketing, quindi la voce accesa in barra è
+     Marketing: senza questa riga la sua testata direbbe «Marketing». */
+  "/insights": "Analytics",
   "/campaigns": "Campagne",
   "/campaigns/new": ["Nuova campagna", "Nuova camp."],
 };

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Agent } from "@/components/agent/agent";
 import { PRIMARY_NAV, isNavActive, titoloPagina } from "@/components/shell/nav-items";
+import { MarketingMenu } from "./marketing-menu";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
 import { NotificationBell } from "./notification-bell";
@@ -38,7 +39,9 @@ export function Header({
   activeVenueId: string;
 }) {
   const pathname = usePathname();
-  const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
+  // `HTMLElement` e non `HTMLAnchorElement`: Marketing non è un link ma il
+  // bottone che apre il suo menu, e occupa lo stesso posto in fila.
+  const itemRefs = useRef(new Map<string, HTMLElement>());
   const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
 
@@ -91,30 +94,38 @@ export function Header({
             {PRIMARY_NAV.map((item) => {
               const Icon = item.icon;
               const active = isNavActive(pathname, item);
+              const registra = (el: HTMLElement | null) => {
+                if (el) itemRefs.current.set(item.href, el);
+                else itemRefs.current.delete(item.href);
+              };
+
+              /*
+                Marketing è l'unica voce che non porta da nessuna parte: apre
+                il suo menu. Prende **le stesse classi** delle altre — stessa
+                pillola, stessa altezza, stesso salto di misura fra tablet e
+                scrivania — perché una voce che si comporta diversamente non
+                deve anche sembrare diversa: l'unico segno in più è la freccia
+                che si gira quando il pannello è aperto.
+              */
+              if (item.sottovoci) {
+                return (
+                  <MarketingMenu
+                    key={item.href}
+                    item={item}
+                    triggerRef={registra}
+                    triggerClassName={classiVoce(active)}
+                  />
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  ref={(el) => {
-                    if (el) itemRefs.current.set(item.href, el);
-                    else itemRefs.current.delete(item.href);
-                  }}
+                  ref={registra}
                   title={item.label}
-                  className={cn(
-                    // Tre misure per la stessa voce, e il salto avviene dove
-                    // la fila smetterebbe di entrare:
-                    // · fino a 1280 px il nome sta **sotto** l'icona, come
-                    //   nella barra del telefono (su tablet si tocca: 44 px);
-                    // · da 1280 px torna accanto all'icona, abbreviato;
-                    // · da 1536 px il nome è intero.
-                    // Prima il nome tornava in fila già a 1024 px: con sei
-                    // voci ci stava, con sette la pillola finiva sotto la
-                    // sfera dell'agente. Una barra che scorre di lato è una
-                    // barra che nasconde metà prodotto.
-                    "relative z-10 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium leading-tight transition-colors md:min-w-0 xl:flex-row xl:gap-2 xl:px-3 xl:py-2 xl:text-sm 2xl:px-3.5",
-                    active ? "text-forest" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
-                  )}
+                  className={classiVoce(active)}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   {/*
@@ -148,5 +159,30 @@ export function Header({
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * Il vestito di una voce in barra, **uno solo per tutte e otto**.
+ *
+ * Tre misure per la stessa voce, e il salto avviene dove la fila smetterebbe
+ * di entrare:
+ * · fino a 1280 px il nome sta **sotto** l'icona, come nella barra del
+ *   telefono (su tablet si tocca: 44 px);
+ * · da 1280 px torna accanto all'icona, abbreviato;
+ * · da 1536 px il nome è intero.
+ *
+ * Prima il nome tornava in fila già a 1024 px: con sei voci ci stava, con
+ * sette la pillola finiva sotto la sfera dell'agente. Una barra che scorre di
+ * lato è una barra che nasconde metà prodotto.
+ *
+ * Sta in una funzione da quando Marketing è un bottone invece di un link: due
+ * copie di questa stringa sarebbero due voci che smettono di somigliarsi alla
+ * prima modifica fatta su una sola.
+ */
+function classiVoce(active: boolean) {
+  return cn(
+    "relative z-10 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium leading-tight transition-colors md:min-w-0 xl:flex-row xl:gap-2 xl:px-3 xl:py-2 xl:text-sm 2xl:px-3.5",
+    active ? "text-forest" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
   );
 }
