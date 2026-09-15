@@ -115,6 +115,24 @@
        surfaces below — this is what turns a flat gradient into a "brushed"/
        "paper grain" texture without any image asset or extra DOM node. */
     --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+
+    /*
+      **Dire al browser che siamo al buio.**
+
+      I controlli nativi — l'icona del calendario di un `type="date"`, le
+      frecce di un `type="time"`, il pannello del calendario che si apre, le
+      barre di scorrimento — non li dipinge il CSS del prodotto: li dipinge il
+      browser, e senza questa riga li dipinge per una pagina chiara. Nel campo
+      «Data di nascita» il risultato era un'icona nera su fondo verde scuro:
+      c'era, si poteva anche cliccare, ma non si vedeva.
+
+      Una riga sola perché il prodotto è scuro **ovunque** — shell, accesso,
+      vetrina, pagine pubbliche dipingono tutte `bg-background` — quindi non
+      c'è un caso da eccettuare, e vale su tutti i campi data e ora, anche
+      quelli che verranno. Va su `:root`, non su `.dark`: quella classe non la
+      porta nessun elemento, il buio qui è lo stato normale.
+    */
+    color-scheme: dark;
   }
 
   .dark {
@@ -173,6 +191,21 @@
     background-attachment: fixed;
     font-feature-settings: "ss01", "cv11";
   }
+  /*
+    Ora l'icona del calendario si vede, ma il bianco pieno del browser pesa
+    più del testo crema che le sta accanto: in un campo vuoto l'occhio andava
+    al quadratino invece che all'etichetta. Smorzata è un appiglio, e torna
+    piena quando la si punta o quando il campo ha il fuoco.
+  */
+  ::-webkit-calendar-picker-indicator {
+    opacity: 0.6;
+    cursor: pointer;
+  }
+  ::-webkit-calendar-picker-indicator:hover,
+  input:focus-visible::-webkit-calendar-picker-indicator {
+    opacity: 1;
+  }
+
   ::selection {
     background: hsl(var(--accent) / 0.35);
   }
@@ -995,5 +1028,16 @@
   .tooltip-content[data-state="instant-open"] {
     transition: none;
     transform: none;
+  }
+}
+
+/*
+  Il cambio d'area (gestionale ⇄ Impostazioni) per chi ha chiesto meno
+  movimento: resta il cambio, sparisce la scivolata. L'animazione arriva da
+  Tailwind, quindi non c'è un `transition` da spegnere — c'è un `animation`.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .animate-cambio-area {
+    animation: none;
   }
 }

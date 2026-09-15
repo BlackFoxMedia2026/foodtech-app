@@ -2,6 +2,8 @@
 export const JOB_LABELS: Record<string, string> = {
   "message.send": "Messaggio a un ospite",
   "campaign.send": "Invio di una campagna",
+  "dem.campaign.send": "Invio di una campagna",
+  "automation.run": "Automazione",
 };
 
 export function jobLabel(kind: string): string {

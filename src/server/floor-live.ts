@@ -54,7 +54,23 @@ export type TableLiveInfo = {
      * `righe` è il numero di righe battute: zero righe su un tavolo seduto da
      * un'ora è un fatto che chi guarda deve poter vedere.
      */
-    conto: { orderId: string; totalCents: number; righe: number } | null;
+    conto: {
+      orderId: string;
+      totalCents: number;
+      righe: number;
+      /**
+       * Quanto il tavolo ha già pagato da solo, col QR, e quanto resta.
+       *
+       * È la ragione per cui questi due numeri stanno qui e non in una
+       * schermata a parte: un tavolo che ha saldato dal telefono **non deve
+       * passare in cassa**, e se la mappa non lo dice il cameriere ci va lo
+       * stesso — o peggio, va a chiedere il conto a chi l'ha già pagato.
+       */
+      pagatoCents: number;
+      residuoCents: number;
+      /** Vero quando qualcuno, al tavolo, sta pagando in questo momento. */
+      pagamentoInCorso: boolean;
+    } | null;
     /** Per chi deve arrivare: minuti all'orario (negativo = in ritardo). */
     minutesToArrival: number | null;
     isVip: boolean;
@@ -179,13 +195,65 @@ export async function getFloorLive(
       _count: { select: { OrderItem: true } },
     },
   });
+  /*
+    Quanto è già stato pagato col QR su questi conti.
+
+    Una sola interrogazione raggruppata per tutti i tavoli della sala, come
+    sopra: il residuo non sta in colonna — si somma dai pagamenti — e chiederlo
+    conto per conto sarebbe una query per riquadro sulla mappa.
+
+    Gli impegni scaduti non contano: un tentativo abbandonato non deve far
+    sembrare «in pagamento» un tavolo che nessuno sta pagando.
+  */
+  const adesso = new Date();
+  const pagamenti = conti.length
+    ? await db.payment.findMany({
+        where: {
+          venueId,
+          orderId: { in: conti.map((o) => o.id) },
+          deletedAt: null,
+          status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED", "PROCESSING"] },
+        },
+        select: {
+          orderId: true,
+          status: true,
+          amountCents: true,
+          tipCents: true,
+          refundedCents: true,
+          expiresAt: true,
+        },
+      })
+    : [];
+
+  const incassoPerConto = new Map<string, { pagato: number; inCorso: boolean }>();
+  for (const p of pagamenti) {
+    if (!p.orderId) continue;
+    const voce = incassoPerConto.get(p.orderId) ?? { pagato: 0, inCorso: false };
+    if (p.status === "PROCESSING") {
+      if (!p.expiresAt || p.expiresAt > adesso) voce.inCorso = true;
+    } else {
+      voce.pagato += Math.max(0, p.amountCents - p.tipCents - p.refundedCents);
+    }
+    incassoPerConto.set(p.orderId, voce);
+  }
+
   const contoPerPrenotazione = new Map(
     conti
       .filter((o): o is typeof o & { bookingId: string } => !!o.bookingId)
-      .map((o) => [
-        o.bookingId,
-        { orderId: o.id, totalCents: o.totalCents, righe: o._count.OrderItem },
-      ]),
+      .map((o) => {
+        const incasso = incassoPerConto.get(o.id) ?? { pagato: 0, inCorso: false };
+        return [
+          o.bookingId,
+          {
+            orderId: o.id,
+            totalCents: o.totalCents,
+            righe: o._count.OrderItem,
+            pagatoCents: incasso.pagato,
+            residuoCents: Math.max(0, o.totalCents - incasso.pagato),
+            pagamentoInCorso: incasso.inCorso,
+          },
+        ];
+      }),
   );
 
   // Una prenotazione può occupare più tavoli (combinedTableIds): va indicizzata

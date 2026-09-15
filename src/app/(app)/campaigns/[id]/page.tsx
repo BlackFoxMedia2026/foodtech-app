@@ -16,7 +16,10 @@ import { Pencil } from "lucide-react";
 import { CampaignActions } from "@/components/campaigns/campaign-actions";
 import { CampaignResultsChart } from "@/components/campaigns/campaign-results-chart";
 import { CampaignSendStatus } from "@/components/campaigns/campaign-send-status";
+import { AnnullaCampagna } from "@/components/campaigns/annulla-campagna";
 import { statoCampagna } from "@/lib/campaign-status";
+import { RisultatiDem } from "@/components/campaigns/risultati-dem";
+import { risultatiCampagna } from "@/server/dem/statistiche";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +38,15 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
   const segment = (campaign.segment as SegmentFilterType | null) ?? {};
   const matchingGuests = campaign.status === "DRAFT" ? await resolveSegment(ctx.venueId, segment) : [];
   const stato = statoCampagna(campaign.status, campaign.scheduledAt);
-  const inCoda = campaign.status === "SENDING" || campaign.status === "FAILED";
+  const inCoda = campaign.status === "SENDING" || campaign.status === "QUEUED" || campaign.status === "FAILED";
+  // Finché non è uscita niente, si può ancora fermare: programmata o in coda.
+  const annullabile = campaign.status === "SCHEDULED" || campaign.status === "QUEUED";
   const avanzamento = inCoda ? await getCampaignSendProgress(ctx.venueId, campaign.id) : null;
   const resa = await getCampaignAttribution(ctx.venueId, campaign.id);
+  // I risultati dettagliati esistono solo per le campagne che abbiamo mandato
+  // noi, destinatario per destinatario: su quelle consegnate a un fornitore
+  // esterno non tornano indietro gli eventi, e inventarli sarebbe peggio.
+  const risultati = campaign.sentCount > 0 ? await risultatiCampagna(ctx.venueId, campaign.id) : null;
 
   return (
     <div className="schermo animate-fade-in gap-4">
@@ -124,6 +133,22 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
           </Card>
         )}
 
+        {annullabile && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Prima che parta</CardTitle>
+              <CardDescription>
+                {campaign.scheduledAt
+                  ? "La campagna è in calendario: da qui si ferma."
+                  : "La campagna è in coda e non è ancora uscita: da qui si ferma."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AnnullaCampagna campaignId={campaign.id} invii={campaign.reservedCount} />
+            </CardContent>
+          </Card>
+        )}
+
         {inCoda && (
           <Card>
             <CardHeader>
@@ -133,9 +158,21 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
             <CardContent>
               <CampaignSendStatus
                 campaignId={campaign.id}
-                status={campaign.status === "SENDING" ? "SENDING" : "FAILED"}
+                status={campaign.status === "FAILED" ? "FAILED" : "SENDING"}
                 progress={avanzamento}
               />
+            </CardContent>
+          </Card>
+        )}
+
+        {risultati && risultati.inviate > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Risultati</CardTitle>
+              <CardDescription>Aggiornati man mano che gli esiti arrivano.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RisultatiDem r={risultati} />
             </CardContent>
           </Card>
         )}
@@ -143,7 +180,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
         {(campaign.status === "SENT" || campaign.status === "SCHEDULED") && (
           <Card>
             <CardHeader>
-              <CardTitle>Risultati</CardTitle>
+              <CardTitle>Prenotazioni generate</CardTitle>
             </CardHeader>
             <CardContent>
               <CampaignResultsChart

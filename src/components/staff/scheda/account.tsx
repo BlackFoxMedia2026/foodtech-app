@@ -55,8 +55,8 @@ export function Account({ persona, canManage, invito, eSeStesso }: { persona: Pe
       ) : account ? (
         <Sezione titolo="Account gestionale" icona={UserCog}>
           <p className="text-base text-muted-foreground">
-            Questa persona ha un account Tavolo (<strong className="text-foreground">{account.email}</strong>) ma non ha accesso a questo locale.
-            Invitala dalla pagina Team per dargliene uno.
+            Questa persona ha un account Tavolo (<strong className="text-foreground">{account.email}</strong>) ma non ha accesso a questo locale:
+            l&apos;accesso è stato tolto, o l&apos;account è nato in un altro locale del gruppo. Per ridarglielo serve un manager del locale.
           </p>
         </Sezione>
       ) : (

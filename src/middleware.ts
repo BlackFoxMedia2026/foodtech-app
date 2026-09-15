@@ -38,6 +38,14 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname === "/api/public/reimposta-password") {
     return { rule: RATE_LIMITS.publicBooking, bucket: "reimposta-password", methods: ["POST"] };
   }
+  // Il pagamento al tavolo. Due limiti diversi perché sono due cose diverse:
+  // avviare un pagamento costa una sessione da Stripe, leggere il conto è la
+  // richiesta che tiene aggiornato il telefono di chi è ancora a tavola.
+  if (pathname.startsWith("/api/public/pay/")) {
+    return pathname.endsWith("/avvia")
+      ? { rule: RATE_LIMITS.publicPay, bucket: "pay-avvia", methods: ["POST"] }
+      : { rule: RATE_LIMITS.publicPayStato, bucket: "pay-stato", methods: ["GET"] };
+  }
   if (pathname === "/api/public/booking-action") {
     return { rule: RATE_LIMITS.publicBooking, bucket: "booking-action", methods: ["POST"] };
   }

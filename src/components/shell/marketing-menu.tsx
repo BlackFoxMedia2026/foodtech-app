@@ -28,8 +28,8 @@ import { cn } from "@/lib/utils";
  * solo si leggono una per una finché non si trova quella giusta, e «Wi-Fi»
  * accanto a «QR Code» non dice a cosa servono. Una riga di descrizione sotto
  * ogni nome costa spazio orizzontale, e due colonne lo restituiscono
- * all'altezza — sette voci in colonna singola sarebbero una tendina lunga
- * mezzo schermo.
+ * all'altezza — sette voci in colonna singola sarebbero una tendina lunga mezzo
+ * schermo.
  *
  * Il pannello non è un cruscotto: nessun numero, nessuna card. Quelli erano il
  * motivo per cui la pagina raccoglitore sembrava valere una fermata, e non la

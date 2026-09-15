@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { brevoAdapter } from "@/server/marketing/brevo-adapter";
 import { PREVIEW_UNSUBSCRIBE_ID, verifyUnsubscribeToken } from "@/lib/unsubscribe-token";
+import { sopprimi } from "@/server/dem/destinatari";
 
 function htmlPage(opts: { title: string; message: string; accent?: string | null; logoUrl?: string | null }) {
   const accent = opts.accent && /^#[0-9a-fA-F]{3,8}$/.test(opts.accent) ? opts.accent : "#FFD400";
@@ -59,7 +60,23 @@ export async function GET(req: Request) {
   const venue = await db.venue.findUnique({ where: { id: guest.venueId } });
 
   if (guest.marketingOptIn) {
-    await db.guest.update({ where: { id: guestId }, data: { marketingOptIn: false } });
+    /*
+      La disiscrizione tocca tre posti, e sono tre cose diverse.
+
+      1. **La scheda cliente** smette di avere il consenso, e si annota
+         quando: il CRM continua a mostrare Mario Rossi, con scritto accanto
+         che non riceve più campagne. Cancellare il contatto sarebbe perdere
+         la sua storia di cliente per una scelta che riguarda solo le email.
+      2. **Il registro dei consensi** conserva il fatto, con la data e da dove
+         è arrivato: è la prova, e una casella spuntata non lo è.
+      3. **La soppressione** vale per l'**indirizzo**, non per la scheda. Lo
+         stesso indirizzo può stare su due schede doppione, e la seconda
+         riceverebbe lo stesso la prossima campagna.
+    */
+    await db.guest.update({
+      where: { id: guestId },
+      data: { marketingOptIn: false, unsubscribedAt: new Date() },
+    });
     await db.consentLog.create({
       data: {
         id: crypto.randomUUID(),
@@ -70,6 +87,9 @@ export async function GET(req: Request) {
         source: "unsubscribe_link",
       },
     });
+    if (guest.email) {
+      await sopprimi(guest.venueId, guest.email, "UNSUBSCRIBE", { source: "unsubscribe_link" });
+    }
 
     const providerLink = await db.guestProviderLink.findUnique({
       where: { guestId_provider: { guestId, provider: "brevo" } },

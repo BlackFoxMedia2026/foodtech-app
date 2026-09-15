@@ -4,10 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { readApiError } from "@/lib/api-client";
+import {
+  EsitoSalvataggio,
+  GruppoImpostazioni,
+  RigaImpostazione,
+  RigaLibera,
+} from "@/components/settings/righe-impostazioni";
 
 /**
  * Le due regole della raccolta punti.
@@ -88,125 +92,138 @@ export function LoyaltySettings({
     router.refresh();
   }
 
-  /*
-    Da chiuso si legge la decisione, non i due campi che la compongono: quanto
-    restituisci. È il numero su cui un ristoratore giudica la raccolta, e
-    finora per vederlo bisognava aprire il blocco e leggere la frase in fondo.
-  */
-  const riepilogo = attiva ? `restituisci il ${percentuale}%` : "spenta";
-
   return (
-    <Blocco titolo="Raccolta punti" valore={riepilogo}>
-      <BloccoNota>
-        I punti si accumulano sui conti chiusi al tavolo e si usano come sconto sul conto successivo.
-      </BloccoNota>
-      <form onSubmit={salva} method="post" className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="l-punti">Punti per ogni euro speso</Label>
-            <Input
-              id="l-punti"
-              inputMode="numeric"
-              value={punti}
-              onChange={(e) => setPunti(e.target.value)}
-              placeholder="Es. 1"
-              disabled={!canManage}
-              className="w-28"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="l-valore">Quanto vale un punto</Label>
-            <Input
-              id="l-valore"
-              inputMode="decimal"
-              value={valore}
-              onChange={(e) => setValore(e.target.value)}
-              placeholder="Es. 0,05"
-              disabled={!canManage}
-              className="w-28"
-            />
-            <p className="t-nota">In euro, quando il cliente lo spende.</p>
-          </div>
-        </div>
+    <form onSubmit={salva} method="post">
+      <GruppoImpostazioni
+        titolo="Raccolta punti"
+        descrizione="I punti si accumulano sui conti chiusi al tavolo e si usano come sconto sul conto successivo. Senza entrambi i numeri la raccolta resta spenta."
+        azione={
+          canManage && (
+            <>
+              <EsitoSalvataggio salvato={salvato} errore={error} />
+              <Button type="submit" variant="accent" size="sm" disabled={salvando}>
+                {salvando ? "Salvo…" : attiva ? "Salva" : "Salva e spegni la raccolta"}
+              </Button>
+            </>
+          )
+        }
+      >
+        <RigaImpostazione
+          nome="Punti per ogni euro speso"
+          htmlFor="l-punti"
+          descrizione="Quanti punti mette in tasca il cliente per un euro di conto."
+        >
+          <Input
+            id="l-punti"
+            inputMode="numeric"
+            value={punti}
+            onChange={(e) => {
+              setPunti(e.target.value);
+              setSalvato(false);
+            }}
+            placeholder="Es. 1"
+            disabled={!canManage}
+            className="w-24 text-right"
+          />
+        </RigaImpostazione>
 
-        {attiva ? (
-          <p className="riquadro bg-current/5 p-3 text-sm">
-            Un conto da 60 € dà{" "}
-            <strong className="tabular-nums">
-              {esempioPunti} {esempioPunti === 1 ? "punto" : "punti"}
-            </strong>
-            , che valgono{" "}
-            <strong className="tabular-nums">
-              {(esempioCents / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
-            </strong>{" "}
-            sulla prossima cena. In pratica stai restituendo il{" "}
-            <strong className="tabular-nums">
-              {percentuale.toLocaleString("it-IT", { maximumFractionDigits: 2 })}%
-            </strong>{" "}
-            di quello che incassi.
-          </p>
-        ) : (
-          <p className="flex items-start gap-2 t-nota">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            Senza entrambi i numeri la raccolta punti resta spenta, e nessun cliente accumula niente. Sono due
-            decisioni tue: quanto premi la fedeltà e quanto ti costa.
-          </p>
-        )}
+        <RigaImpostazione
+          nome="Quanto vale un punto"
+          htmlFor="l-valore"
+          descrizione="In euro, quando il cliente lo spende. È denaro del locale: non lo decidiamo noi."
+        >
+          <Input
+            id="l-valore"
+            inputMode="decimal"
+            value={valore}
+            onChange={(e) => {
+              setValore(e.target.value);
+              setSalvato(false);
+            }}
+            placeholder="Es. 0,05"
+            disabled={!canManage}
+            className="w-24 text-right"
+          />
+          <span className="text-sm text-muted-foreground">€</span>
+        </RigaImpostazione>
+
+        {/*
+          Nessun ristoratore ragiona in punti: ragiona in quanto gli costa. La
+          frase sta dopo i due campi perché è la loro conseguenza, e si
+          riscrive mentre li si tocca.
+        */}
+        <RigaLibera>
+          {attiva ? (
+            <p className="text-sm text-card-foreground/80">
+              Un conto da 60 € dà{" "}
+              <strong className="tabular-nums text-foreground">
+                {esempioPunti} {esempioPunti === 1 ? "punto" : "punti"}
+              </strong>
+              , che valgono{" "}
+              <strong className="tabular-nums text-foreground">
+                {(esempioCents / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
+              </strong>{" "}
+              sulla prossima cena. In pratica stai restituendo il{" "}
+              <strong className="tabular-nums text-accent-strong">
+                {percentuale.toLocaleString("it-IT", { maximumFractionDigits: 2 })}%
+              </strong>{" "}
+              di quello che incassi.
+            </p>
+          ) : (
+            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              Senza entrambi i numeri la raccolta punti resta spenta, e nessun cliente accumula niente. Sono
+              due decisioni tue: quanto premi la fedeltà e quanto ti costa.
+            </p>
+          )}
+        </RigaLibera>
 
         {/* Il traguardo. Uno sconto lineare è troppo piccolo per essere
             notato: «ti mancano 40 punti alla cena omaggio» è la frase che
             riporta le persone. Il premio lo decide il locale — non sappiamo
             cosa può permettersi di regalare. */}
         {attiva && (
-          <div className="riquadro p-3">
-            <p className="text-sm font-medium">Un traguardo, se vuoi</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Facoltativo. Senza, i punti restano solo uno sconto.
-            </p>
-            <div className="mt-2 grid gap-3 sm:grid-cols-[8rem_1fr]">
-              <div className="space-y-1.5">
-                <Label htmlFor="l-premio">Punti</Label>
-                <Input
-                  id="l-premio"
-                  inputMode="numeric"
-                  value={premio}
-                  onChange={(e) => setPremio(e.target.value.replace(/[^0-9]/g, ""))}
-                  placeholder="Es. 200"
-                  disabled={!canManage}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="l-cosa">Cosa si vince</Label>
-                <Input
-                  id="l-cosa"
-                  value={cosa}
-                  onChange={(e) => setCosa(e.target.value)}
-                  placeholder="Es. una bottiglia della casa"
-                  disabled={!canManage}
-                />
-              </div>
-            </div>
-            {premio.trim() && cosa.trim() && valoreCents > 0 && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Ci si arriva spendendo circa{" "}
-                <strong className="tabular-nums">
-                  {Math.round(Number(premio) / (puntiNum || 1))} €
-                </strong>
-                , e il premio ti costa quello che vale «{cosa.trim()}».
-              </p>
-            )}
-          </div>
-        )}
+          <>
+            <RigaImpostazione
+              nome="Un traguardo, se vuoi"
+              htmlFor="l-premio"
+              descrizione={
+                premio.trim() && cosa.trim() && valoreCents > 0
+                  ? `Ci si arriva spendendo circa ${Math.round(Number(premio) / (puntiNum || 1))} €, e il premio ti costa quello che vale «${cosa.trim()}».`
+                  : "Facoltativo. Senza, i punti restano solo uno sconto."
+              }
+            >
+              <Input
+                id="l-premio"
+                inputMode="numeric"
+                value={premio}
+                onChange={(e) => {
+                  setPremio(e.target.value.replace(/[^0-9]/g, ""));
+                  setSalvato(false);
+                }}
+                placeholder="Es. 200"
+                disabled={!canManage}
+                className="w-24 text-right"
+              />
+              <span className="text-sm text-muted-foreground">punti</span>
+            </RigaImpostazione>
 
-        {canManage && (
-          <Button type="submit" variant="accent" disabled={salvando}>
-            {salvando ? "Salvo…" : attiva ? "Salva" : "Salva e spegni la raccolta"}
-          </Button>
+            <RigaImpostazione nome="Cosa si vince" htmlFor="l-cosa">
+              <Input
+                id="l-cosa"
+                value={cosa}
+                onChange={(e) => {
+                  setCosa(e.target.value);
+                  setSalvato(false);
+                }}
+                placeholder="Es. una bottiglia della casa"
+                disabled={!canManage}
+                className="w-full sm:w-64"
+              />
+            </RigaImpostazione>
+          </>
         )}
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {salvato && !error && <p className="text-sm text-sage-strong">Salvato.</p>}
-      </form>
-    </Blocco>
+      </GruppoImpostazioni>
+    </form>
   );
 }

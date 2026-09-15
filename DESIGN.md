@@ -612,7 +612,16 @@ tipo.
 
 **Il ritardo non è uno stato**, è una proprietà di `IN_ARRIVO`: un tavolo il cui
 ospite è in ritardo è ancora in arrivo, e trattarlo come stato a sé
-raddoppierebbe i casi senza aggiungere informazione.
+raddoppierebbe i casi senza aggiungere informazione. Lo stesso vale per
+**«sta pagando»**: è un fatto del conto — c'è un pagamento col QR in corso — e
+si legge accanto allo stato, non al suo posto.
+
+**Anche il vestito sta in un posto solo.** Le parole erano già condivise; il
+colore e l'icona vivevano dentro la mappa del Servizio, e la terza schermata
+che ne ha avuto bisogno — il profilo del tavolo — li avrebbe copiati. Stanno in
+`components/tables/stile-stato.tsx`, con la pillola già fatta
+(`StatoTavoloBadge`), così «al conto» non può essere terracotta in una
+schermata e qualcos'altro nell'altra.
 
 ## 13. Il titolo della pagina sta nella testata
 

@@ -1,6 +1,7 @@
 import { eseguiCron } from "@/lib/cron";
 import { pulisciLavoriVecchi, runDueJobs } from "@/server/jobs/queue";
 import { JOB_HANDLERS } from "@/server/jobs/handlers";
+import { scadiPagamentiVecchi } from "@/server/pagamenti-tavolo";
 
 /**
  * Smaltisce la coda. Chiamata da Vercel Cron ogni minuto (vedi vercel.json).
@@ -24,8 +25,19 @@ export async function GET(req: Request) {
      */
     const storiaRipulita = await pulisciLavoriVecchi();
 
+    /**
+     * I tentativi di pagamento al tavolo lasciati a metà.
+     *
+     * Non serve alla correttezza — un impegno scaduto smette di contare nel
+     * residuo già in lettura, quindi nessun tavolo resta bloccato aspettando
+     * questo giro. Serve a non lasciare in tabella righe «in corso» eterne
+     * che a fine mese sembrano incassi rimasti appesi.
+     */
+    const pagamentiScaduti = await scadiPagamentiVecchi();
+
     return {
       storiaRipulita,
+      pagamentiScaduti,
       presiInCarico: esito.claimed,
       conclusi: esito.done,
       rimandati: esito.requeued,

@@ -354,6 +354,43 @@ describe("l'elenco", () => {
     expect((await listCoupons(venueId, { includeArchived: true })).find((x) => x.id === c.id)).toBeTruthy();
   });
 
+  it("separa gli utilizzi del mese da quelli di sempre", async () => {
+    const c = await createCoupon(venueId, base({ maxPerGuest: 5 }));
+    const uno = await redeemCoupon(venueId, { code: c.code, guestId: ospiteA });
+    await redeemCoupon(venueId, { code: c.code, guestId: ospiteB });
+
+    // Uno dei due spostato indietro di tre mesi: «126 utilizzi da sempre» non
+    // dice se un coupon stia funzionando **adesso**, ed è tutta la ragione per
+    // cui la fascia porta due numeri invece di uno.
+    await db.couponRedemption.update({
+      where: { id: uno.redemptionId },
+      data: { redeemedAt: new Date(Date.now() - 92 * 86_400_000) },
+    });
+
+    const vista = (await listCoupons(venueId)).find((x) => x.id === c.id)!;
+    expect(vista.usi).toBe(2);
+    expect(vista.usiMese).toBe(1);
+    expect(vista.ultimoUso).not.toBeNull();
+  });
+
+  it("un coupon mai usato non ha un ultimo utilizzo", async () => {
+    const c = await createCoupon(venueId, base());
+    const vista = (await listCoupons(venueId)).find((x) => x.id === c.id)!;
+    expect(vista.usi).toBe(0);
+    expect(vista.usiMese).toBe(0);
+    expect(vista.ultimoUso).toBeNull();
+  });
+
+  it("un utilizzo annullato esce anche dal conto del mese", async () => {
+    const c = await createCoupon(venueId, base({ maxPerGuest: 5 }));
+    const usato = await redeemCoupon(venueId, { code: c.code, guestId: ospiteA });
+    await undoRedemption(venueId, usato.redemptionId);
+
+    const vista = (await listCoupons(venueId)).find((x) => x.id === c.id)!;
+    expect(vista.usiMese).toBe(0);
+    expect(vista.ultimoUso).toBeNull();
+  });
+
   it("i coupon di un altro locale non compaiono", async () => {
     await createCoupon(altroVenueId, base({ code: "ALTRUI-3" }));
     expect((await listCoupons(venueId)).some((x) => x.code === "ALTRUI-3")).toBe(false);

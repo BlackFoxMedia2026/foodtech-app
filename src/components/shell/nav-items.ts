@@ -1,5 +1,6 @@
 import { CalendarRange, CreditCard, Gift, LayoutDashboard, LineChart, Megaphone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
+import { cn } from "@/lib/utils";
 
 export type NavItem = {
   href: string;
@@ -66,6 +67,13 @@ export const GRUPPI_PROFILO: { key: GruppoProfilo; label: string }[] = [
  * L'ordine è quello di prima e non è alfabetico: si parte da ciò che si manda
  * (campagne, automazioni), si passa a ciò che si dà (coupon, gift card) e si
  * finisce con ciò che si raccoglie o si stampa (Wi-Fi, QR).
+ *
+ * **Quello che configura l'invio non sta qui**: piano DEM, dominio di invio e
+ * reputazione sono in Impostazioni → Marketing. Il criterio è quello di tutto
+ * il menu — qui stanno gli **strumenti**, le cose che si aprono per fare
+ * qualcosa. Un piano si guarda una volta al mese e un dominio si configura una
+ * volta sola: metterli in fila con le campagne allunga l'elenco che si legge
+ * ogni volta con tre voci che servono quasi mai.
  *
  * **Le campagne sono rimaste su `/campaigns`**, fuori da `/marketing`: il
  * percorso è quello del wizard esistente e spostarlo romperebbe i link già
@@ -341,6 +349,10 @@ const TITOLI_EXTRA: Record<string, string | [lungo: string, breve: string]> = {
   "/marketing/gift-cards": "Gift card",
   "/marketing/qr-codes": "QR Code",
   "/marketing/wifi": "Wi-Fi",
+  "/settings/marketing/piano": ["Il tuo piano DEM", "Piano DEM"],
+  "/settings/marketing/invio": ["Impostazioni invio", "Invio"],
+  "/settings/marketing/reputazione": "Reputazione",
+  "/settings/marketing/piano/confronto": ["Scegli il tuo piano", "Piani"],
   /* Analytics vive nel menu Marketing, quindi la voce accesa in barra è
      Marketing: senza questa riga la sua testata direbbe «Marketing». */
   "/insights": "Analytics",
@@ -371,4 +383,32 @@ export function titoloPagina(pathname: string): TitoloPagina | null {
   const voce = ALL_NAV.find((item) => isNavActive(pathname, item));
   if (!voce) return null;
   return { lungo: voce.label, breve: voce.shortLabel ?? voce.label };
+}
+
+/**
+ * Il vestito di una voce in barra, **uno solo per tutte**.
+ *
+ * Tre misure per la stessa voce, e il salto avviene dove la fila smetterebbe
+ * di entrare:
+ * · fino a 1280 px il nome sta **sotto** l'icona, come nella barra del
+ *   telefono (su tablet si tocca: 44 px);
+ * · da 1280 px torna accanto all'icona, abbreviato;
+ * · da 1536 px il nome è intero.
+ *
+ * Prima il nome tornava in fila già a 1024 px: con sei voci ci stava, con
+ * sette la pillola finiva sotto la sfera dell'agente. Una barra che scorre di
+ * lato è una barra che nasconde metà prodotto.
+ *
+ * Sta qui, e non dentro `header.tsx`, perché la usano **tre** file: la barra
+ * del gestionale, il menu Marketing e la barra delle Impostazioni. Le due
+ * barre devono somigliarsi fino all'ultimo pixel — è quello che rende il
+ * passaggio fra le due un cambio di area e non un altro prodotto — e due
+ * copie di questa stringa smettono di somigliarsi alla prima modifica fatta
+ * su una sola.
+ */
+export function classiVoce(active: boolean) {
+  return cn(
+    "relative z-10 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium leading-tight transition-colors md:min-w-0 xl:flex-row xl:gap-2 xl:px-3 xl:py-2 xl:text-sm 2xl:px-3.5",
+    active ? "text-forest" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+  );
 }

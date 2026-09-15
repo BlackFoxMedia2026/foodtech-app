@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { deliverQueuedMessage } from "@/server/messaging/send";
 import { runCampaignSendJob } from "@/server/campaigns";
+import { eseguiInvioDem } from "@/server/dem/invio";
 import { runAutomation } from "@/server/automations/engine";
 import { AUTOMATION_KEYS } from "@/server/automations/catalogue";
 import type { JobHandlers } from "./queue";
@@ -28,7 +29,21 @@ export const JOB_HANDLERS: JobHandlers = {
     await deliverQueuedMessage(payload, { finalAttempt: job.attempts >= job.maxAttempts });
   },
 
-  /** L'invio di una campagna: sincronizza i contatti a lotti, poi consegna. */
+  /**
+   * L'invio di una campagna **fatto da noi**: un messaggio per destinatario, a
+   * lotti, con la quota che scende mentre si invia. È la strada normale.
+   */
+  "dem.campaign.send": (payload, job) => eseguiInvioDem(payload, job),
+
+  /**
+   * La vecchia strada: si consegna l'intera campagna a un fornitore esterno,
+   * che la manda a una lista sua.
+   *
+   * Resta per le installazioni in cui l'invio con dominio proprio non è ancora
+   * acceso, e per le campagne già in coda quando lo si accende — una riga in
+   * coda non deve smettere di avere un gestore perché nel frattempo abbiamo
+   * cambiato modo di spedire.
+   */
   "campaign.send": (payload, job) => runCampaignSendJob(payload, job),
 
   /**

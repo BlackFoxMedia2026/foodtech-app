@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Star, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -16,6 +14,12 @@ import {
 } from "@/components/ui/select";
 import { readApiError } from "@/lib/api-client";
 import { MAX_LINK, NOME_PIATTAFORMA, PIATTAFORME } from "@/lib/recensioni";
+import {
+  EsitoSalvataggio,
+  GruppoImpostazioni,
+  RigaImpostazione,
+  RigaLibera,
+} from "@/components/settings/righe-impostazioni";
 import type { ReviewLinkView } from "@/server/reviews";
 
 type Riga = { id?: string; platform: string; url: string; clic30: number };
@@ -76,117 +80,103 @@ export function ReviewLinksSettings({
     router.refresh();
   }
 
-  /*
-    Da chiuso: **dove** mandiamo chi è contento. Non «2 collegamenti» — il
-    numero non dice niente a chi vuole sapere se Google c'è.
-  */
-  const attive = righe.filter((r) => r.url.trim());
-  const riepilogo =
-    attive.length === 0
-      ? "nessun collegamento"
-      : attive
-          .map((r) => NOME_PIATTAFORMA[r.platform as keyof typeof NOME_PIATTAFORMA] ?? r.platform)
-          .join(" · ");
-
   return (
-    <Blocco titolo="Recensioni pubbliche" icona={Star} valore={riepilogo}>
-      <BloccoNota>
-        Dove mandiamo chi risponde 9 o 10 al «com&apos;è andata?». Chi dà un voto più basso non vede mai
-        questi collegamenti: quella risposta resta fra te e lui.
-      </BloccoNota>
-      <div className="space-y-4">
-        {righe.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Nessun collegamento: oggi chi è contento riceve solo un grazie. Su Google, il link giusto è
-            quello «Scrivi una recensione» che trovi nel tuo profilo attività.
-          </p>
-        )}
-
-        {righe.map((r, i) => (
-          <div key={r.id ?? `nuova-${i}`} className="grid gap-2 sm:grid-cols-[10rem_1fr_auto] sm:items-end">
-            <div className="space-y-1.5">
-              <Label htmlFor={`piatt-${i}`}>Dove</Label>
-              <Select
-                value={r.platform}
-                onValueChange={(v) => aggiorna(i, "platform", v)}
-                disabled={!canManage}
-              >
-                <SelectTrigger id={`piatt-${i}`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PIATTAFORME.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {NOME_PIATTAFORMA[p]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor={`url-${i}`}>Indirizzo</Label>
-              <Input
-                id={`url-${i}`}
-                value={r.url}
-                inputMode="url"
-                disabled={!canManage}
-                onChange={(e) => aggiorna(i, "url", e.target.value)}
-                placeholder="https://…"
-              />
-              {r.id && (
-                <p className="t-nota">
-                  {r.clic30 === 0
-                    ? "Nessuno ci è passato negli ultimi 30 giorni"
-                    : `${r.clic30} ${r.clic30 === 1 ? "persona ci è passata" : "persone ci sono passate"} negli ultimi 30 giorni`}
-                </p>
-              )}
-            </div>
-
-            {canManage && (
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label={`Togli il collegamento a ${NOME_PIATTAFORMA[r.platform as keyof typeof NOME_PIATTAFORMA]}`}
-                onClick={() => {
-                  setRighe(righe.filter((_, n) => n !== i));
-                  setSalvato(false);
-                }}
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            )}
-          </div>
-        ))}
-
-        {canManage && (
-          <div className="flex flex-wrap items-center gap-2">
-            {righe.length < MAX_LINK && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setRighe([...righe, { platform: "GOOGLE", url: "", clic30: 0 }]);
-                  setSalvato(false);
-                }}
-              >
-                <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Aggiungi un posto
-              </Button>
-            )}
+    <GruppoImpostazioni
+      titolo="Recensioni pubbliche"
+      descrizione="Dove mandiamo chi risponde 9 o 10 al «com'è andata?». Chi dà un voto più basso non vede mai questi collegamenti: quella risposta resta fra te e lui."
+      azione={
+        canManage && (
+          <>
+            <EsitoSalvataggio salvato={salvato} errore={error} />
             <Button variant="accent" size="sm" onClick={salva} disabled={salvando}>
               {salvando ? "Salvo…" : "Salva"}
             </Button>
-            {salvato && <span className="text-sm text-sage-strong">Salvato.</span>}
-          </div>
-        )}
+          </>
+        )
+      }
+    >
+      {righe.length === 0 && (
+        <RigaImpostazione
+          nome="Nessun collegamento"
+          descrizione="Oggi chi è contento riceve solo un grazie. Su Google, il link giusto è quello «Scrivi una recensione» che trovi nel tuo profilo attività."
+        />
+      )}
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+      {righe.map((r, i) => (
+        <RigaImpostazione
+          key={r.id ?? `nuova-${i}`}
+          /* Niente `htmlFor`: qui il nome della riga **è** un controllo (la
+             tendina della piattaforma), e un `<label>` che ne contiene uno e
+             ne indica un altro manda il clic sull'elemento sbagliato. */
+          nome={
+            <Select
+              value={r.platform}
+              onValueChange={(v) => aggiorna(i, "platform", v)}
+              disabled={!canManage}
+            >
+              <SelectTrigger id={`piatt-${i}`} className="w-full max-w-[12rem]" aria-label="Piattaforma">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PIATTAFORME.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {NOME_PIATTAFORMA[p]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+          descrizione={
+            r.id
+              ? r.clic30 === 0
+                ? "Nessuno ci è passato negli ultimi 30 giorni"
+                : `${r.clic30} ${r.clic30 === 1 ? "persona ci è passata" : "persone ci sono passate"} negli ultimi 30 giorni`
+              : undefined
+          }
+        >
+          <Input
+            id={`url-${i}`}
+            value={r.url}
+            inputMode="url"
+            disabled={!canManage}
+            onChange={(e) => aggiorna(i, "url", e.target.value)}
+            placeholder="https://…"
+            className="w-full md:w-64"
+          />
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Togli il collegamento a ${NOME_PIATTAFORMA[r.platform as keyof typeof NOME_PIATTAFORMA]}`}
+              onClick={() => {
+                setRighe(righe.filter((_, n) => n !== i));
+                setSalvato(false);
+              }}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          )}
+        </RigaImpostazione>
+      ))}
 
-        <p className="t-nota">
+      <RigaLibera className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-xl t-nota">
           Togliere un collegamento non cancella i passaggi che ha raccolto: restano nei numeri di quel
           periodo. Quattro è il massimo — davanti a sei bottoni una persona contenta non sceglie, chiude.
         </p>
-      </div>
-    </Blocco>
+        {canManage && righe.length < MAX_LINK && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setRighe([...righe, { platform: "GOOGLE", url: "", clic30: 0 }]);
+              setSalvato(false);
+            }}
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" /> Aggiungi un posto
+          </Button>
+        )}
+      </RigaLibera>
+    </GruppoImpostazioni>
   );
 }
