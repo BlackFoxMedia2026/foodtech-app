@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { readApiError } from "@/lib/api-client";
+import {
+  QuotaInsufficienteDialog,
+  leggiQuotaMancante,
+  type QuotaMancante,
+} from "@/components/dem/quota-insufficiente";
 
 /**
  * Invia o programma.
@@ -23,6 +28,7 @@ export function CampaignActions({ campaignId, recipients }: { campaignId: string
   const [error, setError] = useState<string | null>(null);
   const [scheduledAt, setScheduledAt] = useState("");
   const [confermaInvio, setConfermaInvio] = useState(false);
+  const [quotaMancante, setQuotaMancante] = useState<QuotaMancante | null>(null);
 
   async function chiama(url: string, body?: unknown) {
     setSubmitting(true);
@@ -34,6 +40,13 @@ export function CampaignActions({ campaignId, recipients }: { campaignId: string
     setSubmitting(false);
     setConfermaInvio(false);
     if (!res.ok) {
+      // Gli invii finiti non sono un errore da leggere in una riga rossa: è
+      // una decisione da prendere, e ha una finestra sua con le due strade.
+      const mancante = await leggiQuotaMancante(res);
+      if (mancante) {
+        setQuotaMancante(mancante);
+        return;
+      }
       setError(await readApiError(res, "Non siamo riusciti ad avviare l'invio."));
       return;
     }
@@ -88,6 +101,8 @@ export function CampaignActions({ campaignId, recipients }: { campaignId: string
         </p>
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <QuotaInsufficienteDialog quota={quotaMancante} onClose={() => setQuotaMancante(null)} />
     </div>
   );
 }

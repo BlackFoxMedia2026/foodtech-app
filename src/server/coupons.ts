@@ -343,6 +343,17 @@ export type CouponView = {
   guestName: string | null;
   /** Le righe vere, non il contatore. */
   usi: number;
+  /**
+   * Gli utilizzi del mese in corso.
+   *
+   * «126 utilizzi da sempre» dice se un coupon è nato bene, non se sta
+   * funzionando **adesso**: un codice di benvenuto acceso due anni fa porta un
+   * totale alto anche il mese in cui nessuno lo usa. Si conta dalle stesse
+   * righe già lette per `usi`, quindi non costa una query in più.
+   */
+  usiMese: number;
+  /** L'ultimo utilizzo, se c'è. Dice se un coupon è vivo o solo acceso. */
+  ultimoUso: Date | null;
   /** Quanti ne restano, se c'è un tetto. */
   restanti: number | null;
   descrizione: string;
@@ -355,6 +366,10 @@ export async function listCoupons(
   opts: { includeArchived?: boolean; now?: Date } = {},
 ): Promise<CouponView[]> {
   const now = opts.now ?? new Date();
+  // Il mese in corso secondo l'orologio di chi guarda la pagina, non secondo
+  // UTC: a Milano il primo del mese comincia due ore prima di mezzanotte a
+  // Greenwich, e un utilizzo delle 00:30 finirebbe nel mese sbagliato.
+  const inizioMese = new Date(now.getFullYear(), now.getMonth(), 1);
   const coupons = await db.coupon.findMany({
     where: { venueId, ...(opts.includeArchived ? {} : { status: { not: "ARCHIVED" } }) },
     orderBy: { createdAt: "desc" },
@@ -362,12 +377,21 @@ export async function listCoupons(
       Guest: { select: { firstName: true, lastName: true } },
       // Solo gli utilizzi non annullati: annullare deve rimettere l'uso a
       // disposizione, altrimenti un tocco sbagliato brucia un coupon.
-      CouponRedemption: { where: { deletedAt: null }, select: { id: true } },
+      //
+      // `redeemedAt` viene con la riga perché serviva già leggerla: il mese in
+      // corso e l'ultimo uso si ricavano da qui invece che da due conteggi in
+      // più per ogni coupon dell'elenco.
+      CouponRedemption: { where: { deletedAt: null }, select: { id: true, redeemedAt: true } },
     },
   });
 
   return coupons.map((c) => {
     const usi = c.CouponRedemption.length;
+    const usiMese = c.CouponRedemption.filter((r) => r.redeemedAt >= inizioMese).length;
+    const ultimoUso = c.CouponRedemption.reduce<Date | null>(
+      (max, r) => (max == null || r.redeemedAt > max ? r.redeemedAt : max),
+      null,
+    );
     // Nell'elenco non c'è un cliente: si valuta tutto tranne i limiti per
     // persona, che dipendono da chi lo sta usando.
     const esito = couponUsability(c, { now, usiTotali: usi });
@@ -389,6 +413,8 @@ export async function listCoupons(
       validWeekdays: c.validWeekdays,
       guestName: c.Guest ? `${c.Guest.firstName}${c.Guest.lastName ? ` ${c.Guest.lastName}` : ""}` : null,
       usi,
+      usiMese,
+      ultimoUso,
       restanti: c.maxRedemptions != null ? Math.max(0, c.maxRedemptions - usi) : null,
       descrizione: descriviCoupon(c),
       stato: esito.usable ? "usabile" : esito.reason,

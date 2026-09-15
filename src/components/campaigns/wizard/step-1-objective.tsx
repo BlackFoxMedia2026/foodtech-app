@@ -44,45 +44,52 @@ export function Step1Objective() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-display text-lg">Qual è l&apos;obiettivo della campagna?</h2>
-        <p className="text-sm text-muted-foreground">
-          Scegli un obiettivo: pre-imposteremo segmento e oggetto suggeriti, che potrai comunque modificare nei passi successivi.
+        <h2 className="text-display text-2xl">Qual è l&apos;obiettivo della campagna?</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Da qui prepariamo segmento e oggetto suggeriti: potrai cambiarli nei passi successivi.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {CAMPAIGN_OBJECTIVES.map((objective) => {
-          const Icon = ICONS[objective.icon];
-          const selected = state.objectiveId === objective.id;
-          return (
-            <button
-              key={objective.id}
-              type="button"
-              onClick={() => selectObjective(objective)}
-              className={cn(
-                "flex items-start gap-3 rounded-lg border p-4 text-left transition-colors",
-                selected ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary",
-              )}
-            >
-              <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", selected ? "text-accent-strong" : "text-muted-foreground")} />
-              <div>
+      {/* Gli obiettivi prendono la larghezza, il nome resta una cosa sola in
+          una colonna a parte: è l'ultimo dato da riempire, non il primo. */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {CAMPAIGN_OBJECTIVES.map((objective) => {
+            const Icon = ICONS[objective.icon];
+            const selected = state.objectiveId === objective.id;
+            return (
+              <button
+                key={objective.id}
+                type="button"
+                onClick={() => selectObjective(objective)}
+                className={cn(
+                  "flex h-full flex-col gap-2 rounded-xl border p-4 text-left transition-colors",
+                  selected
+                    ? "border-accent-strong bg-accent-strong/10"
+                    : "border-border hover:border-border-strong hover:bg-secondary/60",
+                )}
+              >
+                <Icon
+                  className={cn("h-5 w-5 shrink-0", selected ? "text-accent-strong" : "text-muted-foreground")}
+                  aria-hidden="true"
+                />
                 <p className="text-sm font-medium">{objective.label}</p>
-                <p className="text-xs text-muted-foreground">{objective.description}</p>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">{objective.description}</p>
+              </button>
+            );
+          })}
+        </div>
 
-      <div className="space-y-2 border-t border-border pt-6">
-        <Label htmlFor="campaign-name">Nome campagna</Label>
-        <Input
-          id="campaign-name"
-          value={state.name}
-          onChange={(e) => dispatch({ type: "SET_NAME", name: e.target.value })}
-          placeholder="Es. Recupero clienti ottobre"
-        />
-        <p className="text-xs text-muted-foreground">Solo per uso interno: i clienti non lo vedranno.</p>
+        <div className="riquadro comodo h-fit space-y-2 bg-secondary/30">
+          <Label htmlFor="campaign-name">Nome campagna</Label>
+          <Input
+            id="campaign-name"
+            value={state.name}
+            onChange={(e) => dispatch({ type: "SET_NAME", name: e.target.value })}
+            placeholder="Es. Recupero clienti ottobre"
+          />
+          <p className="t-nota">Solo per uso interno: i clienti non lo vedranno.</p>
+        </div>
       </div>
     </div>
   );

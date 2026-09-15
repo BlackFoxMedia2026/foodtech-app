@@ -29,9 +29,29 @@ import type { AnteprimaCancellazione } from "@/server/guest-erasure";
  * Il motivo è obbligatorio. Fra un anno «anonimizzato» senza contesto non si
  * distingue da un errore, e questo errore non si può correggere.
  */
-export function ErasureDialog({ guestId, guestName }: { guestId: string; guestName: string }) {
+export function ErasureDialog({
+  guestId,
+  guestName,
+  open: openEsterno,
+  onOpenChange,
+}: {
+  guestId: string;
+  guestName: string;
+  /*
+    Da settembre 2026 la cancellazione non ha più un pulsante in testata: è una
+    voce del menu «•••», con lo stile distruttivo, perché è l'azione più rara e
+    più irreversibile della scheda e stare accanto a «Modifica» la rendeva un
+    gesto da fare di corsa. Quando il menu la comanda passa `open`, e il
+    dialogo smette di disegnarsi il proprio pulsante.
+  */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [openInterno, setOpenInterno] = useState(false);
+  const controllato = openEsterno !== undefined;
+  const open = controllato ? openEsterno : openInterno;
+  const setOpen = controllato ? (v: boolean) => onOpenChange?.(v) : setOpenInterno;
   const [anteprima, setAnteprima] = useState<AnteprimaCancellazione | null>(null);
   const [motivo, setMotivo] = useState("");
   const [inCorso, setInCorso] = useState(false);
@@ -110,9 +130,11 @@ export function ErasureDialog({ guestId, guestName }: { guestId: string; guestNa
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <ShieldOff className="mr-2 h-3.5 w-3.5" aria-hidden="true" /> Cancella i dati
-      </Button>
+      {!controllato && (
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          <ShieldOff className="mr-2 h-3.5 w-3.5" aria-hidden="true" /> Cancella i dati
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">

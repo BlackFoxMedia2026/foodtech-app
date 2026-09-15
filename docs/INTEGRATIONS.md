@@ -4,6 +4,24 @@ Stato al 7 settembre 2026. Ogni voce dice se il codice esiste, non se la tabella
 
 ## Attive
 
+### Amazon SES — invio delle newsletter · DIETRO INTERRUTTORE
+
+`src/server/dem/ses.ts`, e **solo** quello: è l'unico file del progetto che sa da dove escono
+le email. Uno spazio isolato per cliente, un insieme di configurazione per cliente, un
+sottodominio di invio per cliente. Gli esiti tornano a `/api/webhooks/ses`, con verifica della
+firma.
+
+**Chiavi:** `DEM_SES_ENABLED`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`AWS_ACCOUNT_ID`, `SES_EVENT_SNS_TOPIC_ARN`. Senza l'interruttore le campagne passano da Brevo.
+
+**Al cliente non compare mai**: né il nome, né un messaggio d'errore, né una sigla. Vedi
+[DEM.md](DEM.md).
+
+### Stripe — abbonamenti del modulo DEM · LIVE quando ci sono le chiavi
+
+Stesse chiavi dei pagamenti al tavolo, **senza** `perConto()`: qui incassa la piattaforma, non
+il ristorante. `src/server/dem/stripe-dem.ts`, eventi sullo stesso webhook.
+
 ### Brevo — invio campagne email · LIVE
 
 `src/server/marketing/brevo-adapter.ts` (205 righe) più `email-provider.ts` come interfaccia.

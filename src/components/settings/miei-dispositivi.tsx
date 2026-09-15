@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { readApiError } from "@/lib/api-client";
+import { GruppoImpostazioni, RigaImpostazione } from "@/components/settings/righe-impostazioni";
 
 /**
  * «Esci da tutti i dispositivi.»
@@ -45,25 +45,24 @@ export function MieiDispositivi() {
 
   return (
     /*
-      Qui non c'è un valore da dichiarare: quante sessioni siano aperte non lo
-      sappiamo — i token non stanno sul server (`strategy: "jwt"`), e inventare
-      un numero sarebbe peggio che non dirlo. Quindi da chiuso si legge cosa
-      fa il blocco, che è l'informazione vera.
+      Quante sessioni siano aperte non lo sappiamo — i token non stanno sul
+      server (`strategy: "jwt"`) — e inventare un numero sarebbe peggio che non
+      dirlo. Quindi la riga dice cosa fa il comando, che è l'informazione vera.
     */
-    <Blocco titolo="I tuoi dispositivi" valore="chiudi gli accessi aperti">
-      <BloccoNota>Se hai lasciato l&apos;accesso aperto da qualche parte e non sai dove.</BloccoNota>
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Chiude tutte le sessioni aperte col tuo account, su ogni dispositivo — compreso questo. Non
-          perdi niente: rientri con la tua password. Gli accessi scadono comunque da soli dopo sette
-          giorni di inattività.
-        </p>
+    <GruppoImpostazioni
+      titolo="Il tuo accesso"
+      descrizione="Riguarda te, non il ristorante: vale su questo account, ovunque sia aperto."
+    >
+      <RigaImpostazione
+        nome="Dispositivi collegati"
+        descrizione="Chiude tutte le sessioni aperte col tuo account, su ogni dispositivo — compreso questo. Non perdi niente: rientri con la tua password. Gli accessi scadono comunque da soli dopo sette giorni di inattività."
+      >
         <Button variant="outline" size="sm" onClick={esci} disabled={inCorso}>
-          <LogOut className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+          <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
           {inCorso ? "Chiudo…" : "Esci da tutti i dispositivi"}
         </Button>
-        {errore && <p className="text-sm text-destructive">{errore}</p>}
-      </div>
-    </Blocco>
+        {errore && <p className="text-sm text-destructive-soft">{errore}</p>}
+      </RigaImpostazione>
+    </GruppoImpostazioni>
   );
 }

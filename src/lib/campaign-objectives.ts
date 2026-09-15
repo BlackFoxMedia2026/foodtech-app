@@ -15,13 +15,13 @@ export interface CampaignObjective {
  * suggerito non vuoto (es. VIP → loyaltyTier, compleanni → birthdayThisMonth).
  * Per gli altri (evento, campagna personalizzata) NON esiste un dato che
  * permetta di indovinare un target sensato — il segmento resta vuoto e il
- * ristoratore lo imposta liberamente nello Step 2. Non è un bug, è onestà
- * sui dati disponibili.
+ * ristoratore lo imposta liberamente nei passi «Segmento» e «Filtri». Non è
+ * un bug, è onestà sui dati disponibili.
  *
  * Lista volutamente limitata a 6 voci (max consigliato per non confondere un
  * utente non tecnico): i template corrispondenti agli obiettivi non elencati
  * qui (pranzo di lavoro, aperitivo, degustazione) restano comunque
- * selezionabili in Step 3 tramite "Vedi tutti i template". Compleanni del
+ * selezionabili nel passo «Modelli» tramite "Vedi tutti i template". Compleanni del
  * mese e Richiedi recensioni non sono qui perché diventeranno automazioni
  * dedicate (sezione a parte, non ancora costruita) invece di obiettivi di
  * campagna manuale.
@@ -52,6 +52,7 @@ export const CAMPAIGN_OBJECTIVES: CampaignObjective[] = [
     icon: "CalendarClock",
     suggestedSegment: {},
     suggestedSubject: "Questa settimana ti aspettiamo",
+    suggestedTemplateId: "last_minute",
   },
   {
     id: "vip",
@@ -60,6 +61,7 @@ export const CAMPAIGN_OBJECTIVES: CampaignObjective[] = [
     icon: "Crown",
     suggestedSegment: { loyaltyTier: "VIP" },
     suggestedSubject: "Qualcosa di speciale per te",
+    suggestedTemplateId: "vip_invite",
   },
   {
     id: "new_menu",

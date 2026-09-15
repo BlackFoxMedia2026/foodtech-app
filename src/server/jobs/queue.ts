@@ -81,6 +81,7 @@ export const PRIORITA_PER_TIPO: Record<string, number> = {
   "message.send": 10,
   "automation.run": 50,
   "campaign.send": 100,
+  "dem.campaign.send": 100,
 };
 
 /** La priorità di un lavoro che non è in tabella: in mezzo, mai davanti. */
@@ -110,6 +111,7 @@ export function prioritaDi(kind: string): number {
 export const GRUPPO_PER_TIPO: Record<string, string> = {
   "message.send": "email",
   "campaign.send": "email",
+  "dem.campaign.send": "email",
 };
 
 export const QUOTA_PER_GRUPPO: Record<string, number> = {

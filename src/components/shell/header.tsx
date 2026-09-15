@@ -5,12 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Agent } from "@/components/agent/agent";
-import { PRIMARY_NAV, isNavActive, titoloPagina } from "@/components/shell/nav-items";
+import { PRIMARY_NAV, classiVoce, isNavActive, titoloPagina } from "@/components/shell/nav-items";
 import { MarketingMenu } from "./marketing-menu";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
 import { NotificationBell } from "./notification-bell";
 import { RicercaGlobale } from "./ricerca-globale";
+import { NavigazioneImpostazioni } from "@/components/settings/navigazione-impostazioni";
 
 /**
  * La barra in alto è la navigazione **da scrivania**: su telefono le voci
@@ -28,6 +29,15 @@ import { RicercaGlobale } from "./ricerca-globale";
  * quella soglia si accorcia l'etichetta, e sotto i 1280 px il nome va **sotto**
  * l'icona, come nella barra del telefono. Stessa gerarchia su tutti gli
  * schermi, nessuna voce che sparisce e nessuna fila che scorre di lato.
+ *
+ * **Dentro le Impostazioni la barra cambia contenuto.** Le otto voci del
+ * servizio spariscono e al loro posto compaiono le quattro sezioni della
+ * pagina, nello stesso contenitore e con la stessa pillola che scorre. Non è
+ * una decorazione: tenere le due navigazioni insieme voleva dire due file di
+ * pillole a tre centimetri l'una dall'altra, e quella di sotto — quattro
+ * parole in riga, crema su verde — si leggeva come una fila di filtri. Una
+ * barra sola che cambia quello che contiene dice «sei in un'altra area» senza
+ * doverlo scrivere.
  */
 export function Header({
   user,
@@ -39,6 +49,7 @@ export function Header({
   activeVenueId: string;
 }) {
   const pathname = usePathname();
+  const inImpostazioni = pathname === "/settings" || pathname.startsWith("/settings/");
   // `HTMLElement` e non `HTMLAnchorElement`: Marketing non è un link ma il
   // bottone che apre il suo menu, e occupa lo stesso posto in fila.
   const itemRefs = useRef(new Map<string, HTMLElement>());
@@ -54,10 +65,13 @@ export function Header({
   }, []);
 
   useLayoutEffect(() => {
+    // Dentro le Impostazioni questa fila non è montata: misurarla darebbe zero
+    // e la pillola ricomparirebbe larga zero all'uscita.
+    if (inImpostazioni) return;
     const activeItem = PRIMARY_NAV.find((item) => isNavActive(pathname, item));
     const el = activeItem ? itemRefs.current.get(activeItem.href) : undefined;
     setIndicator(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
-  }, [pathname]);
+  }, [pathname, inImpostazioni]);
 
   return (
     <header className="relative z-10 bg-background">
@@ -74,9 +88,22 @@ export function Header({
         </div>
 
         {/* Su telefono la navigazione sta in basso: qui non si scorre più niente. */}
+        {inImpostazioni ? (
+          /*
+            Il `key` è ciò che fa la transizione: cambiando, React monta un
+            elemento nuovo e l'animazione d'ingresso riparte da capo. Vale nei
+            due versi — entrando nelle Impostazioni e uscendone — quindi il
+            passaggio si vede uguale all'andata e al ritorno senza tenere in
+            piedi due barre insieme per incrociarle.
+          */
+          <div key="impostazioni" className="flex min-w-0 flex-1 animate-cambio-area justify-center">
+            <NavigazioneImpostazioni />
+          </div>
+        ) : (
         <nav
+          key="gestionale"
           aria-label="Navigazione principale"
-          className="hidden min-w-0 flex-1 justify-center md:flex"
+          className="hidden min-w-0 flex-1 animate-cambio-area justify-center md:flex"
         >
           <div className="relative flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
             {indicator && (
@@ -143,6 +170,7 @@ export function Header({
             })}
           </div>
         </nav>
+        )}
 
         {/* Su telefono il gruppo di destra si allarga per riempire lo spazio
             lasciato libero dalla navigazione. */}
@@ -159,30 +187,5 @@ export function Header({
         </div>
       </div>
     </header>
-  );
-}
-
-/**
- * Il vestito di una voce in barra, **uno solo per tutte e otto**.
- *
- * Tre misure per la stessa voce, e il salto avviene dove la fila smetterebbe
- * di entrare:
- * · fino a 1280 px il nome sta **sotto** l'icona, come nella barra del
- *   telefono (su tablet si tocca: 44 px);
- * · da 1280 px torna accanto all'icona, abbreviato;
- * · da 1536 px il nome è intero.
- *
- * Prima il nome tornava in fila già a 1024 px: con sei voci ci stava, con
- * sette la pillola finiva sotto la sfera dell'agente. Una barra che scorre di
- * lato è una barra che nasconde metà prodotto.
- *
- * Sta in una funzione da quando Marketing è un bottone invece di un link: due
- * copie di questa stringa sarebbero due voci che smettono di somigliarsi alla
- * prima modifica fatta su una sola.
- */
-function classiVoce(active: boolean) {
-  return cn(
-    "relative z-10 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium leading-tight transition-colors md:min-w-0 xl:flex-row xl:gap-2 xl:px-3 xl:py-2 xl:text-sm 2xl:px-3.5",
-    active ? "text-forest" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
   );
 }

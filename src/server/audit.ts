@@ -91,9 +91,20 @@ export type AuditAction =
   | "shift.create"
   | "shift.update"
   | "shift.delete"
+  // I turni di **servizio** — quando si prenota — non quelli delle persone:
+  // entityType "shift", mentre i tre qui sopra sono "work_shift".
+  | "service_shift.create"
+  | "service_shift.update"
+  | "service_shift.delete"
   | "table.create"
   | "table.update"
   | "table.delete"
+  // Il QR di pagamento del tavolo. La rigenerazione è quella che conta: da
+  // quel momento ogni cartoncino già stampato smette di funzionare, e se
+  // qualcuno se ne accorge a metà servizio deve poter sapere chi e quando.
+  | "table.qr_on"
+  | "table.qr_off"
+  | "table.qr_rotate"
   | "room.delete"
   | "contract.create"
   | "contract.update"
@@ -121,7 +132,22 @@ export type AuditAction =
   | "waitlist.close"
   | "waitlist.seat"
   | "campaign.send"
-  | "payment.refund";
+  | "campaign.cancel"
+  | "payment.refund"
+  /*
+    Il modulo DEM. Sono le azioni che spostano denaro o spengono un servizio:
+    chi ha cambiato piano, chi ha alzato la quota di un cliente, chi ha
+    sospeso gli invii di un locale. Senza registro, la domanda «perché questo
+    ristorante è su Business?» non ha una risposta.
+  */
+  | "dem.plan_change"
+  | "dem.plan_scheduled"
+  | "dem.custom_limit"
+  | "dem.sending_paused"
+  | "dem.sending_resumed"
+  | "dem.domain_change"
+  | "dem.domain_verified"
+  | "dem.subscription_cancelled";
 
 export type AuditActor = {
   userId: string;

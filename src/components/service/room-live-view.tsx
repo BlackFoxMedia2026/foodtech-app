@@ -27,17 +27,9 @@ import { LIVE_STATUS_ORDER, type FloorLive, type TableLiveInfo } from "@/server/
 import { ServiceSwitch } from "@/components/service/service-switch";
 import { TablePickerDialog } from "@/components/service/table-picker-dialog";
 import { useServizioVivo } from "@/lib/use-servizio-vivo";
+import { oraInVenue } from "@/lib/venue-time";
 
 type Corrente = NonNullable<TableLiveInfo["current"]>;
-
-/** L'ora nel fuso del locale. Una funzione sola: la usano il riquadro e la riga. */
-function oraLocale(iso: string, timezone: string): string {
-  return new Intl.DateTimeFormat("it-IT", {
-    timeZone: timezone,
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
 
 /**
  * Il conto del tavolo, detto in due parole.
@@ -48,7 +40,11 @@ function oraLocale(iso: string, timezone: string): string {
  */
 function fraseConto(conto: NonNullable<Corrente["conto"]>): string {
   if (conto.righe === 0) return "conto aperto, nulla battuto";
-  return `${formatCurrency(conto.totalCents)} · ${conto.righe} ${conto.righe === 1 ? "riga" : "righe"}`;
+  const base = `${formatCurrency(conto.totalCents)} · ${conto.righe} ${conto.righe === 1 ? "riga" : "righe"}`;
+  if (conto.residuoCents === 0 && conto.pagatoCents > 0) return `${base} — saldato dal tavolo`;
+  if (conto.pagatoCents > 0) return `${base} — pagati ${formatCurrency(conto.pagatoCents)}, restano ${formatCurrency(conto.residuoCents)}`;
+  if (conto.pagamentoInCorso) return `${base} — pagamento in corso al tavolo`;
+  return base;
 }
 
 export type RoomTable = {
@@ -359,16 +355,37 @@ function TavoloMappa({
   const Icona = stile.icona;
   const corrente = info?.current;
 
-  const ora = corrente ? oraLocale(corrente.startsAt, timezone) : null;
+  const ora = corrente ? oraInVenue(corrente.startsAt, timezone) : null;
 
   const oltre = corrente?.liberoVerso != null && corrente.liberoVerso.minuti < 0;
 
   // Le due righe nuove del riquadro: quando si libera e a quanto sta il
   // conto. Il riquadro cresce solo se ha qualcosa da dire.
   const previsione = corrente?.liberoVerso ? frasePrevisione(corrente.liberoVerso, timezone) : null;
-  const oraLibero = corrente?.liberoVerso ? oraLocale(corrente.liberoVerso.fine, timezone) : null;
+  const oraLibero = corrente?.liberoVerso ? oraInVenue(corrente.liberoVerso.fine, timezone) : null;
   const soldi =
     corrente?.conto && corrente.conto.righe > 0 ? formatCurrency(corrente.conto.totalCents) : null;
+
+  /*
+    Il tavolo che ha pagato da solo.
+
+    È l'informazione che cambia un gesto: un tavolo saldato col QR **non deve
+    passare in cassa**, e senza questo segno il cameriere ci va lo stesso — o
+    va a chiedere il conto a chi l'ha già pagato. Sta sul tavolo e non in un
+    elenco a parte perché è lì che si guarda mentre si attraversa la sala.
+
+    Tre stati e non uno: saldato (non serve fare niente), in parte (ne manca un
+    pezzo), in corso (aspetta un attimo prima di andare).
+  */
+  const qr = corrente?.conto
+    ? corrente.conto.residuoCents === 0 && corrente.conto.pagatoCents > 0
+      ? { segno: "✓ saldato", tono: "text-sage-strong" }
+      : corrente.conto.pagatoCents > 0
+        ? { segno: `resta ${formatCurrency(corrente.conto.residuoCents)}`, tono: "text-accent-strong" }
+        : corrente.conto.pagamentoInCorso
+          ? { segno: "sta pagando", tono: "text-accent-strong" }
+          : null
+    : null;
   const rigaExtra = !!(oraLibero || soldi || info?.next);
 
   return (
@@ -381,7 +398,7 @@ function TavoloMappa({
         previsione && `${previsione.testo}. ${previsione.dettaglio}`,
         corrente?.conto && `Conto: ${fraseConto(corrente.conto)}.`,
         info?.next &&
-          `Poi ${info.next.guestName} alle ${oraLocale(info.next.startsAt, timezone)}, ${info.next.partySize}p.`,
+          `Poi ${info.next.guestName} alle ${oraInVenue(info.next.startsAt, timezone)}, ${info.next.partySize}p.`,
       ]
         .filter(Boolean)
         .join(" ")}
@@ -440,6 +457,14 @@ function TavoloMappa({
               )}
             </span>
           )}
+
+          {/* Il pagamento dal tavolo, quando c'è: una riga sua, perché non è
+              un dettaglio del conto ma un'istruzione per chi cammina. */}
+          {qr && (
+            <span className={cn("w-full text-[10px] font-semibold leading-tight", qr.tono)}>
+              {qr.segno}
+            </span>
+          )}
         </>
       ) : (
         <>
@@ -451,7 +476,7 @@ function TavoloMappa({
           */}
           {info?.next && (
             <span className="w-full truncate text-[10px] leading-tight opacity-70">
-              alle {oraLocale(info.next.startsAt, timezone)} · {info.next.partySize}p
+              alle {oraInVenue(info.next.startsAt, timezone)} · {info.next.partySize}p
             </span>
           )}
         </>
@@ -488,7 +513,7 @@ function TavoloRiga({
   const Icona = stile.icona;
   const corrente = info?.current;
 
-  const fmt = (iso: string) => oraLocale(iso, timezone);
+  const fmt = (iso: string) => oraInVenue(iso, timezone);
 
   async function cambiaStato(nome: string, status: string) {
     if (!corrente) return;

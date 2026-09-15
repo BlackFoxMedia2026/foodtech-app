@@ -126,15 +126,20 @@ afterAll(async () => {
 }, 60_000);
 
 describe("il clic mette in coda", () => {
-  it("la campagna passa in «in invio», non in «inviata»", async () => {
+  it("la campagna passa in «in coda», non in «inviata»", async () => {
     await creaOspiti(3);
     const campagna = await creaCampagna();
 
     const aggiornata = await sendCampaignNow(venueId, campagna.id);
 
     // «Inviata» a questo punto sarebbe una bugia: non è partito niente
-    // ancora, e il ristoratore ha diritto a saperlo.
-    expect(aggiornata.status).toBe("SENDING");
+    // ancora, e il ristoratore ha diritto a saperlo. «In coda» dice
+    // esattamente dov'è: gli invii sono riservati, il lavoro non è partito.
+    expect(aggiornata.status).toBe("QUEUED");
+    // E gli invii sono già impegnati: da questo momento nessun'altra campagna
+    // può prendersi gli stessi.
+    expect(aggiornata.reservedCount).toBe(3);
+    expect(aggiornata.recipientsCount).toBe(3);
     expect(await db.backgroundJob.count({ where: { dedupeKey: `campaign.send:${campagna.id}` } })).toBe(1);
   });
 
@@ -295,7 +300,7 @@ describe("interruzioni", () => {
     });
 
     const ripresa = await retryCampaignSend(venueId, campagna.id);
-    expect(ripresa.status).toBe("SENDING");
+    expect(ripresa.status).toBe("QUEUED");
     const job = await db.backgroundJob.findUniqueOrThrow({
       where: { dedupeKey: `campaign.send:${campagna.id}` },
     });

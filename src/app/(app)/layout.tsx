@@ -5,6 +5,7 @@ import { can, getActiveVenue } from "@/lib/tenant";
 import { VenueTimeProvider } from "@/components/shell/venue-time-provider";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { AvvisiProvider } from "@/components/ui/avvisi";
+import { ProviderImpostazioni } from "@/components/settings/contesto-impostazioni";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const display = Fraunces({
@@ -32,6 +33,15 @@ export default async function AppShell({ children }: { children: React.ReactNode
       deve poter annullare niente da un messaggio che passa.
     */
     <AvvisiProvider>
+    {/*
+      Le quattro sezioni delle Impostazioni stanno nella pagina, e le quattro
+      voci che ci portano stanno nella testata — che è qui, fuori dalla pagina.
+      Il provider è il filo fra le due: sta a questo livello perché è il primo
+      antenato che contiene sia l'una sia l'altra, e non costa niente alle
+      schermate che non lo usano (un contesto senza consumatori non
+      ri-renderizza nessuno).
+    */}
+    <ProviderImpostazioni>
     <div className={`${sans.variable} ${display.variable} ${mono.variable} relative z-0 flex h-screen flex-col overflow-hidden bg-background text-foreground`}>
       <Header
         user={{ name: ctx.session.user?.name, email: ctx.session.user?.email }}
@@ -59,6 +69,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
       <MobileNav canManageBookings={can(ctx.role, "manage_bookings")} />
       {showBrandSetup && <BrandSetupDialog initialName={ctx.venue.name} />}
     </div>
+    </ProviderImpostazioni>
     </AvvisiProvider>
   );
 }

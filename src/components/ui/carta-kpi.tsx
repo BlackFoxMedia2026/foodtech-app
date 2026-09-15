@@ -80,6 +80,7 @@ export function CartaKpi({
   nota,
   tono,
   allarme = false,
+  valoreCompatto = false,
   className,
 }: {
   icona: LucideIcon;
@@ -94,6 +95,18 @@ export function CartaKpi({
    * marca, e il tono `oliva` porta già il bordo oro che l'accompagna.
    */
   allarme?: boolean;
+  /**
+   * Il valore è un **nome**, non un numero.
+   *
+   * «Il più usato: Martedì da noi» è un dato di testata come gli altri, ma
+   * ventotto pixel sono la misura di una cifra: un nome di coupon lì dentro va
+   * a capo, e una carta che cresce di una riga rompe l'allineamento di tutta
+   * la fascia. Qui scende alla misura di un titolo di scheda e si taglia —
+   * l'unica eccezione alla Regola di Ciò che Non si Taglia consentita in
+   * questa fascia, perché il nome per intero sta due centimetri più giù,
+   * nell'elenco.
+   */
+  valoreCompatto?: boolean;
   className?: string;
 }) {
   const etichettaResa = accorda(etichetta, valore);
@@ -122,9 +135,13 @@ export function CartaKpi({
             grande da `xl`, dove la larghezza c'è. */}
         <p
           className={cn(
-            "text-2xl font-semibold leading-none tabular-nums xl:text-[1.75rem]",
+            "font-semibold",
+            valoreCompatto
+              ? "truncate text-base leading-tight md:text-lg"
+              : "text-2xl leading-none tabular-nums xl:text-[1.75rem]",
             allarme ? "text-accent-strong" : "text-cream",
           )}
+          title={valoreCompatto ? String(valore) : undefined}
         >
           {valore}
         </p>

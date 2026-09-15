@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarRange, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Blocco, BloccoNota } from "@/components/ui/blocco";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -15,6 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { readApiError } from "@/lib/api-client";
+import {
+  EsitoSalvataggio,
+  GruppoImpostazioni,
+  RigaImpostazione,
+  RigaLibera,
+} from "@/components/settings/righe-impostazioni";
 
 /**
  * Quando si può prenotare dal sito.
@@ -93,151 +97,133 @@ export function BookingWindowSettings({
 
   const quando = PREAVVISI.find((p) => p.valore === preavviso)?.etichetta ?? "Fino all'ultimo minuto";
 
-  /*
-    Da chiuso le due regole che un cliente sul sito incontra davvero: fin
-    quando avanti può prenotare, e da quando non si accetta più. Overbooking e
-    soglia dei gruppi restano dentro: sono decisioni che si prendono una volta.
-  */
-  const riepilogo = `${
-    giorniNum ? `${giorniNum} giorni avanti` : "senza limite di anticipo"
-  } · ${quando.toLowerCase()}`;
-
   return (
-    <Blocco titolo="Quando si prenota dal sito" icona={CalendarRange} valore={riepilogo}>
-      <BloccoNota>
-        Vale solo per il widget e per il link pubblico. Al telefono e in sala continui ad accettare quello
-        che vuoi, fino all&apos;ultimo minuto.
-      </BloccoNota>
-      <form onSubmit={salva} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="fin-giorni">Con quanto anticipo al massimo</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="fin-giorni"
-                inputMode="numeric"
-                value={giorni}
-                disabled={!canManage}
-                onChange={(e) => {
-                  setGiorni(e.target.value.replace(/[^0-9]/g, ""));
-                  setSalvato(false);
-                }}
-                placeholder="nessun limite"
-                className="w-32"
-              />
-              <span className="text-sm text-muted-foreground">giorni</span>
-            </div>
-            <p className="t-nota">
-              Vuoto vuol dire nessun limite. Chi lo mette di solito sceglie 60 o 90: oltre, i piani cambiano
-              e le disdette aumentano.
-            </p>
-          </div>
+    <form onSubmit={salva}>
+      <GruppoImpostazioni
+        titolo="Quando si prenota dal sito"
+        descrizione="Vale solo per il widget e per il link pubblico. Al telefono e in sala continui ad accettare quello che vuoi, fino all'ultimo minuto."
+        azione={
+          canManage && (
+            <>
+              <EsitoSalvataggio salvato={salvato} errore={error} />
+              <Button type="submit" variant="accent" size="sm" disabled={salvando}>
+                {salvando ? "Salvo…" : "Salva"}
+              </Button>
+            </>
+          )
+        }
+      >
+        <RigaImpostazione
+          nome="Con quanto anticipo al massimo"
+          htmlFor="fin-giorni"
+          descrizione="Vuoto vuol dire nessun limite. Chi lo mette di solito sceglie 60 o 90: oltre, i piani cambiano e le disdette aumentano."
+        >
+          <Input
+            id="fin-giorni"
+            inputMode="numeric"
+            value={giorni}
+            disabled={!canManage}
+            onChange={(e) => {
+              setGiorni(e.target.value.replace(/[^0-9]/g, ""));
+              setSalvato(false);
+            }}
+            placeholder="nessun limite"
+            className="w-32 text-right"
+          />
+          <span className="text-sm text-muted-foreground">giorni</span>
+        </RigaImpostazione>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="fin-preavviso">Si chiude</Label>
-            <Select
-              value={preavviso}
-              onValueChange={(v) => {
-                setPreavviso(v);
-                setSalvato(false);
-              }}
-              disabled={!canManage}
-            >
-              <SelectTrigger id="fin-preavviso">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PREAVVISI.map((p) => (
-                  <SelectItem key={p.valore} value={p.valore}>
-                    {p.etichetta}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="t-nota">
-              Il tempo che serve alla cucina per contare i coperti. Chi arriva dopo legge che può chiamare.
-            </p>
-          </div>
-        </div>
+        <RigaImpostazione
+          nome="Si chiude"
+          htmlFor="fin-preavviso"
+          descrizione="Il tempo che serve alla cucina per contare i coperti. Chi arriva dopo legge che può chiamare."
+        >
+          <Select
+            value={preavviso}
+            onValueChange={(v) => {
+              setPreavviso(v);
+              setSalvato(false);
+            }}
+            disabled={!canManage}
+          >
+            <SelectTrigger id="fin-preavviso" className="w-full sm:w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PREAVVISI.map((p) => (
+                <SelectItem key={p.valore} value={p.valore}>
+                  {p.etichetta}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </RigaImpostazione>
 
-        <div className="space-y-1.5 border-t border-border pt-4">
-          <Label htmlFor="fin-oltre">Quanto puoi accettare oltre la capienza</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="fin-oltre"
-              inputMode="numeric"
-              value={oltre}
-              disabled={!canManage}
-              onChange={(e) => {
-                setOltre(e.target.value.replace(/[^0-9]/g, ""));
-                setSalvato(false);
-              }}
-              placeholder="0"
-              className="w-24"
-            />
-            <span className="text-sm text-muted-foreground">% dei coperti del turno</span>
-          </div>
-          <p className="t-nota">
-            Una quota di prenotazioni non si presenta, e tenere i tavoli vuoti per prudenza costa serate. Su
-            un turno da 90 coperti, il 10% vuol dire accettarne 99. Vale per tutti i canali, anche il
-            telefono: è la capienza vera che sei disposto a vendere, non un trucco del sito. In sala gli
-            orari oltre la capienza dichiarata sono segnati con un puntino — accettare non vuol dire non
-            saperlo.
+        <RigaImpostazione
+          nome="Quanto puoi accettare oltre la capienza"
+          htmlFor="fin-oltre"
+          descrizione="Una quota di prenotazioni non si presenta, e tenere i tavoli vuoti per prudenza costa serate. Su un turno da 90 coperti, il 10% vuol dire accettarne 99. Vale per tutti i canali, anche il telefono. In sala gli orari oltre la capienza dichiarata sono segnati con un puntino — accettare non vuol dire non saperlo."
+        >
+          <Input
+            id="fin-oltre"
+            inputMode="numeric"
+            value={oltre}
+            disabled={!canManage}
+            onChange={(e) => {
+              setOltre(e.target.value.replace(/[^0-9]/g, ""));
+              setSalvato(false);
+            }}
+            placeholder="0"
+            className="w-24 text-right"
+          />
+          <span className="text-sm text-muted-foreground">% dei coperti</span>
+        </RigaImpostazione>
+
+        <RigaImpostazione
+          nome="Da quante persone si passa alla telefonata"
+          htmlFor="fin-gruppo"
+          descrizione="Sopra questo numero il modulo pubblico non fa compilare niente: dice di chiamare e mostra il tuo numero. Era fisso a dodici, che va bene per una trattoria e non per una sala che fa banchetti — il punto in cui una prenotazione diventa un'organizzazione lo sai tu."
+        >
+          <Input
+            id="fin-gruppo"
+            inputMode="numeric"
+            value={gruppo}
+            disabled={!canManage}
+            onChange={(e) => {
+              setGruppo(e.target.value.replace(/[^0-9]/g, ""));
+              setSalvato(false);
+            }}
+            className="w-24 text-right"
+          />
+          <span className="text-sm text-muted-foreground">persone</span>
+        </RigaImpostazione>
+
+        {/*
+          La frase che conta: non cosa abbiamo salvato, ma **cosa vedrà il
+          cliente**. Resta in fondo al gruppo perché si legge dopo aver toccato
+          i quattro campi, e si aggiorna mentre li si tocca.
+        */}
+        <RigaLibera>
+          <p className="flex items-start gap-2 text-sm text-card-foreground/80">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />
+            <span>
+              Dal sito si prenota{" "}
+              {giorniNum == null
+                ? "per qualunque giorno"
+                : giorniNum === 1
+                  ? "solo per domani"
+                  : `fino a ${giorniNum} giorni prima`}
+              ,{" "}
+              {preavvisoNum === 0
+                ? "e resta aperto fino all'ultimo minuto"
+                : `e si chiude ${quando.toLowerCase()}`}
+              . Fuori da questa finestra il cliente legge che può chiamare, non che è tutto pieno.
+              {oltreNum > 0 && ` Oltre la capienza si accetta fino al ${oltreNum}% in più, su ogni canale.`}
+              {` Da ${gruppoNum + 1} persone in su il modulo manda a telefonare.`}
+            </span>
           </p>
-        </div>
-
-        <div className="space-y-1.5 border-t border-border pt-4">
-          <Label htmlFor="fin-gruppo">Da quante persone si passa alla telefonata</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="fin-gruppo"
-              inputMode="numeric"
-              value={gruppo}
-              disabled={!canManage}
-              onChange={(e) => {
-                setGruppo(e.target.value.replace(/[^0-9]/g, ""));
-                setSalvato(false);
-              }}
-              className="w-24"
-            />
-            <span className="text-sm text-muted-foreground">persone</span>
-          </div>
-          <p className="t-nota">
-            Sopra questo numero il modulo pubblico non fa compilare niente: dice di chiamare e mostra il
-            tuo numero. Era fisso a dodici, che va bene per una trattoria e non per una sala che fa
-            banchetti — il punto in cui una prenotazione diventa un&apos;organizzazione lo sai tu.
-          </p>
-        </div>
-
-        <p className="flex items-start gap-2 riquadro p-3 text-sm">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span>
-            Dal sito si prenota{" "}
-            {giorniNum == null
-              ? "per qualunque giorno"
-              : giorniNum === 1
-                ? "solo per domani"
-                : `fino a ${giorniNum} giorni prima`}
-            ,{" "}
-            {preavvisoNum === 0
-              ? "e resta aperto fino all'ultimo minuto"
-              : `e si chiude ${quando.toLowerCase()}`}
-            . Fuori da questa finestra il cliente legge che può chiamare, non che è tutto pieno.
-            {oltreNum > 0 && ` Oltre la capienza si accetta fino al ${oltreNum}% in più, su ogni canale.`}
-            {` Da ${gruppoNum + 1} persone in su il modulo manda a telefonare.`}
-          </span>
-        </p>
-
-        {canManage && (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" variant="accent" size="sm" disabled={salvando}>
-              {salvando ? "Salvo…" : "Salva"}
-            </Button>
-            {salvato && <span className="text-sm text-sage-strong">Salvato.</span>}
-            {error && <span className="text-sm text-destructive">{error}</span>}
-          </div>
-        )}
-      </form>
-    </Blocco>
+        </RigaLibera>
+      </GruppoImpostazioni>
+    </form>
   );
 }

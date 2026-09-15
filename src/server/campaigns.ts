@@ -4,16 +4,34 @@ import { db } from "@/lib/db";
 import { TAG_RULES } from "./guest-intelligence";
 import { brevoAdapter } from "@/server/marketing/brevo-adapter";
 import type { EmailProviderAdapter, NormalizedEventType } from "@/server/marketing/email-provider";
-import type { Prisma } from "@prisma/client";
-import { BlockSchema, type Block } from "@/lib/campaign-blocks";
+import { Prisma, type CampaignStatus } from "@prisma/client";
 import {
-  compileBlocksToHtml,
+  EmailContentSchema,
+  hasSubstantiveContent,
+  parseEmailDocument,
+  type EmailDocument,
+} from "@/lib/campaign-blocks";
+import {
+  compileCampaignContent,
   resolveGlobalVariables,
   resolveTestVariables,
   toBrevoMergeTags,
 } from "@/lib/campaign-blocks-compiler";
 import { PREVIEW_UNSUBSCRIBE_ID, signUnsubscribeToken } from "@/lib/unsubscribe-token";
 import { enqueueJob, type JobOutcome, type JobRef } from "@/server/jobs/queue";
+import { eleggibili, scattaSnapshot } from "@/server/dem/destinatari";
+import { abbonamentoDi } from "@/server/dem/abbonamento";
+import {
+  consumaQuota,
+  consumaSubito,
+  controllaSoglie,
+  quotaSufficiente,
+  rilasciaQuota,
+  riservaQuota,
+} from "@/server/dem/consumo";
+import { InviiSospesi, QuotaInsufficiente } from "@/server/dem/errori";
+import { mittenteDi } from "@/server/dem/dominio";
+import { sesAttivo } from "@/server/dem/ses";
 import { createNotification } from "@/server/notifications";
 
 const adapter: EmailProviderAdapter = brevoAdapter;
@@ -77,7 +95,12 @@ export const CampaignInput = z.object({
   subject: z.string().min(1).optional(),
   body: z.string().min(1).optional(),
   previewText: z.string().optional(),
-  contentBlocks: z.array(BlockSchema).optional(),
+  /**
+   * Il contenuto dell'email: il documento dell'editor (impostazioni + blocchi)
+   * oppure l'array piatto di blocchi salvato dalle campagne precedenti. Le due
+   * forme convivono — vedi EmailContentSchema.
+   */
+  contentBlocks: EmailContentSchema.optional(),
   segment: SegmentFilter.optional(),
 });
 export type CampaignInputType = z.infer<typeof CampaignInput>;
@@ -91,6 +114,85 @@ export function getRequestOrigin(): string {
 
 export async function listCampaigns(venueId: string) {
   return db.campaign.findMany({ where: { venueId }, orderBy: { createdAt: "desc" } });
+}
+
+/**
+ * Una newsletter già costruita, pronta a diventare il punto di partenza di
+ * un'altra. È di sola lettura: la campagna d'origine non viene mai toccata —
+ * chi la sceglie ne ottiene una **copia** dentro una campagna nuova.
+ */
+export interface NewsletterSource {
+  id: string;
+  name: string;
+  /** Già formattata qui: il fuso del locale lo conosce il server, non il browser di chi guarda. */
+  dataLabel: string;
+  /** «Inviata», «In bozza», «Programmata» — una parola, non un badge di stato completo. */
+  statoLabel: string;
+  inviata: boolean;
+  /** Riusato come oggetto della nuova campagna solo se chi scrive non ne ha già uno. */
+  subject: string | null;
+  document: EmailDocument;
+}
+
+const FORMATO_DATA = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", year: "numeric" });
+
+/**
+ * Le newsletter riutilizzabili del locale, dalla più recente.
+ *
+ * Passano solo quelle con **contenuto vero**: una bozza aperta e mai
+ * compilata riempirebbe la libreria di miniature bianche indistinguibili, che
+ * è esattamente il contrario di una libreria visuale. E si esclude la campagna
+ * che si sta scrivendo — offrire a qualcuno di partire da sé stesso è un giro
+ * a vuoto con dentro il rischio di azzerarsi il lavoro.
+ */
+export async function listNewsletterSources(
+  venueId: string,
+  { excludeId, limit = 12 }: { excludeId?: string; limit?: number } = {},
+): Promise<NewsletterSource[]> {
+  const campagne = await db.campaign.findMany({
+    where: {
+      venueId,
+      channel: "EMAIL",
+      contentBlocks: { not: Prisma.DbNull },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    // Si legge più del necessario perché il filtro sul contenuto vero non è
+    // esprimibile in SQL: sta dentro un campo JSON di forma libera.
+    take: limit * 3,
+    select: {
+      id: true,
+      name: true,
+      subject: true,
+      status: true,
+      scheduledAt: true,
+      sentCount: true,
+      createdAt: true,
+      contentBlocks: true,
+    },
+  });
+
+  const fonti: NewsletterSource[] = [];
+  for (const c of campagne) {
+    if (fonti.length >= limit) break;
+    const document = parseEmailDocument(c.contentBlocks);
+    if (!hasSubstantiveContent(document.blocks)) continue;
+    const inviata = c.sentCount > 0;
+    fonti.push({
+      id: c.id,
+      name: c.name,
+      dataLabel: FORMATO_DATA.format(c.createdAt),
+      statoLabel: inviata
+        ? "Inviata"
+        : c.status === "SCHEDULED" || c.scheduledAt
+          ? "Programmata"
+          : "In bozza",
+      inviata,
+      subject: c.subject,
+      document,
+    });
+  }
+  return fonti;
 }
 
 export type CampaignWithResults = Awaited<ReturnType<typeof listCampaigns>>[number] & {
@@ -158,7 +260,7 @@ export async function createCampaign(venueId: string, raw: unknown) {
       name: data.name,
       subject: data.subject,
       body: data.contentBlocks
-        ? compileBlocksToHtml(data.contentBlocks as Block[], venue.brandAccent ?? undefined)
+        ? compileCampaignContent(data.contentBlocks, venue.brandAccent ?? undefined)
         : data.body,
       previewText: data.previewText,
       contentBlocks: data.contentBlocks as unknown as Prisma.InputJsonValue,
@@ -189,7 +291,7 @@ export async function updateCampaign(venueId: string, id: string, raw: unknown) 
       ...(data.previewText !== undefined && { previewText: data.previewText }),
       ...(data.contentBlocks !== undefined && {
         contentBlocks: data.contentBlocks as unknown as Prisma.InputJsonValue,
-        body: compileBlocksToHtml(data.contentBlocks as Block[], venue?.brandAccent ?? undefined),
+        body: compileCampaignContent(data.contentBlocks, venue?.brandAccent ?? undefined),
       }),
       ...(data.contentBlocks === undefined && data.body !== undefined && { body: data.body }),
       ...(data.segment !== undefined && { segment: data.segment as Prisma.InputJsonValue }),
@@ -288,47 +390,72 @@ function applyBirthdayThisMonthFilter<T extends { birthday: Date | null }>(
 }
 
 /**
- * marketingOptIn ed email non-null sono vincoli imposti sempre, in AND con i
- * filtri scelti dal ristoratore — non delegabili alla UI/segment builder.
+ * I destinatari veri di un segmento.
+ *
+ * Il consenso e l'email non-nulla restano vincoli del database — sono in AND
+ * con i filtri scelti dal ristoratore e non sono delegabili all'interfaccia —
+ * ma non bastano più: chi ha segnalato spam, chi ha un indirizzo che non
+ * esiste e chi compare due volte con la stessa casella esce di qui, e non
+ * costa un invio. Il conto lo fa `eleggibili`, lo stesso che disegna
+ * l'anteprima: due aritmetiche della stessa cosa finirebbero per non
+ * coincidere proprio nel momento in cui si preme «invia».
  */
 export async function resolveSegment(venueId: string, segment: SegmentFilterType) {
   const where = buildSegmentWhere(venueId, segment);
   where.marketingOptIn = true;
   where.email = { not: null };
-  const guests = await db.guest.findMany({ where });
-  return applyBirthdayThisMonthFilter(guests, segment);
+  const guests = applyBirthdayThisMonthFilter(await db.guest.findMany({ where }), segment);
+  const { destinatari } = await eleggibili(venueId, guests);
+  return destinatari;
 }
 
 export interface SegmentPreviewResult {
   totalMatchingFilters: number;
   excludedNoEmail: number;
   excludedNoConsent: number;
+  /** Segnalazioni di spam e indirizzi che non esistono: vedi DemSuppression. */
+  excludedSuppressed: number;
+  /** Lo stesso indirizzo su due schede cliente: una email sola. */
+  duplicatesRemoved: number;
   finalRecipients: number;
 }
 
 /**
- * Esegue i filtri due volte: una volta senza i vincoli obbligatori di consenso/email
- * (per sapere quanti clienti corrispondono ai soli filtri scelti) e una volta con
- * essi (= identico a resolveSegment), per calcolare un breakdown reale delle
- * esclusioni. Un guest senza email ha priorità come motivo di esclusione rispetto
- * al consenso mancante, così le due categorie non si sovrappongono mai.
- * Non esiste un contatore "duplicati rimossi": i guest sono già righe uniche in DB,
- * quindi il concetto non si applica — va omesso o etichettato onestamente in UI,
- * mai mostrato come 0 finto che lasci intendere un dedup avvenuto.
+ * La fotografia di chi riceverà, con il perché di ogni esclusione.
+ *
+ * Si parte dai soli filtri scelti dal ristoratore — **senza** i vincoli
+ * obbligatori — così il numero di partenza è quello che lui ha in testa
+ * («mille clienti come questi ce li ho»), e le esclusioni si possono
+ * raccontare una per una invece di far comparire un numero più piccolo senza
+ * spiegazione.
+ *
+ * Ogni contatto conta in una categoria sola, nell'ordine dichiarato in
+ * `eleggibili`: la somma delle esclusioni più i destinatari fa sempre il
+ * totale, e un ristoratore che prova a farsi i conti li ritrova.
+ *
+ * È anche il preventivo: i destinatari finali sono gli invii che questa
+ * campagna costerà.
  */
 export async function previewSegment(venueId: string, segment: SegmentFilterType): Promise<SegmentPreviewResult> {
   const where = buildSegmentWhere(venueId, segment);
   const allMatching = applyBirthdayThisMonthFilter(
-    await db.guest.findMany({ where, select: { id: true, email: true, marketingOptIn: true, birthday: true } }),
+    await db.guest.findMany({
+      where,
+      select: { id: true, email: true, marketingOptIn: true, unsubscribedAt: true, birthday: true },
+    }),
     segment
   );
 
-  const totalMatchingFilters = allMatching.length;
-  const excludedNoEmail = allMatching.filter((g) => !g.email).length;
-  const excludedNoConsent = allMatching.filter((g) => g.email && !g.marketingOptIn).length;
-  const finalRecipients = allMatching.filter((g) => g.email && g.marketingOptIn).length;
+  const { destinatari, esclusi } = await eleggibili(venueId, allMatching);
 
-  return { totalMatchingFilters, excludedNoEmail, excludedNoConsent, finalRecipients };
+  return {
+    totalMatchingFilters: allMatching.length,
+    excludedNoEmail: esclusi.senzaEmail,
+    excludedNoConsent: esclusi.senzaConsenso,
+    excludedSuppressed: esclusi.soppressi,
+    duplicatesRemoved: esclusi.doppioni,
+    finalRecipients: destinatari.length,
+  };
 }
 
 /**
@@ -379,38 +506,138 @@ async function requireDraftCampaign(venueId: string, campaignId: string) {
 }
 
 /**
- * Mette in coda l'invio. Restituisce la campagna nello stato nuovo, così
- * l'interfaccia può dire «in invio» invece di «inviata» — che sarebbe una
- * bugia finché il lavoro non è finito.
+ * Mette in coda l'invio, dopo aver **pagato** la campagna.
+ *
+ * L'ordine dei tre passaggi non è arbitrario:
+ *
+ * 1. **si scatta la fotografia** dei destinatari — da qui in poi la campagna
+ *    ha la sua lista, e nessuno la cambia più sotto i piedi;
+ * 2. **si riserva la quota** per quella lista, tutta o niente: è l'unico
+ *    momento in cui si può ancora dire di no senza aver scritto a nessuno;
+ * 3. **si mette in coda**, e solo allora lo stato cambia.
+ *
+ * Se il terzo passo non riesce, la quota torna indietro: un invio che non è
+ * mai partito non deve restare scritto sul conto di nessuno.
+ *
+ * Restituisce la campagna nello stato nuovo, così l'interfaccia può dire «in
+ * invio» invece di «inviata» — che sarebbe una bugia finché il lavoro non è
+ * finito.
  */
 async function queueCampaign(venueId: string, campaignId: string, at?: Date) {
   const campaign = await requireDraftCampaign(venueId, campaignId);
   const segment = (campaign.segment as SegmentFilterType | null) ?? {};
-  const { finalRecipients } = await previewSegment(venueId, segment);
-  if (finalRecipients === 0) throw new Error("no_recipients");
 
-  const payload: CampaignSendPayloadType = {
-    venueId,
-    campaignId,
-    origin: getRequestOrigin(),
-    enqueuedAt: new Date().toISOString(),
-    step: "sync",
-    ...(at && { at: at.toISOString() }),
-  };
+  // Gli invii fermi si dicono **prima** di far preparare una campagna intera:
+  // scoprirlo dopo la conferma sarebbe il momento peggiore per saperlo.
+  const sub = await abbonamentoDi(venueId);
+  if (sub.sendingPausedAt) throw new InviiSospesi(sub.sendingPausedReason);
 
-  await enqueueJob({
-    kind: "campaign.send",
-    venueId,
-    payload,
-    // Due clic sul pulsante non fanno partire due invii.
-    dedupeKey: chiaveLavoro(campaignId),
-    maxAttempts: 3,
+  const destinatari = await resolveSegment(venueId, segment);
+  if (destinatari.length === 0) throw new Error("no_recipients");
+
+  const riserva = await riservaQuota(venueId, destinatari.length);
+  if (!riserva.riservata) throw new QuotaInsufficiente(riserva);
+
+  try {
+    await scattaSnapshot(campaignId, venueId, destinatari);
+
+    /*
+      Due strade, e la scelta si fa qui una volta sola.
+
+      Quando l'invio con dominio proprio è acceso **e il dominio del locale è
+      pronto**, la campagna la mandiamo noi: un messaggio per destinatario,
+      contato uno per uno, con gli eventi che tornano indietro. È la strada
+      che regge il modello commerciale, ed è quella normale.
+
+      Altrimenti si resta sulla vecchia: si consegna l'intera campagna a un
+      fornitore esterno. Non è una scorciatoia lasciata lì — è quello che
+      permette a un locale che non ha ancora configurato il suo dominio di
+      mandare comunque le sue email, invece di trovarsi il marketing spento
+      finché non parla con il suo fornitore di domini.
+    */
+    const conDominioProprio = sesAttivo() && (await mittenteDi(venueId)) !== null;
+
+    if (conDominioProprio) {
+      await enqueueJob({
+        kind: "dem.campaign.send",
+        venueId,
+        payload: { venueId, campaignId, origin: getRequestOrigin() },
+        // Due clic sul pulsante non fanno partire due invii.
+        dedupeKey: chiaveLavoro(campaignId),
+        maxAttempts: 5,
+        ...(at && { runAt: at }),
+      });
+    } else {
+      const payload: CampaignSendPayloadType = {
+        venueId,
+        campaignId,
+        origin: getRequestOrigin(),
+        enqueuedAt: new Date().toISOString(),
+        step: "sync",
+        ...(at && { at: at.toISOString() }),
+      };
+
+      await enqueueJob({
+        kind: "campaign.send",
+        venueId,
+        payload,
+        dedupeKey: chiaveLavoro(campaignId),
+        maxAttempts: 3,
+      });
+    }
+
+    return await db.campaign.update({
+      where: { id: campaign.id },
+      data: {
+        recipientsCount: destinatari.length,
+        reservedCount: destinatari.length,
+        usagePeriod: riserva.ciclo,
+        queuedAt: new Date(),
+        ...(at ? { status: "SCHEDULED", scheduledAt: at } : { status: "QUEUED" }),
+      },
+    });
+  } catch (err) {
+    await rilasciaQuota(venueId, riserva.ciclo, destinatari.length);
+    throw err;
+  }
+}
+
+/**
+ * Chiude i conti di una campagna che non parte più.
+ *
+ * Gli invii riservati tornano disponibili e la campagna smette di dichiarare
+ * di averne impegnati: sono la stessa cosa detta in due posti, e devono
+ * cambiare insieme.
+ */
+async function liberaRiserva(campaignId: string) {
+  const campaign = await db.campaign.findUnique({
+    where: { id: campaignId },
+    select: { venueId: true, usagePeriod: true, reservedCount: true },
   });
+  if (!campaign || campaign.reservedCount <= 0 || !campaign.usagePeriod) return;
 
-  return db.campaign.update({
-    where: { id: campaign.id },
-    data: at ? { status: "SCHEDULED", scheduledAt: at } : { status: "SENDING" },
+  await rilasciaQuota(campaign.venueId, campaign.usagePeriod, campaign.reservedCount);
+  await db.campaign.update({ where: { id: campaignId }, data: { reservedCount: 0 } });
+}
+
+/**
+ * Registra che gli invii di questa campagna sono partiti davvero.
+ *
+ * Finché il fornitore manda la campagna a una lista sua, «partiti» è un fatto
+ * solo: gliel'abbiamo consegnata, e da quel momento quelle email escono. Il
+ * giorno in cui l'invio sarà nostro, destinatario per destinatario, questo
+ * conto diventerà incrementale — la firma resta la stessa.
+ */
+async function registraInviiFatti(campaignId: string) {
+  const campaign = await db.campaign.findUnique({
+    where: { id: campaignId },
+    select: { venueId: true, usagePeriod: true, reservedCount: true },
   });
+  if (!campaign || campaign.reservedCount <= 0 || !campaign.usagePeriod) return;
+
+  await consumaQuota(campaign.venueId, campaign.usagePeriod, campaign.reservedCount);
+  await db.campaign.update({ where: { id: campaignId }, data: { reservedCount: 0 } });
+  await controllaSoglie(campaign.venueId);
 }
 
 export function sendCampaignNow(venueId: string, campaignId: string) {
@@ -452,6 +679,7 @@ async function compileHtmlForBrevoSend(
   const venue = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
   const withGlobals = resolveGlobalVariables(body, {
     restaurantName: venue.name,
+    restaurantAddress: [venue.address, venue.city].filter(Boolean).join(", "),
     // Il link si porta dietro la campagna: è così che una prenotazione nata da
     // questa email si può riconoscere come nata da questa email. Il widget lo
     // rimanda al server, che verifica che la campagna sia di questo locale.
@@ -533,6 +761,11 @@ export async function getCampaignAttribution(venueId: string, campaignId: string
 }
 
 async function segnaNonRiuscita(campaignId: string, venueId: string, nome: string, motivo: string) {
+  // Prima la quota, poi lo stato: una campagna che non è partita non deve
+  // lasciare invii impegnati che nessuno userà più, e se il processo muore fra
+  // le due righe è meglio che sia rimasta impegnata (si vede e si sistema) che
+  // rilasciata su una campagna che invece era partita.
+  await liberaRiserva(campaignId);
   await db.campaign.update({ where: { id: campaignId }, data: { status: "FAILED" } });
   await createNotification(venueId, {
     kind: "AUTOMATION_FAILED",
@@ -611,6 +844,17 @@ export async function retryCampaignSend(venueId: string, campaignId: string) {
   if (campaign.status !== "FAILED") throw new Error("conflict");
   if (campaign.providerId) throw new Error("campaign_already_handed_over");
 
+  // La quota era stata restituita quando la campagna è fallita: riprovare
+  // significa ricomprarla. Se nel frattempo il mese si è consumato, il
+  // tentativo si ferma qui — con il numero che manca — invece di partire e
+  // sfondare il piano.
+  const sub = await abbonamentoDi(venueId);
+  if (sub.sendingPausedAt) throw new InviiSospesi(sub.sendingPausedReason);
+
+  const daInviare = campaign.recipientsCount > 0 ? campaign.recipientsCount : 0;
+  const riserva = await riservaQuota(venueId, daInviare);
+  if (!riserva.riservata) throw new QuotaInsufficiente(riserva);
+
   const payload: CampaignSendPayloadType = {
     venueId,
     campaignId,
@@ -620,15 +864,56 @@ export async function retryCampaignSend(venueId: string, campaignId: string) {
     ...(campaign.scheduledAt && campaign.scheduledAt > new Date() && { at: campaign.scheduledAt.toISOString() }),
   };
 
-  await enqueueJob({
-    kind: "campaign.send",
-    venueId,
-    payload,
-    dedupeKey: chiaveLavoro(campaignId),
-    maxAttempts: 3,
-  });
+  try {
+    await enqueueJob({
+      kind: "campaign.send",
+      venueId,
+      payload,
+      dedupeKey: chiaveLavoro(campaignId),
+      maxAttempts: 3,
+    });
+  } catch (err) {
+    await rilasciaQuota(venueId, riserva.ciclo, daInviare);
+    throw err;
+  }
 
-  return db.campaign.update({ where: { id: campaignId }, data: { status: "SENDING" } });
+  return db.campaign.update({
+    where: { id: campaignId },
+    data: { status: "QUEUED", reservedCount: daInviare, usagePeriod: riserva.ciclo, queuedAt: new Date() },
+  });
+}
+
+/**
+ * Annulla una campagna che non è ancora partita.
+ *
+ * Non la cancella: la campagna resta in elenco con lo stato «Annullata». Una
+ * campagna sparita è una domanda senza risposta fra un mese — «quella di
+ * settembre l'avevamo mandata?» — e il lavoro fatto per scriverla resta
+ * riutilizzabile.
+ *
+ * Gli invii riservati tornano tutti disponibili: non è partito niente.
+ */
+export async function cancelCampaign(venueId: string, campaignId: string) {
+  const campaign = await db.campaign.findFirst({ where: { id: campaignId, venueId } });
+  if (!campaign) throw new Error("not_found");
+
+  // Dopo la consegna al fornitore non si annulla più: le email sono uscite, e
+  // dire «annullata» a chi le ha già ricevute sarebbe la bugia peggiore.
+  const annullabili: CampaignStatus[] = ["DRAFT", "READY", "SCHEDULED", "QUEUED"];
+  if (!annullabili.includes(campaign.status) || campaign.providerId) throw new Error("conflict");
+
+  await liberaRiserva(campaignId);
+
+  // Il lavoro in coda, se c'è: non deve svegliarsi domani e partire.
+  await db.backgroundJob.deleteMany({
+    where: { dedupeKey: chiaveLavoro(campaignId), status: { in: ["PENDING", "FAILED"] } },
+  });
+  await db.campaignRecipient.deleteMany({ where: { campaignId, status: "PENDING" } });
+
+  return db.campaign.update({
+    where: { id: campaignId },
+    data: { status: "CANCELLED", cancelledAt: new Date(), scheduledAt: null },
+  });
 }
 
 /**
@@ -650,8 +935,13 @@ export async function runCampaignSendJob(raw: unknown, job: JobRef): Promise<Job
 
   const campaign = await db.campaign.findFirst({ where: { id: campaignId, venueId } });
   if (!campaign) return { done: true };
-  // Chi ha già concluso, o è stato archiviato, non si tocca.
-  if (campaign.status !== "SENDING" && campaign.status !== "SCHEDULED") return { done: true };
+  // Chi ha già concluso, è stato annullato o archiviato, non si tocca.
+  //
+  // `QUEUED` è lo stato in cui la campagna esce dal clic: gli invii sono
+  // riservati e il lavoro non ha ancora cominciato. `SENDING` è questo lavoro
+  // che ha già fatto un giro e ha ceduto il turno.
+  const lavorabili: CampaignStatus[] = ["QUEUED", "SCHEDULED", "SENDING"];
+  if (!lavorabili.includes(campaign.status)) return { done: true };
 
   if (payload.step === "handoff") {
     await segnaNonRiuscita(
@@ -665,6 +955,16 @@ export async function runCampaignSendJob(raw: unknown, job: JobRef): Promise<Job
   }
 
   try {
+    // Da qui in poi qualcosa sta succedendo davvero: lo stato lo dice, e lo
+    // dice una volta sola — una campagna programmata resta «programmata»
+    // finché il suo momento non arriva.
+    if (campaign.status === "QUEUED") {
+      await db.campaign.update({
+        where: { id: campaignId },
+        data: { status: "SENDING", sendingStartedAt: new Date() },
+      });
+    }
+
     const segment = (campaign.segment as SegmentFilterType | null) ?? {};
     const guests = await resolveSegment(venueId, segment);
     if (guests.length === 0) {
@@ -731,8 +1031,12 @@ export async function runCampaignSendJob(raw: unknown, job: JobRef): Promise<Job
       data: {
         status: at ? "SCHEDULED" : "SENT",
         sentCount: recipientEmails.length,
+        ...(at ? {} : { sendingStartedAt: new Date(), sentAt: new Date() }),
       },
     });
+    // Gli invii diventano «fatti» qui e non prima: fino a un istante fa
+    // potevano ancora tornare indietro.
+    if (!at) await registraInviiFatti(campaignId);
 
     return { done: true };
   } catch (err) {
@@ -754,10 +1058,35 @@ export async function sendTestEmail(venueId: string, campaignId: string, to: str
   const campaign = await db.campaign.findFirst({ where: { id: campaignId, venueId } });
   if (!campaign) throw new Error("not_found");
   if (campaign.status !== "DRAFT") throw new Error("campaign_not_editable");
+
+  /*
+    Un invio di prova è un invio.
+
+    Esce davvero, costa davvero, e se non scalasse il credito «Invia test»
+    diventerebbe la porta di servizio del piano: si incolla un indirizzo alla
+    volta e si manda la campagna senza pagarla. Quindi conta come gli altri.
+
+    E ha un tetto per campagna, che è l'altra metà della stessa difesa: senza,
+    il credito si scalerebbe comunque ma un pulsante premuto in un ciclo
+    automatico brucerebbe un mese di invii in un minuto.
+  */
+  const tetto = Number(process.env.DEM_TEST_SEND_LIMIT ?? "10");
+  if (campaign.testSendCount >= tetto) throw new Error("dem_test_limit");
+
+  const esito = await quotaSufficiente(venueId, 1);
+  if (!esito.sufficiente) throw new QuotaInsufficiente(esito);
+
+  // Fra la domanda e la scrittura può essere passata un'altra campagna: se la
+  // sottrazione non passa, l'ultimo invio se l'è preso qualcun altro.
+  const pagato = await consumaSubito(venueId, 1);
+  if (!pagato) throw new QuotaInsufficiente({ disponibili: 0, richiesti: 1, mancanti: 1 });
+
+  await db.campaign.update({ where: { id: campaignId }, data: { testSendCount: { increment: 1 } } });
+
   const venue = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
 
   const rawHtml = campaign.contentBlocks
-    ? compileBlocksToHtml(campaign.contentBlocks as unknown as Block[], venue.brandAccent ?? undefined)
+    ? compileCampaignContent(campaign.contentBlocks, venue.brandAccent ?? undefined)
     : campaign.body || "";
 
   const origin = getRequestOrigin();
@@ -765,6 +1094,7 @@ export async function sendTestEmail(venueId: string, campaignId: string, to: str
     firstName: "Mario",
     lastName: "Rossi",
     restaurantName: venue.name,
+    restaurantAddress: [venue.address, venue.city].filter(Boolean).join(", "),
     bookingLink: `${origin}/book?venue=${venueId}#test`,
     unsubscribeLink: `${origin}/api/unsubscribe?token=${signUnsubscribeToken(PREVIEW_UNSUBSCRIBE_ID)}`,
     lastVisitDate: new Date().toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }),

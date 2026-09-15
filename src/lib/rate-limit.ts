@@ -134,4 +134,17 @@ export const RATE_LIMITS = {
   agent: { limit: limite("AGENT", 30), windowMs: 60_000 },
   /** Caricamento immagini e documenti. */
   upload: { limit: limite("UPLOAD", 20), windowMs: 60_000 },
+  /**
+   * Avvio di un pagamento al tavolo: è l'endpoint da cui si potrebbero
+   * provare token a caso, e ogni tentativo riuscito crea una sessione da
+   * Stripe. Dodici come il portale Wi-Fi e non cinque come la prenotazione,
+   * per lo stesso motivo: **un tavolo di sei persone paga dalla stessa rete**,
+   * quindi dallo stesso indirizzo, e ognuno può sbagliare la carta una volta.
+   */
+  publicPay: { limit: limite("PUBLIC_PAY", 12), windowMs: 10 * 60_000 },
+  /**
+   * Lettura del conto: generosa, perché è la stessa richiesta che tiene viva
+   * la pagina di ogni commensale mentre gli altri pagano.
+   */
+  publicPayStato: { limit: limite("PUBLIC_PAY_STATO", 120), windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitRule>;

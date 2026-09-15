@@ -29,7 +29,7 @@ import { endOfDay, startOfDay } from "@/lib/utils";
  * solo non vede le cancellazioni — una prenotazione tolta non aggiorna niente,
  * fa solo diminuire il totale.
  *
- * Le tre interrogazioni usano indici che esistono già e toccano solo le righe
+ * Le quattro interrogazioni usano indici che esistono già e toccano solo le righe
  * di **oggi** (o la coda aperta, che è corta per natura): nessuna scansione di
  * tabella, nessuna migrazione.
  */
@@ -37,7 +37,7 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
   const inizio = startOfDay(adesso);
   const fine = endOfDay(adesso);
 
-  const [prenotazioni, coda, conti] = await Promise.all([
+  const [prenotazioni, coda, conti, pagamenti] = await Promise.all([
     // Indice: [venueId, startsAt]
     db.booking.aggregate({
       where: { venueId, startsAt: { gte: inizio, lte: fine }, deletedAt: null },
@@ -56,10 +56,25 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
       _count: { _all: true },
       _max: { updatedAt: true },
     }),
+    /*
+      I pagamenti al tavolo di oggi.
+
+      Senza questo pezzo, un cliente che paga col QR non muove niente sullo
+      schermo della sala: `Order` non viene toccato — il residuo si calcola dai
+      pagamenti, non sta in colonna — quindi la firma resterebbe identica e il
+      cameriere vedrebbe un tavolo «da incassare» che in realtà ha già pagato.
+
+      Indice: [venueId, createdAt].
+    */
+    db.payment.aggregate({
+      where: { venueId, kind: "TABLE_QR", createdAt: { gte: inizio, lte: fine } },
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
   ]);
 
   const pezzo = (a: { _count: { _all: number }; _max: { updatedAt: Date | null } }) =>
     `${a._count._all}.${a._max.updatedAt?.getTime() ?? 0}`;
 
-  return `${pezzo(prenotazioni)}-${pezzo(coda)}-${pezzo(conti)}`;
+  return `${pezzo(prenotazioni)}-${pezzo(coda)}-${pezzo(conti)}-${pezzo(pagamenti)}`;
 }

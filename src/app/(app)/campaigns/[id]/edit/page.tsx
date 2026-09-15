@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getActiveVenue } from "@/lib/tenant";
-import { getCampaign } from "@/server/campaigns";
+import { getCampaign, listNewsletterSources } from "@/server/campaigns";
 import { CampaignWizard } from "@/components/campaigns/wizard/campaign-wizard";
+import { statoConsumo } from "@/server/dem/consumo";
 import { Button } from "@/components/ui/button";
-import type { Block } from "@/lib/campaign-blocks";
+import { parseEmailDocument } from "@/lib/campaign-blocks";
 import type { SegmentFilterType } from "@/server/campaigns";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,17 @@ export default async function EditCampaignPage({ params }: { params: { id: strin
     );
   }
 
+  // Il campo `contentBlocks` può contenere il documento dell'editor oppure
+  // l'array piatto delle campagne precedenti: `parseEmailDocument` normalizza
+  // le due forme, così una bozza di agosto si riapre come una di oggi.
+  const documento = parseEmailDocument(campaign.contentBlocks);
+  // Tutte tranne questa: ripartire da sé stessi non è un punto di partenza.
+  const previousCampaigns = await listNewsletterSources(ctx.venueId, { excludeId: campaign.id });
+
+  // Gli invii che restano: servono alla colonna dei destinatari per dire
+  // quanto costa questa campagna prima che qualcuno prema «invia».
+  const quota = await statoConsumo(ctx.venueId);
+
   return (
     <CampaignWizard
       initialState={{
@@ -36,13 +48,20 @@ export default async function EditCampaignPage({ params }: { params: { id: strin
         subject: campaign.subject ?? "",
         previewText: campaign.previewText ?? "",
         segment: (campaign.segment as SegmentFilterType | null) ?? {},
-        contentBlocks: (campaign.contentBlocks as unknown as Block[] | null) ?? [],
+        contentBlocks: documento.blocks,
+        emailSettings: documento.settings,
+        previousCampaigns,
         step: 1,
         furthestStep: 1,
         senderName: process.env.BREVO_FROM_NAME || "Tavolo",
         senderEmail: process.env.BREVO_FROM_EMAIL || "marketing@tavolo.local",
         brandLogoUrl: ctx.venue.brandLogoUrl ?? "",
         brandPrimaryColor: ctx.venue.brandAccent ?? "",
+        venueName: ctx.venue.name,
+        venueAddress: [ctx.venue.address, ctx.venue.city].filter(Boolean).join(", "),
+        venuePhone: ctx.venue.phone ?? "",
+        quotaDisponibili: quota.disponibili,
+        quotaLimite: quota.limite,
       }}
     />
   );
