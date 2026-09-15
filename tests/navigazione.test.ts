@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_NAV,
+  MARKETING_NAV,
   MOBILE_NAV,
   PRIMARY_NAV,
   PROFILE_NAV,
   isNavActive,
   primarieFuoriDallaBarra,
   profiloPerGruppo,
+  sottovoceAttiva,
   titoloPagina,
 } from "@/components/shell/nav-items";
 
@@ -40,7 +42,6 @@ describe("una voce sola accesa", () => {
     "/bookings",
     "/bookings/abc",
     "/bookings/new",
-    "/waitlist",
     "/guests",
     "/guests/abc",
     "/guests/doppioni",
@@ -54,7 +55,6 @@ describe("una voce sola accesa", () => {
     "/settings",
     "/settings/brand",
     "/staff",
-    "/experiences",
     "/payments",
   ];
 
@@ -85,6 +85,19 @@ describe("una voce sola accesa", () => {
   it("un percorso che non è di nessuno non accende niente", () => {
     expect(ALL_NAV.filter((v) => isNavActive("/onboarding", v))).toHaveLength(0);
   });
+
+  it("le pagine senza sezione non accendono niente, e va bene così", () => {
+    /*
+      `/waitlist` e `/experiences` esistono e si aprono, ma non sono più voci:
+      l'attesa è già dentro Servizio e le esperienze sono sospese. Una pagina
+      raggiungibile che non accende niente non è un difetto — il difetto
+      sarebbe accendere la voce sbagliata perché «qualcosa deve pur
+      illuminarsi».
+    */
+    for (const percorso of ["/waitlist", "/experiences"]) {
+      expect(ALL_NAV.filter((v) => isNavActive(percorso, v))).toHaveLength(0);
+    }
+  });
 });
 
 describe("la barra centrale", () => {
@@ -109,7 +122,7 @@ describe("la barra centrale", () => {
     // locale lavora?») smetterebbe di spiegare la divisione. Marketing è
     // l'eccezione voluta e non fa parte di questo controllo.
     const inBarra = new Set(PRIMARY_NAV.map((v) => v.href));
-    for (const href of ["/experiences", "/insights", "/payments", "/settings"]) {
+    for (const href of ["/payments", "/settings"]) {
       expect(inBarra.has(href)).toBe(false);
     }
   });
@@ -134,10 +147,7 @@ describe("il menu del profilo", () => {
   it("porta le sezioni amministrative, raggruppate", () => {
     const gruppi = profiloPerGruppo();
     expect(gruppi.map((g) => g.label)).toEqual(["Gestione", "Account"]);
-    const gestione = gruppi[0].voci.map((v) => v.href);
-    for (const href of ["/experiences", "/insights", "/payments"]) {
-      expect(gestione).toContain(href);
-    }
+    expect(gruppi[0].voci.map((v) => v.href)).toEqual(["/payments"]);
     expect(gruppi[1].voci.map((v) => v.href)).toEqual(["/settings"]);
   });
 
@@ -169,17 +179,138 @@ describe("le destinazioni", () => {
     expect(ALL_NAV.filter((v) => v.href === "/floor")).toHaveLength(1);
   });
 
-  it("nessuna funzione è sparita: ogni voce di prima ha ancora una casa", () => {
-    // L'elenco delle destinazioni che esistevano prima del redesign, con
-    // `/waiters` diventato `/staff` (il vecchio percorso reindirizza). Se una
-    // sparisce, questo test lo dice: semplificare non vuol dire togliere.
+  it("nessuna funzione è sparita per sbaglio: ogni voce di prima ha ancora una casa", () => {
+    /*
+      L'elenco delle destinazioni che esistevano prima del redesign, con
+      `/waiters` diventato `/staff` (il vecchio percorso reindirizza). Se una
+      sparisce, questo test lo dice: semplificare non vuol dire togliere.
+
+      Le due che mancano sono uscite **di proposito** il 15 settembre, e
+      stanno qui sotto scritte per nome — così toglierne una terza resta una
+      decisione da prendere, non una riga che si cancella in silenzio:
+
+      - `/waitlist`: la coda è già la terza zona di Servizio, e la pagina resta
+        raggiungibile dai gesti che aggiungono qualcuno in attesa;
+      - `/experiences`: sezione sospesa finché non si decide se tenerla.
+    */
     const prima = [
-      "/overview", "/service", "/bookings", "/floor", "/waitlist", "/guests",
-      "/staff", "/menu", "/experiences", "/marketing", "/insights",
-      "/payments", "/settings",
+      "/overview", "/service", "/bookings", "/floor", "/guests",
+      "/staff", "/menu", "/marketing", "/insights", "/payments", "/settings",
     ];
-    const adesso = new Set(ALL_NAV.map((v) => v.href));
+    const adesso = new Set([
+      ...ALL_NAV.map((v) => v.href),
+      ...ALL_NAV.flatMap((v) => v.sottovoci?.map((s) => s.href) ?? []),
+    ]);
     for (const href of prima) expect(adesso.has(href)).toBe(true);
+  });
+
+  it("l'attesa e le esperienze non sono in nessuno dei due menu", () => {
+    const tutte = [
+      ...ALL_NAV.map((v) => v.href),
+      ...ALL_NAV.flatMap((v) => v.sottovoci?.map((s) => s.href) ?? []),
+    ];
+    expect(tutte).not.toContain("/waitlist");
+    expect(tutte).not.toContain("/experiences");
+  });
+});
+
+/**
+ * Il menu Marketing.
+ *
+ * Marketing è l'unica voce della barra che **non porta a una pagina**: apre un
+ * elenco. È anche l'unica che ha dentro percorsi fuori dal proprio prefisso —
+ * `/campaigns` e `/insights`, rimasti dov'erano per non rompere link già
+ * mandati — e sono esattamente quelli su cui la voce accesa si rompe in
+ * silenzio: nessun errore, solo una barra che smette di dire dove si è.
+ *
+ * Le tre cose che devono reggere, e che nessun'altra parte del codice
+ * controlla:
+ *
+ * 1. **la voce resta accesa dentro ogni strumento**, compresi i due che
+ *    stanno fuori da `/marketing`;
+ * 2. **si sa quale strumento è aperto**, altrimenti si apre il pannello e i
+ *    sette nomi si somigliano tutti;
+ * 3. **ogni strumento ha un titolo suo** nella testata: senza, sette schermate
+ *    diverse si chiamano tutte «Marketing».
+ */
+describe("il menu Marketing", () => {
+  it("porta gli strumenti del marketing, in quest'ordine", () => {
+    // L'ordine non è alfabetico: ciò che si manda, ciò che si dà, ciò che si
+    // raccoglie o si stampa, e in fondo com'è andata.
+    expect(MARKETING_NAV.map((v) => v.label)).toEqual([
+      "Campagne email",
+      "Automazioni",
+      "Coupon",
+      "Gift card",
+      "Wi-Fi",
+      "QR Code",
+      "Analytics",
+    ]);
+  });
+
+  it("è l'unica voce che si apre invece di portare da qualche parte", () => {
+    // Un secondo menu dentro la barra sarebbe di nuovo il dropdown «Altro»:
+    // un posto in più dove guardare, con dentro cose senza un criterio.
+    const conSottovoci = ALL_NAV.filter((v) => v.sottovoci);
+    expect(conSottovoci.map((v) => v.label)).toEqual(["Marketing"]);
+  });
+
+  it("ogni strumento ha il nome e una riga che dice cosa ci si fa", () => {
+    // Nel pannello il nome da solo non basta: «Wi-Fi» accanto a «QR Code» non
+    // dice a cosa servono. La riga è la stessa su scrivania e su telefono.
+    for (const voce of MARKETING_NAV) {
+      expect(voce.label.length).toBeGreaterThan(0);
+      expect(voce.descrizione?.length ?? 0).toBeGreaterThan(0);
+    }
+  });
+
+  it("nessuno strumento porta all'indice che non c'è più", () => {
+    // `/marketing` adesso reindirizza: una voce di menu che ci punta sarebbe
+    // il passaggio in più rimesso dentro il menu che serviva a toglierlo.
+    expect(MARKETING_NAV.map((v) => v.href)).not.toContain("/marketing");
+  });
+
+  it("dentro uno strumento resta accesa Marketing, e solo lei", () => {
+    /*
+      Compresi i due percorsi che non cominciano per `/marketing`: le campagne
+      sono su `/campaigns` per non rompere il wizard, Analytics su `/insights`
+      perché è arrivata qui dal menu del profilo senza cambiare indirizzo.
+      Tutti e due passano da `matchPrefixes`, ed è la cosa che si dimentica
+      quando si aggiunge il settimo strumento.
+    */
+    for (const voce of MARKETING_NAV) {
+      const accese = ALL_NAV.filter((v) => isNavActive(voce.href, v));
+      expect(accese.map((v) => v.label)).toEqual(["Marketing"]);
+    }
+  });
+
+  it("resta accesa anche nelle pagine di dettaglio di uno strumento", () => {
+    for (const percorso of ["/campaigns/abc/edit", "/campaigns/new", "/insights/ospiti"]) {
+      const accese = ALL_NAV.filter((v) => isNavActive(percorso, v));
+      expect(accese.map((v) => v.label)).toEqual(["Marketing"]);
+    }
+  });
+
+  it("dice quale strumento è aperto, anche da una sua sottopagina", () => {
+    const marketing = PRIMARY_NAV.find((v) => v.label === "Marketing")!;
+    expect(sottovoceAttiva("/marketing/coupons", marketing)?.label).toBe("Coupon");
+    expect(sottovoceAttiva("/campaigns", marketing)?.label).toBe("Campagne email");
+    expect(sottovoceAttiva("/campaigns/abc/edit", marketing)?.label).toBe("Campagne email");
+    expect(sottovoceAttiva("/insights", marketing)?.label).toBe("Analytics");
+  });
+
+  it("fuori dal marketing non c'è nessuno strumento aperto", () => {
+    const marketing = PRIMARY_NAV.find((v) => v.label === "Marketing")!;
+    expect(sottovoceAttiva("/bookings", marketing)).toBeUndefined();
+  });
+
+  it("ogni strumento ha un titolo suo nella testata", () => {
+    // Senza, sette schermate diverse si chiamerebbero tutte «Marketing»: il
+    // titolo lo scrive la testata, non più il contenuto della pagina.
+    for (const voce of MARKETING_NAV) {
+      expect(titoloPagina(voce.href)?.lungo).toBeTruthy();
+      expect(titoloPagina(voce.href)?.lungo).not.toBe("Marketing");
+    }
   });
 });
 
