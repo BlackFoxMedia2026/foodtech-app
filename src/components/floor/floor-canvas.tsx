@@ -16,8 +16,8 @@ import { TABLE_SIZE, type LocalTable, type TableStaffMap } from "./table-node";
 import { RoomTableNode } from "./operational/room-table-node";
 import { OperationalRoomView } from "./operational/operational-room-view";
 import { ManagePlanDialog } from "./manage-plan-dialog";
-import { AssignStaffDialog } from "./assign-staff-dialog";
-import { NewTableDialog } from "./new-table-dialog";
+import { TableDialog } from "./table-dialog";
+import { TableProfileDrawer, type PermessiTavolo } from "@/components/tables/table-profile-drawer";
 import { parseRoomLayoutElements, getRoomBounds } from "@/lib/room-layout";
 import type { TableOperationalStatus } from "@/lib/table-status";
 import type { RoomLayoutMode } from "@prisma/client";
@@ -44,6 +44,8 @@ export const FloorCanvas = forwardRef<
     statusByTableId?: Record<string, TableOperationalStatus>;
     date?: string;
     service?: string;
+    /** Chi guarda: decide cosa si può toccare dal profilo del tavolo. */
+    permessi: PermessiTavolo;
     onDirtyChange?: (dirty: boolean) => void;
   }
 >(function FloorCanvas(
@@ -60,6 +62,7 @@ export const FloorCanvas = forwardRef<
     statusByTableId,
     date,
     service,
+    permessi,
     onDirtyChange,
   },
   ref,
@@ -74,7 +77,9 @@ export const FloorCanvas = forwardRef<
   const [managePlanOpen, setManagePlanOpen] = useState(false);
   const [newTableOpen, setNewTableOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [assignStaffTableId, setAssignStaffTableId] = useState<string | null>(null);
+  /** Il tavolo di cui è aperto il profilo. */
+  const [profiloTableId, setProfiloTableId] = useState<string | null>(null);
+  const [modificaTableId, setModificaTableId] = useState<string | null>(null);
 
   const parsedLayoutElements = useMemo(() => parseRoomLayoutElements(roomLayoutElements), [roomLayoutElements]);
   const roomBounds = useMemo(
@@ -144,7 +149,22 @@ export const FloorCanvas = forwardRef<
     [router],
   );
 
-  const onSelect = useCallback((id: string) => setSelectedId(id), []);
+  /**
+   * Un clic su un tavolo significa **«fammi vedere cosa succede qui»**.
+   *
+   * Prima significava «seleziona questo oggetto grafico», e da lì partiva un
+   * secondo percorso — i tre puntini — per arrivare a fare qualcosa. La
+   * selezione resta, ma come conseguenza: serve a tenere il tavolo evidenziato
+   * sulla pianta mentre il pannello è aperto, così si vede **di quale** tavolo
+   * si sta leggendo.
+   *
+   * Spostare e ridimensionare non passano di qui: stanno nel costruttore della
+   * sala, dietro «Gestisci piantina». Le due interazioni non si mescolano.
+   */
+  const onSelect = useCallback((id: string) => {
+    setSelectedId(id);
+    setProfiloTableId(id);
+  }, []);
 
   return (
     <OperationalRoomView
@@ -155,7 +175,10 @@ export const FloorCanvas = forwardRef<
       activeLayoutMode={activeLayoutMode}
       roomLayoutElements={parsedLayoutElements}
       tables={tables}
-      onBackgroundClick={() => setSelectedId(null)}
+      onBackgroundClick={() => {
+        setSelectedId(null);
+        setProfiloTableId(null);
+      }}
       emptyPlanSlot={
         <>
           Nessuna piantina caricata.
@@ -194,9 +217,9 @@ export const FloorCanvas = forwardRef<
                 ? {
                     menuOpen,
                     onMenuOpenChange: setMenuOpen,
-                    onOpenAssignStaff: (tableId) => {
+                    onModifica: (tableId) => {
                       setMenuOpen(false);
-                      setAssignStaffTableId(tableId);
+                      setModificaTableId(tableId);
                     },
                   }
                 : undefined
@@ -298,25 +321,50 @@ export const FloorCanvas = forwardRef<
         allTables={tables}
       />
 
-      <NewTableDialog
+      <TableDialog
         open={newTableOpen}
         onOpenChange={setNewTableOpen}
         roomId={roomId}
         roomName={roomName}
-        onCreated={(t) => {
+        onSalvato={(t) => {
           setTables((prev) => [...prev, t]);
           router.refresh();
         }}
       />
 
-      <AssignStaffDialog
-        open={!!assignStaffTableId}
-        onOpenChange={(next) => !next && setAssignStaffTableId(null)}
-        table={tables.find((t) => t.id === assignStaffTableId) ?? null}
+      {/* Lo stesso modulo, in modifica: nome, posti, forma del tavolo scelto. */}
+      <TableDialog
+        open={!!modificaTableId}
+        onOpenChange={(next) => !next && setModificaTableId(null)}
+        roomId={roomId}
         roomName={roomName}
-        date={date ?? ""}
-        service={service ?? ""}
-        onChanged={() => router.refresh()}
+        tavolo={tables.find((t) => t.id === modificaTableId) ?? null}
+        onSalvato={(aggiornato) => {
+          setTables((prev) => prev.map((t) => (t.id === aggiornato.id ? { ...t, ...aggiornato } : t)));
+          setModificaTableId(null);
+          router.refresh();
+        }}
+      />
+
+      {/*
+        Il profilo del tavolo: **lo stesso pannello del Servizio**.
+
+        Non oscura la pianta e un clic fuori non lo chiude, quindi si passa da
+        un tavolo all'altro senza chiuderlo — che è il modo in cui si controlla
+        una sala prima di un servizio.
+      */}
+      <TableProfileDrawer
+        tableId={profiloTableId}
+        onOpenChange={(aperto) => {
+          if (!aperto) {
+            setProfiloTableId(null);
+            setSelectedId(null);
+          }
+        }}
+        permessi={permessi}
+        giorno={date ?? null}
+        servizio={service || null}
+        onDatiCambiati={() => router.refresh()}
       />
     </OperationalRoomView>
   );

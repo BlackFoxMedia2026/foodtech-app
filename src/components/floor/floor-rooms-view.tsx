@@ -15,6 +15,7 @@ import { FloorCanvas, type FloorCanvasHandle } from "./floor-canvas";
 import type { TableStaffMap } from "./table-node";
 import type { TableOperationalStatus } from "@/lib/table-status";
 import { FloorServiceFilter } from "./floor-service-filter";
+import type { PermessiTavolo } from "@/components/tables/table-profile-drawer";
 
 type RoomWithTables = {
   id: string;
@@ -55,6 +56,7 @@ export function FloorRoomsView({
   serviceOptions,
   staffByTableId,
   statusByTableId,
+  permessi,
 }: {
   rooms: RoomWithTables[];
   date: string;
@@ -62,6 +64,8 @@ export function FloorRoomsView({
   serviceOptions: string[];
   staffByTableId: Record<string, TableStaffMap>;
   statusByTableId?: Record<string, TableOperationalStatus>;
+  /** Chi guarda: decide cosa si può toccare dal profilo del tavolo. */
+  permessi: PermessiTavolo;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -318,6 +322,7 @@ export function FloorRoomsView({
             statusByTableId={statusByTableId}
             date={date}
             service={service}
+            permessi={permessi}
             onDirtyChange={setDirty}
           />
         </RoomTransition>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { readApiError } from "@/lib/api-client";
 import { createPortal } from "react-dom";
 import type { Table, TableShape } from "@prisma/client";
@@ -22,22 +22,39 @@ const MAX_SEATS = 40;
 
 type FieldErrors = Partial<Record<"label" | "seats", string>>;
 
-export function NewTableDialog({
+/**
+ * Creare un tavolo e **modificarlo**: lo stesso modulo.
+ *
+ * Erano due cose e una sola esisteva: si poteva aggiungere un tavolo, non
+ * correggerne il nome o i posti — un «T12» battuto male restava T12, e l'unica
+ * strada era cancellarlo e rifarlo, cioè perdere le prenotazioni che ci stavano
+ * sopra. Il modulo è identico nei due casi: tre campi, gli stessi controlli,
+ * lo stesso messaggio quando il nome è già preso. Duplicarlo avrebbe voluto dire
+ * due posti in cui ricordarsi che i posti stanno fra 1 e 40.
+ *
+ * Quello che **non** si tocca qui è la posizione sulla pianta: quella si
+ * trascina, e si trascina dentro il costruttore della sala.
+ */
+export function TableDialog({
   open,
   onOpenChange,
   roomId,
   roomName,
-  onCreated,
+  tavolo = null,
+  onSalvato,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   roomId: string;
   roomName: string;
-  onCreated: (table: Table) => void;
+  /** Il tavolo da modificare. Nullo: se ne sta creando uno nuovo. */
+  tavolo?: { id: string; label: string; seats: number; shape: TableShape } | null;
+  onSalvato: (table: Table) => void;
 }) {
-  const [label, setLabel] = useState("");
-  const [seats, setSeats] = useState(2);
-  const [shape, setShape] = useState<TableShape>("SQUARE");
+  const modifica = tavolo !== null;
+  const [label, setLabel] = useState(tavolo?.label ?? "");
+  const [seats, setSeats] = useState(tavolo?.seats ?? 2);
+  const [shape, setShape] = useState<TableShape>(tavolo?.shape ?? "SQUARE");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -46,12 +63,24 @@ export function NewTableDialog({
   const labelFieldRef = useRef<HTMLInputElement>(null);
 
   function resetForm() {
-    setLabel("");
-    setSeats(2);
-    setShape("SQUARE");
+    setLabel(tavolo?.label ?? "");
+    setSeats(tavolo?.seats ?? 2);
+    setShape(tavolo?.shape ?? "SQUARE");
     setFormError(null);
     setFieldErrors({});
   }
+
+  // Riaprendo su un tavolo diverso il modulo deve dire **quel** tavolo: senza
+  // questo si riaprirebbe con il nome di quello aperto la volta prima.
+  useEffect(() => {
+    if (!open) return;
+    setLabel(tavolo?.label ?? "");
+    setSeats(tavolo?.seats ?? 2);
+    setShape(tavolo?.shape ?? "SQUARE");
+    setFormError(null);
+    setFieldErrors({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tavolo?.id]);
 
   function clampSeats(next: number) {
     if (!Number.isFinite(next)) return MIN_SEATS;
@@ -75,28 +104,41 @@ export function NewTableDialog({
     setFieldErrors({});
     setSubmitting(true);
 
-    const res = await fetch("/api/tables", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label: trimmed, seats, shape, roomId, posX: 80, posY: 80 }),
-    });
+    const res = modifica
+      ? await fetch(`/api/tables/${tavolo.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ label: trimmed, seats, shape }),
+        })
+      : await fetch("/api/tables", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ label: trimmed, seats, shape, roomId, posX: 80, posY: 80 }),
+        });
     setSubmitting(false);
 
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      if (body?.code === "DUPLICATE_LABEL") {
+      // Il vincolo è `[venueId, label]` nel database: la PATCH lo viola come
+      // la POST, e qui deve leggersi allo stesso modo.
+      if (body?.code === "DUPLICATE_LABEL" || body?.error?.includes?.("Unique constraint")) {
         setFieldErrors({ label: "Esiste già un tavolo con questo nome." });
       } else {
-        setFormError(await readApiError(res, "Impossibile creare il tavolo. Riprova."));
+        setFormError(
+          await readApiError(
+            res,
+            modifica ? "Impossibile salvare il tavolo. Riprova." : "Impossibile creare il tavolo. Riprova.",
+          ),
+        );
       }
       return;
     }
 
-    const created = (await res.json()) as Table;
-    onCreated(created);
+    const salvato = (await res.json()) as Table;
+    onSalvato(salvato);
     onOpenChange(false);
     resetForm();
-    setLastCreatedLabel(created.label);
+    setLastCreatedLabel(salvato.label);
     setShowToast(true);
     window.setTimeout(() => setShowToast(false), 3500);
   }
@@ -116,12 +158,12 @@ export function NewTableDialog({
             e.preventDefault();
             labelFieldRef.current?.focus();
           }}
-          aria-labelledby="new-table-title"
-          aria-describedby="new-table-description"
         >
           <DialogHeader>
-            <DialogTitle id="new-table-title">Nuovo tavolo</DialogTitle>
-            <DialogDescription id="new-table-description">Aggiungi un nuovo tavolo alla {roomName}.</DialogDescription>
+            <DialogTitle>{modifica ? `Tavolo ${tavolo.label}` : "Nuovo tavolo"}</DialogTitle>
+            <DialogDescription>
+              {modifica ? `Nome, posti e forma. La posizione si sposta dalla piantina.` : `Aggiungi un nuovo tavolo alla ${roomName}.`}
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={onSubmit} method="post" className="space-y-5" noValidate>
@@ -219,7 +261,7 @@ export function NewTableDialog({
                 Annulla
               </Button>
               <Button type="submit" variant="accent" disabled={submitting}>
-                {submitting ? "Creo…" : "Crea tavolo"}
+                {submitting ? "Salvo…" : modifica ? "Salva tavolo" : "Crea tavolo"}
               </Button>
             </DialogFooter>
           </form>
@@ -235,7 +277,7 @@ export function NewTableDialog({
             className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 riquadro bg-card px-4 py-3 text-sm text-card-foreground shadow-2xl animate-fade-in"
           >
             <CheckCircle2 className="h-4 w-4 text-accent-strong" />
-            Tavolo {lastCreatedLabel} creato.
+            Tavolo {lastCreatedLabel} {modifica ? "salvato" : "creato"}.
           </div>,
           document.body,
         )}

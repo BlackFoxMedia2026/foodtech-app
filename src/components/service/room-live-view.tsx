@@ -5,13 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeftRight,
-  Ban,
   Check,
-  CircleDot,
   Clock,
   Link2,
   Receipt,
-  Sparkles,
   Timer,
   UtensilsCrossed,
 } from "lucide-react";
@@ -28,6 +25,11 @@ import { ServiceSwitch } from "@/components/service/service-switch";
 import { TablePickerDialog } from "@/components/service/table-picker-dialog";
 import { useServizioVivo } from "@/lib/use-servizio-vivo";
 import { oraInVenue } from "@/lib/venue-time";
+import { STILE_STATO } from "@/components/tables/stile-stato";
+import {
+  TableProfileDrawer,
+  type PermessiTavolo,
+} from "@/components/tables/table-profile-drawer";
 
 type Corrente = NonNullable<TableLiveInfo["current"]>;
 
@@ -60,32 +62,6 @@ export type RoomTable = {
 export type RoomOption = { id: string; name: string };
 
 /**
- * Colore **e** icona per ogni stato.
- *
- * Il colore da solo non basta: circa un uomo su dodici ha una forma di
- * daltonismo, e una sala si guarda di sfuggita, di lato, con le luci basse.
- * L'icona rende lo stato leggibile anche quando il colore non arriva — ed è
- * anche il motivo per cui ogni tavolo ha un `title` e un'etichetta per lo
- * screen reader.
- */
-const STILE: Record<TableLiveStatus, { icona: typeof CircleDot; classe: string; testo: string }> = {
-  /**
-   * Libero e Prenotato erano lo stesso verde a due opacità (40% e 100%) con
-   * due bordi appena diversi: sulla mappa si distinguevano **solo leggendo la
-   * parola**, ed è la coppia più frequente della sala. Ora libero è un buco
-   * nel pavimento — nessun riempimento — e prenotato porta un velo chiaro:
-   * «questo tavolo è di qualcuno, anche se adesso è vuoto».
-   */
-  LIBERO: { icona: CircleDot, classe: "border-dashed border-border/70 bg-transparent text-muted-foreground", testo: "text-muted-foreground" },
-  PRENOTATO: { icona: Clock, classe: "border-cream/40 bg-cream/12 text-foreground", testo: "text-foreground" },
-  IN_ARRIVO: { icona: Sparkles, classe: "border-sage bg-sage/25 text-foreground", testo: "text-foreground" },
-  OCCUPATO: { icona: UtensilsCrossed, classe: "border-surface-brown bg-surface-brown text-cream", testo: "text-cream" },
-  CONTO: { icona: Receipt, classe: "border-accent bg-accent/80 text-cream", testo: "text-cream" },
-  PULIZIA: { icona: Timer, classe: "border-dashed border-border-strong bg-secondary/60 text-muted-foreground", testo: "text-muted-foreground" },
-  BLOCCATO: { icona: Ban, classe: "border-dashed border-border bg-muted/40 text-tertiary-foreground", testo: "text-tertiary-foreground" },
-};
-
-/**
  * La sala durante il servizio.
  *
  * Non è la pianta con cui si configura il locale — quella sta in Sala e serve
@@ -101,11 +77,14 @@ export function RoomLiveView({
   tables,
   rooms,
   canManage,
+  permessi,
 }: {
   initial: FloorLive;
   tables: RoomTable[];
   rooms: RoomOption[];
   canManage: boolean;
+  /** Chi guarda: decide cosa si può toccare dal profilo del tavolo. */
+  permessi: PermessiTavolo;
 }) {
   const router = useRouter();
   const [live, setLive] = useState(initial);
@@ -122,8 +101,12 @@ export function RoomLiveView({
 
   const { ultimo, aggiornaOra: aggiorna } = useServizioVivo(scarica);
 
+  /*
+    Dopo un'azione la mappa si riallinea, ma **il tavolo scelto resta scelto**:
+    chi segna un arrivo dal pannello si aspetta di continuare a leggere quel
+    tavolo, non di vederselo chiudere sotto le mani.
+  */
   const dopoAzione = useCallback(() => {
-    setSelezionato(null);
     aggiorna();
     router.refresh();
   }, [aggiorna, router]);
@@ -152,8 +135,6 @@ export function RoomLiveView({
     }
     return gruppi;
   }, [tavoliSala, live]);
-
-  const tavoloSelezionato = tavoliSala.find((t) => t.id === selezionato) ?? null;
 
   return (
     <div className="schermo animate-fade-in gap-3">
@@ -193,7 +174,7 @@ export function RoomLiveView({
       {/* La legenda è anche il conteggio: due informazioni nello stesso posto. */}
       <div className="flex flex-wrap gap-2">
         {LIVE_STATUS_ORDER.filter((s) => (perStato.get(s)?.length ?? 0) > 0).map((stato) => {
-          const stile = STILE[stato];
+          const stile = STILE_STATO[stato];
           const Icona = stile.icona;
           return (
             <span
@@ -293,6 +274,8 @@ export function RoomLiveView({
                     timezone={live.timezone}
                     canManage={canManage}
                     onChanged={dopoAzione}
+                    onApri={() => setSelezionato(t.id)}
+                    evidenziato={selezionato === t.id}
                     durataLocale={live.durata}
                   />
                 ))}
@@ -302,20 +285,20 @@ export function RoomLiveView({
         </>
       )}
 
-      {/* Il dettaglio del tavolo scelto sulla mappa */}
-      {tavoloSelezionato && (
-        <div className="hidden lg:block">
-          <TavoloRiga
-            table={tavoloSelezionato}
-            info={live.byTableId[tavoloSelezionato.id]}
-            timezone={live.timezone}
-            canManage={canManage}
-            onChanged={dopoAzione}
-            evidenziato
-            durataLocale={live.durata}
-          />
-        </div>
-      )}
+      {/*
+        Il dettaglio del tavolo scelto.
+
+        Era una riga in fondo alla pagina: si toccava un tavolo in alto a
+        sinistra e la risposta compariva sotto la mappa, fuori dallo sguardo.
+        Adesso è **lo stesso pannello della Sala** — stesso componente, stessa
+        logica — e arriva da destra accanto al tavolo che l'ha aperto.
+      */}
+      <TableProfileDrawer
+        tableId={selezionato}
+        onOpenChange={(aperto) => !aperto && setSelezionato(null)}
+        permessi={permessi}
+        onDatiCambiati={dopoAzione}
+      />
     </div>
   );
 }
@@ -351,7 +334,7 @@ function TavoloMappa({
   onSelect: () => void;
 }) {
   const stato = info?.status ?? "LIBERO";
-  const stile = STILE[stato];
+  const stile = STILE_STATO[stato];
   const Icona = stile.icona;
   const corrente = info?.current;
 
@@ -485,13 +468,22 @@ function TavoloMappa({
   );
 }
 
-/** Un tavolo in elenco, con le azioni. */
+/**
+ * Un tavolo in elenco — la forma che la mappa prende sul telefono.
+ *
+ * La riga **si tocca**, e apre il profilo del tavolo: è la stessa promessa dei
+ * riquadri della mappa, e su telefono la mappa non c'è. I due o tre pulsanti a
+ * destra restano dove sono e fermano il tocco prima che arrivi alla riga:
+ * «Arrivato» e «Accomoda» si premono cinquanta volte a sera, e farli passare
+ * per un pannello sarebbe stato togliere per aggiungere.
+ */
 function TavoloRiga({
   table,
   info,
   timezone,
   canManage,
   onChanged,
+  onApri,
   evidenziato = false,
   durataLocale = null,
 }: {
@@ -502,6 +494,8 @@ function TavoloRiga({
   /** La durata misurata del locale, se c'è: serve a capire se questa riga si scosta. */
   durataLocale?: FloorLive["durata"];
   onChanged: () => void;
+  /** Apre il profilo del tavolo. */
+  onApri?: () => void;
   evidenziato?: boolean;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -509,7 +503,7 @@ function TavoloRiga({
   const [moveOpen, setMoveOpen] = useState(false);
 
   const stato = info?.status ?? "LIBERO";
-  const stile = STILE[stato];
+  const stile = STILE_STATO[stato];
   const Icona = stile.icona;
   const corrente = info?.current;
 
@@ -534,9 +528,24 @@ function TavoloRiga({
 
   return (
     <article
+      role={onApri ? "button" : undefined}
+      tabIndex={onApri ? 0 : undefined}
+      aria-label={onApri ? `Apri il profilo del tavolo ${table.label}` : undefined}
+      onClick={onApri}
+      onKeyDown={
+        onApri
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onApri();
+              }
+            }
+          : undefined
+      }
       className={cn(
         "surface rounded-md border p-3",
         evidenziato ? "border-cream" : "border-border",
+        onApri && "cursor-pointer transition-colors hover:border-cream/60",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -651,7 +660,12 @@ function TavoloRiga({
         </div>
 
         {canManage && corrente && (
-          <div className="flex flex-wrap items-center gap-1.5">
+          // Il tocco si ferma qui: la riga apre il pannello, questi pulsanti
+          // fanno la loro cosa.
+          <div
+            className="flex flex-wrap items-center gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
             {(corrente.status === "CONFIRMED" || corrente.status === "PENDING") && (
               <Button size="sm" variant="accent" disabled={busy !== null} onClick={() => cambiaStato("arr", "ARRIVED")}>
                 <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
