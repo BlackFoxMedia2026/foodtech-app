@@ -134,6 +134,27 @@ model Venue {
   wifiPortalLogoUrl      String?
   wifiPortalWelcome      String?   @db.VarChar(500)
   wifiSetupAt            DateTime?
+  /// Quali recapiti chiede il modulo pubblico, oltre al nome — che serve
+  /// sempre: senza un nome, un contatto non è una persona.
+  ///
+  /// Sono due interruttori e non un elenco di campi liberi: ogni campo in più
+  /// è una persona in meno che arriva in fondo, e il locale deve poter
+  /// chiedere solo ciò che usa davvero. Almeno uno dei due resta acceso —
+  /// un modulo che non chiede nessun recapito raccoglie nomi inutilizzabili.
+  wifiAskEmail           Boolean   @default(true)
+  wifiAskPhone           Boolean   @default(true)
+  /// La spunta facoltativa del marketing sul portale. Spenta, il portale
+  /// smette di chiederla: meglio non avere un consenso che raccoglierlo senza
+  /// sapere cosa farsene.
+  wifiAskMarketing       Boolean   @default(true)
+  /// Quando il locale ha **dichiarato** di aver collegato il portale al
+  /// proprio router.
+  ///
+  /// Non è un rilevamento: dal router non arriva nessun segnale, e fingere di
+  /// saperlo sarebbe uno di quegli stati inventati che questo prodotto ha
+  /// passato giorni a togliere. È la spunta di chi c'era, con la data, e si
+  /// può togliere.
+  wifiRouterConfirmedAt  DateTime?
   /// Il nome della rete e la password che il cliente riceve dopo aver
   /// lasciato il contatto.
   ///
@@ -416,6 +437,7 @@ model Table {
   blocks           TableBlock[]
   staffAssignments StaffAssignment[]
   payments         Payment[]
+  qrCodes          QrCode[]
 
   @@unique([venueId, label])
 }
@@ -691,22 +713,64 @@ enum QrCodeCategory {
   OTHER
 }
 
+/// Che cosa apre il codice.
+///
+/// Prima esisteva solo `category`, che era una **etichetta**: serviva a
+/// raggruppare in elenco dei QR il cui contenuto era comunque un indirizzo
+/// scritto a mano. `kind` invece decide il comportamento — quali campi si
+/// chiedono, da dove viene la destinazione, se c'è un tavolo dietro, che cosa
+/// si può copiare — e per questo è un tipo e non una parola.
+enum QrCodeKind {
+  /// Il conto di un tavolo: la destinazione è il segreto stampato su
+  /// `Table.payQrToken`, non un indirizzo scelto da qualcuno.
+  PAY_TABLE
+  MENU
+  /// Non porta a un indirizzo: dentro c'è la riga `WIFI:` dello standard,
+  /// composta da `payload`. Vedi `lib/qr-contenuto.ts`.
+  WIFI
+  BOOKING
+  CUSTOM
+}
+
 model QrCode {
   id             String         @id @default(cuid())
   venueId        String
   name           String
   description    String?
-  destinationUrl String
+  /// Dove porta il codice — **nullo per il Wi-Fi**, che non porta a un
+  /// indirizzo ma contiene le credenziali della rete (vedi `payload`), e per
+  /// il testo libero. Nullo anche per i QR del tavolo: lì l'indirizzo si
+  /// ricava dal segreto del tavolo, e copiarlo qui vorrebbe dire avere due
+  /// verità che il giorno della rigenerazione non coincidono più.
+  destinationUrl String?
+  kind           QrCodeKind     @default(CUSTOM)
+  /// Solo per `PAY_TABLE`. `SetNull` e non `Cascade`: cancellare un tavolo
+  /// dalla sala non deve far sparire dall'elenco un codice che è ancora
+  /// incollato da qualche parte — va visto e tolto di mano.
+  tableId        String?
+  /// Colori, forma dei moduli, occhi, logo e cornice. Vedi `lib/qr-disegno.ts`.
+  /// Nullo = il disegno predefinito, ed è il caso di tutti i QR nati prima
+  /// dell'editor.
+  design         Json?
+  /// Quello che non è un indirizzo: le credenziali della rete Wi-Fi, o il
+  /// testo libero di un codice personalizzato.
+  payload        Json?
+  /// L'etichetta storica, ora **derivata** da `kind` a ogni scrittura: resta
+  /// perché ci sono righe che la portano già e perché non costa niente tenerla
+  /// coerente. Non decide niente.
   category       QrCodeCategory @default(OTHER)
   isActive       Boolean        @default(true)
   scansCount     Int            @default(0)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   Venue          Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  Table          Table?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
 
   // TODO(futuro): quando esisterà un redirect tracciato (QR -> /r/[id] -> destinationUrl),
   // scansCount si incrementerà lì; oggi resta 0 perché il QR punta direttamente all'URL.
   @@index([venueId, createdAt])
+  @@index([venueId, kind])
+  @@index([tableId])
 }
 
 model GuestProviderLink {

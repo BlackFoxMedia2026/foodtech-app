@@ -357,10 +357,16 @@ export default async function SettingsPage() {
                 nome="Stato del portale"
                 descrizione="Da acceso, chi si collega lascia un contatto e riceve la password."
               >
+                {/* Tre stati e non due: un portale **sospeso** ha tutta la sua
+                    configurazione e una pagina spenta, e chiamarlo «chiuso»
+                    come uno mai configurato manderebbe a rifare mezz'ora di
+                    lavoro già fatta. */}
                 {ctx.venue.wifiSetupAt ? (
                   <ValoreImpostazione>attivo su «{ctx.venue.wifiNetworkName}»</ValoreImpostazione>
+                ) : ctx.venue.wifiNetworkName && ctx.venue.wifiPassword ? (
+                  <ValoreImpostazione>sospeso su «{ctx.venue.wifiNetworkName}»</ValoreImpostazione>
                 ) : (
-                  <ValoreVuoto>chiuso</ValoreVuoto>
+                  <ValoreVuoto>da configurare</ValoreVuoto>
                 )}
               </RigaImpostazione>
               <RigaImpostazione

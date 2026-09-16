@@ -744,6 +744,31 @@
     }
   }
 
+  /* La spunta di una cosa che si è appena accesa — il portale Wi-Fi attivato,
+     e chiunque altro ne avrà bisogno.
+
+     Cresce da poco meno e si ferma: non rimbalza e non gira. È l'unico
+     movimento di una schermata di conferma, e serve a dire «è successo
+     adesso», non a festeggiare. */
+  .conferma-spunta {
+    animation: conferma-spunta 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @keyframes conferma-spunta {
+    from {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .conferma-spunta {
+      animation: none;
+    }
+  }
+
   /* Il pannello di contesto: entra dal basso su telefono, da destra da `md`.
      Due direzioni perché sono due forme diverse, non la stessa rimpicciolita —
      vedi la nota in components/ui/pannello.tsx. */

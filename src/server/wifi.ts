@@ -56,14 +56,33 @@ export const PortaleInput = z.object({
     .max(500)
     .optional()
     .nullable(),
+  /** Il logo che il cliente vede in cima al portale. Vuoto: quello del brand. */
+  logoUrl: z.string().trim().url("Questo indirizzo non sembra valido").max(500).optional().nullable(),
   /** Il coupon che parte da solo a chi si collega. */
   couponEnabled: z.boolean().optional(),
   couponPercent: z.coerce.number().int().min(1).max(100).optional(),
   couponDays: z.coerce.number().int().min(1).max(365).optional(),
+  /** Quali recapiti chiede il modulo. Il nome non è qui: serve sempre. */
+  askEmail: z.boolean().optional(),
+  askPhone: z.boolean().optional(),
+  askMarketing: z.boolean().optional(),
+  /**
+   * Accendere o spegnere il portale **senza svuotare la configurazione**.
+   *
+   * Prima l'unico modo di chiuderlo era cancellare il nome della rete, cioè
+   * buttare via la configurazione per sospendere il servizio. Assente, non
+   * cambia niente: il portale resta acceso se è completo.
+   */
+  attivo: z.boolean().optional(),
+  /**
+   * La spunta con cui il locale dichiara di aver collegato il portale al
+   * router. Non è un rilevamento — vedi il campo nello schema.
+   */
+  routerCollegato: z.boolean().optional(),
 });
 
 export class WifiError extends Error {
-  constructor(public code: "not_found" | "not_configured" | "no_contact") {
+  constructor(public code: "not_found" | "not_configured" | "no_contact" | "no_field") {
     super(code);
   }
 }
@@ -74,36 +93,82 @@ export class WifiError extends Error {
  * `wifiSetupAt` si scrive alla prima configurazione **completa** — nome della
  * rete e password — perché è quella che rende la pagina pubblica utile. Fino a
  * lì il portale resta chiuso, e in Impostazioni c'è scritto cosa manca.
+ *
+ * Da settembre 2026 c'è anche un modo di **sospenderlo senza disfarlo**:
+ * `attivo: false` spegne la pagina pubblica lasciando la configurazione dove
+ * sta. Prima l'unica maniera era cancellare il nome della rete, cioè buttare
+ * via mezz'ora di lavoro per chiudere il portale una settimana.
+ *
+ * ## Un campo che non arriva non viene toccato
+ *
+ * Finché il salvataggio era un modulo unico, la richiesta portava sempre tutto
+ * e «assente» poteva significare «vuotalo». Adesso non è più vero: dal
+ * pannello partono richieste da un campo solo — sospendi, riattiva, spunta il
+ * router — e con la vecchia regola un interruttore avrebbe cancellato il nome
+ * della rete e la password. Quindi `undefined` significa **non toccare** e
+ * `null` significa **svuota**, per ogni campo.
  */
 export async function setPortale(venueId: string, raw: unknown, opts: { actor?: AuditActor } = {}) {
   const data = PortaleInput.parse(raw);
 
   const prima = await db.venue.findUnique({
     where: { id: venueId },
-    select: { wifiSetupAt: true, wifiNetworkName: true, wifiPassword: true },
+    select: {
+      wifiSetupAt: true,
+      wifiNetworkName: true,
+      wifiPassword: true,
+      wifiAskEmail: true,
+      wifiAskPhone: true,
+      wifiRouterConfirmedAt: true,
+    },
   });
   if (!prima) throw new WifiError("not_found");
 
-  const networkName = data.networkName?.trim() || null;
-  const password = data.password?.trim() || null;
+  const networkName = data.networkName !== undefined ? data.networkName?.trim() || null : prima.wifiNetworkName;
+  // La password si confronta **cifrata**: quella in chiaro qui non c'è, e non
+  // serve — l'unica domanda è se ce n'è una.
+  const password =
+    data.password !== undefined ? (data.password?.trim() ? cifra(data.password.trim()) : null) : prima.wifiPassword;
   const completo = !!networkName && !!password;
+
+  // I due interruttori si controllano **sul risultato**, non su ciò che è
+  // arrivato: una chiamata che spegne solo l'email può lasciare il modulo
+  // senza nessun recapito, e quel modulo raccoglie nomi che non servono a
+  // nessuno.
+  const askEmail = data.askEmail ?? prima.wifiAskEmail;
+  const askPhone = data.askPhone ?? prima.wifiAskPhone;
+  if (!askEmail && !askPhone) throw new WifiError("no_field");
 
   const venue = await db.venue.update({
     where: { id: venueId },
     data: {
       wifiNetworkName: networkName,
       // Sotto chiave: nel database non finisce più il testo leggibile.
-      wifiPassword: cifra(password),
-      wifiPortalWelcome: data.welcome?.trim() || null,
-      wifiPortalLegal: data.legal?.trim() || null,
-      wifiPortalAccent: data.accent?.trim() || null,
-      wifiRedirectUrl: data.redirectUrl?.trim() || null,
+      wifiPassword: password,
+      ...(data.welcome !== undefined ? { wifiPortalWelcome: data.welcome?.trim() || null } : {}),
+      ...(data.legal !== undefined ? { wifiPortalLegal: data.legal?.trim() || null } : {}),
+      ...(data.accent !== undefined ? { wifiPortalAccent: data.accent?.trim() || null } : {}),
+      ...(data.redirectUrl !== undefined ? { wifiRedirectUrl: data.redirectUrl?.trim() || null } : {}),
+      ...(data.logoUrl !== undefined ? { wifiPortalLogoUrl: data.logoUrl?.trim() || null } : {}),
       ...(data.couponEnabled != null ? { wifiAutoCouponEnabled: data.couponEnabled } : {}),
       ...(data.couponPercent != null ? { wifiAutoCouponPercent: data.couponPercent } : {}),
       ...(data.couponDays != null ? { wifiAutoCouponDays: data.couponDays } : {}),
+      wifiAskEmail: askEmail,
+      wifiAskPhone: askPhone,
+      ...(data.askMarketing != null ? { wifiAskMarketing: data.askMarketing } : {}),
+      // La spunta del router: la data è quella in cui qualcuno l'ha messa, e
+      // togliendola torna a «da verificare».
+      ...(data.routerCollegato != null
+        ? {
+            wifiRouterConfirmedAt: data.routerCollegato
+              ? (prima.wifiRouterConfirmedAt ?? new Date())
+              : null,
+          }
+        : {}),
       // Acceso la prima volta che è configurato per davvero; se il locale
-      // svuota i campi, il portale torna chiuso.
-      wifiSetupAt: completo ? (prima.wifiSetupAt ?? new Date()) : null,
+      // svuota i campi, il portale torna chiuso. E `attivo: false` lo sospende
+      // senza toccare niente di ciò che è stato scritto.
+      wifiSetupAt: completo && data.attivo !== false ? (prima.wifiSetupAt ?? new Date()) : null,
     },
   });
 
@@ -112,6 +177,7 @@ export async function setPortale(venueId: string, raw: unknown, opts: { actor?: 
     couponAutomatico: venue.wifiAutoCouponEnabled,
     percentuale: venue.wifiAutoCouponPercent,
     giorni: venue.wifiAutoCouponDays,
+    campi: [venue.wifiAskEmail && "email", venue.wifiAskPhone && "telefono"].filter(Boolean),
     attivo: venue.wifiSetupAt != null,
   });
   return venue;
@@ -131,6 +197,11 @@ export type PortaleConfig = {
   conCoupon: boolean;
   couponPercent: number;
   couponDays: number;
+  /** Quali recapiti chiede il modulo. Il nome si chiede sempre. */
+  chiediEmail: boolean;
+  chiediTelefono: boolean;
+  /** Se la spunta facoltativa del marketing compare. */
+  chiediMarketing: boolean;
 };
 
 /**
@@ -158,6 +229,9 @@ export async function getPortale(slug: string): Promise<PortaleConfig | null> {
       wifiAutoCouponEnabled: true,
       wifiAutoCouponPercent: true,
       wifiAutoCouponDays: true,
+      wifiAskEmail: true,
+      wifiAskPhone: true,
+      wifiAskMarketing: true,
     },
   });
   if (!venue || !venue.wifiNetworkName) return null;
@@ -175,6 +249,9 @@ export async function getPortale(slug: string): Promise<PortaleConfig | null> {
     conCoupon: venue.wifiAutoCouponEnabled,
     couponPercent: venue.wifiAutoCouponPercent,
     couponDays: venue.wifiAutoCouponDays,
+    chiediEmail: venue.wifiAskEmail,
+    chiediTelefono: venue.wifiAskPhone,
+    chiediMarketing: venue.wifiAskMarketing,
   };
 }
 
@@ -182,21 +259,53 @@ export async function getPortale(slug: string): Promise<PortaleConfig | null> {
 /*  L'iscrizione                                                              */
 /* -------------------------------------------------------------------------- */
 
-export const WifiSignupInput = z
-  .object({
-    name: z.string().trim().min(2, "Scrivi il tuo nome").max(120),
-    email: z.string().trim().email("Questa email non sembra valida").max(200).optional().nullable(),
-    phone: z.string().trim().max(40).optional().nullable(),
-    /** Le note legali vanno accettate: senza, non si raccoglie niente. */
-    consentPrivacy: z.literal(true, {
-      errorMap: () => ({ message: "Serve accettare l'informativa per collegarsi" }),
-    }),
-    consentMarketing: z.boolean().optional().default(false),
-  })
-  .refine((d) => !!d.email?.trim() || !!d.phone?.trim(), {
-    message: "Lascia un'email o un numero di telefono",
-    path: ["email"],
-  });
+/**
+ * Il modulo pubblico, validato **secondo ciò che quel locale chiede davvero**.
+ *
+ * Il recapito richiesto non è più un'unica regola per tutti: un locale che ha
+ * spento l'email deve sentirsi dire «Lascia un numero di telefono», non
+ * «Lascia un'email o un numero» per un campo che sul suo portale non esiste.
+ * Chi è qui ha il telefono in mano e sta in piedi: l'errore deve nominare il
+ * campo che ha davanti.
+ */
+export function schemaIscrizione(campi: { chiediEmail: boolean; chiediTelefono: boolean }) {
+  const richieste = [campi.chiediEmail && "un'email", campi.chiediTelefono && "un numero di telefono"]
+    .filter(Boolean)
+    .join(" o ");
+
+  return z
+    .object({
+      name: z.string().trim().min(2, "Scrivi il tuo nome").max(120),
+      email: z
+        .string()
+        .trim()
+        .email("Questa email non sembra valida")
+        .max(200)
+        .optional()
+        .nullable(),
+      phone: z.string().trim().max(40).optional().nullable(),
+      /** Le note legali vanno accettate: senza, non si raccoglie niente. */
+      consentPrivacy: z.literal(true, {
+        errorMap: () => ({ message: "Serve accettare l'informativa per collegarsi" }),
+      }),
+      consentMarketing: z.boolean().optional().default(false),
+    })
+    // Un campo spento non si legge nemmeno se arriva: chi manomette il modulo
+    // non deve poter scrivere nel CRM un dato che il locale ha deciso di non
+    // raccogliere.
+    .transform((d) => ({
+      ...d,
+      email: campi.chiediEmail ? d.email : null,
+      phone: campi.chiediTelefono ? d.phone : null,
+    }))
+    .refine((d) => !!d.email?.trim() || !!d.phone?.trim(), {
+      message: `Lascia ${richieste}`,
+      path: [campi.chiediEmail ? "email" : "phone"],
+    });
+}
+
+/** Il modulo completo: è quello che vede chi non ha toccato niente. */
+export const WifiSignupInput = schemaIscrizione({ chiediEmail: true, chiediTelefono: true });
 
 export type WifiSignupResult = {
   networkName: string;
@@ -277,8 +386,6 @@ export async function registraLead(
   raw: unknown,
   meta: { ip?: string | null; userAgent?: string | null; source?: string | null } = {},
 ): Promise<WifiSignupResult> {
-  const data = WifiSignupInput.parse(raw);
-
   const venue = await db.venue.findFirst({
     where: { slug, active: true },
     select: {
@@ -290,12 +397,27 @@ export async function registraLead(
       wifiAutoCouponEnabled: true,
       wifiAutoCouponPercent: true,
       wifiAutoCouponDays: true,
+      wifiAskEmail: true,
+      wifiAskPhone: true,
+      wifiAskMarketing: true,
     },
   });
   if (!venue) throw new WifiError("not_found");
   if (!venue.wifiSetupAt || !venue.wifiNetworkName || !venue.wifiPassword) {
     throw new WifiError("not_configured");
   }
+
+  // Il modulo si valida **dopo** aver letto il locale: quali recapiti siano
+  // obbligatori lo decide chi ha configurato il portale, non questo file.
+  const data = schemaIscrizione({
+    chiediEmail: venue.wifiAskEmail,
+    chiediTelefono: venue.wifiAskPhone,
+  }).parse(raw);
+
+  // Un consenso che il portale non chiede non si registra come rifiutato: chi
+  // ha spento la spunta non sta raccogliendo dei no, non sta raccogliendo
+  // niente.
+  const consensoMarketing = venue.wifiAskMarketing ? data.consentMarketing : false;
 
   const [firstName, ...resto] = data.name.trim().split(/\s+/);
   const lastName = resto.join(" ") || null;
@@ -318,7 +440,7 @@ export async function registraLead(
         ipAddress: meta.ip ?? null,
         userAgent: meta.userAgent ?? null,
         consentPrivacy: true,
-        consentMarketing: data.consentMarketing,
+        consentMarketing: consensoMarketing,
       },
     });
 
@@ -334,21 +456,28 @@ export async function registraLead(
           ipAddress: meta.ip ?? null,
           userAgent: meta.userAgent ?? null,
         },
-        {
-          venueId: venue.id,
-          guestId,
-          leadId: lead.id,
-          channel: "MARKETING_GENERAL",
-          granted: data.consentMarketing,
-          source: "WIFI_PORTAL",
-          ipAddress: meta.ip ?? null,
-          userAgent: meta.userAgent ?? null,
-        },
+        // Il rifiuto si registra, la **domanda non fatta** no: se il locale ha
+        // spento la spunta del marketing, scrivere `granted: false` vorrebbe
+        // dire mettere agli atti un no che questa persona non ha mai dato.
+        ...(venue.wifiAskMarketing
+          ? [
+              {
+                venueId: venue.id,
+                guestId,
+                leadId: lead.id,
+                channel: "MARKETING_GENERAL" as const,
+                granted: consensoMarketing,
+                source: "WIFI_PORTAL",
+                ipAddress: meta.ip ?? null,
+                userAgent: meta.userAgent ?? null,
+              },
+            ]
+          : []),
       ],
     });
 
     // Il consenso si accende, non si spegne: vedi il commento sopra.
-    if (data.consentMarketing) {
+    if (consensoMarketing) {
       await tx.guest.update({ where: { id: guestId }, data: { marketingOptIn: true } });
     }
 
@@ -371,7 +500,7 @@ export async function registraLead(
     await createNotification(venue.id, {
       kind: "WIFI_LEAD",
       title: `${data.name.trim()} si è collegato al Wi-Fi`,
-      body: data.consentMarketing
+      body: consensoMarketing
         ? "Contatto nuovo, con il consenso a essere ricontattato."
         : "Contatto nuovo, senza consenso al marketing: si può chiamare, non scrivere.",
       link: "/marketing/wifi",
@@ -479,6 +608,14 @@ export type WifiStats = {
   conPrenotazione: number;
   couponEmessi: number;
   couponUsati: number;
+  /**
+   * L'ultima volta che qualcuno ha compilato il modulo.
+   *
+   * È il solo segnale che il portale **sta funzionando davvero** — nessuno ci
+   * dice se il router lo sta usando, ma una persona che si è collegata
+   * dodici minuti fa dice che qualcosa, dall'altra parte, funziona.
+   */
+  ultimoAccesso: Date | null;
 };
 
 /**
@@ -492,14 +629,71 @@ export type WifiStats = {
 export async function getWifiStats(venueId: string): Promise<WifiStats> {
   const trentaGiorni = new Date(Date.now() - 30 * 86_400_000);
 
-  const [contatti, conMarketing, ultimi30, conPrenotazione, couponEmessi, couponUsati] = await Promise.all([
-    db.wifiLead.count({ where: { venueId } }),
-    db.wifiLead.count({ where: { venueId, consentMarketing: true } }),
-    db.wifiLead.count({ where: { venueId, createdAt: { gte: trentaGiorni } } }),
-    db.wifiLead.count({ where: { venueId, Guest: { bookings: { some: { deletedAt: null } } } } }),
-    db.coupon.count({ where: { venueId, category: "WIFI" } }),
-    db.couponRedemption.count({ where: { venueId, deletedAt: null, Coupon: { category: "WIFI" } } }),
-  ]);
+  const [contatti, conMarketing, ultimi30, conPrenotazione, couponEmessi, couponUsati, ultimo] =
+    await Promise.all([
+      db.wifiLead.count({ where: { venueId } }),
+      db.wifiLead.count({ where: { venueId, consentMarketing: true } }),
+      db.wifiLead.count({ where: { venueId, createdAt: { gte: trentaGiorni } } }),
+      db.wifiLead.count({ where: { venueId, Guest: { bookings: { some: { deletedAt: null } } } } }),
+      db.coupon.count({ where: { venueId, category: "WIFI" } }),
+      db.couponRedemption.count({ where: { venueId, deletedAt: null, Coupon: { category: "WIFI" } } }),
+      db.wifiLead.findFirst({
+        where: { venueId },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      }),
+    ]);
 
-  return { contatti, conMarketing, ultimi30, conPrenotazione, couponEmessi, couponUsati };
+  return {
+    contatti,
+    conMarketing,
+    ultimi30,
+    conPrenotazione,
+    couponEmessi,
+    couponUsati,
+    ultimoAccesso: ultimo?.createdAt ?? null,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Lo stato, detto per intero                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * In che stato è il portale di questo locale.
+ *
+ * Sono tre, e vanno distinti perché chiedono cose diverse a chi legge:
+ *
+ * - `da_configurare` — non c'è ancora niente: si comincia;
+ * - `sospeso` — la configurazione c'è tutta, ma la pagina pubblica è spenta;
+ * - `attivo` — la pagina pubblica risponde.
+ *
+ * Quello che **non** c'è, ed è la cosa più importante di questo tipo, è uno
+ * stato «collegato al router»: dal router non arriva nessun segnale. Il
+ * collegamento è una dichiarazione del locale (`routerCollegatoIl`), e sta in
+ * un campo a parte proprio perché non va confuso con ciò che sappiamo.
+ */
+export type StatoPortale = {
+  stato: "da_configurare" | "sospeso" | "attivo";
+  /** Rete e password ci sono entrambe. */
+  configurato: boolean;
+  networkName: string | null;
+  attivoDal: Date | null;
+  routerCollegatoIl: Date | null;
+};
+
+export function statoPortale(venue: {
+  wifiNetworkName: string | null;
+  wifiPassword: string | null;
+  wifiSetupAt: Date | null;
+  wifiRouterConfirmedAt: Date | null;
+}): StatoPortale {
+  const configurato = !!venue.wifiNetworkName && !!venue.wifiPassword;
+  return {
+    stato: venue.wifiSetupAt ? "attivo" : configurato ? "sospeso" : "da_configurare",
+    configurato,
+    networkName: venue.wifiNetworkName,
+    attivoDal: venue.wifiSetupAt,
+    routerCollegatoIl: venue.wifiRouterConfirmedAt,
+  };
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireVenueApi } from "@/lib/api-auth";
+import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
+import { origineDa } from "@/lib/origine";
 import { deleteQrCode, updateQrCode } from "@/server/qr-codes";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -7,11 +8,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!ctx.ok) return ctx.response;
   try {
     const body = await req.json();
-    const updated = await updateQrCode(ctx.venueId, params.id, body);
-    return NextResponse.json(updated);
+    const aggiornato = await updateQrCode(ctx.venueId, params.id, body, origineDa(req.headers));
+    return NextResponse.json(aggiornato);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "invalid";
-    return NextResponse.json({ error: message }, { status: message === "not_found" ? 404 : 400 });
+    return apiErrorResponse(err);
   }
 }
 
@@ -22,7 +22,6 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     await deleteQrCode(ctx.venueId, params.id);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "invalid";
-    return NextResponse.json({ error: message }, { status: message === "not_found" ? 404 : 400 });
+    return apiErrorResponse(err);
   }
 }

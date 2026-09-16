@@ -7,6 +7,7 @@ import {
   listWifiLeads,
   registraLead,
   setPortale,
+  statoPortale,
 } from "@/server/wifi";
 import { normalizzaTelefono, trovaOCreaOspite, trovaOspite } from "@/server/guest-match";
 
@@ -74,6 +75,10 @@ beforeEach(async () => {
       wifiAutoCouponEnabled: false,
       wifiAutoCouponPercent: 10,
       wifiAutoCouponDays: 30,
+      wifiAskEmail: true,
+      wifiAskPhone: true,
+      wifiAskMarketing: true,
+      wifiRouterConfirmedAt: null,
     },
   });
 });
@@ -372,5 +377,123 @@ describe("chi si è collegato", () => {
 
     stats = await getWifiStats(venueId);
     expect(stats.conPrenotazione).toBe(1);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*  La configurazione guidata                                                 */
+/* -------------------------------------------------------------------------- */
+
+describe("cosa chiede il portale", () => {
+  beforeEach(async () => {
+    await setPortale(venueId, CONFIG_COMPLETA);
+  });
+
+  it("non si può spegnere l'ultimo recapito", async () => {
+    // Un modulo che chiede un nome e nessun modo di ricontattare la persona
+    // raccoglie dati inutilizzabili di cui il locale resta responsabile.
+    await expect(setPortale(venueId, { askEmail: false, askPhone: false })).rejects.toMatchObject({
+      code: "no_field",
+    });
+
+    // E nemmeno a rate: il controllo guarda il risultato, non la richiesta.
+    await setPortale(venueId, { askPhone: false });
+    await expect(setPortale(venueId, { askEmail: false })).rejects.toMatchObject({ code: "no_field" });
+  });
+
+  it("un campo spento non entra nel CRM nemmeno se arriva lo stesso", async () => {
+    await setPortale(venueId, { askPhone: false });
+
+    await registraLead(slug, iscrizione({ phone: "340 1234567" }));
+    const lead = await db.wifiLead.findFirstOrThrow({ where: { venueId } });
+    expect(lead.phone).toBeNull();
+  });
+
+  it("con un solo recapito acceso, quello diventa obbligatorio", async () => {
+    await setPortale(venueId, { askEmail: false });
+
+    // L'email non si legge più: resta un modulo senza recapito, e si rifiuta.
+    await expect(registraLead(slug, iscrizione())).rejects.toThrow();
+    await expect(
+      registraLead(slug, iscrizione({ email: null, phone: "340 1234567" })),
+    ).resolves.toMatchObject({ networkName: "Aurora-Ospiti" });
+  });
+
+  it("senza la spunta del marketing non si registra nessun rifiuto", async () => {
+    await setPortale(venueId, { askMarketing: false });
+    await registraLead(slug, iscrizione({ consentMarketing: true }));
+
+    // La domanda non è stata fatta: mettere agli atti un «no» — o peggio il
+    // «sì» arrivato da una richiesta manomessa — sarebbe inventare una
+    // risposta.
+    const lead = await db.wifiLead.findFirstOrThrow({ where: { venueId } });
+    expect(lead.consentMarketing).toBe(false);
+    expect(await db.consentLog.count({ where: { venueId, channel: "MARKETING_GENERAL" } })).toBe(0);
+    expect(await db.consentLog.count({ where: { venueId, channel: "PRIVACY" } })).toBe(1);
+  });
+
+  it("il portale pubblico dichiara i campi che chiede", async () => {
+    await setPortale(venueId, { askPhone: false, askMarketing: false });
+    const config = await getPortale(slug);
+    expect(config).toMatchObject({ chiediEmail: true, chiediTelefono: false, chiediMarketing: false });
+  });
+});
+
+describe("accendere, sospendere, salvare a pezzi", () => {
+  beforeEach(async () => {
+    await setPortale(venueId, CONFIG_COMPLETA);
+  });
+
+  it("si sospende senza perdere la configurazione, e si riaccende", async () => {
+    await setPortale(venueId, { attivo: false });
+    expect(await getPortale(slug)).toBeNull();
+
+    const sospeso = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
+    // La configurazione è ancora tutta lì: sospendere non è disfare.
+    expect(sospeso.wifiNetworkName).toBe("Aurora-Ospiti");
+    expect(sospeso.wifiPassword).not.toBeNull();
+
+    await setPortale(venueId, { attivo: true });
+    expect((await getPortale(slug))?.networkName).toBe("Aurora-Ospiti");
+    expect((await registraLead(slug, iscrizione())).password).toBe("buonacena2026");
+  });
+
+  it("un salvataggio parziale non cancella quello che non nomina", async () => {
+    // È il caso di ogni interruttore del pannello: manda un campo solo, e la
+    // password non deve sparire per questo.
+    await setPortale(venueId, { couponEnabled: true });
+
+    const dopo = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
+    expect(dopo.wifiNetworkName).toBe("Aurora-Ospiti");
+    expect(dopo.wifiSetupAt).not.toBeNull();
+    expect(dopo.wifiPortalWelcome).toBe(CONFIG_COMPLETA.welcome);
+    expect((await registraLead(slug, iscrizione())).password).toBe("buonacena2026");
+  });
+
+  it("la spunta del router è una dichiarazione, con la sua data, e si toglie", async () => {
+    expect(statoPortale(await db.venue.findUniqueOrThrow({ where: { id: venueId } })).routerCollegatoIl).toBeNull();
+
+    await setPortale(venueId, { routerCollegato: true });
+    const collegato = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
+    expect(collegato.wifiRouterConfirmedAt).not.toBeNull();
+    expect(statoPortale(collegato).stato).toBe("attivo");
+
+    // Risalvare non riscrive la data: è quella in cui qualcuno l'ha messa.
+    await setPortale(venueId, { routerCollegato: true });
+    const ancora = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
+    expect(ancora.wifiRouterConfirmedAt?.getTime()).toBe(collegato.wifiRouterConfirmedAt?.getTime());
+
+    await setPortale(venueId, { routerCollegato: false });
+    expect((await db.venue.findUniqueOrThrow({ where: { id: venueId } })).wifiRouterConfirmedAt).toBeNull();
+  });
+
+  it("dice in che stato è: da configurare, sospeso, attivo", async () => {
+    const leggi = async () => statoPortale(await db.venue.findUniqueOrThrow({ where: { id: venueId } })).stato;
+
+    expect(await leggi()).toBe("attivo");
+    await setPortale(venueId, { attivo: false });
+    expect(await leggi()).toBe("sospeso");
+    await setPortale(venueId, { networkName: null, password: null });
+    expect(await leggi()).toBe("da_configurare");
   });
 });

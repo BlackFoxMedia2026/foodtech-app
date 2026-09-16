@@ -47,8 +47,8 @@ export function SezioneImpostazioni({ id, children }: { id: ParteId; children: R
 
 /**
  * Chi arriva con una sezione già chiesta — `/settings#ospiti`, o il vecchio
- * `/settings?parte=ospiti` che sta ancora nei link mandati e in
- * `lib/qr-superfici` — ci scende da solo.
+ * `/settings?parte=ospiti` che sta ancora nei link già mandati — ci scende da
+ * solo.
  *
  * Va montata **dopo** le sezioni: gli effetti dei figli girano in ordine di
  * pagina, quindi a quel punto tutte e quattro si sono già registrate e c'è

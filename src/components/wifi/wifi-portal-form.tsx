@@ -159,31 +159,41 @@ export function WifiPortalForm({ portale }: { portale: PortaleConfig }) {
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="w-email">Email</Label>
-        <Input
-          id="w-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="nome@esempio.it"
-          autoComplete="email"
-          inputMode="email"
-        />
-      </div>
+      {/* I recapiti sono quelli che il locale ha scelto di chiedere. Quando ne
+          resta uno solo è **obbligatorio**, e l'etichetta lo dice: «Oppure il
+          telefono» sotto un modulo senza email sarebbe un oppure senza
+          alternativa. */}
+      {portale.chiediEmail && (
+        <div className="space-y-1.5">
+          <Label htmlFor="w-email">Email</Label>
+          <Input
+            id="w-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="nome@esempio.it"
+            autoComplete="email"
+            inputMode="email"
+            required={!portale.chiediTelefono}
+          />
+        </div>
+      )}
 
-      <div className="space-y-1.5">
-        <Label htmlFor="w-tel">Oppure il telefono</Label>
-        <Input
-          id="w-tel"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="340 1234567"
-          autoComplete="tel"
-          inputMode="tel"
-        />
-      </div>
+      {portale.chiediTelefono && (
+        <div className="space-y-1.5">
+          <Label htmlFor="w-tel">{portale.chiediEmail ? "Oppure il telefono" : "Telefono"}</Label>
+          <Input
+            id="w-tel"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="340 1234567"
+            autoComplete="tel"
+            inputMode="tel"
+            required={!portale.chiediEmail}
+          />
+        </div>
+      )}
 
       <label className="flex items-start gap-3 text-sm" htmlFor="w-privacy">
         <input
@@ -202,21 +212,23 @@ export function WifiPortalForm({ portale }: { portale: PortaleConfig }) {
         </span>
       </label>
 
-      <label className="flex items-start gap-3 text-sm" htmlFor="w-marketing">
-        <input
-          id="w-marketing"
-          type="checkbox"
-          checked={marketing}
-          onChange={(e) => setMarketing(e.target.checked)}
-          className="mt-0.5 h-5 w-5 shrink-0 rounded border-border"
-        />
-        <span>
-          Voglio ricevere le novità e le offerte di {portale.venueName}.
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Facoltativo: senza la spunta ti colleghi comunque.
+      {portale.chiediMarketing && (
+        <label className="flex items-start gap-3 text-sm" htmlFor="w-marketing">
+          <input
+            id="w-marketing"
+            type="checkbox"
+            checked={marketing}
+            onChange={(e) => setMarketing(e.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 rounded border-border"
+          />
+          <span>
+            Voglio ricevere le novità e le offerte di {portale.venueName}.
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Facoltativo: senza la spunta ti colleghi comunque.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+      )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

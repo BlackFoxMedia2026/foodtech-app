@@ -1,42 +1,55 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * La pagina dei QR code partiva da un foglio bianco, e il ristoratore doveva
- * sapere da sé quali pagine pubbliche il suo locale ha e a quale indirizzo
- * stanno. Il percorso verifica la cosa che conta: che da una superficie
- * **proposta dal prodotto** nasca un QR vero, con quella destinazione, e che
- * la proposta poi non si ripeta.
+ * Dal «cosa vuoi creare» a un codice salvato.
+ *
+ * Il percorso verifica la cosa che il nuovo flusso promette e che quello
+ * vecchio non poteva promettere: che **senza scrivere un indirizzo** — senza
+ * nemmeno saperlo — da una scelta nasca un QR vero, con la destinazione giusta
+ * e un'anteprima che si vede. È il motivo per cui la pagina è stata rifatta.
+ *
+ * La prenotazione è il tipo scelto apposta: quella pagina esiste per ogni
+ * locale, quindi il percorso non dipende da com'è messa la demo — niente
+ * piatti da avere in carta, niente pagamenti da accendere, niente rete Wi-Fi
+ * da configurare.
  */
-test("dalla pagina pubblica al QR: la proposta diventa un codice, e non si ripete", async ({ page }) => {
+test("da «cosa vuoi creare» a un QR salvato, senza scrivere indirizzi", async ({ page }) => {
   await page.goto("/marketing/qr-codes");
+  const nuovo = page.getByRole("button", { name: "Nuovo QR code" });
+  await expect(nuovo).toBeVisible({ timeout: 20_000 });
+  await nuovo.click();
 
-  const blocco = page.locator("details", { hasText: "Le tue pagine pubbliche" });
-  await expect(blocco).toBeVisible({ timeout: 20_000 });
+  const scelta = page.getByRole("dialog");
+  await expect(scelta.getByText("Cosa vuoi creare?")).toBeVisible();
+  await scelta.getByRole("button", { name: /Prenota un tavolo/ }).click();
 
-  /* La prenotazione è l'unica superficie sempre pronta: quella pagina esiste
-     per ogni locale, quindi il percorso non dipende da com'è la demo. */
-  const riga = blocco.locator("li", { hasText: "Prenota un tavolo" });
-  await expect(riga).toBeVisible();
+  /* L'editor arriva già compilato: nome, destinazione e invito sulla cornice
+     ci sono prima che qualcuno tocchi qualcosa. */
+  const nome = page.getByLabel("Nome QR");
+  await expect(nome).toHaveValue(/.+/, { timeout: 20_000 });
 
-  // L'indirizzo è mostrato prima di creare: chi stampa un QR deve poterlo leggere.
-  const indirizzo = (await riga.locator("p.font-mono").innerText()).trim();
+  const indirizzo = await page.locator("p.font-mono").first().innerText();
   expect(indirizzo).toContain("/book?venue=");
 
-  const giaCreato = await riga.getByText("Già creato").count();
-  if (giaCreato > 0) {
-    // Un'altra esecuzione l'ha già creato: la proposta resta chiusa, ed è
-    // esattamente ciò che questo percorso vuole garantire.
-    await expect(riga.getByRole("button", { name: "Crea il QR" })).toHaveCount(0);
-    return;
-  }
+  // L'anteprima è un codice vero, disegnato dal vivo.
+  const anteprima = page.locator("section[aria-label='Anteprima'] svg").first();
+  await expect(anteprima).toBeVisible();
 
-  await riga.getByRole("button", { name: "Crea il QR" }).click();
+  const etichetta = `E2E prenotazioni ${Date.now()}`;
+  await nome.fill(etichetta);
 
-  // Il QR nasce con quella destinazione, non con un indirizzo inventato.
-  const scheda = page.locator("div", { hasText: "Prenota un tavolo" }).filter({ hasText: indirizzo });
-  await expect(scheda.first()).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: "Salva QR" }).first().click();
 
-  // E la proposta non si ripete: il confronto è sulla destinazione.
-  await expect(riga.getByText("Già creato")).toBeVisible({ timeout: 20_000 });
-  await expect(riga.getByRole("button", { name: "Crea il QR" })).toHaveCount(0);
+  // La schermata finale porta il file, che è la ragione per cui si è arrivati fin qui.
+  await expect(page.getByRole("heading", { name: "QR code pronto" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(etichetta)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Scarica" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Fine" }).click();
+
+  // E in elenco c'è, con il suo tipo e la sua destinazione.
+  const riga = page.locator("article", { hasText: etichetta });
+  await expect(riga).toBeVisible({ timeout: 20_000 });
+  await expect(riga.getByText("Prenota un tavolo")).toBeVisible();
+  await expect(riga.getByText(indirizzo, { exact: false })).toBeVisible();
 });
