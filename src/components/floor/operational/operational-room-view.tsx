@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { useRoomCamera, MAX_ZOOM } from "@/components/floor/use-room-camera";
 import { useViewportGestures } from "@/components/floor/use-viewport-gestures";
-import { RoomLayoutRenderer } from "@/components/floor/builder/room-layout-renderer";
-import { parseRoomLayoutElements, type RoomBounds } from "@/lib/room-layout";
+import { PiantinaRenderer } from "@/components/floor/editor/piantina-renderer";
+import { DEFAULT_ROOM_LAYERS, parseRoomLayoutElements, type RoomBounds } from "@/lib/room-layout";
 import { cn } from "@/lib/utils";
 
 export type RoomTableLod = "full" | "medium" | "low";
@@ -106,7 +106,16 @@ export function OperationalRoomView<T extends { id: string }>({
         className="absolute left-0 top-0 origin-top-left"
         style={{ width, height, transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}
       >
-        {boundsWidth > 0 && boundsHeight > 0 && (
+        {/*
+          Il pavimento di riserva.
+
+          Quando la sala ha una piantina disegnata, il pavimento lo disegna
+          lei — con il suo poligono vero e i suoi ambienti. Questa superficie
+          serve solo alle sale che una piantina non ce l'hanno ancora: senza,
+          i tavoli galleggerebbero sul verde del fondo, e una sala non è dei
+          tavoli sospesi nel vuoto.
+        */}
+        {activeLayoutMode !== "BUILDER" && boundsWidth > 0 && boundsHeight > 0 && (
           <div
             className="room-floor-surface absolute rounded-[18px]"
             style={{ left: roomBounds.minX, top: roomBounds.minY, width: boundsWidth, height: boundsHeight }}
@@ -115,7 +124,12 @@ export function OperationalRoomView<T extends { id: string }>({
         )}
 
         {activeLayoutMode === "BUILDER" ? (
-          <RoomLayoutRenderer elements={parsedLayoutElements} width={width} height={height} variant="operational" />
+          <PiantinaRenderer
+            elements={parsedLayoutElements}
+            width={width}
+            height={height}
+            layers={{ ...DEFAULT_ROOM_LAYERS, original: false }}
+          />
         ) : (
           floorPlanUrl && (
             // eslint-disable-next-line @next/next/no-img-element

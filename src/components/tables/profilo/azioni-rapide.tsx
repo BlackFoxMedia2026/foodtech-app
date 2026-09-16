@@ -25,6 +25,18 @@ import type { ProfiloTavolo } from "@/server/profilo-tavolo";
  *
  * Quello che **non** è qui: assegnare il personale e mostrare il QR. Hanno la
  * loro piastrella, a due centimetri, e quella è già un bersaglio da toccare.
+ *
+ * ## Il tavolo libero fa eccezione
+ *
+ * Su un tavolo libero non c'è niente da aggiornare: l'unica cosa da fare è
+ * **prenotarlo**, e quella non è la conclusione di ciò che si sta leggendo —
+ * è la ragione per cui si è aperto il pannello. In fondo a una colonna di
+ * storico arrivava dopo diciotto servizi passati, cioè dopo la risposta a una
+ * domanda che non era stata fatta. Sale nella testata, accanto al nome del
+ * tavolo, dove sta la domanda («questo tavolo») invece che dopo la risposta.
+ *
+ * Resta **una sola volta**: quando il pulsante è in testa, la fascia in fondo
+ * non c'è proprio.
  */
 
 /** Il cambio di stato di una prenotazione, condiviso fra le due fasce. */
@@ -127,6 +139,11 @@ export function AzioniRapide({
   // meglio nessuna fascia che una fascia di pulsanti che rispondono «non puoi».
   if (!puoPrenotazioni) return null;
 
+  // Tavolo libero: l'unica azione è «prenota», e quella sta in testa
+  // (`AzionePrenota`). Qui non resta niente, e una fascia vuota è una riga di
+  // bordo che toglie spazio allo storico senza dire niente.
+  if (!corrente) return null;
+
   return (
     <PannelloAzioni className="flex-col items-stretch">
       {azioni.errore && (
@@ -150,7 +167,7 @@ export function AzioniRapide({
           <UtensilsCrossed className="h-4 w-4" />
           {azioni.inCorso === "accomoda" ? "…" : "Accomoda"}
         </Button>
-      ) : corrente ? (
+      ) : (
         <Button
           type="button"
           variant="accent"
@@ -161,13 +178,41 @@ export function AzioniRapide({
           <Check className="h-4 w-4" />
           {azioni.inCorso === "arrivati" ? "…" : "Segna arrivati"}
         </Button>
-      ) : (
-        <Button asChild variant="accent" className="tocco-comodo w-full">
-          <Link href="/bookings/new">
-            <Plus className="h-4 w-4" /> Nuova prenotazione
-          </Link>
-        </Button>
       )}
     </PannelloAzioni>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Principale — in testa, quando il tavolo è libero                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * «Prenota», accanto al nome del tavolo.
+ *
+ * Scritto corto di proposito: il nome del tavolo è due centimetri a sinistra,
+ * quindi «Nuova prenotazione» ripeterebbe in tre parole quello che la testata
+ * dice già. Per chi naviga a voce il nome lungo resta nell'etichetta
+ * accessibile.
+ *
+ * Nullo quando il tavolo è occupato: lì l'azione del momento è un'altra —
+ * segnare l'arrivo, accomodare, battere il conto — e sta nella fascia in
+ * fondo, sotto i fatti che la giustificano.
+ */
+export function AzionePrenota({
+  profilo,
+  puoPrenotazioni,
+}: {
+  profilo: ProfiloTavolo;
+  puoPrenotazioni: boolean;
+}) {
+  if (!puoPrenotazioni || profilo.corrente) return null;
+
+  return (
+    <Button asChild variant="accent" size="sm" className="tocco-comodo shrink-0">
+      <Link href="/bookings/new" aria-label="Nuova prenotazione">
+        <Plus className="h-4 w-4" aria-hidden="true" /> Prenota
+      </Link>
+    </Button>
   );
 }

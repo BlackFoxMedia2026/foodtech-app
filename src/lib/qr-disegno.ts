@@ -45,6 +45,19 @@ export type Cornice = (typeof CORNICI)[number];
 export type DesignQr = {
   coloreQr: string;
   coloreSfondo: string;
+  /**
+   * Il fondo non si disegna affatto: sotto il codice resta quello che c'è.
+   *
+   * Serve a chi il codice lo appoggia da un'altra parte — sopra una foto del
+   * piatto, dentro un menu già impaginato, su un cartoncino già stampato — e
+   * non è una finta dell'anteprima: il PNG che si scarica ha il canale alfa
+   * vuoto dove prima c'era la carta, e l'SVG non contiene il rettangolo.
+   *
+   * `coloreSfondo` resta al suo posto anche mentre questo è acceso: spegnendo
+   * l'interruttore torna il colore di prima invece del predefinito, che è
+   * quello che si aspetta chi ha provato la trasparenza e ci ha ripensato.
+   */
+  sfondoTrasparente: boolean;
   stileModuli: StileModuli;
   stileAngoli: StileAngoli;
   logoUrl: string | null;
@@ -57,6 +70,7 @@ export type DesignQr = {
 export const DESIGN_PREDEFINITO: DesignQr = {
   coloreQr: "#13332C",
   coloreSfondo: "#F2E7D0",
+  sfondoTrasparente: false,
   stileModuli: "classico",
   stileAngoli: "arrotondato",
   logoUrl: null,
@@ -122,7 +136,18 @@ export function livelloCorrezione(design: Pick<DesignQr, "logoUrl" | "posizioneL
 
 export type Forma =
   | { t: "rett"; x: number; y: number; w: number; h: number; colore: string }
-  | { t: "path"; d: string; colore: string }
+  /**
+   * `pari` è la regola di riempimento pari-dispari: due contorni nello stesso
+   * percorso e quello interno diventa un **buco vero**, non un tappo del
+   * colore di fondo.
+   *
+   * Serve solo quando il fondo non c'è. Con la carta sotto, un occhio si fa
+   * con due riempimenti sovrapposti — ed è quello che si continua a fare,
+   * perché è la forma che i due renderer (SVG e PDF) sbagliano di meno. Senza
+   * carta quel trucco non funziona: un quadrato «trasparente» sopra uno scuro
+   * lascia scuro, e i tre occhi diventerebbero tre macchie piene.
+   */
+  | { t: "path"; d: string; colore: string; pari?: boolean }
   | { t: "cerchio"; cx: number; cy: number; r: number; colore: string }
   | { t: "testo"; x: number; y: number; testo: string; dim: number; colore: string; grassetto?: boolean }
   | { t: "immagine"; x: number; y: number; w: number; h: number; url: string };
@@ -215,6 +240,26 @@ function rettAngoli(
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+/**
+ * Un cerchio come percorso, per quando deve stare dentro un anello.
+ *
+ * `{ t: "cerchio" }` non si può comporre con un altro contorno: un buco
+ * richiede due sottopercorsi nello **stesso** `d`. Le quattro cubiche sono le
+ * stesse di `rettAngoli` — stessa costante `K`, stessa curva — quindi il
+ * cerchio pieno e quello forato hanno lo stesso bordo al pixel.
+ */
+function cerchioPercorso(cx: number, cy: number, r: number): string {
+  const k = K * r;
+  return [
+    `M${n(cx + r)},${n(cy)}`,
+    `C${n(cx + r)},${n(cy + k)} ${n(cx + k)},${n(cy + r)} ${n(cx)},${n(cy + r)}`,
+    `C${n(cx - k)},${n(cy + r)} ${n(cx - r)},${n(cy + k)} ${n(cx - r)},${n(cy)}`,
+    `C${n(cx - r)},${n(cy - k)} ${n(cx - k)},${n(cy - r)} ${n(cx)},${n(cy - r)}`,
+    `C${n(cx + k)},${n(cy - r)} ${n(cx + r)},${n(cy - k)} ${n(cx + r)},${n(cy)}`,
+    "Z",
+  ].join(" ");
 }
 
 /** Un quadrato con gli angoli tagliati: la forma di «Geometrico». */
@@ -337,19 +382,43 @@ function formeCorpo(m: Matrice, stile: StileModuli, x0: number, y0: number, colo
  * Un occhio: l'anello esterno 7×7 spesso un modulo, e il punto 3×3.
  *
  * Il vuoto in mezzo si ottiene ridisegnando il quadrato interno col colore di
- * fondo, invece che con un percorso a due anelli: il fondo qui è sempre pieno
- * (un QR senza fondo non si stampa), e due riempimenti semplici si comportano
- * allo stesso modo in SVG e in PDF — dove le regole di riempimento dei
- * percorsi compositi sono la prima cosa che diverge.
+ * fondo, invece che con un percorso a due anelli: due riempimenti semplici si
+ * comportano allo stesso modo in SVG e in PDF — dove le regole di riempimento
+ * dei percorsi compositi sono la prima cosa che diverge.
+ *
+ * Quando il fondo è trasparente quel trucco non ha più niente con cui coprire,
+ * e l'occhio diventa un anello vero (`pari`). È l'unico punto del disegno in
+ * cui le due strade si separano, e si separano qui perché è qui che c'è la
+ * differenza fra «coprire» e «bucare».
  */
-function formeOcchio(x: number, y: number, stile: StileAngoli, colore: string, sfondo: string): Forma[] {
+function formeOcchio(
+  x: number,
+  y: number,
+  stile: StileAngoli,
+  colore: string,
+  sfondo: string,
+  trasparente = false,
+): Forma[] {
   const lato = 7 * M;
 
   if (stile === "cerchio") {
+    const cx = x + lato / 2;
+    const cy = y + lato / 2;
+    if (trasparente) {
+      return [
+        {
+          t: "path",
+          d: `${cerchioPercorso(cx, cy, lato / 2)} ${cerchioPercorso(cx, cy, lato / 2 - M)}`,
+          colore,
+          pari: true,
+        },
+        { t: "cerchio", cx, cy, r: 1.5 * M, colore },
+      ];
+    }
     return [
-      { t: "cerchio", cx: x + lato / 2, cy: y + lato / 2, r: lato / 2, colore },
-      { t: "cerchio", cx: x + lato / 2, cy: y + lato / 2, r: lato / 2 - M, colore: sfondo },
-      { t: "cerchio", cx: x + lato / 2, cy: y + lato / 2, r: 1.5 * M, colore },
+      { t: "cerchio", cx, cy, r: lato / 2, colore },
+      { t: "cerchio", cx, cy, r: lato / 2 - M, colore: sfondo },
+      { t: "cerchio", cx, cy, r: 1.5 * M, colore },
     ];
   }
 
@@ -358,10 +427,21 @@ function formeOcchio(x: number, y: number, stile: StileAngoli, colore: string, s
   const rInterno = Math.max(0, rEsterno - M * 0.55);
   const rPunto = stile === "quadrato" ? 0 : stile === "morbido" ? M * 0.35 : M * 0.75;
 
+  const esterno = rettAngoli(x, y, lato, lato, quattro(rEsterno));
+  const interno = rettAngoli(x + M, y + M, 5 * M, 5 * M, quattro(rInterno));
+  const punto = rettAngoli(x + 2 * M, y + 2 * M, 3 * M, 3 * M, quattro(rPunto));
+
+  if (trasparente) {
+    return [
+      { t: "path", d: `${esterno} ${interno}`, colore, pari: true },
+      { t: "path", d: punto, colore },
+    ];
+  }
+
   return [
-    { t: "path", d: rettAngoli(x, y, lato, lato, quattro(rEsterno)), colore },
-    { t: "path", d: rettAngoli(x + M, y + M, 5 * M, 5 * M, quattro(rInterno)), colore: sfondo },
-    { t: "path", d: rettAngoli(x + 2 * M, y + 2 * M, 3 * M, 3 * M, quattro(rPunto)), colore },
+    { t: "path", d: esterno, colore },
+    { t: "path", d: interno, colore: sfondo },
+    { t: "path", d: punto, colore },
   ];
 }
 
@@ -416,31 +496,47 @@ export function componiQr({ matrice, design }: { matrice: Matrice; design: Desig
 
   const forme: Forma[] = [];
 
-  /* Il fondo. Sempre pieno: un QR trasparente, appoggiato su una tovaglia
-     scura, semplicemente non esiste. */
+  /**
+   * Il fondo, quando c'è.
+   *
+   * Di solito c'è, ed è la carta: un QR chiaro appoggiato su una tovaglia
+   * scura semplicemente non si legge. Chi sceglie di toglierlo sta dicendo che
+   * la superficie di sotto la mette lui — una foto, un menu già impaginato — e
+   * allora qui non si disegna niente: nel file che esce quel rettangolo non
+   * esiste, e il PNG ha davvero il canale alfa vuoto.
+   */
+  const trasparente = design.sfondoTrasparente === true;
   const raggioCarta = design.cornice === "nessuna" ? 0 : M * 1.8;
-  forme.push({
-    t: "path",
-    d: rettAngoli(0, 0, larghezza, altezza, [raggioCarta, raggioCarta, raggioCarta, raggioCarta]),
-    colore: design.coloreSfondo,
-  });
+  if (!trasparente) {
+    forme.push({
+      t: "path",
+      d: rettAngoli(0, 0, larghezza, altezza, [raggioCarta, raggioCarta, raggioCarta, raggioCarta]),
+      colore: design.coloreSfondo,
+    });
+  }
 
   if (bordo > 0) {
     /* Il bordo si disegna come due riquadri sovrapposti invece che come un
        tratto: il tratto in PDF ha una larghezza propria e un'origine diversa,
-       e i due formati divergerebbero di mezzo millimetro. */
+       e i due formati divergerebbero di mezzo millimetro. Senza carta sotto i
+       due riquadri diventano un anello solo, per la ragione spiegata su
+       `formeOcchio`. */
     const r2 = Math.max(0, raggioCarta - bordo * 0.4);
     const r3 = Math.max(0, r2 - bordo);
-    forme.push({
-      t: "path",
-      d: rettAngoli(bordo * 0.5, bordo * 0.5, larghezza - bordo, altezza - bordo, [r2, r2, r2, r2]),
-      colore: design.coloreQr,
-    });
-    forme.push({
-      t: "path",
-      d: rettAngoli(bordo * 1.5, bordo * 1.5, larghezza - bordo * 3, altezza - bordo * 3, [r3, r3, r3, r3]),
-      colore: design.coloreSfondo,
-    });
+    const fuori = rettAngoli(bordo * 0.5, bordo * 0.5, larghezza - bordo, altezza - bordo, [r2, r2, r2, r2]);
+    const dentro = rettAngoli(
+      bordo * 1.5,
+      bordo * 1.5,
+      larghezza - bordo * 3,
+      altezza - bordo * 3,
+      [r3, r3, r3, r3],
+    );
+    if (trasparente) {
+      forme.push({ t: "path", d: `${fuori} ${dentro}`, colore: design.coloreQr, pari: true });
+    } else {
+      forme.push({ t: "path", d: fuori, colore: design.coloreQr });
+      forme.push({ t: "path", d: dentro, colore: design.coloreSfondo });
+    }
   }
 
   let y = padY;
@@ -469,7 +565,14 @@ export function componiQr({ matrice, design }: { matrice: Matrice; design: Desig
     [matrice.size - 7, 0],
   ] as const) {
     forme.push(
-      ...formeOcchio(qrX + o + dc * M, qrY + o + dr * M, design.stileAngoli, design.coloreQr, design.coloreSfondo),
+      ...formeOcchio(
+        qrX + o + dc * M,
+        qrY + o + dr * M,
+        design.stileAngoli,
+        design.coloreQr,
+        design.coloreSfondo,
+        trasparente,
+      ),
     );
   }
 
@@ -480,13 +583,23 @@ export function componiQr({ matrice, design }: { matrice: Matrice; design: Desig
     const cx = qrX + latoQr / 2;
     const cy = qrY + latoQr / 2;
     const lato = latoLogo + pad * 2;
-    /* Il riquadro chiaro sotto il logo non è estetica: senza, il logo si
-       appoggia sui moduli e il telefono legge una macchia. */
-    forme.push({
-      t: "path",
-      d: rettAngoli(cx - lato / 2, cy - lato / 2, lato, lato, [M * 0.8, M * 0.8, M * 0.8, M * 0.8]),
-      colore: design.coloreSfondo,
-    });
+    /*
+      Il riquadro chiaro sotto il logo non è estetica: senza, il logo si
+      appoggia sui moduli e il telefono legge una macchia.
+
+      Col fondo trasparente non c'è un colore chiaro con cui farlo, e fingerlo
+      col vecchio `coloreSfondo` rimetterebbe proprio la carta che si è chiesto
+      di togliere — nel PNG si vedrebbe un quadratino pieno in mezzo al nulla.
+      Quindi il riparo non c'è, il logo poggia sui moduli, e `qr-validazione`
+      lo dice prima che il cartoncino vada in stampa.
+    */
+    if (!trasparente) {
+      forme.push({
+        t: "path",
+        d: rettAngoli(cx - lato / 2, cy - lato / 2, lato, lato, [M * 0.8, M * 0.8, M * 0.8, M * 0.8]),
+        colore: design.coloreSfondo,
+      });
+    }
     forme.push({
       t: "immagine",
       x: cx - latoLogo / 2,
@@ -629,8 +742,9 @@ export function formeCampioneAngoli(
   stile: StileAngoli,
   colore: string,
   sfondo: string,
+  trasparente = false,
 ): { lato: number; forme: Forma[] } {
-  return { lato: 7 * M, forme: formeOcchio(0, 0, stile, colore, sfondo) };
+  return { lato: 7 * M, forme: formeOcchio(0, 0, stile, colore, sfondo, trasparente) };
 }
 
 export { M as MODULO, QUIETE };

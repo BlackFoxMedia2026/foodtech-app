@@ -17,6 +17,7 @@ import {
   formeCampioneModuli,
   livelloCorrezione,
   matriceDa,
+  STILI_ANGOLI,
   STILI_MODULI,
   type DesignQr,
 } from "@/lib/qr-disegno";
@@ -237,6 +238,107 @@ describe("la composizione del codice", () => {
     });
     expect(d.forme.some((f) => f.t === "immagine")).toBe(true);
     expect(d.altezza).toBeGreaterThan(d.riquadroQr.lato);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*  Il fondo che non c'è                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * La trasparenza è la sola scelta del configuratore che **non si vede
+ * guardando l'anteprima**: un codice senza fondo, sopra una pagina chiara, è
+ * identico a uno con il fondo crema. Se si rompesse, si scoprirebbe aprendo un
+ * PNG in un programma di grafica — cioè da qualcun altro, dopo.
+ *
+ * Queste prove guardano quindi le forme, che sono ciò che finisce nel file.
+ */
+describe("lo sfondo trasparente", () => {
+  const nudo = (patch: Partial<DesignQr> = {}) => design({ sfondoTrasparente: true, ...patch });
+
+  it("non disegna nessun rettangolo del colore di fondo", () => {
+    const d = componiQr({ matrice: matrice(), design: nudo() });
+    const conFondo = d.forme.filter(
+      (f) => f.t !== "immagine" && f.t !== "testo" && f.colore === DESIGN_PREDEFINITO.coloreSfondo,
+    );
+    expect(conFondo).toEqual([]);
+  });
+
+  it("tiene la stessa misura: togliere il fondo non sposta il codice", () => {
+    const con = componiQr({ matrice: matrice(), design: design() });
+    const senza = componiQr({ matrice: matrice(), design: nudo() });
+    expect(senza.larghezza).toBe(con.larghezza);
+    expect(senza.altezza).toBe(con.altezza);
+    expect(senza.riquadroQr).toEqual(con.riquadroQr);
+  });
+
+  /*
+    Il difetto che questo test esiste per impedire, ed è il solo modo in cui la
+    trasparenza poteva rompere il codice invece che abbellirlo: il vuoto in
+    mezzo ai tre quadrati grandi si ottiene ridisegnandolo col colore del
+    fondo. Senza fondo quel quadrato non copre più niente, e i tre occhi
+    diventano tre macchie piene — un QR che nessun telefono trova.
+  */
+  it("i tre quadrati grandi restano forati, in tutti e quattro gli stili", () => {
+    for (const stile of STILI_ANGOLI) {
+      const d = componiQr({ matrice: matrice(), design: nudo({ stileAngoli: stile }) });
+      const anelli = d.forme.filter((f) => f.t === "path" && f.pari);
+      expect(anelli.length, stile).toBe(3);
+
+      /* Due contorni in un percorso solo: è quello che rende il buco un buco. */
+      for (const a of anelli) {
+        expect(a.t === "path" && a.d.match(/M/g)?.length, stile).toBe(2);
+      }
+    }
+  });
+
+  it("l'SVG dichiara la regola di riempimento solo dove serve", () => {
+    const senza = disegnoInSvg(componiQr({ matrice: matrice(), design: nudo() }));
+    expect(senza).toContain('fill-rule="evenodd"');
+    expect(senza.match(/fill-rule="evenodd"/g)?.length).toBe(3);
+
+    const con = disegnoInSvg(componiQr({ matrice: matrice(), design: design() }));
+    expect(con).not.toContain("fill-rule");
+  });
+
+  it("e il PDF usa l'operatore pari-dispari, non quello normale", () => {
+    const pdf = foglioQr({ disegno: componiQr({ matrice: matrice(), design: nudo() }), nome: "Nudo", sfondo: "#FFFFFF" });
+    expect(pdf.toString("latin1")).toContain("f*");
+  });
+
+  /* Un riquadro chiaro sotto il logo, senza fondo, sarebbe proprio la carta
+     che si è chiesto di togliere: nel PNG si vedrebbe un quadratino pieno in
+     mezzo al nulla. Vedi la nota in `componiQr`. */
+  it("il logo al centro non si porta dietro un riquadro di fondo", () => {
+    const d = componiQr({
+      matrice: matrice(),
+      design: nudo({ logoUrl: "https://x.it/l.png", posizioneLogo: "centro" }),
+    });
+    const immagine = d.forme.find((f) => f.t === "immagine");
+    expect(immagine).toBeTruthy();
+    expect(d.forme.some((f) => f.t === "path" && f.colore === DESIGN_PREDEFINITO.coloreSfondo)).toBe(false);
+  });
+
+  it("anche la cornice con bordo resta un anello e non una lastra piena", () => {
+    const d = componiQr({ matrice: matrice(), design: nudo({ cornice: "semplice" }) });
+    const bordo = d.forme.find((f) => f.t === "path" && f.pari && f.colore === DESIGN_PREDEFINITO.coloreQr);
+    expect(bordo).toBeTruthy();
+  });
+
+  /* Il contrasto fra due colori non descrive più niente quando il secondo lo
+     sceglie chi impagina — e soprattutto non deve **bloccare il salvataggio**
+     per un accostamento che non verrà mai stampato. */
+  it("non blocca il salvataggio per il contrasto di un fondo che non c'è", () => {
+    const quasiUguali = { coloreQr: "#F2E7D0", coloreSfondo: "#F0E5CE" };
+    const con = controllaQr({ design: design(quasiUguali), contenuto: "https://x.it" });
+    expect(qrSalvabile(con)).toBe(false);
+
+    const senza = controllaQr({
+      design: design({ ...quasiUguali, sfondoTrasparente: true }),
+      contenuto: "https://x.it",
+    });
+    expect(qrSalvabile(senza)).toBe(true);
+    expect(senza.some((a) => a.chiave === "trasparente")).toBe(true);
   });
 });
 

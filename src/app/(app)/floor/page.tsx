@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { todayInVenue } from "@/lib/venue-time";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
+import { readRoomLayout } from "@/server/room-layout";
+import { summarizeAnalysis } from "@/lib/floorplan-analysis";
 import { listServiceOptions } from "@/server/waiter-assignments";
 import { listStaffAssignmentsForService } from "@/server/staff-assignments";
 import { getTableStatusesForDay } from "@/server/bookings";
@@ -44,16 +46,25 @@ export default async function FloorPage({
     }
   }
 
-  const roomsWithTables = rooms.map((r) => ({
-    id: r.id,
-    name: r.name,
-    width: r.width,
-    height: r.height,
-    floorPlanUrl: r.floorPlanUrl,
-    activeLayoutMode: r.activeLayoutMode,
-    roomLayoutElements: r.roomLayout?.elements ?? [],
-    tables: tables.filter((t) => t.roomId === r.id),
-  }));
+  const roomsWithTables = rooms.map((r) => {
+    const layout = readRoomLayout(r.roomLayout);
+    return {
+      id: r.id,
+      name: r.name,
+      width: r.width,
+      height: r.height,
+      floorPlanUrl: r.floorPlanUrl,
+      elements: layout.elements,
+      layers: layout.layers,
+      inventory: layout.inventory,
+      meta: layout.meta,
+      // Il riassunto e non l'analisi intera: al client serve una riga da
+      // mostrare sotto la miniatura, non trecento coordinate normalizzate che
+      // ha già usato il giorno in cui la piantina è stata generata.
+      riassuntoAnalisi: layout.analysis ? summarizeAnalysis(layout.analysis) : null,
+      tables: tables.filter((t) => t.roomId === r.id),
+    };
+  });
 
   const requestedDay = new Date(date);
   const isToday = date === new Date().toISOString().slice(0, 10);

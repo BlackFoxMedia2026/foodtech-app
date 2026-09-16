@@ -2,8 +2,20 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
-export function FloorServiceFilter({ date, service, serviceOptions }: { date: string; service: string; serviceOptions: string[] }) {
+export function FloorServiceFilter({
+  date,
+  service,
+  serviceOptions,
+  variante = "riquadro",
+}: {
+  date: string;
+  service: string;
+  serviceOptions: string[];
+  /** `barra`: il filtro è già dentro un riquadro — non ne serve un secondo attorno. */
+  variante?: "riquadro" | "barra";
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -15,17 +27,25 @@ export function FloorServiceFilter({ date, service, serviceOptions }: { date: st
     router.push(`${pathname}?${sp.toString()}`);
   }
 
+  const inBarra = variante === "barra";
+
   return (
-    <div className="flex items-center gap-2 riquadro bg-card p-1">
+    <div className={cn("flex items-center", inBarra ? "gap-0.5 rounded-lg bg-secondary/60 p-0.5" : "gap-2 riquadro bg-card p-1")}>
       <input
         type="date"
         value={date}
         onChange={(e) => update({ date: e.target.value })}
-        className="bg-transparent px-2 text-sm font-medium focus:outline-none"
+        className={cn("bg-transparent px-2 text-sm font-medium focus:outline-none", inBarra && "h-8")}
       />
       <Select value={service} onValueChange={(v) => update({ service: v })}>
         {/* 36 px come gli altri controlli: su un tablet si tocca anche qui. */}
-        <SelectTrigger className="h-9 w-36 border-0 bg-transparent">
+        <SelectTrigger
+          className={cn(
+            "border-0 bg-transparent",
+            // Nella barra il nome del servizio non manda a capo la riga: si accorcia.
+            inBarra ? "h-8 w-40 whitespace-nowrap [&>span]:truncate" : "h-9 w-36",
+          )}
+        >
           <SelectValue placeholder="Servizio" />
         </SelectTrigger>
         <SelectContent>

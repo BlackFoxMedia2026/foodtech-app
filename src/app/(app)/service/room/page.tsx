@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { getFloorLive } from "@/server/floor-live";
 import { RoomLiveView } from "@/components/service/room-live-view";
+import { parseRoomLayoutElements } from "@/lib/room-layout";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function ServiceRoomPage() {
     }),
     db.room.findMany({
       where: { venueId: ctx.venueId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, roomLayout: { select: { elements: true } } },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -26,7 +27,11 @@ export default async function ServiceRoomPage() {
     <RoomLiveView
       initial={live}
       tables={tables.map((t) => ({ ...t, shape: String(t.shape) }))}
-      rooms={rooms}
+      rooms={rooms.map((r) => ({
+        id: r.id,
+        name: r.name,
+        elementi: parseRoomLayoutElements(r.roomLayout?.elements ?? []),
+      }))}
       canManage={can(ctx.role, "manage_bookings")}
       permessi={{
         prenotazioni: can(ctx.role, "manage_bookings"),

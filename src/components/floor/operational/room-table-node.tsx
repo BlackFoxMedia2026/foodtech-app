@@ -3,7 +3,7 @@
 import { isAssignable } from "@/lib/staff-status";
 import { forwardRef, memo } from "react";
 import type { Booking, Guest, Table } from "@prisma/client";
-import { Circle, Lock, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Lock, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { cn, formatTime } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -13,7 +13,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TABLE_ASSIGNABLE_CAPABILITIES, TABLE_ROLE_LABELS } from "@/lib/staff-roles";
 import { TABLE_ROLE_ICONS } from "@/components/floor/staff-role-icons";
-import { LARGHEZZA_PER_PAROLA, TABLE_SIZE, visualSize, type LocalTable, type TableStaffMap, type TableLod } from "@/components/floor/table-node";
+import { LARGHEZZA_PER_PAROLA, type LocalTable, type TableStaffMap, type TableLod } from "@/components/floor/table-node";
+import {
+  DIMENSIONE_TAVOLO,
+  dimensioneDisegnata,
+  posizioniSedie,
+  LARGHEZZA_SEDIA,
+  PROFONDITA_SEDIA,
+} from "@/lib/tavolo-geometria";
 import type { TableOperationalStatus } from "@/lib/table-status";
 
 export type RoomTableMode = "STAFF" | "RESERVATIONS" | "READONLY";
@@ -32,6 +39,8 @@ const EDGE_DEPTH: Record<Table["shape"], number> = {
   ROUND: 6,
   SQUARE: 6,
   RECT: 5,
+  OVAL: 6,
+  CUSTOM: 6,
   BOOTH: 7,
   LOUNGE: 8,
 };
@@ -40,33 +49,11 @@ const SHAPE_ROUNDING: Record<Table["shape"], string> = {
   ROUND: "rounded-full",
   SQUARE: "rounded-md",
   RECT: "rounded-md",
+  OVAL: "rounded-full",
+  CUSTOM: "rounded-lg",
   BOOTH: "rounded-2xl",
   LOUNGE: "rounded-3xl",
 };
-
-/** BOOTH/LOUNGE already imply built-in bench/sofa seating — individual
- * chair marks only read correctly for a freestanding table (brief §22). */
-const CHAIR_SHAPES = new Set<Table["shape"]>(["ROUND", "SQUARE", "RECT"]);
-const MAX_CHAIRS = 8;
-
-/** Chair anchors on an ellipse just outside the table footprint, evenly
- * spaced by seat count — schematic, not a real seating-plan solver, just
- * enough to read "how many seats + roughly which way they face" per the
- * reference mockup. */
-function chairPositions(seats: number, visualW: number, visualH: number) {
-  const n = Math.min(seats, MAX_CHAIRS);
-  if (n <= 0) return [];
-  const rx = visualW / 2 + 9;
-  const ry = visualH / 2 + 9;
-  return Array.from({ length: n }, (_, i) => {
-    const angle = (2 * Math.PI * i) / n - Math.PI / 2;
-    return {
-      x: rx * Math.cos(angle),
-      y: ry * Math.sin(angle),
-      rotationDeg: (angle * 180) / Math.PI + 90,
-    };
-  });
-}
 
 function compactName(fullName: string, max = 10) {
   if (fullName.length <= max) return fullName;
@@ -169,8 +156,8 @@ export const RoomTableNode = memo(
     },
     ref,
   ) {
-    const size = TABLE_SIZE[t.shape];
-    const visual = visualSize(t.shape, t.seats);
+    const size = DIMENSIONE_TAVOLO[t.shape];
+    const visual = dimensioneDisegnata(t);
     const rounding = SHAPE_ROUNDING[t.shape];
     const depth = EDGE_DEPTH[t.shape];
 
@@ -286,22 +273,18 @@ export const RoomTableNode = memo(
             style={{ width: visual.w, height: visual.h, transform: `translateY(${depth}px)` }}
           />
 
-          {lod !== "low" && CHAIR_SHAPES.has(t.shape) && (
-            <div
-              aria-hidden="true"
-              className="absolute inset-0"
-              style={{ transform: "scale(var(--ui-scale, 1))" }}
-            >
-              {chairPositions(t.seats, visual.w, visual.h).map((c, i) => (
+          {lod !== "low" && (
+            <div aria-hidden="true" className="absolute inset-0">
+              {posizioniSedie(t.shape, visual.w, visual.h, t.seats).map((c, i) => (
                 <div
                   key={i}
                   className="absolute rounded-[3px] bg-forest shadow-sm"
                   style={{
                     left: "50%",
                     top: "50%",
-                    width: 11,
-                    height: 13,
-                    transform: `translate(-50%, -50%) translate(${c.x}px, ${c.y}px) rotate(${c.rotationDeg}deg)`,
+                    width: LARGHEZZA_SEDIA,
+                    height: PROFONDITA_SEDIA,
+                    transform: `translate(-50%, -50%) translate(${c.x}px, ${c.y}px) rotate(${c.rotazione}deg)`,
                   }}
                 />
               ))}
@@ -386,38 +369,50 @@ export const RoomTableNode = memo(
               </div>
             )}
 
+            {/*
+              La copertura: **un'icona, non una targa**.
+
+              Qui sotto c'era una pill con il nome per esteso di chi copre il
+              tavolo. Su una sala da diciassette tavoli erano diciassette
+              rettangoli bianchi larghi il doppio del tavolo che annunciavano,
+              e la piantina spariva sotto i nomi: si guarda una mappa per
+              vedere **la sala**, non l'organigramma. Il nome sta dove serve —
+              al passaggio del mouse, nel pannello Proprietà, nel profilo del
+              tavolo — e qui resta il segno minimo che dice «coperto» o «no».
+            */}
             {lod !== "low" && mode === "STAFF" && (
               <div
                 className="absolute left-1/2 top-full mt-1"
                 style={{ transform: "translateX(-50%) scale(var(--ui-scale, 1))", transformOrigin: "top center" }}
+                title={
+                  hasAnyAssignment
+                    ? assignedRoles.map(({ role, person }) => `${TABLE_ROLE_LABELS[role]}: ${person.name}`).join(" · ")
+                    : "Nessun personale assegnato"
+                }
               >
                 {hasAnyAssignment ? (
-                  <div className="flex w-max max-w-[180px] items-center gap-1 rounded-full border border-border bg-card/90 px-2 py-0.5 shadow-sm backdrop-blur-sm">
-                    <span className="truncate text-xs font-semibold text-card-foreground">{primaryStaffLabel}</span>
+                  <div className="flex w-max items-center gap-0.5 rounded-full border border-border bg-card/85 px-1.5 py-0.5 shadow-sm backdrop-blur-sm">
                     {visibleRoleIcons.map(({ role, person }) => {
                       const Icon = TABLE_ROLE_ICONS[role];
                       return (
-                        <span key={role} title={`${TABLE_ROLE_LABELS[role]}: ${person.name}`} className="shrink-0">
-                          <Icon
-                            className={cn("h-3.5 w-3.5", !isAssignable(person.status) ? "text-destructive" : "text-accent-strong")}
-                          />
-                        </span>
+                        <Icon
+                          key={role}
+                          className={cn("h-3 w-3 shrink-0", !isAssignable(person.status) ? "text-destructive" : "text-accent-strong")}
+                        />
                       );
                     })}
                     {overflowRoles.length > 0 && (
-                      <span
-                        title={overflowRoles.map(({ role, person }) => `${TABLE_ROLE_LABELS[role]}: ${person.name}`).join(" · ")}
-                        className="shrink-0 rounded-full bg-secondary px-1 text-[10px] font-semibold leading-4 text-card-foreground"
-                      >
+                      <span className="shrink-0 text-[9px] font-semibold leading-none text-card-foreground">
                         +{overflowRoles.length}
                       </span>
                     )}
+                    <span className="sr-only">{primaryStaffLabel}</span>
                   </div>
                 ) : (
-                  <div className="flex w-max items-center gap-1 rounded-full border border-surface-brown-light bg-forest px-2 py-0.5 shadow-sm">
-                    <Circle className="h-2.5 w-2.5 shrink-0 text-cream" aria-hidden="true" />
-                    <span className="text-xs font-semibold text-cream">Non assegnato</span>
-                  </div>
+                  <span
+                    className="block h-2 w-2 rounded-full border border-surface-brown-light bg-forest/80"
+                    aria-label="Nessun personale assegnato"
+                  />
                 )}
               </div>
             )}

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ChevronLeft, CreditCard, X } from "lucide-react";
 import { PannelloClose, PannelloTitle } from "@/components/ui/pannello";
 import { StatoTavoloBadge } from "@/components/tables/stile-stato";
@@ -30,14 +31,24 @@ import type { ProfiloTavolo } from "@/server/profilo-tavolo";
  * un livello si torna, non si esce. Uscire dal pannello per tornare al tavolo
  * che si stava guardando è il genere di cosa che si fa una volta e poi non si
  * riapre più.
+ *
+ * ## L'azione in testa
+ *
+ * Su un tavolo libero l'unica cosa da fare — prenotarlo — sta qui e non in
+ * fondo: è la ragione per cui si è aperto il pannello, non la conclusione di
+ * quello che si legge. Sta a sinistra della X, che è l'ordine in cui si
+ * leggono le due cose: prima quella che si fa, poi quella che chiude.
  */
 export function TestaProfilo({
   profilo,
   indietro,
+  azione,
 }: {
   profilo: ProfiloTavolo;
   /** Se presente, si è dentro un livello: la chiusura diventa un ritorno. */
   indietro?: { etichetta: string; onIndietro: () => void };
+  /** L'azione principale, quando ce n'è una che sta bene in testa. */
+  azione?: ReactNode;
 }) {
   const { tavolo } = profilo;
 
@@ -73,15 +84,18 @@ export function TestaProfilo({
           )}
         </div>
 
-        <PannelloClose
-          className={cn(
-            "-mr-1 -mt-1 shrink-0 rounded-md p-2 text-tertiary-foreground transition-colors",
-            "hover:bg-white/5 hover:text-foreground",
-          )}
-          aria-label="Chiudi"
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-        </PannelloClose>
+        <div className="flex shrink-0 items-center gap-1">
+          {azione}
+          <PannelloClose
+            className={cn(
+              "-mr-1 shrink-0 rounded-md p-2 text-tertiary-foreground transition-colors",
+              "hover:bg-white/5 hover:text-foreground",
+            )}
+            aria-label="Chiudi"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </PannelloClose>
+        </div>
       </div>
 
       {!indietro && (

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LOGO_CENTRO_MAX, NOMI_POSIZIONI_LOGO, POSIZIONI_LOGO, type DesignQr, type PosizioneLogo } from "@/lib/qr-disegno";
+import { LOGO_ACCEPT, fileInDataUrl, problemaLogo } from "@/lib/qr-logo";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,21 +35,33 @@ export function QrLogoEditor({
 
   const suo = !!logoLocale && design.logoUrl === logoLocale;
 
-  async function carica(e: React.ChangeEvent<HTMLInputElement>) {
+  /**
+   * Il file scelto finisce nel codice subito, senza passare da nessuna parte.
+   *
+   * Il perché per esteso sta in `lib/qr-logo.ts`. In breve: il caricamento sul
+   * server è l'unica cosa in questo editor che poteva fallire mentre si
+   * sceglie, e non c'era ragione perché avvenisse in quel momento. Adesso
+   * avviene al salvataggio, dove un indirizzo duraturo serve davvero.
+   */
+  async function scegli(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    /* Il campo si svuota subito: senza, riscegliere **lo stesso** file non
+       emette un secondo `change` e il gesto sembra ignorato. */
     e.target.value = "";
     if (!file) return;
+
+    const problema = problemaLogo(file);
+    if (problema) {
+      setErrore(problema);
+      return;
+    }
+
     setCaricamento(true);
     setErrore(null);
     try {
-      const corpo = new FormData();
-      corpo.append("file", file);
-      const res = await fetch("/api/qr-codes/upload-logo", { method: "POST", body: corpo });
-      const dati = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(dati.message ?? "Caricamento non riuscito.");
-      onCambia({ logoUrl: dati.url });
-    } catch (err) {
-      setErrore(err instanceof Error ? err.message : "Caricamento non riuscito. Riprova.");
+      onCambia({ logoUrl: await fileInDataUrl(file) });
+    } catch {
+      setErrore("Non siamo riusciti a leggere l'immagine. Riprova, o provane un'altra.");
     } finally {
       setCaricamento(false);
     }
@@ -80,11 +93,19 @@ export function QrLogoEditor({
           disabled={caricamento}
         >
           <Upload className="h-3.5 w-3.5" />
-          {caricamento ? "Carico..." : design.logoUrl ? "Carica un altro logo" : "Carica un logo"}
+          {caricamento ? "Apro..." : design.logoUrl ? "Carica un altro logo" : "Carica un logo"}
         </Button>
 
         {design.logoUrl && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onCambia({ logoUrl: null })}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setErrore(null);
+              onCambia({ logoUrl: null });
+            }}
+          >
             Togli
           </Button>
         )}
@@ -92,9 +113,9 @@ export function QrLogoEditor({
         <input
           ref={input}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          accept={LOGO_ACCEPT}
           className="hidden"
-          onChange={carica}
+          onChange={scegli}
         />
       </div>
 
@@ -120,8 +141,11 @@ export function QrLogoEditor({
 
           {design.posizioneLogo === "centro" && (
             <p className="t-nota">
-              Al centro il logo occupa {Math.round(LOGO_CENTRO_MAX * 100)}% del lato, con un riquadro chiaro
-              sotto: è la misura oltre cui i telefoni cominciano a non prenderlo, e per questo non si tocca.
+              Al centro il logo occupa {Math.round(LOGO_CENTRO_MAX * 100)}% del lato
+              {design.sfondoTrasparente
+                ? ", e senza sfondo poggia direttamente sui moduli"
+                : ", con un riquadro chiaro sotto"}
+              : è la misura oltre cui i telefoni cominciano a non prenderlo, e per questo non si tocca.
             </p>
           )}
           {design.posizioneLogo === "cornice" && (
@@ -166,7 +190,10 @@ function SchemaPosizione({
         selezionata ? "border-accent-strong bg-accent-strong/10" : "border-border hover:bg-secondary/60",
       )}
     >
-      <span className="block rounded-md p-1.5" style={{ background: design.coloreSfondo }}>
+      <span
+        className={cn("block rounded-md p-1.5", design.sfondoTrasparente && "scacchiera")}
+        style={design.sfondoTrasparente ? undefined : { background: design.coloreSfondo }}
+      >
         <svg viewBox="0 0 40 40" className="h-auto w-full" aria-hidden="true">
           {posizione === "centro" && (
             <>

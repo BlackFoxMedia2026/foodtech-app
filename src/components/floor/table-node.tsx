@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TABLE_ASSIGNABLE_CAPABILITIES, TABLE_ROLE_LABELS } from "@/lib/staff-roles";
+import { DIMENSIONE_TAVOLO, dimensioneDisegnata } from "@/lib/tavolo-geometria";
 import { TABLE_ROLE_ICONS } from "./staff-role-icons";
 
 export type LocalTable = Table & { dirty?: boolean };
@@ -20,44 +21,21 @@ export type LocalTable = Table & { dirty?: boolean };
 export type TableStaffPerson = { id: string; name: string; status: WaiterStatus };
 export type TableStaffMap = Partial<Record<(typeof TABLE_ASSIGNABLE_CAPABILITIES)[number], TableStaffPerson>>;
 
-export const TABLE_SIZE: Record<TableShape, { w: number; h: number }> = {
-  ROUND: { w: 80, h: 80 },
-  SQUARE: { w: 80, h: 80 },
-  RECT: { w: 120, h: 70 },
-  BOOTH: { w: 160, h: 90 },
-  LOUNGE: { w: 140, h: 100 },
-};
-
 /**
  * TABLE_SIZE stays the hit/drag footprint (untouched — drag clamping and
  * hit-testing in floor-canvas.tsx key off it directly). The rendered shape is
  * drawn smaller and centered inside that footprint, so the hit area is
  * naturally a bit larger than what's visible without any extra math.
  *
- * Quanto più piccolo, però, **dipende dai posti**: su una piantina un due
- * posti e un dieci posti disegnati identici tolgono alla mappa la sola cosa
- * per cui la si guarda, cioè capire la sala con un colpo d'occhio. La forma
- * dice se è tondo o rettangolare, la dimensione dice quanta gente ci sta.
- *
- * L'impronta resta quella di prima **di proposito**: cambiare l'area di
- * trascinamento sposterebbe i tavoli già disposti da chi ha costruito la sua
- * sala, e nessuno ha chiesto che la sua sala cambi da sola.
+ * La geometria vera — impronte, scala per posti, sedie — vive in
+ * `lib/tavolo-geometria.ts`: la stessa risposta serviva all'editor della
+ * Sala, alla vista operativa e alla mappa delle Prenotazioni, e finché è
+ * stata scritta tre volte i tre disegni sono divergiti.
  */
-const SCALA_PER_POSTI: readonly { finoA: number; scala: number }[] = [
-  { finoA: 2, scala: 0.62 },
-  { finoA: 4, scala: 0.74 },
-  { finoA: 6, scala: 0.86 },
-  { finoA: 8, scala: 0.94 },
-];
-const SCALA_MASSIMA = 1;
+export { DIMENSIONE_TAVOLO as TABLE_SIZE } from "@/lib/tavolo-geometria";
 
 export function visualSize(shape: TableShape, seats: number) {
-  const s = TABLE_SIZE[shape];
-  const scala = SCALA_PER_POSTI.find((r) => seats <= r.finoA)?.scala ?? SCALA_MASSIMA;
-  return {
-    w: Math.round(s.w * scala),
-    h: Math.round(s.h * scala),
-  };
+  return dimensioneDisegnata({ shape, seats });
 }
 
 /**
@@ -111,7 +89,7 @@ export const TableNode = memo(function TableNode({
   onStartRotate?: (id: string, e: React.PointerEvent) => void;
   menu?: MenuProps;
 }) {
-  const size = TABLE_SIZE[t.shape];
+  const size = DIMENSIONE_TAVOLO[t.shape];
   const visual = visualSize(t.shape, t.seats);
 
   // TABLE_ASSIGNABLE_CAPABILITIES is already in priority order (Responsabile
@@ -184,6 +162,8 @@ export const TableNode = memo(function TableNode({
             t.shape === "ROUND" && "rounded-full",
             t.shape === "SQUARE" && "rounded-md",
             t.shape === "RECT" && "rounded-md",
+            t.shape === "OVAL" && "rounded-full",
+            t.shape === "CUSTOM" && "rounded-lg",
             t.shape === "BOOTH" && "rounded-2xl",
             t.shape === "LOUNGE" && "rounded-3xl",
             t.active ? "table-pearl text-carbon-900" : "bg-muted text-muted-foreground",

@@ -65,7 +65,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const pdf = foglioQr({
     disegno,
     nome: qr.name,
-    sfondo: qr.design.coloreSfondo,
+    /* Il colore su cui comporre le parti trasparenti del logo. Un QR senza
+       fondo, stampato, finisce sulla carta: qui la carta è bianca, e usare
+       `coloreSfondo` comporrebbe il logo su un colore che nel foglio non
+       c'è. */
+    sfondo: qr.design.sfondoTrasparente ? "#FFFFFF" : qr.design.coloreSfondo,
     loghi: logo ? [logo] : [],
   });
 

@@ -388,6 +388,22 @@ model RoomLayout {
   unit           String   @default("m")
   pixelsPerMeter Int      @default(100)
   elements       Json     @default("[]")
+  /// Quali livelli sono accesi sulla piantina (tavoli, struttura, aree,
+  /// testi, immagine originale). Sta sulla sala e non sull'utente: chi apre
+  /// la Sala deve trovare la piantina come l'ha lasciata il collega.
+  layers         Json     @default("{}")
+  /// Quanti tavoli il locale dichiara di possedere, per forma. La libreria
+  /// dell'editor ne sottrae quelli già posizionati e mostra la disponibilità
+  /// residua.
+  inventory      Json     @default("{}")
+  /// Nome, superficie e dimensioni quando non si ricavano dalla geometria e
+  /// il locale li scrive a mano.
+  meta           Json     @default("{}")
+  /// Il risultato grezzo del riconoscimento della planimetria, conservato
+  /// accanto agli elementi che ne sono derivati: se domani il riconoscimento
+  /// migliora si rigenera senza richiedere di ricaricare l'immagine.
+  analysis       Json?
+  analyzedAt     DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -2367,6 +2383,8 @@ enum TableShape {
   RECT
   BOOTH
   LOUNGE
+  OVAL
+  CUSTOM
 }
 
 enum RoomLayoutMode {

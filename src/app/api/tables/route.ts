@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 const Body = z.object({
   label: z.string().min(1),
   seats: z.coerce.number().int().min(1).max(40),
-  shape: z.enum(["ROUND", "SQUARE", "RECT", "BOOTH", "LOUNGE"]).default("ROUND"),
+  shape: z.enum(["ROUND", "SQUARE", "RECT", "BOOTH", "LOUNGE", "OVAL", "CUSTOM"]).default("ROUND"),
   roomId: z.string().optional().nullable(),
   posX: z.coerce.number().int().default(40),
   posY: z.coerce.number().int().default(40),

@@ -43,6 +43,12 @@ const colore = z.string().regex(ESADECIMALE, "Colore non valido");
 const DesignInput = z.object({
   coloreQr: colore,
   coloreSfondo: colore,
+  /* Facoltativo, e non per gentilezza: i codici salvati prima che la
+     trasparenza esistesse non hanno questo campo, e `designSalvato` li legge
+     con `.partial()` — senza il valore predefinito diventerebbero
+     `undefined`, che `componiQr` legge come «non trasparente» solo per
+     fortuna. Dirlo qui lo rende una scelta. */
+  sfondoTrasparente: z.boolean().default(false),
   stileModuli: z.enum(STILI_MODULI),
   stileAngoli: z.enum(STILI_ANGOLI),
   logoUrl: z.string().max(2000).nullable(),

@@ -49,7 +49,7 @@ export function QrFatto({
         )}
       </header>
 
-      <QrPreview disegno={disegno} link={qr.link} compatta />
+      <QrPreview disegno={disegno} link={qr.link} trasparente={qr.design.sfondoTrasparente} compatta />
 
       <div className="surface space-y-2 p-4">
         <div className="flex flex-wrap items-center gap-2">

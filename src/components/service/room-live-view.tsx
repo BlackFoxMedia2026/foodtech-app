@@ -26,12 +26,16 @@ import { TablePickerDialog } from "@/components/service/table-picker-dialog";
 import { useServizioVivo } from "@/lib/use-servizio-vivo";
 import { oraInVenue } from "@/lib/venue-time";
 import { STILE_STATO } from "@/components/tables/stile-stato";
+import { PiantinaRenderer } from "@/components/floor/editor/piantina-renderer";
+import { DEFAULT_ROOM_LAYERS, boundingBox, type RoomElement } from "@/lib/room-layout";
 import {
   TableProfileDrawer,
   type PermessiTavolo,
 } from "@/components/tables/table-profile-drawer";
 
 type Corrente = NonNullable<TableLiveInfo["current"]>;
+
+const VUOTO: RoomElement[] = [];
 
 /**
  * Il conto del tavolo, detto in due parole.
@@ -59,7 +63,16 @@ export type RoomTable = {
   roomId: string | null;
 };
 
-export type RoomOption = { id: string; name: string };
+export type RoomOption = {
+  id: string;
+  name: string;
+  /** La piantina disegnata in Sala. Arriva qui per la ragione che la Sala
+   * esiste: una mappa del servizio senza muri è un elenco di rettangoli
+   * sparsi, e per orientarsi in un locale servono il bancone, la cucina e la
+   * porta d'ingresso — cioè le stesse cose che si sono già disegnate una
+   * volta. Nessuno le ridisegna qui. */
+  elementi: RoomElement[];
+};
 
 /**
  * La sala durante il servizio.
@@ -116,14 +129,26 @@ export function RoomLiveView({
     [tables, roomId],
   );
 
-  /** La mappa si adatta al contenitore: le posizioni sono in pixel del
-   * disegno originale, e vanno riportate nello spazio disponibile. */
+  // `?? VUOTO` e non `?? []`: un array nuovo a ogni render farebbe ricalcolare
+  // il riquadro della mappa a ogni battito del servizio dal vivo.
+  const elementiSala = useMemo(() => rooms.find((r) => r.id === roomId)?.elementi ?? VUOTO, [rooms, roomId]);
+
+  /**
+   * Il riquadro che la mappa deve contenere.
+   *
+   * Non solo i tavoli: anche i muri. I due disegni vivono nello stesso spazio
+   * di coordinate — quello della Sala — e se il riquadro li abbracciasse a
+   * metà la piantina e i tavoli finirebbero disallineati di quel tanto che
+   * basta a mettere un tavolo dentro la cucina.
+   */
   const bounds = useMemo(() => {
-    if (tavoliSala.length === 0) return { w: 1000, h: 600 };
-    const maxX = Math.max(...tavoliSala.map((t) => t.posX)) + 140;
-    const maxY = Math.max(...tavoliSala.map((t) => t.posY)) + 140;
+    const box = elementiSala.length > 0 ? boundingBox(elementiSala) : null;
+    const maxTavoliX = tavoliSala.length > 0 ? Math.max(...tavoliSala.map((t) => t.posX)) + 140 : 0;
+    const maxTavoliY = tavoliSala.length > 0 ? Math.max(...tavoliSala.map((t) => t.posY)) + 140 : 0;
+    const maxX = Math.max(maxTavoliX, box ? box.maxX + 40 : 0);
+    const maxY = Math.max(maxTavoliY, box ? box.maxY + 40 : 0);
     return { w: Math.max(600, maxX), h: Math.max(400, maxY) };
-  }, [tavoliSala]);
+  }, [tavoliSala, elementiSala]);
 
   const perStato = useMemo(() => {
     const gruppi = new Map<TableLiveStatus, RoomTable[]>();
@@ -237,6 +262,30 @@ export function RoomLiveView({
                     containerType: "size",
                   }}
                 >
+                  {/*
+                    La piantina disegnata in Sala, sotto i tavoli — e sotto un
+                    velo scuro.
+
+                    Il velo non è un effetto: qui le schede dei tavoli sono
+                    chiare e translucide, disegnate per il verde scuro del
+                    fondo, e sul legno caldo della piantina si leggono a
+                    fatica. Durante un servizio la scheda che dice «Prenotato
+                    alle 21:00» deve vincere sempre sulla parete che sta
+                    dietro. La piantina resta quello che deve essere qui:
+                    l'orientamento, non il contenuto.
+                  */}
+                  {elementiSala.length > 0 && (
+                    <>
+                      <PiantinaRenderer
+                        elements={elementiSala}
+                        width={bounds.w}
+                        height={bounds.h}
+                        layers={{ ...DEFAULT_ROOM_LAYERS, original: false }}
+                        className="h-full w-full"
+                      />
+                      <div className="pointer-events-none absolute inset-0 bg-background/65" aria-hidden="true" />
+                    </>
+                  )}
                   {tavoliSala.map((t) => {
                     const info = live.byTableId[t.id];
                     return (

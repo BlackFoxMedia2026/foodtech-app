@@ -7,11 +7,16 @@ import { db } from "@/lib/db";
 const Patch = z.object({
   label: z.string().optional(),
   seats: z.coerce.number().int().min(1).max(40).optional(),
-  shape: z.enum(["ROUND", "SQUARE", "RECT", "BOOTH", "LOUNGE"]).optional(),
+  shape: z.enum(["ROUND", "SQUARE", "RECT", "BOOTH", "LOUNGE", "OVAL", "CUSTOM"]).optional(),
   posX: z.coerce.number().int().optional(),
   posY: z.coerce.number().int().optional(),
   rotation: z.coerce.number().int().optional(),
   active: z.boolean().optional(),
+  // L'ingombro disegnato del tavolo, in pixel del canvas. Nullo significa
+  // «usa la misura standard della forma» (TABLE_SIZE): un tavolo che nessuno
+  // ha mai ridimensionato non porta con sé una misura che sembra scelta.
+  width: z.coerce.number().int().min(20).max(1200).nullable().optional(),
+  height: z.coerce.number().int().min(20).max(1200).nullable().optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {

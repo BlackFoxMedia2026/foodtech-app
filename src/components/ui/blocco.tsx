@@ -31,6 +31,7 @@ export function Blocco({
   valore,
   azione,
   aperto = false,
+  onApertura,
   className,
   children,
 }: {
@@ -59,8 +60,23 @@ export function Blocco({
    * Da usare con parsimonia: se sono aperti tutti, siamo tornati alla colonna
    * di prima. Vale per il blocco che è **il lavoro** di quella parte, non per
    * quello che è solo importante.
+   *
+   * Con `onApertura` cambia significato: non è più «com'è all'inizio» ma
+   * «com'è adesso», e il blocco smette di aprirsi da solo.
    */
   aperto?: boolean;
+  /**
+   * Chi decide l'apertura è chi sta sopra.
+   *
+   * Serve a una colonna che vuole **un solo blocco aperto alla volta**: senza,
+   * ogni `<details>` decide per sé e in un pannello di quattro sezioni la
+   * quarta finisce a due schermate di distanza da quello che sta cambiando.
+   * Con questa funzione il gruppo tiene un solo indice e i blocchi lo
+   * riferiscono, che è l'unico modo perché aprirne uno ne chiuda un altro.
+   *
+   * Passandola, `aperto` diventa il valore corrente e non più quello iniziale.
+   */
+  onApertura?: (aperto: boolean) => void;
   className?: string;
   children?: ReactNode;
 }) {
@@ -88,7 +104,32 @@ export function Blocco({
   }
 
   return (
-    <details className={cn("surface group overflow-hidden", className)} open={aperto}>
+    <details
+      className={cn("surface group overflow-hidden", className)}
+      /* Senza `onApertura`: il valore iniziale, poi decide il browser.
+         Con `onApertura`: lo stato, che React riallinea a ogni render. */
+      open={aperto}
+      /*
+        Si ascolta l'apertura invece di intercettare il clic.
+
+        Un `<details>` sa già aprirsi: col mouse, col tocco, con `Invio` sul
+        summary, e anche quando la ricerca nella pagina trova una parola qui
+        dentro. Prevenire il clic coprirebbe solo il primo di quei quattro
+        casi e lascerebbe gli altri tre a disallineare lo stato. Qui il
+        browser fa il suo gesto e lo stato lo insegue — che è anche il motivo
+        per cui il confronto con `aperto` c'è: quando è il gruppo a chiudere
+        questo blocco, l'evento che ne segue racconta una cosa già saputa e
+        non deve tornare indietro a chi l'ha decisa.
+      */
+      onToggle={
+        onApertura
+          ? (e) => {
+              const ora = (e.currentTarget as HTMLDetailsElement).open;
+              if (ora !== aperto) onApertura(ora);
+            }
+          : undefined
+      }
+    >
       {/*
         Dentro il `<summary>` non va niente su cui si possa premere.
 
@@ -113,7 +154,31 @@ export function Blocco({
           />
         </span>
       </summary>
-      <div className="border-t border-border px-4 pb-4 pt-3">{children}</div>
+      {/*
+        L'apertura si vede, la chiusura no — ed è voluto.
+
+        Un `<details>` chiuso tiene il contenuto fuori dal flusso: non c'è
+        niente da far uscire in dissolvenza, e ottenerlo vorrebbe dire
+        misurare l'altezza con JavaScript per animarla. In un gruppo esclusivo
+        conta comunque l'altra metà: quando un blocco prende il posto di un
+        altro, quello che arriva scivola dentro invece di comparire già
+        finito, e l'occhio lo segue senza doverlo ritrovare.
+
+        La `key` legata all'apertura è ciò che fa **ripartire** l'animazione:
+        un elemento che torna visibile da `display:none` non la rigioca in
+        tutti i browser, uno appena montato sì. Vale solo nel caso controllato
+        — altrove `aperto` non cambia mai, e un blocco che si anima all'arrivo
+        della pagina sarebbe rumore su una colonna di impostazioni ferme.
+      */}
+      <div
+        key={onApertura ? String(aperto) : undefined}
+        className={cn(
+          "border-t border-border px-4 pb-4 pt-3",
+          onApertura && "motion-safe:animate-slide-up",
+        )}
+      >
+        {children}
+      </div>
     </details>
   );
 }

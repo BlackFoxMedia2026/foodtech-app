@@ -89,6 +89,8 @@ export function BookingTableNode({
             table.shape === "ROUND" && "rounded-full",
             table.shape === "SQUARE" && "rounded-md",
             table.shape === "RECT" && "rounded-md",
+            table.shape === "OVAL" && "rounded-full",
+            table.shape === "CUSTOM" && "rounded-lg",
             table.shape === "BOOTH" && "rounded-2xl",
             table.shape === "LOUNGE" && "rounded-3xl",
             !table.active

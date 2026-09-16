@@ -19,7 +19,7 @@ import { QrLivello, QrModulo } from "./profilo/qr-tavolo";
 import { ContoTavolo } from "./profilo/conto-tavolo";
 import { ClientiTavolo } from "./profilo/clienti-tavolo";
 import { StoricoTavolo } from "./profilo/storico-tavolo";
-import { AzioniContestuali, AzioniRapide, useAzioniTavolo } from "./profilo/azioni-rapide";
+import { AzioniContestuali, AzioniRapide, AzionePrenota, useAzioniTavolo } from "./profilo/azioni-rapide";
 
 export type PermessiTavolo = {
   /** `manage_bookings`: segnare arrivi, accomodare, liberare, battere il conto. */
@@ -56,9 +56,10 @@ type Vista = "profilo" | "personale" | "qr";
  *
  * 1. **stato** — cosa succede adesso: un riquadro solo, con la superficie
  *    tinta dallo stato del tavolo, che si riconosce prima di essere letto;
- * 2. **azioni** — cosa posso fare: la principale nella fascia fissa in fondo,
- *    le secondarie dentro il riquadro dello stato, e le due operative —
- *    personale e QR — in due piastrelle affiancate;
+ * 2. **azioni** — cosa posso fare: la principale nella fascia fissa in fondo
+ *    (in testa, accanto al nome, quando il tavolo è libero e l'unica cosa da
+ *    fare è prenotarlo), le secondarie dentro il riquadro dello stato, e le
+ *    due operative — personale e QR — in due piastrelle affiancate;
  * 3. **consultazione** — conto, clienti, storico: testo che si legge quando
  *    serve, e che non compete con il resto.
  *
@@ -263,6 +264,11 @@ function CorpoProfilo({
               ? { etichetta: etichettaLivello, onIndietro: () => setVista("profilo") }
               : undefined
           }
+          /* Su un tavolo libero l'azione è una sola, e sta in testa: prenotarlo
+             è il motivo per cui si apre il pannello, non la conclusione di
+             quello che ci si legge dentro. Sui tavoli occupati è nulla, e
+             l'azione del momento resta nella fascia in fondo. */
+          azione={<AzionePrenota profilo={profilo} puoPrenotazioni={permessi.prenotazioni} />}
         />
 
         <PannelloCorpo className="space-y-5">

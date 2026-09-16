@@ -26,6 +26,7 @@ export function QrPreview({
   disegno,
   avvisi,
   link,
+  trasparente = false,
   compatta = false,
   className,
 }: {
@@ -33,6 +34,15 @@ export function QrPreview({
   avvisi?: Avvertenza[];
   /** L'indirizzo da aprire con «Testa QR». Nullo per Wi-Fi e testo libero. */
   link?: string | null;
+  /**
+   * Il disegno non porta il suo fondo: sotto va messa la scacchiera.
+   *
+   * È un'informazione che il `DisegnoQr` non può dare — un disegno senza
+   * fondo e uno con un fondo bianco sono due elenchi di forme, e da qui si
+   * distinguono solo contandole. Arriva quindi dal disegno **scelto**, che è
+   * il posto in cui quella decisione è stata presa.
+   */
+  trasparente?: boolean;
   compatta?: boolean;
   className?: string;
 }) {
@@ -49,7 +59,10 @@ export function QrPreview({
     <div className={cn("space-y-3", className)}>
       <div
         className={cn(
-          "riquadro flex items-center justify-center bg-sand-100",
+          "riquadro flex items-center justify-center",
+          /* La scacchiera prende il posto della carta, non le si appoggia
+             sopra: due fondi sovrapposti direbbero che ce n'è ancora uno. */
+          trasparente ? "scacchiera" : "bg-sand-100",
           compatta ? "p-4" : "p-4 md:p-6",
         )}
       >

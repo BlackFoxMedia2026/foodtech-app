@@ -42,6 +42,7 @@ export function QrStylePanel({
               onScegli={() => onCambia({ stileModuli: s })}
               svg={campioneModuli(s, design)}
               sfondo={design.coloreSfondo}
+              trasparente={design.sfondoTrasparente}
             />
           ))}
         </div>
@@ -58,6 +59,7 @@ export function QrStylePanel({
               onScegli={() => onCambia({ stileAngoli: s })}
               svg={campioneAngoli(s, design)}
               sfondo={design.coloreSfondo}
+              trasparente={design.sfondoTrasparente}
             />
           ))}
         </div>
@@ -72,7 +74,16 @@ function campioneModuli(stile: StileModuli, design: DesignQr): string {
 }
 
 function campioneAngoli(stile: StileAngoli, design: DesignQr): string {
-  const { lato, forme } = formeCampioneAngoli(stile, design.coloreQr, design.coloreSfondo);
+  /* Senza fondo l'occhio è un anello e non due riempimenti sovrapposti: se la
+     miniatura non lo sapesse, mostrerebbe un quadrato pieno dove il codice
+     vero ha un buco — cioè la forma sbagliata proprio nel pannello che serve
+     a scegliere la forma. */
+  const { lato, forme } = formeCampioneAngoli(
+    stile,
+    design.coloreQr,
+    design.coloreSfondo,
+    design.sfondoTrasparente,
+  );
   return disegnoInSvg({ larghezza: lato, altezza: lato, riquadroQr: { x: 0, y: 0, lato }, forme });
 }
 
@@ -80,12 +91,14 @@ function Miniatura({
   nome,
   svg,
   sfondo,
+  trasparente = false,
   selezionata,
   onScegli,
 }: {
   nome: string;
   svg: string;
   sfondo: string;
+  trasparente?: boolean;
   selezionata: boolean;
   onScegli: () => void;
 }) {
@@ -103,8 +116,8 @@ function Miniatura({
       )}
     >
       <span
-        className="block rounded-md p-1.5 [&>svg]:h-auto [&>svg]:w-full"
-        style={{ background: sfondo }}
+        className={cn("block rounded-md p-1.5 [&>svg]:h-auto [&>svg]:w-full", trasparente && "scacchiera")}
+        style={trasparente ? undefined : { background: sfondo }}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <span className="block truncate text-[10px] leading-tight text-muted-foreground">{nome}</span>

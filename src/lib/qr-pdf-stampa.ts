@@ -173,7 +173,10 @@ export function foglioQr(opts: {
         break;
       case "path":
         usaColore(f.colore);
-        comandi.push(`${percorsoInPdf(f.d)} f`);
+        /* `f*` è il riempimento pari-dispari, che in PDF è l'operatore accanto
+           a `f` e non un'impostazione a parte: l'anello di un occhio su fondo
+           trasparente esce bucato qui esattamente come esce in SVG. */
+        comandi.push(`${percorsoInPdf(f.d)} ${f.pari ? "f*" : "f"}`);
         break;
       case "cerchio":
         usaColore(f.colore);

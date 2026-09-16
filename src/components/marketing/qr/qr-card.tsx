@@ -6,6 +6,7 @@ import { CopyPlus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
+import { cn } from "@/lib/utils";
 import { disegnoInSvg } from "@/lib/qr-svg";
 import { etichettaTipo } from "@/lib/qr-tipi";
 import { nomeDestinazione } from "@/lib/qr-contenuto";
@@ -58,7 +59,13 @@ export function QrCard({ qr, onCambiato }: { qr: QrCodeSalvato; onCambiato: () =
   return (
     <article className="surface flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:gap-4 sm:p-4">
       <div
-        className="h-24 w-24 shrink-0 self-start overflow-hidden rounded-md border border-border bg-sand-100 p-1.5 [&>svg]:h-full [&>svg]:w-full"
+        /* La scacchiera anche qui, in piccolo: in elenco un codice senza
+           fondo e uno con il fondo crema sarebbero la stessa miniatura, e
+           sono due file diversi da scaricare. */
+        className={cn(
+          "h-24 w-24 shrink-0 self-start overflow-hidden rounded-md border border-border p-1.5 [&>svg]:h-full [&>svg]:w-full",
+          qr.design.sfondoTrasparente ? "scacchiera" : "bg-sand-100",
+        )}
         aria-hidden="true"
         dangerouslySetInnerHTML={disegno ? { __html: disegnoInSvg(disegno) } : undefined}
       />

@@ -66,37 +66,63 @@ export function controllaQr(opts: {
     });
   }
 
-  const rapporto = contrasto(design.coloreQr, design.coloreSfondo);
-  if (rapporto === null) {
-    avvisi.push({ chiave: "colore", messaggio: "Uno dei due colori non è valido.", grave: true });
-  } else if (rapporto < CONTRASTO_MINIMO) {
+  /*
+    Col fondo trasparente il contrasto non è più una cosa che si può misurare
+    qui: il secondo colore non lo scegliamo noi, lo sceglie la superficie su
+    cui il codice finirà. Continuare a confrontarlo con `coloreSfondo`
+    darebbe un numero che non corrisponde a niente — e, peggio, potrebbe
+    **bloccare il salvataggio** per un accostamento che non verrà mai
+    stampato. Quindi il controllo si sospende e al suo posto resta la sola
+    cosa vera da dire: la responsabilità è passata a chi impagina.
+  */
+  if (design.sfondoTrasparente) {
     avvisi.push({
-      chiave: "contrasto",
-      messaggio: "Questa combinazione potrebbe rendere il QR difficile da scansionare.",
-      grave: true,
-    });
-  } else if (rapporto < CONTRASTO_TRANQUILLO) {
-    avvisi.push({
-      chiave: "contrasto-basso",
+      chiave: "trasparente",
       messaggio:
-        "I due colori si distinguono poco: con poca luce, o su carta opaca, qualche telefono potrebbe faticare.",
+        "Lo sfondo è trasparente: il contrasto lo decide la superficie sotto. Appoggialo su un fondo pieno e molto più chiaro del codice, non su una foto.",
       grave: false,
     });
-  }
+    if (design.logoUrl && design.posizioneLogo === "centro") {
+      avvisi.push({
+        chiave: "logo-senza-riparo",
+        messaggio:
+          "Senza sfondo il logo al centro non ha il riquadro chiaro che lo stacca dai moduli: provalo col telefono prima di stamparlo.",
+        grave: false,
+      });
+    }
+  } else {
+    const rapporto = contrasto(design.coloreQr, design.coloreSfondo);
+    if (rapporto === null) {
+      avvisi.push({ chiave: "colore", messaggio: "Uno dei due colori non è valido.", grave: true });
+    } else if (rapporto < CONTRASTO_MINIMO) {
+      avvisi.push({
+        chiave: "contrasto",
+        messaggio: "Questa combinazione potrebbe rendere il QR difficile da scansionare.",
+        grave: true,
+      });
+    } else if (rapporto < CONTRASTO_TRANQUILLO) {
+      avvisi.push({
+        chiave: "contrasto-basso",
+        messaggio:
+          "I due colori si distinguono poco: con poca luce, o su carta opaca, qualche telefono potrebbe faticare.",
+        grave: false,
+      });
+    }
 
-  /* Il codice invertito: moduli chiari su fondo scuro.
-     Non è un errore — molti telefoni recenti lo leggono — ma i lettori più
-     vecchi e diverse casse cercano il nero sul bianco e basta. Si dice, non si
-     vieta: un QR chiaro su fondo scuro è anche una scelta grafica legittima. */
-  const qr = canali(design.coloreQr);
-  const sfondo = canali(design.coloreSfondo);
-  if (qr && sfondo && luminanza(qr) > luminanza(sfondo)) {
-    avvisi.push({
-      chiave: "invertito",
-      messaggio:
-        "Il codice è chiaro su fondo scuro: i telefoni recenti lo leggono, i lettori più vecchi no. Se finisce su uno scontrino, meglio invertire.",
-      grave: false,
-    });
+    /* Il codice invertito: moduli chiari su fondo scuro.
+       Non è un errore — molti telefoni recenti lo leggono — ma i lettori più
+       vecchi e diverse casse cercano il nero sul bianco e basta. Si dice, non si
+       vieta: un QR chiaro su fondo scuro è anche una scelta grafica legittima. */
+    const qr = canali(design.coloreQr);
+    const sfondo = canali(design.coloreSfondo);
+    if (qr && sfondo && luminanza(qr) > luminanza(sfondo)) {
+      avvisi.push({
+        chiave: "invertito",
+        messaggio:
+          "Il codice è chiaro su fondo scuro: i telefoni recenti lo leggono, i lettori più vecchi no. Se finisce su uno scontrino, meglio invertire.",
+        grave: false,
+      });
+    }
   }
 
   if (design.logoUrl && design.posizioneLogo === "centro") {

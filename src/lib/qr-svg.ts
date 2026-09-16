@@ -26,7 +26,11 @@ function forma(f: Forma): string {
     case "rett":
       return `<rect x="${n(f.x)}" y="${n(f.y)}" width="${n(f.w)}" height="${n(f.h)}" fill="${f.colore}"/>`;
     case "path":
-      return `<path d="${f.d}" fill="${f.colore}"/>`;
+      /* `evenodd` solo dove serve davvero — sul fondo trasparente, dove il
+         contorno interno di un occhio deve bucare quello esterno invece di
+         coprirlo. Metterlo sempre cambierebbe niente sui percorsi a un
+         contorno solo, ma li farebbe tutti diversi da prima per niente. */
+      return `<path d="${f.d}" fill="${f.colore}"${f.pari ? ' fill-rule="evenodd"' : ""}/>`;
     case "cerchio":
       return `<circle cx="${n(f.cx)}" cy="${n(f.cy)}" r="${n(f.r)}" fill="${f.colore}"/>`;
     case "testo":

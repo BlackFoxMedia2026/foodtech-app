@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { NOMI_CORNICI, NOMI_STILI_MODULI, type DesignQr } from "@/lib/qr-disegno";
 import { schedaTipo } from "@/lib/qr-tipi";
 import { createQrCode, updateQrCode, type QrCodeSalvato } from "@/lib/qr-codes-api";
+import { conservaLogo, logoDaConservare } from "@/lib/qr-logo";
 import { contenutoBozza, linkBozza, type BozzaQr, type ContestoQr } from "./bozza";
 import { QrColorPicker } from "./qr-color-picker";
 import { QrContentPanel } from "./qr-content-panel";
@@ -30,7 +31,23 @@ import { useDisegnoQr } from "./use-disegno-qr";
  *
  * Sotto i 1024 pixel le tre colonne non stanno, e schiacciarle darebbe tre
  * strisce troppo strette per ognuna delle tre cose. Lì il codice va in alto —
- * resta visibile mentre si scorre — e il resto diventa quattro linguette.
+ * resta visibile mentre si scorre — e il resto diventa due linguette.
+ *
+ * ## Due regole che tengono in piedi tutto il resto
+ *
+ * **Un pannello solo per volta.** «Stile» da solo è più alto di uno schermo:
+ * con Colore anche aperto, gli angoli finivano a due schermate dal codice che
+ * stavano cambiando. Il gruppo tiene quindi un indice unico (`sezione`) e i
+ * blocchi lo riferiscono — aprirne uno chiude l'altro, e non è una cortesia
+ * grafica: è ciò che tiene le opzioni a distanza d'occhio dal risultato.
+ *
+ * **Il codice non scorre via.** Resta attaccato in alto mentre la colonna
+ * delle opzioni scorre sotto di lui, perché è l'unica cosa che dice se quello
+ * che si sta facendo funziona. Il trucco è dove sta l'`sticky`: sulla
+ * **sezione** — cioè sulla cella della griglia, alta quanto la riga — e non
+ * sul riquadro dentro. Sul riquadro non si muoveva di un pixel, e non per un
+ * errore di CSS: un elemento appiccicoso può scorrere solo dentro il suo
+ * contenitore, e quel contenitore era alto esattamente quanto lui.
  */
 export function QrEditor({
   bozzaIniziale,
@@ -52,6 +69,10 @@ export function QrEditor({
   const [errore, setErrore] = useState<string | null>(null);
   const treColonne = useMediaQuery("(min-width: 1024px)");
   const [linguetta, setLinguetta] = useState<Linguetta>("contenuto");
+  /* Il colore è aperto all'arrivo perché è la prima cosa che si tocca; `null`
+     è uno stato legittimo — chiudendo l'ultimo aperto non se ne riapre un
+     altro al suo posto. */
+  const [sezione, setSezione] = useState<Sezione | null>("colore");
 
   const contenuto = useMemo(() => contenutoBozza(bozza, ctx), [bozza, ctx]);
   const { disegno, avvisi, salvabile } = useDisegnoQr(contenuto, bozza.design);
@@ -81,12 +102,32 @@ export function QrEditor({
     setSalvataggio(true);
     setErrore(null);
     try {
+      /*
+        Il logo si mette al sicuro **adesso**, non quando lo si è scelto.
+
+        Fino a qui vive come `data:` dentro la bozza: si vede nell'anteprima e
+        finisce nei file che si scaricano, che si compongono tutti nel
+        browser. Ma un `data:` non si salva — `DesignInput` accetta 2000
+        caratteri per `logoUrl` perché lì ci va un indirizzo — e un codice
+        salvato con un riferimento morto sarebbe un cartoncino che si stampa
+        senza marchio. Il perché per esteso sta in `lib/qr-logo.ts`.
+
+        La bozza si aggiorna con l'indirizzo ottenuto: se il salvataggio
+        fallisce più avanti, il secondo tentativo non ricarica lo stesso file.
+      */
+      let design = bozza.design;
+      if (logoDaConservare(design.logoUrl)) {
+        const url = await conservaLogo(design.logoUrl);
+        design = { ...design, logoUrl: url };
+        setBozza((b) => ({ ...b, design: { ...b.design, logoUrl: url } }));
+      }
+
       const corpo = {
         name: bozza.nome.trim(),
         kind: bozza.kind,
         tableIds: bozza.kind === "PAY_TABLE" ? bozza.tableIds : undefined,
         destinationUrl: bozza.destinationUrl || undefined,
-        design: bozza.design,
+        design,
         payload: bozza.payload,
       };
       const salvati = id ? [await updateQrCode(id, corpo)] : await createQrCode(corpo);
@@ -100,25 +141,50 @@ export function QrEditor({
   }
 
   const anteprima = (
-    <QrPreview disegno={disegno} avvisi={avvisi} link={linkBozza(bozza)} className="lg:sticky lg:top-4" />
+    <QrPreview
+      disegno={disegno}
+      avvisi={avvisi}
+      link={linkBozza(bozza)}
+      trasparente={bozza.design.sfondoTrasparente}
+    />
   );
 
   const contenutoPannello = (
     <QrContentPanel bozza={bozza} ctx={ctx} unicoTavolo={!!id} onCambia={cambia} />
   );
 
+  /**
+   * Il gruppo esclusivo, in una riga.
+   *
+   * Un solo indice condiviso e quattro blocchi che lo riferiscono: aprirne uno
+   * ne chiude un altro perché non c'è un secondo posto dove scrivere
+   * «aperto», non perché qualcuno vada a chiuderlo. Richiudere quello aperto è
+   * previsto — si torna a quattro righe e alla sola anteprima, che è una cosa
+   * ragionevole da voler vedere.
+   */
+  const apertura = (id: Sezione) => ({
+    aperto: sezione === id,
+    onApertura: (a: boolean) => setSezione((s) => (a ? id : s === id ? null : s)),
+  });
+
   const design = (
     <div className="space-y-2">
-      <Blocco titolo="Colore" icona={Palette} valore={<Pastiglie design={bozza.design} />} aperto>
+      <Blocco titolo="Colore" icona={Palette} valore={<Pastiglie design={bozza.design} />} {...apertura("colore")}>
         <QrColorPicker design={bozza.design} onCambia={cambiaDesign} />
       </Blocco>
-      <Blocco titolo="Stile" icona={Shapes} valore={NOMI_STILI_MODULI[bozza.design.stileModuli]}>
+      <Blocco
+        titolo="Stile"
+        icona={Shapes}
+        valore={NOMI_STILI_MODULI[bozza.design.stileModuli]}
+        {...apertura("stile")}
+      >
         <QrStylePanel design={bozza.design} onCambia={cambiaDesign} />
       </Blocco>
       <Blocco
         titolo="Logo"
         icona={ImageIcon}
         valore={bozza.design.logoUrl ? "impostato" : "nessuno"}
+        {...apertura("logo")}
       >
         <QrLogoEditor
           design={bozza.design}
@@ -127,7 +193,12 @@ export function QrEditor({
           onCambia={cambiaDesign}
         />
       </Blocco>
-      <Blocco titolo="Cornice" icona={Frame} valore={NOMI_CORNICI[bozza.design.cornice]}>
+      <Blocco
+        titolo="Cornice"
+        icona={Frame}
+        valore={NOMI_CORNICI[bozza.design.cornice]}
+        {...apertura("cornice")}
+      >
         <QrFrameSelector design={bozza.design} kind={bozza.kind} onCambia={cambiaDesign} />
       </Blocco>
     </div>
@@ -182,35 +253,47 @@ export function QrEditor({
       {treColonne ? (
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,28fr)_minmax(0,36fr)_minmax(0,36fr)]">
           <section aria-label="Contenuto">{contenutoPannello}</section>
-          <section aria-label="Anteprima">{anteprima}</section>
+          {/*
+            L'`sticky` sta qui, sulla cella, e non sul riquadro dell'anteprima.
+
+            Una cella di griglia è alta quanto la riga — cioè quanto la colonna
+            più alta delle tre — anche quando `items-start` fa rimpicciolire la
+            scatola dentro. È quello lo spazio in cui il codice può scivolare
+            mentre le opzioni scorrono. Sul riquadro, il contenitore era alto
+            esattamente quanto il riquadro: niente spazio, niente movimento, e
+            un `sticky` che sembrava ignorato.
+
+            `top-4` e non un calcolo sull'altezza della testata: qui a scorrere
+            non è la finestra ma il `<main>` dell'applicazione, che comincia
+            **sotto** la barra in alto (vedi `app/(app)/layout.tsx`). Un
+            centimetro d'aria dal bordo è tutto quello che serve, e la barra
+            non c'entra perché non è mai stata di sopra.
+          */}
+          <section aria-label="Anteprima" className="lg:sticky lg:top-4">
+            {anteprima}
+          </section>
           <section aria-label="Personalizzazione">{design}</section>
         </div>
       ) : (
         <div className="grid items-start gap-5 md:grid-cols-2">
+          {/* Stessa cosa, un piano più stretto: a due colonne l'anteprima sta
+              accanto al modulo e resta attaccata. Sul telefono no — le
+              linguette e l'anteprima sono già una sotto l'altra, e un codice
+              incollato in cima si mangerebbe metà schermo per tutto il tempo
+              in cui si compila. */}
           <section aria-label="Anteprima" className="md:sticky md:top-4">
             {anteprima}
           </section>
           <section>
             <Linguette attiva={linguetta} onCambia={setLinguetta} />
+            {/* Lo stesso pannello del desktop, non una sua copia srotolata.
+                Prima qui il disegno era spalmato su tre linguette e Colore e
+                Stile stavano aperti insieme: due modi diversi di fare la
+                stessa cosa, e quello stretto era anche il più lungo da
+                scorrere. Con i blocchi, «una sezione sola alla volta» vale
+                anche sul telefono senza doverlo scrivere due volte. */}
             <div className="mt-4">
-              {linguetta === "contenuto" && contenutoPannello}
-              {linguetta === "design" && (
-                <div className="space-y-5">
-                  <QrColorPicker design={bozza.design} onCambia={cambiaDesign} />
-                  <QrStylePanel design={bozza.design} onCambia={cambiaDesign} />
-                </div>
-              )}
-              {linguetta === "logo" && (
-                <QrLogoEditor
-                  design={bozza.design}
-                  logoLocale={ctx.logoLocale}
-                  nomeLocale={ctx.nomeLocale}
-                  onCambia={cambiaDesign}
-                />
-              )}
-              {linguetta === "cornice" && (
-                <QrFrameSelector design={bozza.design} kind={bozza.kind} onCambia={cambiaDesign} />
-              )}
+              {linguetta === "contenuto" ? contenutoPannello : design}
             </div>
           </section>
         </div>
@@ -233,13 +316,14 @@ export function QrEditor({
 
 /* -------------------------------------------------------------------------- */
 
-type Linguetta = "contenuto" | "design" | "logo" | "cornice";
+/** Le quattro sezioni del pannello del disegno. Una sola aperta per volta. */
+type Sezione = "colore" | "stile" | "logo" | "cornice";
+
+type Linguetta = "contenuto" | "aspetto";
 
 const LINGUETTE: { id: Linguetta; nome: string }[] = [
   { id: "contenuto", nome: "Contenuto" },
-  { id: "design", nome: "Design" },
-  { id: "logo", nome: "Logo" },
-  { id: "cornice", nome: "Cornice" },
+  { id: "aspetto", nome: "Aspetto" },
 ];
 
 function Linguette({ attiva, onCambia }: { attiva: Linguetta; onCambia: (v: Linguetta) => void }) {

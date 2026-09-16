@@ -30,6 +30,15 @@ import { cn } from "@/lib/utils";
  * l'apertura di un'altra riga: su un tablet al leggio un tocco impreciso non
  * deve far sparire quello che si stava leggendo.
  *
+ * **Da tablet in su è una scheda che galleggia.** Non un riquadro incollato
+ * alla testata e al bordo destro: sedici pixel d'aria su tre lati, quattro
+ * angoli tondi, e l'ombra che `.surface` porta già con sé. Attaccato, il
+ * pannello si leggeva come una colonna della pagina — una cosa che sta lì
+ * sempre; staccato si legge per quello che è: qualcosa che si è aperto sopra
+ * la sala, e che si chiude. È anche la lingua che il sistema parla già
+ * altrove, dove la navigazione è una capsula staccata dal fondo e non una
+ * spalla incollata al lato.
+ *
  * **Su telefono è un foglio dal basso.** Non un pannello laterale ristretto: a
  * 390px un pannello da 400 è la pagina intera, e allora tanto vale la forma
  * che il telefono conosce — sale dal basso, si chiude verso il basso, e ha le
@@ -74,8 +83,9 @@ export const PannelloContenuto = React.forwardRef<
         // Telefono: foglio dal basso, alto al massimo l'85% dello schermo —
         // resta un dito di pagina sopra, così si vede che c'è qualcosa dietro.
         "inset-x-0 bottom-0 max-h-[85vh] rounded-t-xl border-x-0 border-b-0",
-        // Da `md`: pannello laterale sotto la testata, fino in fondo.
-        "md:inset-x-auto md:bottom-0 md:right-0 md:top-16 md:max-h-none md:w-[420px] md:max-w-[92vw] md:rounded-t-none md:rounded-tl-xl md:border-x md:border-b",
+        // Da `md`: una scheda staccata. Sedici pixel d'aria sopra la testata,
+        // sotto e a destra; quattro angoli tondi e il bordo che gira intero.
+        "md:inset-x-auto md:bottom-4 md:right-4 md:top-20 md:max-h-none md:w-[420px] md:max-w-[92vw] md:rounded-xl md:border",
         className,
       )}
       {...props}

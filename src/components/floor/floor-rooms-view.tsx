@@ -4,29 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { readApiError } from "@/lib/api-client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Table } from "@prisma/client";
-import { ChevronLeft, ChevronRight, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FloorCanvas, type FloorCanvasHandle } from "./floor-canvas";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import type { TableStaffMap } from "./table-node";
 import type { TableOperationalStatus } from "@/lib/table-status";
-import { FloorServiceFilter } from "./floor-service-filter";
+import { EditorSala, type SalaPerEditor } from "./editor/editor-sala";
+import type { EsitoSalvataggio } from "./editor/use-editor-sala";
 import type { PermessiTavolo } from "@/components/tables/table-profile-drawer";
 
-type RoomWithTables = {
-  id: string;
-  name: string;
-  width: number;
-  height: number;
-  floorPlanUrl: string | null;
-  activeLayoutMode: "IMAGE" | "BUILDER" | null;
-  roomLayoutElements: unknown;
-  tables: Table[];
-};
+type RoomWithTables = SalaPerEditor & { tables: Table[] };
 
 function RoomTransition({ roomKey, children }: { roomKey: string; children: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
@@ -70,7 +60,8 @@ export function FloorRoomsView({
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
-  const canvasRef = useRef<FloorCanvasHandle>(null);
+
+  const salvaRef = useRef<(() => Promise<EsitoSalvataggio>) | null>(null);
 
   const [activeRoomId, setActiveRoomId] = useState(() => {
     const fromUrl = search.get("room");
@@ -99,10 +90,6 @@ export function FloorRoomsView({
     rooms.findIndex((r) => r.id === activeRoomId),
   );
   const activeRoom = rooms[activeIndex] ?? rooms[0];
-  const totalSeats = activeRoom ? activeRoom.tables.reduce((s, t) => s + t.seats, 0) : 0;
-  const activeTables = activeRoom ? activeRoom.tables.filter((t) => t.active) : [];
-  const assignedCount = activeTables.filter((t) => staffByTableId[t.id]?.TABLE_RESPONSIBLE).length;
-  const fullyCovered = activeTables.length > 0 && assignedCount === activeTables.length;
 
   function navigateTo(roomId: string) {
     const sp = new URLSearchParams(search);
@@ -120,7 +107,9 @@ export function FloorRoomsView({
     const nextIndex = ((activeIndex + delta) % rooms.length + rooms.length) % rooms.length;
     const nextRoomId = rooms[nextIndex].id;
     if (nextRoomId === activeRoomId) return;
-    if (canvasRef.current?.isDirty()) {
+    // Cambiare sala smonta l'editor, e con lui tutto quello che non è ancora
+    // arrivato al server. Meglio una domanda in più che una piantina persa.
+    if (dirty) {
       setPendingRoomId(nextRoomId);
       setUnsavedOpen(true);
       return;
@@ -129,7 +118,11 @@ export function FloorRoomsView({
   }
 
   async function handleSaveAndContinue() {
-    await canvasRef.current?.save();
+    // Il salvataggio vive nell'editor, insieme allo stato che deve salvare:
+    // qui arriva solo il permesso di chiamarlo. Se fallisce si resta dove si
+    // è — cambiare sala butterebbe via proprio quello che non è passato.
+    const esito = await salvaRef.current?.();
+    if (esito === "errore") return;
     if (pendingRoomId) applySwitch(pendingRoomId);
     setPendingRoomId(null);
     setUnsavedOpen(false);
@@ -223,107 +216,66 @@ export function FloorRoomsView({
     );
   }
 
-  return (
-    <div className="flex h-full min-h-0 flex-col gap-3 animate-fade-in">
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">Sala</p>
-          <div className="flex min-w-0 items-center gap-1">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={() => goTo(-1)}
-              disabled={rooms.length <= 1}
-              aria-label="Sala precedente"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="min-w-0 truncate text-display text-xl sm:text-2xl">{activeRoom.name}</h1>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={() => goTo(1)}
-              disabled={rooms.length <= 1}
-              aria-label="Sala successiva"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            {rooms.length > 1 && (
-              <span className="ml-1 text-xs text-muted-foreground">
-                {activeIndex + 1} / {rooms.length}
-              </span>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" size="icon" variant="ghost" aria-label="Azioni sala">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setRenameValue(activeRoom.name);
-                    setRenameError(null);
-                    setRenameOpen(true);
-                  }}
-                >
-                  <Pencil className="h-4 w-4" /> Rinomina sala
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setNewRoomValue("");
-                    setNewRoomError(null);
-                    setNewRoomOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4" /> Nuova sala
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setDeleteError(null);
-                    setDeleteOpen(true);
-                  }}
-                  className="text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" /> Elimina sala
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {activeRoom.tables.length} tavoli · {totalSeats} posti totali
-            {dirty && <span className="text-accent"> · Modifiche non salvate</span>}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <FloorServiceFilter date={date} service={service} serviceOptions={serviceOptions} />
-          <Badge tone={fullyCovered ? "success" : "neutral"}>
-            {assignedCount} di {activeTables.length} tavoli assegnati
-          </Badge>
-        </div>
-      </header>
+  const vociMenuSala = (
+    <>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onClick={() => {
+          setRenameValue(activeRoom.name);
+          setRenameError(null);
+          setRenameOpen(true);
+        }}
+      >
+        <Pencil className="h-4 w-4" /> Rinomina sala
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => {
+          setNewRoomValue("");
+          setNewRoomError(null);
+          setNewRoomOpen(true);
+        }}
+      >
+        <Plus className="h-4 w-4" /> Nuova sala
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => {
+          setDeleteError(null);
+          setDeleteOpen(true);
+        }}
+        className="text-destructive"
+      >
+        <Trash2 className="h-4 w-4" /> Elimina sala
+      </DropdownMenuItem>
+    </>
+  );
 
-      <div className="surface relative min-h-0 flex-1 overflow-hidden rounded-xl">
+  return (
+    /*
+      `flex-1` e non `h-full`: la pagina vive dentro un `main` che ha una sua
+      imbottitura, e un figlio alto il 100% della sua altezza sfora esattamente
+      di quell'imbottitura — poco, ma abbastanza da tagliare il bordo basso
+      della piantina e far comparire una barra di scorrimento su una schermata
+      che non deve scorrere.
+    */
+    <div className="flex min-h-0 flex-1 flex-col animate-fade-in">
+      <div className="min-h-0 flex-1">
         <RoomTransition roomKey={activeRoom.id}>
-          <FloorCanvas
-            ref={canvasRef}
+          <EditorSala
             key={activeRoom.id}
-            initialTables={activeRoom.tables}
-            roomId={activeRoom.id}
-            roomName={activeRoom.name}
-            floorPlanUrl={activeRoom.floorPlanUrl}
-            activeLayoutMode={activeRoom.activeLayoutMode}
-            roomLayoutElements={activeRoom.roomLayoutElements}
-            width={activeRoom.width}
-            height={activeRoom.height}
-            staffByTableId={staffByTableId}
-            statusByTableId={statusByTableId}
+            sala={activeRoom}
+            tavoli={activeRoom.tables}
+            indiceSala={activeIndex}
+            totaleSale={rooms.length}
+            onCambiaSala={goTo}
+            vociMenuSala={vociMenuSala}
             date={date}
             service={service}
+            serviceOptions={serviceOptions}
+            staffByTableId={staffByTableId}
+            statusByTableId={statusByTableId}
             permessi={permessi}
-            onDirtyChange={setDirty}
+            onSporcoChange={setDirty}
+            salvaRef={salvaRef}
           />
         </RoomTransition>
       </div>
