@@ -3,7 +3,7 @@
 import { isAssignable } from "@/lib/staff-status";
 import { forwardRef, memo } from "react";
 import type { Booking, Guest, Table } from "@prisma/client";
-import { Circle, Lock, MoreHorizontal, Trash2, Users } from "lucide-react";
+import { Circle, Lock, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { cn, formatTime } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -99,10 +99,21 @@ const STATUS_RING: Record<TableOperationalStatus, string> = {
   BLOCCATO: "ring-1 ring-muted-foreground/30",
 };
 
+/**
+ * Il menu dei tre puntini: **solo quello che cambia il tavolo come oggetto**.
+ *
+ * Prima conteneva «Assegna personale» e «Pagamento con QR», cioè le due cose
+ * che si fanno più spesso durante un servizio, dietro tre gesti: seleziona il
+ * tavolo, trova il pallino, apri, scegli. Adesso stanno nel profilo del
+ * tavolo, che si apre con un clic — e qui restano la modifica e
+ * l'eliminazione, che si fanno quando si disegna la sala e non mentre la si
+ * lavora.
+ */
 type MenuProps = {
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
-  onOpenAssignStaff: (tableId: string) => void;
+  /** Nome, posti, forma. La posizione si trascina nel costruttore della sala. */
+  onModifica: (tableId: string) => void;
 };
 
 /**
@@ -364,8 +375,8 @@ export const RoomTableNode = memo(
                     onPointerDown={(e) => e.stopPropagation()}
                     className="min-w-[200px]"
                   >
-                    <DropdownMenuItem onSelect={() => menu.onOpenAssignStaff(t.id)}>
-                      <Users className="h-4 w-4" /> Assegna personale
+                    <DropdownMenuItem onSelect={() => menu.onModifica(t.id)}>
+                      <Pencil className="h-4 w-4" /> Modifica tavolo
                     </DropdownMenuItem>
                     <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => onDelete?.(t.id)}>
                       <Trash2 className="h-4 w-4" /> Elimina tavolo

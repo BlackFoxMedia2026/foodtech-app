@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { todayInVenue } from "@/lib/venue-time";
-import { getActiveVenue } from "@/lib/tenant";
+import { can, getActiveVenue } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
 import { listServiceOptions } from "@/server/waiter-assignments";
 import { listStaffAssignmentsForService } from "@/server/staff-assignments";
@@ -75,6 +75,15 @@ export default async function FloorPage({
       serviceOptions={serviceOptions}
       staffByTableId={staffByTableId}
       statusByTableId={statusByTableId}
+      // Chi guarda decide cosa si può toccare dal profilo del tavolo: la
+      // matrice sta in `lib/abilities.ts`, e leggerla qui è il motivo per cui
+      // il pannello non mostra a un cameriere un interruttore che spegne gli
+      // incassi.
+      permessi={{
+        prenotazioni: can(ctx.role, "manage_bookings"),
+        personale: can(ctx.role, "manage_staff"),
+        locale: can(ctx.role, "manage_venue"),
+      }}
     />
   );
 }

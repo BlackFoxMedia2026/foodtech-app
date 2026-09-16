@@ -28,6 +28,11 @@ export default async function ServiceRoomPage() {
       tables={tables.map((t) => ({ ...t, shape: String(t.shape) }))}
       rooms={rooms}
       canManage={can(ctx.role, "manage_bookings")}
+      permessi={{
+        prenotazioni: can(ctx.role, "manage_bookings"),
+        personale: can(ctx.role, "manage_staff"),
+        locale: can(ctx.role, "manage_venue"),
+      }}
     />
   );
 }
