@@ -221,3 +221,122 @@ export async function chiudiChiamateAppese(
 export function numeroUtilizzabile(phone: string | null | undefined): boolean {
   return codaIdentita(phone) != null;
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Lo storico                                                                */
+/* -------------------------------------------------------------------------- */
+
+export type ChiamataInElenco = {
+  id: string;
+  telefono: string | null;
+  stato: StatoChiamata;
+  quando: Date;
+  /** Quanto è durata, in secondi. Nullo se non ha risposto nessuno. */
+  durataSecondi: number | null;
+  ospite: {
+    id: string;
+    nome: string;
+    blocked: boolean;
+    noShowCount: number;
+    allergies: string | null;
+  } | null;
+  /** La prenotazione nata da questa chiamata, se ne è nata una. */
+  prenotazione: { id: string; reference: string; startsAt: Date; partySize: number } | null;
+};
+
+export type ElencoChiamate = {
+  chiamate: ChiamataInElenco[];
+  /** Quante ce ne sono in tutto nel periodo: un tetto senza totale è una bugia. */
+  totale: number;
+  /** Quante sono rimaste senza risposta e non hanno prodotto una prenotazione. */
+  daRichiamare: number;
+};
+
+/** Quante righe alla volta. */
+const PER_PAGINA = 50;
+
+/**
+ * Le chiamate di questo locale, dalla più recente.
+ *
+ * L'ospite si legge dalla **relazione** e non dal numero: qui si guarda il
+ * passato, e il passato è chi era attribuito a quella chiamata quando è
+ * arrivata — non chi risponde a quel numero oggi.
+ */
+export async function elencoChiamate(
+  venueId: string,
+  opzioni: { giorni?: number; solo?: "perse" | "tutte"; pagina?: number } = {},
+): Promise<ElencoChiamate> {
+  const giorni = opzioni.giorni ?? 7;
+  const solo = opzioni.solo ?? "tutte";
+  const pagina = Math.max(1, opzioni.pagina ?? 1);
+  const da = new Date(Date.now() - giorni * 24 * 60 * 60 * 1000);
+
+  const dove = {
+    venueId,
+    startedAt: { gte: da },
+    ...(solo === "perse" ? { status: "MISSED" as const } : {}),
+  };
+
+  const [righe, totale, daRichiamare] = await Promise.all([
+    db.phoneCall.findMany({
+      where: dove,
+      orderBy: { startedAt: "desc" },
+      skip: (pagina - 1) * PER_PAGINA,
+      take: PER_PAGINA,
+      select: {
+        id: true,
+        fromNumber: true,
+        status: true,
+        startedAt: true,
+        answeredAt: true,
+        endedAt: true,
+        guest: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            blocked: true,
+            noShowCount: true,
+            allergies: true,
+          },
+        },
+        booking: { select: { id: true, reference: true, startsAt: true, partySize: true } },
+      },
+    }),
+    db.phoneCall.count({ where: dove }),
+    /* Da richiamare: nessuno ha risposto **e** non è nata una prenotazione.
+       Senza la seconda condizione ci finirebbe chi ha riprovato subito dopo e
+       ha prenotato — cioè si richiamerebbe chi è già a posto. */
+    db.phoneCall.count({
+      where: { venueId, startedAt: { gte: da }, status: "MISSED", bookingId: null },
+    }),
+  ]);
+
+  return {
+    totale,
+    daRichiamare,
+    chiamate: righe.map((r) => ({
+      id: r.id,
+      telefono: r.fromNumber ? telefonoLeggibile(r.fromNumber) : null,
+      stato: r.status as StatoChiamata,
+      quando: r.startedAt,
+      durataSecondi:
+        r.answeredAt && r.endedAt
+          ? Math.max(0, Math.round((r.endedAt.getTime() - r.answeredAt.getTime()) / 1000))
+          : null,
+      ospite: r.guest
+        ? {
+            id: r.guest.id,
+            nome: `${r.guest.firstName}${r.guest.lastName ? ` ${r.guest.lastName}` : ""}`,
+            blocked: r.guest.blocked,
+            noShowCount: r.guest.noShowCount,
+            allergies: r.guest.allergies,
+          }
+        : null,
+      prenotazione: r.booking,
+    })),
+  };
+}
+
+/** Quante righe entrano in una pagina dell'elenco. */
+export const CHIAMATE_PER_PAGINA = PER_PAGINA;

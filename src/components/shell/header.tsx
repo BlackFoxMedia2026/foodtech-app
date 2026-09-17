@@ -1,11 +1,11 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Agent } from "@/components/agent/agent";
-import { PRIMARY_NAV, classiVoce, isNavActive, titoloPagina } from "@/components/shell/nav-items";
+import { vociPrincipali, classiVoce, isNavActive, titoloPagina } from "@/components/shell/nav-items";
 import { MarketingMenu } from "./marketing-menu";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
@@ -43,12 +43,19 @@ export function Header({
   user,
   venues,
   activeVenueId,
+  telefonoAttivo = false,
 }: {
   user: { name?: string | null; email?: string | null };
   venues: { id: string; name: string; city: string | null }[];
   activeVenueId: string;
+  /** Se questo locale ha il telefono collegato: decide la voce «Telefono». */
+  telefonoAttivo?: boolean;
 }) {
   const pathname = usePathname();
+  /* Memoizzata perché entra nelle dipendenze dell'effetto che misura la
+     pillola: un array nuovo a ogni rendering rifarebbe la misura a ogni
+     battito. */
+  const voci = useMemo(() => vociPrincipali(telefonoAttivo), [telefonoAttivo]);
   const inImpostazioni = pathname === "/settings" || pathname.startsWith("/settings/");
   // `HTMLElement` e non `HTMLAnchorElement`: Marketing non è un link ma il
   // bottone che apre il suo menu, e occupa lo stesso posto in fila.
@@ -68,10 +75,10 @@ export function Header({
     // Dentro le Impostazioni questa fila non è montata: misurarla darebbe zero
     // e la pillola ricomparirebbe larga zero all'uscita.
     if (inImpostazioni) return;
-    const activeItem = PRIMARY_NAV.find((item) => isNavActive(pathname, item));
+    const activeItem = voci.find((item) => isNavActive(pathname, item));
     const el = activeItem ? itemRefs.current.get(activeItem.href) : undefined;
     setIndicator(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
-  }, [pathname, inImpostazioni]);
+  }, [pathname, inImpostazioni, voci]);
 
   return (
     <header className="relative z-10 bg-background">
@@ -118,7 +125,7 @@ export function Header({
               />
             )}
 
-            {PRIMARY_NAV.map((item) => {
+            {voci.map((item) => {
               const Icon = item.icon;
               const active = isNavActive(pathname, item);
               const registra = (el: HTMLElement | null) => {
