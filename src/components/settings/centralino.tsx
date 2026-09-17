@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CopyButton } from "@/components/ui/copy-button";
 import {
   GruppoImpostazioni,
   RigaImpostazione,
@@ -60,9 +61,12 @@ export type StatoCentralinoVista = {
 
 export function Centralino({
   stato,
+  venueId,
   canManage,
 }: {
   stato: StatoCentralinoVista;
+  /** L'identificativo di questo locale: è quello che va sulla licenza. */
+  venueId: string;
   canManage: boolean;
 }) {
   const router = useRouter();
@@ -181,6 +185,30 @@ export function Centralino({
           </RigaImpostazione>
         );
       })}
+
+      {/*
+        L'identificativo del locale, da copiare.
+
+        Sta qui perche **serve per ottenere la chiave**: chi la emette deve
+        sapere per quale locale, e questo codice non era scritto in nessuna
+        schermata del prodotto. Senza, l'unico modo di averlo era leggerlo
+        dall'indirizzo di una pagina o dal database — e chi compilava il modulo
+        scriveva il nome del locale al suo posto, ottenendo una licenza che non
+        accendeva niente.
+      */}
+      {canManage && !stato.attivo && (
+        <RigaImpostazione
+          nome="Identificativo di questo locale"
+          descrizione="Serve a noi per emettere la tua chiave. Mandacelo, o tienilo a portata quando ce lo chiediamo."
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-md border border-border/60 bg-muted/30 px-2 py-1 font-mono text-xs">
+              {venueId}
+            </code>
+            <CopyButton value={venueId} variant="outline" size="sm" soloIcona />
+          </div>
+        </RigaImpostazione>
+      )}
 
       {canManage && (
         <RigaLibera>

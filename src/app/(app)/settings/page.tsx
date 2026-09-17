@@ -572,6 +572,7 @@ export default async function SettingsPage() {
                 cose che si **collegano** al locale invece di configurarsi. */}
             <Centralino
               canManage={puoGestireTeam}
+              venueId={ctx.venueId}
               stato={{
                 attivo: centralino.attivo,
                 funzioni: centralino.funzioni,
