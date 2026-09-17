@@ -35,9 +35,21 @@ type TableOpt = { id: string; label: string; seats: number };
 export function BookingForm({
   tables,
   onClose,
+  iniziale,
 }: {
   tables: TableOpt[];
   onClose?: () => void;
+  /**
+   * Quello che si sa già, quando si arriva qui da una telefonata.
+   *
+   * Non è una comodità: chi apre questo modulo ha una persona in linea che
+   * sta dicendo il suo nome, e ridigitare un numero che il prodotto conosce
+   * già è il momento in cui si sbaglia una cifra. I pulsanti «Prenota» del
+   * riquadro della chiamata e della pagina Telefono passano da qui — e per
+   * due giorni hanno passato i dati nell'indirizzo a una pagina che non li
+   * leggeva, cioè erano un pulsante che perdeva il numero.
+   */
+  iniziale?: { telefono?: string; nome?: string; cognome?: string };
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -71,7 +83,7 @@ export function BookingForm({
     sola sono nove buttate. E si comincia a chiedere da sei cifre: sotto, la
     domanda non ha abbastanza informazione per avere una risposta utile.
   */
-  const [telefono, setTelefono] = useState("");
+  const [telefono, setTelefono] = useState(iniziale?.telefono ?? "");
   const [riconosciuto, setRiconosciuto] = useState<OspiteRiconosciuto | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
 
@@ -200,11 +212,22 @@ export function BookingForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="firstName">Nome</Label>
-          <Input id="firstName" name="firstName" required placeholder="Lorenzo" />
+          <Input
+            id="firstName"
+            name="firstName"
+            required
+            placeholder="Lorenzo"
+            defaultValue={iniziale?.nome ?? ""}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="lastName">Cognome</Label>
-          <Input id="lastName" name="lastName" placeholder="Ferri" />
+          <Input
+            id="lastName"
+            name="lastName"
+            placeholder="Ferri"
+            defaultValue={iniziale?.cognome ?? ""}
+          />
         </div>
         {/* Il telefono prende la riga intera: al telefono è il campo più
             importante dopo il nome, e da quando l'email è nel secondo livello

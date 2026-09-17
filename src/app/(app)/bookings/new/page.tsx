@@ -6,13 +6,54 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookingForm } from "@/components/bookings/booking-form";
 
-export default async function NewBookingPage() {
+/**
+ * Nuova prenotazione.
+ *
+ * ## Quello che arriva dall'indirizzo
+ *
+ * `?guest=<id>` e `?phone=<numero>`: sono i dati che si sanno già quando si
+ * arriva qui **da una telefonata** — dal riquadro della chiamata in Servizio o
+ * dalle chiamate perse.
+ *
+ * Questa pagina li ignorava. I pulsanti «Prenota» del telefono li passavano e
+ * il modulo si apriva vuoto: chi risponde doveva ridigitare il numero mentre
+ * ascoltava la persona, che è il momento in cui si sbaglia una cifra. Un
+ * collegamento che sembra portare qualcosa e non lo porta è peggio di un
+ * collegamento che non c'è.
+ *
+ * Il nome si legge **dal database** e non dall'indirizzo: un nome preso da una
+ * query finirebbe in una prenotazione vera senza che nessuno l'abbia scritto.
+ * Dall'indirizzo si prende solo *di chi si tratta*, e chi si tratta lo dice il
+ * database.
+ */
+export default async function NewBookingPage({
+  searchParams,
+}: {
+  searchParams: { guest?: string; phone?: string };
+}) {
   const ctx = await getActiveVenue();
-  const tables = await db.table.findMany({
-    where: { venueId: ctx.venueId, active: true },
-    select: { id: true, label: true, seats: true },
-    orderBy: { label: "asc" },
-  });
+
+  const [tables, ospite] = await Promise.all([
+    db.table.findMany({
+      where: { venueId: ctx.venueId, active: true },
+      select: { id: true, label: true, seats: true },
+      orderBy: { label: "asc" },
+    }),
+    /* Filtrato per locale, come ogni lettura: un identificativo altrui non
+       deve poter riempire un modulo qui dentro. */
+    searchParams.guest
+      ? db.guest.findFirst({
+          where: { id: searchParams.guest, venueId: ctx.venueId },
+          select: { firstName: true, lastName: true, phone: true },
+        })
+      : null,
+  ]);
+
+  const iniziale = {
+    telefono: ospite?.phone ?? searchParams.phone ?? undefined,
+    nome: ospite?.firstName ?? undefined,
+    cognome: ospite?.lastName ?? undefined,
+  };
 
   return (
     <div className="schermo animate-fade-in mx-auto w-full max-w-2xl gap-3">
@@ -26,7 +67,7 @@ export default async function NewBookingPage() {
           <CardTitle>Nuova prenotazione</CardTitle>
         </CardHeader>
         <CardContent className="fill-scroll pr-0.5">
-          <BookingForm tables={tables} />
+          <BookingForm tables={tables} iniziale={iniziale} />
         </CardContent>
       </Card>
     </div>
