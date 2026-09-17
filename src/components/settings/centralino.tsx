@@ -70,12 +70,15 @@ export type StatoCentralinoVista = {
 export function Centralino({
   stato,
   sip,
+  collegamenti,
   venueId,
   canManage,
 }: {
   stato: StatoCentralinoVista;
   /** I dati del telefono nel browser. La password non arriva mai qui. */
   sip: StatoSipVista;
+  /** Le chiavi di collegamento attive: solo il prefisso, mai il valore. */
+  collegamenti: { id: string; prefisso: string }[];
   /** L'identificativo di questo locale: è quello che va sulla licenza. */
   venueId: string;
   canManage: boolean;
@@ -84,6 +87,24 @@ export function Centralino({
   const [chiave, setChiave] = useState("");
   const [inCorso, setInCorso] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
+
+  // La chiave con cui il centralino legge i dati di questo locale.
+  const [chiaveEmessa, setChiaveEmessa] = useState<string | null>(null);
+  const [erroreChiave, setErroreChiave] = useState<string | null>(null);
+
+  async function emettiCollegamento() {
+    setInCorso(true);
+    setErroreChiave(null);
+    const res = await fetch("/api/venue/centralino/collegamento", { method: "POST" });
+    setInCorso(false);
+    if (!res.ok) {
+      setErroreChiave(await readApiError(res, "Non siamo riusciti a creare la chiave."));
+      return;
+    }
+    const { chiave } = (await res.json()) as { chiave: string };
+    setChiaveEmessa(chiave);
+    router.refresh();
+  }
 
   // I dati del telefono nel browser.
   const [server, setServer] = useState(sip.server ?? "");
@@ -230,6 +251,65 @@ export function Centralino({
           </RigaImpostazione>
         );
       })}
+
+      {/*
+        La chiave con cui il centralino legge i dati di questo locale.
+
+        Si emette da qui e non da un terminale: era il pezzo che rendeva il
+        collegamento non consegnabile. E si emette da **Tavolo** perché è
+        Tavolo a possedere questi dati — se la fabbricasse il pannello di chi
+        vende, un sistema esterno potrebbe aprire la rubrica di un locale
+        senza che quel locale ne sappia niente.
+      */}
+      {stato.attivo && canManage && (
+        <RigaImpostazione
+          nome="Chiave di collegamento"
+          descrizione={
+            collegamenti.length > 0
+              ? `${collegamenti.length === 1 ? "Una chiave attiva" : `${collegamenti.length} chiavi attive`}. Serve al centralino per mandarci le chiamate.`
+              : "Serve al centralino per mandarci le chiamate. La emetti qui e ce la mandi: si vede una volta sola."
+          }
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {collegamenti.map((c) => (
+              <ValoreImpostazione key={c.id} mono>
+                {c.prefisso}…
+              </ValoreImpostazione>
+            ))}
+            <Button variant="outline" size="sm" onClick={emettiCollegamento} disabled={inCorso}>
+              {collegamenti.length > 0 ? "Emettine un'altra" : "Emetti la chiave"}
+            </Button>
+          </div>
+        </RigaImpostazione>
+      )}
+
+      {chiaveEmessa && (
+        <RigaLibera>
+          <div className="rounded-md border border-sage/40 bg-sage/10 p-3">
+            <p className="text-sm font-medium">La chiave di collegamento</p>
+            <code className="mt-2 block break-all rounded border border-border/60 bg-muted/30 p-2 font-mono text-xs">
+              {chiaveEmessa}
+            </code>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <CopyButton value={chiaveEmessa} variant="outline" size="sm">
+                Copia
+              </CopyButton>
+              {/* Detto adesso e non dopo: non è rileggibile, e una schermata
+                  che non lo dice produce una telefonata il giorno dopo. */}
+              <span className="t-nota">
+                Copiala adesso e mandacela: non è più leggibile. Nel database resta solo la sua
+                impronta.
+              </span>
+            </div>
+          </div>
+        </RigaLibera>
+      )}
+
+      {erroreChiave && (
+        <RigaLibera>
+          <p className="text-sm text-destructive">{erroreChiave}</p>
+        </RigaLibera>
+      )}
 
       {/*
         Il telefono nel browser: dove registrarsi.

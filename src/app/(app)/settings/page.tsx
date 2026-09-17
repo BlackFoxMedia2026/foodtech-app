@@ -27,6 +27,7 @@ import { listReviewLinks } from "@/server/reviews";
 import { listInviti, listTeam } from "@/server/team";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { statoTelefonoBrowser } from "@/server/telefono-browser";
+import { elencaApiToken } from "@/server/api-token";
 import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
 import { AccessoTeam } from "@/components/settings/accesso-team";
 import { Centralino } from "@/components/settings/centralino";
@@ -111,6 +112,7 @@ export default async function SettingsPage() {
     inviti,
     centralino,
     telefonoSip,
+    chiaviCollegamento,
   ] = await Promise.all([
     db.venue.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: "asc" } }),
     listFasceServizio(ctx.venueId),
@@ -129,6 +131,7 @@ export default async function SettingsPage() {
     listInviti(ctx.venueId, baseUrl),
     statoCentralino(ctx.venueId),
     statoTelefonoBrowser(ctx.venueId),
+    elencaApiToken(ctx.venueId),
   ]);
 
   /* `manage_venue`, la stessa capacità che chiedono le rotte `/api/team/*`:
@@ -577,6 +580,9 @@ export default async function SettingsPage() {
               canManage={puoGestireTeam}
               venueId={ctx.venueId}
               sip={telefonoSip}
+              collegamenti={chiaviCollegamento
+                .filter((t) => !t.revocatoIl)
+                .map((t) => ({ id: t.id, prefisso: t.prefisso }))}
               stato={{
                 attivo: centralino.attivo,
                 funzioni: centralino.funzioni,
