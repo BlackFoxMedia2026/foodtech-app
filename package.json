@@ -22,7 +22,8 @@
     "db:deploy-safe": "tsx scripts/migrate-safe.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "db:seed-e2e": "tsx prisma/seed-e2e.ts"
+    "db:seed-e2e": "tsx prisma/seed-e2e.ts",
+    "token:telefonia": "tsx scripts/token-telefonia.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sesv2": "^3.1132.0",

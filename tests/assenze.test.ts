@@ -127,6 +127,19 @@ describe("quanto vale un coperto perso", () => {
     const conto = await openOrderForBooking(venueId, b.id, { actor: attore() });
     await addLine(venueId, conto.id, { menuItemId: piattoId, quantity: 2 }, { actor: attore() });
     await closeOrder(venueId, conto.id, { actor: attore() });
+    /*
+      `closeOrder` timbra `completedAt` con **l'ora attuale**, e il rapporto
+      cerca i conti chiusi dentro il periodo esaminato — che qui è una
+      settimana fissa di settembre. Finché la data vera stava in quella
+      settimana il test passava; il giorno dopo ha iniziato a fallire da solo,
+      senza che nessuno toccasse il codice. La data della chiusura si porta
+      dentro il periodo di proposito: un test che dipende da che giorno è oggi
+      non prova niente.
+    */
+    await db.order.update({
+      where: { id: conto.id },
+      data: { completedAt: new Date("2026-09-08T22:30:00+02:00") },
+    });
 
     // Lo scontrino medio dichiarato è un altro numero: non deve vincere.
     await db.venue.update({ where: { id: venueId }, data: { avgSpendCents: 9_900 } });

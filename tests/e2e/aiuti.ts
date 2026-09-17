@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 /** Il locale creato dal seed dei percorsi, scritto da `global-setup`. */
@@ -39,4 +40,27 @@ export function unico(base: string): string {
 /** Un euro leggibile come lo scrive l'interfaccia italiana. */
 export function euro(centesimi: number): string {
   return `${(centesimi / 100).toFixed(2).replace(".", ",")} €`;
+}
+
+/**
+ * Apre un'azione della scheda in Servizio.
+ *
+ * Dal 15 settembre la scheda mostra un comando solo — quello principale — e
+ * tiene gli altri dietro «…». Le prove cliccavano direttamente su «Apri il
+ * conto di X» e da allora aspettavano per due minuti un pulsante che c'era ma
+ * era chiuso: il difetto era nella prova, non nel prodotto, ma il prodotto
+ * l'ha scoperto solo la prova.
+ *
+ * Qui si fa quello che fa una persona: si apre il menu e poi si clicca. Se
+ * l'azione è già in vista (le schede cambiano comando principale a seconda
+ * dello stato), si clicca senza aprire niente.
+ */
+export async function azioneScheda(page: Page, nome: string, azione: string) {
+  const diretta = page.getByRole("button", { name: azione });
+  if (await diretta.isVisible().catch(() => false)) {
+    await diretta.click();
+    return;
+  }
+  await page.getByRole("button", { name: `Altre azioni per ${nome}` }).click();
+  await page.getByRole("button", { name: azione }).click();
 }

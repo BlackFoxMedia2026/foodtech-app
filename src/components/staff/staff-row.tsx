@@ -139,7 +139,11 @@ export function StaffRow({
             {assignmentSummary}
           </p>
         ) : assignable && available ? (
-          <p className="text-xs text-muted-foreground/60">Nessuna assegnazione</p>
+          /* Senza il `/60`: `muted-foreground` è già il grigio del secondo
+             piano, e smorzarlo di un altro 40% lo portava a 3.64:1 sul fondo
+             reso, sotto la soglia. «Nessuna assegnazione» è l'unica cosa
+             scritta su quella riga: se non si legge, la riga non dice niente. */
+          <p className="text-xs text-muted-foreground">Nessuna assegnazione</p>
         ) : null}
         {avviso && (
           <Link href={`${scheda}`} className="mt-1 inline-block">

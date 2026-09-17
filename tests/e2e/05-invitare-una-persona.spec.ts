@@ -21,8 +21,12 @@ test("invitare qualcuno: il link vale una volta, e chi lo accetta entra", async 
   await page.locator("[role=option]", { hasText: "Cameriere" }).first().click();
   await page.getByRole("button", { name: "Crea l'invito" }).click();
 
-  // L'invito compare in attesa, col ruolo e la scadenza.
-  await expect(page.getByText("Inviti in attesa")).toBeVisible({ timeout: 20_000 });
+  /* L'invito compare in attesa, col ruolo e la scadenza. Il marcatore sta
+     sulla riga («Invito in attesa · Cameriere · scade il…») e non in un
+     sottotitolo: nelle Impostazioni a righe un titolo dentro un gruppo
+     sarebbe un terzo livello di intestazione per due righe. */
+  await expect(page.getByText(email).first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/Invito in attesa/).first()).toBeVisible();
   const riga = page.locator("div").filter({ hasText: email }).filter({ hasText: "Cameriere" }).last();
   await expect(riga).toBeVisible();
 

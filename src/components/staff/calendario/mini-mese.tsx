@@ -102,7 +102,12 @@ export function MiniMese({
                 })}
                 className={cn(
                   "relative mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs tabular-nums transition-colors",
-                  fuoriMese ? "text-muted-foreground/35" : "text-foreground/85",
+                  /* I giorni del mese prima e dopo restano in secondo piano, ma
+                     si leggono: al 35% stavano a 2.14:1, e sono **pulsanti** —
+                     ci si clicca sopra per scegliere una data, quindi il numero
+                     va letto. La gerarchia la fa `muted-foreground` contro
+                     `foreground`, non l'opacità. */
+                  fuoriMese ? "text-muted-foreground" : "text-foreground/85",
                   !scelto && "hover:bg-cream/15",
                   scelto && "bg-cream font-semibold text-clay-ink",
                   oggiQui && !scelto && "font-semibold text-accent-strong",

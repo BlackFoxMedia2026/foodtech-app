@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { unico } from "./aiuti";
+import { unico, azioneScheda } from "./aiuti";
 
 /**
  * Una gift card si usa **in più volte**, e quello che resta resta.
@@ -45,7 +45,7 @@ test("gift card: si emette, si scala in parte, e il resto resta sulla carta", as
   /* --- 3. Un piatto sul conto, e cinque euro dalla carta ----------------- */
 
   await page.goto("/service");
-  await page.getByRole("button", { name: `Apri il conto di ${nome}` }).click();
+  await azioneScheda(page, nome, `Apri il conto di ${nome}`);
   const conto = page.locator('[role="dialog"]');
   await expect(conto).toBeVisible();
 

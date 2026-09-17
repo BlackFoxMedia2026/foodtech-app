@@ -4,6 +4,8 @@ import { ZodError } from "zod";
 import { resolveActiveVenue, type ActiveVenueContext } from "./tenant";
 import { can, type Ability } from "./abilities";
 import { messaggioDiValidazione } from "./validation-message";
+import { tokenDaIntestazione, type Ambito } from "@/lib/api-token-forma";
+import { verificaApiToken } from "@/server/api-token";
 
 /**
  * Punto unico da cui passano autenticazione, locale attivo e permessi delle
@@ -78,6 +80,50 @@ export async function requireVenueApi(ability?: Ability): Promise<VenueApiResult
   }
 
   return { ok: true, ...resolved.context };
+}
+
+export type ApiTokenContext = { ok: true; venueId: string; tokenId: string; ambiti: string[] };
+export type ApiTokenResult = ApiTokenContext | VenueApiFailure;
+
+/**
+ * Il guardiano delle rotte che usa un **servizio esterno**, non una persona.
+ *
+ * `requireVenueApi` legge la sessione del browser: serve a chi ha fatto
+ * l'accesso. Il centralino telefonico non ha una sessione — vive su un altro
+ * server — e si presenta con un token che vale per **un locale solo**.
+ *
+ * Il motivo del rifiuto resta fuori dalla risposta: a chi chiama si dice solo
+ * «no». Sapere *perché* un token non va (sconosciuto? scaduto? senza
+ * l'ambito?) aiuta chi prova a indovinarlo, e non aiuta chi ha un token
+ * valido. Il motivo va nel registro del server, dove serve a noi.
+ */
+export async function requireApiToken(req: Request, ambito: Ambito): Promise<ApiTokenResult> {
+  const esito = await verificaApiToken(
+    tokenDaIntestazione(req.headers.get("authorization")),
+    ambito,
+  );
+
+  if (!esito.ok) {
+    /* Un ambito mancante è un 403, non un 401: il token è valido, quello che
+       chiede non gli è concesso. La differenza conta per chi integra — un 401
+       dice «rifai il token», un 403 dice «chiedi un permesso». */
+    if (esito.motivo === "ambito") {
+      return {
+        ok: false,
+        response: apiError(403, "forbidden", "Questo token non è abilitato a questa operazione.", {
+          ambito,
+        }),
+      };
+    }
+    // eslint-disable-next-line no-console
+    console.warn(`[api-token] rifiutato: ${esito.motivo}`);
+    return {
+      ok: false,
+      response: apiError(401, "unauthenticated", "Token non valido."),
+    };
+  }
+
+  return { ok: true, venueId: esito.venueId, tokenId: esito.tokenId, ambiti: esito.ambiti };
 }
 
 /**
