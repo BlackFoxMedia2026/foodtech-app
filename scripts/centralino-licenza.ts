@@ -1,6 +1,18 @@
 /**
  * Il lato di **miocentralino**: genera le chiavi ed emette le licenze.
  *
+ * ## La strada normale non è questa
+ *
+ * Dal 17 settembre 2026 le chiavi si generano e le licenze si emettono
+ * **dall'interfaccia di miocentralino**, su `sip.ilmiocentralino.it` →
+ * *Gestionali*: chi vende preme un pulsante, non apre un terminale, e resta
+ * scritto chi ha emesso cosa e per chi.
+ *
+ * Questo comando resta per due casi: **avviare** la cosa la prima volta, e
+ * **rimediare** se l'interfaccia non è raggiungibile. Emettere una licenza da
+ * qui non lascia traccia nel registro di miocentralino — si sa che esiste solo
+ * perché il cliente ce l'ha.
+ *
  * Questo script non serve al ristoratore e non serve a Tavolo in produzione:
  * serve a chi **vende** il centralino. Sta nel repo di Tavolo per una ragione
  * sola — il testo su cui si firma deve essere identico da entrambe le parti

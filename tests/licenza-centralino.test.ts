@@ -154,3 +154,68 @@ describe("come si mostra", () => {
     expect(licenzaLeggibile("abc")).toBeNull();
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+   I vettori di riferimento condivisi con miocentralino.
+
+   Il formato della chiave vive in due repository: `blackfox-voice` firma,
+   Tavolo verifica. Due repository non restano allineati per buona volontà — e
+   quando divergono la firma non torna più, con un sintomo che accusa la chiave
+   invece del formato: «questa chiave non è autentica» su una chiave
+   perfettamente buona, e un pomeriggio buttato dal lato sbagliato.
+
+   Questi valori sono gli stessi di
+   `apps/voice-core/src/licenze/vettori.ts` in blackfox-voice. La coppia di
+   chiavi è di prova e non firma niente di vero. Se uno dei due lati cambia il
+   formato, il suo test diventa rosso prima che una licenza arrivi a un cliente.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+const VETTORE_PUBBLICA = "MCowBQYDK2VwAyEA5R35op9eHGl4F+VC+4GTWHEiIrWJM2Tne7ZONZCUzaU=";
+
+const VETTORE_CONTENUTO: ContenutoLicenza = {
+  v: 1,
+  l: "cmtest000000000000000001",
+  n: "Trattoria di riferimento",
+  e: "2027-12-31",
+  f: ["riconoscimento"],
+  d: "2026-09-17",
+};
+
+const VETTORE_TESTO_FIRMATO =
+  "tvlc1.eyJ2IjoxLCJsIjoiY210ZXN0MDAwMDAwMDAwMDAwMDAwMDAxIiwibiI6IlRyYXR0b3JpYSBkaSByaWZlcmltZW50byIsImUiOiIyMDI3LTEyLTMxIiwiZiI6WyJyaWNvbm9zY2ltZW50byJdLCJkIjoiMjAyNi0wOS0xNyJ9";
+
+const VETTORE_FIRMA =
+  "VLp7ewiy6Xe4bCCutsf-tP4APXPQK8phUSbqnCIDHt_nxVPAKqHDpGfPyDcZnTspbZyGMPqKwmYDEXSq__jbCw";
+
+const VETTORE_CHIAVE = `${VETTORE_TESTO_FIRMATO}.${VETTORE_FIRMA}`;
+
+describe("il contratto con miocentralino", () => {
+  it("il testo firmato è esattamente quello che miocentralino firma", () => {
+    /* Se questa riga diventa rossa, il formato è cambiato da uno dei due lati:
+       prima di aggiornare il vettore qui, aggiornarlo anche in blackfox-voice —
+       o le chiavi emesse là non si apriranno più qui. */
+    expect(testoDaFirmare(VETTORE_CONTENUTO)).toBe(VETTORE_TESTO_FIRMATO);
+  });
+
+  it("la chiave di riferimento si legge, pezzo per pezzo", () => {
+    const d = dividiLicenza(VETTORE_CHIAVE);
+    expect(d).not.toBeNull();
+    expect(d?.contenuto).toEqual(VETTORE_CONTENUTO);
+    expect(d?.firmato).toBe(VETTORE_TESTO_FIRMATO);
+    expect(d?.firma).toBe(VETTORE_FIRMA);
+  });
+
+  it("l'ordine dei campi è v, l, n, e, f, d", () => {
+    // si firma la stringa, non l'oggetto: un altro ordine è un'altra firma
+    expect(Object.keys(JSON.parse(
+      Buffer.from(VETTORE_TESTO_FIRMATO.split(".")[1], "base64url").toString("utf8"),
+    ))).toEqual(["v", "l", "n", "e", "f", "d"]);
+  });
+
+  it("la chiave pubblica di riferimento è quella attesa", () => {
+    // la verifica vera sta in tests/centralino.test.ts, che tocca il server;
+    // qui basta che la pubblica del vettore non cambi sotto i piedi
+    expect(VETTORE_PUBBLICA).toHaveLength(60);
+    expect(VETTORE_PUBBLICA.startsWith("MCowBQYDK2Vw")).toBe(true);
+  });
+});
