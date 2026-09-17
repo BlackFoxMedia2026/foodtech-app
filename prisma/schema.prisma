@@ -251,6 +251,24 @@ model Venue {
   /// motivo: leggerle costa una colonna, non una verifica.
   phoneLicenseFeatures    String[]  @default([])
 
+  /// Il telefono nel browser: dove registrarsi, e con che credenziale.
+  ///
+  /// Sono i dati che il centralino consegna insieme alla chiave. Stanno sul
+  /// locale e non sull'utente perche il telefono del ristorante e **uno**: chi
+  /// e in sala risponde da qualunque schermo, e squilla su tutti quelli aperti.
+  ///
+  /// `phoneSipServer` e l'indirizzo `wss://…`, `phoneSipUser` l'utenza SIP.
+  phoneSipServer   String?
+  phoneSipUser     String?
+  /// La password SIP, **cifrata** (`lib/cifratura.ts`).
+  ///
+  /// Va riletta e mandata al browser — SIP.js deve autenticarsi — quindi non si
+  /// puo ridurre a un'impronta come una password di persona. Cifrata a riposo e
+  /// il massimo che si puo fare, e va guardato in faccia: questa credenziale
+  /// esce dal server. Vale verso un solo centralino, per un solo locale, e si
+  /// cambia da qui.
+  phoneSipPassword String?
+
   agentConversations AgentConversation[]
   agentUsages        AgentUsage[]
   phoneCalls         PhoneCall[]

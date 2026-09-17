@@ -116,6 +116,9 @@ export type AuditAction =
      funziona più» è la prima cosa da guardare. */
   | "venue.centralino_attivato"
   | "venue.centralino_spento"
+  /* I dati del telefono nel browser. Nel registro va **cosa** è cambiato, non
+     il valore: la password SIP non entra in un registro. */
+  | "venue.centralino_sip_modificato"
   | "venue.wifi_update"
   | "venue.review_links_update"
   | "venue.booking_window_update"

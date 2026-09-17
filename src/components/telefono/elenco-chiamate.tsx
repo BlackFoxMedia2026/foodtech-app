@@ -49,14 +49,30 @@ type ChiamataVista = {
     noShowCount: number;
     allergies: string | null;
   } | null;
-  prenotazione: { id: string; reference: string; startsAt: string; partySize: number } | null;
+  prenotazione: {
+    id: string;
+    reference: string;
+    startsAt: string;
+    partySize: number;
+  } | null;
 };
 
-const STATO: Record<StatoChiamata, { testo: string; icona: typeof Phone; tono: string }> = {
-  RINGING: { testo: "sta squillando", icona: PhoneIncoming, tono: "text-accent-strong" },
+const STATO: Record<
+  StatoChiamata,
+  { testo: string; icona: typeof Phone; tono: string }
+> = {
+  RINGING: {
+    testo: "sta squillando",
+    icona: PhoneIncoming,
+    tono: "text-accent-strong",
+  },
   ANSWERED: { testo: "in corso", icona: Phone, tono: "text-sage-strong" },
   ENDED: { testo: "risposta", icona: Phone, tono: "text-muted-foreground" },
-  MISSED: { testo: "nessuna risposta", icona: PhoneMissed, tono: "text-destructive-soft" },
+  MISSED: {
+    testo: "nessuna risposta",
+    icona: PhoneMissed,
+    tono: "text-destructive-soft",
+  },
 };
 
 function durata(secondi: number | null): string | null {
@@ -76,11 +92,18 @@ export function ElencoChiamateVista({
   solo,
   giorni,
   fuso,
+  telefono,
 }: {
   elenco: { chiamate: ChiamataVista[]; totale: number; daRichiamare: number };
   solo: "perse" | "tutte";
   giorni: number;
   fuso: string;
+  /**
+   * Il telefono nel browser, quando questo locale ce l'ha e chi guarda può
+   * rispondere. Arriva già costruito dalla pagina: così `sip.js` non entra nel
+   * codice di chi apre questa pagina solo per guardare chi ha chiamato.
+   */
+  telefono?: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -109,6 +132,9 @@ export function ElencoChiamateVista({
 
   return (
     <div className="schermo animate-fade-in gap-4">
+      {/* Sopra tutto: se sta squillando, non c'è niente più urgente. */}
+      {telefono}
+
       {/* ── i comandi ──────────────────────────────────────────────────── */}
       <div className="fissa flex flex-wrap items-center gap-2">
         {/* Il filtro che conta, col numero dentro: se è zero non c'è niente
@@ -160,7 +186,10 @@ export function ElencoChiamateVista({
             return (
               <li key={c.id} className="riquadro p-3">
                 <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-                  <Icona className={`mt-0.5 h-4 w-4 shrink-0 ${s.tono}`} aria-hidden="true" />
+                  <Icona
+                    className={`mt-0.5 h-4 w-4 shrink-0 ${s.tono}`}
+                    aria-hidden="true"
+                  />
 
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-baseline gap-x-2">
@@ -173,28 +202,44 @@ export function ElencoChiamateVista({
                     </p>
 
                     <p className="mt-0.5 t-nota">
-                      {giorno.format(quando)} alle {ora.format(quando)} · {s.testo}
-                      {durata(c.durataSecondi) ? ` · ${durata(c.durataSecondi)}` : ""}
+                      {giorno.format(quando)} alle {ora.format(quando)} ·{" "}
+                      {s.testo}
+                      {durata(c.durataSecondi)
+                        ? ` · ${durata(c.durataSecondi)}`
+                        : ""}
                     </p>
 
                     {/* Le cose che cambiano la telefonata, non tutta la scheda. */}
-                    {(c.ospite?.blocked || (c.ospite?.noShowCount ?? 0) > 0 || c.ospite?.allergies) && (
+                    {(c.ospite?.blocked ||
+                      (c.ospite?.noShowCount ?? 0) > 0 ||
+                      c.ospite?.allergies) && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {c.ospite?.blocked && (
                           <Badge tone="danger" className="gap-1">
-                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                            <AlertTriangle
+                              className="h-3 w-3"
+                              aria-hidden="true"
+                            />
                             Bloccato
                           </Badge>
                         )}
                         {(c.ospite?.noShowCount ?? 0) > 0 && (
-                          <Badge tone={(c.ospite?.noShowCount ?? 0) >= 2 ? "warning" : "neutral"}>
+                          <Badge
+                            tone={
+                              (c.ospite?.noShowCount ?? 0) >= 2
+                                ? "warning"
+                                : "neutral"
+                            }
+                          >
                             {c.ospite?.noShowCount === 1
                               ? "1 assenza"
                               : `${c.ospite?.noShowCount} assenze`}
                           </Badge>
                         )}
                         {c.ospite?.allergies && (
-                          <Badge tone="warning">Allergie: {c.ospite.allergies}</Badge>
+                          <Badge tone="warning">
+                            Allergie: {c.ospite.allergies}
+                          </Badge>
                         )}
                       </div>
                     )}
@@ -225,7 +270,10 @@ export function ElencoChiamateVista({
                               },
                             }}
                           >
-                            <CalendarPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                            <CalendarPlus
+                              className="mr-1.5 h-4 w-4"
+                              aria-hidden="true"
+                            />
                             Prenota
                           </Link>
                         </Button>
