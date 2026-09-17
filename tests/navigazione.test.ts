@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_NAV,
+  vociPrincipali,
   MARKETING_NAV,
   MOBILE_NAV,
   PRIMARY_NAV,
@@ -102,10 +103,13 @@ describe("una voce sola accesa", () => {
 
 describe("la barra centrale", () => {
   it("porta le sette voci di servizio più Marketing, in quest'ordine", () => {
-    // L'ordine è il giro di una serata: la giornata, il servizio, il telefono,
-    // la sala, il cliente, chi è in turno, il piatto — con Marketing spostata
-    // qui dal menu del profilo, prima di Menu.
-    expect(PRIMARY_NAV.map((v) => v.label)).toEqual([
+    // L'ordine è il giro di una serata: la giornata, il servizio, le
+    // prenotazioni, la sala, il cliente, chi è in turno, il piatto — con
+    // Marketing spostata qui dal menu del profilo, prima di Menu.
+    //
+    // Su un locale **senza** il telefono, che è il caso di tutti finché non lo
+    // comprano.
+    expect(vociPrincipali(false).map((v) => v.label)).toEqual([
       "Panoramica",
       "Servizio",
       "Prenotazioni",
@@ -115,6 +119,36 @@ describe("la barra centrale", () => {
       "Marketing",
       "Menu",
     ]);
+  });
+
+  it("con il telefono collegato compare «Telefono», fra Ospiti e Staff", () => {
+    /* Sta dentro le voci che si aprono **durante** il servizio, non fra le
+       impostazioni: chi risponde al telefono ci torna venti volte in una sera
+       per vedere chi ha chiamato e non ha trovato nessuno. */
+    expect(vociPrincipali(true).map((v) => v.label)).toEqual([
+      "Panoramica",
+      "Servizio",
+      "Prenotazioni",
+      "Sala",
+      "Ospiti",
+      "Telefono",
+      "Staff",
+      "Marketing",
+      "Menu",
+    ]);
+  });
+
+  it("una funzione che si compra non compare a chi non l'ha comprata", () => {
+    /* Non è pudore: una voce che apre una pagina vuota, o un cartello
+       pubblicitario, è peggio di una voce che non c'è. Cosa c'è da avere sta
+       scritto in Impostazioni → Telefono, che è il posto dove si va a
+       guardare. */
+    const conditionate = PRIMARY_NAV.filter((v) => v.soloConTelefono);
+    expect(conditionate.length).toBeGreaterThan(0);
+    for (const v of conditionate) {
+      expect(vociPrincipali(false)).not.toContain(v);
+      expect(vociPrincipali(true)).toContain(v);
+    }
   });
 
   it("non porta niente di amministrativo: quello sta sotto l'avatar", () => {
@@ -338,8 +372,8 @@ describe("la barra in basso del telefono", () => {
     // Le sezioni amministrative stanno sotto l'avatar, che su telefono c'è
     // come su scrivania: elencarle anche qui sarebbe la stessa pagina
     // raggiungibile da due strade sullo stesso schermo.
-    expect(primarieFuoriDallaBarra().map((v) => v.label)).toEqual(["Ospiti", "Staff", "Marketing", "Menu"]);
-    expect(primarieFuoriDallaBarra().every((v) => PRIMARY_NAV.includes(v))).toBe(true);
+    expect(primarieFuoriDallaBarra(false).map((v) => v.label)).toEqual(["Ospiti", "Staff", "Marketing", "Menu"]);
+    expect(primarieFuoriDallaBarra(false).every((v) => PRIMARY_NAV.includes(v))).toBe(true);
   });
 });
 
@@ -392,5 +426,16 @@ describe("il titolo della pagina", () => {
 
   it("ogni voce di navigazione ha un titolo", () => {
     for (const voce of ALL_NAV) expect(titoloPagina(voce.href)?.lungo).toBeTruthy();
+  });
+});
+
+describe("una funzione che si compra, sul telefono", () => {
+  it("non compare nemmeno in «Altro» a chi non l'ha", () => {
+    /* La prima versione filtrava solo la barra della scrivania e lasciava la
+       voce nel menu del telefono: nascosta per metà, che è peggio di non
+       averla nascosta. */
+    const altro = primarieFuoriDallaBarra(false).map((v) => v.label);
+    expect(altro).not.toContain("Telefono");
+    expect(primarieFuoriDallaBarra(true).map((v) => v.label)).toContain("Telefono");
   });
 });

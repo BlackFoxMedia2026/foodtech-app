@@ -26,7 +26,14 @@ import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
  * Tutti i bersagli sono almeno 44×44 px, che è il minimo perché un dito li
  * prenda senza sbagliare.
  */
-export function MobileNav({ canManageBookings }: { canManageBookings: boolean }) {
+export function MobileNav({
+  canManageBookings,
+  telefonoAttivo = false,
+}: {
+  canManageBookings: boolean;
+  /** Se questo locale ha il telefono collegato: decide la voce «Telefono». */
+  telefonoAttivo?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [altroOpen, setAltroOpen] = useState(false);
@@ -54,7 +61,7 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
     gli stessi nomi e le stesse descrizioni — la lista vive in un posto solo,
     `MARKETING_NAV`.
   */
-  const altreSezioni = primarieFuoriDallaBarra();
+  const altreSezioni = primarieFuoriDallaBarra(telefonoAttivo);
   const altroAttivo = altreSezioni.some((i) => isNavActive(pathname, i));
 
   function vaiA(href: string) {

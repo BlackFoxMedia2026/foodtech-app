@@ -1,4 +1,4 @@
-import { CalendarRange, CreditCard, Gift, LayoutDashboard, LineChart, Megaphone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
+import { CalendarRange, CreditCard, Gift, LayoutDashboard, LineChart, Megaphone, Phone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +36,15 @@ export type NavItem = {
    * voci principali si spiegano da sole.
    */
   descrizione?: string;
+  /**
+   * La voce compare **solo se il locale ha il telefono collegato**.
+   *
+   * Non è nascosta per pudore: è una funzione che si compra, e un locale che
+   * non l'ha comprata non deve trovarsi in barra una voce che apre una pagina
+   * vuota o un cartello pubblicitario. Dove si compra è scritto in
+   * Impostazioni → Telefono, che è il posto dove si guarda cosa c'è da avere.
+   */
+  soloConTelefono?: boolean;
   /**
    * Le voci che stanno **dentro** questa: la voce diventa un menu, e cliccarla
    * non porta da nessuna parte — apre l'elenco.
@@ -183,6 +192,18 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/floor", label: "Sala", icon: DiningTableIcon },
   { href: "/guests", label: "Ospiti", icon: TuxedoGuestIcon },
   /*
+    «Telefono» sta fra gli Ospiti e lo Staff, cioè dentro le voci che si
+    aprono **durante** il servizio. Non è un'impostazione: chi risponde al
+    telefono ci torna venti volte in una sera, per vedere chi ha chiamato e
+    non ha trovato nessuno.
+  */
+  {
+    href: "/telefono",
+    label: "Telefono",
+    icon: Phone,
+    soloConTelefono: true,
+  },
+  /*
     «Staff», non più «Camerieri».
 
     Il nome vecchio descriveva metà della pagina: lì dentro ci sono i ruoli di
@@ -315,8 +336,12 @@ export function profiloPerGruppo(): { label: string; voci: NavItem[] }[] {
 }
 
 /** Le voci principali che non stanno nella barra in basso del telefono. */
-export function primarieFuoriDallaBarra(): NavItem[] {
-  return PRIMARY_NAV.filter((v) => !MOBILE_NAV.includes(v));
+export function primarieFuoriDallaBarra(telefonoAttivo = false): NavItem[] {
+  /* Passa dal **filtro** e non da `PRIMARY_NAV`: una voce che si compra non
+     deve comparire nel menu «Altro» del telefono a chi non l'ha comprata. Il
+     primo tentativo prendeva l'elenco intero, e la voce era nascosta in barra
+     e visibile sul telefono — cioè nascosta per metà, che è peggio di niente. */
+  return vociPrincipali(telefonoAttivo).filter((v) => !MOBILE_NAV.includes(v));
 }
 
 /**
@@ -411,4 +436,15 @@ export function classiVoce(active: boolean) {
     "relative z-10 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium leading-tight transition-colors md:min-w-0 xl:flex-row xl:gap-2 xl:px-3 xl:py-2 xl:text-sm 2xl:px-3.5",
     active ? "text-forest" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
   );
+}
+
+/**
+ * Le voci della barra per **questo** locale.
+ *
+ * Il filtro sta qui e non nella testata perché la stessa domanda la fa anche
+ * la barra in basso del telefono: due elenchi che si filtrano per conto
+ * proprio divergono al primo cambiamento.
+ */
+export function vociPrincipali(telefonoAttivo: boolean): NavItem[] {
+  return PRIMARY_NAV.filter((v) => !v.soloConTelefono || telefonoAttivo);
 }

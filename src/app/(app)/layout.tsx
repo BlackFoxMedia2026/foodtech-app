@@ -6,6 +6,7 @@ import { VenueTimeProvider } from "@/components/shell/venue-time-provider";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { AvvisiProvider } from "@/components/ui/avvisi";
 import { ProviderImpostazioni } from "@/components/settings/contesto-impostazioni";
+import { statoCentralino } from "@/server/licenza-centralino";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const display = Fraunces({
@@ -18,6 +19,10 @@ const mono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], variable: 
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const ctx = await getActiveVenue();
+  /* La voce «Telefono» in barra compare solo se il locale ce l'ha. La lettura
+     è una riga e una firma da verificare, e sta nel guscio perché la barra è
+     qui: farla dentro la pagina vorrebbe dire una barra che cambia dopo. */
+  const telefono = await statoCentralino(ctx.venueId);
   const showBrandSetup = ctx.venue.onboardingStatus === "NOT_STARTED" && can(ctx.role, "manage_venue");
 
   const venueList = ctx.allMemberships.map((m) => ({
@@ -47,6 +52,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
         user={{ name: ctx.session.user?.name, email: ctx.session.user?.email }}
         venues={venueList}
         activeVenueId={ctx.venueId}
+        telefonoAttivo={telefono.attivo}
       />
       {/*
         `main` dà la sua altezza alle pagine invece di scorrere.
@@ -66,7 +72,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
         <VenueTimeProvider timezone={ctx.venue.timezone}>{children}</VenueTimeProvider>
       </main>
 
-      <MobileNav canManageBookings={can(ctx.role, "manage_bookings")} />
+      <MobileNav telefonoAttivo={telefono.attivo} canManageBookings={can(ctx.role, "manage_bookings")} />
       {showBrandSetup && <BrandSetupDialog initialName={ctx.venue.name} />}
     </div>
     </ProviderImpostazioni>
