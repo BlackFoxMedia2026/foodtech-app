@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { leggiVenue, oggiNelLocale, unico } from "./aiuti";
+import { leggiVenue, oggiNelLocale, unico, azioneScheda } from "./aiuti";
 
 /**
  * Il percorso per cui Tavolo esiste.
@@ -106,7 +106,7 @@ test("dal sito al conto chiuso, e il cliente compare nel CRM coi suoi punti", as
   /* 4. Si apre il conto, si batte un piatto, si chiude                      */
   /* ---------------------------------------------------------------------- */
 
-  await page.getByRole("button", { name: `Apri il conto di ${nome}` }).click();
+  await azioneScheda(page, nome, `Apri il conto di ${nome}`);
   const conto = page.locator('[role="dialog"]');
   await expect(conto).toBeVisible();
 

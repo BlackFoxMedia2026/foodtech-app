@@ -52,5 +52,9 @@ test("dalla coda al tavolo: accomodare crea una prenotazione, non una riga chius
    */
   await page.goto("/service");
   await expect(page.getByText(nome).first()).toBeVisible({ timeout: 30_000 });
+  /* Il conto si apre da «…»: quello che si verifica è che l'azione **ci sia**
+     per questa persona, non che stia in vista — la scheda mostra un comando
+     solo e tiene gli altri nel menu. */
+  await page.getByRole("button", { name: `Altre azioni per ${nome}` }).click();
   await expect(page.getByRole("button", { name: `Apri il conto di ${nome}` })).toBeVisible();
 });

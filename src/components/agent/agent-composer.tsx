@@ -43,7 +43,7 @@ export function AgentComposer({ onSend, disabled }: { onSend: (text: string) => 
           autoGrow();
         }}
         onKeyDown={handleKeyDown}
-        placeholder="Scrivi un messaggio..."
+        placeholder="Scrivi un messaggio…"
         rows={1}
         disabled={disabled}
         className={cn(

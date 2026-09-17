@@ -24,7 +24,9 @@ import { ETICHETTA_REPUTAZIONE } from "@/lib/dem-reputazione";
 import { listRooms } from "@/server/rooms";
 import { listFasceServizio } from "@/server/turni-servizio";
 import { listReviewLinks } from "@/server/reviews";
+import { listInviti, listTeam } from "@/server/team";
 import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
+import { AccessoTeam } from "@/components/settings/accesso-team";
 import { BarraImpostazioniMobile } from "@/components/settings/navigazione-impostazioni";
 import { ParteChiesta, SezioneImpostazioni } from "@/components/settings/sezione-impostazioni";
 import {
@@ -68,10 +70,18 @@ const FORMATO_GIORNO = new Intl.DateTimeFormat("it-IT", { day: "numeric", month:
  * davanti: c'è un ristoratore a locale chiuso che legge come è configurato il
  * suo locale.
  *
- * Non si è persa nessuna impostazione: quelle che stavano nei blocchi stanno
- * nelle righe, e le tre che hanno una pagina tutta loro — brand, portale
- * Wi-Fi, pagamenti — restano dove sono, con la riga qui che ne dichiara lo
- * stato.
+ * Quelle che stavano nei blocchi stanno nelle righe, e le tre che hanno una
+ * pagina tutta loro — brand, portale Wi-Fi, pagamenti — restano dove sono, con
+ * la riga qui che ne dichiara lo stato.
+ *
+ * **Una si era persa davvero.** Questo commento diceva «non si è persa nessuna
+ * impostazione» e non era vero: `team-settings.tsx` è stato cancellato senza
+ * rimpiazzo, e per due giorni non c'è stato modo di invitare un collega o di
+ * togliere l'accesso a qualcuno — le rotte `/api/team/*` rispondevano e
+ * nessuna schermata le chiamava. È tornata in «Sistema» come «Chi ha accesso»
+ * (`components/settings/accesso-team.tsx`). Una riscrittura che sposta tutto
+ * perde qualcosa in silenzio: l'unica cosa che l'ha detto è stato un test
+ * end-to-end rosso.
  */
 export default async function SettingsPage() {
   const ctx = await getActiveVenue();
@@ -94,6 +104,8 @@ export default async function SettingsPage() {
     quotaDem,
     invioDem,
     reputazioneDem,
+    membri,
+    inviti,
   ] = await Promise.all([
     db.venue.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: "asc" } }),
     listFasceServizio(ctx.venueId),
@@ -105,7 +117,18 @@ export default async function SettingsPage() {
     statoConsumo(ctx.venueId),
     statoInvio(ctx.venueId),
     reputazioneDi(ctx.venueId),
+    listTeam(ctx.venueId, ctx.userId),
+    /* Gli inviti portano con sé il link da consegnare, e il link ha bisogno
+       dell'indirizzo di questa installazione: lo stesso `baseUrl` del codice
+       da incollare sul sito. */
+    listInviti(ctx.venueId, baseUrl),
   ]);
+
+  /* `manage_venue`, la stessa capacità che chiedono le rotte `/api/team/*`:
+     se qui fosse più permissiva, l'interfaccia mostrerebbe comandi che il
+     server rifiuta. Chi non l'ha vede chi ha accesso e non lo cambia —
+     l'elenco è un'informazione, cambiarlo è un permesso. */
+  const puoGestireTeam = can(ctx.role, "manage_venue");
 
   // «Collegato» qui significa una cosa sola: che Stripe accetta incassi. Un
   // account creato e non verificato esiste e rifiuta ogni pagamento, quindi
@@ -538,6 +561,8 @@ export default async function SettingsPage() {
                 non il ristorante: è la stessa sezione dove si legge lo stato
                 delle integrazioni e dei lavori. */}
             <MieiDispositivi />
+
+            <AccessoTeam membri={membri} inviti={inviti} canManage={puoGestireTeam} />
 
             {/* Stripe è un'integrazione, e il valore dice la cosa che conta —
                 se il locale può incassare — non se esiste un collegamento a

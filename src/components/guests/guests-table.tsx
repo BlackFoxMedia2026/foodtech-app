@@ -82,7 +82,7 @@ export function GuestsTable({
           />
           <Input
             defaultValue={search.get("q") ?? ""}
-            placeholder="Cerca per nome, email o telefono..."
+            placeholder="Cerca per nome, email o telefono…"
             aria-label="Cerca fra gli ospiti"
             className="h-11 pl-10 text-base md:text-sm"
             onChange={(e) => onSearch(e.target.value)}

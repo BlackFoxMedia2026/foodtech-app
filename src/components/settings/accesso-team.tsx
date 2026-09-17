@@ -1,0 +1,307 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Check, Copy, LogOut, Trash2, UserPlus } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  GruppoImpostazioni,
+  RigaLibera,
+} from "@/components/settings/righe-impostazioni";
+import { readApiError } from "@/lib/api-client";
+import { NOME_RUOLO, RUOLI } from "@/lib/ruoli-team";
+import { initials } from "@/lib/utils";
+import type { InvitoView, MembroView } from "@/server/team";
+
+/**
+ * Chi ha accesso a questo locale, e come gliene si dà.
+ *
+ * **Questo pezzo era sparito.** Il 15 settembre, riscrivendo le Impostazioni
+ * da blocchi a righe, `team-settings.tsx` è stato cancellato e non
+ * rimpiazzato: le rotte `/api/team/*` sono rimaste, la pagina che accetta un
+ * invito è rimasta, e in mezzo non c'era più niente. Da allora un ristoratore
+ * non poteva invitare un collega, cambiargli ruolo, chiudergli le sessioni o
+ * togliergli l'accesso — non perché la funzione fosse stata rimossa, ma
+ * perché non era più raggiungibile. Il commento delle Impostazioni diceva
+ * «non si è persa nessuna impostazione»: non era vero, e l'unica prova che lo
+ * gridava era un test end-to-end rosso.
+ *
+ * Sta in «Sistema» perché riguarda **l'accesso al gestionale**, non le persone
+ * che lavorano in sala: il personale — contratti, turni, assenze — è in Staff,
+ * e sono due elenchi diversi. Una persona può avere un contratto e nessun
+ * accesso, o l'accesso e nessun contratto (il titolare).
+ *
+ * L'invito è un **link da consegnare a mano** e la pagina lo dice: l'invio
+ * automatico non c'è finché manca la chiave del fornitore email, e far finta
+ * di aver spedito è la bugia che questo progetto non racconta.
+ */
+export function AccessoTeam({
+  membri,
+  inviti,
+  canManage,
+}: {
+  membri: MembroView[];
+  inviti: InvitoView[];
+  canManage: boolean;
+}) {
+  const router = useRouter();
+  const [apri, setApri] = useState(false);
+  const [email, setEmail] = useState("");
+  const [ruolo, setRuolo] = useState<string>("RECEPTION");
+  const [inCorso, setInCorso] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copiato, setCopiato] = useState<string | null>(null);
+
+  async function invita(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setInCorso(true);
+    setError(null);
+    const res = await fetch("/api/team/invites", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, role: ruolo }),
+    });
+    setInCorso(false);
+    if (!res.ok) {
+      setError(await readApiError(res, "Non siamo riusciti a creare l'invito."));
+      return;
+    }
+    setEmail("");
+    setApri(false);
+    router.refresh();
+  }
+
+  async function azione(url: string, init: RequestInit, fallback: string) {
+    setError(null);
+    const res = await fetch(url, init);
+    if (!res.ok) {
+      setError(await readApiError(res, fallback));
+      return;
+    }
+    router.refresh();
+  }
+
+  async function copia(link: string) {
+    await navigator.clipboard.writeText(link).catch(() => {});
+    setCopiato(link);
+    setTimeout(() => setCopiato(null), 2500);
+  }
+
+  const quante = `${membri.length} ${membri.length === 1 ? "persona" : "persone"}${
+    inviti.length > 0
+      ? ` · ${inviti.length} ${inviti.length === 1 ? "invito" : "inviti"} in attesa`
+      : ""
+  }`;
+
+  return (
+    <GruppoImpostazioni
+      titolo="Chi ha accesso"
+      descrizione={`Chi può entrare in questo locale, e con quale ruolo. ${quante}.`}
+      azione={
+        canManage ? (
+          <Button variant="outline" size="sm" onClick={() => setApri(!apri)}>
+            <UserPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            {apri ? "Annulla" : "Invita"}
+          </Button>
+        ) : undefined
+      }
+    >
+      {apri && canManage && (
+        <RigaLibera>
+          <form onSubmit={invita} className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+              <div className="space-y-1.5">
+                <Label htmlFor="team-email">Email della persona</Label>
+                <Input
+                  id="team-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="maria@ristorante.it"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="team-ruolo">Ruolo</Label>
+                <Select value={ruolo} onValueChange={setRuolo}>
+                  <SelectTrigger id="team-ruolo">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RUOLI.map((r) => (
+                      <SelectItem key={r.valore} value={r.valore}>
+                        {r.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="t-nota">
+              {RUOLI.find((r) => r.valore === ruolo)?.cosa}. Creando l&apos;invito ottieni un{" "}
+              <strong>link da consegnare</strong>: Tavolo non manda email finché non è configurato
+              il fornitore, quindi il link si copia e si manda a mano. Vale sette giorni e una
+              volta sola.
+            </p>
+            <Button type="submit" variant="accent" size="sm" disabled={inCorso || !email.trim()}>
+              {inCorso ? "Creo l'invito…" : "Crea l'invito"}
+            </Button>
+          </form>
+        </RigaLibera>
+      )}
+
+      {inviti.map((i) => (
+        <RigaLibera key={i.id}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{i.email}</p>
+              <p className="text-xs text-muted-foreground">
+                Invito in attesa · {NOME_RUOLO[i.role]} · scade il{" "}
+                {new Date(i.scadeIl).toLocaleDateString("it-IT", {
+                  day: "numeric",
+                  month: "long",
+                })}
+              </p>
+            </div>
+            {canManage && (
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" onClick={() => copia(i.link)}>
+                  {copiato === i.link ? (
+                    <>
+                      <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> Copiato
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> Copia il link
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Ritira l'invito di ${i.email}`}
+                  onClick={() =>
+                    azione(
+                      `/api/team/invites/${i.id}`,
+                      { method: "DELETE" },
+                      "Non siamo riusciti a ritirare l'invito.",
+                    )
+                  }
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </RigaLibera>
+      ))}
+
+      {membri.map((m) => (
+        <RigaLibera key={m.membershipId}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback>{initials(m.nome ?? m.email)}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {m.nome ?? m.email}
+                  {m.seiTu && <span className="ml-2 text-xs text-muted-foreground">(tu)</span>}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+              </div>
+            </div>
+
+            {canManage && !m.seiTu ? (
+              <div className="flex items-center gap-1">
+                <Select
+                  value={m.role}
+                  onValueChange={(v) =>
+                    azione(
+                      `/api/team/members/${m.membershipId}`,
+                      {
+                        method: "PATCH",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ role: v }),
+                      },
+                      "Non siamo riusciti a cambiare il ruolo.",
+                    )
+                  }
+                >
+                  <SelectTrigger
+                    className="w-[10.5rem]"
+                    aria-label={`Ruolo di ${m.nome ?? m.email}`}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RUOLI.map((r) => (
+                      <SelectItem key={r.valore} value={r.valore}>
+                        {r.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Chiudere le sessioni non è togliere l'accesso: la persona
+                    rientra con la sua password. Serve per il tablet lasciato
+                    aperto in sala, e come prima cosa da fare quando qualcuno
+                    non lavora più qui — prima ancora di togliergli il ruolo. */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Chiudi le sessioni di ${m.nome ?? m.email} su tutti i dispositivi`}
+                  title="Chiudi le sessioni su tutti i dispositivi"
+                  onClick={() =>
+                    azione(
+                      `/api/team/members/${m.membershipId}/sessioni`,
+                      { method: "DELETE" },
+                      "Non siamo riusciti a chiudere le sessioni.",
+                    )
+                  }
+                >
+                  <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Togli l'accesso a ${m.nome ?? m.email}`}
+                  onClick={() =>
+                    azione(
+                      `/api/team/members/${m.membershipId}`,
+                      { method: "DELETE" },
+                      "Non siamo riusciti a togliere l'accesso.",
+                    )
+                  }
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+              </div>
+            ) : (
+              /* Su di sé non si agisce: il ruolo si legge, non si cambia. È la
+                 difesa contro il modo più comune di restare fuori dal proprio
+                 locale, e vale anche sul server. */
+              <Badge tone="neutral">{NOME_RUOLO[m.role]}</Badge>
+            )}
+          </div>
+        </RigaLibera>
+      ))}
+
+      {error && (
+        <RigaLibera>
+          <p className="text-sm text-destructive">{error}</p>
+        </RigaLibera>
+      )}
+    </GruppoImpostazioni>
+  );
+}
