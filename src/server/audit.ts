@@ -119,6 +119,10 @@ export type AuditAction =
   /* I dati del telefono nel browser. Nel registro va **cosa** è cambiato, non
      il valore: la password SIP non entra in un registro. */
   | "venue.centralino_sip_modificato"
+  /* La chiave con cui il centralino legge i dati di questo locale: chi l'ha
+     emessa e quando è la prima domanda se quei dati finiscono dove non devono. */
+  | "venue.centralino_chiave_emessa"
+  | "venue.centralino_chiave_revocata"
   | "venue.wifi_update"
   | "venue.review_links_update"
   | "venue.booking_window_update"
