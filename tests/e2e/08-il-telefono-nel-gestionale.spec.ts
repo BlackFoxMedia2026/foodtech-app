@@ -37,6 +37,17 @@ test("in Impostazioni c'è il telefono, e dice cosa farebbe prima di averlo", as
   const campo = page.locator("#centralino-chiave");
   await expect(campo).toBeVisible();
   await expect(page.getByRole("button", { name: "Attiva" })).toBeVisible();
+
+  /* E c'è l'identificativo del locale, con il pulsante per copiarlo.
+     Serve **per ottenere** la chiave: chi la emette deve sapere per quale
+     locale, e prima quel codice non era scritto in nessuna schermata — chi
+     compilava il modulo metteva il nome del locale al suo posto e otteneva una
+     licenza che non accendeva niente. */
+  await expect(sezione.getByText("Identificativo di questo locale")).toBeVisible();
+  const identificativo = sezione.locator("code").first();
+  await expect(identificativo).toBeVisible();
+  // un cuid, non un nome
+  await expect(identificativo).toHaveText(/^c[a-z0-9]{20,}$/);
 });
 
 test("una chiave inventata non accende niente, e dice perché", async ({ page }) => {
