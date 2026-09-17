@@ -1,4 +1,6 @@
 import { Prisma } from "@prisma/client";
+import { codaIdentita } from "@/lib/telefono";
+import { CIFRE_SQL } from "@/server/telefonia";
 import { db } from "@/lib/db";
 
 /**
@@ -83,13 +85,42 @@ export async function trovaOspite(
   }
 
   if (phone) {
-    const conTelefono = await tx.guest.findMany({
-      where: { venueId, phone: { not: null }, anonymizedAt: null },
-      orderBy: { createdAt: "asc" },
-      select: { id: true, phone: true },
-    });
-    const trovato = conTelefono.find((g) => normalizzaTelefono(g.phone) === phone);
-    if (trovato) return trovato.id;
+    /*
+      Il telefono si confronta sulle **ultime nove cifre**, dentro il database.
+
+      Due difetti insieme, e il primo era il peggiore.
+
+      **Confrontava le stringhe.** `normalizzaTelefono` tiene il `+` se c'è e
+      lo toglie se non c'è, quindi «+39 333 7654321» e «3337654321» erano due
+      stringhe diverse: la stessa persona, scritta una volta col prefisso e una
+      senza, diventava **due schede**. Cioè esattamente il doppione che questa
+      funzione esiste per evitare. E lo stesso numero era già confrontato bene
+      altrove — `lib/telefono.ts`, per riconoscere chi chiama — con l'altra
+      regola: due modi di dire «lo stesso numero» nello stesso prodotto, che
+      non erano d'accordo.
+
+      **E leggeva tutti gli ospiti del locale.** `findMany` su ogni scheda con
+      un numero, poi un confronto in memoria: su un ristorante con ventimila
+      clienti, ventimila righe per ogni prenotazione. Adesso la domanda la fa
+      il database, sull'indice `Guest_venueId_codaTelefono_idx` che esiste già.
+
+      Sotto le nove cifre non si confronta niente: un numero incompleto
+      attaccherebbe la prenotazione alla persona sbagliata, ed è meglio una
+      scheda in più che una prenotazione sul cliente di un altro.
+    */
+    const coda = codaIdentita(phone);
+    if (coda) {
+      const trovati = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "Guest"
+        WHERE "venueId" = ${venueId}
+          AND "phone" IS NOT NULL
+          AND "anonymizedAt" IS NULL
+          AND right(regexp_replace("phone", '[^0-9]', '', 'g'), ${CIFRE_SQL}) = ${coda}
+        ORDER BY "createdAt" ASC
+        LIMIT 1
+      `;
+      if (trovati[0]) return trovati[0].id;
+    }
   }
 
   return null;

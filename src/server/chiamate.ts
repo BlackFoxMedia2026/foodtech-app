@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { codaIdentita, telefonoLeggibile } from "@/lib/telefono";
+import { trovaOCreaOspite } from "@/server/guest-match";
 import {
+  CIFRE_SQL,
   riconosciChiamante,
   type EsitoRiconoscimento,
 } from "@/server/telefonia";
@@ -340,3 +342,115 @@ export async function elencoChiamate(
 
 /** Quante righe entrano in una pagina dell'elenco. */
 export const CHIAMATE_PER_PAGINA = PER_PAGINA;
+
+/* -------------------------------------------------------------------------- */
+/*  Le chiamate di un contatto                                                */
+/* -------------------------------------------------------------------------- */
+
+export type ChiamataDiOspite = {
+  id: string;
+  quando: Date;
+  stato: StatoChiamata;
+  durataSecondi: number | null;
+  /** La prenotazione nata da quella chiamata, se ne è nata una. */
+  prenotazione: { id: string; startsAt: Date; partySize: number } | null;
+};
+
+/**
+ * Le telefonate di questa persona.
+ *
+ * Sulla scheda di un cliente le chiamate valgono più che nello storico del
+ * telefono: là sono righe, qui sono **il rapporto con quella persona**. «Ha
+ * chiamato tre volte in due settimane e non ha mai prenotato» è una cosa che
+ * un ristoratore vuole sapere quando gli risponde, e non c'era nessun posto
+ * dove si potesse leggere.
+ *
+ * Si legge dalla **relazione** e non dal numero: se domani la scheda cambia
+ * numero, queste restano le sue chiamate — sono quelle che le erano state
+ * attribuite quando sono arrivate.
+ */
+export async function chiamateDiOspite(
+  venueId: string,
+  guestId: string,
+  limite = 20,
+): Promise<ChiamataDiOspite[]> {
+  const righe = await db.phoneCall.findMany({
+    where: { venueId, guestId },
+    orderBy: { startedAt: "desc" },
+    take: limite,
+    select: {
+      id: true,
+      startedAt: true,
+      answeredAt: true,
+      endedAt: true,
+      status: true,
+      booking: { select: { id: true, startsAt: true, partySize: true } },
+    },
+  });
+
+  return righe.map((r) => ({
+    id: r.id,
+    quando: r.startedAt,
+    stato: r.status as StatoChiamata,
+    durataSecondi:
+      r.answeredAt && r.endedAt
+        ? Math.max(0, Math.round((r.endedAt.getTime() - r.answeredAt.getTime()) / 1000))
+        : null,
+    prenotazione: r.booking,
+  }));
+}
+
+/**
+ * Attacca una chiamata a un contatto, creandolo se non c'è.
+ *
+ * È il gesto che mancava: una persona chiama, il numero non è di nessuno, e
+ * quel numero resta una riga nello storico invece di diventare un cliente.
+ * Prima non esisteva **nessun** modo di creare un contatto
+ * dall'interfaccia — la rotta c'era e nessuna schermata la chiamava — e questa
+ * è la porta più naturale per farlo: non si inventa un contatto dal nulla, si
+ * dà un nome a qualcuno che ha appena telefonato.
+ *
+ * Passa da `trovaOCreaOspite`, quindi **non crea doppioni**: se quel numero è
+ * già di una scheda (scritto in un'altra forma, o inserito nel frattempo da
+ * un'altra parte), si attacca a quella e le completa i campi vuoti.
+ */
+export async function collegaChiamataAContatto(
+  venueId: string,
+  chiamataId: string,
+  dati: { firstName: string; lastName?: string | null; email?: string | null },
+): Promise<{ guestId: string; giaConosciuto: boolean }> {
+  const chiamata = await db.phoneCall.findFirst({
+    where: { id: chiamataId, venueId },
+    select: { id: true, fromNumber: true, guestId: true },
+  });
+  if (!chiamata) throw new Error("not_found");
+
+  const esito = await trovaOCreaOspite(venueId, {
+    firstName: dati.firstName.trim(),
+    lastName: dati.lastName?.trim() || null,
+    email: dati.email?.trim() || null,
+    phone: chiamata.fromNumber,
+  });
+
+  /* Si attaccano **tutte** le chiamate di quel numero, non solo questa: sono
+     della stessa persona, e lasciare le altre «non riconosciute» vorrebbe dire
+     che chi ha appena dato un nome a un numero lo deve ridare per ogni riga. */
+  const coda = codaIdentita(chiamata.fromNumber);
+  if (coda) {
+    await db.$executeRaw`
+      UPDATE "PhoneCall"
+      SET "guestId" = ${esito.guestId}
+      WHERE "venueId" = ${venueId}
+        AND "guestId" IS NULL
+        AND "fromNumber" IS NOT NULL
+        AND right(regexp_replace("fromNumber", '[^0-9]', '', 'g'), ${CIFRE_SQL}) = ${coda}
+    `;
+  } else {
+    await db.phoneCall.update({
+      where: { id: chiamata.id },
+      data: { guestId: esito.guestId },
+    });
+  }
+
+  return esito;
+}

@@ -5,12 +5,16 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   CalendarPlus,
+  UserPlus,
   Phone,
   PhoneIncoming,
   PhoneMissed,
   PhoneOff,
 } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { readApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { StatoChiamata } from "@/server/chiamate";
@@ -86,6 +90,102 @@ const PERIODI = [
   { giorni: 7, nome: "7 giorni" },
   { giorni: 30, nome: "30 giorni" },
 ] as const;
+
+/**
+ * Dare un nome a un numero che ha chiamato.
+ *
+ * Un numero non riconosciuto restava una riga nello storico: si vedeva che
+ * qualcuno aveva chiamato e non c'era **niente** da fare. Questo è il gesto
+ * che chiude il giro — da qui nasce il contatto, e dalla volta dopo quella
+ * persona viene riconosciuta mentre il telefono squilla.
+ *
+ * Chiede solo il nome: il numero lo sappiamo, e un modulo che lo richiede a
+ * chi lo ha davanti sullo schermo è un modulo che fa perdere tempo. Il cognome
+ * è facoltativo perché al telefono spesso non lo si chiede.
+ */
+function DaiUnNome({
+  chiamataId,
+  numero,
+}: {
+  chiamataId: string;
+  numero: string | null;
+}) {
+  const router = useRouter();
+  const [aperto, setAperto] = useState(false);
+  const [nome, setNome] = useState("");
+  const [cognome, setCognome] = useState("");
+  const [inCorso, setInCorso] = useState(false);
+  const [errore, setErrore] = useState<string | null>(null);
+
+  async function salva(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setInCorso(true);
+    setErrore(null);
+    const res = await fetch(`/api/telefono/chiamate/${chiamataId}/contatto`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ firstName: nome, lastName: cognome || null }),
+    });
+    setInCorso(false);
+    if (!res.ok) {
+      setErrore(
+        await readApiError(res, "Non siamo riusciti a salvare il contatto."),
+      );
+      return;
+    }
+    setAperto(false);
+    setNome("");
+    setCognome("");
+    router.refresh();
+  }
+
+  if (!aperto) {
+    return (
+      <Button variant="outline" size="sm" onClick={() => setAperto(true)}>
+        <UserPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+        Dai un nome
+      </Button>
+    );
+  }
+
+  return (
+    <form onSubmit={salva} className="flex flex-wrap items-center gap-2">
+      <Input
+        value={nome}
+        onChange={(e) => setNome(e.target.value)}
+        placeholder="Nome"
+        required
+        autoFocus
+        className="h-8 w-28 text-xs"
+        aria-label={`Nome di chi ha chiamato dal ${numero ?? "numero riservato"}`}
+      />
+      <Input
+        value={cognome}
+        onChange={(e) => setCognome(e.target.value)}
+        placeholder="Cognome"
+        className="h-8 w-28 text-xs"
+        aria-label="Cognome, facoltativo"
+      />
+      <Button
+        type="submit"
+        variant="accent"
+        size="sm"
+        disabled={inCorso || !nome.trim()}
+      >
+        {inCorso ? "Salvo…" : "Salva"}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => setAperto(false)}
+      >
+        Annulla
+      </Button>
+      {errore && <span className="text-xs text-destructive">{errore}</span>}
+    </form>
+  );
+}
 
 export function ElencoChiamateVista({
   elenco,
@@ -279,10 +379,17 @@ export function ElencoChiamateVista({
                         </Button>
                       )
                     )}
-                    {c.ospite && (
+                    {c.ospite ? (
                       <Button asChild variant="ghost" size="sm">
                         <Link href={`/guests/${c.ospite.id}`}>La scheda</Link>
                       </Button>
+                    ) : (
+                      /* Niente nome e un numero che si può salvare: è l'unico
+                         punto del prodotto da cui nasce un contatto senza
+                         passare da una prenotazione. */
+                      c.telefono && (
+                        <DaiUnNome chiamataId={c.id} numero={c.telefono} />
+                      )
                     )}
                   </div>
                 </div>
