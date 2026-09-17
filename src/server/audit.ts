@@ -112,6 +112,10 @@ export type AuditAction =
   | "venue.brand_update"
   | "venue.service_mode_update"
   | "venue.avg_spend_update"
+  /* La chiave del centralino: quando e da chi. Davanti a «il telefono non
+     funziona più» è la prima cosa da guardare. */
+  | "venue.centralino_attivato"
+  | "venue.centralino_spento"
   | "venue.wifi_update"
   | "venue.review_links_update"
   | "venue.booking_window_update"

@@ -1,3 +1,26 @@
+> ## Correzione del 17 settembre 2026 — il verso è cambiato
+>
+> Questo documento diceva «**Tavolo espone, il centralino consuma**»: Tavolo
+> rilasciava un token e un centralino esterno lo usava. Luca ha chiarito che
+> non è così:
+>
+> - **il centralino sta dentro Tavolo.** Il ristoratore non ha un secondo
+>   gestionale: vede il telefono nelle stesse schermate dove vede le
+>   prenotazioni;
+> - **miocentralino è il pannello di chi vende**, non il centralino. Da lì si
+>   abilita un nuovo cliente food emettendo una **chiave**;
+> - il ristoratore **incolla la chiave in Tavolo** (Impostazioni → Telefono) e
+>   il telefono si accende, con tutte le funzioni che la chiave comprende.
+>
+> Quindi: la chiave la **firma** miocentralino (Ed25519) e Tavolo la
+> **verifica** con la sola chiave pubblica. Vedi
+> `src/lib/licenza-centralino.ts` e `src/server/licenza-centralino.ts`.
+>
+> Il lavoro del punto 1 resta valido: la rotta che riconosce chi chiama è la
+> tubatura fra la piattaforma telefonica e Tavolo, e adesso pretende **due**
+> cose — il token (chi chiama) e la licenza (se quel locale ha il telefono).
+> Le parole del documento sotto vanno lette con questa correzione davanti.
+
 # Integrare il centralino telefonico in Tavolo
 
 > Prompt da incollare all'inizio di una sessione di lavoro su `tavolo-app`.

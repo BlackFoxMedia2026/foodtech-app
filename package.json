@@ -23,7 +23,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "db:seed-e2e": "tsx prisma/seed-e2e.ts",
-    "token:telefonia": "tsx scripts/token-telefonia.ts"
+    "token:telefonia": "tsx scripts/token-telefonia.ts",
+    "centralino:chiavi": "tsx scripts/centralino-licenza.ts --chiavi",
+    "centralino:licenza": "tsx scripts/centralino-licenza.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sesv2": "^3.1132.0",

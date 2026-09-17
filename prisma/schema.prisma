@@ -235,6 +235,22 @@ model Venue {
   /// commissione si mangia il pagamento. In centesimi.
   minPaymentCents      Int       @default(100)
 
+  /// La chiave che accende il centralino in questo locale.
+  ///
+  /// La emette miocentralino, firmata; qui si conserva **per intero** perché
+  /// va riverificata a ogni lettura: se conservassimo solo «acceso: sì», una
+  /// riga cambiata a mano nel database darebbe il centralino a chi non l'ha
+  /// comprato. La firma è la prova, e la prova va tenuta.
+  phoneLicenseKey      String?
+  /// Quando è stata inserita. Nullo = il centralino non è mai stato acceso qui.
+  phoneLicenseActivatedAt DateTime?
+  /// L'ultimo istante di validità, copiato dalla chiave per poterlo mostrare
+  /// e filtrare senza rileggere la firma a ogni schermata.
+  phoneLicenseExpiresAt   DateTime?
+  /// Le funzioni accese da questa chiave. Copiate dalla chiave per lo stesso
+  /// motivo: leggerle costa una colonna, non una verifica.
+  phoneLicenseFeatures    String[]  @default([])
+
   agentConversations AgentConversation[]
   agentUsages        AgentUsage[]
   ApiToken           ApiToken[]
