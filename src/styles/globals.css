@@ -44,7 +44,13 @@
     --secondary-foreground: 41 59% 88%;
     --muted: 157 32% 23%;
     --muted-foreground: 41 38% 66%;
-    --tertiary: 41 19% 58%;
+    /* Il grigio delle note (`.t-nota`, 94 file). Era al 58% e misurava
+       **4,45:1** sul fondo reso delle schede — sotto la soglia di 4,50 per un
+       testo di 12px, e mancava lo 0,05. Al 60% misura 4,72:1: quattro punti di
+       RGB, invisibili accanto al vecchio, e un margine invece di un pareggio.
+       Il fondo su cui si misura è quello **composito** — sfumatura più velo
+       bianco — non il token: vedi `scripts/audit-leggibilita.mjs`. */
+    --tertiary: 41 19% 60%;
     --accent: 30 44% 48%;
     --accent-foreground: 41 59% 92%;
     --destructive: 0 70% 45%;
