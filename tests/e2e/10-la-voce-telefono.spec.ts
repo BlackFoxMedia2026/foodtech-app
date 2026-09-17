@@ -81,8 +81,16 @@ test("con la licenza la voce c'è, e la pagina mostra chi non ha trovato nessuno
     await expect(page.getByText("+39 347 9911223")).toBeVisible();
     await expect(page.getByText(/nessuna risposta/)).toBeVisible();
 
-    // E si può prenotare per chi non ha trovato nessuno, senza ridigitare niente.
-    await expect(page.getByRole("link", { name: /Prenota/ }).first()).toBeVisible();
+    /* E si prenota per chi non ha trovato nessuno **senza ridigitare niente**.
+       Per due giorni questo pulsante passava numero e ospite nell'indirizzo a
+       una pagina che non li leggeva: si apriva vuoto, e chi risponde doveva
+       riscrivere il numero mentre ascoltava la persona. Un collegamento che
+       sembra portare qualcosa e non lo porta è peggio di uno che non c'è. */
+    await page.getByRole("link", { name: /Prenota/ }).first().click();
+    await expect(page).toHaveURL(/\/bookings\/new/);
+    await expect(page.locator("#phone")).toHaveValue("3479911223");
+    await expect(page.locator("#firstName")).toHaveValue(nome);
+    await expect(page.locator("#lastName")).toHaveValue("Richiamare");
   } finally {
     await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
     await db.guest.delete({ where: { id: ospite.id } }).catch(() => {});
