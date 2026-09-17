@@ -29,6 +29,9 @@ import {
   StoricoVisite,
 } from "@/components/guests/crm-sezioni";
 import { can, getActiveVenue } from "@/lib/tenant";
+import { statoCentralino } from "@/server/licenza-centralino";
+import { chiamateDiOspite } from "@/server/chiamate";
+import { TelefonateOspite } from "@/components/telefono/telefonate-ospite";
 import { getSaldoFedelta } from "@/server/loyalty";
 import { LoyaltyPanel } from "@/components/guests/loyalty-panel";
 import { getGuest } from "@/server/guests";
@@ -82,6 +85,7 @@ export default async function GuestDetail({ params }: { params: { id: string } }
   const g = await getGuest(ctx.venueId, params.id);
   if (!g) notFound();
 
+  const centralino = await statoCentralino(ctx.venueId);
   const [profile, crm, saldo] = await Promise.all([
     getGuestProfile(ctx.venueId, params.id),
     getCrmOspite(ctx.venueId, params.id),
@@ -94,6 +98,12 @@ export default async function GuestDetail({ params }: { params: { id: string } }
     tutti e sessantacinque i clienti dell'archivio vorrebbe dire mantenere
     unici sessantaquattro identificativi che nessuno userà mai.
   */
+  /* Le telefonate solo se il locale ha il telefono: `null` significa «questo
+     locale non ha il centralino», che è diverso da «nessuna telefonata». */
+  const telefonate = centralino.attivo
+    ? await chiamateDiOspite(ctx.venueId, g.id)
+    : null;
+
   const codice = await assicuraCodiceTessera(ctx.venueId, g.id, g.loyaltyCardCode);
   const qr = codice ? await qrTessera(codice) : null;
 
@@ -402,6 +412,26 @@ export default async function GuestDetail({ params }: { params: { id: string } }
               <StoricoVisite visite={crm.storico} currency={valuta} />
             </CardContent>
           </Card>
+
+          {/*
+            Le telefonate, quando il locale ha il telefono collegato.
+
+            Non compare affatto sui locali senza telefono: una scheda vuota che
+            dice «nessuna telefonata» su un ristorante che non ha il centralino
+            è una riga che non significa niente, e su una scheda cliente le
+            righe che non significano niente costano l'attenzione di chi la
+            legge mentre parla al telefono.
+          */}
+          {telefonate !== null && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Telefonate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TelefonateOspite chiamate={telefonate} />
+              </CardContent>
+            </Card>
+          )}
 
           {/*
             Le etichette dedotte chiudono la colonna.

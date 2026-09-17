@@ -243,3 +243,92 @@ describe("il collegamento con la chiamata", () => {
     expect(esito.id).toBeTruthy();
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Dare un nome a un numero che ha chiamato.
+
+   Era il gesto che mancava: un numero non riconosciuto restava una riga nello
+   storico, e in Tavolo non esisteva **nessun** modo di creare un contatto
+   dall'interfaccia — la rotta c'era e nessuna schermata la chiamava.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+describe("dare un nome a un numero", () => {
+  it("crea il contatto e attacca la chiamata", async () => {
+    const { registraEventoChiamata: registra } = await import("@/server/chiamate");
+    const { collegaChiamataAContatto } = await import("@/server/chiamate");
+    const evento = await registra(venueId, {
+      externalId: "nome-1",
+      phone: "+393401112233",
+      stato: "MISSED",
+    });
+
+    const esito = await collegaChiamataAContatto(venueId, evento.id, {
+      firstName: "Elena",
+      lastName: "Nuova",
+    });
+    expect(esito.giaConosciuto).toBe(false);
+
+    const chiamata = await db.phoneCall.findUniqueOrThrow({ where: { id: evento.id } });
+    expect(chiamata.guestId).toBe(esito.guestId);
+
+    const g = await db.guest.findUniqueOrThrow({ where: { id: esito.guestId } });
+    expect(g.firstName).toBe("Elena");
+    expect(g.phone).toBe("+393401112233");
+  });
+
+  it("non fa doppioni se quel numero è già di qualcuno", async () => {
+    /* Passa da `trovaOCreaOspite`: se quel numero è già di una scheda — anche
+       scritto in un'altra forma — si attacca a quella. Senza, chi dà un nome a
+       un numero già noto creerebbe la seconda copia della stessa persona. */
+    const { registraEventoChiamata: registra, collegaChiamataAContatto } = await import(
+      "@/server/chiamate"
+    );
+    const evento = await registra(venueId, {
+      externalId: "nome-2",
+      phone: "333 7654321", // lo stesso di Giulia, scritto diverso
+      stato: "MISSED",
+    });
+    const prima = await db.guest.count({ where: { venueId } });
+
+    const esito = await collegaChiamataAContatto(venueId, evento.id, { firstName: "Qualcuno" });
+    expect(esito.giaConosciuto).toBe(true);
+    expect(esito.guestId).toBe(ospiteId);
+    expect(await db.guest.count({ where: { venueId } })).toBe(prima);
+  });
+
+  it("attacca anche le altre chiamate dello stesso numero", async () => {
+    /* Sono della stessa persona: lasciare le altre «non riconosciute»
+       vorrebbe dire ridare il nome per ogni riga. */
+    const { registraEventoChiamata: registra, collegaChiamataAContatto } = await import(
+      "@/server/chiamate"
+    );
+    const a = await registra(venueId, { externalId: "nome-3a", phone: "+393405556677", stato: "MISSED" });
+    const b = await registra(venueId, { externalId: "nome-3b", phone: "340 555 6677", stato: "MISSED" });
+
+    const esito = await collegaChiamataAContatto(venueId, a.id, { firstName: "Paolo" });
+
+    const altra = await db.phoneCall.findUniqueOrThrow({ where: { id: b.id } });
+    expect(altra.guestId).toBe(esito.guestId);
+  });
+
+  it("una chiamata di un altro locale non si tocca", async () => {
+    const { collegaChiamataAContatto } = await import("@/server/chiamate");
+    await expect(
+      collegaChiamataAContatto(venueId, "non-esiste", { firstName: "Nessuno" }),
+    ).rejects.toThrow("not_found");
+  });
+});
+
+describe("le telefonate sulla scheda del cliente", () => {
+  it("si leggono dalla relazione, non dal numero", async () => {
+    /* Se domani quella scheda cambia numero, queste restano le sue chiamate:
+       sono quelle che le erano state attribuite quando sono arrivate. */
+    const { registraEventoChiamata: registra, chiamateDiOspite } = await import(
+      "@/server/chiamate"
+    );
+    await registra(venueId, { externalId: "sched-1", phone: "+393337654321", stato: "MISSED" });
+    const elenco = await chiamateDiOspite(venueId, ospiteId);
+    expect(elenco.length).toBeGreaterThan(0);
+    expect(elenco[0]?.stato).toBe("MISSED");
+  });
+});

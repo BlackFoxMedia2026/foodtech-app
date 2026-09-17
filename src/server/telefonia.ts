@@ -132,7 +132,16 @@ const STATI_VISITATI = ["SEATED", "COMPLETED"] as const;
 if (!Number.isInteger(CIFRE_IDENTITA)) {
   throw new Error("CIFRE_IDENTITA deve essere un intero: finisce nell'SQL come letterale.");
 }
-const CIFRE_SQL = Prisma.raw(String(CIFRE_IDENTITA));
+/**
+ * Il numero di cifre come letterale SQL.
+ *
+ * Esportato perché adesso lo usano **due** moduli: la ricerca del chiamante e
+ * l'attacco di una chiamata a un contatto. Due copie dello stesso letterale
+ * divergono al primo che lo cambia, e il sintomo sarebbe un indice che smette
+ * di combaciare in una sola delle due letture — cioè una lenta e l'altra no,
+ * che è il modo peggiore di accorgersene.
+ */
+export const CIFRE_SQL = Prisma.raw(String(CIFRE_IDENTITA));
 
 /**
  * Le schede di un locale che hanno questo numero, dalla più recente.

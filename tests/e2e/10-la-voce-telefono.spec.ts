@@ -100,3 +100,68 @@ test("con la licenza la voce c'è, e la pagina mostra chi non ha trovato nessuno
     });
   }
 });
+
+test("a un numero senza nome si può dare un nome, e diventa un contatto", async ({ page }) => {
+  /* Era il gesto che mancava: un numero non riconosciuto restava una riga
+     nello storico, e in Tavolo non esisteva **nessun** modo di creare un
+     contatto dall'interfaccia — la rotta c'era e nessuna schermata la
+     chiamava. */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+    },
+  });
+
+  const numero = "3466677788";
+  await db.phoneCall.create({
+    data: {
+      venueId: locale.id,
+      externalId: unico("senzanome"),
+      fromNumber: `+39${numero}`,
+      status: "MISSED",
+      startedAt: new Date(Date.now() - 10 * 60 * 1000),
+    },
+  });
+  const nome = unico("Anonimo");
+
+  try {
+    await page.goto("/telefono");
+    await expect(page.getByText("Non riconosciuto").first()).toBeVisible({ timeout: 20_000 });
+
+    await page.getByRole("button", { name: /Dai un nome/ }).first().click();
+    await page.getByLabel(/Nome di chi ha chiamato/).fill(nome);
+    await page.getByLabel("Cognome, facoltativo").fill("Salvato");
+    await page.getByRole("button", { name: "Salva", exact: true }).click();
+
+    // La riga smette di dire «Non riconosciuto» e porta il nome.
+    await expect(page.getByText(nome).first()).toBeVisible({ timeout: 20_000 });
+
+    // E il contatto esiste davvero, col numero attaccato.
+    const creato = await db.guest.findFirstOrThrow({
+      where: { venueId: locale.id, firstName: nome },
+      select: { id: true, phone: true, lastName: true },
+    });
+    expect(creato.lastName).toBe("Salvato");
+    expect(creato.phone).toContain(numero);
+
+    // La chiamata è legata a lui: dalla volta dopo viene riconosciuto.
+    const chiamata = await db.phoneCall.findFirstOrThrow({
+      where: { venueId: locale.id, fromNumber: `+39${numero}` },
+      select: { guestId: true },
+    });
+    expect(chiamata.guestId).toBe(creato.id);
+  } finally {
+    await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
+    await db.guest.deleteMany({ where: { venueId: locale.id, firstName: nome } });
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+  }
+});

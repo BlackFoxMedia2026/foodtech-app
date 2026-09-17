@@ -252,18 +252,40 @@ describe("l'ospite che c'è già", () => {
   });
 
   it("si riconosce per telefono anche scritto in un altro modo", async () => {
+    /*
+      Questo test aveva il titolo giusto e l'asserzione opposta.
+
+      Si chiamava «si riconosce anche scritto in un altro modo» e pretendeva
+      che «3401234567» **non** fosse la stessa persona di
+      «+39 340 123 45 67» — cioè che nascesse un doppione. Documentava il
+      difetto come se fosse una scelta: il confronto era fra stringhe, e la
+      stringa col prefisso e quella senza sono diverse.
+
+      Sono la stessa persona. Adesso il confronto è sulle ultime nove cifre,
+      come per il riconoscimento di chi chiama al telefono — che è l'altra
+      metà dello stesso prodotto e usava già la regola giusta.
+    */
     const gia = await db.guest.create({
       data: { venueId, firstName: "Marco", phone: "+39 340 123 45 67" },
     });
 
-    const esito = await registraLead(slug, iscrizione({ email: null, phone: "3401234567" }));
-    // Senza prefisso non è lo stesso numero per certo: qui il confronto è
-    // esatto sulla forma normalizzata, quindi nasce un contatto nuovo.
-    expect(esito.giaConosciuto).toBe(false);
+    for (const scritto of ["3401234567", "+39-340-1234567", "0039 340 1234567"]) {
+      const esito = await registraLead(slug, iscrizione({ email: null, phone: scritto }));
+      expect(esito.giaConosciuto).toBe(true);
+    }
+    // La scheda è la sua, non una nuova con lo stesso nome.
+    expect((await db.guest.findFirstOrThrow({ where: { venueId } })).id).toBe(gia.id);
 
-    const esito2 = await registraLead(slug, iscrizione({ email: null, phone: "+39-340-1234567" }));
-    expect(esito2.giaConosciuto).toBe(true);
-    expect(await db.guest.count({ where: { venueId, id: gia.id } })).toBe(1);
+    // e resta **una** scheda, che è il punto
+    expect(await db.guest.count({ where: { venueId } })).toBe(1);
+  });
+
+  it("un numero troppo corto non attacca il contatto a nessuno", async () => {
+    /* Sotto le nove cifre non si identifica nessuno: attaccare una
+       registrazione alla persona sbagliata è peggio di una scheda in più. */
+    await db.guest.create({ data: { venueId, firstName: "Marco", phone: "+39 340 1234567" } });
+    const esito = await registraLead(slug, iscrizione({ email: null, phone: "12345" }));
+    expect(esito.giaConosciuto).toBe(false);
   });
 
   it("riempie i buchi ma non sovrascrive niente", async () => {
