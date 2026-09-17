@@ -89,5 +89,20 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: true,
     timeout: 180_000,
+    /*
+      La chiave pubblica di prova del centralino.
+
+      Serve perché il telefono si accende con una licenza **firmata**, e la
+      firma si verifica con una chiave che il server deve avere all'avvio: una
+      coppia generata dentro il test arriverebbe troppo tardi. Questa è la
+      stessa coppia di riferimento dei test di formato — non firma niente di
+      vero, e la sua metà privata sta in chiaro in `tests/e2e/licenza-prova.ts`.
+
+      Senza questa riga, la prova del telefono non sarebbe scrivibile: il
+      server risponderebbe «centralino non configurato» a ogni licenza.
+    */
+    env: {
+      CENTRALINO_CHIAVE_PUBBLICA: "MCowBQYDK2VwAyEA5R35op9eHGl4F+VC+4GTWHEiIrWJM2Tne7ZONZCUzaU=",
+    },
   },
 });

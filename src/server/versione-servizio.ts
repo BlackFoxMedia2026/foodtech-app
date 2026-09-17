@@ -37,7 +37,7 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
   const inizio = startOfDay(adesso);
   const fine = endOfDay(adesso);
 
-  const [prenotazioni, coda, conti, pagamenti] = await Promise.all([
+  const [prenotazioni, coda, conti, pagamenti, chiamate] = await Promise.all([
     // Indice: [venueId, startsAt]
     db.booking.aggregate({
       where: { venueId, startsAt: { gte: inizio, lte: fine }, deletedAt: null },
@@ -67,14 +67,39 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
       Indice: [venueId, createdAt].
     */
     db.payment.aggregate({
-      where: { venueId, kind: "TABLE_QR", createdAt: { gte: inizio, lte: fine } },
+      where: {
+        venueId,
+        kind: "TABLE_QR",
+        createdAt: { gte: inizio, lte: fine },
+      },
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
+    /*
+      Il telefono che squilla.
+
+      È il pezzo con la scadenza più corta di tutti: una chiamata dura venti
+      secondi, e cinque secondi di ritardo sono un quarto della sua vita. Senza
+      questo, il riquadro comparirebbe solo quando si muove qualcos'altro in
+      sala — cioè, in un locale tranquillo, mai.
+
+      Indice: [venueId, status, startedAt].
+    */
+    db.phoneCall.aggregate({
+      where: {
+        venueId,
+        status: { in: ["RINGING", "ANSWERED"] },
+        startedAt: { gte: new Date(adesso.getTime() - 90_000) },
+      },
       _count: { _all: true },
       _max: { updatedAt: true },
     }),
   ]);
 
-  const pezzo = (a: { _count: { _all: number }; _max: { updatedAt: Date | null } }) =>
-    `${a._count._all}.${a._max.updatedAt?.getTime() ?? 0}`;
+  const pezzo = (a: {
+    _count: { _all: number };
+    _max: { updatedAt: Date | null };
+  }) => `${a._count._all}.${a._max.updatedAt?.getTime() ?? 0}`;
 
-  return `${pezzo(prenotazioni)}-${pezzo(coda)}-${pezzo(conti)}-${pezzo(pagamenti)}`;
+  return `${pezzo(prenotazioni)}-${pezzo(coda)}-${pezzo(conti)}-${pezzo(pagamenti)}-${pezzo(chiamate)}`;
 }

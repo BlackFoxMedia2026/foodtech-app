@@ -1,4 +1,6 @@
 import { db } from "@/lib/db";
+import { chiamateVive, type ChiamataViva } from "@/server/chiamate";
+import { versioneServizio } from "@/server/versione-servizio";
 import { NON_PIU_RITARDO_MIN } from "./service-intelligence";
 import { endOfDay, startOfDay } from "@/lib/utils";
 import { listWaitlist, expireStaleOffers, type WaitlistView } from "./waitlist";
@@ -100,6 +102,25 @@ export type ServiceSnapshot = {
   /** Tavoli seduti la cui durata prevista è scaduta o sta per scadere. */
   freeingSoon: ServiceBooking[];
   waitlist: WaitlistView[];
+  /**
+   * La versione del servizio **al momento di questa fotografia**.
+   *
+   * Serve alla sonda che tiene la schermata viva: senza, la sonda prende come
+   * punto di partenza la *propria* prima interrogazione, e qualunque cosa
+   * succeda fra la resa della pagina e quel primo giro viene assorbita nel
+   * punto di partenza — cioè non fa aggiornare niente. Su una prenotazione si
+   * recupera al cambiamento dopo; su una chiamata che dura venti secondi,
+   * quella finestra è un terzo della sua vita.
+   */
+  versione: string;
+  /**
+   * Il telefono che squilla adesso.
+   *
+   * Vuoto quando il locale non ha il telefono collegato, e vuoto anche quando
+   * ce l'ha e nessuno chiama: chi guarda la schermata non deve distinguere i
+   * due casi, perché in sala non cambia niente.
+   */
+  chiamate: ChiamataViva[];
   counters: {
     copertiPresenti: number;
     tavoliOccupati: number;
@@ -165,9 +186,12 @@ function toServiceBooking(
   etichette?: Map<string, string>,
   tipica?: DurataTipica | null,
 ): ServiceBooking {
-  const minutesToArrival = Math.round((b.startsAt.getTime() - now.getTime()) / 60_000);
+  const minutesToArrival = Math.round(
+    (b.startsAt.getTime() - now.getTime()) / 60_000,
+  );
   const isLate =
-    (b.status === "CONFIRMED" || b.status === "PENDING") && minutesToArrival < -LATE_GRACE_MIN;
+    (b.status === "CONFIRMED" || b.status === "PENDING") &&
+    minutesToArrival < -LATE_GRACE_MIN;
   // La stessa formula della sala: si conta da quando si sono seduti, e la
   // durata è quella misurata nel locale quando ce n'è una.
   const liberazione = previsioneLiberazione(b, now, tipica);
@@ -200,14 +224,17 @@ function toServiceBooking(
       loyaltyTier: b.guest?.loyaltyTier,
       occasion: b.occasion,
     }),
-    isVip: b.guest?.loyaltyTier === "VIP" || b.guest?.loyaltyTier === "AMBASSADOR",
+    isVip:
+      b.guest?.loyaltyTier === "VIP" || b.guest?.loyaltyTier === "AMBASSADOR",
     depositCents: b.depositCents,
     depositStatus: b.depositStatus,
     minutesToArrival,
     lateBy: isLate ? Math.abs(minutesToArrival) : 0,
     minutesToFree: b.status === "SEATED" ? liberazione.minuti : null,
     liberoVerso:
-      b.status === "SEATED" ? comeLiberoVerso(liberazione, tipica?.misurate ?? null) : null,
+      b.status === "SEATED"
+        ? comeLiberoVerso(liberazione, tipica?.misurate ?? null)
+        : null,
     source: b.source,
   };
 }
@@ -230,10 +257,26 @@ export async function getServiceSnapshot(
   // la colonna delle attese mostra come "avvisate" persone andate altrove.
   await expireStaleOffers(venueId, now);
 
-  const [venue, bookings, tables, waitlist, walkInOggi, tipica, cambiamenti] = await Promise.all([
-    db.venue.findUnique({ where: { id: venueId }, select: { timezone: true, currency: true } }),
+  const [
+    venue,
+    bookings,
+    tables,
+    waitlist,
+    walkInOggi,
+    tipica,
+    cambiamenti,
+    chiamate,
+    versione,
+  ] = await Promise.all([
+    db.venue.findUnique({
+      where: { id: venueId },
+      select: { timezone: true, currency: true },
+    }),
     loadBookings(venueId, startOfDay(now), endOfDay(now)),
-    db.table.findMany({ where: { venueId }, select: { id: true, active: true } }),
+    db.table.findMany({
+      where: { venueId },
+      select: { id: true, active: true },
+    }),
     listWaitlist(venueId, { now }),
     db.booking.count({
       where: {
@@ -246,6 +289,18 @@ export async function getServiceSnapshot(
     }),
     durataTipicaSeduta(venueId, { now }),
     ultimiCambiamenti(venueId, { now, escludiUtente: opts.utente }),
+    /*
+      Le chiamate in corso.
+
+      La lettura c'è anche sui locali senza telefono, e costa una riga a vuoto
+      su un indice: il guardiano della licenza sta sulla **rotta** che scrive le
+      chiamate, quindi un locale senza telefono non ne ha nessuna e questa
+      interrogazione torna vuota. Controllare prima la licenza vorrebbe dire una
+      lettura in più per ogni fotografia del servizio, cioè pagare sempre per
+      non pagare qualche volta.
+    */
+    chiamateVive(venueId, now),
+    versioneServizio(venueId, now),
   ]);
 
   // Le etichette dei tavoli accostati: una lettura sola per tutta la
@@ -255,11 +310,16 @@ export async function getServiceSnapshot(
     idUniti.length === 0
       ? []
       : (
-          await db.table.findMany({ where: { id: { in: idUniti }, venueId }, select: { id: true, label: true } })
+          await db.table.findMany({
+            where: { id: { in: idUniti }, venueId },
+            select: { id: true, label: true },
+          })
         ).map((t) => [t.id, t.label] as const),
   );
 
-  const tutte = bookings.map((b) => toServiceBooking(b, now, etichette, tipica));
+  const tutte = bookings.map((b) =>
+    toServiceBooking(b, now, etichette, tipica),
+  );
 
   const seated = tutte.filter((b) => b.status === "SEATED");
   const arrived = tutte.filter((b) => b.status === "ARRIVED");
@@ -284,7 +344,8 @@ export async function getServiceSnapshot(
     .filter((b) => (b.minutesToFree ?? Infinity) <= FREEING_SOON_MIN)
     .sort((a, b) => (a.minutesToFree ?? 0) - (b.minutesToFree ?? 0));
 
-  const tavoliOccupati = new Set(seated.map((b) => b.tableId).filter(Boolean)).size;
+  const tavoliOccupati = new Set(seated.map((b) => b.tableId).filter(Boolean))
+    .size;
   const attivi = tables.filter((t) => t.active).length;
 
   return {
@@ -297,6 +358,8 @@ export async function getServiceSnapshot(
     next,
     freeingSoon,
     waitlist,
+    versione,
+    chiamate,
     counters: {
       copertiPresenti: seated.reduce((n, b) => n + b.partySize, 0),
       tavoliOccupati,
@@ -310,7 +373,9 @@ export async function getServiceSnapshot(
       personeInAttesa: waitlist.reduce((n, e) => n + e.partySize, 0),
       walkInOggi,
       copertiPrevisti: tutte
-        .filter((b) => b.status !== "NO_SHOW" && b.minutesToArrival > -LATE_GRACE_MIN)
+        .filter(
+          (b) => b.status !== "NO_SHOW" && b.minutesToArrival > -LATE_GRACE_MIN,
+        )
         .reduce((n, b) => n + b.partySize, 0),
     },
     cambiamenti,
