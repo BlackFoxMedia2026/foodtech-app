@@ -3,6 +3,9 @@ import { getActiveVenue } from "@/lib/tenant";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { elencoChiamate } from "@/server/chiamate";
 import { ElencoChiamateVista } from "@/components/telefono/elenco-chiamate";
+import { TelefonoBrowser } from "@/components/telefono/telefono-browser";
+import { statoTelefonoBrowser } from "@/server/telefono-browser";
+import { can } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -39,17 +42,34 @@ export default async function TelefonoPage({
     ? Number(searchParams.giorni)
     : 7;
 
-  const elenco = await elencoChiamate(ctx.venueId, { solo, giorni });
+  const [elenco, telefono] = await Promise.all([
+    elencoChiamate(ctx.venueId, { solo, giorni }),
+    statoTelefonoBrowser(ctx.venueId),
+  ]);
+
+  /* Il telefono nel browser compare solo se è configurato **e** solo a chi in
+     questo locale risponde al telefono: la rotta che dà le credenziali chiede
+     `manage_bookings`, e un riquadro che si collega e fallisce per chi non ha
+     quel permesso sarebbe un errore inventato dall'interfaccia. */
+  const puoRispondere = telefono.pronto && can(ctx.role, "manage_bookings");
 
   return (
+    /* Il telefono nel browser entra **dentro** l'elenco e non accanto: la
+       pagina è una colonna alta esattamente il video, e un secondo figlio
+       fuori dal contenitore romperebbe la regola «una schermata operativa si
+       guarda, non si scorre». */
     <ElencoChiamateVista
+      telefono={puoRispondere ? <TelefonoBrowser /> : null}
       elenco={{
         ...elenco,
         chiamate: elenco.chiamate.map((c) => ({
           ...c,
           quando: c.quando.toISOString(),
           prenotazione: c.prenotazione
-            ? { ...c.prenotazione, startsAt: c.prenotazione.startsAt.toISOString() }
+            ? {
+                ...c.prenotazione,
+                startsAt: c.prenotazione.startsAt.toISOString(),
+              }
             : null,
         })),
       }}

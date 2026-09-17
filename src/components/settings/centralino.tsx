@@ -50,6 +50,14 @@ const NOME_FUNZIONE: Record<FunzioneCentralino, string> = {
 
 const GIORNO = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", year: "numeric" });
 
+export type StatoSipVista = {
+  pronto: boolean;
+  server: string | null;
+  utente: string | null;
+  passwordPresente: boolean;
+  sottoChiave: boolean;
+};
+
 export type StatoCentralinoVista = {
   attivo: boolean;
   funzioni: string[];
@@ -61,10 +69,13 @@ export type StatoCentralinoVista = {
 
 export function Centralino({
   stato,
+  sip,
   venueId,
   canManage,
 }: {
   stato: StatoCentralinoVista;
+  /** I dati del telefono nel browser. La password non arriva mai qui. */
+  sip: StatoSipVista;
   /** L'identificativo di questo locale: è quello che va sulla licenza. */
   venueId: string;
   canManage: boolean;
@@ -73,6 +84,40 @@ export function Centralino({
   const [chiave, setChiave] = useState("");
   const [inCorso, setInCorso] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
+
+  // I dati del telefono nel browser.
+  const [server, setServer] = useState(sip.server ?? "");
+  const [utente, setUtente] = useState(sip.utente ?? "");
+  const [password, setPassword] = useState("");
+  const [erroreSip, setErroreSip] = useState<string | null>(null);
+  const [salvato, setSalvato] = useState(false);
+
+  async function salvaSip(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setInCorso(true);
+    setErroreSip(null);
+    setSalvato(false);
+    const res = await fetch("/api/venue/centralino/sip", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        server: server.trim() || null,
+        utente: utente.trim() || null,
+        /* Vuota significa «non cambiarla»: il campo non la mostra mai, e un
+           salvataggio che la cancellasse per averla lasciata vuota
+           scollegherebbe il telefono a chi voleva solo cambiare l'utenza. */
+        ...(password ? { password } : {}),
+      }),
+    });
+    setInCorso(false);
+    if (!res.ok) {
+      setErroreSip(await readApiError(res, "Non siamo riusciti a salvare i dati del telefono."));
+      return;
+    }
+    setPassword("");
+    setSalvato(true);
+    router.refresh();
+  }
 
   async function attiva(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -185,6 +230,94 @@ export function Centralino({
           </RigaImpostazione>
         );
       })}
+
+      {/*
+        Il telefono nel browser: dove registrarsi.
+
+        Compare solo a telefono **acceso**: sono i dati che il centralino
+        consegna insieme alla chiave, e prima della chiave non servono a
+        niente. La password non torna mai indietro dal server — il campo resta
+        vuoto e vuoto significa «non cambiarla».
+      */}
+      {stato.attivo && canManage && (
+        <RigaLibera>
+          <form onSubmit={salvaSip} className="space-y-3">
+            <div>
+              <p className="text-sm font-medium">Rispondere da Tavolo</p>
+              <p className="mt-0.5 t-nota">
+                Con questi dati il telefono squilla dentro Tavolo, su ogni schermo aperto, e si
+                risponde da lì. Te li mandiamo insieme alla chiave.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="sip-server">Indirizzo del centralino</Label>
+                <Input
+                  id="sip-server"
+                  value={server}
+                  onChange={(e) => setServer(e.target.value)}
+                  placeholder="wss://…"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sip-utente">Utenza</Label>
+                <Input
+                  id="sip-utente"
+                  value={utente}
+                  onChange={(e) => setUtente(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="sip-password">
+                  Password{" "}
+                  {sip.passwordPresente && (
+                    <span className="t-nota">— già salvata, lascia vuoto per non cambiarla</span>
+                  )}
+                </Label>
+                <Input
+                  id="sip-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                  className="font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Si dichiara invece di tacere: senza chiave di cifratura la
+                password sta in chiaro nel database, e chi decide se va bene è
+                chi legge questa riga, non noi. */}
+            {!sip.sottoChiave && (
+              <p className="t-nota">
+                Su questa installazione non è configurata una chiave di cifratura: la password
+                resta leggibile nel database. Scrivici se vuoi che la mettiamo sotto chiave.
+              </p>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" variant="outline" size="sm" disabled={inCorso}>
+                {inCorso ? "Salvo…" : "Salva"}
+              </Button>
+              {sip.pronto && !erroreSip && (
+                <Badge tone="success">
+                  <Phone className="mr-1 h-3 w-3" aria-hidden="true" />
+                  Si risponde da Tavolo
+                </Badge>
+              )}
+              {salvato && !erroreSip && <span className="t-nota">Salvato.</span>}
+              {erroreSip && <span className="text-sm text-destructive">{erroreSip}</span>}
+            </div>
+          </form>
+        </RigaLibera>
+      )}
 
       {/*
         L'identificativo del locale, da copiare.
