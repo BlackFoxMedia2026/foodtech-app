@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError, apiErrorResponse, requireApiToken } from "@/lib/api-auth";
 import { riconosciChiamante } from "@/server/telefonia";
+import { LicenzaError, richiediFunzioneCentralino } from "@/server/licenza-centralino";
 
 /**
  * `GET /api/v1/telefonia/ospite?phone=...`
@@ -31,6 +32,13 @@ export async function GET(req: Request) {
   if (!ctx.ok) return ctx.response;
 
   try {
+    /* Il token dice **chi** chiama; la licenza dice se quel locale ha il
+       telefono. Sono due domande diverse e servono entrambe: un token resta
+       valido anche quando la licenza scade, e senza questo controllo un locale
+       che non paga più continuerebbe a farsi rispondere. Nasconderlo
+       nell'interfaccia non basta — chi conosce l'indirizzo chiama comunque. */
+    await richiediFunzioneCentralino(ctx.venueId, "riconoscimento");
+
     const url = new URL(req.url);
     /* `+` in una query string si decodifica come spazio: `?phone=+39333...`
        arriva come « 39333...». Non lo correggiamo qui perché a valle si
@@ -48,6 +56,12 @@ export async function GET(req: Request) {
        trattare il caso più frequente come un guasto. */
     return NextResponse.json(esito);
   } catch (err) {
+    /* 403 e non 401: il token è buono, la funzione non è accesa su questo
+       locale. Per chi integra sono due cose da fare diverse — rifare il token,
+       oppure chiamare chi vende. */
+    if (err instanceof LicenzaError) {
+      return apiError(403, "centralino_non_attivo", "Il telefono non è attivo su questo locale.");
+    }
     return apiErrorResponse(err);
   }
 }

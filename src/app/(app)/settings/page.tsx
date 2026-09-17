@@ -25,8 +25,10 @@ import { listRooms } from "@/server/rooms";
 import { listFasceServizio } from "@/server/turni-servizio";
 import { listReviewLinks } from "@/server/reviews";
 import { listInviti, listTeam } from "@/server/team";
+import { statoCentralino } from "@/server/licenza-centralino";
 import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
 import { AccessoTeam } from "@/components/settings/accesso-team";
+import { Centralino } from "@/components/settings/centralino";
 import { BarraImpostazioniMobile } from "@/components/settings/navigazione-impostazioni";
 import { ParteChiesta, SezioneImpostazioni } from "@/components/settings/sezione-impostazioni";
 import {
@@ -106,6 +108,7 @@ export default async function SettingsPage() {
     reputazioneDem,
     membri,
     inviti,
+    centralino,
   ] = await Promise.all([
     db.venue.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: "asc" } }),
     listFasceServizio(ctx.venueId),
@@ -122,6 +125,7 @@ export default async function SettingsPage() {
        dell'indirizzo di questa installazione: lo stesso `baseUrl` del codice
        da incollare sul sito. */
     listInviti(ctx.venueId, baseUrl),
+    statoCentralino(ctx.venueId),
   ]);
 
   /* `manage_venue`, la stessa capacità che chiedono le rotte `/api/team/*`:
@@ -563,6 +567,20 @@ export default async function SettingsPage() {
             <MieiDispositivi />
 
             <AccessoTeam membri={membri} inviti={inviti} canManage={puoGestireTeam} />
+
+            {/* Il telefono sta in Sistema accanto ai pagamenti: sono le due
+                cose che si **collegano** al locale invece di configurarsi. */}
+            <Centralino
+              canManage={puoGestireTeam}
+              stato={{
+                attivo: centralino.attivo,
+                funzioni: centralino.funzioni,
+                scadeIl: centralino.scadeIl?.toISOString() ?? null,
+                attivatoIl: centralino.attivatoIl?.toISOString() ?? null,
+                chiaveLeggibile: centralino.chiaveLeggibile,
+                motivoSpento: centralino.motivoSpento,
+              }}
+            />
 
             {/* Stripe è un'integrazione, e il valore dice la cosa che conta —
                 se il locale può incassare — non se esiste un collegamento a
