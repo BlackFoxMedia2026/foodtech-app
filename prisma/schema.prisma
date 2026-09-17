@@ -253,6 +253,7 @@ model Venue {
 
   agentConversations AgentConversation[]
   agentUsages        AgentUsage[]
+  phoneCalls         PhoneCall[]
   ApiToken           ApiToken[]
   AutomationWorkflow AutomationWorkflow[]
   BackgroundJob      BackgroundJob[]
@@ -570,6 +571,7 @@ model Guest {
   waitlistEntries        WaitlistEntry[]
   surveys                Survey[]
   campaignRecipients     CampaignRecipient[]
+  phoneCalls             PhoneCall[]
 
   @@index([venueId, email])
   @@index([venueId, phone])
@@ -633,6 +635,7 @@ model Booking {
   VoiceBookingDraft VoiceBookingDraft?
   messages          MessageLog[]
   Survey            Survey?
+  phoneCalls        PhoneCall[]
 
   @@index([venueId, startsAt])
   @@index([venueId, status])
@@ -2413,6 +2416,73 @@ enum LoyaltyTier {
   REGULAR
   VIP
   AMBASSADOR
+}
+
+/// Una chiamata al telefono del locale, mentre succede.
+///
+/// Esiste per una schermata sola: chi risponde deve sapere **chi sta
+/// chiamando** prima di dire pronto. Non e un registro telefonico — quello ce
+/// l'ha il centralino, che vede tutto il traffico — e non tiene le chiamate
+/// per sempre: tiene quelle di oggi, perche il loro valore dura il tempo di
+/// uno squillo.
+///
+/// Le righe le scrive il centralino attraverso `/api/v1/telefonia/chiamata`.
+/// Ogni evento della stessa chiamata (squilla, risposto, chiuso) arriva con lo
+/// stesso `externalId`: la riga si aggiorna invece di moltiplicarsi, e una
+/// consegna ripetuta — che su una rete succede — non crea una seconda chiamata.
+model PhoneCall {
+  id      String @id @default(cuid())
+  venueId String
+
+  /// L'identificativo che la chiamata ha **nel centralino**.
+  ///
+  /// Unico per locale, e serve all'idempotenza: il centralino puo rimandare lo
+  /// stesso evento se non ha ricevuto la nostra risposta, e senza questo
+  /// vincolo una chiamata comparirebbe due volte sullo schermo di chi risponde.
+  externalId String
+
+  /// Il numero di chi chiama, come lo manda il centralino. Nullo quando arriva
+  /// riservato: e un caso previsto, non un guasto.
+  fromNumber String?
+
+  status PhoneCallStatus @default(RINGING)
+
+  startedAt  DateTime  @default(now())
+  answeredAt DateTime?
+  endedAt    DateTime?
+
+  /// L'ospite riconosciuto dal numero, quando ce n'e uno.
+  ///
+  /// Si scrive **al momento dello squillo** e non si ricalcola: se domani la
+  /// scheda cambia numero, questa chiamata resta attribuita a chi era in quel
+  /// momento. Una storia che si riscrive non e una storia.
+  guestId String?
+
+  /// La prenotazione nata da questa chiamata, quando nasce.
+  bookingId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue   Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest   Guest?   @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@unique([venueId, externalId])
+  @@index([venueId, status, startedAt])
+  @@index([venueId, startedAt])
+}
+
+enum PhoneCallStatus {
+  /// Sta squillando: e lo stato per cui questa tabella esiste.
+  RINGING
+  /// Qualcuno ha risposto.
+  ANSWERED
+  /// Nessuno ha risposto. Non e la stessa cosa di «chiusa»: una persona che ha
+  /// chiamato e non ha trovato nessuno e una persona da richiamare.
+  MISSED
+  /// Finita, dopo che qualcuno aveva risposto.
+  ENDED
 }
 
 enum BookingStatus {
