@@ -13,7 +13,13 @@ import type { StaffRole } from "@prisma/client";
  * ingresso in `lib/api-auth.ts`.
  */
 
-const RUOLI: StaffRole[] = ["MANAGER", "RECEPTION", "WAITER", "MARKETING", "READ_ONLY"];
+const RUOLI: StaffRole[] = [
+  "MANAGER",
+  "RECEPTION",
+  "WAITER",
+  "MARKETING",
+  "READ_ONLY",
+];
 
 const CAPACITA: Ability[] = [
   "manage_org",
@@ -24,13 +30,25 @@ const CAPACITA: Ability[] = [
   "manage_staff",
   "manage_contracts",
   "manage_shifts",
+  "use_phone",
+  "manage_phone",
 ];
 
 /** La verità attesa, scritta per esteso: leggibile anche da chi non conosce il codice. */
 const ATTESO: Record<StaffRole, Ability[]> = {
-  MANAGER: ["manage_venue", "manage_bookings", "view_revenue", "edit_marketing", "manage_staff", "manage_contracts", "manage_shifts"],
-  RECEPTION: ["manage_bookings"],
-  WAITER: ["manage_bookings"],
+  MANAGER: [
+    "manage_venue",
+    "manage_bookings",
+    "view_revenue",
+    "edit_marketing",
+    "manage_staff",
+    "manage_contracts",
+    "manage_shifts",
+    "use_phone",
+    "manage_phone",
+  ],
+  RECEPTION: ["manage_bookings", "use_phone"],
+  WAITER: ["manage_bookings", "use_phone"],
   MARKETING: ["edit_marketing", "view_revenue"],
   READ_ONLY: [],
 };
@@ -68,7 +86,12 @@ describe("matrice dei permessi", () => {
 
   it("la configurazione della sala richiede manage_venue, che ha solo MANAGER", () => {
     expect(can("MANAGER", "manage_venue")).toBe(true);
-    for (const ruolo of ["RECEPTION", "WAITER", "MARKETING", "READ_ONLY"] as StaffRole[]) {
+    for (const ruolo of [
+      "RECEPTION",
+      "WAITER",
+      "MARKETING",
+      "READ_ONLY",
+    ] as StaffRole[]) {
       expect(can(ruolo, "manage_venue")).toBe(false);
     }
   });
@@ -78,6 +101,34 @@ describe("matrice dei permessi", () => {
       expect(can(ruolo, "manage_bookings")).toBe(true);
     }
     expect(can("MARKETING", "manage_bookings")).toBe(false);
+  });
+
+  it("il telefono lo usa chi sta in sala, non chi fa le campagne", () => {
+    /* Il difetto corretto nella fase 7: la voce «Telefono» compariva col solo
+       collegamento del centralino e la pagina dietro **non guardava il
+       ruolo**. Un accesso in sola lettura leggeva nomi, numeri e chiamate
+       perse di tutti i clienti del locale. */
+    for (const ruolo of ["MANAGER", "RECEPTION", "WAITER"] as StaffRole[]) {
+      expect(can(ruolo, "use_phone")).toBe(true);
+    }
+    expect(can("MARKETING", "use_phone")).toBe(false);
+    expect(can("READ_ONLY", "use_phone")).toBe(false);
+  });
+
+  it("collegare il centralino è cosa da manager: le credenziali SIP sono soldi", () => {
+    /* Con le credenziali SIP si telefona a spese del locale: non è una
+       preferenza, è un rubinetto. Separata da `use_phone` come
+       `manage_shifts` è separata da `manage_staff` — rispondere al telefono lo
+       si fa ogni sera, collegare un centralino una volta e per tutti. */
+    expect(can("MANAGER", "manage_phone")).toBe(true);
+    for (const ruolo of [
+      "RECEPTION",
+      "WAITER",
+      "MARKETING",
+      "READ_ONLY",
+    ] as StaffRole[]) {
+      expect(can(ruolo, "manage_phone")).toBe(false);
+    }
   });
 
   it("un ruolo non previsto non riceve permessi per errore", () => {

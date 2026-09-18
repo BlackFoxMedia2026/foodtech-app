@@ -18,7 +18,7 @@ import { statoVivoTelefono, VUOTO } from "@/server/telefono-vivo";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const ctx = await requireVenueApi("manage_bookings");
+  const ctx = await requireVenueApi("use_phone");
   if (!ctx.ok) return ctx.response;
 
   try {

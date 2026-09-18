@@ -14,7 +14,7 @@ const KIND_ABILITY: Partial<Record<NotificationKind, Ability>> = {
      un accesso in sola lettura non deve leggere i numeri di telefono dei
      clienti da una campanella: è la stessa capacità che chiede la colonna
      «Da fare» del telefono. */
-  MISSED_CALL: "manage_bookings",
+  MISSED_CALL: "use_phone",
 };
 
 /**

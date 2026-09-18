@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { apiError, apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { auditActor, recordAudit } from "@/server/audit";
-import { elencaApiToken, emettiApiToken, revocaApiToken } from "@/server/api-token";
-import { LicenzaError, richiediFunzioneCentralino } from "@/server/licenza-centralino";
+import {
+  elencaApiToken,
+  emettiApiToken,
+  revocaApiToken,
+} from "@/server/api-token";
+import {
+  LicenzaError,
+  richiediFunzioneCentralino,
+} from "@/server/licenza-centralino";
 
 /**
  * La chiave con cui il centralino parla con Tavolo.
@@ -35,7 +42,7 @@ export const dynamic = "force-dynamic";
 const NOME = "Collegamento col centralino";
 
 export async function GET() {
-  const ctx = await requireVenueApi("manage_venue");
+  const ctx = await requireVenueApi("manage_phone");
   if (!ctx.ok) return ctx.response;
 
   try {
@@ -55,14 +62,18 @@ export async function GET() {
     });
   } catch (err) {
     if (err instanceof LicenzaError) {
-      return apiError(403, "centralino_non_attivo", "Il telefono non è attivo su questo locale.");
+      return apiError(
+        403,
+        "centralino_non_attivo",
+        "Il telefono non è attivo su questo locale.",
+      );
     }
     return apiErrorResponse(err);
   }
 }
 
 export async function POST(req: Request) {
-  const ctx = await requireVenueApi("manage_venue");
+  const ctx = await requireVenueApi("manage_phone");
   if (!ctx.ok) return ctx.response;
 
   try {
@@ -78,9 +89,15 @@ export async function POST(req: Request) {
       creatoDa: ctx.userId,
     });
 
-    await recordAudit(auditActor(ctx, req), "venue.centralino_chiave_emessa", "venue", ctx.venueId, {
-      prefisso: emesso.prefisso,
-    });
+    await recordAudit(
+      auditActor(ctx, req),
+      "venue.centralino_chiave_emessa",
+      "venue",
+      ctx.venueId,
+      {
+        prefisso: emesso.prefisso,
+      },
+    );
 
     return NextResponse.json(
       {
@@ -93,24 +110,35 @@ export async function POST(req: Request) {
     );
   } catch (err) {
     if (err instanceof LicenzaError) {
-      return apiError(403, "centralino_non_attivo", "Il telefono non è attivo su questo locale.");
+      return apiError(
+        403,
+        "centralino_non_attivo",
+        "Il telefono non è attivo su questo locale.",
+      );
     }
     return apiErrorResponse(err);
   }
 }
 
 export async function DELETE(req: Request) {
-  const ctx = await requireVenueApi("manage_venue");
+  const ctx = await requireVenueApi("manage_phone");
   if (!ctx.ok) return ctx.response;
 
   try {
     const { id } = (await req.json()) as { id?: string };
-    if (!id) return apiError(400, "id_mancante", "Serve la chiave da revocare.");
+    if (!id)
+      return apiError(400, "id_mancante", "Serve la chiave da revocare.");
 
     await revocaApiToken(ctx.venueId, id);
-    await recordAudit(auditActor(ctx, req), "venue.centralino_chiave_revocata", "venue", ctx.venueId, {
-      chiave: id,
-    });
+    await recordAudit(
+      auditActor(ctx, req),
+      "venue.centralino_chiave_revocata",
+      "venue",
+      ctx.venueId,
+      {
+        chiave: id,
+      },
+    );
     return NextResponse.json({ ok: true });
   } catch (err) {
     return apiErrorResponse(err);

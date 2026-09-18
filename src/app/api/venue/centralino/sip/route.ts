@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { auditActor, recordAudit } from "@/server/audit";
-import { LicenzaError, richiediFunzioneCentralino } from "@/server/licenza-centralino";
+import {
+  LicenzaError,
+  richiediFunzioneCentralino,
+} from "@/server/licenza-centralino";
 import {
   TelefonoBrowserError,
   credenzialiTelefonoBrowser,
@@ -36,7 +39,7 @@ const Corpo = z.object({
 });
 
 export async function GET() {
-  const ctx = await requireVenueApi("manage_bookings");
+  const ctx = await requireVenueApi("use_phone");
   if (!ctx.ok) return ctx.response;
 
   try {
@@ -58,18 +61,26 @@ export async function GET() {
         password: cred.password,
         uri: `sip:${cred.utente}@${new URL(cred.server).hostname}`,
       },
-      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate, private" } },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, private",
+        },
+      },
     );
   } catch (err) {
     if (err instanceof LicenzaError) {
-      return apiError(403, "centralino_non_attivo", "Il telefono non è attivo su questo locale.");
+      return apiError(
+        403,
+        "centralino_non_attivo",
+        "Il telefono non è attivo su questo locale.",
+      );
     }
     return apiErrorResponse(err);
   }
 }
 
 export async function PATCH(req: Request) {
-  const ctx = await requireVenueApi("manage_venue");
+  const ctx = await requireVenueApi("manage_phone");
   if (!ctx.ok) return ctx.response;
 
   try {
@@ -80,17 +91,27 @@ export async function PATCH(req: Request) {
     /* Nel registro finisce **cosa** è cambiato, non il valore: davanti a «da
        ieri il telefono non squilla» la prima domanda è quando qualcuno ha
        toccato questa configurazione. */
-    await recordAudit(auditActor(ctx, req), "venue.centralino_sip_modificato", "venue", ctx.venueId, {
-      server: stato.server,
-      utente: stato.utente,
-      passwordCambiata: corpo.password !== undefined,
-      sottoChiave: stato.sottoChiave,
-    });
+    await recordAudit(
+      auditActor(ctx, req),
+      "venue.centralino_sip_modificato",
+      "venue",
+      ctx.venueId,
+      {
+        server: stato.server,
+        utente: stato.utente,
+        passwordCambiata: corpo.password !== undefined,
+        sottoChiave: stato.sottoChiave,
+      },
+    );
 
     return NextResponse.json(stato);
   } catch (err) {
     if (err instanceof LicenzaError) {
-      return apiError(403, "centralino_non_attivo", "Il telefono non è attivo su questo locale.");
+      return apiError(
+        403,
+        "centralino_non_attivo",
+        "Il telefono non è attivo su questo locale.",
+      );
     }
     if (err instanceof TelefonoBrowserError) {
       return apiError(400, "dati_non_validi", err.message);

@@ -42,7 +42,20 @@ export default async function AppShell({
      locali che hanno il telefono: è il punto di partenza della sonda, e senza
      una chiamata che arriva nei primi cinque secondi non farebbe comparire
      niente. Per tutti gli altri — cioè quasi tutti — non si interroga. */
-  const versione = telefono.attivo
+  /*
+    Il telefono, per **questa** persona.
+
+    Due condizioni e non una: il locale l'ha collegato, e chi guarda può
+    rispondere. Fino a ieri bastava la prima — la voce in barra compariva a
+    tutti i membri del locale, e la pagina dietro non guardava il ruolo: un
+    accesso in sola lettura leggeva nomi, numeri e chiamate perse.
+
+    Da qui passano tutte e tre le cose del guscio — la voce in barra, quella
+    nella barra del telefono, e il pannello della chiamata — così non possono
+    divergere.
+  */
+  const telefonoPerMe = telefono.attivo && can(ctx.role, "use_phone");
+  const versione = telefonoPerMe
     ? await versioneServizio(ctx.venueId)
     : undefined;
   const showBrandSetup =
@@ -70,7 +83,7 @@ export default async function AppShell({
       di un cliente non vedeva squillare niente. Quando il locale non ha il
       telefono non interroga nulla — che è il caso di quasi tutti.
     */}
-      <VoiceGlobale attivo={telefono.attivo} versione={versione}>
+      <VoiceGlobale attivo={telefonoPerMe} versione={versione}>
         {/*
       Le quattro sezioni delle Impostazioni stanno nella pagina, e le quattro
       voci che ci portano stanno nella testata — che è qui, fuori dalla pagina.
@@ -90,7 +103,7 @@ export default async function AppShell({
               }}
               venues={venueList}
               activeVenueId={ctx.venueId}
-              telefonoAttivo={telefono.attivo}
+              telefonoAttivo={telefonoPerMe}
             />
             {/*
         `main` dà la sua altezza alle pagine invece di scorrere.
@@ -113,7 +126,7 @@ export default async function AppShell({
             </main>
 
             <MobileNav
-              telefonoAttivo={telefono.attivo}
+              telefonoAttivo={telefonoPerMe}
               canManageBookings={can(ctx.role, "manage_bookings")}
             />
             {showBrandSetup && (

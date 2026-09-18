@@ -26,13 +26,17 @@ import { listFasceServizio } from "@/server/turni-servizio";
 import { listReviewLinks } from "@/server/reviews";
 import { listInviti, listTeam } from "@/server/team";
 import { statoCentralino } from "@/server/licenza-centralino";
+import { saluteVoice } from "@/server/voice/salute";
 import { statoTelefonoBrowser } from "@/server/telefono-browser";
 import { elencaApiToken } from "@/server/api-token";
 import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
 import { AccessoTeam } from "@/components/settings/accesso-team";
 import { Centralino } from "@/components/settings/centralino";
 import { BarraImpostazioniMobile } from "@/components/settings/navigazione-impostazioni";
-import { ParteChiesta, SezioneImpostazioni } from "@/components/settings/sezione-impostazioni";
+import {
+  ParteChiesta,
+  SezioneImpostazioni,
+} from "@/components/settings/sezione-impostazioni";
 import {
   GruppoImpostazioni,
   RigaImpostazione,
@@ -44,7 +48,10 @@ import {
 export const dynamic = "force-dynamic";
 
 /** «1 ottobre»: la data del rinnovo si legge, non si decifra. */
-const FORMATO_GIORNO = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long" });
+const FORMATO_GIORNO = new Intl.DateTimeFormat("it-IT", {
+  day: "numeric",
+  month: "long",
+});
 
 /**
  * Impostazioni: **una pagina sola, che si legge scorrendo**.
@@ -93,8 +100,11 @@ export default async function SettingsPage() {
   // L'indirizzo pubblico di questa installazione: serve al codice da
   // incollare sul sito del locale.
   const hdrs = headers();
-  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
-  const proto = hdrs.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const host =
+    hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
+  const proto =
+    hdrs.get("x-forwarded-proto") ??
+    (host.startsWith("localhost") ? "http" : "https");
   const baseUrl = `${proto}://${host}`;
 
   const [
@@ -113,14 +123,24 @@ export default async function SettingsPage() {
     centralino,
     telefonoSip,
     chiaviCollegamento,
+    salute,
   ] = await Promise.all([
-    db.venue.findMany({ where: { orgId: ctx.orgId }, orderBy: { name: "asc" } }),
+    db.venue.findMany({
+      where: { orgId: ctx.orgId },
+      orderBy: { name: "asc" },
+    }),
     listFasceServizio(ctx.venueId),
     listRooms(ctx.venueId),
     db.table.count({ where: { venueId: ctx.venueId, active: true } }),
     jobQueueHealth(ctx.venueId),
     listReviewLinks(ctx.venueId),
-    db.table.count({ where: { venueId: ctx.venueId, payQrEnabled: true, payQrToken: { not: null } } }),
+    db.table.count({
+      where: {
+        venueId: ctx.venueId,
+        payQrEnabled: true,
+        payQrToken: { not: null },
+      },
+    }),
     statoConsumo(ctx.venueId),
     statoInvio(ctx.venueId),
     reputazioneDi(ctx.venueId),
@@ -132,6 +152,7 @@ export default async function SettingsPage() {
     statoCentralino(ctx.venueId),
     statoTelefonoBrowser(ctx.venueId),
     elencaApiToken(ctx.venueId),
+    saluteVoice(ctx.venueId),
   ]);
 
   /* `manage_venue`, la stessa capacità che chiedono le rotte `/api/team/*`:
@@ -157,7 +178,9 @@ export default async function SettingsPage() {
     v.facebookUrl && "Facebook",
     v.googleBusinessUrl && "Google",
   ].filter(Boolean) as string[];
-  const colori = [v.brandAccent, v.brandSecondaryColor].filter(Boolean) as string[];
+  const colori = [v.brandAccent, v.brandSecondaryColor].filter(
+    Boolean,
+  ) as string[];
 
   return (
     /*
@@ -175,7 +198,8 @@ export default async function SettingsPage() {
           parlando.
         */}
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Come è configurato il locale e come si comporta il gestionale. Le modifiche valgono da subito.
+          Come è configurato il locale e come si comporta il gestionale. Le
+          modifiche valgono da subito.
         </p>
 
         {/*
@@ -190,12 +214,23 @@ export default async function SettingsPage() {
             href="/settings/brand"
             className="mt-4 inline-flex max-w-full items-center gap-3 rounded-full border border-accent/40 bg-accent/10 py-2 pl-4 pr-3 text-sm transition-colors hover:bg-accent/15"
           >
-            <AlertTriangle className="h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />
+            <AlertTriangle
+              className="h-4 w-4 shrink-0 text-accent-strong"
+              aria-hidden="true"
+            />
             <span className="min-w-0">
-              <span className="font-medium">Configurazione del brand incompleta</span>
-              <span className="hidden text-muted-foreground sm:inline"> — logo, colori e identità visiva</span>
+              <span className="font-medium">
+                Configurazione del brand incompleta
+              </span>
+              <span className="hidden text-muted-foreground sm:inline">
+                {" "}
+                — logo, colori e identità visiva
+              </span>
             </span>
-            <ArrowRight className="h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />
+            <ArrowRight
+              className="h-4 w-4 shrink-0 text-accent-strong"
+              aria-hidden="true"
+            />
           </Link>
         )}
 
@@ -228,7 +263,10 @@ export default async function SettingsPage() {
                 )}
               </RigaImpostazione>
 
-              <RigaImpostazione nome="Nome pubblico" descrizione="Il nome che legge il cliente.">
+              <RigaImpostazione
+                nome="Nome pubblico"
+                descrizione="Il nome che legge il cliente."
+              >
                 <ValoreImpostazione>{v.name}</ValoreImpostazione>
               </RigaImpostazione>
 
@@ -243,7 +281,9 @@ export default async function SettingsPage() {
                         style={{ backgroundColor: c }}
                       />
                     ))}
-                    <ValoreImpostazione mono>{colori.join(" · ")}</ValoreImpostazione>
+                    <ValoreImpostazione mono>
+                      {colori.join(" · ")}
+                    </ValoreImpostazione>
                   </span>
                 ) : (
                   <ValoreVuoto>non scelti</ValoreVuoto>
@@ -267,7 +307,9 @@ export default async function SettingsPage() {
                 descrizione="Telefono, email e indirizzo mostrati a chi prenota."
               >
                 {contatti.length > 0 ? (
-                  <ValoreImpostazione>{contatti.join(" · ")}</ValoreImpostazione>
+                  <ValoreImpostazione>
+                    {contatti.join(" · ")}
+                  </ValoreImpostazione>
                 ) : (
                   <ValoreVuoto />
                 )}
@@ -282,12 +324,18 @@ export default async function SettingsPage() {
               </RigaImpostazione>
             </GruppoImpostazioni>
 
-            <GruppoImpostazioni titolo="Locali del gruppo" descrizione={ctx.org.name}>
+            <GruppoImpostazioni
+              titolo="Locali del gruppo"
+              descrizione={ctx.org.name}
+            >
               {venues.map((locale) => (
                 <RigaImpostazione
                   key={locale.id}
                   nome={locale.name}
-                  descrizione={[locale.city, NOME_TIPO_LOCALE[locale.kind] ?? locale.kind]
+                  descrizione={[
+                    locale.city,
+                    NOME_TIPO_LOCALE[locale.kind] ?? locale.kind,
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 >
@@ -303,7 +351,9 @@ export default async function SettingsPage() {
                 nome="Piano di abbonamento"
                 descrizione="Vale per tutti i locali dell'organizzazione."
               >
-                <ValoreImpostazione>{NOME_PIANO[ctx.org.plan] ?? ctx.org.plan}</ValoreImpostazione>
+                <ValoreImpostazione>
+                  {NOME_PIANO[ctx.org.plan] ?? ctx.org.plan}
+                </ValoreImpostazione>
               </RigaImpostazione>
             </GruppoImpostazioni>
 
@@ -340,7 +390,9 @@ export default async function SettingsPage() {
             <GruppoImpostazioni
               titolo="Widget di prenotazione"
               descrizione="Il codice da incollare sul sito del locale per far prenotare i clienti in autonomia."
-              azione={<CopyButton value={embedSnippet} size="sm" variant="outline" />}
+              azione={
+                <CopyButton value={embedSnippet} size="sm" variant="outline" />
+              }
             >
               <RigaLibera>
                 <pre className="overflow-x-auto rounded-md border border-border bg-black/20 p-3 text-xs">
@@ -367,7 +419,10 @@ export default async function SettingsPage() {
               canManage={can(ctx.role, "manage_venue")}
             />
 
-            <ReviewLinksSettings initial={reviewLinks} canManage={can(ctx.role, "manage_venue")} />
+            <ReviewLinksSettings
+              initial={reviewLinks}
+              canManage={can(ctx.role, "manage_venue")}
+            />
 
             <LoyaltySettings
               puntiPerEuro={ctx.venue.loyaltyPointsPerEuro}
@@ -382,7 +437,9 @@ export default async function SettingsPage() {
               descrizione="La rete che si offre in sala, e i contatti che si raccolgono da chi si collega."
               azione={
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/settings/wifi">{ctx.venue.wifiSetupAt ? "Gestisci" : "Configura"}</Link>
+                  <Link href="/settings/wifi">
+                    {ctx.venue.wifiSetupAt ? "Gestisci" : "Configura"}
+                  </Link>
                 </Button>
               }
             >
@@ -395,9 +452,13 @@ export default async function SettingsPage() {
                     come uno mai configurato manderebbe a rifare mezz'ora di
                     lavoro già fatta. */}
                 {ctx.venue.wifiSetupAt ? (
-                  <ValoreImpostazione>attivo su «{ctx.venue.wifiNetworkName}»</ValoreImpostazione>
+                  <ValoreImpostazione>
+                    attivo su «{ctx.venue.wifiNetworkName}»
+                  </ValoreImpostazione>
                 ) : ctx.venue.wifiNetworkName && ctx.venue.wifiPassword ? (
-                  <ValoreImpostazione>sospeso su «{ctx.venue.wifiNetworkName}»</ValoreImpostazione>
+                  <ValoreImpostazione>
+                    sospeso su «{ctx.venue.wifiNetworkName}»
+                  </ValoreImpostazione>
                 ) : (
                   <ValoreVuoto>da configurare</ValoreVuoto>
                 )}
@@ -408,7 +469,8 @@ export default async function SettingsPage() {
               >
                 {ctx.venue.wifiAutoCouponEnabled ? (
                   <ValoreImpostazione mono>
-                    {ctx.venue.wifiAutoCouponPercent}% · valido {ctx.venue.wifiAutoCouponDays} giorni
+                    {ctx.venue.wifiAutoCouponPercent}% · valido{" "}
+                    {ctx.venue.wifiAutoCouponDays} giorni
                   </ValoreImpostazione>
                 ) : (
                   <ValoreVuoto>spento</ValoreVuoto>
@@ -535,7 +597,10 @@ export default async function SettingsPage() {
                 </Button>
               }
             >
-              <RigaImpostazione nome="Giudizio" descrizione={reputazioneDem.messaggio}>
+              <RigaImpostazione
+                nome="Giudizio"
+                descrizione={reputazioneDem.messaggio}
+              >
                 <ValoreImpostazione>
                   {ETICHETTA_REPUTAZIONE[reputazioneDem.livello]}
                 </ValoreImpostazione>
@@ -572,17 +637,32 @@ export default async function SettingsPage() {
                 delle integrazioni e dei lavori. */}
             <MieiDispositivi />
 
-            <AccessoTeam membri={membri} inviti={inviti} canManage={puoGestireTeam} />
+            <AccessoTeam
+              membri={membri}
+              inviti={inviti}
+              canManage={puoGestireTeam}
+            />
 
             {/* Il telefono sta in Sistema accanto ai pagamenti: sono le due
                 cose che si **collegano** al locale invece di configurarsi. */}
             <Centralino
-              canManage={puoGestireTeam}
+              /* Collegare il centralino è `manage_phone`, non «chi gestisce
+                 il team»: erano la stessa capacità per comodità, e le
+                 credenziali SIP sono un numero da cui si telefona a spese del
+                 locale. */
+              canManage={can(ctx.role, "manage_phone")}
               venueId={ctx.venueId}
               sip={telefonoSip}
               collegamenti={chiaviCollegamento
                 .filter((t) => !t.revocatoIl)
                 .map((t) => ({ id: t.id, prefisso: t.prefisso }))}
+              salute={{
+                ultimaChiamata: salute.ultimaChiamata?.toISOString() ?? null,
+                ultime24h: salute.ultime24h,
+                collegamentoAttivo: salute.collegamentoAttivo,
+                fornitore: salute.fornitore,
+                nonSannoFare: salute.nonSannoFare,
+              }}
               stato={{
                 attivo: centralino.attivo,
                 funzioni: centralino.funzioni,
@@ -601,7 +681,9 @@ export default async function SettingsPage() {
               descrizione="Il conto Stripe del locale e il pagamento al tavolo col QR."
               azione={
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/settings/pagamenti">{stripePronto ? "Gestisci" : "Configura"}</Link>
+                  <Link href="/settings/pagamenti">
+                    {stripePronto ? "Gestisci" : "Configura"}
+                  </Link>
                 </Button>
               }
             >
@@ -636,7 +718,9 @@ export default async function SettingsPage() {
                 descrizione="Invio di campagne email e messaggi transazionali. La verifica guarda la presenza della chiave API, non la validità del dominio mittente."
               >
                 <Badge tone={process.env.BREVO_API_KEY ? "success" : "warning"}>
-                  {process.env.BREVO_API_KEY ? "Configurato" : "Non configurato"}
+                  {process.env.BREVO_API_KEY
+                    ? "Configurato"
+                    : "Non configurato"}
                 </Badge>
               </RigaImpostazione>
             </GruppoImpostazioni>
