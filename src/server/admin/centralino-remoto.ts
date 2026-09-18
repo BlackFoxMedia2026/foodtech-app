@@ -171,3 +171,85 @@ export async function assegnaNumero(
   const dati = (await res.json().catch(() => null)) as { numero?: { e164?: string } } | null;
   return { numero: dati?.numero?.e164 ?? numero };
 }
+
+/**
+ * Monta una linea dell'operatore sul centralino.
+ *
+ * ## La password non la conserviamo
+ *
+ * Passa da qui e finisce nel file di configurazione di PJSIP, sul centralino.
+ * **In Tavolo non si salva**: non c'è una colonna che la contenga e non c'è
+ * una schermata che la rilegga. Una password in meno da custodire è una
+ * password in meno da perdere — e il posto dove ritrovarla è l'area clienti
+ * dell'operatore, che è di chi ha il contratto.
+ *
+ * Per questo il campo si svuota dopo il salvataggio e non si ripropone
+ * riempito: mostrare pallini al posto di una password che non abbiamo sarebbe
+ * dire una cosa falsa.
+ */
+export async function montaLinea(dati: {
+  nome: string;
+  host: string;
+  porta?: number;
+  trasporto?: "UDP" | "TCP" | "TLS";
+  utente?: string | null;
+  password?: string | null;
+  canali?: number;
+}): Promise<{ id: string; montata: boolean; avvisi: { messaggio: string; rimedio: string }[] }> {
+  const base = indirizzo();
+  if (!base || !configurato()) {
+    throw new CentralinoRemotoError(
+      "non_configurato",
+      "Il collegamento al centralino non è configurato su questa installazione.",
+    );
+  }
+  const t = await token();
+
+  const res = await fetch(`${base}/api/v1/piattaforma/trunk`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${t}`, "content-type": "application/json" },
+    body: JSON.stringify(dati),
+    signal: AbortSignal.timeout(20_000),
+    cache: "no-store",
+  }).catch((err) => {
+    throw new CentralinoRemotoError(
+      "non_raggiungibile",
+      "Il centralino non risponde. Riprova fra poco.",
+      err instanceof Error ? err.message : undefined,
+    );
+  });
+
+  if (res.status === 401 || res.status === 404) {
+    scordaSessione();
+    throw new CentralinoRemotoError(
+      "accesso_negato",
+      "Il centralino non ci riconosce come amministratori. Controlla le credenziali di servizio.",
+      `${res.status}`,
+    );
+  }
+
+  const corpo = (await res.json().catch(() => null)) as
+    | {
+        id?: string;
+        montata?: boolean;
+        avvisi?: { messaggio: string; rimedio: string }[];
+        error?: { message?: string };
+      }
+    | null;
+
+  if (!res.ok) {
+    throw new CentralinoRemotoError(
+      "rifiutato",
+      corpo?.error?.message ?? "Il centralino ha rifiutato questa linea.",
+    );
+  }
+
+  return {
+    id: corpo?.id ?? "",
+    /* Se la linea è davvero **montata** su Asterisk, o solo scritta nel
+       database del centralino: una riga senza la configurazione è una linea
+       che esiste solo per noi, e non si fa credere il contrario. */
+    montata: corpo?.montata !== false,
+    avvisi: corpo?.avvisi ?? [],
+  };
+}

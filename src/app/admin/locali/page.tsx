@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { ServiziLocale } from "@/components/admin/servizi-locale";
 import { LineeLocale } from "@/components/admin/linee-locale";
+import { MontaLinea } from "@/components/admin/monta-linea";
 import { NOME_FUNZIONE_CENTRALINO, type FunzioneCentralino } from "@/lib/licenza-centralino";
 import { daQuando } from "@/lib/utils";
 import { localiConServizi } from "@/server/admin/servizi";
@@ -40,11 +41,24 @@ export default async function AdminLocaliPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="t-titolo-pagina">Locali e servizi</h1>
-        <p className="t-nota mt-1">
-          {locali.length} locali, {accesi} col centralino acceso da qui.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="t-titolo-pagina">Locali e servizi</h1>
+          <p className="t-nota mt-1">
+            {locali.length} locali, {accesi} col centralino acceso da qui.
+          </p>
+        </div>
+        {/* Montare una linea è un lavoro che si fa poche volte e riguarda
+            **tutti** i locali: sta in testata, non dentro la riga di uno. */}
+        {collegato && (
+          <MontaLinea
+            locali={locali.map((l) => ({
+              venueId: l.venueId,
+              nome: l.nome,
+              organizzazione: l.organizzazione,
+            }))}
+          />
+        )}
       </header>
 
       <div className="space-y-3">
