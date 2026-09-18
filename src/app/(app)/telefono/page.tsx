@@ -5,6 +5,7 @@ import { elencoChiamate } from "@/server/chiamate";
 import { ElencoChiamateVista } from "@/components/telefono/elenco-chiamate";
 import { TelefonoBrowser } from "@/components/telefono/telefono-browser";
 import { statoTelefonoBrowser } from "@/server/telefono-browser";
+import { capacitaDi } from "@/server/voice/provider";
 import { can } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
@@ -42,16 +43,21 @@ export default async function TelefonoPage({
     ? Number(searchParams.giorni)
     : 7;
 
-  const [elenco, telefono] = await Promise.all([
+  const [elenco, telefono, capacita] = await Promise.all([
     elencoChiamate(ctx.venueId, { solo, giorni }),
     statoTelefonoBrowser(ctx.venueId),
+    capacitaDi(ctx.venueId),
   ]);
 
   /* Il telefono nel browser compare solo se è configurato **e** solo a chi in
      questo locale risponde al telefono: la rotta che dà le credenziali chiede
      `manage_bookings`, e un riquadro che si collega e fallisce per chi non ha
      quel permesso sarebbe un errore inventato dall'interfaccia. */
-  const puoRispondere = telefono.pronto && can(ctx.role, "manage_bookings");
+  /* `capacita.browser` è la terza condizione, e non è una ripetizione: i dati
+     SIP possono essere configurati su un fornitore che non fa WebRTC, e in quel
+     caso il riquadro si collegherebbe a vuoto. */
+  const puoRispondere =
+    telefono.pronto && capacita.browser && can(ctx.role, "manage_bookings");
 
   return (
     /* Il telefono nel browser entra **dentro** l'elenco e non accanto: la
@@ -59,7 +65,7 @@ export default async function TelefonoPage({
        fuori dal contenitore romperebbe la regola «una schermata operativa si
        guarda, non si scorre». */
     <ElencoChiamateVista
-      telefono={puoRispondere ? <TelefonoBrowser /> : null}
+      telefono={puoRispondere ? <TelefonoBrowser capacita={capacita} /> : null}
       elenco={{
         ...elenco,
         chiamate: elenco.chiamate.map((c) => ({

@@ -258,3 +258,68 @@ describe("le tre tabelle superate", () => {
     expect(await db.voiceBookingDraft.count({ where: { venueId } })).toBe(0);
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Gli eventi che nascono da soli.
+
+   La riga della chiamata dice com'è adesso; questi dicono cos'è successo.
+   Senza, una chiamata andata storta tre giorni prima è una riga con uno stato
+   e nessuna storia.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+describe("gli eventi si scrivono da sé", () => {
+  it("una chiamata che squilla lascia «ricevuta»", async () => {
+    const { registraEventoChiamata } = await import("@/server/chiamate");
+    const e = await registraEventoChiamata(venueId, {
+      externalId: "ev-1",
+      phone: "+393331112233",
+      stato: "RINGING",
+    });
+    /* L'evento si scrive senza attesa, quindi si concede un istante: è
+       voluto — se l'evento non si scrive, la chiamata compare comunque sullo
+       schermo di chi risponde. */
+    await new Promise((r) => setTimeout(r, 150));
+    const eventi = await db.phoneCallEvent.findMany({ where: { callId: e.id } });
+    expect(eventi.map((x) => x.kind)).toContain("CALL_RECEIVED");
+  });
+
+  it("«nessuno ha risposto» e «finita» restano due eventi diversi", async () => {
+    /* Per il ristoratore sono due cose diverse: una persona da richiamare e
+       una conversazione avvenuta. Nel registro devono restare distinte, o la
+       differenza si perde proprio dove serve rileggerla. */
+    const { registraEventoChiamata } = await import("@/server/chiamate");
+    const persa = await registraEventoChiamata(venueId, {
+      externalId: "ev-persa",
+      phone: "+393334445566",
+      stato: "MISSED",
+    });
+    const finita = await registraEventoChiamata(venueId, {
+      externalId: "ev-finita",
+      phone: "+393334445566",
+      stato: "ENDED",
+    });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const a = await db.phoneCallEvent.findMany({ where: { callId: persa.id } });
+    const b = await db.phoneCallEvent.findMany({ where: { callId: finita.id } });
+    expect(a.map((x) => x.kind)).toContain("CALL_MISSED");
+    expect(b.map((x) => x.kind)).toContain("CALL_ENDED");
+  });
+
+  it("un evento perso non fa fallire l'operazione che lo ha prodotto", async () => {
+    /* `segnaEventoChiamata` su una chiamata che non esiste: non solleva. Una
+       prenotazione creata e non annotata è molto meglio di una prenotazione
+       non creata. */
+    const { segnaEventoChiamata } = await import("@/server/chiamate");
+    await expect(
+      segnaEventoChiamata("chiamata-che-non-esiste", "BOOKING_CREATED", { actor: "ai" }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("gli eventi di un'altra chiamata non si leggono per sbaglio", async () => {
+    const { eventiDiChiamata } = await import("@/server/chiamate");
+    /* Filtrata per locale come ogni lettura: un identificativo altrui non deve
+       restituire la storia di una chiamata di un altro ristorante. */
+    expect(await eventiDiChiamata(venueId, "non-esiste")).toEqual([]);
+  });
+});
