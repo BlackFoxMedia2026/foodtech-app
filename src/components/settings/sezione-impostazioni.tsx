@@ -12,14 +12,23 @@ import { useImpostazioni } from "./contesto-impostazioni";
  * è arrivati senza guardare in alto. È l'unico posto delle Impostazioni dove
  * il serif torna — sono quattro titoli in duemila pixel, non quaranta.
  */
-export function SezioneImpostazioni({ id, children }: { id: ParteId; children: ReactNode }) {
+export function SezioneImpostazioni({
+  id,
+  children,
+}: {
+  id: ParteId;
+  children: ReactNode;
+}) {
   const { registra } = useImpostazioni();
   const parte = PARTI.find((p) => p.id === id)!;
 
   // Stabile fra un render e l'altro: una `ref` scritta a mano qui verrebbe
   // richiamata con `null` a ogni render, e l'osservatore smonterebbe e
   // rimonterebbe la sezione a ogni battito.
-  const ref = useCallback((el: HTMLElement | null) => registra(id, el), [registra, id]);
+  const ref = useCallback(
+    (el: HTMLElement | null) => registra(id, el),
+    [registra, id],
+  );
 
   return (
     <section
@@ -37,10 +46,16 @@ export function SezioneImpostazioni({ id, children }: { id: ParteId; children: R
         <h2 id={`titolo-${id}`} className="t-titolo-pagina">
           {parte.titolo}
         </h2>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{parte.sottotitolo}</p>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+          {parte.sottotitolo}
+        </p>
       </header>
 
-      <div className="mt-6 space-y-8 md:mt-8 md:space-y-10">{children}</div>
+      {/* Le schede di un gruppo sono già oggetti con il loro bordo: fra loro
+          basta l'aria, e fra le sezioni ce n'è il triplo (`space-y` della
+          pagina). Prima erano dieci unità di spazio fra gruppi e quattordici
+          fra sezioni: due distanze troppo simili per dire due cose diverse. */}
+      <div className="mt-5 space-y-4 md:mt-6 md:space-y-5">{children}</div>
     </section>
   );
 }

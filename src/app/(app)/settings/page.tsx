@@ -191,7 +191,21 @@ export default async function SettingsPage() {
       all'ultima riga anche quando l'ultima sezione è corta.
     */
     <div className="animate-cambio-area pb-[30vh]">
-      <div className="mx-auto w-full max-w-[1500px]">
+      {/*
+        **Una colonna di lettura, non la larghezza dello schermo.**
+
+        Era `max-w-[1500px]`: su un monitor da 27 pollici il nome
+        dell'impostazione stava a sinistra e il suo valore a milletrecento
+        pixel di distanza, con in mezzo il nulla. Quaranta righe così sono
+        quaranta viaggi dell'occhio, ed è la ragione per cui questa pagina si
+        leggeva come un registro invece che come un pannello.
+
+        `max-w-4xl` (896 px) è la misura in cui nome e valore stanno in un
+        colpo d'occhio. Le poche cose che hanno bisogno di più spazio — il
+        codice del widget, l'editor dei turni — sono righe `larga` e usano
+        tutta la colonna.
+      */}
+      <div className="mx-auto w-full max-w-4xl">
         {/*
           Il nome della pagina lo dice già la testata, accanto al marchio del
           locale: qui resta la riga che aggiunge qualcosa, cioè di cosa si sta
@@ -342,7 +356,11 @@ export default async function SettingsPage() {
                   {locale.id === ctx.venueId ? (
                     <Badge tone="gold">Attivo</Badge>
                   ) : (
-                    <ValoreVuoto>secondario</ValoreVuoto>
+                    /* Non è un'assenza: è l'altro locale del gruppo. Da
+                       quando il bollino tratteggiato vuol dire «qui manca
+                       qualcosa», usarlo qui direbbe che un ristorante è da
+                       configurare. */
+                    <ValoreImpostazione>secondario</ValoreImpostazione>
                   )}
                 </RigaImpostazione>
               ))}
@@ -395,7 +413,11 @@ export default async function SettingsPage() {
               }
             >
               <RigaLibera>
-                <pre className="overflow-x-auto rounded-md border border-border bg-black/20 p-3 text-xs">
+                {/* A capo, non in orizzontale: una barra di scorrimento dentro
+                    una riga di impostazioni è un posto dove si finisce per
+                    sbaglio girando la rotella, e il codice si copia col
+                    pulsante — non si legge. */}
+                <pre className="whitespace-pre-wrap break-all rounded-md border border-border bg-black/20 p-3 text-xs leading-relaxed">
                   {embedSnippet}
                 </pre>
               </RigaLibera>
@@ -566,11 +588,13 @@ export default async function SettingsPage() {
                 nome="Risposte"
                 descrizione="Dove arriva chi risponde a una newsletter."
               >
-                {invioDem.replyTo ? (
-                  <ValoreImpostazione>{invioDem.replyTo}</ValoreImpostazione>
-                ) : (
-                  <ValoreVuoto>l&apos;email del locale</ValoreVuoto>
-                )}
+                {/* «L'email del locale» **è** la risposta, non la sua
+                    assenza: è dove arriva chi risponde finché nessuno mette
+                    un altro indirizzo. Col bollino tratteggiato sembrava una
+                    cosa da fare. */}
+                <ValoreImpostazione>
+                  {invioDem.replyTo ?? "l'email del locale"}
+                </ValoreImpostazione>
               </RigaImpostazione>
 
               <RigaImpostazione nome="Stato">

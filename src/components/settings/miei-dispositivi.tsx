@@ -4,7 +4,10 @@ import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
-import { GruppoImpostazioni, RigaImpostazione } from "@/components/settings/righe-impostazioni";
+import {
+  GruppoImpostazioni,
+  RigaImpostazione,
+} from "@/components/settings/righe-impostazioni";
 
 /**
  * «Esci da tutti i dispositivi.»
@@ -28,7 +31,9 @@ export function MieiDispositivi() {
     try {
       const res = await fetch("/api/account/sessioni", { method: "DELETE" });
       if (!res.ok) {
-        setErrore(await readApiError(res, "Non siamo riusciti a chiudere le sessioni."));
+        setErrore(
+          await readApiError(res, "Non siamo riusciti a chiudere le sessioni."),
+        );
         return;
       }
       /*
@@ -55,7 +60,7 @@ export function MieiDispositivi() {
     >
       <RigaImpostazione
         nome="Dispositivi collegati"
-        descrizione="Chiude tutte le sessioni aperte col tuo account, su ogni dispositivo — compreso questo. Non perdi niente: rientri con la tua password. Gli accessi scadono comunque da soli dopo sette giorni di inattività."
+        descrizione="Chiude tutte le sessioni col tuo account, compresa questa: rientri con la tua password."
       >
         <Button variant="outline" size="sm" onClick={esci} disabled={inCorso}>
           <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
