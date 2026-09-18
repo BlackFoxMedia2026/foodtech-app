@@ -300,8 +300,9 @@ build, e la sonda di leggibilità quando la fase tocca l'interfaccia.
 
 | Fase | Cosa | Rischio |
 |---|---|---|
-Le fasi 1–4 sono fatte: schema (#135), fornitore e capacità (#136), pannello
-globale della chiamata (#137), esiti e coda delle richiamate (#138).
+Le fasi 1–5 sono fatte: schema (#135), fornitore e capacità (#136), pannello
+globale della chiamata (#137), esiti e coda delle richiamate (#138), recupero
+delle chiamate perse e notifiche (#139).
 
 | **1** | Consolidamento dello schema: estendere `PhoneCall`, cancellare le tre morte (+ `demo-vetrina.ts`), `VoiceNumber` + `VoiceConfiguration`, `BookingSource.VOICE` | **il più alto**: è l'unico passo distruttivo, e cancella sei righe di demo |
 | **2** | Astrazione del fornitore + capacità + simulatore | basso |

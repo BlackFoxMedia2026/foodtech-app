@@ -207,3 +207,112 @@ test("una chiamata a cui si è risposto chiede com'è finita, e lo ricorda", asy
     });
   }
 });
+
+test("la chiamata persa mentre nessuno guardava finisce nella campanella", async ({
+  page,
+  request,
+}) => {
+  /**
+   * Il caso che nessuna schermata copre.
+   *
+   * Il bollino in testata e la colonna «Da fare» mostrano le chiamate perse
+   * **solo mentre qualcuno ha Tavolo aperto davanti**. Il telefono di un
+   * ristorante squilla alle quattro del pomeriggio, con la saracinesca giù:
+   * chi arriva alle sei non ha nessun posto dove leggere che è successo, e il
+   * bollino non dice né chi né quando.
+   *
+   * Questo percorso passa dal cron vero — la stessa strada che Vercel chiama
+   * ogni minuto — e finisce sulla campanella vera.
+   */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+    },
+  });
+
+  const nome = unico("Nessuno");
+  const numero = "3478877993";
+  const ospite = await db.guest.create({
+    data: {
+      venueId: locale.id,
+      firstName: nome,
+      lastName: "InSala",
+      phone: numero,
+    },
+  });
+
+  const token = await emettiApiToken(locale.id, {
+    nome: "Centralino (campanella)",
+    ambiti: ["telefonia:read", "telefonia:write"],
+  });
+  const chiamata = unico("call");
+
+  try {
+    /* --- 1. Squilla e nessuno risponde, venti minuti fa ---------------- */
+    for (const stato of ["RINGING", "MISSED"]) {
+      const r = await request.post("/api/v1/telefonia/chiamata", {
+        headers: { authorization: `Bearer ${token.token}` },
+        data: { id: chiamata, phone: `+39${numero}`, stato },
+      });
+      expect(r.ok()).toBe(true);
+    }
+    /* L'ora si sposta indietro nel database e non si aspettano dieci minuti
+       veri: la grazia è una regola del prodotto, non una cosa da provare col
+       cronometro. */
+    const riga = await db.phoneCall.findFirstOrThrow({
+      where: { venueId: locale.id, externalId: chiamata },
+      select: { id: true },
+    });
+    const ventiMinuti = new Date(Date.now() - 20 * 60 * 1000);
+    await db.phoneCall.update({
+      where: { id: riga.id },
+      data: { startedAt: ventiMinuti, endedAt: ventiMinuti },
+    });
+
+    /* --- 2. Il cron vero, con il suo segreto ---------------------------- */
+    const cron = await request.get("/api/cron/jobs", {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+    });
+    expect(cron.ok()).toBe(true);
+
+    /* --- 3. È nella campanella, con nome e ora -------------------------- */
+    await page.goto("/overview");
+    await page
+      .getByRole("button", { name: /Notifiche|notifiche/ })
+      .first()
+      .click();
+    await expect(
+      page.getByText(new RegExp(`${nome}.*ha chiamato alle \\d{2}:\\d{2}`)),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const notifica = await db.notification.findFirstOrThrow({
+      where: { venueId: locale.id, kind: "MISSED_CALL" },
+      select: { readAt: true, link: true },
+    });
+    expect(notifica.readAt).toBeNull();
+    expect(notifica.link).toBe("/telefono");
+  } finally {
+    await db.notification.deleteMany({
+      where: { venueId: locale.id, kind: "MISSED_CALL" },
+    });
+    await db.voiceCallback.deleteMany({ where: { venueId: locale.id } });
+    await db.phoneCallEvent.deleteMany({
+      where: { call: { venueId: locale.id } },
+    });
+    await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
+    await db.guest.delete({ where: { id: ospite.id } }).catch(() => {});
+    await db.apiToken.deleteMany({ where: { venueId: locale.id } });
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+  }
+});

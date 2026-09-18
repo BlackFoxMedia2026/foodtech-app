@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { normalizzaE164 } from "@/lib/telefono";
 import { segnaEventoChiamata } from "@/server/chiamate";
 import { esitoDalFatto } from "@/server/voice/esiti";
+import { spegniNotificaChiamata } from "@/server/voice/recupero";
 
 /**
  * Lega una prenotazione alla telefonata da cui è nata.
@@ -60,6 +61,8 @@ export async function collegaPrenotazioneAChiamata(
     actor: attore ?? null,
     meta: { bookingId: prenotazione.id, reference: prenotazione.reference },
   });
+
+  await spegniNotificaChiamata(venueId, chiamata.id);
 
   /* La coda si spegne da sé.
 

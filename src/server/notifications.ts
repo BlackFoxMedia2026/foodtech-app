@@ -9,6 +9,12 @@ import { can, type Ability } from "@/lib/abilities";
 const KIND_ABILITY: Partial<Record<NotificationKind, Ability>> = {
   STAFF_CONTRACT_EXPIRING: "manage_contracts",
   STAFF_CONTRACT_EXPIRED: "manage_contracts",
+  /* Una chiamata persa porta con sé il nome e il numero di un cliente, e
+     chiede un gesto — richiamare — che fa chi prende le prenotazioni. Chi ha
+     un accesso in sola lettura non deve leggere i numeri di telefono dei
+     clienti da una campanella: è la stessa capacità che chiede la colonna
+     «Da fare» del telefono. */
+  MISSED_CALL: "manage_bookings",
 };
 
 /**
@@ -29,13 +35,31 @@ const KIND_ABILITY: Partial<Record<NotificationKind, Ability>> = {
  * E **no** a: «VIP senza tavolo», «tavolo che aspetta», «picco di arrivi» —
  * il centro controllo li dice meglio, in ordine di urgenza e col rimedio
  * accanto: due posti che dicono la stessa cosa sono un posto in cui uno dei
- * due invecchia. No anche a POS, connettori, chat e chiamate perse: quelle
- * funzioni non esistono, e una categoria pronta per una funzione assente è
- * una promessa scritta nel database.
+ * due invecchia. No anche a POS, connettori e chat: quelle funzioni non
+ * esistono, e una categoria pronta per una funzione assente è una promessa
+ * scritta nel database.
+ *
+ * **Le chiamate perse invece sì, da adesso** (`server/voice/recupero.ts`): il
+ * telefono esiste, e una chiamata persa è il caso di scuola di questa regola.
+ * Il bollino in testata la mostra **solo mentre qualcuno ha Tavolo aperto**;
+ * il telefono di un ristorante squilla quando la saracinesca è giù, e chi
+ * arriva alle sei di sera non ha nessun posto dove leggere che alle quattro ha
+ * chiamato qualcuno. La campanella tiene l'ora, il nome, e resta.
+ *
+ * Con tre freni, perché una notifica per un lavoro già fatto vale meno di
+ * nessuna notifica: dopo dieci minuti di grazia, solo se nessuno se n'è
+ * occupato, una sola volta per chiamata. E **si segna letta da sé** quando
+ * qualcuno mette quella persona in coda o le prende la prenotazione.
  */
 export async function createNotification(
   venueId: string,
-  input: { kind: NotificationKind; title: string; body?: string; link?: string; meta?: Prisma.InputJsonValue },
+  input: {
+    kind: NotificationKind;
+    title: string;
+    body?: string;
+    link?: string;
+    meta?: Prisma.InputJsonValue;
+  },
 ) {
   return db.notification.create({
     data: {
@@ -50,7 +74,11 @@ export async function createNotification(
   });
 }
 
-export async function listNotifications(venueId: string, role: StaffRole, opts: { limit?: number } = {}) {
+export async function listNotifications(
+  venueId: string,
+  role: StaffRole,
+  opts: { limit?: number } = {},
+) {
   return db.notification.findMany({
     where: { venueId, kind: { notIn: restrictedKinds(role) } },
     orderBy: { createdAt: "desc" },
@@ -58,17 +86,34 @@ export async function listNotifications(venueId: string, role: StaffRole, opts: 
   });
 }
 
-export async function countUnreadNotifications(venueId: string, role: StaffRole) {
-  return db.notification.count({ where: { venueId, kind: { notIn: restrictedKinds(role) }, readAt: null } });
+export async function countUnreadNotifications(
+  venueId: string,
+  role: StaffRole,
+) {
+  return db.notification.count({
+    where: { venueId, kind: { notIn: restrictedKinds(role) }, readAt: null },
+  });
 }
 
-export async function markNotificationRead(venueId: string, role: StaffRole, id: string) {
-  const existing = await db.notification.findFirst({ where: { id, venueId, kind: { notIn: restrictedKinds(role) } } });
+export async function markNotificationRead(
+  venueId: string,
+  role: StaffRole,
+  id: string,
+) {
+  const existing = await db.notification.findFirst({
+    where: { id, venueId, kind: { notIn: restrictedKinds(role) } },
+  });
   if (!existing) throw new Error("not_found");
-  return db.notification.update({ where: { id }, data: { readAt: new Date() } });
+  return db.notification.update({
+    where: { id },
+    data: { readAt: new Date() },
+  });
 }
 
-export async function markAllNotificationsRead(venueId: string, role: StaffRole) {
+export async function markAllNotificationsRead(
+  venueId: string,
+  role: StaffRole,
+) {
   return db.notification.updateMany({
     where: { venueId, kind: { notIn: restrictedKinds(role) }, readAt: null },
     data: { readAt: new Date() },
@@ -79,7 +124,9 @@ export async function markAllNotificationsRead(venueId: string, role: StaffRole)
  * them — kinds absent from KIND_ABILITY stay visible to any venue member,
  * matching today's (pre-contracts) behavior. */
 function restrictedKinds(role: StaffRole): NotificationKind[] {
-  return (Object.keys(KIND_ABILITY) as NotificationKind[]).filter((kind) => !can(role, KIND_ABILITY[kind]!));
+  return (Object.keys(KIND_ABILITY) as NotificationKind[]).filter(
+    (kind) => !can(role, KIND_ABILITY[kind]!),
+  );
 }
 
 /** Venue members (by role) allowed to receive contract-expiry notifications
@@ -90,5 +137,7 @@ export async function listContractNotificationRecipients(venueId: string) {
     where: { venueId },
     include: { user: { select: { id: true, email: true, name: true } } },
   });
-  return memberships.filter((m) => can(m.role, "manage_contracts")).map((m) => m.user);
+  return memberships
+    .filter((m) => can(m.role, "manage_contracts"))
+    .map((m) => m.user);
 }

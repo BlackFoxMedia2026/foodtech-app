@@ -2,6 +2,8 @@ import { eseguiCron } from "@/lib/cron";
 import { pulisciLavoriVecchi, runDueJobs } from "@/server/jobs/queue";
 import { JOB_HANDLERS } from "@/server/jobs/handlers";
 import { scadiPagamentiVecchi } from "@/server/pagamenti-tavolo";
+import { chiudiChiamateAppese } from "@/server/chiamate";
+import { notificaChiamatePerse } from "@/server/voice/recupero";
 
 /**
  * Smaltisce la coda. Chiamata da Vercel Cron ogni minuto (vedi vercel.json).
@@ -35,9 +37,34 @@ export async function GET(req: Request) {
      */
     const pagamentiScaduti = await scadiPagamentiVecchi();
 
+    /**
+     * Le chiamate che il centralino non ha mai chiuso.
+     *
+     * `chiudiChiamateAppese` esisteva da tre fasi e **non la chiamava
+     * nessuno**: una funzione scritta, provata, e mai eseguita. Le righe
+     * rimaste `RINGING` per una rete che è saltata a metà chiamata restavano
+     * così per sempre — invisibili sullo schermo grazie al limite dei novanta
+     * secondi, ma dentro i conti di fine mese come telefonate in corso.
+     */
+    const chiamateAppese = await chiudiChiamateAppese();
+
+    /**
+     * Le chiamate perse che nessuno ha ancora guardato.
+     *
+     * Sta qui e non in un cron suo: è una spazzata da qualche millisecondo sui
+     * locali che hanno il telefono, e un indirizzo in più da proteggere con un
+     * segreto in più è una superficie in più. Il giro al minuto è anche la
+     * cadenza giusta — la grazia è di dieci minuti, e chi apre alle sei di
+     * sera trova la campanella già piena di quello che è successo alle
+     * quattro.
+     */
+    const chiamatePerse = await notificaChiamatePerse();
+
     return {
       storiaRipulita,
       pagamentiScaduti,
+      chiamateAppese,
+      chiamatePerse: chiamatePerse.notificate,
       presiInCarico: esito.claimed,
       conclusi: esito.done,
       rimandati: esito.requeued,
