@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Mic, MicOff, Phone, PhoneOff, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,17 @@ export function TelefonoBrowser({
   const [permesso, setPermesso] = useState<
     "granted" | "denied" | "prompt" | "sconosciuto"
   >("sconosciuto");
+
+  /**
+   * Cosa ha risposto il browser all'ultimo tentativo sul microfono.
+   *
+   * Serve perche **un secondo rifiuto non cambia niente sullo schermo**: lo
+   * stato era «bloccato» e resta «bloccato», e premere il pulsante sembrava
+   * non fare nulla. Era esattamente cosi: questa riga non c'era, e
+   * l'indicatore mostrava «Microfono spento» **coprendo** il guasto che il
+   * tentativo aveva scritto.
+   */
+  const [rispostaMicrofono, setRispostaMicrofono] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const uaRef = useRef<{ stop: () => Promise<void> } | null>(null);
@@ -292,21 +304,42 @@ export function TelefonoBrowser({
    * aprirà il suo.
    */
   const chiediMicrofono = useCallback(async (): Promise<boolean> => {
+    setRispostaMicrofono(null);
     try {
       const flusso = await navigator.mediaDevices.getUserMedia({ audio: true });
       for (const t of flusso.getTracks()) t.stop();
       setPermesso("granted");
       return true;
-    } catch {
-      setPermesso("denied");
+    } catch (err) {
+      /*
+        **Il nome dell'errore dice cosa fare**, e sono tre cose diverse.
+
+        Prima erano una sola: `catch {}` senza guardare, `permesso = "denied"`
+        e un messaggio sul permesso. Un computer **senza microfono** veniva
+        quindi mandato nelle impostazioni del browser a concedere un permesso
+        che era già concesso — e il microfono continuava a non esserci.
+      */
+      const nome = err instanceof DOMException ? err.name : "";
+      const senzaMicrofono = nome === "NotFoundError" || nome === "DevicesNotFoundError";
+      const occupato = nome === "NotReadableError" || nome === "TrackStartError";
+
+      setRispostaMicrofono(
+        senzaMicrofono
+          ? "Questo computer non ha un microfono: il browser non ne trova nessuno. Serve una cuffia o un microfono collegato."
+          : occupato
+            ? "Il microfono c'è ma è occupato da un'altra applicazione, o bloccato dal sistema. Su Mac: Impostazioni di Sistema → Privacy e sicurezza → Microfono."
+            : "Il browser ha detto no senza chiedere niente: per questo sito il microfono è già bloccato, e si sblocca solo dalle impostazioni del sito.",
+      );
+
+      /* «Bloccato» solo quando lo è davvero: un microfono che non c'è non è un
+         permesso negato, e segnarlo tale manderebbe a cercare nel posto
+         sbagliato. */
+      if (!senzaMicrofono && !occupato) setPermesso("denied");
+
       setStato((p) =>
         p.tipo === "squilla" || p.tipo === "in-chiamata"
           ? p
-          : {
-              tipo: "guasto",
-              perche:
-                "Il browser non ha il permesso di usare il microfono. Senza microfono non si può rispondere.",
-            },
+          : { tipo: "guasto", perche: "Senza microfono non si può rispondere." },
       );
       return false;
     }
@@ -360,7 +393,22 @@ export function TelefonoBrowser({
      rompe la risposta prima che il telefono squilli, e scoprirlo con una
      persona in linea è troppo tardi. Sparisce nel momento in cui si concede
      il permesso. */
-  const microfonoBloccato = permesso === "denied";
+  /*
+    Il microfono bloccato si dice **una volta per schermata**.
+
+    Nella procedura di collegamento c'è già il suo controllo, con la spiegazione
+    accanto: mostrare anche questo pannello vorrebbe dire due pulsanti per la
+    stessa cosa a mezzo centimetro l'uno dall'altro — e chi ne vede due si
+    chiede quale sia quello giusto. Su tutte le altre schermate il pannello è
+    l'unico posto dove possa comparire, e allora compare.
+
+    Trovato da una prova end-to-end che si è rotta con «due elementi»: è il
+    genere di doppione che a occhio non si nota, perché i due pulsanti hanno
+    parole diverse.
+  */
+  const percorso = usePathname();
+  const nellaProcedura = percorso === "/settings/telefono/collega";
+  const microfonoBloccato = permesso === "denied" && !nellaProcedura;
   const zitto =
     discreto &&
     !microfonoBloccato &&
@@ -387,18 +435,63 @@ export function TelefonoBrowser({
             bloccata in silenzio, e l'unica strada era le impostazioni di
             Chrome. Un cliente non ci va, e ha ragione. Questo pulsante è un
             gesto, ed è l'unica cosa che fa ricomparire la finestra. */}
-        {microfonoBloccato && (
+        {/*
+          Qui **non c'è nessun pulsante**, ed è la correzione.
+
+          C'era «Attiva il microfono», e non poteva funzionare: quando il
+          browser ha già bloccato un sito, `getUserMedia` rifiuta senza
+          chiedere niente — nessuna finestra, nessun modo di farla ricomparire
+          da dentro la pagina. Premerlo non cambiava nemmeno una parola sullo
+          schermo, perché lo stato era già «bloccato» e l'indicatore copriva la
+          risposta del tentativo. Luca l'ha premuto tre volte in due giorni.
+
+          Un pulsante che non può riuscire è peggio della sua assenza: fa
+          credere che il problema sia altrove e nasconde l'unica strada che
+          c'è. Quindi si dice **dove** si sblocca, con i clic esatti — e il
+          pulsante resta solo dove serve davvero: nella procedura di
+          collegamento, quando il permesso è ancora da chiedere
+          (`PermessoMicrofono`).
+        */}
+        {(microfonoBloccato || stato.tipo === "guasto") && (
           <>
+            {/*
+              **«Controlla», non «Attiva»**, e la parola è la correzione.
+
+              «Attiva il microfono» promette una finestra che non arriverà: se
+              il browser ha già bloccato il sito, `getUserMedia` rifiuta senza
+              chiedere niente e da dentro la pagina non c'è modo di riaprirla.
+              Premerlo non cambiava nemmeno una parola sullo schermo — lo stato
+              era già «bloccato» e l'indicatore copriva la risposta del
+              tentativo. Luca l'ha premuto tre volte in due giorni.
+
+              Ma il pulsante **non va togliuto**, e la ragione l'ha detta un
+              test: `permissions.query` risponde «bloccato» anche dove **manca
+              il microfono**, e le due cose portano a gesti opposti. Un clic le
+              distingue — è l'unico modo — e allora il pulsante serve: non a
+              sbloccare, a *sapere*. Quello che cambia è che adesso una
+              risposta arriva sempre.
+            */}
             <Button variant="accent" size="sm" onClick={chiediMicrofono}>
               <Mic className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Attiva il microfono
+              Controlla il microfono
             </Button>
-            <span className="t-nota max-w-[18rem]">
-              Se il pulsante non fa comparire niente, per questo sito è già
-              bloccato: icona a sinistra dell&apos;indirizzo → Microfono →
-              Consenti, poi ricarica.
-            </span>
+            {microfonoBloccato && (
+              <span className="t-nota max-w-[22rem]">
+                Se è bloccato per questo sito, si sblocca in tre clic: l&apos;icona a
+                sinistra dell&apos;indirizzo (il lucchetto o i due cursori) →{" "}
+                <strong>Microfono</strong> → <strong>Consenti</strong>, poi ricarica la
+                pagina.
+              </span>
+            )}
           </>
+        )}
+
+        {/* Cosa ha risposto il browser: è la riga che prima non c'era, e la
+            sua assenza è il motivo per cui il clic sembrava non fare niente. */}
+        {rispostaMicrofono && (
+          <span className="t-nota max-w-[22rem] text-destructive-soft">
+            {rispostaMicrofono}
+          </span>
         )}
         {stato.tipo === "squilla" && (
           <>
