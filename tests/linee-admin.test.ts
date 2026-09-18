@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
-import { LineaError, assegnaLinea } from "@/server/admin/linee";
+import { LineaError, assegnaLinea, montaEAssegna } from "@/server/admin/linee";
 import {
   CentralinoRemotoError,
   configurato,
@@ -243,5 +243,98 @@ describe("chi è questo locale nel centralino", () => {
     expect(
       (await db.venue.findUniqueOrThrow({ where: { id: venueId } })).centralinoTenantId,
     ).toBe(TENANT);
+  });
+});
+
+describe("montare la linea dell'operatore", () => {
+  beforeEach(async () => {
+    collegamentoConfigurato();
+    await db.venue.update({ where: { id: venueId }, data: { centralinoTenantId: TENANT } });
+  });
+
+  it("monta la linea e poi assegna il numero, in quest'ordine", async () => {
+    const chiamate = centralinoFinto([
+      { stato: 201, corpo: { id: "trunk-1", montata: true, avvisi: [] } },
+      { stato: 201, corpo: { ok: true, numero: { e164: "+390110000041" } } },
+    ]);
+
+    const esito = await montaEAssegna({
+      nome: "Operatore di prova",
+      host: "sip.esempio.it",
+      utente: "0110000041",
+      password: "non-e-una-password-vera",
+      numero: "0110000041",
+      venueId,
+    });
+
+    expect(esito.numero).toBe("+390110000041");
+    expect(esito.montata).toBe(true);
+
+    const percorsi = chiamate.map((c) => c.url.replace("https://centralino.test", ""));
+    expect(percorsi).toEqual([
+      "/api/v1/auth/login",
+      "/api/v1/piattaforma/trunk",
+      `/api/v1/piattaforma/clienti/${TENANT}/numeri`,
+    ]);
+  });
+
+  it("la password non resta in Tavolo", async () => {
+    /* Passa al centralino e finisce nel file di configurazione di PJSIP. Qui
+       non c'e una colonna che la contenga, e questa prova lo tiene vero: il
+       giorno che qualcuno la salvasse «per comodita», diventa rossa. */
+    centralinoFinto([
+      { stato: 201, corpo: { id: "trunk-2", montata: true } },
+      { stato: 201, corpo: { ok: true, numero: { e164: "+390110000042" } } },
+    ]);
+    const password = "questa-non-deve-restare";
+    await montaEAssegna({
+      nome: "Operatore di prova",
+      host: "sip.esempio.it",
+      utente: "0110000042",
+      password,
+      numero: "0110000042",
+      venueId,
+    });
+
+    const righe = await db.voiceNumber.findMany({ where: { venueId } });
+    expect(JSON.stringify(righe)).not.toContain(password);
+    const locale = await db.venue.findUniqueOrThrow({ where: { id: venueId } });
+    expect(JSON.stringify(locale)).not.toContain(password);
+  });
+
+  it("se il centralino non applica la configurazione, non si dice che è montata", async () => {
+    /* Una riga nel database del centralino senza il file di PJSIP e una linea
+       che esiste solo per noi: le telefonate non arrivano e niente lo dice. */
+    centralinoFinto([
+      { stato: 201, corpo: { id: "trunk-3", montata: false } },
+      { stato: 201, corpo: { ok: true, numero: { e164: "+390110000043" } } },
+    ]);
+    const esito = await montaEAssegna({
+      nome: "Operatore di prova",
+      host: "sip.esempio.it",
+      utente: "0110000043",
+      password: "x",
+      numero: "0110000043",
+      venueId,
+    });
+    expect(esito.montata).toBe(false);
+  });
+
+  it("se la linea viene rifiutata, il numero non si assegna", async () => {
+    const chiamate = centralinoFinto([
+      { stato: 400, corpo: { error: { message: "Servono gli indirizzi dell'operatore." } } },
+    ]);
+    await expect(
+      montaEAssegna({
+        nome: "Operatore di prova",
+        host: "sip.esempio.it",
+        numero: "0110000044",
+        venueId,
+      }),
+    ).rejects.toThrow(/indirizzi dell'operatore/);
+
+    // Nessuna chiamata all'assegnazione del numero, e niente scritto qui.
+    expect(chiamate.some((c) => c.url.includes("/numeri"))).toBe(false);
+    expect(await db.voiceNumber.count({ where: { venueId } })).toBe(0);
   });
 });

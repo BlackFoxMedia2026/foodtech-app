@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { CentralinoRemotoError, assegnaNumero, configurato } from "@/server/admin/centralino-remoto";
+import {
+  CentralinoRemotoError,
+  assegnaNumero,
+  configurato,
+  montaLinea,
+} from "@/server/admin/centralino-remoto";
 import { aggiungiLinea } from "@/server/voice/numeri-linea";
 
 /**
@@ -71,3 +76,63 @@ export async function assegnaLinea(venueId: string, raw: unknown) {
 }
 
 export { CentralinoRemotoError, configurato };
+
+/* -------------------------------------------------------------------------- */
+/*  Montare la linea dell'operatore, e assegnarla in un colpo                 */
+/* -------------------------------------------------------------------------- */
+
+export const LineaOperatoreInput = z.object({
+  /** Come si chiama l'operatore: serve solo a riconoscere la linea. */
+  nome: z.string().trim().min(2).max(60),
+  /** Il server SIP dell'operatore. */
+  host: z.string().trim().min(3).max(200),
+  porta: z.coerce.number().int().min(1).max(65535).optional(),
+  trasporto: z.enum(["UDP", "TCP", "TLS"]).optional(),
+  /** L'utenza con cui ci registriamo. Spesso è il numero stesso. */
+  utente: z.string().trim().max(120).optional(),
+  /** La password dell'operatore. **Non si salva in Tavolo.** */
+  password: z.string().max(200).optional(),
+  /** Il numero che arriva su questa linea. */
+  numero: z.string().trim().min(3).max(40),
+  /** A quale locale assegnarlo. */
+  venueId: z.string().trim().min(1),
+});
+
+/**
+ * Una linea nuova, dall'inizio alla fine: si monta e si assegna.
+ *
+ * Sono due gesti sul centralino — la linea dell'operatore, e il numero che
+ * arriva su quella linea per un locale — e si fanno **in quest'ordine**, in una
+ * richiesta sola, perché chi vende una linea non pensa «prima il trunk, poi il
+ * DID»: pensa «ho comprato questo numero, è di questo ristorante».
+ *
+ * Se il primo riesce e il secondo no, la linea resta montata e il numero non
+ * assegnato: si ripreme e si va avanti, perché montare la stessa linea due
+ * volte non crea un doppione (il centralino riusa quella che c'è).
+ */
+export async function montaEAssegna(raw: unknown) {
+  const dati = LineaOperatoreInput.parse(raw);
+
+  if (!configurato()) {
+    throw new LineaError(
+      "non_configurato",
+      "Il collegamento al centralino non è configurato su questa installazione.",
+    );
+  }
+
+  const linea = await montaLinea({
+    nome: dati.nome,
+    host: dati.host,
+    ...(dati.porta ? { porta: dati.porta } : {}),
+    ...(dati.trasporto ? { trasporto: dati.trasporto } : {}),
+    ...(dati.utente ? { utente: dati.utente } : {}),
+    ...(dati.password ? { password: dati.password } : {}),
+  });
+
+  const assegnato = await assegnaLinea(dati.venueId, {
+    numero: dati.numero,
+    etichetta: dati.nome,
+  });
+
+  return { ...assegnato, montata: linea.montata, avvisi: linea.avvisi };
+}
