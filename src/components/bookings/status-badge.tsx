@@ -45,7 +45,12 @@ export const STATI: BookingStatus[] = [...STATI_OPERATIVI, ...STATI_NEGATIVI];
 
 const SOURCE: Record<BookingSource, string> = {
   WIDGET: "Sito",
+  /* «Telefono» per entrambe, e non «Voice» per una: per il ristoratore sono
+     la stessa cosa — una prenotazione arrivata per telefono. La differenza fra
+     `PHONE` (scritta a mano da chi ha risposto) e `VOICE` (nata dentro Tavolo
+     Voice) serve a noi nelle analitiche, non a lui in un elenco. */
   PHONE: "Telefono",
+  VOICE: "Telefono",
   WALK_IN: "Walk-in",
   GOOGLE: "Google",
   SOCIAL: "Social",
