@@ -64,6 +64,7 @@ let venueId = "";
 let emailAttivo = "";
 let emailDisattivato = "";
 let emailSenzaPassword = "";
+let emailSuperAdmin = "";
 let idAttivo = "";
 
 beforeAll(async () => {
@@ -98,6 +99,13 @@ beforeAll(async () => {
 
   const senza = await db.user.create({ data: { email: emailSenzaPassword } });
   await db.venueMembership.create({ data: { venueId, userId: senza.id, role: "WAITER" } });
+
+  /* Un amministratore di piattaforma: riconosciuto dalla sola email, **senza
+     nessun locale**. È il caso che il primo controllo escludeva in silenzio. */
+  emailSuperAdmin = `${PREFISSO}capo${marca}@tavolo.test`;
+  await db.user.create({
+    data: { email: emailSuperAdmin, passwordHash: "$2a$10$non-serve-che-sia-vera" },
+  });
 });
 
 afterAll(async () => {
@@ -158,6 +166,35 @@ describe("chi chiede il link", () => {
     const esito = await chiediRecuperoPassword({ email: emailSenzaPassword }, ORIGINE);
     expect(esito).toEqual({ stato: "presa_in_carico" });
     expect(spedite).toHaveLength(0);
+  });
+
+  it("manda l'email a un amministratore di piattaforma anche se non ha nessun locale", async () => {
+    const prima = process.env.SUPER_ADMIN_EMAILS;
+    process.env.SUPER_ADMIN_EMAILS = `qualcun.altro@tavolo.test, ${emailSuperAdmin}`;
+    try {
+      const esito = await chiediRecuperoPassword({ email: emailSuperAdmin }, ORIGINE);
+      expect(esito).toEqual({ stato: "presa_in_carico" });
+      // La prova che poteva diventare rossa: col solo controllo
+      // sull'appartenenza a un locale, qui non partiva niente e la pagina
+      // diceva «controlla la posta» a chi non avrebbe ricevuto mai nulla.
+      expect(spedite).toHaveLength(1);
+      expect(spedite[0].to).toBe(emailSuperAdmin);
+    } finally {
+      if (prima === undefined) delete process.env.SUPER_ADMIN_EMAILS;
+      else process.env.SUPER_ADMIN_EMAILS = prima;
+    }
+  });
+
+  it("chi non è nell'elenco degli amministratori e non ha locali resta fuori", async () => {
+    const prima = process.env.SUPER_ADMIN_EMAILS;
+    delete process.env.SUPER_ADMIN_EMAILS;
+    try {
+      const esito = await chiediRecuperoPassword({ email: emailSuperAdmin }, ORIGINE);
+      expect(esito).toEqual({ stato: "presa_in_carico" });
+      expect(spedite).toHaveLength(0);
+    } finally {
+      if (prima !== undefined) process.env.SUPER_ADMIN_EMAILS = prima;
+    }
   });
 
   it("non guarda le maiuscole dell'indirizzo", async () => {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { eSuperAdmin } from "@/lib/super-admin";
 import { brevoAdapter } from "@/server/marketing/brevo-adapter";
 import { ORE_VALIDITA_RESET, apriReset } from "@/server/staff-account";
 
@@ -66,7 +67,21 @@ export async function chiediRecuperoPassword(raw: unknown, origine: string): Pro
     },
   });
 
-  const puoRientrare = !!utente?.passwordHash && utente.venueMemberships.length > 0;
+  /*
+    L'appartenenza a un locale, **oppure** l'elenco degli amministratori di
+    piattaforma.
+
+    Un super amministratore è riconosciuto dalla sola email
+    (`SUPER_ADMIN_EMAILS`) e può non avere nessun `VenueMembership`: col solo
+    controllo sull'appartenenza sarebbe stato escluso **in silenzio** — la
+    pagina gli avrebbe detto «controlla la posta» e l'email non sarebbe mai
+    partita. È il vicolo cieco peggiore, perché tocca l'account che non ha
+    nessuno sopra di sé a cui chiedere.
+
+    Non rivela niente: la risposta è la stessa per tutti e tre i casi.
+  */
+  const haUnLocale = (utente?.venueMemberships.length ?? 0) > 0;
+  const puoRientrare = !!utente?.passwordHash && (haUnLocale || eSuperAdmin(email));
   if (!utente || !puoRientrare) return { stato: "presa_in_carico" };
 
   const { token } = await apriReset(utente.id);
