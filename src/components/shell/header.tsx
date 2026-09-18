@@ -5,12 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Agent } from "@/components/agent/agent";
-import { vociPrincipali, classiVoce, isNavActive, titoloPagina } from "@/components/shell/nav-items";
+import {
+  vociPrincipali,
+  classiVoce,
+  isNavActive,
+  titoloPagina,
+} from "@/components/shell/nav-items";
 import { MarketingMenu } from "./marketing-menu";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
 import { NotificationBell } from "./notification-bell";
 import { RicercaGlobale } from "./ricerca-globale";
+import { IndicatoreTelefono } from "@/components/telefono/indicatore-telefono";
 import { NavigazioneImpostazioni } from "@/components/settings/navigazione-impostazioni";
 
 /**
@@ -56,11 +62,15 @@ export function Header({
      pillola: un array nuovo a ogni rendering rifarebbe la misura a ogni
      battito. */
   const voci = useMemo(() => vociPrincipali(telefonoAttivo), [telefonoAttivo]);
-  const inImpostazioni = pathname === "/settings" || pathname.startsWith("/settings/");
+  const inImpostazioni =
+    pathname === "/settings" || pathname.startsWith("/settings/");
   // `HTMLElement` e non `HTMLAnchorElement`: Marketing non è un link ma il
   // bottone che apre il suo menu, e occupa lo stesso posto in fila.
   const itemRefs = useRef(new Map<string, HTMLElement>());
-  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
+  const [indicator, setIndicator] = useState<{
+    left: number;
+    width: number;
+  } | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useLayoutEffect(() => {
@@ -91,7 +101,11 @@ export function Header({
           fila delle voci fuori dallo schermo invece di accorciarsi.
         */}
         <div className="flex min-w-0 items-center gap-3">
-          <VenueSwitcher venues={venues} activeId={activeVenueId} titolo={titoloPagina(pathname)} />
+          <VenueSwitcher
+            venues={venues}
+            activeId={activeVenueId}
+            titolo={titoloPagina(pathname)}
+          />
         </div>
 
         {/* Su telefono la navigazione sta in basso: qui non si scorre più niente. */}
@@ -103,37 +117,42 @@ export function Header({
             passaggio si vede uguale all'andata e al ritorno senza tenere in
             piedi due barre insieme per incrociarle.
           */
-          <div key="impostazioni" className="flex min-w-0 flex-1 animate-cambio-area justify-center">
+          <div
+            key="impostazioni"
+            className="flex min-w-0 flex-1 animate-cambio-area justify-center"
+          >
             <NavigazioneImpostazioni />
           </div>
         ) : (
-        <nav
-          key="gestionale"
-          aria-label="Navigazione principale"
-          className="hidden min-w-0 flex-1 animate-cambio-area justify-center md:flex"
-        >
-          <div className="relative flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
-            {indicator && (
-              <div
-                aria-hidden="true"
-                className="absolute inset-y-1 z-0 rounded-full bg-cream"
-                style={{
-                  left: indicator.left,
-                  width: indicator.width,
-                  transition: reducedMotion ? "none" : "left 260ms ease-in-out, width 260ms ease-in-out",
-                }}
-              />
-            )}
+          <nav
+            key="gestionale"
+            aria-label="Navigazione principale"
+            className="hidden min-w-0 flex-1 animate-cambio-area justify-center md:flex"
+          >
+            <div className="relative flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
+              {indicator && (
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-y-1 z-0 rounded-full bg-cream"
+                  style={{
+                    left: indicator.left,
+                    width: indicator.width,
+                    transition: reducedMotion
+                      ? "none"
+                      : "left 260ms ease-in-out, width 260ms ease-in-out",
+                  }}
+                />
+              )}
 
-            {voci.map((item) => {
-              const Icon = item.icon;
-              const active = isNavActive(pathname, item);
-              const registra = (el: HTMLElement | null) => {
-                if (el) itemRefs.current.set(item.href, el);
-                else itemRefs.current.delete(item.href);
-              };
+              {voci.map((item) => {
+                const Icon = item.icon;
+                const active = isNavActive(pathname, item);
+                const registra = (el: HTMLElement | null) => {
+                  if (el) itemRefs.current.set(item.href, el);
+                  else itemRefs.current.delete(item.href);
+                };
 
-              /*
+                /*
                 Marketing è l'unica voce che non porta da nessuna parte: apre
                 il suo menu. Prende **le stesse classi** delle altre — stessa
                 pillola, stessa altezza, stesso salto di misura fra tablet e
@@ -141,42 +160,44 @@ export function Header({
                 deve anche sembrare diversa: l'unico segno in più è la freccia
                 che si gira quando il pannello è aperto.
               */
-              if (item.sottovoci) {
-                return (
-                  <MarketingMenu
-                    key={item.href}
-                    item={item}
-                    triggerRef={registra}
-                    triggerClassName={classiVoce(active)}
-                  />
-                );
-              }
+                if (item.sottovoci) {
+                  return (
+                    <MarketingMenu
+                      key={item.href}
+                      item={item}
+                      triggerRef={registra}
+                      triggerClassName={classiVoce(active)}
+                    />
+                  );
+                }
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  ref={registra}
-                  title={item.label}
-                  className={classiVoce(active)}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {/*
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    ref={registra}
+                    title={item.label}
+                    className={classiVoce(active)}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {/*
                     Su tablet c'erano **icone senza nome**: il telefono ha le
                     etichette nella barra in basso, la scrivania le ha accanto
                     alle icone, e il tablet — l'unico schermo che una hostess
                     tiene su un supporto — non le aveva. Da 768 px in su si
                     legge la parola, abbreviata finché lo spazio è quello.
                   */}
-                  <span className="hidden 2xl:inline">{item.label}</span>
-                  <span className="hidden md:inline 2xl:hidden">{item.shortLabel ?? item.label}</span>
-                  <span className="sr-only md:hidden">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
+                    <span className="hidden 2xl:inline">{item.label}</span>
+                    <span className="hidden md:inline 2xl:hidden">
+                      {item.shortLabel ?? item.label}
+                    </span>
+                    <span className="sr-only md:hidden">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
         )}
 
         {/* Su telefono il gruppo di destra si allarga per riempire lo spazio
@@ -189,6 +210,12 @@ export function Header({
               navigazione e questo gruppo. */}
           <Agent />
           <RicercaGlobale />
+          {/* Il telefono **prima** delle notifiche: quando è acceso chiede
+              qualcosa che si fa adesso — una persona in linea, una da
+              richiamare — mentre una notifica si legge quando capita. E non
+              compare affatto quando non c'è niente da fare, così le icone in
+              testata restano tre. */}
+          <IndicatoreTelefono />
           <NotificationBell />
           <ProfileMenu user={user} />
         </div>

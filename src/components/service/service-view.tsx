@@ -26,7 +26,7 @@ import {
 } from "@/components/service/flusso-servizio";
 import type { ServiceInsight } from "@/server/service-intelligence";
 import { useServizioVivo } from "@/lib/use-servizio-vivo";
-import { ChiamateInArrivo } from "@/components/service/chiamata-in-arrivo";
+import { RiepilogoTelefono } from "@/components/telefono/riepilogo-servizio";
 import { CambiamentiRecenti } from "@/components/service/cambiamenti-recenti";
 
 /** I tre momenti, nell'ordine in cui li vive chi entra. */
@@ -193,14 +193,19 @@ export function ServiceView({
       </header>
 
       {/*
-        Il telefono che squilla, in cima e per il tempo di uno squillo.
+        Il riquadro della chiamata **non è più qui**.
 
-        Sta **sopra** la fascia dei numeri e non di lato: tutto il resto di
-        questa schermata dura un servizio, questo dura venti secondi, e in
-        venti secondi non si cerca. Quando non c'e nessuna chiamata il
-        componente non rende niente — il riquadro non e vuoto, non c'e.
+        Stava in questa pagina, e voleva dire che chi guardava la carta o la
+        scheda di un cliente non vedeva squillare niente. Adesso vive nel
+        guscio (`components/telefono/voice-globale.tsx`) e compare su qualunque
+        pagina, compresa questa.
+
+        Al suo posto resta quello che il Servizio deve dire del telefono: **cosa
+        chiede di essere fatto**. Non lo storico, non i conteggi della giornata
+        — quelli stanno nella pagina Telefono. Il Servizio non diventa un call
+        center: mostra le due righe che riguardano il servizio di adesso.
       */}
-      <ChiamateInArrivo chiamate={snapshot.chiamate} />
+      <RiepilogoTelefono />
 
       {/*
         Su tablet ci stanno tutti e sei, e ci devono stare: a 820 px la fascia

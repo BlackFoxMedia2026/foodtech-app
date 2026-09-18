@@ -29,12 +29,16 @@ function durata(secondi: number | null): string | null {
   return `${Math.floor(secondi / 60)} min`;
 }
 
-export function TelefonateOspite({ chiamate }: { chiamate: ChiamataDiOspite[] }) {
+export function TelefonateOspite({
+  chiamate,
+}: {
+  chiamate: ChiamataDiOspite[];
+}) {
   if (chiamate.length === 0) {
     return (
       <p className="t-nota">
-        Nessuna telefonata da questo numero. Compaiono qui appena chiama, con il collegamento alla
-        prenotazione se ne nasce una.
+        Nessuna telefonata da questo numero. Compaiono qui appena chiama, con il
+        collegamento alla prenotazione se ne nasce una.
       </p>
     );
   }
@@ -60,16 +64,22 @@ export function TelefonateOspite({ chiamate }: { chiamate: ChiamataDiOspite[] })
           const persa = c.stato === "MISSED";
           const Icona = persa ? PhoneMissed : Phone;
           return (
-            <li key={c.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+            <li
+              key={c.id}
+              className="flex flex-wrap items-baseline gap-x-2 text-sm"
+            >
               <Icona
                 className={`h-3.5 w-3.5 shrink-0 ${persa ? "text-destructive-soft" : "text-muted-foreground"}`}
                 aria-hidden="true"
               />
-              <span className="tabular-nums">{GIORNO.format(new Date(c.quando))}</span>
+              <span className="tabular-nums">
+                {GIORNO.format(new Date(c.quando))}
+              </span>
               <span className="t-nota">
                 {persa
                   ? "nessuna risposta"
-                  : (durata(c.durataSecondi) ?? (c.stato === "RINGING" ? "sta chiamando" : "risposta"))}
+                  : (durata(c.durataSecondi) ??
+                    (c.stato === "RINGING" ? "sta chiamando" : "risposta"))}
               </span>
               {c.prenotazione && (
                 <Link

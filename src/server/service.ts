@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { chiamateVive, type ChiamataViva } from "@/server/chiamate";
 import { versioneServizio } from "@/server/versione-servizio";
 import { NON_PIU_RITARDO_MIN } from "./service-intelligence";
 import { endOfDay, startOfDay } from "@/lib/utils";
@@ -102,6 +101,20 @@ export type ServiceSnapshot = {
   /** Tavoli seduti la cui durata prevista è scaduta o sta per scadere. */
   freeingSoon: ServiceBooking[];
   waitlist: WaitlistView[];
+  /*
+    Le chiamate **non** stanno qui.
+
+    Ci sono state per un giorno, quando il riquadro della chiamata viveva
+    dentro Servizio. Adesso il riquadro è nel guscio e compare su qualunque
+    pagina, e legge `/api/telefono/vivo` — una domanda piccola. Tenerle anche
+    qui vorrebbe dire calcolarle a ogni fotografia del servizio senza che
+    nessuno le legga: erano la lettura più costosa dello snapshot, perché per
+    ogni chiamata viva rifacevano il riconoscimento dell'ospite.
+
+    Il **segnale** resta in `versione-servizio`: la sonda si accorge di una
+    chiamata nuova, e chi la mostra la scarica per conto suo.
+  */
+
   /**
    * La versione del servizio **al momento di questa fotografia**.
    *
@@ -113,14 +126,6 @@ export type ServiceSnapshot = {
    * quella finestra è un terzo della sua vita.
    */
   versione: string;
-  /**
-   * Il telefono che squilla adesso.
-   *
-   * Vuoto quando il locale non ha il telefono collegato, e vuoto anche quando
-   * ce l'ha e nessuno chiama: chi guarda la schermata non deve distinguere i
-   * due casi, perché in sala non cambia niente.
-   */
-  chiamate: ChiamataViva[];
   counters: {
     copertiPresenti: number;
     tavoliOccupati: number;
@@ -265,7 +270,6 @@ export async function getServiceSnapshot(
     walkInOggi,
     tipica,
     cambiamenti,
-    chiamate,
     versione,
   ] = await Promise.all([
     db.venue.findUnique({
@@ -289,17 +293,6 @@ export async function getServiceSnapshot(
     }),
     durataTipicaSeduta(venueId, { now }),
     ultimiCambiamenti(venueId, { now, escludiUtente: opts.utente }),
-    /*
-      Le chiamate in corso.
-
-      La lettura c'è anche sui locali senza telefono, e costa una riga a vuoto
-      su un indice: il guardiano della licenza sta sulla **rotta** che scrive le
-      chiamate, quindi un locale senza telefono non ne ha nessuna e questa
-      interrogazione torna vuota. Controllare prima la licenza vorrebbe dire una
-      lettura in più per ogni fotografia del servizio, cioè pagare sempre per
-      non pagare qualche volta.
-    */
-    chiamateVive(venueId, now),
     versioneServizio(venueId, now),
   ]);
 
@@ -359,7 +352,6 @@ export async function getServiceSnapshot(
     freeingSoon,
     waitlist,
     versione,
-    chiamate,
     counters: {
       copertiPresenti: seated.reduce((n, b) => n + b.partySize, 0),
       tavoliOccupati,
