@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Phone, PhoneOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ export type StatoCentralinoVista = {
 export function Centralino({
   stato,
   salute,
+  risposte,
   sip,
   collegamenti,
   venueId,
@@ -104,6 +106,8 @@ export function Centralino({
   stato: StatoCentralinoVista;
   /** Come va, quando il telefono è collegato. */
   salute?: SaluteVista;
+  /** Quante risposte pronte ha scritto il locale, quando il telefono c'è. */
+  risposte?: { quante: number };
   /** I dati del telefono nel browser. La password non arriva mai qui. */
   sip: StatoSipVista;
   /** Le chiavi di collegamento attive: solo il prefisso, mai il valore. */
@@ -325,6 +329,36 @@ export function Centralino({
                 : "mai"}
             </ValoreImpostazione>
           </RigaImpostazione>
+
+          {/*
+            Cosa rispondere al telefono: una riga che porta alla sua pagina.
+           
+            Dieci frasi con le parole per trovarle non stanno in una riga di
+            impostazioni, e il numero qui dice se qualcuno le ha scritte — un
+            telefono collegato senza nemmeno una risposta funziona, ma chi
+            risponde il sabato sera continua a indovinare gli orari di Pasqua.
+          */}
+          {risposte && (
+            <RigaImpostazione
+              nome="Cosa rispondere"
+              descrizione={
+                risposte.quante === 0
+                  ? "Le domande che arrivano venti volte al giorno — cani, parcheggio, glutine — con la risposta che decidi tu. Si cercano dalla pagina Telefono mentre si parla."
+                  : "Si cercano dalla pagina Telefono mentre si parla, e le legge anche l'assistente."
+              }
+            >
+              <div className="flex items-center gap-2">
+                {risposte.quante > 0 && (
+                  <span className="t-nota tabular-nums">{risposte.quante}</span>
+                )}
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/settings/telefono">
+                    {risposte.quante === 0 ? "Scrivile" : "Gestisci"}
+                  </Link>
+                </Button>
+              </div>
+            </RigaImpostazione>
+          )}
 
           {/* Cosa **non** sa fare, e non è un elenco di scuse: è la risposta
               alla domanda «perché non posso trasferire?». I pulsanti che non

@@ -304,7 +304,17 @@ Le fasi 1–5 sono fatte: schema (#135), fornitore e capacità (#136), pannello
 globale della chiamata (#137), esiti e coda delle richiamate (#138), recupero
 delle chiamate perse e notifiche (#139), la storia di una prenotazione (#140), i permessi del telefono e lo stato del
 fornitore (#141), i numeri del telefono nelle analitiche (#142), gli strumenti di scrittura
-dell'assistente (#143).
+dell'assistente (#143), le risposte che il telefono deve dare (#144).
+
+**Fase 10: la base di conoscenza sì, il risponditore no.** Il piano diceva «AI
+receptionist, routing, base di conoscenza». Il risponditore che **parla**
+richiede un fornitore con `ai: true`, e non esiste: costruirne la
+configurazione vorrebbe dire una schermata di comandi che non arrivano a
+destinazione. Il routing sta dentro Asterisk, e le colonne di
+`VoiceConfiguration` restano non scritte per la stessa ragione. Quello che si
+può fare oggi — e serve già da solo — è la **base di conoscenza**: la si cerca
+mentre si parla e la legge l'assistente. Dettagli e confine in
+`/docs/TAVOLO-VOICE-AI.md`.
 
 **Fase 9, quello che è cambiato rispetto al piano.** Gli strumenti di scrittura
 sono tre e non sei — `prenota`, `metti_in_attesa`, `crea_richiamata` — perché

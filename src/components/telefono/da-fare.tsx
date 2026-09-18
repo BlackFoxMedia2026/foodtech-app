@@ -72,10 +72,20 @@ export function DaFare({
   richiamate,
   perse,
   fuso,
+  risposte,
 }: {
   richiamate: RichiamataVista[];
   perse: PersaVista[];
   fuso: string;
+  /**
+   * Le risposte pronte, costruite dalla pagina.
+   *
+   * Stanno **sotto le cose da fare e non in un'altra pagina** perché il
+   * momento in cui servono è lo stesso: qualcuno è in linea. Arriva come nodo
+   * perché non c'entra niente con la coda — è solo il posto dove chi risponde
+   * sta già guardando.
+   */
+  risposte?: React.ReactNode;
 }) {
   const quando = new Intl.DateTimeFormat("it-IT", {
     weekday: "short",
@@ -120,6 +130,8 @@ export function DaFare({
           ))}
         </ul>
       )}
+
+      {risposte}
     </section>
   );
 }

@@ -10,7 +10,12 @@ import { getPeriodRevenueTool } from "./tools/analytics";
 import { navigateTool } from "./tools/navigation";
 import { assignWaiterTool } from "./tools/assign-waiter";
 import { getExpiringContractsTool } from "./tools/contracts";
-import { mettiInAttesaTool, prenotaTool, richiamaTool } from "./tools/telefono";
+import {
+  cosaRispondoTool,
+  mettiInAttesaTool,
+  prenotaTool,
+  richiamaTool,
+} from "./tools/telefono";
 import {
   chiNonTornaTool,
   chiRischiaAssenzaTool,
@@ -48,4 +53,8 @@ export const toolRegistry: Record<string, Tool> = {
   prenota: prenotaTool,
   metti_in_attesa: mettiInAttesaTool,
   crea_richiamata: richiamaTool,
+  /* Legge le risposte che il locale ha scritto, e non ne inventa nessuna: un
+     modello che immagina gli orari di Pasqua fa dire al telefono una cosa
+     falsa con la voce del ristorante. */
+  cosa_rispondo: cosaRispondoTool,
 };

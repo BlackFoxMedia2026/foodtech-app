@@ -55,6 +55,14 @@ export type SaluteVoice = {
   sannoFare: string[];
   /** Cosa non sa fare: è la risposta a «perché non posso trasferire?». */
   nonSannoFare: string[];
+  /**
+   * Quante risposte pronte ha scritto il locale.
+   *
+   * Sta qui perché è un pezzo dello stato del telefono come gli altri: un
+   * telefono collegato senza nemmeno una risposta scritta funziona, ma chi
+   * risponde il sabato sera continua a indovinare gli orari di Pasqua.
+   */
+  risposteScritte: number;
 };
 
 export async function saluteVoice(
@@ -63,29 +71,31 @@ export async function saluteVoice(
 ): Promise<SaluteVoice> {
   const da = new Date(adesso.getTime() - 24 * 60 * 60 * 1000);
 
-  const [ultima, ultime24h, chiave, fornitore, capacita] = await Promise.all([
-    db.phoneCall.findFirst({
-      where: { venueId },
-      orderBy: { startedAt: "desc" },
-      select: { startedAt: true },
-    }),
-    db.phoneCall.count({ where: { venueId, startedAt: { gte: da } } }),
-    /* Una sola riga basta: la domanda è «ce n'è almeno una viva?», e contarle
+  const [ultima, ultime24h, chiave, fornitore, capacita, risposteScritte] =
+    await Promise.all([
+      db.phoneCall.findFirst({
+        where: { venueId },
+        orderBy: { startedAt: "desc" },
+        select: { startedAt: true },
+      }),
+      db.phoneCall.count({ where: { venueId, startedAt: { gte: da } } }),
+      /* Una sola riga basta: la domanda è «ce n'è almeno una viva?», e contarle
        non aggiunge niente a chi legge. */
-    db.apiToken.findFirst({
-      where: {
-        venueId,
-        revokedAt: null,
-        OR: [
-          { scopes: { has: "telefonia:write" } },
-          { scopes: { has: "telefonia:read" } },
-        ],
-      },
-      select: { id: true },
-    }),
-    fornitoreDi(venueId),
-    capacitaDi(venueId),
-  ]);
+      db.apiToken.findFirst({
+        where: {
+          venueId,
+          revokedAt: null,
+          OR: [
+            { scopes: { has: "telefonia:write" } },
+            { scopes: { has: "telefonia:read" } },
+          ],
+        },
+        select: { id: true },
+      }),
+      fornitoreDi(venueId),
+      capacitaDi(venueId),
+      db.voiceKnowledgeItem.count({ where: { venueId, attivo: true } }),
+    ]);
 
   const sannoFare: string[] = [];
   const nonSannoFare: string[] = [];
@@ -101,5 +111,6 @@ export async function saluteVoice(
     capacita,
     sannoFare,
     nonSannoFare,
+    risposteScritte,
   };
 }
