@@ -3,7 +3,6 @@ import { getActiveVenue } from "@/lib/tenant";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { elencoChiamate } from "@/server/chiamate";
 import { ElencoChiamateVista } from "@/components/telefono/elenco-chiamate";
-import { TelefonoBrowser } from "@/components/telefono/telefono-browser";
 import { statoTelefonoBrowser } from "@/server/telefono-browser";
 import { capacitaDi } from "@/server/voice/provider";
 import { cosaDaFareAlTelefono } from "@/server/voice/da-fare";
@@ -78,20 +77,16 @@ export default async function TelefonoPage({
       insightDaApprovare(ctx.venueId),
     ]);
 
-  /* Il telefono nel browser compare solo se è configurato **e** solo a chi in
-     questo locale risponde al telefono: la rotta che dà le credenziali chiede
-     `use_phone`, e un riquadro che si collega e fallisce per chi non ha quel
-     permesso sarebbe un errore inventato dall'interfaccia.
+  /*
+    Il telefono nel browser **non è più qui**: sta nel guscio, su qualunque
+    pagina (`layout.tsx`).
 
-     Oggi chi arriva a questa pagina ha già `use_phone` — la guardia sopra non
-     lascia passare nessun altro — e la riga resta perché è la condizione
-     **giusta**: il giorno che questo riquadro comparisse altrove, non deve
-     portarsi dietro il permesso della pagina da cui è nato. */
-  /* `capacita.browser` è la terza condizione, e non è una ripetizione: i dati
-     SIP possono essere configurati su un fornitore che non fa WebRTC, e in quel
-     caso il riquadro si collegherebbe a vuoto. */
-  const puoRispondere =
-    telefono.pronto && capacita.browser && can(ctx.role, "use_phone");
+    Non è uno spostamento estetico. Due copie in pagina vorrebbero dire due
+    registrazioni SIP con la stessa utenza, e la stessa chiamata che squilla
+    due volte sullo stesso schermo. Qui resta una riga che dice **dove** si
+    risponde — un fatto, non uno stato che potrebbe contraddire quello vero.
+  */
+  const rispondeNelBrowser = telefono.pronto && capacita.browser;
 
   return (
     /* Il telefono nel browser entra **dentro** l'elenco e non accanto: la
@@ -99,7 +94,15 @@ export default async function TelefonoPage({
        fuori dal contenitore romperebbe la regola «una schermata operativa si
        guarda, non si scorre». */
     <ElencoChiamateVista
-      telefono={puoRispondere ? <TelefonoBrowser capacita={capacita} /> : null}
+      telefono={
+        rispondeNelBrowser ? (
+          <p className="fissa riquadro p-3 t-nota">
+            Le chiamate squillano su <strong>qualunque pagina</strong> di
+            Tavolo: il riquadro per rispondere compare in basso a destra, dove
+            sei.
+          </p>
+        ) : null
+      }
       /* Le date diventano testo qui e non nel componente: un componente
          `"use client"` non riceve oggetti `Date`. */
       daFare={

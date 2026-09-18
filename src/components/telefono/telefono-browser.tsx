@@ -70,7 +70,27 @@ type Sessione = {
   state?: string;
 };
 
-export function TelefonoBrowser({ capacita }: { capacita: CapacitaVoice }) {
+export function TelefonoBrowser({
+  capacita,
+  discreto = false,
+}: {
+  capacita: CapacitaVoice;
+  /**
+   * Sta **addosso a chi lavora**, non su una pagina.
+   *
+   * Da quando il telefono si risponde dentro Tavolo — e miocentralino serve
+   * solo a consegnare licenze e collegamenti — questo componente è montato nel
+   * guscio: vive su qualunque schermata. Ma un riquadro che dice «pronto» in
+   * cima a ogni pagina, tutto il giorno, è la cosa che si impara a non
+   * guardare.
+   *
+   * Con `discreto` il telefono **non si vede finché non serve**: compare
+   * quando squilla, mentre si parla, e quando è **guasto** — quest'ultimo
+   * perché uno schermo che tace mentre il telefono non è collegato è la bugia
+   * peggiore che questa funzione possa raccontare.
+   */
+  discreto?: boolean;
+}) {
   const [stato, setStato] = useState<Stato>({ tipo: "spento" });
   const [muto, setMuto] = useState(false);
 
@@ -258,8 +278,20 @@ export function TelefonoBrowser({ capacita }: { capacita: CapacitaVoice }) {
     setMuto(prossimo);
   }
 
+  /* Quando non c'è niente da dire, non c'è niente da vedere — ma l'elemento
+     audio resta nel DOM: creato al volo in JavaScript viene bloccato più
+     spesso dalle politiche di riproduzione automatica, e senza di lui la
+     prima chiamata risponde muta. */
+  const zitto =
+    discreto &&
+    (stato.tipo === "spento" ||
+      stato.tipo === "collego" ||
+      stato.tipo === "pronto");
+
+  if (zitto) return <audio ref={audioRef} className="hidden" />;
+
   return (
-    <div className="fissa riquadro flex flex-wrap items-center gap-3 p-3">
+    <div className="riquadro flex flex-wrap items-center gap-3 bg-card p-3 shadow-lg">
       {/* L'audio della chiamata. Nascosto ma nel DOM: un elemento creato al
           volo in JavaScript viene bloccato più spesso dalle politiche di
           riproduzione automatica. */}
