@@ -185,7 +185,6 @@ export async function registraPrenotazioneTelefonica(
           }),
       partySize: dati.persone,
       startsAt: dati.quando,
-      source: "PHONE",
       internalNotes: noteInterne,
     },
     {
@@ -196,20 +195,38 @@ export async function registraPrenotazioneTelefonica(
       canale: "interno",
       idempotencyKey: chiave,
       /*
-        Da confermare, e lo stato va imposto **da qui**.
+        `VOICE` e non `PHONE`, e la differenza non è un'etichetta.
 
-        `source: "PHONE"` in Tavolo significa da sempre «l'ha presa una
-        persona dello staff al telefono», e per questo si autoconferma: chi
-        l'ha scritta ha parlato con il cliente. Una macchina che raccoglie
-        tasti non è la stessa cosa, e lo `status` dentro i dati della
-        prenotazione viene **ignorato di proposito** — se si accettasse dal
-        corpo di una richiesta, una prenotazione dal widget pubblico potrebbe
-        dichiararsi confermata da sola. La porta giusta è questa, che si
-        raggiunge solo da codice server.
+        `PHONE` in Tavolo significa da sempre «l'ha presa una persona dello
+        staff al telefono», e per questo si autoconferma: chi l'ha scritta ha
+        parlato col cliente. Questa l'ha raccolta una macchina, a tasti, da
+        qualcuno che non ha parlato con nessuno — e sono le stesse tre cifre
+        che il ristoratore vuole vedere separate a fine mese, quando chiede
+        «quante me le prende il risponditore?».
 
-        Il primo tentativo passava `status: "PENDING"` fra i dati e otteneva
-        una prenotazione **confermata**: un campo che viene ignorato in
-        silenzio è una trappola, e ci sono cascato.
+        La fonte passa da qui e non dai dati: `BookingInput` non accetta
+        `VOICE`, così nessuna richiesta può dichiararsi raccolta da una
+        macchina — né una raccolta da una macchina può dichiararsi presa da
+        una persona.
+      */
+      source: "VOICE",
+      /*
+        Da confermare, detto **due volte**, e non è una ripetizione inutile.
+
+        Da quando la fonte è `VOICE`, `determineBookingStatus` la lascia già
+        «da confermare» da sé: la regola sta nella fonte, dov'è giusto che
+        stia. Questa riga resta perché è quella che **non dipende** da
+        quell'elenco: il giorno che qualcuno aggiungesse `VOICE` fra le fonti
+        che si autoconfermano, una prenotazione raccolta a tasti diventerebbe
+        un tavolo tenuto per certo, e nessun test lo racconterebbe meglio di
+        questa riga.
+
+        Lo `status` dentro i **dati** invece viene ignorato di proposito: se si
+        accettasse dal corpo di una richiesta, una prenotazione dal widget
+        pubblico potrebbe dichiararsi confermata da sola. Il primo tentativo
+        passava `status: "PENDING"` fra i dati e otteneva una prenotazione
+        **confermata**: un campo ignorato in silenzio è una trappola, e ci sono
+        cascato.
       */
       status: "PENDING",
     },

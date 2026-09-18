@@ -316,3 +316,117 @@ test("la chiamata persa mentre nessuno guardava finisce nella campanella", async
     });
   }
 });
+
+test("la prenotazione nata da una telefonata racconta da dove viene", async ({
+  page,
+  request,
+}) => {
+  /**
+   * L'ultimo pezzo del giro, ed è quello che si legge tre settimane dopo.
+   *
+   * Davanti a un cliente al telefono le domande sono sempre le stesse: «chi
+   * l'ha spostata?», «la conferma è partita?», «l'avevamo presa noi?». Le
+   * risposte erano nel database da mesi — nel registro delle azioni, nei
+   * messaggi, nella telefonata collegata — e nessuna schermata le metteva in
+   * fila.
+   */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+    },
+  });
+
+  const nome = unico("Storia");
+  const numero = "3478877994";
+  const ospite = await db.guest.create({
+    data: {
+      venueId: locale.id,
+      firstName: nome,
+      lastName: "DiCarta",
+      phone: numero,
+    },
+  });
+  const token = await emettiApiToken(locale.id, {
+    nome: "Centralino (storia)",
+    ambiti: ["telefonia:read", "telefonia:write"],
+  });
+  const chiamata = unico("call");
+  let prenotazioneId = "";
+
+  try {
+    for (const stato of ["RINGING", "MISSED"]) {
+      const r = await request.post("/api/v1/telefonia/chiamata", {
+        headers: { authorization: `Bearer ${token.token}` },
+        data: { id: chiamata, phone: `+39${numero}`, stato },
+      });
+      expect(r.ok()).toBe(true);
+    }
+    const riga = await db.phoneCall.findFirstOrThrow({
+      where: { venueId: locale.id, externalId: chiamata },
+      select: { id: true },
+    });
+
+    /* La prenotazione nasce dalla rotta vera, con la chiamata attaccata —
+       esattamente il corpo che manda il modulo quando ci si arriva dal
+       telefono (`?chiamata=<id>`). */
+    const domani = new Date(Date.now() + 24 * 3600 * 1000);
+    domani.setHours(20, 0, 0, 0);
+    const creata = await request.post("/api/bookings", {
+      data: {
+        guest: { firstName: nome, lastName: "DiCarta", phone: numero },
+        partySize: 2,
+        startsAt: domani.toISOString(),
+        source: "PHONE",
+        chiamataId: riga.id,
+      },
+    });
+    expect(creata.status()).toBe(201);
+    prenotazioneId = ((await creata.json()) as { id: string }).id;
+
+    /* --- La storia, sulla pagina della prenotazione --------------------- */
+    await page.goto(`/bookings/${prenotazioneId}`);
+    const storia = page.locator("section, div").filter({
+      has: page.getByRole("heading", { name: /Cos'è successo/ }),
+    });
+    await expect(
+      page.getByRole("heading", { name: /Cos'è successo/ }),
+    ).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(storia.getByText("Presa al telefono").first()).toBeVisible();
+    await expect(
+      storia.getByText(new RegExp(`Telefonata di ${nome}`)),
+    ).toBeVisible();
+
+    /* E la telefonata, dall'altra parte, non è più da richiamare: è una
+       telefonata riuscita. */
+    const dopo = await db.phoneCall.findUniqueOrThrow({
+      where: { id: riga.id },
+      select: { bookingId: true, outcome: true },
+    });
+    expect(dopo.bookingId).toBe(prenotazioneId);
+    expect(dopo.outcome).toBe("BOOKING_CREATED");
+  } finally {
+    await db.auditLog.deleteMany({ where: { venueId: locale.id } });
+    await db.voiceCallback.deleteMany({ where: { venueId: locale.id } });
+    await db.phoneCallEvent.deleteMany({
+      where: { call: { venueId: locale.id } },
+    });
+    await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
+    if (prenotazioneId) {
+      await db.booking.deleteMany({ where: { id: prenotazioneId } });
+    }
+    await db.guest.delete({ where: { id: ospite.id } }).catch(() => {});
+    await db.apiToken.deleteMany({ where: { venueId: locale.id } });
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+  }
+});

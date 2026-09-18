@@ -302,7 +302,16 @@ build, e la sonda di leggibilità quando la fase tocca l'interfaccia.
 |---|---|---|
 Le fasi 1–5 sono fatte: schema (#135), fornitore e capacità (#136), pannello
 globale della chiamata (#137), esiti e coda delle richiamate (#138), recupero
-delle chiamate perse e notifiche (#139).
+delle chiamate perse e notifiche (#139), la storia di una prenotazione (#140).
+
+**Cambio di piano nella fase 6.** Il piano diceva «accendere `BookingEvent`».
+Guardando cosa ci sarebbe finito dentro si è visto che ogni evento ha già la
+sua casa — la riga stessa per la nascita, `PhoneCall` per la telefonata,
+`MessageLog` per i messaggi con il loro esito, `AuditLog` con la differenza per
+chi ha cambiato cosa — e che accenderla voleva dire scrivere una **seconda
+copia** di quello che c'è. `BookingEvent` è la quarta tabella morta trovata in
+questo prodotto, ed è stata segnata superata come le tre del telefono: la
+storia si legge dai fatti (`src/server/storia-prenotazione.ts`).
 
 | **1** | Consolidamento dello schema: estendere `PhoneCall`, cancellare le tre morte (+ `demo-vetrina.ts`), `VoiceNumber` + `VoiceConfiguration`, `BookingSource.VOICE` | **il più alto**: è l'unico passo distruttivo, e cancella sei righe di demo |
 | **2** | Astrazione del fornitore + capacità + simulatore | basso |
