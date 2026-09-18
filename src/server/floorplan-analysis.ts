@@ -3,6 +3,7 @@ import {
   FloorPlanAnalysisSchema,
   type FloorPlanAnalysis,
 } from "@/lib/floorplan-analysis";
+import { leggiFile } from "@/server/archivio-file";
 
 /**
  * Il riconoscimento della planimetria.
@@ -56,19 +57,18 @@ const MAX_BYTE_IMMAGINE = 10 * 1024 * 1024;
  * di un ambiente di sviluppo, e non è una cosa che l'utente possa capire dal
  * messaggio d'errore. Leggerla qui costa un trasferimento in più e toglie una
  * condizione invisibile al funzionamento.
+ *
+ * `leggiFile` sa da quale dei due archivi viene l'indirizzo: se è quello della
+ * cartella locale i byte si prendono dal disco, senza che il server faccia una
+ * richiesta HTTP a sé stesso mentre ne sta servendo un'altra.
  */
 async function immagineComeDato(url: string): Promise<string | null> {
   const mime = tipoImmagine(url);
   if (!mime) return null;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const buffer = await res.arrayBuffer();
-    if (buffer.byteLength === 0 || buffer.byteLength > MAX_BYTE_IMMAGINE) return null;
-    return `data:${mime};base64,${Buffer.from(buffer).toString("base64")}`;
-  } catch {
-    return null;
-  }
+  const buffer = await leggiFile(url);
+  if (!buffer) return null;
+  if (buffer.byteLength === 0 || buffer.byteLength > MAX_BYTE_IMMAGINE) return null;
+  return `data:${mime};base64,${Buffer.from(buffer).toString("base64")}`;
 }
 
 const SYSTEM_PROMPT = `Sei un sistema di computer vision specializzato in planimetrie di locali pubblici (ristoranti, bar, pizzerie).
@@ -174,12 +174,39 @@ export async function analyzeFloorPlan(input: AnalyzeInput): Promise<FloorPlanAn
       );
     }
     return analysis;
-  } catch {
-    return fallbackAnalysis(
-      input,
-      "Il riconoscimento automatico non è riuscito a leggere questa planimetria: abbiamo creato un perimetro di partenza da correggere a mano.",
-    );
+  } catch (err) {
+    return fallbackAnalysis(input, notaDiFallimento(err));
   }
+}
+
+/**
+ * Perché il riconoscimento non ha funzionato, detto a chi può rimediare.
+ *
+ * Tutti i fallimenti finivano in una frase sola: «non siamo riusciti a leggere
+ * questa planimetria». Vera per un'immagine storta, **falsa e costosa** per una
+ * chiave sbagliata o per il credito finito — casi in cui il ristoratore
+ * ricarica la stessa piantina tre volte, poi ne prova un'altra, e conclude che
+ * la funzione non serve. Sono anche i due casi che si incontrano il giorno in
+ * cui la chiave si configura per la prima volta, cioè quando una frase precisa
+ * vale di più.
+ *
+ * La risposta resta la stessa — il perimetro da correggere a mano — perché per
+ * chi sta disegnando la sala non cambia niente: cambia solo cosa gli conviene
+ * fare dopo.
+ */
+function notaDiFallimento(err: unknown): string {
+  const stato = typeof err === "object" && err !== null && "status" in err ? Number((err as { status: unknown }).status) : 0;
+
+  if (stato === 401 || stato === 403) {
+    return "La chiave del riconoscimento automatico non è valida: controlla OPENAI_API_KEY. Intanto abbiamo creato un perimetro di partenza da correggere a mano.";
+  }
+  if (stato === 429) {
+    return "Il riconoscimento automatico ha esaurito il credito o le richieste consentite: riprova più tardi. Intanto abbiamo creato un perimetro di partenza da correggere a mano.";
+  }
+  if (stato === 404) {
+    return "Il modello del riconoscimento automatico non esiste o non è accessibile con questa chiave: controlla OPENAI_VISION_MODEL. Intanto abbiamo creato un perimetro di partenza da correggere a mano.";
+  }
+  return "Il riconoscimento automatico non è riuscito a leggere questa planimetria: abbiamo creato un perimetro di partenza da correggere a mano.";
 }
 
 /**
