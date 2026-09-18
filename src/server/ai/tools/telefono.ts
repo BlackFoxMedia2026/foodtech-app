@@ -3,6 +3,7 @@ import { checkAvailability } from "@/server/availability";
 import { durataConsigliata } from "@/server/durata-consigliata";
 import { normalizzaE164, telefonoLeggibile } from "@/lib/telefono";
 import { interpretaQuando } from "../quando";
+import { cercaRisposte } from "@/server/voice/conoscenza";
 import type { Tool } from "../types";
 
 /**
@@ -273,6 +274,49 @@ export const richiamaTool: Tool = {
         summary: `Da richiamare: ${telefonoLeggibile(telefono)}`,
         params: { telefono, nota },
       },
+    };
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Cosa rispondo?                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * «Cosa rispondo a chi chiede del parcheggio?»
+ *
+ * Legge le risposte che il locale ha scritto (Impostazioni → Telefono → Cosa
+ * rispondere) e **non ne inventa nessuna**. Quando non ne trova, lo dice: è la
+ * stessa regola degli strumenti che scrivono, applicata alla lettura. Un
+ * modello che immagina gli orari di Pasqua di un ristorante che non li ha
+ * dichiarati fa dire al telefono una cosa falsa con la voce del locale.
+ */
+export const cosaRispondoTool: Tool = {
+  ability: "use_phone",
+  async run(ctx, params) {
+    const domanda = (params.frase ?? "").trim();
+    if (!domanda) {
+      return {
+        text: "Su cosa? Per esempio «cosa rispondo per il parcheggio?».",
+      };
+    }
+
+    const trovate = await cercaRisposte(ctx.venueId, domanda);
+    if (trovate.length === 0) {
+      return {
+        text: "Questo non è scritto fra le risposte del locale: al cliente si può dire «glielo faccio verificare». Le risposte si scrivono in Impostazioni → Telefono → Cosa rispondere.",
+      };
+    }
+
+    /* Una sola risposta, per intero: chi la sta leggendo a voce non deve
+       scegliere fra tre varianti mentre una persona aspetta. Le altre si
+       vedono cercando dalla pagina del telefono. */
+    const prima = trovate[0]!;
+    return {
+      text:
+        trovate.length === 1
+          ? prima.risposta
+          : `${prima.risposta}\n\n(ce ne sono altre ${trovate.length - 1} che c'entrano: si cercano dalla pagina Telefono.)`,
     };
   },
 };

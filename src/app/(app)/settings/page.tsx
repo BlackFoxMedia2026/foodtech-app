@@ -663,6 +663,13 @@ export default async function SettingsPage() {
                 fornitore: salute.fornitore,
                 nonSannoFare: salute.nonSannoFare,
               }}
+              /* Il collegamento a «Cosa rispondere»: dieci frasi con le
+                 parole per trovarle non stanno in una riga di impostazioni. */
+              risposte={
+                centralino.attivo
+                  ? { quante: salute.risposteScritte }
+                  : undefined
+              }
               stato={{
                 attivo: centralino.attivo,
                 funzioni: centralino.funzioni,

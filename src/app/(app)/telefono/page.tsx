@@ -8,6 +8,8 @@ import { statoTelefonoBrowser } from "@/server/telefono-browser";
 import { capacitaDi } from "@/server/voice/provider";
 import { cosaDaFareAlTelefono } from "@/server/voice/da-fare";
 import { DaFare } from "@/components/telefono/da-fare";
+import { risposteDelLocale } from "@/server/voice/conoscenza";
+import { RispostePronte } from "@/components/telefono/risposte-pronte";
 import { can } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
@@ -61,11 +63,15 @@ export default async function TelefonoPage({
     ? Number(searchParams.giorni)
     : 7;
 
-  const [elenco, daFare, telefono, capacita] = await Promise.all([
+  const [elenco, daFare, telefono, capacita, risposte] = await Promise.all([
     elencoChiamate(ctx.venueId, { solo, giorni }),
     cosaDaFareAlTelefono(ctx.venueId),
     statoTelefonoBrowser(ctx.venueId),
     capacitaDi(ctx.venueId),
+    /* Le risposte pronte arrivano con la pagina: sono dieci frasi corte, e
+       cercarle mentre una persona aspetta in linea non deve costare una
+       richiesta al server per ogni lettera. */
+    risposteDelLocale(ctx.venueId),
   ]);
 
   /* Il telefono nel browser compare solo se è configurato **e** solo a chi in
@@ -109,6 +115,7 @@ export default async function TelefonoPage({
             ...p,
             quando: p.quando.toISOString(),
           }))}
+          risposte={<RispostePronte risposte={risposte} />}
         />
       }
       elenco={{

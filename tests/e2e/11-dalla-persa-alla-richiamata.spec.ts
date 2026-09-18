@@ -515,3 +515,63 @@ test("nelle analitiche il telefono dice a che ora squilla e quante prenotano", a
     });
   }
 });
+
+test("la risposta al telefono si scrive una volta e si trova mentre si parla", async ({
+  page,
+}) => {
+  /**
+   * Le dieci domande di ogni sera: cani, parcheggio, glutine, orari di Pasqua.
+   * La risposta la sa chi lavora da più tempo, e il ragazzo che risponde il
+   * sabato sera la indovina o mette in attesa e va a chiedere in cucina.
+   *
+   * Questo percorso la scrive dalle impostazioni e la cerca dalla pagina del
+   * telefono, che è il momento in cui serve: una persona sta aspettando in
+   * linea.
+   */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+    },
+  });
+
+  const frase = `I cani stanno nel dehors ${unico("dh")}`;
+
+  try {
+    /* --- 1. Si scrive dalle impostazioni ------------------------------- */
+    await page.goto("/settings/telefono");
+    await page.getByRole("button", { name: /Aggiungi una risposta/ }).click();
+    await page.getByLabel(/La risposta, come si dice a voce/).fill(frase);
+    await page.getByLabel(/Le parole con cui la si cerca/).fill("cane, cani");
+    await page.getByRole("button", { name: "Salva" }).click();
+    await expect(page.getByText(/si trova con: cane, cani/)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    /* --- 2. Si trova dalla pagina del telefono, con la parola di chi chiama */
+    await page.goto("/telefono");
+    const riquadro = page.getByRole("region", { name: "Cosa rispondere" });
+    await expect(riquadro).toBeVisible({ timeout: 30_000 });
+    // Prima di cercare non mostra niente: non è un elenco, è una ricerca.
+    await expect(riquadro.getByText(frase)).toHaveCount(0);
+
+    await riquadro.getByLabel(/Cosa rispondere/).fill("cane");
+    await expect(riquadro.getByText(frase)).toBeVisible();
+
+    /* --- 3. Quello che non è scritto lo dice --------------------------- */
+    await riquadro.getByLabel(/Cosa rispondere/).fill("karaoke");
+    await expect(riquadro.getByText(/non è scritto/)).toBeVisible();
+    await expect(riquadro.getByText(frase)).toHaveCount(0);
+  } finally {
+    await db.voiceKnowledgeItem.deleteMany({ where: { venueId: locale.id } });
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+  }
+});

@@ -168,6 +168,22 @@ const rules: Rule[] = [
    * anche dire «non ho capito quando». Una regola che indovinasse qui i
    * parametri li indovinerebbe anche quando non ci sono.
    */
+  /**
+   * «Cosa rispondo per il parcheggio?»
+   *
+   * Sta **prima** di «prenota» perché una domanda come «cosa rispondo a chi
+   * vuole prenotare per venti persone?» contiene «prenota», e finirebbe sullo
+   * strumento che prende le prenotazioni: un'anteprima di prenotazione al
+   * posto di una risposta è il modo peggiore di sbagliare, perché somiglia a
+   * quello giusto.
+   */
+  {
+    intent: "cosa_rispondo",
+    test: (m) =>
+      /\b(cosa (rispondo|dico|si dice)|come rispondo|che rispondo)\b/.test(m)
+        ? { frase: m }
+        : null,
+  },
   {
     intent: "prenota",
     test: (m) =>
