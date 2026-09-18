@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { OPERATORI } from "@/lib/operatori-telefonici";
 import { salvaIngresso, vistaIngresso } from "@/server/voice/ingresso";
 import { MAX_RIMANDI, chiediRimando } from "@/server/voice/rimando";
+import { NumeroDiUnAltroError, dichiaraNumeri } from "@/server/voice/numeri-linea";
 
 /**
  * Da dove entrano le chiamate, e il cerchio.
@@ -275,5 +276,72 @@ describe("le istruzioni per la SIM", () => {
 
   it("gli identificativi sono unici", () => {
     expect(new Set(OPERATORI.map((o) => o.id)).size).toBe(OPERATORI.length);
+  });
+});
+
+describe("le linee dichiarate dal centralino", () => {
+  it("compaiono nella procedura, e il ristoratore non le digita", async () => {
+    /* Il numero a cui far deviare non e suo: e nostro, sta nel centralino, e
+       un campo da riempire a mano produrrebbe un numero scritto bene e
+       mostrato con sicurezza che non arriva da nessuna parte. */
+    expect((await vistaIngresso(venueId)).numeroTavolo).toBeNull();
+
+    await dichiaraNumeri(venueId, "blackfox", {
+      numeri: [{ numero: "+390110000011", mostrato: "011 0000011" }],
+    });
+
+    // Si mostra come lo comporrebbe, non nella forma tecnica.
+    expect((await vistaIngresso(venueId)).numeroTavolo).toBe("011 0000011");
+  });
+
+  it("si confrontano in forma internazionale: tre grafie, una linea", async () => {
+    await dichiaraNumeri(venueId, "blackfox", { numeri: [{ numero: "+390110000012" }] });
+    const esito = await dichiaraNumeri(venueId, "blackfox", {
+      numeri: [{ numero: "0110000012" }],
+    });
+    expect(esito).toEqual({ attive: 1, spente: 0 });
+    expect(await db.voiceNumber.count({ where: { venueId, attivo: true } })).toBe(1);
+  });
+
+  it("quella che non viene più dichiarata si spegne, e non si cancella", async () => {
+    /* Le chiamate di ieri puntano a quella riga: cancellarla vorrebbe dire
+       perdere su quale linea erano arrivate. */
+    await dichiaraNumeri(venueId, "blackfox", {
+      numeri: [{ numero: "+390110000013" }, { numero: "+390110000014" }],
+    });
+    const esito = await dichiaraNumeri(venueId, "blackfox", {
+      numeri: [{ numero: "+390110000013" }],
+    });
+    expect(esito).toEqual({ attive: 1, spente: 1 });
+    expect(await db.voiceNumber.count({ where: { venueId } })).toBe(2);
+    expect(await db.voiceNumber.count({ where: { venueId, attivo: false } })).toBe(1);
+  });
+
+  it("la stessa linea non può arrivare a due locali", async () => {
+    /* Sul trunk il numero chiamato **è** la chiave con cui si trova il
+       cliente: due locali sulla stessa linea vogliono dire telefonate, nomi e
+       prenotazioni nel gestionale sbagliato. */
+    const altro = await db.venue.create({
+      data: { orgId, name: `${PREFISSO}altro`, slug: `${PREFISSO}a${Date.now()}` },
+    });
+    try {
+      await dichiaraNumeri(venueId, "blackfox", { numeri: [{ numero: "+390110000015" }] });
+      await expect(
+        dichiaraNumeri(altro.id, "blackfox", { numeri: [{ numero: "+390110000015" }] }),
+      ).rejects.toThrow(NumeroDiUnAltroError);
+      expect(await db.voiceNumber.count({ where: { venueId: altro.id } })).toBe(0);
+    } finally {
+      await db.voiceNumber.deleteMany({ where: { venueId: altro.id } });
+      await db.venue.delete({ where: { id: altro.id } });
+    }
+  });
+
+  it("un elenco vuoto spegne tutto: è la dichiarazione «non hai linee»", async () => {
+    await dichiaraNumeri(venueId, "blackfox", { numeri: [{ numero: "+390110000016" }] });
+    expect(await dichiaraNumeri(venueId, "blackfox", { numeri: [] })).toEqual({
+      attive: 0,
+      spente: 1,
+    });
+    expect((await vistaIngresso(venueId)).numeroTavolo).toBeNull();
   });
 });
