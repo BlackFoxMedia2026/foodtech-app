@@ -24,7 +24,9 @@ const PREFISSO = "test-agente-";
 
 const url = process.env.DATABASE_URL ?? "";
 if (!/dev|test/i.test(url)) {
-  throw new Error("Questi test scrivono sul database: DATABASE_URL deve contenere 'dev' o 'test'.");
+  throw new Error(
+    "Questi test scrivono sul database: DATABASE_URL deve contenere 'dev' o 'test'.",
+  );
 }
 
 let ctx: AgentContext;
@@ -35,7 +37,12 @@ beforeAll(async () => {
     data: { name: `${PREFISSO}org`, slug: `${PREFISSO}${Date.now()}` },
   });
   const venue = await db.venue.create({
-    data: { orgId: org.id, name: `${PREFISSO}locale`, slug: `${PREFISSO}v${Date.now()}`, timezone: "Europe/Rome" },
+    data: {
+      orgId: org.id,
+      name: `${PREFISSO}locale`,
+      slug: `${PREFISSO}v${Date.now()}`,
+      timezone: "Europe/Rome",
+    },
   });
   venueId = venue.id;
   ctx = {
@@ -44,11 +51,14 @@ beforeAll(async () => {
     venueTimezone: "Europe/Rome",
     role: "MANAGER",
     userId: "test",
+    orgId: org.id,
   };
 }, 60_000);
 
 afterAll(async () => {
-  await db.organization.deleteMany({ where: { slug: { startsWith: PREFISSO } } });
+  await db.organization.deleteMany({
+    where: { slug: { startsWith: PREFISSO } },
+  });
   await db.$disconnect();
 }, 60_000);
 
@@ -81,13 +91,19 @@ describe("ogni domanda arriva al suo strumento", () => {
     // La regola nuova non deve rubare le domande già coperte: «quanti
     // coperti» resta sui coperti.
     const coperti = classifyIntent("quanti coperti abbiamo oggi?");
-    expect(coperti.kind === "internal" && coperti.intent).toBe("get_service_covers");
+    expect(coperti.kind === "internal" && coperti.intent).toBe(
+      "get_service_covers",
+    );
 
     const liberi = classifyIntent("quali tavoli sono liberi?");
-    expect(liberi.kind === "internal" && liberi.intent).toBe("get_available_tables");
+    expect(liberi.kind === "internal" && liberi.intent).toBe(
+      "get_available_tables",
+    );
 
     const prenotazioni = classifyIntent("mostra le prenotazioni di oggi");
-    expect(prenotazioni.kind === "internal" && prenotazioni.intent).toBe("get_today_reservations");
+    expect(prenotazioni.kind === "internal" && prenotazioni.intent).toBe(
+      "get_today_reservations",
+    );
   });
 
   it("ogni intento nuovo ha uno strumento registrato", () => {
@@ -99,12 +115,17 @@ describe("ogni domanda arriva al suo strumento", () => {
       "piatti_che_rendono_meno",
       "giorno_peggiore",
     ]) {
-      expect(toolRegistry[intento], `${intento} non è nel registro`).toBeTruthy();
+      expect(
+        toolRegistry[intento],
+        `${intento} non è nel registro`,
+      ).toBeTruthy();
     }
   });
 
   it("una domanda che non c'entra niente resta fuori", () => {
-    expect(classifyIntent("che tempo fa domani a Milano?").kind).toBe("external");
+    expect(classifyIntent("che tempo fa domani a Milano?").kind).toBe(
+      "external",
+    );
   });
 });
 
@@ -125,7 +146,9 @@ describe("quando la misura non basta, la risposta lo dice", () => {
   it("i tavoli lunghi: in una sala vuota lo dice, e dice su cosa poggia la previsione", async () => {
     const esito = await toolRegistry.tavoli_lunghi.run(ctx, {});
     expect(esito.text).toContain("Nessun tavolo è oltre");
-    expect(esito.text).toMatch(/durata misurata qui|durata scritta sulle prenotazioni/);
+    expect(esito.text).toMatch(
+      /durata misurata qui|durata scritta sulle prenotazioni/,
+    );
   });
 
   it("chi rischia di mancare: senza nessuno a rischio non si inventa un elenco", async () => {
@@ -144,7 +167,13 @@ describe("con dati veri, le risposte portano i numeri", () => {
   it("chi rischia di mancare distingue il ritardo dalla storia di assenze", async () => {
     const adesso = new Date();
     const ospiteConStoria = await db.guest.create({
-      data: { venueId, firstName: "Sergio", lastName: "Vago", noShowCount: 3, totalVisits: 2 },
+      data: {
+        venueId,
+        firstName: "Sergio",
+        lastName: "Vago",
+        noShowCount: 3,
+        totalVisits: 2,
+      },
     });
     const ospitePuntuale = await db.guest.create({
       data: { venueId, firstName: "Carla", lastName: "Neri" },
@@ -176,10 +205,17 @@ describe("con dati veri, le risposte portano i numeri", () => {
     const esito = await toolRegistry.chi_rischia_assenza.run(ctx, {});
     expect(esito.text).toContain("in ritardo");
     expect(esito.text).toContain("assenze sulla scheda");
-    const elenco = esito.structured as { type: "list"; items: { title: string }[] };
+    const elenco = esito.structured as {
+      type: "list";
+      items: { title: string }[];
+    };
     expect(elenco.type).toBe("list");
-    expect(elenco.items.map((i) => i.title).join(" | ")).toContain("Carla Neri");
-    expect(elenco.items.map((i) => i.title).join(" | ")).toContain("Sergio Vago");
+    expect(elenco.items.map((i) => i.title).join(" | ")).toContain(
+      "Carla Neri",
+    );
+    expect(elenco.items.map((i) => i.title).join(" | ")).toContain(
+      "Sergio Vago",
+    );
     // Il primo è chi è in ritardo adesso: è quello su cui la telefonata
     // funziona ancora.
     expect(elenco.items[0].title).toContain("in ritardo");
@@ -200,10 +236,19 @@ describe("con dati veri, le risposte portano i numeri", () => {
     const ieriWeekday = (oggiWeekday + 6) % 7;
     for (const weekday of [oggiWeekday, ieriWeekday]) {
       await db.shift.create({
-        data: { venueId, name: "Cena", weekday, startMinute: 19 * 60, endMinute: 23 * 60, capacity: 40 },
+        data: {
+          venueId,
+          name: "Cena",
+          weekday,
+          startMinute: 19 * 60,
+          endMinute: 23 * 60,
+          capacity: 40,
+        },
       });
     }
-    const ospite = await db.guest.create({ data: { venueId, firstName: "Storia" } });
+    const ospite = await db.guest.create({
+      data: { venueId, firstName: "Storia" },
+    });
     const oggi = new Date();
     for (let settimana = 1; settimana <= 4; settimana++) {
       for (const [giorniIndietro, coperti] of [
@@ -236,8 +281,20 @@ describe("con dati veri, le risposte portano i numeri", () => {
      * che la abbassi: una serata dentro il periodo in cui il locale registra
      * è un dato, anche quando non è venuto nessuno.
      */
-    const GIORNI = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
-    const metrica = esito.structured as { type: "metric"; value: string; hint?: string };
+    const GIORNI = [
+      "domenica",
+      "lunedì",
+      "martedì",
+      "mercoledì",
+      "giovedì",
+      "venerdì",
+      "sabato",
+    ];
+    const metrica = esito.structured as {
+      type: "metric";
+      value: string;
+      hint?: string;
+    };
     expect(metrica.value.toLowerCase()).toBe(GIORNI[ieriWeekday]);
     expect(metrica.hint).toMatch(/serate/);
 

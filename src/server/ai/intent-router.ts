@@ -1,4 +1,6 @@
-export type IntentMatch = { kind: "internal"; intent: string; params: Record<string, string> } | { kind: "external" };
+export type IntentMatch =
+  | { kind: "internal"; intent: string; params: Record<string, string> }
+  | { kind: "external" };
 
 type Rule = {
   intent: string;
@@ -61,7 +63,8 @@ const rules: Rule[] = [
     intent: "chi_rischia_assenza",
     test: (m) =>
       /(no.?show|assenz)/.test(m) ||
-      (/(chi|quali)/.test(m) && /(non si presenta|non viene|salta|manca)/.test(m)) ||
+      (/(chi|quali)/.test(m) &&
+        /(non si presenta|non viene|salta|manca)/.test(m)) ||
       (/rischi/.test(m) && /(presenta|venir|arriv)/.test(m))
         ? {}
         : null,
@@ -78,7 +81,8 @@ const rules: Rule[] = [
   {
     intent: "chi_non_torna",
     test: (m) =>
-      (/(chi|quali|quanti)/.test(m) && /(non torna|non tornano|non viene piu|non vengono piu)/.test(m)) ||
+      (/(chi|quali|quanti)/.test(m) &&
+        /(non torna|non tornano|non viene piu|non vengono piu)/.test(m)) ||
       /inattiv/.test(m) ||
       (/client/.test(m) && /(persi|perduti|spariti|dormient)/.test(m))
         ? {}
@@ -88,7 +92,9 @@ const rules: Rule[] = [
     intent: "piatti_che_rendono_meno",
     test: (m) =>
       (/(piatt|carta|menu)/.test(m) &&
-        /(rendon|rendimento|margine|margini|redditiv|guadagn|convengon|conviene)/.test(m)) ||
+        /(rendon|rendimento|margine|margini|redditiv|guadagn|convengon|conviene)/.test(
+          m,
+        )) ||
       (/(piatt)/.test(m) && /(peggior|meno)/.test(m) && !/vendut/.test(m))
         ? {}
         : null,
@@ -97,26 +103,41 @@ const rules: Rule[] = [
     intent: "giorno_peggiore",
     test: (m) =>
       /giorn/.test(m) &&
-      /(peggior|piu vuoto|piu scarico|meno gente|meno copert|piu debole|migliore|piu pieno)/.test(m)
+      /(peggior|piu vuoto|piu scarico|meno gente|meno copert|piu debole|migliore|piu pieno)/.test(
+        m,
+      )
         ? {}
         : null,
   },
 
   {
     intent: "get_today_reservations",
-    test: (m) => ((/prenotazion/.test(m) && /(oggi|stasera|stamattina|adesso|ora)/.test(m)) || /mostra.*prenotazion/.test(m) ? {} : null),
+    test: (m) =>
+      (/prenotazion/.test(m) &&
+        /(oggi|stasera|stamattina|adesso|ora)/.test(m)) ||
+      /mostra.*prenotazion/.test(m)
+        ? {}
+        : null,
   },
   {
     intent: "get_unassigned_tables",
-    test: (m) => (/tavol/.test(m) && (/non.*(assegnat|cameriere)/.test(m) || /senza cameriere/.test(m)) ? {} : null),
+    test: (m) =>
+      /tavol/.test(m) &&
+      (/non.*(assegnat|cameriere)/.test(m) || /senza cameriere/.test(m))
+        ? {}
+        : null,
   },
   {
     intent: "get_available_tables",
-    test: (m) => (/tavol.*liber/.test(m) || /quali tavoli.*disponibil/.test(m) ? {} : null),
+    test: (m) =>
+      /tavol.*liber/.test(m) || /quali tavoli.*disponibil/.test(m) ? {} : null,
   },
   {
     intent: "get_waiter_assignments",
-    test: (m) => (/camerier/.test(m) && /assegnat/.test(m) && !/non.*assegnat/.test(m) ? {} : null),
+    test: (m) =>
+      /camerier/.test(m) && /assegnat/.test(m) && !/non.*assegnat/.test(m)
+        ? {}
+        : null,
   },
   {
     intent: "get_occupancy",
@@ -134,11 +155,54 @@ const rules: Rule[] = [
     intent: "get_expiring_contracts",
     test: (m) => (/contratt/.test(m) && /scaden|scad/.test(m) ? {} : null),
   },
+  /* ---------------------------------------------------------------------- */
+  /*  Gli intenti che scrivono                                              */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * Stanno **prima** di «assegna» e della navigazione, e dopo le domande.
+   *
+   * Il verbo è esplicito di proposito — «prenota», «metti in attesa», «da
+   * richiamare» — e la frase intera passa allo strumento nel parametro
+   * `frase`: quello che l'assistente scriverà lo decide lo strumento, che sa
+   * anche dire «non ho capito quando». Una regola che indovinasse qui i
+   * parametri li indovinerebbe anche quando non ci sono.
+   */
+  {
+    intent: "prenota",
+    test: (m) =>
+      /\b(prenota|prendi una prenotazione|segna una prenotazione)\b/.test(m)
+        ? { frase: m }
+        : null,
+  },
+  {
+    intent: "metti_in_attesa",
+    test: (m) =>
+      /\b(metti in (attesa|lista)|in lista d.attesa|aggiungi alla coda)\b/.test(
+        m,
+      )
+        ? { frase: m }
+        : null,
+  },
+  {
+    intent: "crea_richiamata",
+    test: (m) =>
+      /\b(da richiamare|richiama(re)? (il|al) |mettilo fra quelli da richiamare)\b/.test(
+        m,
+      )
+        ? { frase: m }
+        : null,
+  },
+
   {
     intent: "assign_waiter",
     test: (m) => {
-      const match = m.match(/assegna\s+([a-z]+(?:\s+[a-z]+)?)\s+(?:ai\s+tavoli|al\s+tavolo)\s+(.+)/);
-      return match ? { waiterName: match[1].trim(), tableRange: match[2].trim() } : null;
+      const match = m.match(
+        /assegna\s+([a-z]+(?:\s+[a-z]+)?)\s+(?:ai\s+tavoli|al\s+tavolo)\s+(.+)/,
+      );
+      return match
+        ? { waiterName: match[1].trim(), tableRange: match[2].trim() }
+        : null;
     },
   },
   {
@@ -146,7 +210,9 @@ const rules: Rule[] = [
     test: (m) => {
       const match = m.match(/apri\s+(?:le\s+|la\s+|il\s+|i\s+)?(\w+)/);
       if (!match) return null;
-      const section = SECTION_ROUTES.find((s) => s === match[1] || match[1].startsWith(s.slice(0, 5)));
+      const section = SECTION_ROUTES.find(
+        (s) => s === match[1] || match[1].startsWith(s.slice(0, 5)),
+      );
       return section ? { section } : null;
     },
   },

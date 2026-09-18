@@ -1,12 +1,16 @@
 import type { Tool } from "./types";
 import { getTodayReservationsTool } from "./tools/reservations";
 import { getServiceCoversTool, getOccupancyTool } from "./tools/covers";
-import { getAvailableTablesTool, getUnassignedTablesTool } from "./tools/tables";
+import {
+  getAvailableTablesTool,
+  getUnassignedTablesTool,
+} from "./tools/tables";
 import { getWaiterAssignmentsTool } from "./tools/waiters";
 import { getPeriodRevenueTool } from "./tools/analytics";
 import { navigateTool } from "./tools/navigation";
 import { assignWaiterTool } from "./tools/assign-waiter";
 import { getExpiringContractsTool } from "./tools/contracts";
+import { mettiInAttesaTool, prenotaTool, richiamaTool } from "./tools/telefono";
 import {
   chiNonTornaTool,
   chiRischiaAssenzaTool,
@@ -34,4 +38,14 @@ export const toolRegistry: Record<string, Tool> = {
   chi_non_torna: chiNonTornaTool,
   piatti_che_rendono_meno: piattiCheRendonoMenoTool,
   giorno_peggiore: giornoPeggioreTool,
+  /*
+    I tre strumenti che **scrivono**, con le tre regole (§68, §69).
+   
+    Non scrivono da qui: costruiscono un'anteprima da confermare, e la
+    scrittura sta negli esecutori. È la differenza fra un assistente che
+    prende una prenotazione e un assistente che dice di averla presa.
+  */
+  prenota: prenotaTool,
+  metti_in_attesa: mettiInAttesaTool,
+  crea_richiamata: richiamaTool,
 };
