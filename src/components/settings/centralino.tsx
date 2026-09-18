@@ -6,6 +6,7 @@ import {
   GruppoImpostazioni,
   RigaImpostazione,
   ValoreImpostazione,
+  ValoreVuoto,
 } from "@/components/settings/righe-impostazioni";
 import { daQuando } from "@/lib/utils";
 import {
@@ -90,6 +91,7 @@ export function Centralino({
   stato,
   salute,
   risposte,
+  ingresso,
   canManage,
 }: {
   stato: StatoCentralinoVista;
@@ -97,6 +99,8 @@ export function Centralino({
   salute?: SaluteVista;
   /** Quante risposte pronte ha scritto il locale, quando il telefono c'è. */
   risposte?: { quante: number };
+  /** Da dove entrano le chiamate. Nullo = non ancora scelto. */
+  ingresso: "GATEWAY" | "DEVIAZIONE" | null;
   canManage: boolean;
 }) {
   const scadenza = stato.scadeIl ? new Date(stato.scadeIl) : null;
@@ -155,6 +159,29 @@ export function Centralino({
             <Badge tone="warning">Da riattivare</Badge>
           ) : (
             <Badge tone="neutral">Non collegato</Badge>
+          )}
+        </RigaImpostazione>
+
+        {/* Da dove entrano le chiamate: sta **qui**, in cima al collegamento,
+            perche e la riga che spiega tutte le altre. Chi guarda «Ultima
+            chiamata: mai» e vede «cellulare con deviazione» sa dove andare a
+            guardare; senza questa riga cercherebbe il guasto in Tavolo. */}
+        <RigaImpostazione
+          nome="Come entrano le chiamate"
+          descrizione={
+            ingresso === "DEVIAZIONE"
+              ? "L'operatore telefonico devia a Tavolo quando non rispondi o sei occupato. Le telefonate a cui rispondi tu non passano da qui."
+              : ingresso === "GATEWAY"
+                ? "Dalla scatoletta attaccata alla linea del locale: Tavolo vede tutte le telefonate, anche quelle che prendi tu."
+                : undefined
+          }
+        >
+          {ingresso === "DEVIAZIONE" ? (
+            <ValoreImpostazione>Cellulare, con deviazione</ValoreImpostazione>
+          ) : ingresso === "GATEWAY" ? (
+            <ValoreImpostazione>Fisso, con la scatoletta</ValoreImpostazione>
+          ) : (
+            <ValoreVuoto>da scegliere</ValoreVuoto>
           )}
         </RigaImpostazione>
 

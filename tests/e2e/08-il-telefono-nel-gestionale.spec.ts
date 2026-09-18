@@ -95,8 +95,11 @@ test("una chiave inventata non accende niente, e dice perché", async ({
   ).toBeVisible({
     timeout: 20_000,
   });
-  /* E il passo resta da fare: una chiave rifiutata non deve spuntare niente. */
-  await expect(page.getByText("Passo 1 di 4")).toBeVisible();
+  /* E il passo resta da fare: una chiave rifiutata non deve spuntare niente.
+     Il conto dipende dalla strada scelta al primo passo — cinque con la
+     scatoletta, sei con la deviazione — quindi si guarda il numero del passo
+     e non il totale. */
+  await expect(page.getByText(/Passo 1 di [56]/)).toBeVisible();
 });
 
 test("le impostazioni si aprono da un indice a schede", async ({ page }) => {
@@ -160,31 +163,65 @@ test("collegare il telefono è una procedura a passi, e si riprende da dove si e
   try {
     await page.goto("/settings/telefono/collega");
 
-    // Dove sono: il conto dei passi si legge, non si indovina.
-    await expect(page.getByText("Passo 1 di 4")).toBeVisible({
+    /* La prima domanda è **come arrivano le telefonate**, e viene prima di
+       tutto: le due strade chiedono gesti diversi — una scatoletta da
+       attaccare alla linea, oppure una deviazione da farsi impostare
+       dall'operatore telefonico — e partire da quella sbagliata manda a fare
+       lavoro per niente. */
+    await expect(page.getByText(/Passo 1 di [56]/)).toBeVisible({
       timeout: 30_000,
     });
+    await expect(
+      page.getByText("Dimmi come ti arrivano le telefonate"),
+    ).toBeVisible();
+
+    /* Il cellulare: l'unica strada possibile quando il locale non ha un fisso,
+       perché a una SIM non si attacca nessuna scatoletta. Compare un passo in
+       più — quello dell'operatore — e il totale lo dice. */
+    await page.getByRole("button", { name: /Un cellulare/ }).click();
+    await expect(page.getByText("1 di 6 fatti")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      page.getByText("Chiedi la deviazione al tuo operatore"),
+    ).toBeVisible();
+    /* E i codici da comporre sulla SIM **non ci sono**, finché non li abbiamo
+       provati con una SIM di quell'operatore: un codice sbagliato non fa
+       perdere le nostre telefonate, fa perdere le sue. */
+    await expect(page.getByText(/non abbiamo provato/)).toBeVisible();
+
+    /* Il fisso: il passo dell'operatore sparisce, e il conto torna a cinque.
+       Senza questa riga, un passo aggiunto e mai più togliuto passerebbe. */
+    await page.getByRole("button", { name: /Un telefono fisso/ }).click();
+    await expect(page.getByText("1 di 5 fatti")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      page.getByText("Chiedi la deviazione al tuo operatore"),
+    ).toHaveCount(0);
+
     // Il codice del locale, da mandare a chi emette la chiave.
     await expect(page.getByText(locale.id)).toBeVisible();
-    /* Il passo 3 non si può fare prima del 2, e lo dice invece di far premere
-       un pulsante che risponde con un errore. */
-    await expect(page.getByText("Prima serve il passo 2.")).toBeVisible();
+    /* La chiave di collegamento non si può emettere prima della licenza, e lo
+       dice invece di far premere un pulsante che risponde con un errore. */
+    await expect(page.getByText(/Prima serve la chiave/)).toBeVisible();
 
-    // Passo 2: si incolla la chiave vera, firmata come per un cliente.
+    // Si incolla la chiave vera, firmata come per un cliente.
     await page
       .getByLabel(/La chiave/)
       .fill(licenzaDiProva(locale.id, "Locale di prova"));
     await page.getByRole("button", { name: "Attiva" }).click();
 
-    /* E il passo si spunta **da sé**, perché lo stato viene dai dati: due
-       passi fatti su quattro, senza che nessuno abbia dichiarato niente. */
-    await expect(page.getByText("2 di 4 fatti")).toBeVisible({
+    /* E il passo si spunta **da sé**, perché lo stato viene dai dati: tre
+       passi fatti su cinque, senza che nessuno abbia dichiarato niente. */
+    await expect(page.getByText("3 di 5 fatti")).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByText("Passo 3 di 4")).toBeVisible();
-    await expect(page.getByText("Prima serve il passo 2.")).toHaveCount(0);
+    await expect(page.getByText("Passo 4 di 5")).toBeVisible();
+    await expect(page.getByText(/Prima serve la chiave/)).toHaveCount(0);
   } finally {
     await db.apiToken.deleteMany({ where: { venueId: locale.id } });
+    await db.voiceConfiguration.deleteMany({ where: { venueId: locale.id } });
     await db.venue.update({
       where: { id: locale.id },
       data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },

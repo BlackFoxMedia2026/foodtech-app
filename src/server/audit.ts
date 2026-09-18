@@ -111,6 +111,8 @@ export type AuditAction =
   | "contract.delete"
   | "venue.brand_update"
   | "venue.service_mode_update"
+  /** Da dove entrano le chiamate: scatoletta o deviazione dall'operatore. */
+  | "venue.voice_ingresso"
   | "venue.avg_spend_update"
   /* La chiave del centralino: quando e da chi. Davanti a «il telefono non
      funziona più» è la prima cosa da guardare. */
