@@ -21,9 +21,12 @@ test.afterAll(async () => {
 test("in Impostazioni c'è il telefono, e dice cosa farebbe prima di averlo", async ({
   page,
 }) => {
-  await page.goto("/settings?sez=sistema");
+  await page.goto("/settings?sez=centralino");
 
-  const titolo = page.getByRole("heading", { name: "Telefono", exact: true });
+  const titolo = page.getByRole("heading", {
+    name: "Il collegamento",
+    exact: true,
+  });
   await expect(titolo).toBeVisible({ timeout: 20_000 });
 
   /* Ristretto al gruppo del telefono: «Non collegato» compare anche sul conto
@@ -39,13 +42,19 @@ test("in Impostazioni c'è il telefono, e dice cosa farebbe prima di averlo", as
 
   /* Le funzioni si vedono anche da spente: una funzione che non si sa di
      poter comprare non si compra. Ed è scritto in italiano — non «API», non
-     «integrazione»: per il ristoratore è il suo telefono. */
+     «integrazione»: per il ristoratore è il suo telefono.
+
+     Stanno in un gruppo loro, «Cosa è acceso»: dal 18 settembre il centralino
+     è una sezione delle Impostazioni e non una riga dentro «Sistema». */
+  const acceso = page
+    .getByRole("heading", { name: "Cosa è acceso", exact: true })
+    .locator("xpath=ancestor::section[1]");
   await expect(
-    sezione.getByText("Chi sta chiamando", { exact: true }),
+    acceso.getByText("Chi sta chiamando", { exact: true }),
   ).toBeVisible();
-  await expect(sezione.getByText(/mostra chi sta chiamando/)).toBeVisible();
+  await expect(acceso.getByText(/mostra chi sta chiamando/)).toBeVisible();
   await expect(
-    sezione.getByText("Prenotazioni al telefono", { exact: true }),
+    acceso.getByText("Prenotazioni al telefono", { exact: true }),
   ).toBeVisible();
 
   /* E c'è la strada per collegarlo: **un pulsante**, non dodici righe da

@@ -23,6 +23,12 @@
  * sapere dove stessero le cose. Un indice che elenca i gruppi lo risolve senza
  * far scorrere niente.
  *
+ * **Il centralino è entrato il 18 settembre**, e prima stava dentro «Sistema»
+ * accanto ai pagamenti, perché erano le due cose che si *collegano* al locale
+ * invece di configurarsi. Sbagliato: per un ristoratore il telefono non è un
+ * pezzo del funzionamento del gestionale, è **il suo telefono** — e cercarlo
+ * fra l'accesso, gli incassi e i lavori in coda vuol dire non trovarlo.
+ *
  * Il criterio del raggruppamento è **di chi è la decisione**: il locale (chi
  * siamo, com'è fatta la sala), le prenotazioni (le regole con cui si
  * accettano), gli ospiti (cosa si fa con chi è venuto), il marketing (con
@@ -72,6 +78,13 @@ export const PARTI = [
     ],
   },
   {
+    id: "centralino",
+    titolo: "Centralino",
+    sottotitolo:
+      "Il telefono del locale dentro Tavolo: chi chiama, cosa rispondere, com'è collegato.",
+    dentro: ["Il collegamento", "Cosa è acceso", "Cosa rispondere"],
+  },
+  {
     id: "marketing",
     titolo: "Marketing",
     sottotitolo:
@@ -83,13 +96,7 @@ export const PARTI = [
     titolo: "Sistema",
     sottotitolo:
       "Il proprio accesso, gli incassi, le integrazioni e i lavori in coda.",
-    dentro: [
-      "Il tuo accesso",
-      "Chi ha accesso",
-      "Telefono",
-      "Pagamenti",
-      "Lavori in coda",
-    ],
+    dentro: ["Il tuo accesso", "Chi ha accesso", "Pagamenti", "Lavori in coda"],
   },
 ] as const;
 

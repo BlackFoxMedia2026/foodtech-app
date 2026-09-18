@@ -697,26 +697,24 @@ export default async function SettingsPage({
           )}
 
           {/* ------------------------------------------------------------- */}
-          {attiva === "sistema" && (
-            <SezioneImpostazioni id="sistema">
-              {/* Sta qui e non in «Il locale» perché riguarda il proprio accesso,
-                non il ristorante: è la stessa sezione dove si legge lo stato
-                delle integrazioni e dei lavori. */}
-              <MieiDispositivi />
+          {/* ------------------------------------------------------------- */}
+          {attiva === "centralino" && (
+            <SezioneImpostazioni id="centralino">
+              {/*
+                Il centralino ha una sezione sua, e prima stava dentro
+                «Sistema» accanto ai pagamenti — le due cose che si
+                *collegano* al locale invece di configurarsi.
 
-              <AccessoTeam
-                membri={membri}
-                inviti={inviti}
-                canManage={puoGestireTeam}
-              />
-
-              {/* Il telefono sta in Sistema accanto ai pagamenti: sono le due
-                cose che si **collegano** al locale invece di configurarsi. */}
+                Era il criterio sbagliato: per un ristoratore il telefono non è
+                un pezzo del funzionamento del gestionale, è **il suo
+                telefono**. Cercarlo fra l'accesso, gli incassi e i lavori in
+                coda vuol dire non trovarlo — e infatti non si trovava.
+              */}
               <Centralino
                 /* Collegare il centralino è `manage_phone`, non «chi gestisce
-                 il team»: erano la stessa capacità per comodità, e le
-                 credenziali SIP sono un numero da cui si telefona a spese del
-                 locale. */
+                   il team»: erano la stessa capacità per comodità, e le
+                   credenziali SIP sono un numero da cui si telefona a spese
+                   del locale. */
                 canManage={can(ctx.role, "manage_phone")}
                 salute={{
                   ultimaChiamata: salute.ultimaChiamata?.toISOString() ?? null,
@@ -725,8 +723,6 @@ export default async function SettingsPage({
                   fornitore: salute.fornitore,
                   nonSannoFare: salute.nonSannoFare,
                 }}
-                /* Il collegamento a «Cosa rispondere»: dieci frasi con le
-                 parole per trovarle non stanno in una riga di impostazioni. */
                 risposte={
                   centralino.attivo
                     ? { quante: salute.risposteScritte }
@@ -740,6 +736,22 @@ export default async function SettingsPage({
                   chiaveLeggibile: centralino.chiaveLeggibile,
                   motivoSpento: centralino.motivoSpento,
                 }}
+              />
+            </SezioneImpostazioni>
+          )}
+
+          {/* ------------------------------------------------------------- */}
+          {attiva === "sistema" && (
+            <SezioneImpostazioni id="sistema">
+              {/* Sta qui e non in «Il locale» perché riguarda il proprio accesso,
+                non il ristorante: è la stessa sezione dove si legge lo stato
+                delle integrazioni e dei lavori. */}
+              <MieiDispositivi />
+
+              <AccessoTeam
+                membri={membri}
+                inviti={inviti}
+                canManage={puoGestireTeam}
               />
 
               {/* Stripe è un'integrazione, e il valore dice la cosa che conta —

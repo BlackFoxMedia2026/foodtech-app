@@ -111,160 +111,176 @@ export function Centralino({
   const daCollegare = !stato.attivo || !salute?.collegamentoAttivo;
 
   return (
-    <GruppoImpostazioni
-      titolo="Telefono"
-      descrizione={
-        stato.attivo
-          ? "Il telefono del locale è collegato a Tavolo."
-          : "Collegando il telefono, Tavolo riconosce chi chiama e prende le prenotazioni senza riscriverle."
-      }
-      azione={
-        canManage ? (
-          <Button
-            asChild
-            variant={daCollegare ? "accent" : "outline"}
-            size="sm"
-          >
-            <Link href="/settings/telefono/collega">
-              <Wrench className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              {daCollegare ? "Collega il telefono" : "Gestisci il collegamento"}
-            </Link>
-          </Button>
-        ) : undefined
-      }
-    >
-      <RigaImpostazione
-        nome="Stato"
+    <>
+      <GruppoImpostazioni
+        titolo="Il collegamento"
         descrizione={
-          stato.motivoSpento === "scaduta"
-            ? "La chiave è scaduta. Le prenotazioni già prese al telefono restano: si è spento il telefono, non la storia."
-            : stato.motivoSpento === "non_piu_valida"
-              ? "La chiave inserita non è più valida. Scrivici: te ne mandiamo una nuova."
-              : undefined
+          stato.attivo
+            ? "Il telefono del locale è collegato a Tavolo."
+            : "Collegando il telefono, Tavolo riconosce chi chiama e prende le prenotazioni senza riscriverle."
+        }
+        azione={
+          canManage ? (
+            <Button
+              asChild
+              variant={daCollegare ? "accent" : "outline"}
+              size="sm"
+            >
+              <Link href="/settings/telefono/collega">
+                <Wrench className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                {daCollegare
+                  ? "Collega il telefono"
+                  : "Gestisci il collegamento"}
+              </Link>
+            </Button>
+          ) : undefined
         }
       >
-        {stato.attivo ? (
-          <Badge tone="success">
-            <Phone className="mr-1 h-3 w-3" aria-hidden="true" />
-            Collegato
-          </Badge>
-        ) : stato.motivoSpento ? (
-          <Badge tone="warning">Da riattivare</Badge>
-        ) : (
-          <Badge tone="neutral">Non collegato</Badge>
-        )}
-      </RigaImpostazione>
-
-      {stato.attivo && ultimoGiorno && (
         <RigaImpostazione
-          nome="Chiave"
+          nome="Stato"
           descrizione={
-            stato.attivatoIl
-              ? `Inserita il ${GIORNO.format(new Date(stato.attivatoIl))}, valida fino al ${GIORNO.format(ultimoGiorno)}.`
-              : `Valida fino al ${GIORNO.format(ultimoGiorno)}.`
+            stato.motivoSpento === "scaduta"
+              ? "La chiave è scaduta. Le prenotazioni già prese al telefono restano: si è spento il telefono, non la storia."
+              : stato.motivoSpento === "non_piu_valida"
+                ? "La chiave inserita non è più valida. Scrivici: te ne mandiamo una nuova."
+                : undefined
           }
         >
-          {/* Solo le ultime lettere: bastano a rispondere a «è quella che ti ho
+          {stato.attivo ? (
+            <Badge tone="success">
+              <Phone className="mr-1 h-3 w-3" aria-hidden="true" />
+              Collegato
+            </Badge>
+          ) : stato.motivoSpento ? (
+            <Badge tone="warning">Da riattivare</Badge>
+          ) : (
+            <Badge tone="neutral">Non collegato</Badge>
+          )}
+        </RigaImpostazione>
+
+        {stato.attivo && ultimoGiorno && (
+          <RigaImpostazione
+            nome="Chiave"
+            descrizione={
+              stato.attivatoIl
+                ? `Inserita il ${GIORNO.format(new Date(stato.attivatoIl))}, valida fino al ${GIORNO.format(ultimoGiorno)}.`
+                : `Valida fino al ${GIORNO.format(ultimoGiorno)}.`
+            }
+          >
+            {/* Solo le ultime lettere: bastano a rispondere a «è quella che ti ho
               mandato?», e una schermata che la ripete per intero è una
               schermata da cui si copia. */}
-          <ValoreImpostazione mono>{stato.chiaveLeggibile}</ValoreImpostazione>
-        </RigaImpostazione>
-      )}
+            <ValoreImpostazione mono>
+              {stato.chiaveLeggibile}
+            </ValoreImpostazione>
+          </RigaImpostazione>
+        )}
 
-      {/*
+        {/*
         Le due righe che rispondono a «non mi arrivano le chiamate»: senza una
         chiave di collegamento il centralino non può mandare niente, e un
         telefono senza chiave è identico a un telefono su cui non ha chiamato
         nessuno.
       */}
-      {stato.attivo && salute && (
-        <>
-          <RigaImpostazione
-            nome="Collegamento"
-            descrizione={
-              salute.collegamentoAttivo
-                ? `Il centralino (${salute.fornitore}) può mandare le chiamate a Tavolo.`
-                : "Manca la chiave con cui il centralino manda le chiamate: finché non c'è, qui non arriverà niente."
-            }
-          >
-            {salute.collegamentoAttivo ? (
-              <Badge tone="success">Pronto</Badge>
-            ) : (
-              <Badge tone="warning">Manca la chiave</Badge>
-            )}
-          </RigaImpostazione>
+        {stato.attivo && salute && (
+          <>
+            <RigaImpostazione
+              nome="Collegamento"
+              descrizione={
+                salute.collegamentoAttivo
+                  ? `Il centralino (${salute.fornitore}) può mandare le chiamate a Tavolo.`
+                  : "Manca la chiave con cui il centralino manda le chiamate: finché non c'è, qui non arriverà niente."
+              }
+            >
+              {salute.collegamentoAttivo ? (
+                <Badge tone="success">Pronto</Badge>
+              ) : (
+                <Badge tone="warning">Manca la chiave</Badge>
+              )}
+            </RigaImpostazione>
 
-          <RigaImpostazione
-            nome="Ultima chiamata"
-            descrizione={
-              salute.ultimaChiamata
-                ? `${salute.ultime24h === 0 ? "Nessuna" : salute.ultime24h === 1 ? "Una" : salute.ultime24h} nelle ultime 24 ore.`
-                : salute.collegamentoAttivo
-                  ? "Non è ancora arrivata nessuna chiamata. Se il telefono del locale squilla e qui non compare niente, il centralino non sta consegnando."
-                  : undefined
-            }
-          >
-            <ValoreImpostazione>
-              {salute.ultimaChiamata
-                ? daQuando(new Date(salute.ultimaChiamata))
-                : "mai"}
-            </ValoreImpostazione>
-          </RigaImpostazione>
-        </>
-      )}
+            <RigaImpostazione
+              nome="Ultima chiamata"
+              descrizione={
+                salute.ultimaChiamata
+                  ? `${salute.ultime24h === 0 ? "Nessuna" : salute.ultime24h === 1 ? "Una" : salute.ultime24h} nelle ultime 24 ore.`
+                  : salute.collegamentoAttivo
+                    ? "Non è ancora arrivata nessuna chiamata. Se il telefono del locale squilla e qui non compare niente, il centralino non sta consegnando."
+                    : undefined
+              }
+            >
+              <ValoreImpostazione>
+                {salute.ultimaChiamata
+                  ? daQuando(new Date(salute.ultimaChiamata))
+                  : "mai"}
+              </ValoreImpostazione>
+            </RigaImpostazione>
+          </>
+        )}
 
-      {FUNZIONI_CENTRALINO.map((f) => {
-        const accesa = stato.funzioni.includes(f);
-        return (
-          <RigaImpostazione
-            key={f}
-            nome={NOME_FUNZIONE[f]}
-            descrizione={COSA_FA[f]}
-          >
-            {accesa ? (
-              <Badge tone="success">Attiva</Badge>
-            ) : (
-              /* Spenta, non assente: si vede cosa c'è da avere. Una funzione
-                 che non si sa di poter comprare non si compra. */
-              <Badge tone="neutral">Non attiva</Badge>
-            )}
-          </RigaImpostazione>
-        );
-      })}
-
-      {risposte && (
-        <RigaImpostazione
-          nome="Cosa rispondere"
-          descrizione={
-            risposte.quante === 0
-              ? "Le domande che arrivano venti volte al giorno — cani, parcheggio, glutine — con la risposta che decidi tu. Si cercano dalla pagina Telefono mentre si parla."
-              : "Si cercano dalla pagina Telefono mentre si parla, e le legge anche l'assistente."
-          }
-        >
-          <div className="flex items-center gap-2">
-            {risposte.quante > 0 && (
-              <span className="t-nota tabular-nums">{risposte.quante}</span>
-            )}
-            <Button asChild variant="outline" size="sm">
-              <Link href="/settings/telefono">
-                {risposte.quante === 0 ? "Scrivile" : "Gestisci"}
-              </Link>
-            </Button>
-          </div>
-        </RigaImpostazione>
-      )}
-
-      {/* Cosa **non** sa fare, e non è un elenco di scuse: è la risposta alla
+        {/* Cosa **non** sa fare, e non è un elenco di scuse: è la risposta alla
           domanda «perché non posso trasferire?». I pulsanti che non
           funzionerebbero non compaiono da nessuna parte, e senza questa riga
           la loro assenza sembrerebbe un difetto del prodotto invece di un
           limite della linea. */}
-      {stato.attivo && salute && salute.nonSannoFare.length > 0 && (
-        <RigaImpostazione
-          nome="Cosa non fa ancora"
-          descrizione={`${salute.nonSannoFare.join(", ")}. I comandi che la linea non sa eseguire non compaiono: un pulsante che non trasferisce è peggio della sua assenza.`}
-        />
+        {stato.attivo && salute && salute.nonSannoFare.length > 0 && (
+          <RigaImpostazione
+            nome="Cosa non fa ancora"
+            descrizione={`${salute.nonSannoFare.join(", ")}. I comandi che la linea non sa eseguire non compaiono: un pulsante che non trasferisce è peggio della sua assenza.`}
+          />
+        )}
+      </GruppoImpostazioni>
+
+      <GruppoImpostazioni
+        titolo="Cosa è acceso"
+        descrizione="Le funzioni che la chiave accende in questo locale. Quelle spente si possono comprare."
+      >
+        {FUNZIONI_CENTRALINO.map((f) => {
+          const accesa = stato.funzioni.includes(f);
+          return (
+            <RigaImpostazione
+              key={f}
+              nome={NOME_FUNZIONE[f]}
+              descrizione={COSA_FA[f]}
+            >
+              {accesa ? (
+                <Badge tone="success">Attiva</Badge>
+              ) : (
+                /* Spenta, non assente: si vede cosa c'è da avere. Una funzione
+                 che non si sa di poter comprare non si compra. */
+                <Badge tone="neutral">Non attiva</Badge>
+              )}
+            </RigaImpostazione>
+          );
+        })}
+      </GruppoImpostazioni>
+
+      {risposte && (
+        <GruppoImpostazioni
+          titolo="Cosa rispondere"
+          descrizione="Le domande che arrivano venti volte al giorno, con la risposta che decidi tu."
+        >
+          <RigaImpostazione
+            nome="Le risposte scritte"
+            descrizione={
+              risposte.quante === 0
+                ? "Cani, parcheggio, glutine, orari di Pasqua. Si cercano dalla pagina Telefono mentre si parla, e le legge anche l'assistente."
+                : "Si cercano dalla pagina Telefono mentre si parla, e le legge anche l'assistente."
+            }
+          >
+            <div className="flex items-center gap-2">
+              {risposte.quante > 0 && (
+                <span className="t-nota tabular-nums">{risposte.quante}</span>
+              )}
+              <Button asChild variant="outline" size="sm">
+                <Link href="/settings/telefono">
+                  {risposte.quante === 0 ? "Scrivile" : "Gestisci"}
+                </Link>
+              </Button>
+            </div>
+          </RigaImpostazione>
+        </GruppoImpostazioni>
       )}
-    </GruppoImpostazioni>
+    </>
   );
 }
