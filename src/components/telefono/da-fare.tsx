@@ -73,6 +73,7 @@ export function DaFare({
   perse,
   fuso,
   risposte,
+  approvazioni,
 }: {
   richiamate: RichiamataVista[];
   perse: PersaVista[];
@@ -86,6 +87,14 @@ export function DaFare({
    * sta già guardando.
    */
   risposte?: React.ReactNode;
+  /**
+   * Le informazioni proposte, da approvare.
+   *
+   * Stanno in questa colonna perché sono una cosa **da fare**, e chi le fa sta
+   * già guardando qui. Sopra le risposte pronte, che invece si consultano: una
+   * decisione viene prima di una consultazione.
+   */
+  approvazioni?: React.ReactNode;
 }) {
   const quando = new Intl.DateTimeFormat("it-IT", {
     weekday: "short",
@@ -131,6 +140,7 @@ export function DaFare({
         </ul>
       )}
 
+      {approvazioni}
       {risposte}
     </section>
   );

@@ -29,6 +29,7 @@ import {
   type EsitoChiamata,
 } from "@/lib/voice-esiti";
 import { useAvvisi } from "@/components/ui/avvisi";
+import { ProponiInsight } from "@/components/telefono/insight";
 
 /**
  * Il telefono del locale: da fare a sinistra, com'è andata a destra.
@@ -287,6 +288,7 @@ export function ElencoChiamateVista({
   fuso,
   telefono,
   daFare,
+  puoModificareSchede = false,
 }: {
   elenco: { chiamate: ChiamataVista[]; totale: number; daRichiamare: number };
   solo: "perse" | "tutte";
@@ -300,6 +302,14 @@ export function ElencoChiamateVista({
    * vorrebbe dire una sola cosa che ne fa due.
    */
   daFare?: React.ReactNode;
+  /**
+   * Se chi guarda può scrivere nella scheda di un cliente.
+   *
+   * Proporre una nota lo può fare chi risponde al telefono; il gesto compare
+   * solo a chi può anche portarla a termine, perché un'anteprima che nessuno
+   * dei presenti può approvare è un lavoro che resta in sospeso per sempre.
+   */
+  puoModificareSchede?: boolean;
   /**
    * Il telefono nel browser, quando questo locale ce l'ha e chi guarda può
    * rispondere. Arriva già costruito dalla pagina: così `sip.js` non entra nel
@@ -536,6 +546,14 @@ export function ElencoChiamateVista({
                         {c.stato === "ENDED" && !c.esito && (
                           <ComEFinita chiamataId={c.id} />
                         )}
+                        {/* Quello che si è scoperto parlando: si scrive qui,
+                            appena riattaccato, e diventa una proposta. Solo
+                            sulle chiamate a cui qualcuno ha risposto — su una
+                            persa non si è scoperto niente. */}
+                        {puoModificareSchede &&
+                          (c.stato === "ENDED" || c.stato === "ANSWERED") && (
+                            <ProponiInsight chiamataId={c.id} />
+                          )}
                         {c.ospite ? (
                           <Button asChild variant="ghost" size="sm">
                             <Link href={`/guests/${c.ospite.id}`}>

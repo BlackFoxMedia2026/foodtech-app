@@ -304,7 +304,17 @@ Le fasi 1–5 sono fatte: schema (#135), fornitore e capacità (#136), pannello
 globale della chiamata (#137), esiti e coda delle richiamate (#138), recupero
 delle chiamate perse e notifiche (#139), la storia di una prenotazione (#140), i permessi del telefono e lo stato del
 fornitore (#141), i numeri del telefono nelle analitiche (#142), gli strumenti di scrittura
-dell'assistente (#143), le risposte che il telefono deve dare (#144).
+dell'assistente (#143), le risposte che il telefono deve dare (#144), quello che si scopre al telefono
+(#145).
+
+**Fase 11: gli insight sì, l'audio no.** Registrazione e trascrizione
+richiedono un fornitore che non consegna né file audio né testo:
+`PhoneCallRecording` e `PhoneCallTranscript` restano vuote, e le colonne del
+consenso in `VoiceConfiguration` **non si toccano** — un consenso raccolto per
+una registrazione che non avviene è la peggiore delle promesse, e il pezzo con
+le conseguenze legali più serie. Quello che non ha bisogno di audio è la parte
+che conta: le informazioni che emergono in chiamata, scritte da chi risponde e
+**approvate a mano** prima di entrare nella scheda di un cliente.
 
 **Fase 10: la base di conoscenza sì, il risponditore no.** Il piano diceva «AI
 receptionist, routing, base di conoscenza». Il risponditore che **parla**

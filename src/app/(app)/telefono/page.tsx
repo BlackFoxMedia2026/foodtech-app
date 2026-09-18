@@ -10,6 +10,8 @@ import { cosaDaFareAlTelefono } from "@/server/voice/da-fare";
 import { DaFare } from "@/components/telefono/da-fare";
 import { risposteDelLocale } from "@/server/voice/conoscenza";
 import { RispostePronte } from "@/components/telefono/risposte-pronte";
+import { insightDaApprovare } from "@/server/voice/insight";
+import { DaApprovare } from "@/components/telefono/insight";
 import { can } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
@@ -63,16 +65,18 @@ export default async function TelefonoPage({
     ? Number(searchParams.giorni)
     : 7;
 
-  const [elenco, daFare, telefono, capacita, risposte] = await Promise.all([
-    elencoChiamate(ctx.venueId, { solo, giorni }),
-    cosaDaFareAlTelefono(ctx.venueId),
-    statoTelefonoBrowser(ctx.venueId),
-    capacitaDi(ctx.venueId),
-    /* Le risposte pronte arrivano con la pagina: sono dieci frasi corte, e
+  const [elenco, daFare, telefono, capacita, risposte, proposte] =
+    await Promise.all([
+      elencoChiamate(ctx.venueId, { solo, giorni }),
+      cosaDaFareAlTelefono(ctx.venueId),
+      statoTelefonoBrowser(ctx.venueId),
+      capacitaDi(ctx.venueId),
+      /* Le risposte pronte arrivano con la pagina: sono dieci frasi corte, e
        cercarle mentre una persona aspetta in linea non deve costare una
        richiesta al server per ogni lettera. */
-    risposteDelLocale(ctx.venueId),
-  ]);
+      risposteDelLocale(ctx.venueId),
+      insightDaApprovare(ctx.venueId),
+    ]);
 
   /* Il telefono nel browser compare solo se è configurato **e** solo a chi in
      questo locale risponde al telefono: la rotta che dà le credenziali chiede
@@ -116,6 +120,17 @@ export default async function TelefonoPage({
             quando: p.quando.toISOString(),
           }))}
           risposte={<RispostePronte risposte={risposte} />}
+          approvazioni={
+            <DaApprovare
+              proposte={proposte.map((p) => ({
+                id: p.id,
+                tipo: p.tipo,
+                valore: p.valore,
+                chi: p.chi,
+                ospite: p.ospite,
+              }))}
+            />
+          }
         />
       }
       elenco={{
@@ -131,6 +146,11 @@ export default async function TelefonoPage({
             : null,
         })),
       }}
+      /* Chi può scrivere nella scheda di un cliente vede i gesti che lo
+         fanno: proporre una nota lo può fare chi risponde al telefono, e
+         approvarla chiede la stessa capacità con cui si modifica una scheda a
+         mano. */
+      puoModificareSchede={can(ctx.role, "manage_bookings")}
       solo={solo}
       giorni={giorni}
       fuso={ctx.venue.timezone}
