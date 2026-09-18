@@ -181,7 +181,13 @@ export function RigaImpostazione({
           {nome}
         </Nome>
         {children && (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          /* `min-w-0` e non `shrink-0`: un valore lungo — l'indirizzo del
+             modulo di prenotazione — sforava il bordo della scheda sul
+             telefono, perché una colonna che non si stringe non fa andare a
+             capo il testo che contiene. I controlli veri (campi, pulsanti,
+             tendine) hanno la loro larghezza minima e vanno a capo per conto
+             loro grazie al `flex-wrap` della riga. */
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             {children}
           </div>
         )}

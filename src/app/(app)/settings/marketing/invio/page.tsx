@@ -23,7 +23,7 @@ export default async function ImpostazioniInvioPage() {
     return (
       <div className="mx-auto w-full max-w-3xl space-y-4 animate-fade-in">
         <Button asChild variant="ghost" size="sm" className="-ml-2 self-start">
-          <Link href="/settings#marketing">
+          <Link href="/settings?sez=marketing">
             <ArrowLeft className="h-4 w-4" /> Impostazioni
           </Link>
         </Button>
@@ -44,7 +44,7 @@ export default async function ImpostazioniInvioPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 animate-fade-in">
       <Button asChild variant="ghost" size="sm" className="-ml-2 self-start">
-        <Link href="/settings#marketing">
+        <Link href="/settings?sez=marketing">
           <ArrowLeft className="h-4 w-4" /> Impostazioni
         </Link>
       </Button>

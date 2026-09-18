@@ -5,7 +5,6 @@ import { can, getActiveVenue } from "@/lib/tenant";
 import { VenueTimeProvider } from "@/components/shell/venue-time-provider";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { AvvisiProvider } from "@/components/ui/avvisi";
-import { ProviderImpostazioni } from "@/components/settings/contesto-impostazioni";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { versioneServizio } from "@/server/versione-servizio";
 import { VoiceGlobale } from "@/components/telefono/voice-globale";
@@ -84,28 +83,19 @@ export default async function AppShell({
       telefono non interroga nulla — che è il caso di quasi tutti.
     */}
       <VoiceGlobale attivo={telefonoPerMe} versione={versione}>
-        {/*
-      Le quattro sezioni delle Impostazioni stanno nella pagina, e le quattro
-      voci che ci portano stanno nella testata — che è qui, fuori dalla pagina.
-      Il provider è il filo fra le due: sta a questo livello perché è il primo
-      antenato che contiene sia l'una sia l'altra, e non costa niente alle
-      schermate che non lo usano (un contesto senza consumatori non
-      ri-renderizza nessuno).
-    */}
-        <ProviderImpostazioni>
-          <div
-            className={`${sans.variable} ${display.variable} ${mono.variable} relative z-0 flex h-screen flex-col overflow-hidden bg-background text-foreground`}
-          >
-            <Header
-              user={{
-                name: ctx.session.user?.name,
-                email: ctx.session.user?.email,
-              }}
-              venues={venueList}
-              activeVenueId={ctx.venueId}
-              telefonoAttivo={telefonoPerMe}
-            />
-            {/*
+        <div
+          className={`${sans.variable} ${display.variable} ${mono.variable} relative z-0 flex h-screen flex-col overflow-hidden bg-background text-foreground`}
+        >
+          <Header
+            user={{
+              name: ctx.session.user?.name,
+              email: ctx.session.user?.email,
+            }}
+            venues={venueList}
+            activeVenueId={ctx.venueId}
+            telefonoAttivo={telefonoPerMe}
+          />
+          {/*
         `main` dà la sua altezza alle pagine invece di scorrere.
         
         Prima era lui il contenitore che scorreva, e una pagina più alta dello
@@ -119,21 +109,18 @@ export default async function AppShell({
         `pb-24` su telefono è lo spazio della barra in basso, altrimenti
         l'ultima riga finisce sotto la navigazione.
       */}
-            <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-24 pt-4 md:px-6 md:pb-6 md:pt-5 lg:px-8">
-              <VenueTimeProvider timezone={ctx.venue.timezone}>
-                {children}
-              </VenueTimeProvider>
-            </main>
+          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-24 pt-4 md:px-6 md:pb-6 md:pt-5 lg:px-8">
+            <VenueTimeProvider timezone={ctx.venue.timezone}>
+              {children}
+            </VenueTimeProvider>
+          </main>
 
-            <MobileNav
-              telefonoAttivo={telefonoPerMe}
-              canManageBookings={can(ctx.role, "manage_bookings")}
-            />
-            {showBrandSetup && (
-              <BrandSetupDialog initialName={ctx.venue.name} />
-            )}
-          </div>
-        </ProviderImpostazioni>
+          <MobileNav
+            telefonoAttivo={telefonoPerMe}
+            canManageBookings={can(ctx.role, "manage_bookings")}
+          />
+          {showBrandSetup && <BrandSetupDialog initialName={ctx.venue.name} />}
+        </div>
       </VoiceGlobale>
     </AvvisiProvider>
   );
