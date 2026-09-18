@@ -9,8 +9,10 @@ import { expect, test } from "@playwright/test";
  * schermata dove incollare la chiave. È lo stesso difetto che aveva fatto
  * sparire «invita un collega» — il codice c'era e non ci arrivava nessuno.
  */
-test("in Impostazioni c'è il telefono, e dice cosa farebbe prima di averlo", async ({ page }) => {
-  await page.goto("/settings");
+test("in Impostazioni c'è il telefono, e dice cosa farebbe prima di averlo", async ({
+  page,
+}) => {
+  await page.goto("/settings?sez=sistema");
 
   const titolo = page.getByRole("heading", { name: "Telefono", exact: true });
   await expect(titolo).toBeVisible({ timeout: 20_000 });
@@ -29,9 +31,13 @@ test("in Impostazioni c'è il telefono, e dice cosa farebbe prima di averlo", as
   /* Le funzioni si vedono anche da spente: una funzione che non si sa di
      poter comprare non si compra. Ed è scritto in italiano — non «API», non
      «integrazione»: per il ristoratore è il suo telefono. */
-  await expect(sezione.getByText("Chi sta chiamando", { exact: true })).toBeVisible();
+  await expect(
+    sezione.getByText("Chi sta chiamando", { exact: true }),
+  ).toBeVisible();
   await expect(sezione.getByText(/mostra chi sta chiamando/)).toBeVisible();
-  await expect(sezione.getByText("Prenotazioni al telefono", { exact: true })).toBeVisible();
+  await expect(
+    sezione.getByText("Prenotazioni al telefono", { exact: true }),
+  ).toBeVisible();
 
   // E c'è il campo dove si incolla la chiave.
   const campo = page.locator("#centralino-chiave");
@@ -43,15 +49,19 @@ test("in Impostazioni c'è il telefono, e dice cosa farebbe prima di averlo", as
      locale, e prima quel codice non era scritto in nessuna schermata — chi
      compilava il modulo metteva il nome del locale al suo posto e otteneva una
      licenza che non accendeva niente. */
-  await expect(sezione.getByText("Identificativo di questo locale")).toBeVisible();
+  await expect(
+    sezione.getByText("Identificativo di questo locale"),
+  ).toBeVisible();
   const identificativo = sezione.locator("code").first();
   await expect(identificativo).toBeVisible();
   // un cuid, non un nome
   await expect(identificativo).toHaveText(/^c[a-z0-9]{20,}$/);
 });
 
-test("una chiave inventata non accende niente, e dice perché", async ({ page }) => {
-  await page.goto("/settings");
+test("una chiave inventata non accende niente, e dice perché", async ({
+  page,
+}) => {
+  await page.goto("/settings?sez=sistema");
   const campo = page.locator("#centralino-chiave");
   await expect(campo).toBeVisible({ timeout: 20_000 });
 
@@ -61,7 +71,9 @@ test("una chiave inventata non accende niente, e dice perché", async ({ page })
   /* Il messaggio è per una persona che ha pagato e sta incollando una riga:
      dice cosa fare. Un «non valida» generico le farebbe aprire una
      segnalazione per una cosa che risolve in un minuto. */
-  await expect(page.getByText(/non sembra una chiave|copiata tutta/)).toBeVisible({
+  await expect(
+    page.getByText(/non sembra una chiave|copiata tutta/),
+  ).toBeVisible({
     timeout: 20_000,
   });
   await expect(
@@ -70,4 +82,39 @@ test("una chiave inventata non accende niente, e dice perché", async ({ page })
       .locator("xpath=ancestor::section[1]")
       .getByText("Non collegato"),
   ).toBeVisible();
+});
+
+test("le impostazioni si aprono da un indice a schede", async ({ page }) => {
+  /**
+   * Il difetto: «uno scroll infinito». Le cinque sezioni stavano tutte in una
+   * pagina alta ottomila pixel — otto schermate e mezzo di righe tutte uguali.
+   *
+   * Adesso l'indice è fatto di schede, e ogni scheda dice **cosa c'è dentro**:
+   * è la differenza con le cinque pagine che questo prodotto aveva all'inizio
+   * e che sono state togliate perché bisognava indovinare dove stessero le
+   * cose.
+   */
+  await page.goto("/settings");
+
+  // L'indice: cinque schede, e nessuna riga di impostazioni.
+  await expect(page.getByRole("link", { name: /Il locale/ })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByText("Turni di servizio").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brand" })).toHaveCount(0);
+
+  // Si apre quella che serve, e dentro c'è quello che la scheda prometteva.
+  await page
+    .getByRole("link", { name: /Il locale/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/sez=locale/);
+  await expect(page.getByRole("heading", { name: "Brand" })).toBeVisible();
+  // E le altre non ci sono: una sezione per volta.
+  await expect(page.getByRole("heading", { name: "Piano DEM" })).toHaveCount(0);
+
+  // La via di ritorno all'indice, che la barra in alto non dà.
+  await page.getByRole("link", { name: "Tutte le impostazioni" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole("heading", { name: "Brand" })).toHaveCount(0);
 });

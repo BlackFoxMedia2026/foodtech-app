@@ -2,47 +2,45 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ArrowLeft, Building2, CalendarRange, Megaphone, SlidersHorizontal, Users } from "lucide-react";
-import { PARTI, type ParteId } from "@/lib/parti-impostazioni";
+import { usePathname, useSearchParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { PARTI, indirizzoParte, parteDa } from "@/lib/parti-impostazioni";
 import { classiVoce } from "@/components/shell/nav-items";
 import { cn } from "@/lib/utils";
-import { useImpostazioni } from "./contesto-impostazioni";
+import { SEGNI } from "./segni-impostazioni";
 
 /**
  * Entrare nelle Impostazioni è **un cambio di area**, non una pagina in più.
  *
- * Prima la barra del gestionale restava in alto — otto voci di servizio — e le
- * parti delle Impostazioni erano una seconda fila di pillole sotto il
- * titolo. Due navigazioni contemporanee, e quella di sotto sembrava una fila
- * di filtri: nella grammatica del prodotto una pillola crema in una riga
- * orizzontale è un filtro dappertutto, tranne lì.
- *
- * Adesso al posto delle otto voci compaiono le quattro sezioni, nello stesso
- * contenitore, con la stessa pillola che scorre. La barra è una sola, sempre,
- * e cambia quello che contiene: è il modo in cui si dice «adesso sei
- * altrove» senza scrivere da nessuna parte «adesso sei altrove».
+ * Al posto delle otto voci del gestionale compaiono le cinque sezioni, nello
+ * stesso contenitore, con la stessa pillola che scorre. La barra è una sola,
+ * sempre, e cambia quello che contiene: è il modo in cui si dice «adesso sei
+ * altrove» senza scriverlo da nessuna parte.
  *
  * A sinistra la via d'uscita. Senza, l'unica strada per tornare al gestionale
  * sarebbe il menu del profilo — cioè la stessa porta da cui si è entrati, che
  * nessuno ricorda.
+ *
+ * ## Sono link, e non lo erano
+ *
+ * Fino al 18 settembre queste voci **scorrevano** la pagina: le cinque sezioni
+ * stavano tutte lì, un contesto le teneva insieme, e un `IntersectionObserver`
+ * accendeva quella che passava sotto la testata. Adesso l'indirizzo dice quale
+ * sezione è aperta, e una voce in barra è quello che sembra: un link.
+ *
+ * Nessuna voce accesa sull'**indice**: là non si sta in nessuna sezione, e
+ * accenderne una direbbe il falso.
  */
-
-const SEGNI: Record<ParteId, { icona: React.ComponentType<{ className?: string }>; breve: string }> = {
-  locale: { icona: Building2, breve: "Locale" },
-  prenotazioni: { icona: CalendarRange, breve: "Prenot." },
-  ospiti: { icona: Users, breve: "Ospiti" },
-  /* Lo stesso megafono della voce in barra: è la stessa area del prodotto
-     vista da due parti, e due simboli diversi la farebbero sembrare due cose. */
-  marketing: { icona: Megaphone, breve: "Marketing" },
-  sistema: { icona: SlidersHorizontal, breve: "Sistema" },
-};
-
 export function NavigazioneImpostazioni() {
-  const { attiva, vaiA } = useImpostazioni();
   const pathname = usePathname();
-  const riferimenti = useRef(new Map<ParteId, HTMLElement>());
-  const [pillola, setPillola] = useState<{ left: number; width: number } | null>(null);
+  const parametri = useSearchParams();
+  const attiva = parteDa(parametri.get("sez") ?? parametri.get("parte"));
+
+  const riferimenti = useRef(new Map<string, HTMLElement>());
+  const [pillola, setPillola] = useState<{
+    left: number;
+    width: number;
+  } | null>(null);
   const [motoRidotto, setMotoRidotto] = useState(false);
 
   useLayoutEffect(() => {
@@ -53,19 +51,16 @@ export function NavigazioneImpostazioni() {
     return () => query.removeEventListener("change", cambia);
   }, []);
 
-  useLayoutEffect(() => {
-    const el = riferimenti.current.get(attiva);
-    setPillola(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
-  }, [attiva, pathname]);
-
   /*
     Dentro una sottopagina — il brand, il Wi-Fi, i pagamenti, il piano DEM —
-    le sezioni non sono in pagina: non c'è niente a cui scorrere, e le voci
-    tornano a essere quello che sembrano, link che riportano all'indice.
-    `vaiA` lo dice da sé tornando falso, quindi qui non c'è nessun elenco di
-    percorsi da tenere aggiornato.
+    nessuna sezione è aperta: le voci restano link e nessuna è accesa.
   */
-  const nellIndice = pathname === "/settings";
+  const nellaPagina = pathname === "/settings";
+
+  useLayoutEffect(() => {
+    const el = attiva && nellaPagina ? riferimenti.current.get(attiva) : null;
+    setPillola(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
+  }, [attiva, nellaPagina, pathname]);
 
   return (
     <nav
@@ -90,35 +85,32 @@ export function NavigazioneImpostazioni() {
             style={{
               left: pillola.left,
               width: pillola.width,
-              transition: motoRidotto ? "none" : "left 260ms ease-in-out, width 260ms ease-in-out",
+              transition: motoRidotto
+                ? "none"
+                : "left 260ms ease-in-out, width 260ms ease-in-out",
             }}
           />
         )}
 
         {PARTI.map((parte) => {
           const { icona: Icona, breve } = SEGNI[parte.id];
-          const accesa = nellIndice && parte.id === attiva;
+          const accesa = nellaPagina && parte.id === attiva;
           return (
-            <a
+            <Link
               key={parte.id}
-              href={`/settings#${parte.id}`}
+              href={indirizzoParte(parte.id)}
               title={parte.titolo}
-              aria-current={accesa ? "true" : undefined}
+              aria-current={accesa ? "page" : undefined}
               ref={(el) => {
                 if (el) riferimenti.current.set(parte.id, el);
                 else riferimenti.current.delete(parte.id);
-              }}
-              onClick={(e) => {
-                // Un clic con un modificatore vuole aprire altrove: non è nostro.
-                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-                if (vaiA(parte.id)) e.preventDefault();
               }}
               className={classiVoce(accesa)}
             >
               <Icona className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="hidden 2xl:inline">{parte.titolo}</span>
               <span className="2xl:hidden">{breve}</span>
-            </a>
+            </Link>
           );
         })}
       </div>
@@ -127,57 +119,42 @@ export function NavigazioneImpostazioni() {
 }
 
 /**
- * La stessa barra sul telefono, **dentro la pagina**.
+ * Le altre sezioni, sul telefono, **in fondo alla sezione aperta**.
  *
  * In alto non può stare: su telefono la testata non porta voci — la
- * navigazione è la barra in basso — e infilarci quattro pillole vorrebbe dire
- * rifare lì il problema delle due file. Qui sta appiccicata al bordo alto
- * mentre si scorre, scorre di lato invece di andare a capo, ed è l'unico posto
- * della pagina dove lo spazio orizzontale si consuma tutto.
+ * navigazione è la barra in basso — e infilarci cinque pillole vorrebbe dire
+ * due file di navigazione su uno schermo da 390 px.
+ *
+ * E sta in **fondo** e non in cima, perché in cima c'è già la via di ritorno
+ * all'indice, che è il posto da cui si scelgono le sezioni: una fila di
+ * pillole sopra un titolo di sezione, con l'indice a schede a un tocco di
+ * distanza, sarebbe la stessa scelta offerta due volte in due forme diverse.
+ * Qui invece risponde alla domanda che viene **dopo** aver finito: «e le
+ * altre?».
  */
-export function BarraImpostazioniMobile() {
-  const { attiva, vaiA } = useImpostazioni();
-  const riferimenti = useRef(new Map<ParteId, HTMLElement>());
-
-  /* La voce accesa si porta in vista da sé: con quattro pillole su uno
-     schermo da 360 px l'ultima sta fuori, e restare accesa fuori campo
-     equivale a non esserlo. */
-  useLayoutEffect(() => {
-    riferimenti.current.get(attiva)?.scrollIntoView({ block: "nearest", inline: "center" });
-  }, [attiva]);
+export function AltreSezioniMobile({ attiva }: { attiva: string }) {
+  const altre = PARTI.filter((p) => p.id !== attiva);
 
   return (
-    <div className="sticky top-0 z-20 -mx-4 mb-6 border-b border-border bg-background/95 px-4 py-2 backdrop-blur md:hidden">
+    <div className="mt-10 border-t border-border pt-5 md:hidden">
+      <p className="t-etichetta">Altre impostazioni</p>
       <nav
-        aria-label="Sezioni delle impostazioni"
-        className="-mx-1 flex gap-1.5 overflow-x-auto px-1"
+        aria-label="Altre sezioni delle impostazioni"
+        className="mt-3 flex flex-col gap-2"
       >
-        {PARTI.map((parte) => {
-          const accesa = parte.id === attiva;
-          return (
-            <a
-              key={parte.id}
-              href={`/settings#${parte.id}`}
-              aria-current={accesa ? "true" : undefined}
-              ref={(el) => {
-                if (el) riferimenti.current.set(parte.id, el);
-                else riferimenti.current.delete(parte.id);
-              }}
-              onClick={(e) => {
-                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-                if (vaiA(parte.id)) e.preventDefault();
-              }}
-              className={cn(
-                "flex min-h-[40px] shrink-0 items-center rounded-full border px-3 text-sm transition-colors",
-                accesa
-                  ? "border-cream bg-cream font-medium text-clay-ink"
-                  : "border-border text-muted-foreground",
-              )}
-            >
-              {parte.titolo}
-            </a>
-          );
-        })}
+        {altre.map((parte) => (
+          <Link
+            key={parte.id}
+            href={indirizzoParte(parte.id)}
+            className={cn(
+              "flex min-h-[44px] items-center justify-between gap-3 rounded-lg border border-border px-3 text-sm transition-colors",
+              "hover:border-cream/40 hover:text-foreground",
+            )}
+          >
+            <span className="min-w-0 truncate">{parte.titolo}</span>
+            <span className="t-nota shrink-0">{parte.dentro.length} voci</span>
+          </Link>
+        ))}
       </nav>
     </div>
   );

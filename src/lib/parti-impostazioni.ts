@@ -6,11 +6,22 @@
  * pagina (che è del server) sia la barra in alto (che è del client). Stessa
  * ragione di `lib/viste-insights`.
  *
- * **Dal 15 settembre non sono quattro pagine, sono quattro ancore.** Erano
- * quattro link con `?parte=`, e la pagina ne mostrava una per volta: entrare
- * nelle Impostazioni voleva dire vedere un quarto delle Impostazioni e dover
- * indovinare in quale degli altri tre stesse la cosa cercata. Adesso la pagina
- * è una sola e scorre; questi `id` sono gli `id` HTML delle sezioni.
+ * **Dal 18 settembre sono cinque schede, e una si apre.** La storia di questa
+ * pagina vale la pena di essere scritta, perché è andata avanti e indietro:
+ *
+ * - all'inizio cinque pagine con `?parte=`: entrare nelle Impostazioni voleva
+ *   dire vedere un quinto delle Impostazioni e **indovinare** in quale degli
+ *   altri quattro stesse la cosa cercata;
+ * - poi una pagina sola che scorre, con le sezioni come ancore: si vedeva
+ *   tutto, ma «tutto» erano **ottomila pixel** — otto schermate e mezzo di
+ *   righe tutte uguali. «Uno scroll infinito», ed era vero;
+ * - adesso l'indice è fatto di **schede**, una per sezione, e ogni scheda dice
+ *   cosa c'è dentro. Si apre quella che serve.
+ *
+ * La differenza con la prima versione — quella che non funzionava — è proprio
+ * `dentro`: il problema di allora non era avere una sezione per volta, era non
+ * sapere dove stessero le cose. Un indice che elenca i gruppi lo risolve senza
+ * far scorrere niente.
  *
  * Il criterio del raggruppamento è **di chi è la decisione**: il locale (chi
  * siamo, com'è fatta la sala), le prenotazioni (le regole con cui si
@@ -31,33 +42,70 @@ export const PARTI = [
   {
     id: "locale",
     titolo: "Il locale",
-    sottotitolo: "Identità del ristorante, sedi del gruppo, sale e turni di servizio.",
+    sottotitolo:
+      "Identità del ristorante, sedi del gruppo, sale e turni di servizio.",
+    dentro: [
+      "Brand",
+      "Locali del gruppo",
+      "Organizzazione del servizio",
+      "Turni di servizio",
+    ],
   },
   {
     id: "prenotazioni",
     titolo: "Prenotazioni",
-    sottotitolo: "Le regole con cui si accettano, e il modulo che sta sul vostro sito.",
+    sottotitolo:
+      "Le regole con cui si accettano, e il modulo che sta sul vostro sito.",
+    dentro: ["Quando si prenota dal sito", "Widget di prenotazione"],
   },
   {
     id: "ospiti",
     titolo: "Ospiti",
-    sottotitolo: "Quanto vale un cliente, dove mandarlo a recensire, cosa si raccoglie di lui.",
+    sottotitolo:
+      "Quanto vale un cliente, dove mandarlo a recensire, cosa si raccoglie di lui.",
+    dentro: [
+      "Valore di un cliente",
+      "Raccolta punti",
+      "Recensioni",
+      "Wi-Fi",
+      "Dati dei clienti",
+    ],
   },
   {
     id: "marketing",
     titolo: "Marketing",
-    sottotitolo: "Il piano delle newsletter, il dominio da cui partono e come stanno arrivando.",
+    sottotitolo:
+      "Il piano delle newsletter, il dominio da cui partono e come stanno arrivando.",
+    dentro: ["Piano DEM", "Dominio di invio", "Reputazione"],
   },
   {
     id: "sistema",
     titolo: "Sistema",
-    sottotitolo: "Il proprio accesso, gli incassi, le integrazioni e i lavori in coda.",
+    sottotitolo:
+      "Il proprio accesso, gli incassi, le integrazioni e i lavori in coda.",
+    dentro: [
+      "Il tuo accesso",
+      "Chi ha accesso",
+      "Telefono",
+      "Pagamenti",
+      "Lavori in coda",
+    ],
   },
 ] as const;
 
 export type ParteId = (typeof PARTI)[number]["id"];
 
-/** La parte scelta nell'indirizzo, o la prima. */
-export function parteDa(valore: string | null | undefined): ParteId {
-  return PARTI.find((p) => p.id === valore)?.id ?? PARTI[0].id;
+/**
+ * La parte chiesta nell'indirizzo, o `null` per l'indice.
+ *
+ * `null` e non «la prima»: senza sezione nell'indirizzo si vede **l'indice**,
+ * e restituire una sezione per difetto vorrebbe dire che l'indice non esiste.
+ */
+export function parteDa(valore: string | null | undefined): ParteId | null {
+  return PARTI.find((p) => p.id === valore)?.id ?? null;
+}
+
+/** L'indirizzo di una sezione. Un posto solo, così non divergono. */
+export function indirizzoParte(id: ParteId): string {
+  return `/settings?sez=${id}`;
 }

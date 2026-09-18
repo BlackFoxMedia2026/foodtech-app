@@ -14,7 +14,7 @@ test("invitare qualcuno: il link vale una volta, e chi lo accetta entra", async 
 
   /* --- 1. Il manager invita ---------------------------------------------- */
 
-  await page.goto("/settings");
+  await page.goto("/settings?sez=sistema");
   await page.getByRole("button", { name: "Invita" }).click();
   await page.locator("#team-email").fill(email);
   await page.locator("#team-ruolo").click();
@@ -69,7 +69,7 @@ test("invitare qualcuno: il link vale una volta, e chi lo accetta entra", async 
 
   // E non può invitare nessuno: non è manager. La difesa è sul server, non
   // solo un pulsante che non si vede.
-  await q.goto("/settings");
+  await q.goto("/settings?sez=sistema");
   await expect(q.getByRole("button", { name: "Invita" })).toHaveCount(0);
   const rifiuto = await q.request.post("/api/team/invites", {
     data: { email: "altro@test.local", role: "MANAGER" },
@@ -79,14 +79,14 @@ test("invitare qualcuno: il link vale una volta, e chi lo accetta entra", async 
 
   /* --- 4. Il manager le toglie l'accesso --------------------------------- */
 
-  await page.goto("/settings");
+  await page.goto("/settings?sez=sistema");
   await expect(page.getByText(email)).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: `Togli l'accesso a Maria Prova` }).click();
   await expect(page.getByText(email)).toHaveCount(0, { timeout: 20_000 });
 });
 
 test("su di sé non si agisce: il proprio ruolo si legge, non si cambia", async ({ page }) => {
-  await page.goto("/settings");
+  await page.goto("/settings?sez=sistema");
 
   // La riga di chi sta guardando porta «(tu)» e nessun comando: è la difesa
   // contro il modo più comune di restare fuori dal proprio locale, e vale
