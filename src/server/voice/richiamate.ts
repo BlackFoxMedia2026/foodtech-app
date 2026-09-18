@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { normalizzaE164, telefonoLeggibile } from "@/lib/telefono";
 import { segnaEventoChiamata } from "@/server/chiamate";
+import { spegniNotificaChiamata } from "@/server/voice/recupero";
 
 /**
  * La coda delle persone da richiamare.
@@ -126,6 +127,9 @@ export async function apriRichiamata(
         actor: attore ?? null,
         meta: { richiamataId: creata.id },
       });
+      /* Qualcuno se n'è occupato: la campanella non deve più chiedere niente
+         per questa chiamata. */
+      await spegniNotificaChiamata(venueId, callId);
     }
     return { id: creata.id, giaInCoda: false };
   } catch (err) {
