@@ -92,6 +92,7 @@ export function CollegaTelefono({
   ultimaChiamata,
   sip,
   ingresso,
+  accesoDaNoi,
   canManage,
 }: {
   venueId: string;
@@ -104,6 +105,14 @@ export function CollegaTelefono({
   ultimaChiamata: string | null;
   sip: StatoSipVista;
   ingresso: IngressoVista;
+  /**
+   * Il telefono l'abbiamo acceso noi dal pannello di piattaforma.
+   *
+   * Cambia i passi, e non di poco: non c'e nessun codice da mandarci e nessuna
+   * chiave da incollare — quei due passi erano il giro attraverso il secondo
+   * gestionale, e per un cliente della nostra installazione non esistono.
+   */
+  accesoDaNoi: boolean;
   canManage: boolean;
 }) {
   const router = useRouter();
@@ -297,6 +306,23 @@ export function CollegaTelefono({
         </div>
       ),
     },
+    ...(accesoDaNoi
+      ? [
+          {
+            numero: 2,
+            titolo: "Il telefono è attivo su questo locale",
+            cosa: "L'abbiamo acceso noi: non c'è nessun codice da mandarci e nessuna chiave da incollare.",
+            fatto: true,
+            corpo: (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Se qualcosa non torna — funzioni che ti aspettavi e non vedi, o il telefono che
+                risulta spento — scrivici: si accende e si spegne dal nostro pannello, non da qui.
+              </p>
+            ),
+          } satisfies Passo,
+        ]
+      : []),
+    ...(accesoDaNoi ? [] : [
     {
       numero: 2,
       titolo: "Mandaci il codice di questo locale",
@@ -384,7 +410,8 @@ export function CollegaTelefono({
           )}
         </div>
       ),
-    },
+    } satisfies Passo,
+    ]),
     {
       numero: 4,
       titolo: "Apri la strada alle chiamate",

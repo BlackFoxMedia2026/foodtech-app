@@ -96,6 +96,7 @@ export default async function CollegaTelefonoPage() {
             passwordPresente: sip.passwordPresente,
             sottoChiave: sip.sottoChiave,
           }}
+          accesoDaNoi={stato.origine === "piattaforma"}
           ingresso={{
             ingresso: ingresso.ingresso,
             numeroPubblico: ingresso.numeroPubblico,

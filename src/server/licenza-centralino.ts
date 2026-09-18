@@ -1,6 +1,7 @@
 import { createPublicKey, verify } from "node:crypto";
 import { db } from "@/lib/db";
 import {
+  FUNZIONI_CENTRALINO,
   dividiLicenza,
   fineValidita,
   funzioniDi,
@@ -164,6 +165,16 @@ export type StatoCentralino = {
    * che sono due schermate diverse: la prima offre, la seconda spiega.
    */
   motivoSpento: "scaduta" | "non_piu_valida" | null;
+  /**
+   * Da dove viene l'accensione.
+   *
+   * `piattaforma` = l'ha acceso un nostro super amministratore dal pannello;
+   * `chiave` = c'e una licenza firmata, che e la strada delle installazioni
+   * che non gestiamo noi. Serve alle schermate: con `piattaforma` non si
+   * chiede di incollare niente, e la procedura di collegamento salta i due
+   * passi della chiave invece di mostrarli fatti a metà.
+   */
+  origine: "piattaforma" | "chiave" | null;
 };
 
 const SPENTO: StatoCentralino = {
@@ -173,6 +184,7 @@ const SPENTO: StatoCentralino = {
   attivatoIl: null,
   chiaveLeggibile: null,
   motivoSpento: null,
+  origine: null,
 };
 
 /**
@@ -191,9 +203,50 @@ export async function statoCentralino(
     select: {
       phoneLicenseKey: true,
       phoneLicenseActivatedAt: true,
+      /* L'interruttore della piattaforma. Si legge **insieme** alla chiave e
+         non al posto: un cliente puo avere entrambe — l'abbiamo acceso noi e
+         lui ha anche una chiave di prima — e non e un conflitto da risolvere
+         con una precedenza arbitraria: se una delle due dice si, il telefono
+         e acceso. */
+      servizi: {
+        where: { servizio: "CENTRALINO" },
+        select: { attivo: true, funzioni: true, attivatoIl: true },
+        take: 1,
+      },
     },
   });
+
+  const acceso = locale?.servizi[0];
+  if (acceso?.attivo) {
+    return {
+      attivo: true,
+      /* Vuoto = tutte quelle di oggi, come nella chiave: un elenco vuoto non e
+         un servizio senza funzioni, e un servizio completo. */
+      funzioni: funzioniValide(acceso.funzioni),
+      /* Non scade. Un servizio che accendiamo noi si spegne quando lo
+         spegniamo noi: una scadenza qui vorrebbe dire un telefono che si
+         spegne da solo un sabato sera senza che nessuno l'abbia deciso. */
+      scadeIl: null,
+      attivatoIl: acceso.attivatoIl,
+      chiaveLeggibile: null,
+      motivoSpento: null,
+      origine: "piattaforma",
+    };
+  }
+
   return statoDaChiave(venueId, locale?.phoneLicenseKey ?? null, locale?.phoneLicenseActivatedAt ?? null, adesso);
+}
+
+/**
+ * Solo le funzioni che esistono davvero, e tutte quando l'elenco e vuoto.
+ *
+ * Un nome scritto a mano nel pannello — o rimasto in tabella dopo che una
+ * funzione e stata rinominata — non deve poter accendere niente: qui si passa
+ * dall'elenco chiuso, e quello che non ne fa parte cade.
+ */
+function funzioniValide(elenco: string[]): FunzioneCentralino[] {
+  if (elenco.length === 0) return [...FUNZIONI_CENTRALINO];
+  return FUNZIONI_CENTRALINO.filter((f) => elenco.includes(f));
 }
 
 /**
@@ -230,6 +283,7 @@ export function statoDaChiave(
     attivatoIl: attivatoIl ?? null,
     chiaveLeggibile: leggibile,
     motivoSpento: null,
+    origine: "chiave",
   };
 }
 

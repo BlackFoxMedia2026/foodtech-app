@@ -273,6 +273,7 @@ model Venue {
   agentUsages        AgentUsage[]
   phoneCalls         PhoneCall[]
   voiceNumbers       VoiceNumber[]
+  servizi            VenueServizio[]
   voiceConfiguration VoiceConfiguration?
   voiceCallbacks     VoiceCallback[]
   voiceInsights      VoiceCRMInsight[]
@@ -2768,6 +2769,65 @@ model PhoneCallTranscript {
 ///
 /// Un numero appartiene a **un** locale: e il confine che impedisce di
 /// mescolare le chiamate di due ristoranti dello stesso gruppo.
+/// Un servizio acceso a un locale da chi gestisce la piattaforma.
+///
+/// ## Perche esiste, e cosa manda in pensione
+///
+/// Il centralino si accendeva incollando una **chiave firmata** emessa da un
+/// secondo gestionale (ilmiocentralino): sei gesti in due applicazioni, e due
+/// chiavi che viaggiano in versi opposti. La firma resta indispensabile per
+/// un'installazione che non gestiamo noi — la` un interruttore nel database
+/// sarebbe un interruttore che il cliente si gira da solo — ma per i clienti
+/// della nostra installazione il secondo gestionale era solo un giro in piu:
+/// il database e nostro, e chi accende e un nostro super amministratore.
+///
+/// Quindi due strade verso lo stesso risultato, e nessuna delle due indebolisce
+/// l'altra: **l'interruttore** per i nostri clienti, **la chiave firmata** per
+/// le installazioni altrui. Vedi `src/server/licenza-centralino.ts`.
+///
+/// ## Perche una tabella e non una colonna
+///
+/// Perche di un servizio acceso servono tre cose che una colonna booleana non
+/// tiene: **chi** l'ha acceso, **quando**, e **cosa comprende**. Davanti a «da
+/// ieri il telefono non va» la prima domanda e chi ha toccato cosa, e la
+/// risposta deve essere in tabella.
+model VenueServizio {
+  id      String         @id @default(cuid())
+  venueId String
+  servizio ServizioLocale
+
+  attivo Boolean @default(true)
+
+  /// Le funzioni comprese. **Vuoto = tutte quelle di oggi**, come nella chiave:
+  /// un elenco vuoto non e un servizio senza funzioni, e un servizio completo.
+  funzioni String[]
+
+  /// Chi ha deciso, e quando. Non «chi ha toccato per ultimo»: l'email di chi
+  /// l'ha acceso resta anche dopo uno spegnimento e una riaccensione.
+  attivatoDa String?   @db.VarChar(200)
+  attivatoIl DateTime  @default(now())
+  /// Quando e stato spento, se e spento. Nullo mentre e acceso.
+  spentoIl   DateTime?
+
+  /// Perche: «prova di due settimane», «non ha pagato giugno». Si legge in
+  /// elenco, e serve a chi non era presente alla decisione.
+  nota String? @db.VarChar(300)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, servizio])
+  @@index([servizio, attivo])
+}
+
+enum ServizioLocale {
+  /// Il telefono dentro Tavolo: chi sta chiamando, le chiamate, le
+  /// prenotazioni raccolte, i numeri.
+  CENTRALINO
+}
+
 model VoiceNumber {
   id      String @id @default(cuid())
   venueId String
