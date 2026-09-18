@@ -6,6 +6,8 @@ import { ElencoChiamateVista } from "@/components/telefono/elenco-chiamate";
 import { TelefonoBrowser } from "@/components/telefono/telefono-browser";
 import { statoTelefonoBrowser } from "@/server/telefono-browser";
 import { capacitaDi } from "@/server/voice/provider";
+import { cosaDaFareAlTelefono } from "@/server/voice/da-fare";
+import { DaFare } from "@/components/telefono/da-fare";
 import { can } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
@@ -22,12 +24,18 @@ export const dynamic = "force-dynamic";
  * sta scritto in Impostazioni → Telefono, che è il posto dove si va a
  * guardare.
  *
- * ## Cosa fa, e cosa non fa ancora
+ * ## Due colonne, due domande
  *
- * Fa l'unica cosa che il ristoratore rifà venti volte in una sera: guardare
- * chi ha chiamato e non ha trovato nessuno, per richiamarlo. **Non** risponde
- * dal browser e non registra: quelle sono le prossime, e una pagina che le
- * annunciasse con un pulsante spento sarebbe una promessa, non un prodotto.
+ * **Da fare**: chi va richiamato adesso — la coda delle richiamate e le
+ * chiamate perse che nessuno ha ancora guardato. È la parte che si guarda
+ * venti volte in una sera.
+ *
+ * **Storico**: com'è andato il telefono, con l'esito di ogni chiamata. È la
+ * parte che si guarda una volta al mese, e serve a una domanda sola: quante
+ * telefonate diventano prenotazioni.
+ *
+ * Erano una lista sola con un filtro sopra, e la prima delle due si trovava
+ * solo premendo. In servizio quello che si trova premendo non si trova.
  */
 export default async function TelefonoPage({
   searchParams,
@@ -43,8 +51,9 @@ export default async function TelefonoPage({
     ? Number(searchParams.giorni)
     : 7;
 
-  const [elenco, telefono, capacita] = await Promise.all([
+  const [elenco, daFare, telefono, capacita] = await Promise.all([
     elencoChiamate(ctx.venueId, { solo, giorni }),
+    cosaDaFareAlTelefono(ctx.venueId),
     statoTelefonoBrowser(ctx.venueId),
     capacitaDi(ctx.venueId),
   ]);
@@ -66,6 +75,27 @@ export default async function TelefonoPage({
        guarda, non si scorre». */
     <ElencoChiamateVista
       telefono={puoRispondere ? <TelefonoBrowser capacita={capacita} /> : null}
+      /* Le date diventano testo qui e non nel componente: un componente
+         `"use client"` non riceve oggetti `Date`. */
+      daFare={
+        <DaFare
+          fuso={ctx.venue.timezone}
+          richiamate={daFare.richiamate.map((r) => ({
+            id: r.id,
+            numero: r.numero,
+            ospite: r.ospite,
+            callId: r.callId,
+            tentativi: r.tentativi,
+            nota: r.nota,
+            creata: r.creata.toISOString(),
+            inRitardo: r.inRitardo,
+          }))}
+          perse={daFare.perse.map((p) => ({
+            ...p,
+            quando: p.quando.toISOString(),
+          }))}
+        />
+      }
       elenco={{
         ...elenco,
         chiamate: elenco.chiamate.map((c) => ({

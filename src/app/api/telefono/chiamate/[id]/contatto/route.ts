@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { collegaChiamataAContatto } from "@/server/chiamate";
-import { LicenzaError, richiediFunzioneCentralino } from "@/server/licenza-centralino";
+import {
+  LicenzaError,
+  richiediFunzioneCentralino,
+} from "@/server/licenza-centralino";
 
 /**
  * Dai un nome a un numero che ha chiamato.
@@ -24,7 +27,10 @@ const Corpo = z.object({
   email: z.string().email().max(160).nullish(),
 });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  req: Request,
+  { params }: { params: { id: string } },
+) {
   const ctx = await requireVenueApi("manage_bookings");
   if (!ctx.ok) return ctx.response;
 
@@ -36,10 +42,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
        una scheda con un altro nome deve capire perché — quel numero era già di
        qualcuno, e `trovaOCreaOspite` ha riusato la sua invece di fare un
        doppione. */
-    return NextResponse.json(esito, { status: esito.giaConosciuto ? 200 : 201 });
+    return NextResponse.json(esito, {
+      status: esito.giaConosciuto ? 200 : 201,
+    });
   } catch (err) {
     if (err instanceof LicenzaError) {
-      return apiError(403, "centralino_non_attivo", "Il telefono non è attivo su questo locale.");
+      return apiError(
+        403,
+        "centralino_non_attivo",
+        "Il telefono non è attivo su questo locale.",
+      );
     }
     if (err instanceof Error && err.message === "not_found") {
       return apiError(404, "not_found", "Questa chiamata non esiste.");

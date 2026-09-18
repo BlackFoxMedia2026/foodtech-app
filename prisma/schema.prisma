@@ -241,7 +241,7 @@ model Venue {
   /// va riverificata a ogni lettura: se conservassimo solo «acceso: sì», una
   /// riga cambiata a mano nel database darebbe il centralino a chi non l'ha
   /// comprato. La firma è la prova, e la prova va tenuta.
-  phoneLicenseKey      String?
+  phoneLicenseKey         String?
   /// Quando è stata inserita. Nullo = il centralino non è mai stato acceso qui.
   phoneLicenseActivatedAt DateTime?
   /// L'ultimo istante di validità, copiato dalla chiave per poterlo mostrare
@@ -422,30 +422,30 @@ model Room {
 // both; Room.activeLayoutMode says which one is currently rendered, so
 // switching modes never destroys the other's data (see floor-plan upload).
 model RoomLayout {
-  id             String   @id @default(cuid())
-  roomId         String   @unique
-  room           Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  unit           String   @default("m")
-  pixelsPerMeter Int      @default(100)
-  elements       Json     @default("[]")
+  id             String    @id @default(cuid())
+  roomId         String    @unique
+  room           Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  unit           String    @default("m")
+  pixelsPerMeter Int       @default(100)
+  elements       Json      @default("[]")
   /// Quali livelli sono accesi sulla piantina (tavoli, struttura, aree,
   /// testi, immagine originale). Sta sulla sala e non sull'utente: chi apre
   /// la Sala deve trovare la piantina come l'ha lasciata il collega.
-  layers         Json     @default("{}")
+  layers         Json      @default("{}")
   /// Quanti tavoli il locale dichiara di possedere, per forma. La libreria
   /// dell'editor ne sottrae quelli già posizionati e mostra la disponibilità
   /// residua.
-  inventory      Json     @default("{}")
+  inventory      Json      @default("{}")
   /// Nome, superficie e dimensioni quando non si ricavano dalla geometria e
   /// il locale li scrive a mano.
-  meta           Json     @default("{}")
+  meta           Json      @default("{}")
   /// Il risultato grezzo del riconoscimento della planimetria, conservato
   /// accanto agli elementi che ne sono derivati: se domani il riconoscimento
   /// migliora si rigenera senza richiedere di ricaricare l'immagine.
   analysis       Json?
   analyzedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Table {
@@ -2679,6 +2679,13 @@ enum PhoneCallEventKind {
   CALLBACK_RESOLVED
   CRM_INSIGHT_CREATED
   NOTE_ADDED
+  /// Qualcuno ha detto **com'e finita** una chiamata.
+  ///
+  /// Serve distinto da NOTE_ADDED: l'esito e un valore dell'elenco chiuso su
+  /// cui si contano le telefonate del mese, una nota e testo libero. Nel
+  /// registro si deve poter rileggere chi ha chiuso quella chiamata e quando,
+  /// perche un esito scritto a mano e una decisione di una persona.
+  OUTCOME_SET
 }
 
 /// La registrazione di una chiamata, quando il fornitore la produce.
@@ -2692,11 +2699,11 @@ model PhoneCallRecording {
   callId String @unique
 
   /// Dove sta il file, presso il fornitore o nel nostro archivio.
-  url          String
-  durationSec  Int?
+  url         String
+  durationSec Int?
   /// Quando va cancellata, dai giorni di conservazione del locale.
-  expiresAt    DateTime?
-  createdAt    DateTime @default(now())
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
 
   call PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
 
@@ -2713,9 +2720,9 @@ model PhoneCallTranscript {
   id     String @id @default(cuid())
   callId String @unique
 
-  testo    String
-  lingua   String?  @db.VarChar(8)
-  fornitore String? @db.VarChar(40)
+  testo     String
+  lingua    String?  @db.VarChar(8)
+  fornitore String?  @db.VarChar(40)
   createdAt DateTime @default(now())
 
   call PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
@@ -2733,7 +2740,7 @@ model VoiceNumber {
   fornitore String @db.VarChar(40)
 
   /// Il numero come lo conosce il fornitore (E.164 dove possibile).
-  numeroEsterno String
+  numeroEsterno  String
   /// Il numero come si mostra al ristoratore, se diverso.
   numeroMostrato String?
 
@@ -2771,9 +2778,9 @@ model VoiceConfiguration {
   /// Colonne separate e non un `Json`: sono quattro decisioni che una
   /// schermata mostra come quattro tendine, e in un `Json` non si puo
   /// nemmeno interrogarle.
-  quandoAperto     VoiceRoutingTarget @default(HUMAN)
-  quandoChiuso     VoiceRoutingTarget @default(VOICEMAIL)
-  quandoOccupato   VoiceRoutingTarget @default(VOICEMAIL)
+  quandoAperto      VoiceRoutingTarget @default(HUMAN)
+  quandoChiuso      VoiceRoutingTarget @default(VOICEMAIL)
+  quandoOccupato    VoiceRoutingTarget @default(VOICEMAIL)
   quandoNonRisponde VoiceRoutingTarget @default(VOICEMAIL)
 
   /// Il numero a cui inoltrare, quando una delle quattro dice `FORWARD`.
@@ -2782,30 +2789,30 @@ model VoiceConfiguration {
   // ── il recupero delle chiamate perse ─────────────────────────────────
 
   /// Se mandare un messaggio a chi ha chiamato e non ha trovato nessuno.
-  recuperoPerseAttivo Boolean @default(false)
+  recuperoPerseAttivo    Boolean         @default(false)
   /// Su quale canale. Nullo = nessuno configurato su questa installazione.
-  recuperoPerseCanale MessageChannel?
+  recuperoPerseCanale    MessageChannel?
   /// Dopo quanti minuti. Zero = subito.
-  recuperoPerseMinuti Int @default(5)
+  recuperoPerseMinuti    Int             @default(5)
   /// Il testo, con `{{bookingUrl}}` e `{{venueName}}`.
-  recuperoPerseTesto  String? @db.VarChar(600)
+  recuperoPerseTesto     String?         @db.VarChar(600)
   /// Se creare comunque una riga «da richiamare» per il personale.
-  recuperoCreaRichiamata Boolean @default(true)
+  recuperoCreaRichiamata Boolean         @default(true)
 
   // ── le registrazioni ─────────────────────────────────────────────────
 
-  registrazioniAttive  Boolean              @default(false)
+  registrazioniAttive   Boolean               @default(false)
   registrazioniConsenso VoiceRecordingConsent @default(OFF)
   /// Per quanti giorni si conservano. Oltre, si cancellano.
-  registrazioniGiorni  Int                  @default(30)
+  registrazioniGiorni   Int                   @default(30)
 
   // ── chi risponde, quando risponde una macchina ───────────────────────
 
   /// Il nome con cui si presenta. Il **come** si comporta non si configura da
   /// qui: le regole del sistema non sono un campo di testo.
-  aiNome    String? @db.VarChar(40)
-  aiLingua  String  @default("it")
-  aiSaluto  String? @db.VarChar(300)
+  aiNome   String? @db.VarChar(40)
+  aiLingua String  @default("it")
+  aiSaluto String? @db.VarChar(300)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2867,7 +2874,7 @@ model VoiceCallback {
 
   chiusoIl DateTime?
   chiusoDa String?
-  nota     String? @db.VarChar(400)
+  nota     String?   @db.VarChar(400)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2875,6 +2882,13 @@ model VoiceCallback {
   venue Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
   guest Guest?     @relation(fields: [guestId], references: [id], onDelete: SetNull)
   call  PhoneCall? @relation(fields: [callId], references: [id], onDelete: SetNull)
+  /// **Una sola richiamata aperta per numero.** Il vincolo e un indice unico
+  /// parziale (`WHERE stato = 'OPEN'`), scritto a mano nella migrazione perche
+  /// Prisma non sa dichiarare un unico condizionato: vedi
+  /// `20260918140000_tavolo_voice_fase4`. Sta nel database e non in un
+  /// controllo perche due persone che premono «da richiamare» sulla stessa
+  /// chiamata, nello stesso istante, non si vedrebbero a vicenda — e in coda
+  /// comparirebbe due volte la stessa persona.
 
   @@index([venueId, stato, createdAt])
 }
@@ -2893,7 +2907,7 @@ enum VoiceCallbackStatus {
 /// persona non premo «salva»: un CRM riempito di deduzioni non verificate e
 /// peggio di un CRM vuoto, perche non si sa piu cosa e vero.
 model VoiceCRMInsight {
-  id      String @id @default(cuid())
+  id      String  @id @default(cuid())
   venueId String
   callId  String
   guestId String?

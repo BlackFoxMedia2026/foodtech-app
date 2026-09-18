@@ -24,7 +24,9 @@ export async function GET() {
   try {
     const centralino = await statoCentralino(ctx.venueId);
     if (!centralino.attivo) {
-      return NextResponse.json(VUOTO, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json(VUOTO, {
+        headers: { "Cache-Control": "no-store" },
+      });
     }
     return NextResponse.json(await statoVivoTelefono(ctx.venueId), {
       // Una domanda sul presente: una risposta di cinque secondi fa non è la
