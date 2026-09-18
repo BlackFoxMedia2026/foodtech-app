@@ -2,6 +2,7 @@ import {
   Building2,
   CalendarRange,
   Megaphone,
+  PhoneCall,
   SlidersHorizontal,
   Users,
 } from "lucide-react";
@@ -23,6 +24,9 @@ export const SEGNI: Record<
   locale: { icona: Building2, breve: "Locale" },
   prenotazioni: { icona: CalendarRange, breve: "Prenot." },
   ospiti: { icona: Users, breve: "Ospiti" },
+  /* Una cornetta che squilla, non un telefono fermo: questa sezione parla di
+     chiamate che arrivano. */
+  centralino: { icona: PhoneCall, breve: "Centralino" },
   /* Lo stesso megafono della voce in barra: è la stessa area del prodotto
      vista da due parti, e due simboli diversi la farebbero sembrare due cose. */
   marketing: { icona: Megaphone, breve: "Marketing" },
