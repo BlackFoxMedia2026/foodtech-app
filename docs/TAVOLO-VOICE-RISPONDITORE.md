@@ -386,8 +386,24 @@ Verificato: `tsc`, `lint`, **1757** prove di unità (18 nuove in
 `tests/voice-ingresso.test.ts`), `build`, **31/31** end-to-end — compresa la
 prova che il passo dell'operatore **compare e sparisce** con la strada scelta.
 
+**Il numero lo dichiara il centralino.** `PUT /api/v1/telefonia/numeri`
+(`src/server/voice/numeri-linea.ts`): il ponte manda l'elenco **completo**
+delle linee di quel cliente, e Tavolo le mostra nella procedura. Il verso è
+quello di sempre — il centralino spinge, Tavolo riceve — e la ragione è che
+quel numero è **nostro**: sta nel centralino insieme al trunk che lo consegna,
+e quello è l'unico posto che sa se è davvero collegato a quel cliente. Un
+campo da riempire a mano in Tavolo produrrebbe la cosa peggiore: un numero
+scritto bene, mostrato con sicurezza, dettato all'operatore telefonico — e che
+non arriva da nessuna parte.
+
+Tre regole di quella rotta: una linea che non viene più dichiarata si
+**spegne** e non si cancella (le chiamate di ieri puntano a quella riga); la
+stessa linea non può arrivare a **due** locali, e si rifiuta con un 409
+perché sul trunk il numero chiamato *è* la chiave con cui si trova il cliente;
+e la dichiarazione parte quando si salva il collegamento del gestionale, cioè
+quando **c'è qualcuno che guarda** — l'esito torna in quella risposta invece
+di finire solo nei log.
+
 Quello che la fase 12 **non** fa, e va detto: il centralino non legge ancora
 `quandoOccupato`/`quandoNonRisponde` da queste colonne — quelle decisioni
-vivono dentro Asterisk, e per questo la schermata non le offre. E il numero a
-cui deviare va **comprato e assegnato**: finché `VoiceNumber` è vuota, la
-procedura lo dice e si fermerà lì.
+vivono dentro Asterisk, e per questo la schermata non le offre.
