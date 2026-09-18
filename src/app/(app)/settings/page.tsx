@@ -27,8 +27,6 @@ import { listReviewLinks } from "@/server/reviews";
 import { listInviti, listTeam } from "@/server/team";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { saluteVoice } from "@/server/voice/salute";
-import { statoTelefonoBrowser } from "@/server/telefono-browser";
-import { elencaApiToken } from "@/server/api-token";
 import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
 import { AccessoTeam } from "@/components/settings/accesso-team";
 import { Centralino } from "@/components/settings/centralino";
@@ -176,8 +174,6 @@ export default async function SettingsPage({
     membri,
     inviti,
     centralino,
-    telefonoSip,
-    chiaviCollegamento,
     salute,
   ] = await Promise.all([
     db.venue.findMany({
@@ -205,8 +201,6 @@ export default async function SettingsPage({
        da incollare sul sito. */
     listInviti(ctx.venueId, baseUrl),
     statoCentralino(ctx.venueId),
-    statoTelefonoBrowser(ctx.venueId),
-    elencaApiToken(ctx.venueId),
     saluteVoice(ctx.venueId),
   ]);
 
@@ -724,11 +718,6 @@ export default async function SettingsPage({
                  credenziali SIP sono un numero da cui si telefona a spese del
                  locale. */
                 canManage={can(ctx.role, "manage_phone")}
-                venueId={ctx.venueId}
-                sip={telefonoSip}
-                collegamenti={chiaviCollegamento
-                  .filter((t) => !t.revocatoIl)
-                  .map((t) => ({ id: t.id, prefisso: t.prefisso }))}
                 salute={{
                   ultimaChiamata: salute.ultimaChiamata?.toISOString() ?? null,
                   ultime24h: salute.ultime24h,
