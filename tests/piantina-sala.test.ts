@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_ROOM_LAYERS,
   boundingBox,
@@ -11,9 +11,27 @@ import {
   type RoomElement,
 } from "@/lib/room-layout";
 import { analysisToElements, FloorPlanAnalysisSchema, summarizeAnalysis } from "@/lib/floorplan-analysis";
-import { fallbackAnalysis } from "@/server/floorplan-analysis";
+import { analyzeFloorPlan, fallbackAnalysis } from "@/server/floorplan-analysis";
 import { posizioniSedie, dimensioneDisegnata } from "@/lib/tavolo-geometria";
 import { generateLShape, generateRectangle } from "@/components/floor/editor/perimetro";
+
+/* Il riconoscimento chiama OpenAI e rilegge il file dall'archivio: qui non
+   deve succedere né l'una né l'altra cosa. Quello che si verifica è come
+   `analyzeFloorPlan` reagisce a un rifiuto, non che sappia telefonare. */
+const creaCompletamento = vi.fn();
+vi.mock("openai", () => ({
+  default: class {
+    chat = { completions: { create: creaCompletamento } };
+  },
+}));
+vi.mock("@/server/archivio-file", () => ({
+  leggiFile: async () => new Uint8Array([1, 2, 3]).buffer,
+}));
+
+/** L'errore come lo lancia il client OpenAI: un oggetto con `status`. */
+function rifiuto(status: number) {
+  return Object.assign(new Error(`HTTP ${status}`), { status });
+}
 
 /**
  * La piantina della Sala, verificata dove può mentire senza che si veda.
@@ -198,5 +216,51 @@ describe("le sedie dicono quanti posti ci sono", () => {
     const due = dimensioneDisegnata({ shape: "SQUARE", seats: 2 });
     const otto = dimensioneDisegnata({ shape: "SQUARE", seats: 8 });
     expect(otto.w).toBeGreaterThan(due.w);
+  });
+});
+
+/**
+ * Quando il riconoscimento fallisce, la piantina di partenza arriva lo stesso.
+ * Quello che cambia è la riga che il ristoratore legge: se dice «non siamo
+ * riusciti a leggere questa planimetria» mentre il vero problema è una chiave
+ * sbagliata, ricaricherà la stessa immagine finché non si stanca.
+ */
+describe("perché il riconoscimento non ha funzionato", () => {
+  beforeEach(() => {
+    creaCompletamento.mockReset();
+    (process.env as Record<string, string | undefined>).OPENAI_API_KEY = "sk-di-prova";
+  });
+
+  it("una chiave rifiutata nomina la chiave", async () => {
+    creaCompletamento.mockRejectedValue(rifiuto(401));
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.source).toBe("fallback");
+    expect(a.note).toContain("OPENAI_API_KEY");
+  });
+
+  it("il credito finito non si confonde con un'immagine illeggibile", async () => {
+    creaCompletamento.mockRejectedValue(rifiuto(429));
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.note).toContain("credito");
+    expect(a.note).not.toContain("leggere questa planimetria");
+  });
+
+  it("un modello che non esiste nomina il modello", async () => {
+    creaCompletamento.mockRejectedValue(rifiuto(404));
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.note).toContain("OPENAI_VISION_MODEL");
+  });
+
+  it("un guasto senza nome resta la frase generica", async () => {
+    creaCompletamento.mockRejectedValue(new Error("boom"));
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.note).toContain("non è riuscito a leggere questa planimetria");
+  });
+
+  it("senza chiave il messaggio resta quello della funzione spenta", async () => {
+    delete (process.env as Record<string, string | undefined>).OPENAI_API_KEY;
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.note).toContain("non è configurato su questo ambiente");
+    expect(creaCompletamento).not.toHaveBeenCalled();
   });
 });

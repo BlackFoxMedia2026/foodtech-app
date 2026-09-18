@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireVenueApi } from "@/lib/api-auth";
-import { put, del } from "@vercel/blob";
+import { archivioDisponibile, eliminaFile, salvaFile } from "@/server/archivio-file";
 import { db } from "@/lib/db";
 import { setRoomFloorPlan } from "@/server/rooms";
 
@@ -36,15 +36,32 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   /*
     Senza archivio file non si carica niente, e va detto così.
 
-    In locale `BLOB_READ_WRITE_TOKEN` è spesso vuoto: `put` lanciava, la rotta
-    restituiva un 500 senza corpo e la schermata diceva «Caricamento non
-    riuscito. Riprova» — cioè invitava a rifare, per sempre, un gesto che non
-    può riuscire. Un messaggio che nomina la causa fa perdere un minuto invece
-    di un pomeriggio.
+    `salvaFile` sceglie da sé fra Vercel Blob e la cartella su disco (vedi
+    `server/archivio-file.ts`), quindi in sviluppo questo messaggio non si legge
+    più: si legge quando l'archivio non c'è davvero, cioè in produzione senza
+    `BLOB_READ_WRITE_TOKEN`.
+
+    Prima di esistere, `put` lanciava, la rotta restituiva un 500 senza corpo e
+    la schermata diceva «Caricamento non riuscito. Riprova» — cioè invitava a
+    rifare, per sempre, un gesto che non può riuscire. Un messaggio che nomina
+    la causa fa perdere un minuto invece di un pomeriggio.
   */
+  if (!archivioDisponibile()) {
+    return NextResponse.json(
+      {
+        error: "blob_non_configurato",
+        message:
+          "L'archivio file non è configurato su questo ambiente: la piantina non può essere caricata. Puoi comunque disegnare la sala a mano.",
+      },
+      { status: 503 },
+    );
+  }
+
+  /* Il token c'è ma non vale: il messaggio resta lo stesso, perché per chi
+     carica la differenza fra «manca» e «è scaduto» non cambia cosa fare. */
   let blob: { url: string };
   try {
-    blob = await put(pathname, file, { access: "public" });
+    blob = await salvaFile(pathname, file);
   } catch (err) {
     const messaggio = err instanceof Error ? err.message : "";
     if (/credential|token/i.test(messaggio)) {
@@ -52,7 +69,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         {
           error: "blob_non_configurato",
           message:
-            "L'archivio file non è configurato su questo ambiente: la piantina non può essere caricata. Puoi comunque disegnare la sala a mano.",
+            "L'archivio file di questo ambiente non accetta il caricamento: controlla BLOB_READ_WRITE_TOKEN. Puoi comunque disegnare la sala a mano.",
         },
         { status: 503 },
       );
@@ -64,7 +81,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const updated = await setRoomFloorPlan(ctx.venueId, params.id, blob.url);
 
   if (previousUrl) {
-    await del(previousUrl).catch(() => {});
+    await eliminaFile(previousUrl);
   }
 
   return NextResponse.json(updated);
@@ -79,7 +96,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   const updated = await setRoomFloorPlan(ctx.venueId, params.id, null);
   if (room.floorPlanUrl) {
-    await del(room.floorPlanUrl).catch(() => {});
+    await eliminaFile(room.floorPlanUrl);
   }
 
   return NextResponse.json(updated);
