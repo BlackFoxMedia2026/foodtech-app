@@ -36,6 +36,16 @@ export function PermessoMicrofono() {
     "granted" | "denied" | "prompt" | "sconosciuto"
   >("sconosciuto");
   const [inCorso, setInCorso] = useState(false);
+  /**
+   * Cosa ha risposto il browser all'ultimo tentativo.
+   *
+   * Serve perché **un secondo rifiuto non cambia niente sullo schermo**: lo
+   * stato era «bloccato» e resta «bloccato», quindi premere il pulsante
+   * sembra non fare nulla — ed è esattamente quello che è successo a Luca.
+   * Adesso la risposta del browser si legge, e ogni rifiuto è un fatto nuovo
+   * scritto in una riga nuova.
+   */
+  const [risposta, setRisposta] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -57,6 +67,7 @@ export function PermessoMicrofono() {
 
   async function chiedi() {
     setInCorso(true);
+    setRisposta(null);
     try {
       const flusso = await navigator.mediaDevices.getUserMedia({ audio: true });
       /* Si chiude subito: serviva il permesso, non l'audio. Tenere aperto il
@@ -65,8 +76,29 @@ export function PermessoMicrofono() {
          pagina. */
       for (const t of flusso.getTracks()) t.stop();
       setStato("granted");
-    } catch {
-      setStato("denied");
+      setRisposta(null);
+    } catch (err) {
+      /*
+        **Il nome dell'errore dice cosa fare**, e sono tre cose diverse.
+
+        Un «non è stato possibile» generico manda a chiamare noi per una cosa
+        che si risolve in dieci secondi, o fa cercare il difetto nel posto
+        sbagliato: il microfono che non c'è e il microfono bloccato si
+        assomigliano soltanto sullo schermo.
+      */
+      const nome = err instanceof DOMException ? err.name : "";
+      setRisposta(
+        nome === "NotFoundError" || nome === "DevicesNotFoundError"
+          ? "Questo computer non ha un microfono: il browser non ne trova nessuno. Serve una cuffia o un microfono collegato."
+          : nome === "NotReadableError" || nome === "TrackStartError"
+            ? "Il microfono c'è ma è occupato o bloccato dal sistema: chiudi le altre applicazioni che lo usano, e su Mac controlla Impostazioni di Sistema → Privacy e sicurezza → Microfono."
+            : "Il browser ha detto no senza chiedere: per questo sito il microfono è già bloccato, e si sblocca solo dalle sue impostazioni.",
+      );
+      setStato(
+        nome === "NotFoundError" || nome === "DevicesNotFoundError"
+          ? "sconosciuto"
+          : "denied",
+      );
     } finally {
       setInCorso(false);
     }
@@ -99,9 +131,13 @@ export function PermessoMicrofono() {
           {inCorso ? "Chiedo…" : "Consenti il microfono"}
         </Button>
       </div>
+      {/* La risposta del browser, quando ha risposto: è la riga che cambia
+          dopo un clic che «non fa niente». */}
+      {risposta && <p className="text-xs text-destructive-soft">{risposta}</p>}
+
       <p className="t-nota">
         {stato === "denied"
-          ? "Questo browser l'ha già bloccato: clicca l'icona a sinistra dell'indirizzo → Microfono → Consenti, poi premi di nuovo il pulsante."
+          ? "Si sblocca dal browser, in un posto solo: clicca l'icona a sinistra dell'indirizzo (lucchetto o cursori) → Microfono → Consenti → ricarica la pagina. Su Chrome, in alternativa: chrome://settings/content/microphone, e togli questo sito dall'elenco dei bloccati."
           : "Serve una volta per browser. Concederlo adesso evita di trovarsi la richiesta mentre il telefono squilla."}
       </p>
     </div>

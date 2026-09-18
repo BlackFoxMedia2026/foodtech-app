@@ -394,8 +394,9 @@ export function TelefonoBrowser({
               Attiva il microfono
             </Button>
             <span className="t-nota max-w-[18rem]">
-              Se non compare la richiesta: clicca l&apos;icona a sinistra
-              dell&apos;indirizzo → Microfono → Consenti.
+              Se il pulsante non fa comparire niente, per questo sito è già
+              bloccato: icona a sinistra dell&apos;indirizzo → Microfono →
+              Consenti, poi ricarica.
             </span>
           </>
         )}
