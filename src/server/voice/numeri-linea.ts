@@ -28,6 +28,15 @@ import { normalizzaE164 } from "@/lib/telefono";
  */
 
 export const NumeriInput = z.object({
+  /**
+   * Come questo locale si chiama **nel centralino**.
+   *
+   * Serve al verso opposto: con questo, il pannello di piattaforma puo
+   * chiedere al centralino di assegnare un numero a questo locale, invece di
+   * far aprire il secondo gestionale a chi accende un cliente. Facoltativo
+   * perche un fornitore diverso dal nostro non ha nessun motivo di averne uno.
+   */
+  tenant: z.string().trim().min(1).max(100).optional(),
   numeri: z
     .array(
       z.object({
@@ -61,7 +70,14 @@ export async function dichiaraNumeri(
   fornitore: string,
   raw: unknown,
 ): Promise<EsitoNumeri> {
-  const { numeri } = NumeriInput.parse(raw);
+  const { numeri, tenant } = NumeriInput.parse(raw);
+
+  /* Chi ci ha scritto, dal suo lato. Si aggiorna quando arriva e non si
+     cancella quando manca: un fornitore che smette di mandarlo non ci fa
+     dimenticare a chi appartiene il locale la` dentro. */
+  if (tenant) {
+    await db.venue.update({ where: { id: venueId }, data: { centralinoTenantId: tenant } });
+  }
 
   /* La forma E.164 e l'unica su cui si puo confrontare: lo stesso numero
      scritto `0114410418`, `+39 011 4410418` e `0039114410418` sono tre
@@ -110,4 +126,35 @@ export async function dichiaraNumeri(
   });
 
   return { attive: puliti.length, spente: spente.count };
+}
+
+/**
+ * Aggiunge **una** linea, senza spegnere le altre.
+ *
+ * Diversa da `dichiaraNumeri` di proposito: quella e la dichiarazione completa
+ * del centralino («queste sono tutte le tue linee»), questa e un'assegnazione
+ * singola fatta dal pannello. Usare la prima per aggiungerne una spegnerebbe
+ * tutte le altre — e il ristoratore si troverebbe senza il numero che sta
+ * usando.
+ *
+ * Il numero arriva **gia normalizzato dal centralino**, che e quello che lo
+ * deve riconoscere quando la chiamata entra: qui non si tocca.
+ */
+export async function aggiungiLinea(
+  venueId: string,
+  fornitore: string,
+  numeroEsterno: string,
+  etichetta?: string,
+) {
+  const altrove = await db.voiceNumber.findFirst({
+    where: { fornitore, numeroEsterno, NOT: { venueId } },
+    select: { id: true },
+  });
+  if (altrove) throw new NumeroDiUnAltroError(numeroEsterno);
+
+  await db.voiceNumber.upsert({
+    where: { fornitore_numeroEsterno: { fornitore, numeroEsterno } },
+    create: { venueId, fornitore, numeroEsterno, etichetta: etichetta ?? null, attivo: true },
+    update: { venueId, attivo: true, ...(etichetta ? { etichetta } : {}) },
+  });
 }
