@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { ERRORE_TROPPI_TENTATIVI } from "@/lib/errori-accesso";
 import { RATE_LIMITS, checkRateLimit, clientKey, type RateLimitRule } from "@/lib/rate-limit";
 
 /**
@@ -58,6 +59,9 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname.startsWith("/api/public/availability")) {
     return { rule: RATE_LIMITS.publicAvailability, bucket: "public-availability" };
   }
+  if (pathname === "/api/public/recupero-password") {
+    return { rule: RATE_LIMITS.recupero, bucket: "recupero", methods: ["POST"] };
+  }
   // Il login di NextAuth: /api/auth/callback/credentials
   if (pathname.startsWith("/api/auth/callback")) {
     return { rule: RATE_LIMITS.login, bucket: "login", methods: ["POST"] };
@@ -91,6 +95,19 @@ export function middleware(req: NextRequest) {
       {
         error: "rate_limited",
         message: "Troppe richieste di seguito. Riprova fra qualche istante.",
+        /*
+          Solo per il login, e serve a farsi capire da NextAuth.
+
+          `signIn()` legge `url` dalla risposta del proprio callback e ci cerca
+          dentro il parametro `error`. Senza quel campo costruisce
+          `new URL(undefined)` e **solleva**: la schermata d'accesso resta su
+          «Accesso in corso…» per sempre, senza messaggio e senza pulsante. Con
+          questo, il 429 arriva alla pagina come un esito da scrivere — vedi
+          `lib/errori-accesso.ts`.
+        */
+        ...(guarded.bucket === "login" && {
+          url: new URL(`/api/auth/error?error=${ERRORE_TROPPI_TENTATIVI}`, req.url).toString(),
+        }),
       },
       {
         status: 429,

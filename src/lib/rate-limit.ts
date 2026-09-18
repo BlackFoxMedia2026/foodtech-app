@@ -130,6 +130,15 @@ export const RATE_LIMITS = {
   publicAvailability: { limit: limite("PUBLIC_AVAILABILITY", 60), windowMs: 60_000 },
   /** Tentativi di accesso. */
   login: { limit: limite("LOGIN", 10), windowMs: 10 * 60_000 },
+  /**
+   * «Password dimenticata». Severo per una ragione diversa dalle altre: qui
+   * ogni tentativo riuscito **manda un'email a un indirizzo che non è di chi
+   * la chiede**. Senza limite, questo modulo diventa un modo per riempire la
+   * casella di qualcun altro, e per bruciare la reputazione del nostro
+   * mittente. Cinque ogni dieci minuti: chi non ha ricevuto l'email può
+   * riprovare due o tre volte, non trecento.
+   */
+  recupero: { limit: limite("RECUPERO", 5), windowMs: 10 * 60_000 },
   /** Agente AI: ogni messaggio costa una chiamata a un modello. */
   agent: { limit: limite("AGENT", 30), windowMs: 60_000 },
   /** Caricamento immagini e documenti. */
