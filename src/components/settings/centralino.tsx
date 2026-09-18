@@ -11,6 +11,7 @@ import {
 import { daQuando } from "@/lib/utils";
 import {
   FUNZIONI_CENTRALINO,
+  NOME_FUNZIONE_CENTRALINO,
   type FunzioneCentralino,
 } from "@/lib/licenza-centralino";
 
@@ -47,12 +48,6 @@ const COSA_FA: Record<FunzioneCentralino, string> = {
     "Le prenotazioni prese al telefono entrano in Tavolo senza riscriverle.",
   statistiche:
     "Quante chiamate arrivano, in quali ore, e quante diventano prenotazioni.",
-};
-
-const NOME_FUNZIONE: Record<FunzioneCentralino, string> = {
-  riconoscimento: "Chi sta chiamando",
-  prenotazioni: "Prenotazioni al telefono",
-  statistiche: "I numeri del telefono",
 };
 
 const GIORNO = new Intl.DateTimeFormat("it-IT", {
@@ -267,7 +262,7 @@ export function Centralino({
           return (
             <RigaImpostazione
               key={f}
-              nome={NOME_FUNZIONE[f]}
+              nome={NOME_FUNZIONE_CENTRALINO[f]}
               descrizione={COSA_FA[f]}
             >
               {accesa ? (

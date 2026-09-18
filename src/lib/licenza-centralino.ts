@@ -61,6 +61,21 @@ export const FUNZIONI_CENTRALINO = [
 
 export type FunzioneCentralino = (typeof FUNZIONI_CENTRALINO)[number];
 
+/**
+ * Come si chiamano le funzioni, per chi legge una schermata.
+ *
+ * Sta qui e non nella scheda del telefono perche la leggono **due** posti: la
+ * scheda del cliente (client) e il pannello di piattaforma, dove si accendono.
+ * Due elenchi di nomi per le stesse tre funzioni divergono al primo
+ * rinominamento, e allora il ristoratore e chi glielo accende parlano di cose
+ * con nomi diversi.
+ */
+export const NOME_FUNZIONE_CENTRALINO: Record<FunzioneCentralino, string> = {
+  riconoscimento: "Chi sta chiamando",
+  prenotazioni: "Prenotazioni al telefono",
+  statistiche: "I numeri del telefono",
+};
+
 /** Cosa c'è scritto dentro una chiave. */
 export type ContenutoLicenza = {
   /** Il formato del contenuto. */
