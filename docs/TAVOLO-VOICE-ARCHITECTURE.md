@@ -6,6 +6,14 @@ Il repository indicato nel brief (`BlackFoxMedia2026/foodtech`) non esiste con
 quel nome: quello vero è **`BlackFoxMedia2026/foodtech-app`**, cartella di
 lavoro `/Users/lucamoncalvo/tavolo-app`. Tutto quello che segue riguarda quello.
 
+> **Secondo giro, 18 settembre 2026.** Come lavora davvero un ristorante che
+> paga il concorrente — cellulare, quattro squilli, deviazione impostata
+> dall'operatore — sta in
+> [`TAVOLO-VOICE-RISPONDITORE.md`](./TAVOLO-VOICE-RISPONDITORE.md), insieme ai
+> buchi veri (nessuna voce che parla, nessun numero a cui deviare, nessun SMS)
+> e alle fasi 12–18. Quel documento **corregge il primo passo** di questo: il
+> telefono nel browser resta, ma diventa un'opzione, non la strada.
+
 ---
 
 ## 0. Il rilievo che cambia il piano
