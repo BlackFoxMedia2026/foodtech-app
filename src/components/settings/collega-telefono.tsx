@@ -8,6 +8,7 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { readApiError } from "@/lib/api-client";
+import { PermessoMicrofono } from "@/components/telefono/permesso-microfono";
 import { daQuando } from "@/lib/utils";
 import type { StatoSipVista } from "./centralino";
 
@@ -439,6 +440,17 @@ export function CollegaTelefono({
             {erroreSip && (
               <span className="text-xs text-destructive">{erroreSip}</span>
             )}
+          </div>
+
+          {/* Il permesso del microfono, **qui e non alla prima chiamata**.
+
+              Il browser lo concede solo dopo un gesto: chiederlo al
+              caricamento di una pagina lo fa bloccare in silenzio, e allora
+              l'unica strada resta le impostazioni di Chrome — dove un
+              ristoratore non va. Questo pulsante è il gesto, e sta nel punto
+              della procedura in cui si sta configurando il telefono. */}
+          <div className="border-t border-border/60 pt-3">
+            <PermessoMicrofono />
           </div>
         </form>
       ),
