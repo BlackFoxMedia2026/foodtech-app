@@ -1,12 +1,23 @@
 import { z } from "zod";
 import type { BookingStatus } from "@prisma/client";
 import { fieldDiff, recordAudit, type AuditActor } from "./audit";
+import type { BookingSource } from "@prisma/client";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
-import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } from "./emails";
+import {
+  sendBookingConfirmationEmail,
+  sendPendingBookingNotificationEmail,
+} from "./emails";
 import { trovaOCreaOspite } from "./guest-match";
-import { deriveTableStatus, type TableOperationalStatus } from "@/lib/table-status";
-import { assertAvailability, OCCUPYING_STATUSES, type Canale } from "./availability";
+import {
+  deriveTableStatus,
+  type TableOperationalStatus,
+} from "@/lib/table-status";
+import {
+  assertAvailability,
+  OCCUPYING_STATUSES,
+  type Canale,
+} from "./availability";
 import { durataConsigliata } from "./durata-consigliata";
 import { createNotification } from "./notifications";
 import { refreshGuestStats } from "./guest-intelligence";
@@ -33,10 +44,38 @@ export const BookingInput = z.object({
   durationMin: z.coerce.number().int().min(15).max(480).optional(),
   tableId: z.string().optional().nullable(),
   status: z
-    .enum(["CONFIRMED", "PENDING", "ARRIVED", "SEATED", "COMPLETED", "CANCELLED", "NO_SHOW"])
+    .enum([
+      "CONFIRMED",
+      "PENDING",
+      "ARRIVED",
+      "SEATED",
+      "COMPLETED",
+      "CANCELLED",
+      "NO_SHOW",
+    ])
     .default("CONFIRMED"),
-  source: z.enum(["WIDGET", "PHONE", "WALK_IN", "GOOGLE", "SOCIAL", "CONCIERGE", "EVENT"]).default("PHONE"),
-  occasion: z.enum(["BIRTHDAY", "ANNIVERSARY", "BUSINESS", "DATE", "CELEBRATION", "OTHER"]).optional().nullable(),
+  source: z
+    .enum([
+      "WIDGET",
+      "PHONE",
+      "WALK_IN",
+      "GOOGLE",
+      "SOCIAL",
+      "CONCIERGE",
+      "EVENT",
+    ])
+    .default("PHONE"),
+  occasion: z
+    .enum([
+      "BIRTHDAY",
+      "ANNIVERSARY",
+      "BUSINESS",
+      "DATE",
+      "CELEBRATION",
+      "OTHER",
+    ])
+    .optional()
+    .nullable(),
   notes: z.string().optional().nullable(),
   internalNotes: z.string().optional().nullable(),
   depositCents: z.coerce.number().int().nonnegative().default(0),
@@ -68,7 +107,8 @@ export async function listBookings(
   return db.booking.findMany({
     where: {
       venueId,
-      startsAt: opts.from || opts.to ? { gte: opts.from, lte: opts.to } : undefined,
+      startsAt:
+        opts.from || opts.to ? { gte: opts.from, lte: opts.to } : undefined,
       status: opts.status ? (opts.status as any) : undefined,
     },
     include: { guest: true, table: true },
@@ -122,6 +162,12 @@ function determineBookingStatus(source: string): "CONFIRMED" | "PENDING" {
   // sono già state gestite da una persona umana al momento dell'inserimento.
   // Tutte le altre fonti (widget, Google, social, ecc.) restano in attesa di
   // approvazione manuale: nessuna conferma automatica.
+  //
+  // `VOICE` sta di proposito **fuori** da questo elenco, e la differenza con
+  // `PHONE` è tutta qui: al telefono ha risposto una persona che ha parlato
+  // col cliente, il risponditore ha raccolto una sequenza di tasti. La prima
+  // si conferma da sé, la seconda la conferma il locale — altrimenti il primo
+  // tasto sbagliato tiene un tavolo vuoto un sabato sera.
   if (source === "PHONE" || source === "WALK_IN") {
     return "CONFIRMED";
   }
@@ -182,9 +228,28 @@ export type BookingWriteOptions = {
    * finisce nel registro, con nome e ora.
    */
   forceReason?: string;
+  /**
+   * La fonte imposta da chi chiama, **solo da codice server**.
+   *
+   * Esiste per `VOICE`, e per la stessa ragione dello stato: `VOICE` significa
+   * «l'ha raccolta il risponditore del centralino, senza che nessuno abbia
+   * parlato col cliente», e da quella fonte dipende il fatto che la
+   * prenotazione **non** si autoconfermi. Se stesse fra i campi accettati dal
+   * corpo di una richiesta, chiunque potrebbe dichiarare che una prenotazione
+   * l'ha presa una macchina — o, peggio, che l'ha presa una persona quando
+   * l'ha presa una macchina.
+   *
+   * Per questo `VOICE` non è nell'elenco di `BookingInput`: da fuori non si
+   * può scrivere, e questa è la porta che si raggiunge solo da dentro.
+   */
+  source?: BookingSource;
 };
 
-export async function createBooking(venueId: string, raw: unknown, opts: BookingWriteOptions = {}) {
+export async function createBooking(
+  venueId: string,
+  raw: unknown,
+  opts: BookingWriteOptions = {},
+) {
   const data = BookingInput.parse(raw);
 
   // La durata: quella scritta se qualcuno l'ha scelta, altrimenti quella
@@ -193,7 +258,12 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
   // decide se questa prenotazione ci sta.
   const durationMin =
     data.durationMin ??
-    (await durataConsigliata(venueId, { partySize: data.partySize, startsAt: data.startsAt })).durataMin;
+    (
+      await durataConsigliata(venueId, {
+        partySize: data.partySize,
+        startsAt: data.startsAt,
+      })
+    ).durataMin;
 
   if (!opts.skipAvailabilityCheck) {
     await assertAvailability(venueId, {
@@ -230,7 +300,10 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
     }
   }
 
-  const status = opts.status ?? determineBookingStatus(data.source);
+  /* La fonte vera: quella imposta da codice server vince su quella dei dati.
+     È l'unica strada per cui una prenotazione può dirsi `VOICE`. */
+  const fonte = opts.source ?? data.source;
+  const status = opts.status ?? determineBookingStatus(fonte);
 
   const booking = await db.booking.create({
     data: {
@@ -241,7 +314,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       startsAt: data.startsAt,
       durationMin,
       status,
-      source: data.source,
+      source: fonte,
       occasion: data.occasion ?? null,
       campaignId: opts.campaignId ?? null,
       notes: data.notes ?? null,
@@ -250,7 +323,8 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       idempotencyKey: opts.idempotencyKey ?? null,
       // Se nasce già arrivata o seduta, l'orologio parte adesso: senza questi
       // istanti la Sala non saprebbe da quanto quel tavolo è occupato.
-      arrivedAt: status === "ARRIVED" || status === "SEATED" ? new Date() : null,
+      arrivedAt:
+        status === "ARRIVED" || status === "SEATED" ? new Date() : null,
       seatedAt: status === "SEATED" ? new Date() : null,
     },
     include: { guest: true, table: true, venue: true },
@@ -281,7 +355,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       booking.startsAt,
       bookingTime,
       booking.partySize,
-      booking.reference
+      booking.reference,
     );
   } else if (status === "PENDING") {
     const ownerMembership = await db.orgMembership.findFirst({
@@ -302,7 +376,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
         bookingTime,
         booking.partySize,
         booking.reference,
-        guestPhone || "Non disponibile"
+        guestPhone || "Non disponibile",
       );
     }
   }
@@ -338,8 +412,14 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
  * che in italiano non lo dice nessuno. Due formattatori e la parola in mezzo.
  */
 function formatDayAndTime(quando: Date): string {
-  const giorno = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric" }).format(quando);
-  const ora = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" }).format(quando);
+  const giorno = new Intl.DateTimeFormat("it-IT", {
+    weekday: "long",
+    day: "numeric",
+  }).format(quando);
+  const ora = new Intl.DateTimeFormat("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(quando);
   return `${giorno} alle ${ora}`;
 }
 
@@ -348,6 +428,7 @@ function fonteUmana(source: string): string {
   const nomi: Record<string, string> = {
     WIDGET: "sito",
     PHONE: "telefono",
+    VOICE: "risponditore",
     WALK_IN: "walk-in",
     GOOGLE: "Google",
     SOCIAL: "social",
@@ -433,8 +514,13 @@ export async function updateBooking(
   if (!existing) throw new Error("not_found");
 
   const nextStatus = data.status ?? existing.status;
-  const stillOccupies = OCCUPYING_STATUSES.includes(nextStatus as (typeof OCCUPYING_STATUSES)[number]);
-  const touchesAvailability = richiedeVerificaDisponibilita(data, existing.status);
+  const stillOccupies = OCCUPYING_STATUSES.includes(
+    nextStatus as (typeof OCCUPYING_STATUSES)[number],
+  );
+  const touchesAvailability = richiedeVerificaDisponibilita(
+    data,
+    existing.status,
+  );
 
   if (!opts.skipAvailabilityCheck && touchesAvailability && stillOccupies) {
     await assertAvailability(venueId, {
@@ -485,10 +571,14 @@ export async function updateBooking(
       ...(data.status && data.status !== existing.status
         ? {
             arrivedAt: ARRIVATO_DA.includes(data.status)
-              ? existing.arrivedAt ?? new Date()
+              ? (existing.arrivedAt ?? new Date())
               : null,
-            seatedAt: SEDUTO_DA.includes(data.status) ? existing.seatedAt ?? new Date() : null,
-            closedAt: CHIUSO_DA.includes(data.status) ? existing.closedAt ?? new Date() : null,
+            seatedAt: SEDUTO_DA.includes(data.status)
+              ? (existing.seatedAt ?? new Date())
+              : null,
+            closedAt: CHIUSO_DA.includes(data.status)
+              ? (existing.closedAt ?? new Date())
+              : null,
           }
         : {}),
     },
@@ -511,9 +601,10 @@ export async function updateBooking(
   if (diff) {
     // Annullare non è "modificare": chi legge il registro cerca le
     // cancellazioni, e non deve trovarle nascoste fra i cambi di nota.
-    const action = updated.status === "CANCELLED" && existing.status !== "CANCELLED"
-      ? "booking.cancel"
-      : "booking.update";
+    const action =
+      updated.status === "CANCELLED" && existing.status !== "CANCELLED"
+        ? "booking.cancel"
+        : "booking.update";
     await recordAudit(opts.actor, action, "booking", id, diff);
   }
 
@@ -548,8 +639,15 @@ export async function updateBooking(
   return updated;
 }
 
-export async function deleteBooking(venueId: string, id: string, actor?: AuditActor) {
-  const existing = await db.booking.findFirst({ where: { id, venueId }, include: { guest: true } });
+export async function deleteBooking(
+  venueId: string,
+  id: string,
+  actor?: AuditActor,
+) {
+  const existing = await db.booking.findFirst({
+    where: { id, venueId },
+    include: { guest: true },
+  });
   if (!existing) throw new Error("not_found");
   const deleted = await db.booking.delete({ where: { id } });
   // La cancellazione è definitiva (Booking ha i campi per il soft delete ma le
@@ -561,7 +659,9 @@ export async function deleteBooking(venueId: string, id: string, actor?: AuditAc
       coperti: existing.partySize,
       stato: existing.status,
       tavolo: existing.tableId,
-      ospite: existing.guest ? `${existing.guest.firstName} ${existing.guest.lastName}` : null,
+      ospite: existing.guest
+        ? `${existing.guest.firstName} ${existing.guest.lastName}`
+        : null,
     },
   });
   return deleted;

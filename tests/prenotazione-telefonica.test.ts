@@ -1,7 +1,19 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
-import { componiLicenza, testoDaFirmare, type ContenutoLicenza } from "@/lib/licenza-centralino";
+import {
+  componiLicenza,
+  testoDaFirmare,
+  type ContenutoLicenza,
+} from "@/lib/licenza-centralino";
 import { registraPrenotazioneTelefonica } from "@/server/prenotazione-telefonica";
 import { registraEventoChiamata } from "@/server/chiamate";
 
@@ -20,11 +32,15 @@ const PREFISSO = "test-pren-tel-";
 
 const url = process.env.DATABASE_URL ?? "";
 if (!/dev|test/i.test(url)) {
-  throw new Error("Questi test scrivono sul database: DATABASE_URL deve contenere 'dev' o 'test'.");
+  throw new Error(
+    "Questi test scrivono sul database: DATABASE_URL deve contenere 'dev' o 'test'.",
+  );
 }
 
 const coppia = generateKeyPairSync("ed25519");
-const PUBBLICA = coppia.publicKey.export({ format: "der", type: "spki" }).toString("base64");
+const PUBBLICA = coppia.publicKey
+  .export({ format: "der", type: "spki" })
+  .toString("base64");
 const originale = process.env.CENTRALINO_CHIAVE_PUBBLICA;
 
 let venueId = "";
@@ -32,9 +48,11 @@ let ospiteId = "";
 
 function licenza(venue: string): string {
   const contenuto: ContenutoLicenza = { v: 1, l: venue, n: "Prova" };
-  const firma = sign(null, Buffer.from(testoDaFirmare(contenuto), "utf8"), coppia.privateKey).toString(
-    "base64url",
-  );
+  const firma = sign(
+    null,
+    Buffer.from(testoDaFirmare(contenuto), "utf8"),
+    coppia.privateKey,
+  ).toString("base64url");
   return componiLicenza(contenuto, firma);
 }
 
@@ -48,7 +66,9 @@ function domaniAlle20(): Date {
 
 beforeAll(async () => {
   const unico = `${PREFISSO}${Date.now()}`;
-  const org = await db.organization.create({ data: { name: unico, slug: unico } });
+  const org = await db.organization.create({
+    data: { name: unico, slug: unico },
+  });
   const v = await db.venue.create({
     data: {
       orgId: org.id,
@@ -60,7 +80,10 @@ beforeAll(async () => {
     },
   });
   venueId = v.id;
-  await db.venue.update({ where: { id: venueId }, data: { phoneLicenseKey: licenza(venueId) } });
+  await db.venue.update({
+    where: { id: venueId },
+    data: { phoneLicenseKey: licenza(venueId) },
+  });
 
   /*
     Il locale ha degli orari, e non è un dettaglio del preparativo.
@@ -86,11 +109,18 @@ beforeAll(async () => {
 
   const room = await db.room.create({ data: { venueId, name: "Sala" } });
   for (const label of ["T1", "T2", "T3"]) {
-    await db.table.create({ data: { venueId, roomId: room.id, label, seats: 4 } });
+    await db.table.create({
+      data: { venueId, roomId: room.id, label, seats: 4 },
+    });
   }
 
   const g = await db.guest.create({
-    data: { venueId, firstName: "Giulia", lastName: "Abituale", phone: "+39 333 7654321" },
+    data: {
+      venueId,
+      firstName: "Giulia",
+      lastName: "Abituale",
+      phone: "+39 333 7654321",
+    },
   });
   ospiteId = g.id;
 }, 60_000);
@@ -107,7 +137,9 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await db.organization.deleteMany({ where: { slug: { startsWith: PREFISSO } } });
+  await db.organization.deleteMany({
+    where: { slug: { startsWith: PREFISSO } },
+  });
   await db.$disconnect();
 }, 60_000);
 
@@ -124,7 +156,12 @@ describe("una prenotazione dal risponditore", () => {
     });
     const b = await db.booking.findUniqueOrThrow({ where: { id: esito.id } });
     expect(b.status).toBe("PENDING");
-    expect(b.source).toBe("PHONE");
+    /* `VOICE` e non `PHONE`, da quando la fonte esiste: `PHONE` significa «ha
+       risposto una persona che ha parlato col cliente» — e per questo si
+       autoconferma. Questa l'ha raccolta una macchina, a tasti. Le due cose
+       stavano sotto la stessa etichetta, e il ristoratore non poteva sapere
+       quante gliene prende il risponditore. */
+    expect(b.source).toBe("VOICE");
   });
 
   it("riconosce l'ospite dal numero, come fa il telefono", async () => {
@@ -229,7 +266,9 @@ describe("il collegamento con la chiamata", () => {
       phone: "+393337654321",
     });
 
-    const chiamata = await db.phoneCall.findFirstOrThrow({ where: { venueId, externalId: "c-1" } });
+    const chiamata = await db.phoneCall.findFirstOrThrow({
+      where: { venueId, externalId: "c-1" },
+    });
     expect(chiamata.bookingId).toBe(esito.id);
   });
 
@@ -254,7 +293,8 @@ describe("il collegamento con la chiamata", () => {
 
 describe("dare un nome a un numero", () => {
   it("crea il contatto e attacca la chiamata", async () => {
-    const { registraEventoChiamata: registra } = await import("@/server/chiamate");
+    const { registraEventoChiamata: registra } =
+      await import("@/server/chiamate");
     const { collegaChiamataAContatto } = await import("@/server/chiamate");
     const evento = await registra(venueId, {
       externalId: "nome-1",
@@ -268,10 +308,14 @@ describe("dare un nome a un numero", () => {
     });
     expect(esito.giaConosciuto).toBe(false);
 
-    const chiamata = await db.phoneCall.findUniqueOrThrow({ where: { id: evento.id } });
+    const chiamata = await db.phoneCall.findUniqueOrThrow({
+      where: { id: evento.id },
+    });
     expect(chiamata.guestId).toBe(esito.guestId);
 
-    const g = await db.guest.findUniqueOrThrow({ where: { id: esito.guestId } });
+    const g = await db.guest.findUniqueOrThrow({
+      where: { id: esito.guestId },
+    });
     expect(g.firstName).toBe("Elena");
     expect(g.phone).toBe("+393401112233");
   });
@@ -280,9 +324,8 @@ describe("dare un nome a un numero", () => {
     /* Passa da `trovaOCreaOspite`: se quel numero è già di una scheda — anche
        scritto in un'altra forma — si attacca a quella. Senza, chi dà un nome a
        un numero già noto creerebbe la seconda copia della stessa persona. */
-    const { registraEventoChiamata: registra, collegaChiamataAContatto } = await import(
-      "@/server/chiamate"
-    );
+    const { registraEventoChiamata: registra, collegaChiamataAContatto } =
+      await import("@/server/chiamate");
     const evento = await registra(venueId, {
       externalId: "nome-2",
       phone: "333 7654321", // lo stesso di Giulia, scritto diverso
@@ -290,7 +333,9 @@ describe("dare un nome a un numero", () => {
     });
     const prima = await db.guest.count({ where: { venueId } });
 
-    const esito = await collegaChiamataAContatto(venueId, evento.id, { firstName: "Qualcuno" });
+    const esito = await collegaChiamataAContatto(venueId, evento.id, {
+      firstName: "Qualcuno",
+    });
     expect(esito.giaConosciuto).toBe(true);
     expect(esito.guestId).toBe(ospiteId);
     expect(await db.guest.count({ where: { venueId } })).toBe(prima);
@@ -299,13 +344,22 @@ describe("dare un nome a un numero", () => {
   it("attacca anche le altre chiamate dello stesso numero", async () => {
     /* Sono della stessa persona: lasciare le altre «non riconosciute»
        vorrebbe dire ridare il nome per ogni riga. */
-    const { registraEventoChiamata: registra, collegaChiamataAContatto } = await import(
-      "@/server/chiamate"
-    );
-    const a = await registra(venueId, { externalId: "nome-3a", phone: "+393405556677", stato: "MISSED" });
-    const b = await registra(venueId, { externalId: "nome-3b", phone: "340 555 6677", stato: "MISSED" });
+    const { registraEventoChiamata: registra, collegaChiamataAContatto } =
+      await import("@/server/chiamate");
+    const a = await registra(venueId, {
+      externalId: "nome-3a",
+      phone: "+393405556677",
+      stato: "MISSED",
+    });
+    const b = await registra(venueId, {
+      externalId: "nome-3b",
+      phone: "340 555 6677",
+      stato: "MISSED",
+    });
 
-    const esito = await collegaChiamataAContatto(venueId, a.id, { firstName: "Paolo" });
+    const esito = await collegaChiamataAContatto(venueId, a.id, {
+      firstName: "Paolo",
+    });
 
     const altra = await db.phoneCall.findUniqueOrThrow({ where: { id: b.id } });
     expect(altra.guestId).toBe(esito.guestId);
@@ -323,10 +377,13 @@ describe("le telefonate sulla scheda del cliente", () => {
   it("si leggono dalla relazione, non dal numero", async () => {
     /* Se domani quella scheda cambia numero, queste restano le sue chiamate:
        sono quelle che le erano state attribuite quando sono arrivate. */
-    const { registraEventoChiamata: registra, chiamateDiOspite } = await import(
-      "@/server/chiamate"
-    );
-    await registra(venueId, { externalId: "sched-1", phone: "+393337654321", stato: "MISSED" });
+    const { registraEventoChiamata: registra, chiamateDiOspite } =
+      await import("@/server/chiamate");
+    await registra(venueId, {
+      externalId: "sched-1",
+      phone: "+393337654321",
+      stato: "MISSED",
+    });
     const elenco = await chiamateDiOspite(venueId, ospiteId);
     expect(elenco.length).toBeGreaterThan(0);
     expect(elenco[0]?.stato).toBe("MISSED");

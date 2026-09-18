@@ -518,6 +518,14 @@ export type ChiamataDiOspite = {
   durataSecondi: number | null;
   /** La prenotazione nata da quella chiamata, se ne è nata una. */
   prenotazione: { id: string; startsAt: Date; partySize: number } | null;
+  /**
+   * Com'è finita quella telefonata.
+   *
+   * Sulla scheda di un cliente è l'informazione che cambia il senso
+   * dell'elenco: «ha chiamato quattro volte» non dice niente, «ha chiamato
+   * quattro volte, tre per informazioni e una per prenotare» è un rapporto.
+   */
+  esito: EsitoChiamata | null;
 };
 
 /**
@@ -548,6 +556,7 @@ export async function chiamateDiOspite(
       answeredAt: true,
       endedAt: true,
       status: true,
+      outcome: true,
       booking: { select: { id: true, startsAt: true, partySize: true } },
     },
   });
@@ -564,6 +573,7 @@ export async function chiamateDiOspite(
           )
         : null,
     prenotazione: r.booking,
+    esito: (r.outcome as EsitoChiamata | null) ?? null,
   }));
 }
 

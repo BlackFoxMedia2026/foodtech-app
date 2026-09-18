@@ -1076,6 +1076,28 @@ model AutomationWorkflow {
   @@index([venueId, trigger, active])
 }
 
+/// SUPERATA — non usarla.
+///
+/// Undici categorie di evento, in tabella dal primo giorno, **mai scritte e
+/// mai lette da nessuna riga di codice**. La quarta tabella morta trovata in
+/// questo prodotto: le prime tre erano del telefono (vedi `CallLog`,
+/// `MissedCall`, `VoiceBookingDraft`).
+///
+/// Il piano della fase 6 di Tavolo Voice diceva di accenderla. Guardando cosa
+/// ci sarebbe finito dentro, si e visto che **ogni evento ha gia la sua
+/// casa**: com'e nata sta sulla riga (`createdAt` + `source`), la telefonata
+/// da cui e nata in `PhoneCall.bookingId`, i messaggi in `MessageLog`
+/// (con l'esito), chi ha cambiato cosa in `AuditLog` con la differenza —
+/// compreso il cliente che conferma dal suo link, con attore «guest».
+///
+/// Accenderla voleva dire scrivere una seconda copia di quello che c'e, e in
+/// questo prodotto «due posti che dicono la stessa cosa sono un posto in cui
+/// uno dei due invecchia» e una regola scritta. La storia di una prenotazione
+/// si legge dai fatti: `src/server/storia-prenotazione.ts`.
+///
+/// Non si cancella perche cancellare una tabella e l'unico passo che non si
+/// torna indietro, e perche il giorno in cui servisse un evento che **non** ha
+/// una casa altrove, questa e il posto dove metterlo.
 model BookingEvent {
   id        String           @id @default(cuid())
   bookingId String

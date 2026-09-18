@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Phone, PhoneMissed } from "lucide-react";
 import type { ChiamataDiOspite } from "@/server/chiamate";
+import { NOME_ESITO } from "@/lib/voice-esiti";
 
 /**
  * Le telefonate di questa persona, sulla sua scheda.
@@ -81,13 +82,25 @@ export function TelefonateOspite({
                   : (durata(c.durataSecondi) ??
                     (c.stato === "RINGING" ? "sta chiamando" : "risposta"))}
               </span>
-              {c.prenotazione && (
+              {c.prenotazione ? (
                 <Link
                   href={`/bookings/${c.prenotazione.id}`}
                   className="t-nota underline underline-offset-2 hover:text-foreground"
                 >
                   ne è nata una prenotazione
                 </Link>
+              ) : (
+                /* L'esito solo quando **non** c'è la prenotazione: quando c'è,
+                   il collegamento dice già la stessa cosa e meglio — ci si può
+                   anche cliccare. Due righe che dicono «prenotazione presa»
+                   una accanto all'altra sono rumore. E niente esito sulle
+                   perse: «nessuna risposta» è già scritto due parole prima. */
+                c.esito &&
+                !persa && (
+                  <span className="t-nota">
+                    {NOME_ESITO[c.esito].toLowerCase()}
+                  </span>
+                )
               )}
             </li>
           );
