@@ -49,6 +49,8 @@ import type { CapacitaVoice } from "@/lib/voice-capacita";
 
 type Stato =
   | { tipo: "spento" }
+  /** Il permesso del microfono è bloccato: si dice, e si dà da premere. */
+  | { tipo: "microfono" }
   | { tipo: "collego" }
   | { tipo: "pronto" }
   | { tipo: "squilla"; da: string | null }
@@ -93,6 +95,17 @@ export function TelefonoBrowser({
 }) {
   const [stato, setStato] = useState<Stato>({ tipo: "spento" });
   const [muto, setMuto] = useState(false);
+  /**
+   * Com'è il permesso del microfono, **senza chiederlo**.
+   *
+   * `navigator.permissions` risponde senza far comparire niente: serve a
+   * distinguere «bloccato» — che va detto, perché solo l'utente può
+   * sbloccarlo dalle impostazioni del browser — da «non ancora chiesto», che
+   * non è un problema: si chiede rispondendo.
+   */
+  const [permesso, setPermesso] = useState<
+    "granted" | "denied" | "prompt" | "sconosciuto"
+  >("sconosciuto");
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const uaRef = useRef<{ stop: () => Promise<void> } | null>(null);
@@ -114,6 +127,32 @@ export function TelefonoBrowser({
        una risposta automatica non ci sarebbe, e un `catch` muto è meglio di
        un errore non gestito che ferma il resto. */
     void audio.play().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let vivo = true;
+    let stato: PermissionStatus | null = null;
+
+    void navigator.permissions
+      ?.query({ name: "microphone" as PermissionName })
+      .then((p) => {
+        if (!vivo) return;
+        stato = p;
+        setPermesso(p.state);
+        /* Cambia mentre la pagina è aperta: uno che concede il permesso dalle
+           impostazioni del browser non deve ricaricare per vederlo. */
+        p.onchange = () => setPermesso(p.state);
+      })
+      .catch(() => {
+        /* Firefox non espone «microphone» a `permissions.query`: non è un
+           guasto, è un'informazione che non abbiamo — e allora non si dice
+           niente e si chiede al momento di rispondere. */
+      });
+
+    return () => {
+      vivo = false;
+      if (stato) stato.onchange = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -143,25 +182,27 @@ export function TelefonoBrowser({
         uri: string;
       };
 
-      /* Il microfono si chiede **prima** di registrarsi: se si chiedesse alla
-         prima chiamata, la finestra del permesso comparirebbe mentre il
-         telefono squilla, e la chiamata si perderebbe mentre si legge. */
-      try {
-        const flusso = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        // Si chiude subito: serviva solo il permesso. sip.js riaprirà il suo.
-        for (const t of flusso.getTracks()) t.stop();
-      } catch {
-        if (!vivo) return;
-        setStato({
-          tipo: "guasto",
-          perche:
-            "Il browser non ha il permesso di usare il microfono. Senza microfono non si può rispondere.",
-        });
-        return;
-      }
+      /*
+        **Il microfono non si chiede qui**, e la prima versione lo faceva.
 
+        Chiedeva `getUserMedia` al caricamento, per non far comparire la
+        finestra del permesso mentre il telefono squilla. Il ragionamento era
+        giusto quando questo riquadro viveva sulla pagina del Telefono — una
+        pagina che si apre di proposito. Da quando sta nel guscio, quella
+        richiesta parte a **ogni caricamento di ogni pagina**, senza che
+        nessuno abbia toccato niente: Chrome tratta male le richieste che non
+        seguono un gesto, e dopo uno scarto — o una richiesta partita mentre la
+        scheda non era a fuoco — blocca in silenzio e non chiede più. Il
+        risultato è quello che ha visto Luca: «Non collegato, manca il
+        permesso» e **nessuna finestra** da cui concederlo. Su miocentralino
+        funzionava perché lì il softphone sta su una pagina sua.
+
+        Adesso: la registrazione non ha bisogno del microfono e parte senza
+        toccarlo. Il permesso si chiede **quando si premono «Rispondi»** — un
+        gesto vero, e la finestra compare — oppure in anticipo dal passo 4
+        della procedura, con un pulsante. Chi segue la procedura non incontra
+        la finestra durante una telefonata.
+      */
       const { UserAgent, Registerer, RegistererState } = await import("sip.js");
       if (!vivo) return;
 
@@ -242,9 +283,42 @@ export function TelefonoBrowser({
     };
   }, []);
 
+  /**
+   * Chiede il microfono. Restituisce `false` se non l'abbiamo.
+   *
+   * Si chiama da un gesto — «Rispondi», o il pulsante della procedura — perché
+   * è l'unico modo in cui la finestra del permesso compare in modo
+   * affidabile. Il flusso si chiude subito: serviva il permesso, e sip.js
+   * aprirà il suo.
+   */
+  const chiediMicrofono = useCallback(async (): Promise<boolean> => {
+    try {
+      const flusso = await navigator.mediaDevices.getUserMedia({ audio: true });
+      for (const t of flusso.getTracks()) t.stop();
+      setPermesso("granted");
+      return true;
+    } catch {
+      setPermesso("denied");
+      setStato((p) =>
+        p.tipo === "squilla" || p.tipo === "in-chiamata"
+          ? p
+          : {
+              tipo: "guasto",
+              perche:
+                "Il browser non ha il permesso di usare il microfono. Senza microfono non si può rispondere.",
+            },
+      );
+      return false;
+    }
+  }, []);
+
   async function rispondi() {
     const s = sessioneRef.current;
     if (!s) return;
+    /* Il permesso si chiede **adesso**, con il dito ancora sul pulsante: è
+       quello che fa comparire la finestra. Se si dice no, la chiamata resta
+       che squilla — non si rifiuta per conto di nessuno. */
+    if (permesso !== "granted" && !(await chiediMicrofono())) return;
     await s.accept();
     collegaAudio(s);
     setStato((p) => ({
@@ -282,8 +356,14 @@ export function TelefonoBrowser({
      audio resta nel DOM: creato al volo in JavaScript viene bloccato più
      spesso dalle politiche di riproduzione automatica, e senza di lui la
      prima chiamata risponde muta. */
+  /* Il microfono bloccato si vede **anche da fermi**: è l'unico guasto che
+     rompe la risposta prima che il telefono squilli, e scoprirlo con una
+     persona in linea è troppo tardi. Sparisce nel momento in cui si concede
+     il permesso. */
+  const microfonoBloccato = permesso === "denied";
   const zitto =
     discreto &&
+    !microfonoBloccato &&
     (stato.tipo === "spento" ||
       stato.tipo === "collego" ||
       stato.tipo === "pronto");
@@ -297,9 +377,28 @@ export function TelefonoBrowser({
           riproduzione automatica. */}
       <audio ref={audioRef} className="hidden" />
 
-      <Indicatore stato={stato} />
+      <Indicatore stato={microfonoBloccato ? { tipo: "microfono" } : stato} />
 
       <div className="ml-auto flex flex-wrap items-center gap-2">
+        {/* Il permesso si concede **da qui**, con un clic.
+        
+            Prima la riga diceva soltanto «manca il permesso», e chi la leggeva
+            non aveva niente da premere: la richiesta del browser era già stata
+            bloccata in silenzio, e l'unica strada era le impostazioni di
+            Chrome. Un cliente non ci va, e ha ragione. Questo pulsante è un
+            gesto, ed è l'unica cosa che fa ricomparire la finestra. */}
+        {microfonoBloccato && (
+          <>
+            <Button variant="accent" size="sm" onClick={chiediMicrofono}>
+              <Mic className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              Attiva il microfono
+            </Button>
+            <span className="t-nota max-w-[18rem]">
+              Se non compare la richiesta: clicca l&apos;icona a sinistra
+              dell&apos;indirizzo → Microfono → Consenti.
+            </span>
+          </>
+        )}
         {stato.tipo === "squilla" && (
           <>
             <Button variant="accent" size="sm" onClick={rispondi}>
@@ -357,6 +456,16 @@ export function TelefonoBrowser({
 
 function Indicatore({ stato }: { stato: Stato }) {
   switch (stato.tipo) {
+    case "microfono":
+      return (
+        <span className="flex min-w-0 items-center gap-2">
+          <Badge tone="warning" className="gap-1">
+            <MicOff className="h-3 w-3" aria-hidden="true" />
+            Microfono spento
+          </Badge>
+          <span className="t-nota">Senza microfono non si può rispondere.</span>
+        </span>
+      );
     case "spento":
     case "collego":
       return <span className="t-nota">Collego il telefono…</span>;

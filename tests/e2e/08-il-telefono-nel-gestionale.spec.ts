@@ -191,3 +191,62 @@ test("collegare il telefono è una procedura a passi, e si riprende da dove si e
     });
   }
 });
+
+test("il microfono si concede dalla procedura, non da un menu di Chrome", async ({
+  page,
+  context,
+}) => {
+  /**
+   * Il difetto, trovato usandolo: il telefono chiedeva il microfono **al
+   * caricamento della pagina**. Da quando sta nel guscio quella richiesta
+   * parte su ogni schermata senza che nessuno abbia toccato niente, Chrome la
+   * blocca in silenzio, e resta la riga «manca il permesso» **senza niente da
+   * premere**: l'unica strada erano le impostazioni del browser, dove un
+   * ristoratore non va.
+   *
+   * Qui si verifica che il permesso si possa concedere **dalla procedura**, e
+   * che quando è concesso la riga lo dica.
+   */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+      phoneSipServer: "wss://esempio.invalido:8089/ws",
+      phoneSipUser: "wrtc-prova",
+      phoneSipPassword: "non-vera",
+    },
+  });
+
+  try {
+    /* Il permesso **negato**: è lo stato in cui si era trovato Luca, e quello
+       in cui la vecchia riga non dava niente da fare. */
+    await context.clearPermissions();
+    await page.goto("/settings/telefono/collega");
+    await expect(
+      page.getByRole("button", { name: /Consenti il microfono/ }),
+    ).toBeVisible({ timeout: 30_000 });
+
+    /* Concesso: la riga cambia da sé — `permissions.query` avvisa senza
+       ricaricare, che è la differenza fra «riprova» e «ricarica la pagina». */
+    await context.grantPermissions(["microphone"]);
+    await expect(page.getByText("Microfono consentito")).toBeVisible({
+      timeout: 15_000,
+    });
+  } finally {
+    await db.venue.update({
+      where: { id: locale.id },
+      data: {
+        phoneLicenseKey: null,
+        phoneLicenseActivatedAt: null,
+        phoneSipServer: null,
+        phoneSipUser: null,
+        phoneSipPassword: null,
+      },
+    });
+  }
+});
