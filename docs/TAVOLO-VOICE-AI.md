@@ -23,6 +23,33 @@ esterno per tutto il resto. Voice gli ha aggiunto **quattro strumenti**:
 | `crea_richiamata` | anteprima di una richiamata in coda | `use_phone` |
 | `cosa_rispondo` | legge le risposte scritte dal locale | `use_phone` |
 
+### Le informazioni che emergono in chiamata
+
+`VoiceCRMInsight`: «mia moglie è celiaca», «il tavolo in fondo», «chiamo per
+mio padre, 88 anni». Le tre frasi che cambiano una cena, dette al telefono a
+chi risponde — e che non arrivavano **mai** nella scheda del cliente, perché
+per scriverle bisognava uscire dalla chiamata, cercare la scheda, aprire il
+campo giusto.
+
+Si scrivono in due tocchi dallo storico del telefono e diventano una
+**proposta**. Nella scheda entrano solo dopo un secondo gesto, e quel gesto
+chiede `manage_bookings` — la stessa capacità con cui si modifica una scheda a
+mano. Proporre basta `use_phone`.
+
+| Tipo | Dove finisce, approvato |
+|---|---|
+| allergia | fra le allergie: si legge in sala, su ogni cena |
+| preferenza | fra le preferenze (`preferences.note`) |
+| nota | nelle note interne |
+
+Si **accoda**, non si sostituisce: approvare «lattosio» non fa sparire
+«arachidi», e la stessa frase due volte non si scrive due volte.
+
+È la regola del brief resa struttura: *niente si scrive nel profilo di un
+ospite senza approvazione umana*. Vale oggi — un nome frainteso, una nota sulla
+scheda sbagliata — e varrà di più il giorno in cui le proporrà un risponditore
+che ha *sentito* «celiaca» in una frase in cui c'era «celiaco mio cognato».
+
 ### Le risposte pronte (base di conoscenza)
 
 `VoiceKnowledgeItem`: le dieci domande di ogni sera — cani, parcheggio,
@@ -42,6 +69,26 @@ di conoscenza che leggerà. Quello che il locale scrive adesso non si riscrive.
 ---
 
 ## 2. Cosa richiede un fornitore (REQUIRES PROVIDER)
+
+**La registrazione e la trascrizione.** `capacita.registrazione` e
+`capacita.trascrizione` sono `false`: il fornitore non consegna nessun file
+audio e nessun testo. Quindi `PhoneCallRecording` e `PhoneCallTranscript`
+restano **vuote**, e non è stata costruita nessuna schermata per ascoltare o
+rileggere niente — né un interruttore «registra le chiamate» che non
+registrerebbe.
+
+Le colonne del consenso e della conservazione in `VoiceConfiguration`
+(`registrazioniAttive`, `registrazioniConsenso`, i giorni di conservazione)
+sono scritte per quel giorno e **nessuna schermata le tocca**: un consenso alla
+registrazione raccolto per una registrazione che non avviene è la peggiore
+delle promesse — e sarebbe anche il pezzo di questo prodotto con le
+conseguenze legali più serie.
+
+Quello che **esiste già** e non ha bisogno di audio è il pezzo che conta: le
+informazioni che emergono in chiamata, scritte da chi risponde e approvate a
+mano (qui sopra). Il giorno in cui arriveranno un audio e una trascrizione, la
+strada per portarle nella scheda di un cliente sarà la stessa — una proposta
+che qualcuno guarda.
 
 **Il risponditore che parla.** `capacita.ai` è `false` per Black Fox Voice, e
 non c'è nessun altro fornitore configurato. Significa che non esiste modo di:

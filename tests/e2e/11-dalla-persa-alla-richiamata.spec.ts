@@ -575,3 +575,111 @@ test("la risposta al telefono si scrive una volta e si trova mentre si parla", a
     });
   }
 });
+
+test("quello che si scopre al telefono entra nella scheda solo se qualcuno approva", async ({
+  page,
+  request,
+}) => {
+  /**
+   * «Mia moglie è celiaca», detto al telefono. Prima si perdeva: per scriverlo
+   * bisognava uscire dalla chiamata, cercare la scheda, aprire il campo
+   * giusto.
+   *
+   * Qui si scrive in due tocchi e **non entra nella scheda** finché qualcuno
+   * non guarda. È la regola del brief resa struttura: niente si scrive nel
+   * profilo di un ospite senza approvazione umana.
+   */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+    },
+  });
+
+  const nome = unico("Celiaca");
+  const numero = "3478877996";
+  const ospite = await db.guest.create({
+    data: {
+      venueId: locale.id,
+      firstName: nome,
+      lastName: "AlTelefono",
+      phone: numero,
+    },
+  });
+  const token = await emettiApiToken(locale.id, {
+    nome: "Centralino (insight)",
+    ambiti: ["telefonia:read", "telefonia:write"],
+  });
+  const chiamata = unico("call");
+
+  try {
+    for (const stato of ["RINGING", "ANSWERED", "ENDED"]) {
+      const r = await request.post("/api/v1/telefonia/chiamata", {
+        headers: { authorization: `Bearer ${token.token}` },
+        data: { id: chiamata, phone: `+39${numero}`, stato },
+      });
+      expect(r.ok()).toBe(true);
+    }
+
+    /* --- 1. Si scrive dallo storico, appena riattaccato ----------------- */
+    await page.goto("/telefono");
+    const storico = page.getByRole("region", { name: "Storico" });
+    await storico
+      .getByRole("button", { name: /Nota sul cliente/ })
+      .first()
+      .click();
+    await storico
+      .getByRole("button", { name: "Allergia o intolleranza" })
+      .click();
+    await storico.getByRole("textbox", { name: /Allergia/ }).fill("celiaca");
+    await storico.getByRole("button", { name: "Proponi" }).click();
+
+    /* --- 2. Nella scheda non c'è niente -------------------------------- */
+    await expect(
+      page.getByRole("region", { name: "Da approvare" }),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
+    expect(
+      (
+        await db.guest.findUniqueOrThrow({
+          where: { id: ospite.id },
+          select: { allergies: true },
+        })
+      ).allergies,
+    ).toBeNull();
+
+    /* --- 3. Approvata, entra ------------------------------------------- */
+    const daApprovare = page.getByRole("region", { name: "Da approvare" });
+    await expect(daApprovare.getByText(/Andrà fra le allergie/)).toBeVisible();
+    await daApprovare.getByRole("button", { name: "Approva" }).click();
+    await expect(
+      page.getByRole("region", { name: "Da approvare" }),
+    ).toHaveCount(0, {
+      timeout: 15_000,
+    });
+
+    const dopo = await db.guest.findUniqueOrThrow({
+      where: { id: ospite.id },
+      select: { allergies: true },
+    });
+    expect(dopo.allergies).toBe("celiaca");
+  } finally {
+    await db.voiceCRMInsight.deleteMany({ where: { venueId: locale.id } });
+    await db.phoneCallEvent.deleteMany({
+      where: { call: { venueId: locale.id } },
+    });
+    await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
+    await db.guest.delete({ where: { id: ospite.id } }).catch(() => {});
+    await db.apiToken.deleteMany({ where: { venueId: locale.id } });
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+  }
+});
