@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { z } from "zod";
 
-import { getOrCreateConversation, startNewConversation, getConversation, listMessages } from "@/server/ai/conversation";
+import {
+  getOrCreateConversation,
+  startNewConversation,
+  getConversation,
+  listMessages,
+} from "@/server/ai/conversation";
 import { runAgentTurn } from "@/server/ai/agent-service";
 import { getUsage } from "@/server/ai/usage-service";
 import type { AgentContext } from "@/server/ai/types";
@@ -11,7 +16,10 @@ export async function GET() {
   const ctx = await requireVenueApi();
   if (!ctx.ok) return ctx.response;
   const conversation = await getOrCreateConversation(ctx.venueId, ctx.userId);
-  const [messages, usage] = await Promise.all([listMessages(conversation.id), getUsage(ctx.venueId)]);
+  const [messages, usage] = await Promise.all([
+    listMessages(conversation.id),
+    getUsage(ctx.venueId),
+  ]);
   return NextResponse.json({
     conversationId: conversation.id,
     messages: messages.map((m) => ({
@@ -59,13 +67,17 @@ export async function POST(req: NextRequest) {
       : await getOrCreateConversation(ctx.venueId, ctx.userId);
 
   if (!conversation) {
-    return NextResponse.json({ error: "conversation_not_found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "conversation_not_found" },
+      { status: 404 },
+    );
   }
 
   const agentCtx: AgentContext = {
     venueId: ctx.venueId,
     venueName: ctx.venue.name,
     venueTimezone: ctx.venue.timezone,
+    orgId: ctx.orgId,
     role: ctx.role,
     userId: ctx.userId,
     page: body.page,
@@ -75,12 +87,18 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const event of runAgentTurn(agentCtx, conversation.id, body.text)) {
+        for await (const event of runAgentTurn(
+          agentCtx,
+          conversation.id,
+          body.text,
+        )) {
           controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
         }
       } catch {
         controller.enqueue(
-          encoder.encode(`${JSON.stringify({ type: "done", message: null, usage: null, error: "internal_error" })}\n`),
+          encoder.encode(
+            `${JSON.stringify({ type: "done", message: null, usage: null, error: "internal_error" })}\n`,
+          ),
         );
       } finally {
         controller.close();
@@ -89,6 +107,9 @@ export async function POST(req: NextRequest) {
   });
 
   return new Response(stream, {
-    headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" },
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
   });
 }

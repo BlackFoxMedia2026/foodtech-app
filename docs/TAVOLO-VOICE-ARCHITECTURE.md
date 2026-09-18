@@ -303,7 +303,19 @@ build, e la sonda di leggibilità quando la fase tocca l'interfaccia.
 Le fasi 1–5 sono fatte: schema (#135), fornitore e capacità (#136), pannello
 globale della chiamata (#137), esiti e coda delle richiamate (#138), recupero
 delle chiamate perse e notifiche (#139), la storia di una prenotazione (#140), i permessi del telefono e lo stato del
-fornitore (#141), i numeri del telefono nelle analitiche (#142).
+fornitore (#141), i numeri del telefono nelle analitiche (#142), gli strumenti di scrittura
+dell'assistente (#143).
+
+**Fase 9, quello che è cambiato rispetto al piano.** Gli strumenti di scrittura
+sono tre e non sei — `prenota`, `metti_in_attesa`, `crea_richiamata` — perché
+sono i tre che hanno una schermata dietro di cui copiare il permesso e un caso
+d'uso al telefono. `update_booking`, `cancel_booking` e `transfer_to_human`
+arrivano con il risponditore (fase 10), dove servono.
+
+E la regola 2 è implementata nel verso **raggiungibile**: il controllo si rifà
+al momento della scrittura e quello che è cambiato in mezzo si **dice**, invece
+di rifiutare. La prima versione rifiutava sui conflitti di tavolo — codice che
+non poteva scattare, perché l'anteprima non propone un tavolo.
 
 **Panoramica, nella fase 8: niente.** Il piano diceva «Servizio + Panoramica +
 analitiche». Servizio ce l'ha dalla fase 3 (le due righe che chiedono un
