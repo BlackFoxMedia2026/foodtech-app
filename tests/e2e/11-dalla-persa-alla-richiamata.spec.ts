@@ -430,3 +430,88 @@ test("la prenotazione nata da una telefonata racconta da dove viene", async ({
     });
   }
 });
+
+test("nelle analitiche il telefono dice a che ora squilla e quante prenotano", async ({
+  page,
+}) => {
+  /**
+   * La domanda che nessuna schermata sapeva: **a che ora squilla il telefono,
+   * e in quelle ore c'è qualcuno che risponde?** Un locale che perde tre
+   * chiamate fra le 20 e le 21 non ha un problema di telefono: ha una persona
+   * in meno in quella fascia.
+   *
+   * Il pannello vive dietro la funzione `statistiche` della licenza, e sta in
+   * «Domanda e ospiti» — una telefonata è domanda che arriva da un altro
+   * canale.
+   */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+
+  const adesso = new Date();
+  /* Tre chiamate nello stesso momento della giornata, oggi: due perse e una
+     che ha prodotto una prenotazione. Con due perse nella stessa ora il
+     consiglio compare — con una sola no, di proposito. */
+  const quando = new Date(adesso.getTime() - 60 * 60 * 1000);
+
+  try {
+    await db.venue.update({
+      where: { id: locale.id },
+      data: {
+        phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+        phoneLicenseActivatedAt: new Date(),
+      },
+    });
+
+    for (const stato of ["MISSED", "MISSED", "ENDED"] as const) {
+      await db.phoneCall.create({
+        data: {
+          venueId: locale.id,
+          externalId: unico("stat"),
+          fromNumber: "+393478877995",
+          status: stato,
+          startedAt: quando,
+          endedAt: quando,
+          outcome: stato === "MISSED" ? "MISSED" : "INFORMATION",
+        },
+      });
+    }
+
+    await page.goto("/insights?vista=domanda&range=last7");
+    await expect(
+      page.getByRole("heading", { name: "Il telefono" }),
+    ).toBeVisible({
+      timeout: 30_000,
+    });
+    // I tre numeri, e la frase che ammette quello che non si sa.
+    await expect(
+      page.getByText(/3 chiamate negli ultimi 7 giorni/),
+    ).toBeVisible();
+    await expect(page.getByText(/senza risposta/).first()).toBeVisible();
+    // Il consiglio sull'ora: due perse nella stessa fascia.
+    await expect(page.getByText(/se ne perdono/)).toBeVisible();
+
+    /* E senza licenza il pannello non c'è: non è una funzione che si mostra
+       spenta, è una funzione che quel locale non ha comprato. */
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+    await page.goto("/insights?vista=domanda&range=last7");
+    await expect(
+      page.getByRole("heading", { name: "Fonti di prenotazione" }),
+    ).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      page.getByRole("heading", { name: "Il telefono" }),
+    ).toHaveCount(0);
+  } finally {
+    await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+  }
+});
