@@ -76,20 +76,35 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
       _max: { updatedAt: true },
     }),
     /*
-      Il telefono che squilla.
+      Il telefono.
 
       È il pezzo con la scadenza più corta di tutti: una chiamata dura venti
       secondi, e cinque secondi di ritardo sono un quarto della sua vita. Senza
       questo, il riquadro comparirebbe solo quando si muove qualcos'altro in
       sala — cioè, in un locale tranquillo, mai.
 
-      Indice: [venueId, status, startedAt].
+      **Niente filtro sullo stato**, ed è la correzione che conta. Prima si
+      guardavano solo le chiamate in `RINGING`/`ANSWERED`: così la firma vedeva
+      la chiamata comparire e non la vedeva finire. Quando il centralino manda
+      «nessuno ha risposto» la riga esce dal filtro; se nel frattempo era già
+      uscita anche per età, la firma non si muove di un carattere — e il
+      riquadro resta sullo schermo, fermo sui secondi dell'ultimo
+      aggiornamento, finché non cambia qualcos'altro in sala. Cioè, in un
+      locale tranquillo, per sempre.
+
+      Senza il filtro, `max(updatedAt)` si muove a **ogni** passaggio di stato,
+      che è esattamente quello che la firma deve dire.
+
+      La finestra è su `startedAt` e non su `updatedAt` per una ragione
+      pratica: `[venueId, startedAt]` è un indice che c'è già, e questa
+      domanda la fa ogni tablet ogni cinque secondi. Mezz'ora perché una
+      conversazione lunga deve poter finire e farsi vedere: con cinque minuti,
+      una telefonata di sei uscirebbe dalla finestra prima di concludersi.
     */
     db.phoneCall.aggregate({
       where: {
         venueId,
-        status: { in: ["RINGING", "ANSWERED"] },
-        startedAt: { gte: new Date(adesso.getTime() - 90_000) },
+        startedAt: { gte: new Date(adesso.getTime() - 30 * 60_000) },
       },
       _count: { _all: true },
       _max: { updatedAt: true },

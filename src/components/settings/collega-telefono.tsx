@@ -50,7 +50,16 @@ type Passo = {
   fatto: boolean;
   /** Il contenuto: il campo, il pulsante, il valore da copiare. */
   corpo: React.ReactNode;
-  facoltativo?: boolean;
+  /**
+   * Non entra nel conto dei passi, e la nota dice perché.
+   *
+   * Uno solo ce l'ha: rispondere dentro Tavolo. È **il modo** in cui questo
+   * prodotto vuole che si risponda — il centralino consegna le chiamate e non
+   * risponde più a niente — ma un locale che sceglie di rispondere
+   * dall'apparecchio non è un locale «incompleto», e contarlo come mancante
+   * gli lascerebbe addosso un «4 di 5» per sempre.
+   */
+  nota?: string;
 };
 
 export function CollegaTelefono({
@@ -334,7 +343,7 @@ export function CollegaTelefono({
       ),
     },
     {
-      numero: 4,
+      numero: 5,
       titolo: "Prova con una telefonata",
       cosa: "Chiama il numero del locale dal tuo cellulare: qui sotto deve comparire.",
       fatto: ultimaChiamata != null,
@@ -361,10 +370,10 @@ export function CollegaTelefono({
       ),
     },
     {
-      numero: 5,
-      titolo: "Rispondere dal browser",
-      cosa: "Serve solo se vuoi rispondere dentro Tavolo invece che dall'apparecchio. Te li mandiamo con la chiave.",
-      facoltativo: true,
+      numero: 4,
+      titolo: "Rispondi dentro Tavolo",
+      cosa: "Con questi dati il telefono squilla dentro Tavolo, su qualunque pagina, e si risponde da lì. Te li mandiamo insieme alla chiave.",
+      nota: "se rispondi dall'apparecchio, salta",
       fatto: sip.pronto,
       corpo: (
         <form onSubmit={salvaSip} className="space-y-3">
@@ -436,7 +445,11 @@ export function CollegaTelefono({
     },
   ];
 
-  const obbligatori = passi.filter((p) => !p.facoltativo);
+  /* L'ordine è quello in cui si fanno, e il conto salta quello che è una
+     scelta: rispondere dentro Tavolo o dall'apparecchio è una scelta del
+     locale, non un passo rimasto a metà. */
+  const inOrdine = [...passi].sort((a, b) => a.numero - b.numero);
+  const obbligatori = inOrdine.filter((p) => !p.nota);
   const fatti = obbligatori.filter((p) => p.fatto).length;
 
   return (
@@ -469,7 +482,7 @@ export function CollegaTelefono({
       </div>
 
       <ol className="space-y-3">
-        {passi.map((passo) => (
+        {inOrdine.map((passo) => (
           <li
             key={passo.numero}
             className={`riquadro p-4 ${passo.fatto ? "opacity-80" : ""}`}
@@ -488,9 +501,7 @@ export function CollegaTelefono({
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-baseline gap-2">
                   <span className="text-sm font-medium">{passo.titolo}</span>
-                  {passo.facoltativo && (
-                    <span className="t-nota">facoltativo</span>
-                  )}
+                  {passo.nota && <span className="t-nota">{passo.nota}</span>}
                 </p>
                 <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                   {passo.cosa}

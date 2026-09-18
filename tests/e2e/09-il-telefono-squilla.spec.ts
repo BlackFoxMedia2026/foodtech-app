@@ -285,3 +285,63 @@ test("il telefono squilla anche per chi non sta guardando la sala", async ({
     });
   }
 });
+
+test("si risponde da qualunque pagina: il telefono sta nel guscio", async ({
+  page,
+}) => {
+  /**
+   * La decisione di prodotto: **si risponde dentro Tavolo**. Il centralino
+   * consegna le chiamate e non risponde più a niente.
+   *
+   * Il telefono nel browser stava sulla pagina Telefono: chi guardava la carta
+   * vedeva squillare — il riquadro della chiamata è nel guscio dalla fase 3 —
+   * e per rispondere doveva cambiare pagina. Con una telefonata che dura venti
+   * secondi, quel cambio di pagina è la telefonata persa.
+   *
+   * Qui si verifica la cosa che un occhio non vede e che rompe tutto: che il
+   * telefono sia montato **una volta sola**. Due copie in pagina vorrebbero
+   * dire due registrazioni SIP con la stessa utenza, e la stessa chiamata che
+   * squilla due volte sullo stesso schermo.
+   */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+      /* I dati del telefono nel browser: senza, il componente non si monta —
+         ed è giusto, ma allora questa prova non proverebbe niente. */
+      phoneSipServer: "wss://esempio.invalido:7443/ws",
+      phoneSipUser: "interno-99",
+      phoneSipPassword: "prova-non-vera",
+    },
+  });
+
+  try {
+    /* Un elemento audio nascosto per pagina: è il telefono montato. Non si
+       verifica la registrazione SIP — quella richiede un centralino vero — ma
+       che il componente ci sia, e **una volta sola**. */
+    for (const dove of ["/service", "/menu", "/telefono"]) {
+      await page.goto(dove);
+      await expect(page.locator("audio")).toHaveCount(1, { timeout: 30_000 });
+    }
+
+    /* E sulla pagina del Telefono c'è scritto dove si risponde, invece di un
+       secondo riquadro che si collegherebbe per conto suo. */
+    await expect(page.getByText(/qualunque pagina/)).toBeVisible();
+  } finally {
+    await db.venue.update({
+      where: { id: locale.id },
+      data: {
+        phoneLicenseKey: null,
+        phoneLicenseActivatedAt: null,
+        phoneSipServer: null,
+        phoneSipUser: null,
+        phoneSipPassword: null,
+      },
+    });
+  }
+});

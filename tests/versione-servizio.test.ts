@@ -126,6 +126,80 @@ describe("cambia quando deve", () => {
     });
     expect(await versioneServizio(venueId)).not.toBe(prima);
   });
+  /**
+   * Il telefono, che è il pezzo con la vita più corta.
+   *
+   * Qui c'era il difetto vero: il segnale guardava **solo** le chiamate in
+   * `RINGING`/`ANSWERED`, quindi vedeva la telefonata arrivare e non la vedeva
+   * finire. Il riquadro «sta chiamando» restava sullo schermo del ristoratore,
+   * fermo sui secondi dell'ultimo aggiornamento, finché non si muoveva
+   * qualcos'altro in sala — cioè, in una serata tranquilla, per sempre.
+   */
+  it("una chiamata che entra muove il segnale", async () => {
+    const prima = await versioneServizio(venueId);
+    await db.phoneCall.create({
+      data: {
+        venueId,
+        externalId: `${PREFISSO}c1`,
+        fromNumber: "+393331234567",
+        status: "RINGING",
+        startedAt: new Date(),
+      },
+    });
+    expect(await versioneServizio(venueId)).not.toBe(prima);
+  });
+
+  it("e una chiamata che finisce lo muove di nuovo", async () => {
+    const riga = await db.phoneCall.create({
+      data: {
+        venueId,
+        externalId: `${PREFISSO}c2`,
+        fromNumber: "+393337654321",
+        status: "RINGING",
+        startedAt: new Date(),
+      },
+    });
+    const mentreSquilla = await versioneServizio(venueId);
+    await db.phoneCall.update({
+      where: { id: riga.id },
+      data: { status: "MISSED", endedAt: new Date(), outcome: "MISSED" },
+    });
+    expect(await versioneServizio(venueId)).not.toBe(mentreSquilla);
+  });
+
+  /**
+   * Il caso che teneva il riquadro incantato sullo schermo.
+   *
+   * Una chiamata che **non riceve mai la notizia della fine** — il centralino
+   * non la manda, o non arriva — resta `RINGING`. Passati i novanta secondi
+   * esce dalla fotografia, ma con il vecchio segnale usciva **anche dal
+   * segnale**: prima della transizione zero chiamate in corso, dopo zero
+   * uguale. Niente si muoveva, quindi nessuno riscaricava la fotografia, e il
+   * riquadro restava lì fermo sui secondi dell'ultimo aggiornamento — per
+   * tutta la serata, se in sala non succedeva altro.
+   *
+   * Contare le chiamate **per quando sono cominciate**, senza guardare lo
+   * stato, fa muovere il segnale a ogni passaggio: anche a quelli che
+   * arrivano tardi.
+   */
+  it("una chiamata vecchia che finisce muove il segnale lo stesso", async () => {
+    const dueMinutiFa = new Date(Date.now() - 2 * 60_000);
+    const riga = await db.phoneCall.create({
+      data: {
+        venueId,
+        externalId: `${PREFISSO}c3`,
+        fromNumber: "+393330000003",
+        status: "RINGING",
+        startedAt: dueMinutiFa,
+      },
+    });
+    const prima = await versioneServizio(venueId);
+    await db.phoneCall.update({
+      where: { id: riga.id },
+      data: { status: "MISSED", endedAt: new Date(), outcome: "MISSED" },
+    });
+    expect(await versioneServizio(venueId)).not.toBe(prima);
+  });
 });
 
 describe("non cambia quando non deve", () => {

@@ -56,6 +56,15 @@ type StatoTelefono = {
   azioni: number;
 };
 
+/**
+ * Oltre quanti secondi un riquadro non si mostra più, comunque vada.
+ *
+ * Tiene il valore del server (`SQUILLO_MASSIMO_MS`, 90s) più un margine: se
+ * fossero uguali, un riquadro legittimo potrebbe sparire un istante prima
+ * della fotografia che lo conferma.
+ */
+const VITA_MASSIMA_RIQUADRO_S = 120;
+
 const VUOTO: StatoTelefono = {
   chiamate: [],
   perseDaGestire: 0,
@@ -82,6 +91,7 @@ export function useTelefonoVivo(): StatoTelefono {
 export function VoiceGlobale({
   attivo,
   versione,
+  telefono,
   children,
 }: {
   /** Se questo locale ha il telefono. Quando è falso non si interroga niente. */
@@ -102,17 +112,38 @@ export function VoiceGlobale({
    * ha trovato al primo giro.
    */
   versione?: string;
+  /**
+   * Il telefono nel browser, costruito dal guscio.
+   *
+   * Sta **qui** e non sulla pagina del Telefono perché da adesso si risponde
+   * dentro Tavolo da qualunque schermata: chi sta guardando la carta o la
+   * scheda di un cliente deve poter premere «Rispondi» dove è, non dopo aver
+   * cambiato pagina. Una telefonata dura venti secondi.
+   *
+   * Ed è montato **una volta sola**, nel guscio: due copie in pagina
+   * vorrebbero dire due registrazioni SIP con la stessa utenza, e la stessa
+   * chiamata che squilla due volte sullo stesso schermo.
+   */
+  telefono?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [stato, setStato] = useState<StatoTelefono>(VUOTO);
   const [chiuse, setChiuse] = useState<string[]>([]);
+
+  /* Quando è stata presa la fotografia. Serve a far invecchiare i riquadri
+     anche senza una fotografia nuova: vedi `daMostrare`. */
+  const [presaIl, setPresaIl] = useState<number>(() => Date.now());
+  const [adesso, setAdesso] = useState<number>(() => Date.now());
 
   const scarica = useCallback(async () => {
     if (!attivo) return;
     const res = await fetch("/api/telefono/vivo", { cache: "no-store" });
     /* Una rete che salta per un istante non deve far sparire una chiamata in
        corso dallo schermo: resta l'ultimo stato buono. */
-    if (res.ok) setStato((await res.json()) as StatoTelefono);
+    if (res.ok) {
+      setStato((await res.json()) as StatoTelefono);
+      setPresaIl(Date.now());
+    }
   }, [attivo]);
 
   /* La sonda parte solo se il locale ha il telefono: su tutti gli altri —
@@ -130,7 +161,35 @@ export function VoiceGlobale({
      secondi — il centralino non ha ancora mandato la fine, e la chiamata è
      ancora viva per il server. Un riquadro che torna dopo che lo hai chiuso
      è la cosa che fa smettere di usare una funzione. */
-  const daMostrare = stato.chiamate.filter((c) => !chiuse.includes(c.id));
+  /**
+   * I riquadri invecchiano da soli.
+   *
+   * Il server manda quanti secondi dura ogni chiamata **al momento della
+   * fotografia**. Se la fotografia non si rinnova — la firma non si muove, la
+   * rete cade, il portatile si addormenta — quel numero resta fermo e il
+   * riquadro resta sullo schermo: una chiamata chiusa da un pezzo che continua
+   * a dire «sta chiamando · 13s».
+   *
+   * Qui il tempo passa comunque: ai secondi della fotografia si sommano quelli
+   * trascorsi da quando è stata presa, e oltre il limite il riquadro sparisce.
+   * È una rete di sicurezza, non il meccanismo normale — quello resta la
+   * fotografia nuova — ma è ciò che rende **impossibile** un riquadro
+   * incantato, qualunque cosa vada storta a monte.
+   */
+  const passatiS = Math.max(0, Math.round((adesso - presaIl) / 1000));
+  const daMostrare = stato.chiamate.filter(
+    (c) =>
+      !chiuse.includes(c.id) &&
+      c.daQuandoISecondi + passatiS <= VITA_MASSIMA_RIQUADRO_S,
+  );
+
+  /* L'orologio batte solo quando c'è qualcosa da far invecchiare: nelle ore in
+     cui il telefono non squilla — quasi tutte — non gira nulla. */
+  useEffect(() => {
+    if (stato.chiamate.length === 0) return;
+    const t = setInterval(() => setAdesso(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [stato.chiamate.length]);
 
   // Quando una chiamata finisce davvero, si dimentica di averla chiusa: così
   // l'elenco non cresce per tutto il servizio.
@@ -141,11 +200,19 @@ export function VoiceGlobale({
     );
   }, [stato.chiamate]);
 
+  /* Il pannello c'è **anche solo per il telefono**: quando squilla da SIP non
+     c'è nessuna scheda da mostrare — la notizia dal centralino può arrivare un
+     istante dopo, o non arrivare affatto se il collegamento non è configurato —
+     e i pulsanti «Rispondi» e «Non rispondo» devono comunque essere là.
+
+     Il contenitore non ha fondo né bordo: se telefono e schede sono entrambi
+     vuoti, non si vede niente. */
   return (
     <Ctx.Provider value={stato}>
       {children}
-      {daMostrare.length > 0 && (
+      {attivo && (
         <PannelloChiamata
+          telefono={telefono}
           chiamate={daMostrare}
           onChiudi={(id) => setChiuse((p) => [...p, id])}
         />
@@ -155,9 +222,11 @@ export function VoiceGlobale({
 }
 
 function PannelloChiamata({
+  telefono,
   chiamate,
   onChiudi,
 }: {
+  telefono?: React.ReactNode;
   chiamate: ChiamataViva[];
   onChiudi: (id: string) => void;
 }) {
@@ -178,6 +247,9 @@ function PannelloChiamata({
       aria-label="Telefono"
     >
       <div className="pointer-events-auto space-y-2">
+        {/* I comandi sopra le schede: quando squilla, la prima cosa sotto il
+            pollice deve essere «Rispondi», non la scheda del cliente. */}
+        {telefono}
         {chiamate.map((c) => (
           <div key={c.id} className="relative">
             <ChiamateInArrivo chiamate={[c]} />

@@ -7,6 +7,9 @@ import { MobileNav } from "@/components/shell/mobile-nav";
 import { AvvisiProvider } from "@/components/ui/avvisi";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { versioneServizio } from "@/server/versione-servizio";
+import { statoTelefonoBrowser } from "@/server/telefono-browser";
+import { capacitaDi } from "@/server/voice/provider";
+import { TelefonoBrowser } from "@/components/telefono/telefono-browser";
 import { VoiceGlobale } from "@/components/telefono/voice-globale";
 
 const sans = Inter({
@@ -57,6 +60,26 @@ export default async function AppShell({
   const versione = telefonoPerMe
     ? await versioneServizio(ctx.venueId)
     : undefined;
+
+  /*
+    Rispondere **dentro Tavolo**, da qualunque schermata.
+
+    Il telefono nel browser stava sulla pagina Telefono: chi guardava la carta
+    vedeva squillare — il riquadro della chiamata è nel guscio dalla fase 3 —
+    e per rispondere doveva cambiare pagina. Con una telefonata che dura venti
+    secondi, quel cambio di pagina è la telefonata persa.
+
+    Tre condizioni, e nessuna è una ripetizione: il locale ha il telefono e
+    chi guarda può rispondere (`telefonoPerMe`), i dati SIP sono configurati
+    (`pronto`), e il fornitore sa fare WebRTC (`browser`) — i dati SIP possono
+    essere su una linea che non lo fa, e il riquadro si collegherebbe a vuoto.
+  */
+  const sip = telefonoPerMe
+    ? await statoTelefonoBrowser(ctx.venueId)
+    : { pronto: false };
+  const capacita =
+    telefonoPerMe && sip.pronto ? await capacitaDi(ctx.venueId) : null;
+  const rispondeQui = Boolean(telefonoPerMe && sip.pronto && capacita?.browser);
   const showBrandSetup =
     ctx.venue.onboardingStatus === "NOT_STARTED" &&
     can(ctx.role, "manage_venue");
@@ -82,7 +105,15 @@ export default async function AppShell({
       di un cliente non vedeva squillare niente. Quando il locale non ha il
       telefono non interroga nulla — che è il caso di quasi tutti.
     */}
-      <VoiceGlobale attivo={telefonoPerMe} versione={versione}>
+      <VoiceGlobale
+        attivo={telefonoPerMe}
+        versione={versione}
+        telefono={
+          rispondeQui && capacita ? (
+            <TelefonoBrowser capacita={capacita} discreto />
+          ) : null
+        }
+      >
         <div
           className={`${sans.variable} ${display.variable} ${mono.variable} relative z-0 flex h-screen flex-col overflow-hidden bg-background text-foreground`}
         >
