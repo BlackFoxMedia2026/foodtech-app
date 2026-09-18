@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Phone, PhoneOff, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { CapacitaVoice } from "@/lib/voice-capacita";
 
 /**
  * Rispondere al telefono dentro Tavolo.
@@ -25,6 +26,15 @@ import { Button } from "@/components/ui/button";
  * centinaia di kilobyte, e la pagina del Telefono si apre anche solo per
  * guardare chi ha chiamato. Chi non ha il telefono configurato non la scarica
  * affatto.
+ *
+ * ## I comandi seguono le capacità del fornitore
+ *
+ * Quello che il fornitore non sa fare **non compare**. Le capacità arrivano da
+ * `server/voice/provider.ts`, dove ogni fornitore le dichiara una per una e il
+ * valore di partenza è «no». Oggi: si risponde e si chiude, non si trasferisce
+ * e non si mette in attesa — il centralino saprebbe farlo, ma non espone
+ * niente a Tavolo per farlo, e un pulsante che non funziona è peggio della sua
+ * assenza.
  *
  * ## Cosa si dichiara invece di nascondere
  *
@@ -50,12 +60,17 @@ type Sessione = {
   accept: (opzioni?: unknown) => Promise<void>;
   bye: () => Promise<void>;
   reject: () => Promise<void>;
-  sessionDescriptionHandler?: { peerConnection?: RTCPeerConnection | null } | null;
-  remoteIdentity?: { uri?: { user?: string | null } | null; displayName?: string | null } | null;
+  sessionDescriptionHandler?: {
+    peerConnection?: RTCPeerConnection | null;
+  } | null;
+  remoteIdentity?: {
+    uri?: { user?: string | null } | null;
+    displayName?: string | null;
+  } | null;
   state?: string;
 };
 
-export function TelefonoBrowser() {
+export function TelefonoBrowser({ capacita }: { capacita: CapacitaVoice }) {
   const [stato, setStato] = useState<Stato>({ tipo: "spento" });
   const [muto, setMuto] = useState(false);
 
@@ -87,7 +102,9 @@ export function TelefonoBrowser() {
     async function avvia() {
       setStato({ tipo: "collego" });
 
-      const res = await fetch("/api/venue/centralino/sip", { cache: "no-store" });
+      const res = await fetch("/api/venue/centralino/sip", {
+        cache: "no-store",
+      });
       if (!vivo) return;
       if (!res.ok) {
         setStato({
@@ -110,7 +127,9 @@ export function TelefonoBrowser() {
          prima chiamata, la finestra del permesso comparirebbe mentre il
          telefono squilla, e la chiamata si perderebbe mentre si legge. */
       try {
-        const flusso = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const flusso = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
         // Si chiude subito: serviva solo il permesso. sip.js riaprirà il suo.
         for (const t of flusso.getTracks()) t.stop();
       } catch {
@@ -149,7 +168,11 @@ export function TelefonoBrowser() {
           onDisconnect: () => {
             /* La rete è caduta. Non si resta a dire «pronto»: uno schermo che
                dice pronto mentre nessuno squilla è la bugia peggiore. */
-            if (vivo) setStato({ tipo: "guasto", perche: "Il telefono si è scollegato." });
+            if (vivo)
+              setStato({
+                tipo: "guasto",
+                perche: "Il telefono si è scollegato.",
+              });
           },
         },
       });
@@ -171,7 +194,10 @@ export function TelefonoBrowser() {
           setStato((precedente) =>
             precedente.tipo === "squilla" || precedente.tipo === "in-chiamata"
               ? precedente
-              : { tipo: "guasto", perche: "Il telefono non è registrato sul centralino." },
+              : {
+                  tipo: "guasto",
+                  perche: "Il telefono non è registrato sul centralino.",
+                },
           );
         }
       });
@@ -182,7 +208,10 @@ export function TelefonoBrowser() {
       if (!vivo) return;
       setStato({
         tipo: "guasto",
-        perche: err instanceof Error ? err.message : "Non riesco a collegare il telefono.",
+        perche:
+          err instanceof Error
+            ? err.message
+            : "Non riesco a collegare il telefono.",
       });
     });
 
@@ -253,6 +282,28 @@ export function TelefonoBrowser() {
 
         {stato.tipo === "in-chiamata" && (
           <>
+            {/*
+              Trasferire e mettere in attesa **non compaiono** se il fornitore
+              non li sa fare, e oggi non li sa fare nessuno.
+
+              Non compaiono spenti e non compaiono con «in arrivo»: un pulsante
+              «Trasferisci» che non trasferisce lo si premo con una persona in
+              linea, e si resta lì ad aspettare. Il giorno in cui il centralino
+              espone il trasferimento, si cambia una riga in
+              `server/voice/provider.ts` e il pulsante appare qui.
+            */}
+            {capacita.trasferimento && (
+              <Button variant="outline" size="sm" disabled>
+                Trasferisci
+              </Button>
+            )}
+            {capacita.attesa && (
+              <Button variant="outline" size="sm" disabled>
+                Attesa
+              </Button>
+            )}
+            {/* Il muto è **locale**: si spegne il microfono nel browser, e non
+                serve niente dal fornitore. Per questo non ha una capacità. */}
             <Button variant="outline" size="sm" onClick={cambiaMuto}>
               {muto ? (
                 <MicOff className="mr-1.5 h-4 w-4" aria-hidden="true" />
@@ -291,14 +342,18 @@ function Indicatore({ stato }: { stato: Stato }) {
       return (
         <span className="flex items-center gap-2">
           <Badge tone="warning">Sta squillando</Badge>
-          <span className="text-sm font-medium tabular-nums">{stato.da ?? "numero riservato"}</span>
+          <span className="text-sm font-medium tabular-nums">
+            {stato.da ?? "numero riservato"}
+          </span>
         </span>
       );
     case "in-chiamata":
       return (
         <span className="flex items-center gap-2">
           <Badge tone="success">Al telefono</Badge>
-          <span className="text-sm font-medium tabular-nums">{stato.da ?? "in linea"}</span>
+          <span className="text-sm font-medium tabular-nums">
+            {stato.da ?? "in linea"}
+          </span>
         </span>
       );
     case "guasto":

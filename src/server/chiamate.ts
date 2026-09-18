@@ -82,6 +82,11 @@ export async function registraEventoChiamata(
     );
   }
 
+  /* L'evento corrispondente allo stato. La riga dice **com'è adesso**, questi
+     dicono **cos'è successo**: senza, una chiamata andata storta tre giorni
+     prima è una riga con uno stato e nessuna storia. */
+  const evento = EVENTO_PER_STATO[dati.stato];
+
   const riga = await db.phoneCall.upsert({
     where: { venueId_externalId: { venueId, externalId: dati.externalId } },
     create: {
@@ -112,11 +117,103 @@ export async function registraEventoChiamata(
     select: { id: true, status: true, guestId: true },
   });
 
+  /* Fuori dalla scrittura principale e senza attesa: se l'evento non si scrive,
+     la chiamata è comunque registrata e sullo schermo di chi risponde compare.
+     Un registro che fa perdere il fatto che registra non è un registro. */
+  void db.phoneCallEvent
+    .create({
+      data: {
+        callId: riga.id,
+        kind: evento,
+        actor: "provider",
+        meta: dati.phone ? { numero: dati.phone } : undefined,
+      },
+    })
+    .catch(() => {});
+
   return {
     id: riga.id,
     stato: riga.status as StatoChiamata,
     chi: riconosciuto?.guest ?? null,
   };
+}
+
+/**
+ * Quale evento corrisponde a quale stato.
+ *
+ * `MISSED` diventa `CALL_MISSED` e non `CALL_ENDED`: per il ristoratore sono
+ * due cose diverse — una persona da richiamare e una conversazione avvenuta —
+ * e nel registro devono restare distinte, o la differenza si perde proprio
+ * dove serve rileggerla.
+ */
+const EVENTO_PER_STATO: Record<StatoChiamata, "CALL_RECEIVED" | "CALL_ANSWERED" | "CALL_MISSED" | "CALL_ENDED"> = {
+  RINGING: "CALL_RECEIVED",
+  ANSWERED: "CALL_ANSWERED",
+  MISSED: "CALL_MISSED",
+  ENDED: "CALL_ENDED",
+};
+
+/**
+ * Scrive un evento su una chiamata.
+ *
+ * Il posto unico da cui passano gli eventi che **non** nascono da un cambio di
+ * stato: una prenotazione creata durante la chiamata, un messaggio mandato,
+ * una nota scritta. Sta qui e non sparso perché un registro con due porte
+ * d'ingresso finisce per avere due formati.
+ */
+export async function segnaEventoChiamata(
+  callId: string,
+  kind: EventoChiamataKind,
+  opzioni: { actor?: string | null; meta?: Record<string, unknown> } = {},
+): Promise<void> {
+  await db.phoneCallEvent
+    .create({
+      data: {
+        callId,
+        kind,
+        actor: opzioni.actor ?? null,
+        meta: opzioni.meta as never,
+      },
+    })
+    .catch(() => {
+      /* Un evento perso non deve far fallire l'operazione che lo ha
+         prodotto: una prenotazione creata e non annotata è molto meglio di
+         una prenotazione non creata. */
+    });
+}
+
+export type EventoChiamataKind =
+  | "CALL_RECEIVED"
+  | "CALL_ANSWERED"
+  | "CALL_HELD"
+  | "CALL_RESUMED"
+  | "CALL_TRANSFERRED"
+  | "CALL_ENDED"
+  | "CALL_MISSED"
+  | "AI_STARTED"
+  | "AI_ESCALATED"
+  | "BOOKING_CREATED"
+  | "BOOKING_UPDATED"
+  | "BOOKING_CANCELLED"
+  | "WAITLIST_ADDED"
+  | "MESSAGE_SENT"
+  | "CALLBACK_CREATED"
+  | "CALLBACK_RESOLVED"
+  | "CRM_INSIGHT_CREATED"
+  | "NOTE_ADDED";
+
+/** Gli eventi di una chiamata, dal primo all'ultimo. */
+export async function eventiDiChiamata(venueId: string, callId: string) {
+  const chiamata = await db.phoneCall.findFirst({
+    where: { id: callId, venueId },
+    select: { id: true },
+  });
+  if (!chiamata) return [];
+  return db.phoneCallEvent.findMany({
+    where: { callId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, kind: true, actor: true, meta: true, createdAt: true },
+  });
 }
 
 /**

@@ -105,3 +105,67 @@ test("il centralino annuncia una chiamata e il nome compare in sala", async ({ p
     });
   }
 });
+
+test("il simulatore fa squillare il telefono senza una linea telefonica", async ({ page, request }) => {
+  /* Il brief lo chiede (§92) e ha ragione: l'alternativa è costruire
+     l'interfaccia a occhi chiusi, o metterci un pulsante che **finge** una
+     telefonata. Questo non finge niente — scrive una chiamata vera nella
+     tabella vera, che percorre la stessa strada di una del centralino.
+
+     Il controllo «solo in sviluppo» sta nel codice e non in una variabile
+     d'ambiente: una variabile la si accende per provare e la si dimentica
+     accesa, e allora esiste un indirizzo che inventa telefonate a un cliente
+     vero. In produzione questa rotta risponde 404. */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+    },
+  });
+
+  const nome = unico("Simulato");
+  const ospite = await db.guest.create({
+    data: { venueId: locale.id, firstName: nome, lastName: "DalSimulatore", phone: "3491234567" },
+  });
+
+  try {
+    await page.goto("/service");
+    await expect(page.getByText(nome)).toHaveCount(0);
+
+    /* Scenario «ospite noto»: il simulatore prende un ospite **vero** del
+       locale col suo numero. Una prova con un numero inventato non
+       verificherebbe il riconoscimento, verificherebbe che non trova niente. */
+    const r = await request.post("/api/dev/voice/simula", {
+      data: { scenario: "OSPITE_NOTO", phone: "+393491234567" },
+    });
+    expect(r.ok()).toBe(true);
+    const corpo = await r.json();
+    expect(corpo.simulata).toBe(true);
+    expect(corpo.chi?.firstName).toBe(nome);
+
+    // E in sala compare, da sé, come per una chiamata vera.
+    await expect(page.getByText(nome).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/sta chiamando/)).toBeVisible();
+
+    // La chiamata ha lasciato il suo evento: la riga dice com'è, l'evento cos'è successo.
+    const chiamata = await db.phoneCall.findFirstOrThrow({
+      where: { venueId: locale.id, guestId: ospite.id },
+      select: { id: true },
+    });
+    const eventi = await db.phoneCallEvent.findMany({ where: { callId: chiamata.id } });
+    expect(eventi.map((e) => e.kind)).toContain("CALL_RECEIVED");
+  } finally {
+    await db.phoneCallEvent.deleteMany({ where: { call: { venueId: locale.id } } });
+    await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
+    await db.guest.delete({ where: { id: ospite.id } }).catch(() => {});
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+  }
+});
