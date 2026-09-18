@@ -206,3 +206,74 @@ test("a un numero senza nome si può dare un nome, e diventa un contatto", async
     });
   }
 });
+
+test("chi non risponde al telefono non lo vede, e l'indirizzo non gli si apre", async ({
+  page,
+  request,
+}) => {
+  /**
+   * Il difetto corretto nella fase 7.
+   *
+   * La voce «Telefono» compariva con il **solo** collegamento del centralino, e
+   * la pagina dietro non guardava il ruolo: un accesso in sola lettura leggeva
+   * nomi, numeri e chiamate perse di tutti i clienti del locale. Il permesso
+   * usato era `manage_bookings`, preso per comodità — prendere una
+   * prenotazione e leggere lo storico delle telefonate non sono lo stesso
+   * potere.
+   *
+   * Qui si abbassa il ruolo dell'utente di prova a sola lettura, con il
+   * telefono **collegato**: così l'unica cosa che decide è il permesso.
+   */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+    },
+  });
+
+  const utente = await db.user.findFirstOrThrow({
+    where: { email: E2E.email },
+    select: { id: true },
+  });
+  const iscrizione = await db.venueMembership.findFirstOrThrow({
+    where: { venueId: locale.id, userId: utente.id },
+    select: { id: true, role: true },
+  });
+
+  try {
+    await db.venueMembership.update({
+      where: { id: iscrizione.id },
+      data: { role: "READ_ONLY" },
+    });
+
+    /* Il ruolo si rilegge dal database a ogni richiesta, non dal gettone di
+       sessione: senza questo, abbassarlo qui non cambierebbe niente fino al
+       prossimo accesso — e la prova passerebbe per il motivo sbagliato. */
+    await page.goto("/overview");
+    await expect(
+      page.getByRole("navigation").getByRole("link", { name: "Telefono" }),
+    ).toHaveCount(0);
+
+    const r = await page.goto("/telefono");
+    expect(r?.status()).toBe(404);
+
+    /* E il server rifiuta, non solo l'interfaccia: nascondere una voce non
+       impedisce a nessuno di chiamare l'indirizzo. */
+    const api = await request.get("/api/telefono/vivo");
+    expect(api.status()).toBe(403);
+  } finally {
+    await db.venueMembership.update({
+      where: { id: iscrizione.id },
+      data: { role: iscrizione.role },
+    });
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+  }
+});

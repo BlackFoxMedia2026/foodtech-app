@@ -36,7 +36,7 @@ const Corpo = z
   });
 
 export async function POST(req: Request) {
-  const ctx = await requireVenueApi("manage_bookings");
+  const ctx = await requireVenueApi("use_phone");
   if (!ctx.ok) return ctx.response;
 
   try {

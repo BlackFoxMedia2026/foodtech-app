@@ -15,7 +15,11 @@ import {
   ValoreImpostazione,
 } from "@/components/settings/righe-impostazioni";
 import { readApiError } from "@/lib/api-client";
-import { FUNZIONI_CENTRALINO, type FunzioneCentralino } from "@/lib/licenza-centralino";
+import { daQuando } from "@/lib/utils";
+import {
+  FUNZIONI_CENTRALINO,
+  type FunzioneCentralino,
+} from "@/lib/licenza-centralino";
 
 /**
  * Il telefono del locale, dentro Tavolo.
@@ -38,8 +42,10 @@ import { FUNZIONI_CENTRALINO, type FunzioneCentralino } from "@/lib/licenza-cent
 const COSA_FA: Record<FunzioneCentralino, string> = {
   riconoscimento:
     "Quando il telefono squilla, Tavolo mostra chi sta chiamando: nome, allergie, quante volte non si è presentato.",
-  prenotazioni: "Le prenotazioni prese al telefono entrano in Tavolo senza riscriverle.",
-  statistiche: "Quante chiamate arrivano, in quali ore, e quante diventano prenotazioni.",
+  prenotazioni:
+    "Le prenotazioni prese al telefono entrano in Tavolo senza riscriverle.",
+  statistiche:
+    "Quante chiamate arrivano, in quali ore, e quante diventano prenotazioni.",
 };
 
 const NOME_FUNZIONE: Record<FunzioneCentralino, string> = {
@@ -48,7 +54,11 @@ const NOME_FUNZIONE: Record<FunzioneCentralino, string> = {
   statistiche: "I numeri del telefono",
 };
 
-const GIORNO = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", year: "numeric" });
+const GIORNO = new Intl.DateTimeFormat("it-IT", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 
 export type StatoSipVista = {
   pronto: boolean;
@@ -56,6 +66,22 @@ export type StatoSipVista = {
   utente: string | null;
   passwordPresente: boolean;
   sottoChiave: boolean;
+};
+
+/**
+ * Come va il telefono, adesso.
+ *
+ * Risponde alla telefonata che arriva al supporto — «non mi arrivano le
+ * chiamate» — che è sempre una di tre cose: licenza scaduta, nessuna chiave di
+ * collegamento, o semplicemente nessuno ha chiamato. Le ultime due si
+ * presentano identiche: una pagina del telefono vuota.
+ */
+export type SaluteVista = {
+  ultimaChiamata: string | null;
+  ultime24h: number;
+  collegamentoAttivo: boolean;
+  fornitore: string;
+  nonSannoFare: string[];
 };
 
 export type StatoCentralinoVista = {
@@ -69,12 +95,15 @@ export type StatoCentralinoVista = {
 
 export function Centralino({
   stato,
+  salute,
   sip,
   collegamenti,
   venueId,
   canManage,
 }: {
   stato: StatoCentralinoVista;
+  /** Come va, quando il telefono è collegato. */
+  salute?: SaluteVista;
   /** I dati del telefono nel browser. La password non arriva mai qui. */
   sip: StatoSipVista;
   /** Le chiavi di collegamento attive: solo il prefisso, mai il valore. */
@@ -95,10 +124,14 @@ export function Centralino({
   async function emettiCollegamento() {
     setInCorso(true);
     setErroreChiave(null);
-    const res = await fetch("/api/venue/centralino/collegamento", { method: "POST" });
+    const res = await fetch("/api/venue/centralino/collegamento", {
+      method: "POST",
+    });
     setInCorso(false);
     if (!res.ok) {
-      setErroreChiave(await readApiError(res, "Non siamo riusciti a creare la chiave."));
+      setErroreChiave(
+        await readApiError(res, "Non siamo riusciti a creare la chiave."),
+      );
       return;
     }
     const { chiave } = (await res.json()) as { chiave: string };
@@ -132,7 +165,12 @@ export function Centralino({
     });
     setInCorso(false);
     if (!res.ok) {
-      setErroreSip(await readApiError(res, "Non siamo riusciti a salvare i dati del telefono."));
+      setErroreSip(
+        await readApiError(
+          res,
+          "Non siamo riusciti a salvare i dati del telefono.",
+        ),
+      );
       return;
     }
     setPassword("");
@@ -151,7 +189,9 @@ export function Centralino({
     });
     setInCorso(false);
     if (!res.ok) {
-      setErrore(await readApiError(res, "Non siamo riusciti ad attivare il telefono."));
+      setErrore(
+        await readApiError(res, "Non siamo riusciti ad attivare il telefono."),
+      );
       return;
     }
     setChiave("");
@@ -164,7 +204,9 @@ export function Centralino({
     const res = await fetch("/api/venue/centralino", { method: "DELETE" });
     setInCorso(false);
     if (!res.ok) {
-      setErrore(await readApiError(res, "Non siamo riusciti a togliere la chiave."));
+      setErrore(
+        await readApiError(res, "Non siamo riusciti a togliere la chiave."),
+      );
       return;
     }
     router.refresh();
@@ -186,7 +228,12 @@ export function Centralino({
       }
       azione={
         stato.attivo && canManage ? (
-          <Button variant="outline" size="sm" onClick={spegni} disabled={inCorso}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={spegni}
+            disabled={inCorso}
+          >
             <PhoneOff className="mr-1.5 h-4 w-4" aria-hidden="true" />
             Togli la chiave
           </Button>
@@ -237,10 +284,70 @@ export function Centralino({
         </RigaImpostazione>
       )}
 
+      {/*
+        Come va, in due righe.
+
+        La prima è quella che risolve le mezz'ore di supporto: senza una chiave
+        di collegamento il centralino **non può mandare niente**, e un telefono
+        senza chiave è identico a un telefono su cui non ha chiamato nessuno.
+        La seconda dice se è vivo adesso.
+      */}
+      {stato.attivo && salute && (
+        <>
+          <RigaImpostazione
+            nome="Collegamento"
+            descrizione={
+              salute.collegamentoAttivo
+                ? `Il centralino (${salute.fornitore}) può mandare le chiamate a Tavolo.`
+                : "Manca la chiave con cui il centralino manda le chiamate: finché non c'è, qui non arriverà niente. Si emette qui sotto."
+            }
+          >
+            {salute.collegamentoAttivo ? (
+              <Badge tone="success">Pronto</Badge>
+            ) : (
+              <Badge tone="warning">Manca la chiave</Badge>
+            )}
+          </RigaImpostazione>
+
+          <RigaImpostazione
+            nome="Ultima chiamata"
+            descrizione={
+              salute.ultimaChiamata
+                ? `${salute.ultime24h === 0 ? "Nessuna" : salute.ultime24h === 1 ? "Una" : salute.ultime24h} nelle ultime 24 ore.`
+                : salute.collegamentoAttivo
+                  ? "Non è ancora arrivata nessuna chiamata. Se il telefono del locale squilla e qui non compare niente, il centralino non sta consegnando."
+                  : undefined
+            }
+          >
+            <ValoreImpostazione>
+              {salute.ultimaChiamata
+                ? daQuando(new Date(salute.ultimaChiamata))
+                : "mai"}
+            </ValoreImpostazione>
+          </RigaImpostazione>
+
+          {/* Cosa **non** sa fare, e non è un elenco di scuse: è la risposta
+              alla domanda «perché non posso trasferire?». I pulsanti che non
+              funzionerebbero non esistono da nessuna parte (è la regola di
+              Voice), e senza questa riga la loro assenza sembrerebbe un
+              difetto del prodotto invece di un limite della linea. */}
+          {salute.nonSannoFare.length > 0 && (
+            <RigaImpostazione
+              nome="Cosa non fa ancora"
+              descrizione={`${salute.nonSannoFare.join(", ")}. I comandi che la linea non sa eseguire non compaiono: un pulsante che non trasferisce è peggio della sua assenza.`}
+            />
+          )}
+        </>
+      )}
+
       {FUNZIONI_CENTRALINO.map((f) => {
         const accesa = stato.funzioni.includes(f);
         return (
-          <RigaImpostazione key={f} nome={NOME_FUNZIONE[f]} descrizione={COSA_FA[f]}>
+          <RigaImpostazione
+            key={f}
+            nome={NOME_FUNZIONE[f]}
+            descrizione={COSA_FA[f]}
+          >
             {accesa ? (
               <Badge tone="success">Attiva</Badge>
             ) : (
@@ -276,8 +383,15 @@ export function Centralino({
                 {c.prefisso}…
               </ValoreImpostazione>
             ))}
-            <Button variant="outline" size="sm" onClick={emettiCollegamento} disabled={inCorso}>
-              {collegamenti.length > 0 ? "Emettine un'altra" : "Emetti la chiave"}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={emettiCollegamento}
+              disabled={inCorso}
+            >
+              {collegamenti.length > 0
+                ? "Emettine un'altra"
+                : "Emetti la chiave"}
             </Button>
           </div>
         </RigaImpostazione>
@@ -297,8 +411,8 @@ export function Centralino({
               {/* Detto adesso e non dopo: non è rileggibile, e una schermata
                   che non lo dice produce una telefonata il giorno dopo. */}
               <span className="t-nota">
-                Copiala adesso e mandacela: non è più leggibile. Nel database resta solo la sua
-                impronta.
+                Copiala adesso e mandacela: non è più leggibile. Nel database
+                resta solo la sua impronta.
               </span>
             </div>
           </div>
@@ -325,8 +439,9 @@ export function Centralino({
             <div>
               <p className="text-sm font-medium">Rispondere da Tavolo</p>
               <p className="mt-0.5 t-nota">
-                Con questi dati il telefono squilla dentro Tavolo, su ogni schermo aperto, e si
-                risponde da lì. Te li mandiamo insieme alla chiave.
+                Con questi dati il telefono squilla dentro Tavolo, su ogni
+                schermo aperto, e si risponde da lì. Te li mandiamo insieme alla
+                chiave.
               </p>
             </div>
 
@@ -358,7 +473,9 @@ export function Centralino({
                 <Label htmlFor="sip-password">
                   Password{" "}
                   {sip.passwordPresente && (
-                    <span className="t-nota">— già salvata, lascia vuoto per non cambiarla</span>
+                    <span className="t-nota">
+                      — già salvata, lascia vuoto per non cambiarla
+                    </span>
                   )}
                 </Label>
                 <Input
@@ -377,13 +494,19 @@ export function Centralino({
                 chi legge questa riga, non noi. */}
             {!sip.sottoChiave && (
               <p className="t-nota">
-                Su questa installazione non è configurata una chiave di cifratura: la password
-                resta leggibile nel database. Scrivici se vuoi che la mettiamo sotto chiave.
+                Su questa installazione non è configurata una chiave di
+                cifratura: la password resta leggibile nel database. Scrivici se
+                vuoi che la mettiamo sotto chiave.
               </p>
             )}
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" variant="outline" size="sm" disabled={inCorso}>
+              <Button
+                type="submit"
+                variant="outline"
+                size="sm"
+                disabled={inCorso}
+              >
                 {inCorso ? "Salvo…" : "Salva"}
               </Button>
               {sip.pronto && !erroreSip && (
@@ -392,8 +515,12 @@ export function Centralino({
                   Si risponde da Tavolo
                 </Badge>
               )}
-              {salvato && !erroreSip && <span className="t-nota">Salvato.</span>}
-              {erroreSip && <span className="text-sm text-destructive">{erroreSip}</span>}
+              {salvato && !erroreSip && (
+                <span className="t-nota">Salvato.</span>
+              )}
+              {erroreSip && (
+                <span className="text-sm text-destructive">{erroreSip}</span>
+              )}
             </div>
           </form>
         </RigaLibera>
@@ -427,7 +554,9 @@ export function Centralino({
         <RigaLibera>
           <form onSubmit={attiva} className="space-y-2">
             <Label htmlFor="centralino-chiave">
-              {stato.attivo ? "Sostituisci la chiave" : "La chiave che ti abbiamo mandato"}
+              {stato.attivo
+                ? "Sostituisci la chiave"
+                : "La chiave che ti abbiamo mandato"}
             </Label>
             <div className="flex flex-wrap items-start gap-2">
               <Input
@@ -439,13 +568,18 @@ export function Centralino({
                 spellCheck={false}
                 className="min-w-0 flex-1 font-mono text-xs"
               />
-              <Button type="submit" variant="accent" size="sm" disabled={inCorso || !chiave.trim()}>
+              <Button
+                type="submit"
+                variant="accent"
+                size="sm"
+                disabled={inCorso || !chiave.trim()}
+              >
                 {inCorso ? "Controllo…" : "Attiva"}
               </Button>
             </div>
             <p className="t-nota">
-              Incollala come l&apos;hai ricevuta: spazi e capi a riga non sono un problema. Vale
-              solo per questo locale.
+              Incollala come l&apos;hai ricevuta: spazi e capi a riga non sono
+              un problema. Vale solo per questo locale.
             </p>
             {errore && <p className="text-sm text-destructive">{errore}</p>}
           </form>

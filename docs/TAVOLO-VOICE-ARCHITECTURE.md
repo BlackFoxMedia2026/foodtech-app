@@ -302,7 +302,8 @@ build, e la sonda di leggibilità quando la fase tocca l'interfaccia.
 |---|---|---|
 Le fasi 1–5 sono fatte: schema (#135), fornitore e capacità (#136), pannello
 globale della chiamata (#137), esiti e coda delle richiamate (#138), recupero
-delle chiamate perse e notifiche (#139), la storia di una prenotazione (#140).
+delle chiamate perse e notifiche (#139), la storia di una prenotazione (#140), i permessi del telefono e lo stato del
+fornitore (#141).
 
 **Cambio di piano nella fase 6.** Il piano diceva «accendere `BookingEvent`».
 Guardando cosa ci sarebbe finito dentro si è visto che ogni evento ha già la

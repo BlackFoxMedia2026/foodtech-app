@@ -24,6 +24,16 @@ export const dynamic = "force-dynamic";
  * sta scritto in Impostazioni → Telefono, che è il posto dove si va a
  * guardare.
  *
+ * **Stessa risposta a chi non può rispondere al telefono** (`use_phone`:
+ * manager, reception, camerieri — non marketing, non sola lettura). Anche per
+ * loro la voce in barra non c'è, quindi vale lo stesso ragionamento; e il
+ * ruolo che uno ha nel locale glielo dice il suo manager, non un messaggio a
+ * un indirizzo tentato a mano.
+ *
+ * Questo controllo **non c'era**: la pagina guardava solo la licenza, e un
+ * accesso in sola lettura leggeva nomi, numeri e chiamate perse di tutti i
+ * clienti del locale.
+ *
  * ## Due colonne, due domande
  *
  * **Da fare**: chi va richiamato adesso — la coda delle richiamate e le
@@ -44,7 +54,7 @@ export default async function TelefonoPage({
 }) {
   const ctx = await getActiveVenue();
   const stato = await statoCentralino(ctx.venueId);
-  if (!stato.attivo) notFound();
+  if (!stato.attivo || !can(ctx.role, "use_phone")) notFound();
 
   const solo = searchParams.solo === "perse" ? "perse" : "tutte";
   const giorni = [1, 7, 30].includes(Number(searchParams.giorni))
@@ -60,13 +70,18 @@ export default async function TelefonoPage({
 
   /* Il telefono nel browser compare solo se è configurato **e** solo a chi in
      questo locale risponde al telefono: la rotta che dà le credenziali chiede
-     `manage_bookings`, e un riquadro che si collega e fallisce per chi non ha
-     quel permesso sarebbe un errore inventato dall'interfaccia. */
+     `use_phone`, e un riquadro che si collega e fallisce per chi non ha quel
+     permesso sarebbe un errore inventato dall'interfaccia.
+
+     Oggi chi arriva a questa pagina ha già `use_phone` — la guardia sopra non
+     lascia passare nessun altro — e la riga resta perché è la condizione
+     **giusta**: il giorno che questo riquadro comparisse altrove, non deve
+     portarsi dietro il permesso della pagina da cui è nato. */
   /* `capacita.browser` è la terza condizione, e non è una ripetizione: i dati
      SIP possono essere configurati su un fornitore che non fa WebRTC, e in quel
      caso il riquadro si collegherebbe a vuoto. */
   const puoRispondere =
-    telefono.pronto && capacita.browser && can(ctx.role, "manage_bookings");
+    telefono.pronto && capacita.browser && can(ctx.role, "use_phone");
 
   return (
     /* Il telefono nel browser entra **dentro** l'elenco e non accanto: la

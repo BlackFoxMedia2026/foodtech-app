@@ -32,18 +32,24 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const ctx = await requireVenueApi("manage_venue");
+  const ctx = await requireVenueApi("manage_phone");
   if (!ctx.ok) return ctx.response;
 
   try {
     const { chiave } = Corpo.parse(await req.json());
     const stato = await attivaCentralino(ctx.venueId, chiave);
 
-    await recordAudit(auditActor(ctx, req), "venue.centralino_attivato", "venue", ctx.venueId, {
-      funzioni: stato.funzioni,
-      scadeIl: stato.scadeIl?.toISOString() ?? null,
-      chiave: stato.chiaveLeggibile,
-    });
+    await recordAudit(
+      auditActor(ctx, req),
+      "venue.centralino_attivato",
+      "venue",
+      ctx.venueId,
+      {
+        funzioni: stato.funzioni,
+        scadeIl: stato.scadeIl?.toISOString() ?? null,
+        chiave: stato.chiaveLeggibile,
+      },
+    );
 
     return NextResponse.json(stato);
   } catch (err) {
@@ -60,16 +66,22 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const ctx = await requireVenueApi("manage_venue");
+  const ctx = await requireVenueApi("manage_phone");
   if (!ctx.ok) return ctx.response;
 
   try {
     const prima = await statoCentralino(ctx.venueId);
     await spegniCentralino(ctx.venueId);
 
-    await recordAudit(auditActor(ctx, req), "venue.centralino_spento", "venue", ctx.venueId, {
-      chiave: prima.chiaveLeggibile,
-    });
+    await recordAudit(
+      auditActor(ctx, req),
+      "venue.centralino_spento",
+      "venue",
+      ctx.venueId,
+      {
+        chiave: prima.chiaveLeggibile,
+      },
+    );
 
     return NextResponse.json(await statoCentralino(ctx.venueId));
   } catch (err) {
