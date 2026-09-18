@@ -272,6 +272,11 @@ model Venue {
   agentConversations AgentConversation[]
   agentUsages        AgentUsage[]
   phoneCalls         PhoneCall[]
+  voiceNumbers       VoiceNumber[]
+  voiceConfiguration VoiceConfiguration?
+  voiceCallbacks     VoiceCallback[]
+  voiceInsights      VoiceCRMInsight[]
+  voiceKnowledge     VoiceKnowledgeItem[]
   ApiToken           ApiToken[]
   AutomationWorkflow AutomationWorkflow[]
   BackgroundJob      BackgroundJob[]
@@ -590,6 +595,8 @@ model Guest {
   surveys                Survey[]
   campaignRecipients     CampaignRecipient[]
   phoneCalls             PhoneCall[]
+  voiceCallbacks         VoiceCallback[]
+  voiceInsights          VoiceCRMInsight[]
 
   @@index([venueId, email])
   @@index([venueId, phone])
@@ -1107,6 +1114,17 @@ model BookingPreorderItem {
   @@index([preorderId])
 }
 
+/// SUPERATA — non usarla. La chiamata e `PhoneCall`.
+///
+/// Scritta da nessuno e letta da nessuno: arrivo fino allo schema in un primo
+/// tentativo di questo stesso progetto e non fu mai collegata. Il 17 settembre
+/// 2026 ne e nata una quarta (`PhoneCall`) proprio perche questa era qui e
+/// sembrava viva: la registrazione sta in `PhoneCallRecording`, la
+/// trascrizione in `PhoneCallTranscript`, l'intento in `PhoneCall.outcome`, la
+/// bozza in `PhoneCall` stessa.
+///
+/// Resta per ora solo perche contiene righe di demo di aprile 2026. Si
+/// cancellera quando saranno tolte.
 model CallLog {
   id                String             @id @default(cuid())
   venueId           String
@@ -1506,6 +1524,11 @@ model MessageTemplate {
   @@index([venueId, category])
 }
 
+/// SUPERATA — non usarla. La coda da richiamare e `VoiceCallback`.
+///
+/// Stessa storia di `CallLog`: `attempts` e `callbackSentAt` sono quello che
+/// `VoiceCallback` fa con `tentativi` e `stato`, collegato all'ospite e alla
+/// chiamata.
 model MissedCall {
   id             String    @id @default(cuid())
   venueId        String
@@ -2274,6 +2297,12 @@ model SurveyResponse {
   @@index([createdAt])
 }
 
+/// SUPERATA — non usarla.
+///
+/// La prenotazione raccolta al telefono nasce direttamente come `Booking`
+/// `PENDING` con `source = VOICE` (vedi `server/prenotazione-telefonica.ts`):
+/// una bozza in una tabella a parte era un secondo posto dove guardare, e il
+/// ristoratore ne ha gia uno — le prenotazioni da confermare.
 model VoiceBookingDraft {
   id            String      @id @default(cuid())
   venueId       String
@@ -2326,6 +2355,8 @@ model WaitlistEntry {
   Venue              Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
   guest              Guest?         @relation(fields: [guestId], references: [id], onDelete: SetNull)
   preferredRoom      Room?          @relation(fields: [preferredRoomId], references: [id], onDelete: SetNull)
+
+  phoneCalls PhoneCall[]
 
   @@index([venueId, status, createdAt])
 }
@@ -2463,7 +2494,49 @@ model PhoneCall {
   /// riservato: e un caso previsto, non un guasto.
   fromNumber String?
 
+  /// Il numero **chiamato**: quale linea del locale ha squillato.
+  ///
+  /// Serve quando un locale ha piu numeri — quello sul menu e quello sui
+  /// volantini — e vuole sapere quale porta le telefonate.
+  toNumber String?
+
+  /// A quale linea e arrivata, quando la linea e censita in `VoiceNumber`.
+  voiceNumberId String?
+
+  /// Entrante o uscente. Oggi sono tutte entranti e il valore per difetto lo
+  /// dice; la colonna esiste perche una richiamata fatta da Tavolo e una
+  /// chiamata uscente, e senza questo campo finirebbe in mezzo alle altre.
+  direction PhoneCallDirection @default(INBOUND)
+
   status PhoneCallStatus @default(RINGING)
+
+  /// Chi l'ha gestita: una persona, l'intelligenza artificiale, entrambe.
+  ///
+  /// Sta qui e non in un secondo valore di `BookingSource`: la fonte di una
+  /// prenotazione e «il telefono», e *chi* ha risposto e un attributo della
+  /// chiamata. Mettere `VOICE_AI` fra le fonti farebbe esplodere quell'enum a
+  /// ogni canale nuovo.
+  handler PhoneCallHandler @default(NONE)
+
+  /// Com'e finita, in una parola sola dell'elenco chiuso.
+  ///
+  /// Nullo mentre la chiamata e in corso: «non si sa ancora» e diverso da
+  /// «niente da fare», e sono due righe diverse nello storico.
+  outcome PhoneCallOutcome?
+
+  /// Il riassunto della chiamata, quando esiste chi lo scrive.
+  ///
+  /// Corto di proposito e **su questa riga**: si legge nell'elenco, mentre la
+  /// trascrizione — che e lunga — sta in una tabella a parte per non pesare su
+  /// ogni lettura dello storico.
+  summary String? @db.VarChar(600)
+
+  /// La nota che chi risponde scrive **durante** la chiamata.
+  ///
+  /// Resta sulla chiamata finche qualcuno non decide se portarla sulla
+  /// prenotazione o nel profilo dell'ospite: una nota detta al telefono non e
+  /// automaticamente un dato del CRM.
+  notes String? @db.VarChar(1000)
 
   startedAt  DateTime  @default(now())
   answeredAt DateTime?
@@ -2479,16 +2552,32 @@ model PhoneCall {
   /// La prenotazione nata da questa chiamata, quando nasce.
   bookingId String?
 
+  /// La riga di lista d'attesa nata da questa chiamata.
+  ///
+  /// Una telefonata a locale pieno non e una telefonata persa: e una persona
+  /// in coda, e il legame serve a saperlo quando quel posto si libera.
+  waitlistId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  venue   Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  guest   Guest?   @relation(fields: [guestId], references: [id], onDelete: SetNull)
-  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  venue       Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest       Guest?         @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  booking     Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  waitlist    WaitlistEntry? @relation(fields: [waitlistId], references: [id], onDelete: SetNull)
+  voiceNumber VoiceNumber?   @relation(fields: [voiceNumberId], references: [id], onDelete: SetNull)
+
+  events     PhoneCallEvent[]
+  recording  PhoneCallRecording?
+  transcript PhoneCallTranscript?
+  insights   VoiceCRMInsight[]
+  callbacks  VoiceCallback[]
 
   @@unique([venueId, externalId])
   @@index([venueId, status, startedAt])
   @@index([venueId, startedAt])
+  /// Le chiamate di una giornata per esito: e la lettura delle analitiche.
+  @@index([venueId, outcome, startedAt])
 }
 
 enum PhoneCallStatus {
@@ -2496,11 +2585,385 @@ enum PhoneCallStatus {
   RINGING
   /// Qualcuno ha risposto.
   ANSWERED
+  /// In attesa: la conversazione e aperta e la voce e sospesa.
+  HELD
   /// Nessuno ha risposto. Non e la stessa cosa di «chiusa»: una persona che ha
   /// chiamato e non ha trovato nessuno e una persona da richiamare.
   MISSED
+  /// Ha lasciato un messaggio in segreteria.
+  VOICEMAIL
+  /// Non e riuscita per un guasto — linea, fornitore, rete. Diverso da
+  /// «nessuno ha risposto»: la` c'era qualcuno che non ha alzato.
+  FAILED
   /// Finita, dopo che qualcuno aveva risposto.
   ENDED
+}
+
+enum PhoneCallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum PhoneCallHandler {
+  HUMAN
+  AI
+  /// Cominciata dall'intelligenza artificiale e passata a una persona.
+  HYBRID
+  /// Nessuno: squillata e finita.
+  NONE
+}
+
+/// Com'e finita una chiamata.
+///
+/// Elenco **chiuso** di proposito: con un campo di testo libero, due mesi dopo
+/// ci sono «prenotato», «prenotazione», «booking» e «PRENOTATO» nella stessa
+/// colonna, e nessuna analitica sta in piedi.
+enum PhoneCallOutcome {
+  BOOKING_CREATED
+  BOOKING_UPDATED
+  BOOKING_CANCELLED
+  WAITLIST_ADDED
+  /// Voleva sapere una cosa e l'ha saputa: orari, indirizzo, se si porta il cane.
+  INFORMATION
+  TRANSFERRED
+  CALLBACK_REQUIRED
+  MISSED
+  VOICEMAIL
+  /// Ha chiamato, si e parlato, non c'era niente da fare.
+  NO_ACTION
+  FAILED
+}
+
+/// Gli eventi di una chiamata, in ordine.
+///
+/// Event sourcing leggero: la riga `PhoneCall` dice **com'e adesso**, questi
+/// dicono **cos'e successo**. Serve per due cose che senza sarebbero
+/// impossibili: capire una chiamata andata storta tre giorni dopo, e sapere
+/// *chi* ha fatto cosa — una persona, l'intelligenza artificiale, il
+/// centralino.
+model PhoneCallEvent {
+  id     String @id @default(cuid())
+  callId String
+
+  kind PhoneCallEventKind
+
+  /// Chi l'ha provocato: l'identificativo di un utente, `ai`, o `system`.
+  /// Testo e non una relazione perche l'attore puo non essere una persona.
+  actor String? @db.VarChar(64)
+
+  meta Json?
+
+  createdAt DateTime @default(now())
+
+  call PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId, createdAt])
+}
+
+enum PhoneCallEventKind {
+  CALL_RECEIVED
+  CALL_ANSWERED
+  CALL_HELD
+  CALL_RESUMED
+  CALL_TRANSFERRED
+  CALL_ENDED
+  CALL_MISSED
+  AI_STARTED
+  AI_ESCALATED
+  BOOKING_CREATED
+  BOOKING_UPDATED
+  BOOKING_CANCELLED
+  WAITLIST_ADDED
+  MESSAGE_SENT
+  CALLBACK_CREATED
+  CALLBACK_RESOLVED
+  CRM_INSIGHT_CREATED
+  NOTE_ADDED
+}
+
+/// La registrazione di una chiamata, quando il fornitore la produce.
+///
+/// In una tabella a parte e non su `PhoneCall` per due ragioni: l'elenco delle
+/// chiamate non deve portarsi dietro nulla di tutto questo, e una
+/// registrazione ha una **scadenza** propria — si cancella quando il locale
+/// ha detto di cancellarla, senza toccare la chiamata.
+model PhoneCallRecording {
+  id     String @id @default(cuid())
+  callId String @unique
+
+  /// Dove sta il file, presso il fornitore o nel nostro archivio.
+  url          String
+  durationSec  Int?
+  /// Quando va cancellata, dai giorni di conservazione del locale.
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  call PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+/// La trascrizione di una chiamata.
+///
+/// Separata perche e **lunga**: su `PhoneCall` la porterebbe con se ogni
+/// lettura dello storico. Ed e contenuto della chiamata, non un dato del
+/// cliente: quello che finisce nel CRM passa da `VoiceCRMInsight`, con
+/// l'approvazione di una persona.
+model PhoneCallTranscript {
+  id     String @id @default(cuid())
+  callId String @unique
+
+  testo    String
+  lingua   String?  @db.VarChar(8)
+  fornitore String? @db.VarChar(40)
+  createdAt DateTime @default(now())
+
+  call PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+}
+
+/// Una linea telefonica del locale.
+///
+/// Un numero appartiene a **un** locale: e il confine che impedisce di
+/// mescolare le chiamate di due ristoranti dello stesso gruppo.
+model VoiceNumber {
+  id      String @id @default(cuid())
+  venueId String
+
+  /// Chi fornisce la linea: `blackfox`, e domani altri.
+  fornitore String @db.VarChar(40)
+
+  /// Il numero come lo conosce il fornitore (E.164 dove possibile).
+  numeroEsterno String
+  /// Il numero come si mostra al ristoratore, se diverso.
+  numeroMostrato String?
+
+  /// A cosa serve questa linea, per il ristoratore: «il numero sul menu».
+  etichetta String? @db.VarChar(80)
+
+  attivo Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue    Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  chiamate PhoneCall[]
+
+  @@unique([fornitore, numeroEsterno])
+  @@index([venueId, attivo])
+}
+
+/// Come questo locale vuole che si comporti il telefono.
+///
+/// Una riga per locale, creata alla prima configurazione. Quando non c'e, il
+/// telefono si comporta come `HUMAN_ONLY`: risponde chi c'e, e nessuna
+/// macchina parla con i clienti di nessuno senza che qualcuno l'abbia deciso.
+model VoiceConfiguration {
+  id      String @id @default(cuid())
+  venueId String @unique
+
+  modalita VoiceMode @default(HUMAN_ONLY)
+
+  /// Quanti secondi si lascia squillare prima del ripiego, in `HUMAN_FIRST`.
+  secondiDiSquillo Int @default(20)
+
+  /// Cosa fare in ognuna delle quattro situazioni (§35 del brief).
+  ///
+  /// Colonne separate e non un `Json`: sono quattro decisioni che una
+  /// schermata mostra come quattro tendine, e in un `Json` non si puo
+  /// nemmeno interrogarle.
+  quandoAperto     VoiceRoutingTarget @default(HUMAN)
+  quandoChiuso     VoiceRoutingTarget @default(VOICEMAIL)
+  quandoOccupato   VoiceRoutingTarget @default(VOICEMAIL)
+  quandoNonRisponde VoiceRoutingTarget @default(VOICEMAIL)
+
+  /// Il numero a cui inoltrare, quando una delle quattro dice `FORWARD`.
+  numeroInoltro String?
+
+  // ── il recupero delle chiamate perse ─────────────────────────────────
+
+  /// Se mandare un messaggio a chi ha chiamato e non ha trovato nessuno.
+  recuperoPerseAttivo Boolean @default(false)
+  /// Su quale canale. Nullo = nessuno configurato su questa installazione.
+  recuperoPerseCanale MessageChannel?
+  /// Dopo quanti minuti. Zero = subito.
+  recuperoPerseMinuti Int @default(5)
+  /// Il testo, con `{{bookingUrl}}` e `{{venueName}}`.
+  recuperoPerseTesto  String? @db.VarChar(600)
+  /// Se creare comunque una riga «da richiamare» per il personale.
+  recuperoCreaRichiamata Boolean @default(true)
+
+  // ── le registrazioni ─────────────────────────────────────────────────
+
+  registrazioniAttive  Boolean              @default(false)
+  registrazioniConsenso VoiceRecordingConsent @default(OFF)
+  /// Per quanti giorni si conservano. Oltre, si cancellano.
+  registrazioniGiorni  Int                  @default(30)
+
+  // ── chi risponde, quando risponde una macchina ───────────────────────
+
+  /// Il nome con cui si presenta. Il **come** si comporta non si configura da
+  /// qui: le regole del sistema non sono un campo di testo.
+  aiNome    String? @db.VarChar(40)
+  aiLingua  String  @default("it")
+  aiSaluto  String? @db.VarChar(300)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+}
+
+enum VoiceMode {
+  /// Il telefono non fa parte di Tavolo.
+  OFF
+  /// Risponde chi c'e. Nessuna macchina parla con i clienti.
+  HUMAN_ONLY
+  /// Squilla alle persone; se nessuno risponde, il ripiego configurato.
+  HUMAN_FIRST
+  /// Risponde la macchina, e passa a una persona quando serve.
+  AI_FIRST
+}
+
+enum VoiceRoutingTarget {
+  HUMAN
+  AI
+  VOICEMAIL
+  FORWARD
+  /// Dice una frase e chiude.
+  MESSAGE
+}
+
+enum VoiceRecordingConsent {
+  /// Non si registra.
+  OFF
+  /// Si annuncia all'inizio che la chiamata e registrata.
+  ANNOUNCE
+  /// Si registra solo se **entrambi** acconsentono.
+  BOTH_PARTIES
+}
+
+/// Una persona da richiamare.
+///
+/// E la coda operativa: una chiamata persa non e una riga di storico, e un
+/// lavoro da fare. `MissedCall` voleva essere questo e non e mai stata
+/// collegata a niente.
+model VoiceCallback {
+  id      String @id @default(cuid())
+  venueId String
+
+  /// Il numero da richiamare. Resta anche se la scheda dell'ospite cambia.
+  numero String
+
+  guestId String?
+  callId  String?
+
+  stato VoiceCallbackStatus @default(OPEN)
+
+  /// Quante volte si e provato a richiamare.
+  tentativi Int @default(0)
+
+  /// Entro quando conviene richiamare: serve a dire «in ritardo».
+  entro DateTime?
+
+  chiusoIl DateTime?
+  chiusoDa String?
+  nota     String? @db.VarChar(400)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest Guest?     @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  call  PhoneCall? @relation(fields: [callId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, stato, createdAt])
+}
+
+enum VoiceCallbackStatus {
+  OPEN
+  DONE
+  /// Deciso di non richiamare: e una decisione, non una dimenticanza.
+  IGNORED
+}
+
+/// Un'informazione emersa in chiamata, **da approvare**.
+///
+/// Il punto di questa tabella e il campo `stato`. Quello che una macchina
+/// deduce da una telefonata non entra nel profilo di un cliente finche una
+/// persona non premo «salva»: un CRM riempito di deduzioni non verificate e
+/// peggio di un CRM vuoto, perche non si sa piu cosa e vero.
+model VoiceCRMInsight {
+  id      String @id @default(cuid())
+  venueId String
+  callId  String
+  guestId String?
+
+  /// Di che tipo: `preferenza`, `allergia`, `occasione`, `nota`.
+  tipo String @db.VarChar(40)
+
+  /// Il testo dell'informazione, come si mostrerebbe sulla scheda.
+  valore String @db.VarChar(300)
+
+  stato VoiceInsightStatus @default(PENDING)
+
+  decisoDa String?
+  decisoIl DateTime?
+
+  createdAt DateTime @default(now())
+
+  venue Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  call  PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+  guest Guest?    @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, stato, createdAt])
+}
+
+enum VoiceInsightStatus {
+  PENDING
+  SAVED
+  IGNORED
+}
+
+/// Quello che il locale ha deciso di far sapere al telefono.
+///
+/// La base di conoscenza esiste perche una macchina che risponde **non deve
+/// inventare**: se la risposta non e qui, si dice «faccio verificare dal
+/// personale». Un'informazione sbagliata sugli allergeni detta al telefono e
+/// un danno vero.
+model VoiceKnowledgeItem {
+  id      String @id @default(cuid())
+  venueId String
+
+  categoria VoiceKnowledgeCategory
+
+  /// Le forme in cui la domanda puo arrivare: «parcheggio», «dove parcheggio».
+  argomenti String[] @default([])
+
+  risposta String @db.VarChar(1200)
+
+  attivo Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, categoria, attivo])
+}
+
+enum VoiceKnowledgeCategory {
+  LOCALE
+  ORARI
+  MENU
+  ALLERGIE
+  ACCESSIBILITA
+  PARCHEGGIO
+  BAMBINI
+  ANIMALI
+  GRUPPI
+  EVENTI
+  PAGAMENTI
+  ALTRO
 }
 
 enum BookingStatus {
@@ -2515,7 +2978,13 @@ enum BookingStatus {
 
 enum BookingSource {
   WIDGET
+  /// Presa da una persona dello staff al telefono. Resta per le righe
+  /// esistenti e per chi scrive a mano: non si tocca il passato.
   PHONE
+  /// Nata da Tavolo Voice. Chi ha risposto — persona o macchina — sta su
+  /// `PhoneCall.handler`, non in un secondo valore qui: un enum che cresce a
+  /// ogni combinazione diventa illeggibile.
+  VOICE
   WALK_IN
   GOOGLE
   SOCIAL
