@@ -20,7 +20,9 @@ const PREFISSO = "test-versione-";
 
 const url = process.env.DATABASE_URL ?? "";
 if (!/dev|test/i.test(url)) {
-  throw new Error("Questi test scrivono sul database: DATABASE_URL deve contenere 'dev' o 'test'.");
+  throw new Error(
+    "Questi test scrivono sul database: DATABASE_URL deve contenere 'dev' o 'test'.",
+  );
 }
 
 let venueId = "";
@@ -56,22 +58,36 @@ beforeAll(async () => {
   });
   venueId = (
     await db.venue.create({
-      data: { orgId: org.id, name: `${PREFISSO}locale`, slug: `${PREFISSO}v${Date.now()}` },
+      data: {
+        orgId: org.id,
+        name: `${PREFISSO}locale`,
+        slug: `${PREFISSO}v${Date.now()}`,
+      },
     })
   ).id;
   altroVenueId = (
     await db.venue.create({
-      data: { orgId: org.id, name: `${PREFISSO}altro`, slug: `${PREFISSO}a${Date.now()}` },
+      data: {
+        orgId: org.id,
+        name: `${PREFISSO}altro`,
+        slug: `${PREFISSO}a${Date.now()}`,
+      },
     })
   ).id;
   guestId = (
-    await db.guest.create({ data: { venueId, firstName: "Prova", lastName: "Versione" } })
+    await db.guest.create({
+      data: { venueId, firstName: "Prova", lastName: "Versione" },
+    })
   ).id;
-  tableId = (await db.table.create({ data: { venueId, label: "P1", seats: 2 } })).id;
+  tableId = (
+    await db.table.create({ data: { venueId, label: "P1", seats: 2 } })
+  ).id;
 }, 60_000);
 
 afterAll(async () => {
-  await db.organization.deleteMany({ where: { slug: { startsWith: PREFISSO } } });
+  await db.organization.deleteMany({
+    where: { slug: { startsWith: PREFISSO } },
+  });
   await db.$disconnect();
 }, 60_000);
 
@@ -85,7 +101,10 @@ describe("cambia quando deve", () => {
   it("cambiare stato a una prenotazione di oggi cambia il segnale", async () => {
     const b = await prenotazione(oggiAlle(21));
     const prima = await versioneServizio(venueId);
-    await db.booking.update({ where: { id: b.id }, data: { status: "SEATED" } });
+    await db.booking.update({
+      where: { id: b.id },
+      data: { status: "SEATED" },
+    });
     expect(await versioneServizio(venueId)).not.toBe(prima);
   });
 
@@ -98,7 +117,10 @@ describe("cambia quando deve", () => {
     */
     const b = await prenotazione(oggiAlle(22));
     const prima = await versioneServizio(venueId);
-    await db.booking.update({ where: { id: b.id }, data: { deletedAt: new Date() } });
+    await db.booking.update({
+      where: { id: b.id },
+      data: { deletedAt: new Date() },
+    });
     expect(await versioneServizio(venueId)).not.toBe(prima);
   });
 
@@ -149,6 +171,26 @@ describe("cambia quando deve", () => {
     expect(await versioneServizio(venueId)).not.toBe(prima);
   });
 
+  /**
+   * Questa prova è stata **instabile per un'ora**, e la causa era nel
+   * prodotto, non qui.
+   *
+   * Il segnale conta le chiamate e prende il loro `updatedAt` più recente, che
+   * ha la precisione del millisecondo: creare la riga e cambiarle stato nello
+   * stesso millisecondo dava la **stessa firma** — conteggio uguale, massimo
+   * uguale — e la prova diventava rossa. Misurato in laboratorio: venticinque
+   * volte su cento.
+   *
+   * Non era un difetto della prova: quando succede in servizio, nessun tablet
+   * riscarica e il riquadro della chiamata resta sullo schermo fermo com'era.
+   * La correzione è nel segnale, che adesso porta anche **quante chiamate sono
+   * in corso**: una che entra o che finisce lo muove per costruzione, senza
+   * dipendere dall'orologio.
+   *
+   * Tenerla senza attese artificiali è voluto: se qualcuno tolresse quel
+   * pezzo dal segnale, questa prova tornerebbe rossa un quarto delle volte —
+   * ed è il modo in cui lo si scopre.
+   */
   it("e una chiamata che finisce lo muove di nuovo", async () => {
     const riga = await db.phoneCall.create({
       data: {
@@ -236,7 +278,10 @@ describe("non cambia quando non deve", () => {
       data: { venueId, guestName: "Andato", partySize: 2, status: "SEATED" },
     });
     const prima = await versioneServizio(venueId);
-    await db.waitlistEntry.update({ where: { id: riga.id }, data: { notes: "nota tardiva" } });
+    await db.waitlistEntry.update({
+      where: { id: riga.id },
+      data: { notes: "nota tardiva" },
+    });
     expect(await versioneServizio(venueId)).toBe(prima);
   });
 });
