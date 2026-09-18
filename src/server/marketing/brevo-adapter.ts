@@ -131,16 +131,23 @@ export const brevoAdapter: EmailProviderAdapter = {
       console.log(`[BREVO] sendTransactionalEmail no-op (Brevo not configured): ${payload.to}`);
       return;
     }
-    try {
-      await client.transactionalEmails.sendTransacEmail({
-        sender: { email: FROM_EMAIL, name: FROM_NAME },
-        to: [{ email: payload.to }],
-        subject: payload.subject,
-        htmlContent: payload.html,
-      });
-    } catch (error) {
-      console.error(`[BREVO] sendTransactionalEmail failed for ${payload.to}:`, error);
-    }
+    /*
+      L'errore **risale**, non finisce solo nei log.
+
+      Prima veniva inghiottito: chi chiedeva l'anteprima di una campagna
+      vedeva «inviata» anche quando Brevo aveva rifiutato, e l'unica traccia
+      era una riga nei log del server che nessuno va a leggere. Con un'email
+      di reimpostazione della password sarebbe peggio: si aspetta un
+      messaggio che non arriverà mai, senza sapere che non arriverà.
+
+      Chi chiama decide cosa dire; questa funzione dice solo la verità.
+    */
+    await client.transactionalEmails.sendTransacEmail({
+      sender: { email: FROM_EMAIL, name: FROM_NAME },
+      to: [{ email: payload.to }],
+      subject: payload.subject,
+      htmlContent: payload.html,
+    });
   },
 
   async getCampaignStats(providerId: string): Promise<CampaignStats> {

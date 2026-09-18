@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/shell/logo";
+import { messaggioAccesso } from "@/lib/errori-accesso";
 
 /**
  * Questa installazione è la vetrina dimostrativa pubblica?
@@ -65,18 +66,30 @@ function SignInForm() {
     setError(null);
     setLoading(true);
     const fd = new FormData(e.currentTarget);
-    const res = await signIn("credentials", {
-      email: String(fd.get("email")),
-      password: String(fd.get("password")),
-      redirect: false,
-    });
-    setLoading(false);
-    if (res?.error) {
-      setError("Credenziali non valide.");
-      return;
+    /*
+      `signIn()` può **solevare**, non solo restituire un errore: succede
+      quando la risposta del callback non ha la forma che si aspetta. Senza
+      questo `try`, l'eccezione salta il `setLoading(false)` e il pulsante
+      resta «Accesso in corso…» finché non si ricarica la pagina — il modo
+      peggiore di fallire, perché non dice niente e sembra che stia lavorando.
+    */
+    try {
+      const res = await signIn("credentials", {
+        email: String(fd.get("email")),
+        password: String(fd.get("password")),
+        redirect: false,
+      });
+      if (res?.error) {
+        setError(messaggioAccesso(res.error, res.status));
+        return;
+      }
+      router.push(callback);
+      router.refresh();
+    } catch {
+      setError("Accesso non riuscito. Controlla la connessione e riprova.");
+    } finally {
+      setLoading(false);
     }
-    router.push(callback);
-    router.refresh();
   }
 
   return (
@@ -171,7 +184,19 @@ function SignInForm() {
             </div>
 
             <div className="flex justify-end">
-              <span className="text-xs text-card-foreground/65">Password dimenticata?</span>
+              {/*
+                Era uno `<span>`: sembrava un collegamento, stava dove sta un
+                collegamento, e non portava da nessuna parte. Chi perdeva la
+                password non aveva nessuna strada dentro il prodotto — e per
+                chi gestisce il locale non c'è nemmeno qualcuno sopra a cui
+                chiederla.
+              */}
+              <Link
+                href="/password-dimenticata"
+                className="text-xs text-card-foreground/65 underline underline-offset-2 transition-colors hover:text-card-foreground"
+              >
+                Password dimenticata?
+              </Link>
             </div>
 
             <div aria-live="polite" className="sr-only">
