@@ -127,8 +127,23 @@ export function PermessoMicrofono() {
             ? "Microfono bloccato"
             : "Microfono da consentire"}
         </Badge>
+        {/*
+          La parola sul pulsante **cambia con quello che può fare**.
+
+          Quando il permesso è ancora da chiedere, premerlo fa comparire la
+          finestra del browser: «Consenti» è esatto. Quando il sito è già
+          bloccato non comparirà niente — `getUserMedia` rifiuta senza chiedere
+          — e «Consenti» sarebbe una promessa. Ma il pulsante resta, perché
+          `permissions.query` risponde «bloccato» anche dove **manca il
+          microfono**: un clic distingue le due cose, che portano a gesti
+          opposti, e la riga sotto dice quale delle due è.
+        */}
         <Button variant="accent" size="sm" onClick={chiedi} disabled={inCorso}>
-          {inCorso ? "Chiedo…" : "Consenti il microfono"}
+          {inCorso
+            ? "Chiedo…"
+            : stato === "denied"
+              ? "Controlla il microfono"
+              : "Consenti il microfono"}
         </Button>
       </div>
       {/* La risposta del browser, quando ha risposto: è la riga che cambia
