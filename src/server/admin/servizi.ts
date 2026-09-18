@@ -51,9 +51,16 @@ export type LocaleConServizi = {
     attivatoIl: Date | null;
     nota: string | null;
   };
-  /** Quante linee dichiarate dal centralino, e l'ultima telefonata. */
-  linee: number;
+  /** Le linee che arrivano a questo locale, come le mostra il pannello. */
+  linee: { numero: string; etichetta: string | null }[];
   ultimaChiamata: Date | null;
+  /**
+   * Come si chiama nel centralino. Nullo = **il centralino non si e ancora
+   * presentato**, e allora da qui non si puo assegnare niente: assegnare al
+   * cliente sbagliato manda le telefonate di un ristorante nel gestionale di
+   * un altro.
+   */
+  tenantCentralino: string | null;
 };
 
 /**
@@ -76,7 +83,12 @@ export async function localiConServizi(): Promise<LocaleConServizi[]> {
         select: { attivo: true, funzioni: true, attivatoDa: true, attivatoIl: true, nota: true },
         take: 1,
       },
-      _count: { select: { voiceNumbers: true } },
+      centralinoTenantId: true,
+      voiceNumbers: {
+        where: { attivo: true },
+        orderBy: { createdAt: "asc" },
+        select: { numeroEsterno: true, numeroMostrato: true, etichetta: true },
+      },
       phoneCalls: { orderBy: { startedAt: "desc" }, take: 1, select: { startedAt: true } },
     },
   });
@@ -103,8 +115,12 @@ export async function localiConServizi(): Promise<LocaleConServizi[]> {
         attivatoIl: s?.attivatoIl ?? null,
         nota: s?.nota ?? null,
       },
-      linee: l._count.voiceNumbers,
+      linee: l.voiceNumbers.map((n) => ({
+        numero: n.numeroMostrato ?? n.numeroEsterno,
+        etichetta: n.etichetta,
+      })),
       ultimaChiamata: l.phoneCalls[0]?.startedAt ?? null,
+      tenantCentralino: l.centralinoTenantId,
     };
   });
 }

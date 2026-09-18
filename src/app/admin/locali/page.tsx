@@ -1,8 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { ServiziLocale } from "@/components/admin/servizi-locale";
+import { LineeLocale } from "@/components/admin/linee-locale";
 import { NOME_FUNZIONE_CENTRALINO, type FunzioneCentralino } from "@/lib/licenza-centralino";
 import { daQuando } from "@/lib/utils";
 import { localiConServizi } from "@/server/admin/servizi";
+import { configurato } from "@/server/admin/centralino-remoto";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,9 @@ export const dynamic = "force-dynamic";
 export default async function AdminLocaliPage() {
   const locali = await localiConServizi();
   const accesi = locali.filter((l) => l.centralino.attivo).length;
+  /* Se da qui si puo comandare il centralino. Si legge una volta e si passa
+     giu: e una variabile d'ambiente, non uno stato per locale. */
+  const collegato = configurato();
 
   return (
     <div className="space-y-6">
@@ -65,11 +70,6 @@ export default async function AdminLocaliPage() {
                 ) : (
                   <Badge tone="neutral">Spento</Badge>
                 )}
-                {l.linee > 0 && (
-                  <span className="t-nota">
-                    {l.linee} {l.linee === 1 ? "linea" : "linee"}
-                  </span>
-                )}
                 <span className="t-nota">
                   {l.ultimaChiamata
                     ? `ultima chiamata ${daQuando(l.ultimaChiamata)}`
@@ -78,7 +78,7 @@ export default async function AdminLocaliPage() {
               </div>
             </div>
 
-            <div className="mt-3 border-t border-border/60 pt-3">
+            <div className="mt-3 space-y-3 border-t border-border/60 pt-3">
               <ServiziLocale
                 venueId={l.venueId}
                 attivo={l.centralino.attivo}
@@ -98,6 +98,16 @@ export default async function AdminLocaliPage() {
                 </p>
               )}
               {l.centralino.nota && <p className="t-nota mt-1">«{l.centralino.nota}»</p>}
+
+              <div className="border-t border-border/60 pt-3">
+                <p className="t-etichetta mb-1.5">Le linee</p>
+                <LineeLocale
+                  venueId={l.venueId}
+                  linee={l.linee}
+                  tenantCentralino={l.tenantCentralino}
+                  collegato={collegato}
+                />
+              </div>
             </div>
           </section>
         ))}

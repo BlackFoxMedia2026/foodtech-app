@@ -274,6 +274,14 @@ model Venue {
   phoneCalls         PhoneCall[]
   voiceNumbers       VoiceNumber[]
   servizi            VenueServizio[]
+  /// Come questo locale si chiama **nel centralino**.
+  ///
+  /// Lo dichiara il centralino stesso insieme alle sue linee, e serve al verso
+  /// opposto: con questo, il pannello di piattaforma puo chiedere al centralino
+  /// di assegnare un numero a questo locale — invece di far aprire il secondo
+  /// gestionale a chi accende un cliente. Nullo finche il centralino non si e
+  /// mai presentato.
+  centralinoTenantId String?
   voiceConfiguration VoiceConfiguration?
   voiceCallbacks     VoiceCallback[]
   voiceInsights      VoiceCRMInsight[]
