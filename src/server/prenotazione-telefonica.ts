@@ -3,6 +3,8 @@ import { AvailabilityError, checkAvailability } from "@/server/availability";
 import { createBooking } from "@/server/bookings";
 import { durataConsigliata } from "@/server/durata-consigliata";
 import { riconosciChiamante } from "@/server/telefonia";
+import { segnaEventoChiamata } from "@/server/chiamate";
+import { esitoDalFatto } from "@/server/voice/esiti";
 
 /**
  * La prenotazione presa al telefono che diventa una prenotazione vera.
@@ -105,7 +107,9 @@ export async function registraPrenotazioneTelefonica(
      numeri come li scrivono le persone. Se lo si rifacesse qui a modo proprio,
      la stessa persona sarebbe riconosciuta al telefono e non riconosciuta
      nella prenotazione che nasce da quella telefonata. */
-  const riconosciuto = dati.phone ? await riconosciChiamante(venueId, dati.phone, adesso) : null;
+  const riconosciuto = dati.phone
+    ? await riconosciChiamante(venueId, dati.phone, adesso)
+    : null;
   const ospiteEsistente = riconosciuto?.guest ?? null;
 
   /* Perché richiede attenzione. Si **guarda** la disponibilità ma non si
@@ -156,7 +160,9 @@ export async function registraPrenotazioneTelefonica(
   const noteInterne = [
     "Presa dal risponditore telefonico: da confermare richiamando.",
     ...(dati.nota ? [dati.nota] : []),
-    ...(avvertimenti.length > 0 ? [`Da guardare: ${avvertimenti.join(" ")}`] : []),
+    ...(avvertimenti.length > 0
+      ? [`Da guardare: ${avvertimenti.join(" ")}`]
+      : []),
   ].join("\n");
 
   const creata = await createBooking(
@@ -170,7 +176,9 @@ export async function registraPrenotazioneTelefonica(
                come nome provvisorio, così la prenotazione esiste e chi
                richiama scrive il nome vero parlando con la persona. */
             guest: {
-              firstName: dati.phone ? "Da richiamare" : "Prenotazione telefonica",
+              firstName: dati.phone
+                ? "Da richiamare"
+                : "Prenotazione telefonica",
               lastName: null,
               phone: dati.phone ?? null,
             },
@@ -213,12 +221,39 @@ export async function registraPrenotazioneTelefonica(
      prenotazione resta, e una prenotazione senza il collegamento è molto
      meglio di nessuna prenotazione. */
   if (dati.idChiamata) {
-    await db.phoneCall
-      .updateMany({
-        where: { venueId, externalId: dati.idChiamata },
-        data: { bookingId: creata.id },
+    const collegata = await db.phoneCall
+      .findUnique({
+        where: {
+          venueId_externalId: { venueId, externalId: dati.idChiamata },
+        },
+        select: { id: true },
       })
-      .catch(() => {});
+      .catch(() => null);
+
+    if (collegata) {
+      await db.phoneCall
+        .update({
+          where: { id: collegata.id },
+          data: { bookingId: creata.id },
+        })
+        .catch(() => {});
+      /* L'esito lo scrive il fatto, non chi risponde: da questa telefonata è
+         nata una prenotazione, e nello storico quella riga smette di essere
+         «nessuno ha risposto». È il caso di ogni giorno — una chiamata persa
+         richiamata dopo — e senza questo resterebbe una chiamata «persa» con
+         una prenotazione attaccata. */
+      await esitoDalFatto(collegata.id, "BOOKING_CREATED");
+      await segnaEventoChiamata(collegata.id, "BOOKING_CREATED", {
+        /* «centralino» e non una persona: questa prenotazione l'ha raccolta
+           il risponditore a tasti, e il registro della chiamata deve dirlo —
+           è la differenza fra una prenotazione da confermare e una presa da
+           chi ha parlato col cliente. `handler` invece non si tocca: nessuno
+           ha risposto a quella telefonata, e scrivere «una persona» sarebbe
+           falso. */
+        actor: "centralino",
+        meta: { bookingId: creata.id, reference: creata.reference },
+      });
+    }
   }
 
   return {

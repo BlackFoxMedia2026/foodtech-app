@@ -25,15 +25,21 @@ import { BookingForm } from "@/components/bookings/booking-form";
  * query finirebbe in una prenotazione vera senza che nessuno l'abbia scritto.
  * Dall'indirizzo si prende solo *di chi si tratta*, e chi si tratta lo dice il
  * database.
+ *
+ * `?chiamata=<id>` è la terza, e chiude il giro del telefono: la prenotazione
+ * nata da qui si lega a quella telefonata, che nello storico smette di essere
+ * «nessuno ha risposto» e spegne la richiamata in coda. Si verifica che sia
+ * una chiamata **di questo locale** prima di passarla al modulo, come per
+ * l'ospite.
  */
 export default async function NewBookingPage({
   searchParams,
 }: {
-  searchParams: { guest?: string; phone?: string };
+  searchParams: { guest?: string; phone?: string; chiamata?: string };
 }) {
   const ctx = await getActiveVenue();
 
-  const [tables, ospite] = await Promise.all([
+  const [tables, ospite, chiamata] = await Promise.all([
     db.table.findMany({
       where: { venueId: ctx.venueId, active: true },
       select: { id: true, label: true, seats: true },
@@ -47,12 +53,19 @@ export default async function NewBookingPage({
           select: { firstName: true, lastName: true, phone: true },
         })
       : null,
+    searchParams.chiamata
+      ? db.phoneCall.findFirst({
+          where: { id: searchParams.chiamata, venueId: ctx.venueId },
+          select: { id: true },
+        })
+      : null,
   ]);
 
   const iniziale = {
     telefono: ospite?.phone ?? searchParams.phone ?? undefined,
     nome: ospite?.firstName ?? undefined,
     cognome: ospite?.lastName ?? undefined,
+    chiamataId: chiamata?.id,
   };
 
   return (

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { ChiHaRisposto, EsitoChiamata } from "@/lib/voice-esiti";
 import { codaIdentita, telefonoLeggibile } from "@/lib/telefono";
 import { trovaOCreaOspite } from "@/server/guest-match";
 import {
@@ -99,6 +100,14 @@ export async function registraEventoChiamata(
       endedAt:
         dati.stato === "ENDED" || dati.stato === "MISSED" ? adesso : null,
       guestId: riconosciuto?.guest?.id ?? null,
+      /* Chi ha risposto, e com'è finita: le due cose che il centralino sa già
+         e che nessuno deve scrivere a mano. `MISSED` porta con sé il suo
+         esito — una chiamata a cui non ha risposto nessuno è finita, e in che
+         modo si sa. Una a cui si è risposto resta **senza** esito: «non si sa
+         ancora» è diverso da «niente da fare», e sono due righe diverse nello
+         storico. */
+      handler: dati.stato === "ANSWERED" ? "HUMAN" : "NONE",
+      outcome: dati.stato === "MISSED" ? "MISSED" : null,
     },
     update: {
       status: dati.stato,
@@ -113,6 +122,11 @@ export async function registraEventoChiamata(
         dati.stato === "ENDED" || dati.stato === "MISSED" ? adesso : undefined,
       // Il numero può arrivare solo con l'evento successivo (caller ID tardivo).
       fromNumber: dati.phone ?? esistente?.fromNumber ?? null,
+      /* Ha risposto una persona. Oggi è l'unico caso: il fornitore non sa far
+         rispondere una macchina, e quando lo saprà il risponditore scriverà
+         `AI` da sé — questa riga resta vera perché parla della *risposta*, non
+         del fornitore. */
+      handler: dati.stato === "ANSWERED" ? "HUMAN" : undefined,
     },
     select: { id: true, status: true, guestId: true },
   });
@@ -146,7 +160,10 @@ export async function registraEventoChiamata(
  * e nel registro devono restare distinte, o la differenza si perde proprio
  * dove serve rileggerla.
  */
-const EVENTO_PER_STATO: Record<StatoChiamata, "CALL_RECEIVED" | "CALL_ANSWERED" | "CALL_MISSED" | "CALL_ENDED"> = {
+const EVENTO_PER_STATO: Record<
+  StatoChiamata,
+  "CALL_RECEIVED" | "CALL_ANSWERED" | "CALL_MISSED" | "CALL_ENDED"
+> = {
   RINGING: "CALL_RECEIVED",
   ANSWERED: "CALL_ANSWERED",
   MISSED: "CALL_MISSED",
@@ -200,7 +217,8 @@ export type EventoChiamataKind =
   | "CALLBACK_CREATED"
   | "CALLBACK_RESOLVED"
   | "CRM_INSIGHT_CREATED"
-  | "NOTE_ADDED";
+  | "NOTE_ADDED"
+  | "OUTCOME_SET";
 
 /** Gli eventi di una chiamata, dal primo all'ultimo. */
 export async function eventiDiChiamata(venueId: string, callId: string) {
@@ -311,7 +329,12 @@ export async function chiudiChiamateAppese(
       status: { in: ["RINGING", "ANSWERED"] },
       startedAt: { lt: new Date(adesso.getTime() - 60 * 60 * 1000) },
     },
-    data: { status: "ENDED", endedAt: adesso },
+    /* `FAILED` e non `ENDED` senza esito: queste chiamate non sono finite, si
+       sono **perse per strada** — il centralino non ha mai mandato la
+       chiusura. Lasciarle senza esito le farebbe comparire fra quelle da
+       chiudere a mano, e nessuno può dire com'è finita una telefonata di tre
+       giorni prima di cui non è rimasta traccia. */
+    data: { status: "ENDED", endedAt: adesso, outcome: "FAILED" },
   });
   return esito.count;
 }
@@ -340,7 +363,26 @@ export type ChiamataInElenco = {
     allergies: string | null;
   } | null;
   /** La prenotazione nata da questa chiamata, se ne è nata una. */
-  prenotazione: { id: string; reference: string; startsAt: Date; partySize: number } | null;
+  prenotazione: {
+    id: string;
+    reference: string;
+    startsAt: Date;
+    partySize: number;
+  } | null;
+  /**
+   * Com'è finita.
+   *
+   * Nullo quando non lo si sa ancora, ed è **diverso** da «niente da fare»:
+   * una chiamata a cui si è risposto e che nessuno ha chiuso resta senza
+   * esito, e nello storico è una riga che chiede un gesto.
+   */
+  esito: EsitoChiamata | null;
+  /** Chi ha risposto: una persona, il risponditore, nessuno. */
+  chiHaRisposto: ChiHaRisposto;
+  /** La nota di chi ha risposto, quando c'è. */
+  nota: string | null;
+  /** C'è già una richiamata aperta per questa chiamata. */
+  inCoda: boolean;
 };
 
 export type ElencoChiamate = {
@@ -399,7 +441,20 @@ export async function elencoChiamate(
             allergies: true,
           },
         },
-        booking: { select: { id: true, reference: true, startsAt: true, partySize: true } },
+        booking: {
+          select: {
+            id: true,
+            reference: true,
+            startsAt: true,
+            partySize: true,
+          },
+        },
+        outcome: true,
+        handler: true,
+        notes: true,
+        /* Una riga sola, e solo per sapere **se** c'è: lo storico deve dire
+           «questa è già in coda» senza mostrare la coda dentro lo storico. */
+        callbacks: { where: { stato: "OPEN" }, select: { id: true }, take: 1 },
       },
     }),
     db.phoneCall.count({ where: dove }),
@@ -407,7 +462,12 @@ export async function elencoChiamate(
        Senza la seconda condizione ci finirebbe chi ha riprovato subito dopo e
        ha prenotato — cioè si richiamerebbe chi è già a posto. */
     db.phoneCall.count({
-      where: { venueId, startedAt: { gte: da }, status: "MISSED", bookingId: null },
+      where: {
+        venueId,
+        startedAt: { gte: da },
+        status: "MISSED",
+        bookingId: null,
+      },
     }),
   ]);
 
@@ -421,7 +481,10 @@ export async function elencoChiamate(
       quando: r.startedAt,
       durataSecondi:
         r.answeredAt && r.endedAt
-          ? Math.max(0, Math.round((r.endedAt.getTime() - r.answeredAt.getTime()) / 1000))
+          ? Math.max(
+              0,
+              Math.round((r.endedAt.getTime() - r.answeredAt.getTime()) / 1000),
+            )
           : null,
       ospite: r.guest
         ? {
@@ -433,6 +496,10 @@ export async function elencoChiamate(
           }
         : null,
       prenotazione: r.booking,
+      esito: (r.outcome as EsitoChiamata | null) ?? null,
+      chiHaRisposto: r.handler as ChiHaRisposto,
+      nota: r.notes,
+      inCoda: r.callbacks.length > 0,
     })),
   };
 }
@@ -491,7 +558,10 @@ export async function chiamateDiOspite(
     stato: r.status as StatoChiamata,
     durataSecondi:
       r.answeredAt && r.endedAt
-        ? Math.max(0, Math.round((r.endedAt.getTime() - r.answeredAt.getTime()) / 1000))
+        ? Math.max(
+            0,
+            Math.round((r.endedAt.getTime() - r.answeredAt.getTime()) / 1000),
+          )
         : null,
     prenotazione: r.booking,
   }));

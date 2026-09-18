@@ -18,7 +18,9 @@ test.afterAll(async () => {
   await db.$disconnect();
 });
 
-test("senza licenza la voce non c'è, e l'indirizzo scritto a mano non esiste", async ({ page }) => {
+test("senza licenza la voce non c'è, e l'indirizzo scritto a mano non esiste", async ({
+  page,
+}) => {
   const locale = await db.venue.findFirstOrThrow({
     where: { slug: E2E.venueSlug },
     select: { id: true },
@@ -29,7 +31,9 @@ test("senza licenza la voce non c'è, e l'indirizzo scritto a mano non esiste", 
   });
 
   await page.goto("/overview");
-  await expect(page.getByRole("navigation").getByRole("link", { name: "Telefono" })).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "Telefono" }),
+  ).toHaveCount(0);
 
   /* 404 e non «non hai i permessi»: la voce non c'è, quindi arrivarci vuol
      dire aver scritto l'indirizzo a mano, e una pagina che risponde «non hai
@@ -38,7 +42,9 @@ test("senza licenza la voce non c'è, e l'indirizzo scritto a mano non esiste", 
   expect(r?.status()).toBe(404);
 });
 
-test("con la licenza la voce c'è, e la pagina mostra chi non ha trovato nessuno", async ({ page }) => {
+test("con la licenza la voce c'è, e la pagina mostra chi non ha trovato nessuno", async ({
+  page,
+}) => {
   const locale = await db.venue.findFirstOrThrow({
     where: { slug: E2E.venueSlug },
     select: { id: true },
@@ -53,7 +59,12 @@ test("con la licenza la voce c'è, e la pagina mostra chi non ha trovato nessuno
 
   const nome = unico("Persa");
   const ospite = await db.guest.create({
-    data: { venueId: locale.id, firstName: nome, lastName: "Richiamare", phone: "3479911223" },
+    data: {
+      venueId: locale.id,
+      firstName: nome,
+      lastName: "Richiamare",
+      phone: "3479911223",
+    },
   });
   await db.phoneCall.create({
     data: {
@@ -69,24 +80,45 @@ test("con la licenza la voce c'è, e la pagina mostra chi non ha trovato nessuno
 
   try {
     await page.goto("/overview");
-    const voce = page.getByRole("navigation").getByRole("link", { name: "Telefono" }).first();
+    const voce = page
+      .getByRole("navigation")
+      .getByRole("link", { name: "Telefono" })
+      .first();
     await expect(voce).toBeVisible({ timeout: 20_000 });
     await voce.click();
 
     await expect(page).toHaveURL(/\/telefono/);
-    // Il pulsante che conta porta dentro **quante** sono: se è zero non c'è
-    // niente da fare, e si vede senza premere.
-    await expect(page.getByRole("button", { name: /Da richiamare\s*1/ })).toBeVisible();
-    await expect(page.getByText(nome).first()).toBeVisible();
-    await expect(page.getByText("+39 347 9911223")).toBeVisible();
-    await expect(page.getByText(/nessuna risposta/)).toBeVisible();
+
+    /*
+      La chiamata persa sta nel «Da fare», senza premere niente.
+
+      Prima era una lista sola con un pulsante-filtro che portava dentro il
+      conteggio. Il filtro c'è ancora — chi guarda lo storico può volere solo
+      le perse — ma le chiamate che chiedono un gesto non stanno più dietro un
+      pulsante: in servizio quello che si trova premendo non si trova.
+    */
+    const daFare = page.getByRole("region", { name: "Da fare" });
+    await expect(daFare.getByText(nome).first()).toBeVisible();
+    await expect(daFare.getByText("+39 347 9911223").first()).toBeVisible();
+    await expect(daFare.getByText(/nessuno ha risposto/).first()).toBeVisible();
+    /* E nello storico la stessa chiamata c'è.
+       Il bollino dell'esito non si prova qui: questa riga è scritta a mano nel
+       preparativo, e provare il bollino significherebbe provare quello che il
+       test stesso ha scritto. Che l'esito nasca con la chiamata lo provano
+       `tests/voice-esiti-richiamate.test.ts` e il percorso 11, dove la
+       chiamata arriva dal centralino come quelle vere. */
+    const storico = page.getByRole("region", { name: "Storico" });
+    await expect(storico.getByText(/nessuna risposta/).first()).toBeVisible();
 
     /* E si prenota per chi non ha trovato nessuno **senza ridigitare niente**.
        Per due giorni questo pulsante passava numero e ospite nell'indirizzo a
        una pagina che non li leggeva: si apriva vuoto, e chi risponde doveva
        riscrivere il numero mentre ascoltava la persona. Un collegamento che
        sembra portare qualcosa e non lo porta è peggio di uno che non c'è. */
-    await page.getByRole("link", { name: /Prenota/ }).first().click();
+    await daFare
+      .getByRole("link", { name: /Prenota/ })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/bookings\/new/);
     await expect(page.locator("#phone")).toHaveValue("3479911223");
     await expect(page.locator("#firstName")).toHaveValue(nome);
@@ -101,7 +133,9 @@ test("con la licenza la voce c'è, e la pagina mostra chi non ha trovato nessuno
   }
 });
 
-test("a un numero senza nome si può dare un nome, e diventa un contatto", async ({ page }) => {
+test("a un numero senza nome si può dare un nome, e diventa un contatto", async ({
+  page,
+}) => {
   /* Era il gesto che mancava: un numero non riconosciuto restava una riga
      nello storico, e in Tavolo non esisteva **nessun** modo di creare un
      contatto dall'interfaccia — la rotta c'era e nessuna schermata la
@@ -132,9 +166,14 @@ test("a un numero senza nome si può dare un nome, e diventa un contatto", async
 
   try {
     await page.goto("/telefono");
-    await expect(page.getByText("Non riconosciuto").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Non riconosciuto").first()).toBeVisible({
+      timeout: 20_000,
+    });
 
-    await page.getByRole("button", { name: /Dai un nome/ }).first().click();
+    await page
+      .getByRole("button", { name: /Dai un nome/ })
+      .first()
+      .click();
     await page.getByLabel(/Nome di chi ha chiamato/).fill(nome);
     await page.getByLabel("Cognome, facoltativo").fill("Salvato");
     await page.getByRole("button", { name: "Salva", exact: true }).click();
@@ -158,7 +197,9 @@ test("a un numero senza nome si può dare un nome, e diventa un contatto", async
     expect(chiamata.guestId).toBe(creato.id);
   } finally {
     await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
-    await db.guest.deleteMany({ where: { venueId: locale.id, firstName: nome } });
+    await db.guest.deleteMany({
+      where: { venueId: locale.id, firstName: nome },
+    });
     await db.venue.update({
       where: { id: locale.id },
       data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
