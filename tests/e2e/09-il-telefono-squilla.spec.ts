@@ -21,7 +21,10 @@ test.afterAll(async () => {
   await db.$disconnect();
 });
 
-test("il centralino annuncia una chiamata e il nome compare in sala", async ({ page, request }) => {
+test("il centralino annuncia una chiamata e il nome compare in sala", async ({
+  page,
+  request,
+}) => {
   const locale = await db.venue.findFirstOrThrow({
     where: { slug: E2E.venueSlug },
     select: { id: true },
@@ -59,7 +62,9 @@ test("il centralino annuncia una chiamata e il nome compare in sala", async ({ p
   try {
     /* --- 1. La sala è aperta e non squilla niente ----------------------- */
     await page.goto("/service");
-    await expect(page.getByText(/In sala|IN ARRIVO/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/In sala|IN ARRIVO/i).first()).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(page.getByText(nome)).toHaveCount(0);
 
     /* --- 2. Il centralino dice che sta squillando ----------------------- */
@@ -94,7 +99,9 @@ test("il centralino annuncia una chiamata e il nome compare in sala", async ({ p
 
     /* Il riquadro non deve restare: un telefono che sembra squillare mentre il
        locale è silenzioso è peggio di nessun riquadro. */
-    await expect(page.getByText(/sta chiamando/)).toBeHidden({ timeout: 30_000 });
+    await expect(page.getByText(/sta chiamando/)).toBeHidden({
+      timeout: 30_000,
+    });
   } finally {
     await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
     await db.guest.delete({ where: { id: ospite.id } }).catch(() => {});
@@ -106,7 +113,10 @@ test("il centralino annuncia una chiamata e il nome compare in sala", async ({ p
   }
 });
 
-test("il simulatore fa squillare il telefono senza una linea telefonica", async ({ page, request }) => {
+test("il simulatore fa squillare il telefono senza una linea telefonica", async ({
+  page,
+  request,
+}) => {
   /* Il brief lo chiede (§92) e ha ragione: l'alternativa è costruire
      l'interfaccia a occhi chiusi, o metterci un pulsante che **finge** una
      telefonata. Questo non finge niente — scrive una chiamata vera nella
@@ -130,7 +140,12 @@ test("il simulatore fa squillare il telefono senza una linea telefonica", async 
 
   const nome = unico("Simulato");
   const ospite = await db.guest.create({
-    data: { venueId: locale.id, firstName: nome, lastName: "DalSimulatore", phone: "3491234567" },
+    data: {
+      venueId: locale.id,
+      firstName: nome,
+      lastName: "DalSimulatore",
+      phone: "3491234567",
+    },
   });
 
   try {
@@ -157,12 +172,113 @@ test("il simulatore fa squillare il telefono senza una linea telefonica", async 
       where: { venueId: locale.id, guestId: ospite.id },
       select: { id: true },
     });
-    const eventi = await db.phoneCallEvent.findMany({ where: { callId: chiamata.id } });
+    const eventi = await db.phoneCallEvent.findMany({
+      where: { callId: chiamata.id },
+    });
     expect(eventi.map((e) => e.kind)).toContain("CALL_RECEIVED");
   } finally {
-    await db.phoneCallEvent.deleteMany({ where: { call: { venueId: locale.id } } });
+    await db.phoneCallEvent.deleteMany({
+      where: { call: { venueId: locale.id } },
+    });
     await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
     await db.guest.delete({ where: { id: ospite.id } }).catch(() => {});
+    await db.venue.update({
+      where: { id: locale.id },
+      data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
+    });
+  }
+});
+
+test("il telefono squilla anche per chi non sta guardando la sala", async ({
+  page,
+  request,
+}) => {
+  /**
+   * Questa è la prova della fase 3, ed è la sola che conta davvero.
+   *
+   * Prima il riquadro della chiamata viveva **dentro Servizio**: chi stava
+   * guardando la carta, le impostazioni o la scheda di un cliente non vedeva
+   * squillare niente. Una telefonata dura venti secondi e non aspetta che
+   * qualcuno cambi pagina. I due test qui sopra passavano comunque, perché
+   * stanno entrambi su `/service` — cioè non potevano diventare rossi per
+   * questo difetto.
+   *
+   * Qui si sta sulla **Carta**, che col telefono non ha niente a che fare, e si
+   * pretende lo stesso riquadro.
+   */
+  const locale = await db.venue.findFirstOrThrow({
+    where: { slug: E2E.venueSlug },
+    select: { id: true },
+  });
+  await db.venue.update({
+    where: { id: locale.id },
+    data: {
+      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
+      phoneLicenseActivatedAt: new Date(),
+    },
+  });
+
+  const nome = unico("Altrove");
+  const numero = "3478844551";
+  const ospite = await db.guest.create({
+    data: {
+      venueId: locale.id,
+      firstName: nome,
+      lastName: "InCarta",
+      phone: numero,
+    },
+  });
+
+  const token = await emettiApiToken(locale.id, {
+    nome: "Centralino (fuori dalla sala)",
+    ambiti: ["telefonia:read", "telefonia:write"],
+  });
+
+  try {
+    /* --- 1. Si sta sulla Carta, non in sala ----------------------------- */
+    await page.goto("/menu");
+    await expect(page.getByText(nome)).toHaveCount(0);
+
+    /* --- 2. Squilla ------------------------------------------------------ */
+    const chiamata = unico("call");
+    const risposta = await request.post("/api/v1/telefonia/chiamata", {
+      headers: { authorization: `Bearer ${token.token}` },
+      data: { id: chiamata, phone: `+39${numero}`, stato: "RINGING" },
+    });
+    expect(risposta.ok()).toBe(true);
+
+    /* --- 3. Il riquadro compare qui, senza cambiare pagina --------------- */
+    await expect(page.getByText(nome).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/sta chiamando/)).toBeVisible();
+    // E la testata lo dice, per chi in quel momento stava guardando altro.
+    await expect(
+      page.getByRole("button", { name: /Telefono: una chiamata in corso/ }),
+    ).toBeVisible();
+
+    /* --- 4. «Nascondi» nasconde, e non riattacca ------------------------- */
+    /* Il riquadro deve potersi togliere di mezzo — c'è chi risponde dal
+       telefono fisso e vuole continuare a lavorare. Ma non deve **tornare** al
+       giro di sonda dopo cinque secondi, perché per il server la chiamata è
+       ancora viva: un riquadro che ricompare dopo che lo hai chiuso è la cosa
+       che fa smettere di usare una funzione. */
+    await page
+      .getByRole("button", { name: /^Nascondi questo riquadro/ })
+      .click();
+    await expect(page.getByText(/sta chiamando/)).toBeHidden();
+    // Oltre un giro di sonda: se tornasse, tornerebbe qui.
+    await page.waitForTimeout(8_000);
+    await expect(page.getByText(/sta chiamando/)).toBeHidden();
+    // La chiamata però è ancora in corso, e la testata continua a dirlo.
+    await expect(
+      page.getByRole("button", { name: /Telefono: una chiamata in corso/ }),
+    ).toBeVisible();
+  } finally {
+    await db.phoneCallEvent.deleteMany({
+      where: { call: { venueId: locale.id } },
+    });
+    await db.phoneCall.deleteMany({ where: { venueId: locale.id } });
+    await db.guest.delete({ where: { id: ospite.id } }).catch(() => {});
+    await db.apiToken.deleteMany({ where: { venueId: locale.id } });
     await db.venue.update({
       where: { id: locale.id },
       data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
