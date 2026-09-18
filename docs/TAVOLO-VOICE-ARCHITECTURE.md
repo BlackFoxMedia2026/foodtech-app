@@ -303,7 +303,17 @@ build, e la sonda di leggibilità quando la fase tocca l'interfaccia.
 Le fasi 1–5 sono fatte: schema (#135), fornitore e capacità (#136), pannello
 globale della chiamata (#137), esiti e coda delle richiamate (#138), recupero
 delle chiamate perse e notifiche (#139), la storia di una prenotazione (#140), i permessi del telefono e lo stato del
-fornitore (#141).
+fornitore (#141), i numeri del telefono nelle analitiche (#142).
+
+**Panoramica, nella fase 8: niente.** Il piano diceva «Servizio + Panoramica +
+analitiche». Servizio ce l'ha dalla fase 3 (le due righe che chiedono un
+gesto), le analitiche arrivano adesso. La Panoramica **no**, e per una ragione:
+quello che il telefono ha da dire adesso lo dice già il bollino in testata, che
+sta su ogni pagina compresa quella — e le chiamate perse le dice la campanella
+con l'ora dentro. Una terza copia degli stessi due numeri sarebbe il posto in
+cui uno dei tre invecchia. Una prenotazione raccolta dal risponditore invece
+suona già in campanella da sé, perché nasce `PENDING`: «arrivata da
+risponditore, aspetta la tua conferma».
 
 **Cambio di piano nella fase 6.** Il piano diceva «accendere `BookingEvent`».
 Guardando cosa ci sarebbe finito dentro si è visto che ogni evento ha già la
