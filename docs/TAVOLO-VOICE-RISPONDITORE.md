@@ -304,7 +304,7 @@ una chiamata a uno strumento, il server decide. Vale già per `prenota`.
 
 | Fase | Cosa | Dipende da |
 |---|---|---|
-| **12** | Ingresso e instradamento: `VoiceConfiguration` scritta, `VoiceNumber` popolata, procedura guidata con il test vero, protezione dai cicli | niente (si può fare subito) |
+| **12** | ✅ **fatta** — ingresso, procedura guidata con il test vero, protezione dai cicli | niente |
 | **13** | Recupero: `VoiceRecovery`, token, modulo precompilato, attribuzione `VOICE_RECOVERY` | **un canale SMS** |
 | **14** | Numeri del recupero: imbuto, passo d'abbandono, tasso di recupero | fase 13 |
 | **15** | Voce: STT + TTS + motore di conversazione in `voice-core`, `capacita.ai = true` | fornitore STT/TTS |
@@ -340,3 +340,54 @@ Il ristoratore non deve pensare «ho installato un centralino». Deve pensare:
 Cover si ferma un passo prima: se la chiamata si interrompe a metà, ti dà un
 report. Noi possiamo mandare il link con tutto già scritto dentro — e quello,
 il giorno che c'è un SMS, è il prodotto.
+
+---
+
+## 12. Fase 12, fatta
+
+Il 18 settembre 2026. Cosa c'è adesso:
+
+- **la prima domanda della procedura è «come ti arrivano le telefonate?»**
+  (`src/components/settings/collega-telefono.tsx`), e la risposta decide i
+  passi: con la scatoletta cinque, con la deviazione sei — quello in più è
+  l'operatore da chiamare. Il numero mostrato è la **posizione** fra i passi
+  che ci sono, non una chiave scritta a mano, perché un elenco 1-2-3-4-6-7
+  manda a cercare il cinque;
+- **il numero a cui far deviare** si copia dalla schermata quando gliene
+  abbiamo assegnato uno (`VoiceNumber`), e quando non c'è lo **dice**: niente
+  segnaposto, perché un segnaposto qui finisce detto all'operatore;
+- **cosa chiedere all'operatore**, due richieste e non una: la deviazione su
+  non risposta *e* quella su occupato — la seconda porta le telefonate che
+  arrivano mentre si è già al telefono con un cliente, che in un ristorante
+  alle otto di sera sono metà di quelle perse;
+- **i codici da comporre sulla SIM non ci sono** e non ci saranno finché non
+  li avremo provati con una SIM di quell'operatore
+  (`src/lib/operatori-telefonici.ts`, `provato: false` per tutti, con scritto
+  come si accende un operatore). Un codice sbagliato non fa perdere le nostre
+  telefonate: fa perdere le sue. Una prova di unità diventa rossa il giorno
+  che qualcuno scrive dei passi senza averli provati;
+- **la prova è una telefonata vera**, e per la deviazione deve essere arrivata
+  **dopo** la richiesta all'operatore (`provata` in
+  `src/server/voice/ingresso.ts`): una telefonata di prima non dimostra
+  niente, era arrivata da un'altra strada. E salvare due volte la stessa cosa
+  **non** spegne la spunta, altrimenti si va a richiamare l'operatore per un
+  problema che non esiste;
+- **la protezione dai cicli** (`src/server/voice/rimando.ts` +
+  `POST /api/v1/telefonia/rimando`): la difesa sta **dentro l'`UPDATE`** e non
+  in un controllo prima della scrittura, perché due eventi che arrivano
+  insieme passerebbero entrambi un `if`. Una chiamata si rimanda al locale una
+  volta sola; dopo, il risponditore offre la richiamata invece di mandare la
+  persona in un altro giro;
+- **la scheda del telefono in Impostazioni dice quale strada è in uso**, in
+  cima al collegamento: chi legge «Ultima chiamata: mai» accanto a «Cellulare,
+  con deviazione» sa dove guardare, invece di cercare il guasto in Tavolo.
+
+Verificato: `tsc`, `lint`, **1757** prove di unità (18 nuove in
+`tests/voice-ingresso.test.ts`), `build`, **31/31** end-to-end — compresa la
+prova che il passo dell'operatore **compare e sparisce** con la strada scelta.
+
+Quello che la fase 12 **non** fa, e va detto: il centralino non legge ancora
+`quandoOccupato`/`quandoNonRisponde` da queste colonne — quelle decisioni
+vivono dentro Asterisk, e per questo la schermata non le offre. E il numero a
+cui deviare va **comprato e assegnato**: finché `VoiceNumber` è vuota, la
+procedura lo dice e si fermerà lì.

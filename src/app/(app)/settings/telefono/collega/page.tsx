@@ -7,6 +7,7 @@ import { can, getActiveVenue } from "@/lib/tenant";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { statoTelefonoBrowser } from "@/server/telefono-browser";
 import { saluteVoice } from "@/server/voice/salute";
+import { vistaIngresso } from "@/server/voice/ingresso";
 import { CollegaTelefono } from "@/components/settings/collega-telefono";
 
 export const dynamic = "force-dynamic";
@@ -53,10 +54,11 @@ export default async function CollegaTelefonoPage() {
     (host.startsWith("localhost") ? "http" : "https");
   const indirizzo = `${proto}://${host}`;
 
-  const [stato, sip, salute] = await Promise.all([
+  const [stato, sip, salute, ingresso] = await Promise.all([
     statoCentralino(ctx.venueId),
     statoTelefonoBrowser(ctx.venueId),
     saluteVoice(ctx.venueId),
+    vistaIngresso(ctx.venueId),
   ]);
 
   return (
@@ -73,8 +75,8 @@ export default async function CollegaTelefonoPage() {
         <p className="t-etichetta">Telefono</p>
         <h1 className="text-display text-2xl">Collega il telefono</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Quattro passi. Quello che è già fatto porta la spunta: si può chiudere
-          questa pagina e riprendere da dove si era.
+          Un passo per volta. Quello che è già fatto porta la spunta: si può
+          chiudere questa pagina e riprendere da dove si era.
         </p>
       </header>
 
@@ -93,6 +95,14 @@ export default async function CollegaTelefonoPage() {
             utente: sip.utente,
             passwordPresente: sip.passwordPresente,
             sottoChiave: sip.sottoChiave,
+          }}
+          ingresso={{
+            ingresso: ingresso.ingresso,
+            numeroPubblico: ingresso.numeroPubblico,
+            operatore: ingresso.operatore,
+            squilliChiesti: ingresso.squilliChiesti,
+            numeroTavolo: ingresso.numeroTavolo,
+            provata: ingresso.provata,
           }}
           canManage={can(ctx.role, "manage_phone")}
         />

@@ -27,6 +27,7 @@ import { listReviewLinks } from "@/server/reviews";
 import { listInviti, listTeam } from "@/server/team";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { saluteVoice } from "@/server/voice/salute";
+import { vistaIngresso } from "@/server/voice/ingresso";
 import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
 import { AccessoTeam } from "@/components/settings/accesso-team";
 import { Centralino } from "@/components/settings/centralino";
@@ -175,6 +176,7 @@ export default async function SettingsPage({
     inviti,
     centralino,
     salute,
+    ingresso,
   ] = await Promise.all([
     db.venue.findMany({
       where: { orgId: ctx.orgId },
@@ -202,6 +204,7 @@ export default async function SettingsPage({
     listInviti(ctx.venueId, baseUrl),
     statoCentralino(ctx.venueId),
     saluteVoice(ctx.venueId),
+    vistaIngresso(ctx.venueId),
   ]);
 
   /* `manage_venue`, la stessa capacità che chiedono le rotte `/api/team/*`:
@@ -716,6 +719,7 @@ export default async function SettingsPage({
                    credenziali SIP sono un numero da cui si telefona a spese
                    del locale. */
                 canManage={can(ctx.role, "manage_phone")}
+                ingresso={ingresso.ingresso}
                 salute={{
                   ultimaChiamata: salute.ultimaChiamata?.toISOString() ?? null,
                   ultime24h: salute.ultime24h,

@@ -2546,6 +2546,20 @@ model PhoneCall {
   /// «niente da fare», e sono due righe diverse nello storico.
   outcome PhoneCallOutcome?
 
+  /// Quante volte questa chiamata e stata rimandata al locale.
+  ///
+  /// E la protezione dai cicli, e serve perche le due cose che vogliamo
+  /// convivono male: l'operatore devia a noi **quando il numero e occupato**,
+  /// e il risponditore rimanda al locale **quando non ce la fa**. Se il numero
+  /// e ancora occupato, l'operatore devia di nuovo a noi, e la persona gira
+  /// fra i due per sempre sentendo ogni volta lo stesso saluto.
+  ///
+  /// Un contatore sulla riga della chiamata, e non un limite dentro Asterisk,
+  /// perche il giro passa **fuori** dal centralino: ogni passaggio e una
+  /// chiamata nuova per lui, e a riconoscerla resta l'identificativo che porta
+  /// con se. Vedi `src/server/voice/rimando.ts`.
+  rimandi Int @default(0)
+
   /// Il riassunto della chiamata, quando esiste chi lo scrive.
   ///
   /// Corto di proposito e **su questa riga**: si legge nell'elenco, mentre la
@@ -2792,6 +2806,36 @@ model VoiceConfiguration {
 
   modalita VoiceMode @default(HUMAN_ONLY)
 
+  // ── da dove entrano le chiamate ──────────────────────────────────────
+
+  /// Come le telefonate arrivano a Tavolo. **Nullo = non ancora scelto**, e
+  /// non c'e un valore per difetto che indovina: le due strade richiedono
+  /// gesti diversi al ristoratore, e partire da quella sbagliata gli fa
+  /// chiamare l'operatore per niente.
+  ingresso VoiceIngresso?
+
+  /// Il numero che i clienti chiamano da sempre. Quello del locale, non il
+  /// nostro: serve alla procedura guidata per dire di quale numero si parla
+  /// quando si chiede la deviazione all'operatore.
+  numeroPubblico String? @db.VarChar(40)
+
+  /// L'operatore telefonico del locale, per mostrare le istruzioni **sue** e
+  /// non quelle di un altro. Vedi `src/lib/operatori-telefonici.ts`.
+  operatore String? @db.VarChar(40)
+
+  /// Dopo quanti squilli il ristoratore ha chiesto la deviazione.
+  ///
+  /// E **informativo**: su una SIM il numero di squilli lo imposta
+  /// l'operatore, non noi. Si conserva per poterlo ricordare a chi torna sulla
+  /// schermata sei mesi dopo — non per farne qualcosa.
+  squilliChiesti Int?
+
+  /// Quando la deviazione e stata chiesta all'operatore.
+  ///
+  /// Serve alla prova: una telefonata arrivata **prima** di questa data non
+  /// dimostra che la deviazione funzioni — era arrivata da un'altra strada.
+  deviazioneChiestaIl DateTime?
+
   /// Quanti secondi si lascia squillare prima del ripiego, in `HUMAN_FIRST`.
   secondiDiSquillo Int @default(20)
 
@@ -2840,6 +2884,24 @@ model VoiceConfiguration {
   updatedAt DateTime @updatedAt
 
   venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+}
+
+/// Da dove entrano le telefonate in Tavolo.
+///
+/// Le due strade non sono equivalenti, e la differenza si vede nei numeri:
+/// dal gateway la chiamata entra **prima** che qualcuno risponda, quindi
+/// Tavolo vede anche le telefonate che il personale prende e puo dire quante
+/// non riesce a prendere; dalla deviazione vede solo quello che l'operatore
+/// gli devia, e le altre non esistono. Vedi
+/// `/docs/TAVOLO-VOICE-RISPONDITORE.md`.
+enum VoiceIngresso {
+  /// La scatoletta attaccata alla linea del locale (gateway FXO).
+  /// Niente operatore, niente numero nuovo, niente deviazione.
+  GATEWAY
+  /// Deviazione di chiamata dal numero del locale verso un numero nostro.
+  /// L'unica strada possibile quando il locale usa un cellulare: a una SIM
+  /// non si attacca nessuna scatoletta.
+  DEVIAZIONE
 }
 
 enum VoiceMode {
