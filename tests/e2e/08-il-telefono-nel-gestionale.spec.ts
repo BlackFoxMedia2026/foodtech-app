@@ -229,20 +229,20 @@ test("collegare il telefono è una procedura a passi, e si riprende da dove si e
   }
 });
 
-test("il microfono si concede dalla procedura, non da un menu di Chrome", async ({
-  page,
-  context,
-}) => {
+test("la procedura non chiede più di rispondere da Tavolo", async ({ page }) => {
   /**
-   * Il difetto, trovato usandolo: il telefono chiedeva il microfono **al
-   * caricamento della pagina**. Da quando sta nel guscio quella richiesta
-   * parte su ogni schermata senza che nessuno abbia toccato niente, Chrome la
-   * blocca in silenzio, e resta la riga «manca il permesso» **senza niente da
-   * premere**: l'unica strada erano le impostazioni del browser, dove un
-   * ristoratore non va.
+   * Il modello è quello del concorrente: **Tavolo non risponde**. Risponde il
+   * cellulare del locale, e se non risponde o è occupato la telefonata la
+   * prende il risponditore del centralino.
    *
-   * Qui si verifica che il permesso si possa concedere **dalla procedura**, e
-   * che quando è concesso la riga lo dica.
+   * Quindi la procedura di collegamento perde il passo «Rispondi dentro
+   * Tavolo» — con i campi SIP e il pulsante del permesso del microfono, che è
+   * la parte che ci ha fatto perdere due giorni. Non è codice cancellato: sta
+   * dietro `RISPONDE_DAL_BROWSER` in `src/lib/rispondere-da-tavolo.ts`.
+   *
+   * Questa prova guarda il prodotto **come viene pubblicato**: se qualcuno
+   * riaccende quella costante diventa rossa, ed è giusto — riaccendere una
+   * funzione va deciso, non scoperto.
    */
   const locale = await db.venue.findFirstOrThrow({
     where: { slug: E2E.venueSlug },
@@ -260,121 +260,18 @@ test("il microfono si concede dalla procedura, non da un menu di Chrome", async 
   });
 
   try {
-    /* Il permesso **negato**: è lo stato in cui si era trovato Luca, e quello
-       in cui la vecchia riga non dava niente da fare. */
-    await context.clearPermissions();
     await page.goto("/settings/telefono/collega");
-    /* La parola dipende da cosa il pulsante può fare — «Consenti» quando la
-       finestra comparirà, «Controlla» quando il browser dice già bloccato — e
-       in un browser di prova, senza un microfono vero, lo stato è il secondo.
-       Quello che questa prova difende è che **ci sia qualcosa da premere**,
-       non quale parola ci sia scritta. */
+
+    // La procedura c'è e comincia dalla domanda giusta.
     await expect(
-      page.getByRole("button", { name: /Consenti il microfono|Controlla il microfono/ }),
+      page.getByText("Dimmi come ti arrivano le telefonate"),
     ).toBeVisible({ timeout: 30_000 });
 
-    /* Concesso: la riga cambia da sé — `permissions.query` avvisa senza
-       ricaricare, che è la differenza fra «riprova» e «ricarica la pagina». */
-    await context.grantPermissions(["microphone"]);
-    await expect(page.getByText("Microfono consentito")).toBeVisible({
-      timeout: 15_000,
-    });
-  } finally {
-    await db.venue.update({
-      where: { id: locale.id },
-      data: {
-        phoneLicenseKey: null,
-        phoneLicenseActivatedAt: null,
-        phoneSipServer: null,
-        phoneSipUser: null,
-        phoneSipPassword: null,
-      },
-    });
-  }
-});
-
-test("col microfono bloccato, premere il pulsante dice cosa fare", async ({
-  page,
-  context,
-}) => {
-  /**
-   * Il difetto, premuto tre volte in due giorni: «clicco il pulsante per
-   * attivarlo ma niente».
-   *
-   * Era vero alla lettera. Quando il browser ha **già bloccato** un sito,
-   * `getUserMedia` rifiuta senza far comparire nessuna finestra: da dentro la
-   * pagina non c'è modo di riaprirla. E il clic non cambiava nemmeno una
-   * parola sullo schermo, perché lo stato era già «bloccato» e l'indicatore
-   * copriva la risposta del tentativo.
-   *
-   * Il pulsante però **non va togliuto**: `permissions.query` risponde
-   * «bloccato» anche dove manca il microfono, e le due cose portano a gesti
-   * opposti. Un clic le distingue, ed è l'unico modo. Quindi il pulsante resta
-   * e cambia mestiere: non promette di sbloccare, **risponde**.
-   *
-   * Perché non era stato preso da nessun test: `clearPermissions()` di
-   * Playwright mette il permesso su **«da chiedere»**, non su «bloccato» — lo
-   * stato che funziona, non quello rotto. Qui il browser viene fatto rispondere
-   * come risponde a un sito bloccato, che è l'unico modo di provarlo.
-   */
-  const locale = await db.venue.findFirstOrThrow({
-    where: { slug: E2E.venueSlug },
-    select: { id: true },
-  });
-  await db.venue.update({
-    where: { id: locale.id },
-    data: {
-      phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
-      phoneLicenseActivatedAt: new Date(),
-      phoneSipServer: "wss://esempio.invalido:8089/ws",
-      phoneSipUser: "wrtc-prova",
-      phoneSipPassword: "non-vera",
-    },
-  });
-
-  try {
-    await context.addInitScript(() => {
-      /* Un sito bloccato in Chrome: lo stato dice «denied» e la richiesta
-         viene rifiutata **senza** finestra. */
-      Object.defineProperty(navigator, "permissions", {
-        configurable: true,
-        value: {
-          query: async () => ({ state: "denied", onchange: null }),
-        },
-      });
-      Object.defineProperty(navigator, "mediaDevices", {
-        configurable: true,
-        value: {
-          getUserMedia: async () => {
-            throw new DOMException("Permission denied", "NotAllowedError");
-          },
-        },
-      });
-    });
-
-    await page.goto("/service");
-
-    // Il pannello si fa vedere da fermo: è l'unico guasto che rompe la
-    // risposta prima che il telefono squilli.
-    await expect(page.getByText("Microfono spento")).toBeVisible({ timeout: 30_000 });
-
-    /* Le strade che esistono davvero, e sono **due**: su Mac il permesso del
-       sito e quello di sistema sono due interruttori diversi, e mandare a
-       girare solo il primo lascia chi ha il secondo spento a girarlo per
-       niente. */
-    await expect(page.getByText(/icona a sinistra dell'indirizzo/)).toBeVisible();
-    await expect(page.getByText(/Privacy e sicurezza/)).toBeVisible();
-
-    /* E la riga che conta: **premere dice qualcosa**.
-
-       È il difetto vero. Prima il clic non cambiava nemmeno una parola sullo
-       schermo, perché lo stato era già «bloccato» e l'indicatore copriva la
-       risposta del tentativo. Senza questa asserzione, un pulsante che non
-       risponde tornerebbe a passare. */
-    await page.getByRole("button", { name: /Controlla il microfono/ }).click();
-    await expect(page.getByText(/ha detto no senza chiedere/)).toBeVisible({
-      timeout: 15_000,
-    });
+    // E il passo del telefono nel browser non c'è più, né quello che portava.
+    await expect(page.getByText("Rispondi dentro Tavolo")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /Consenti il microfono|Controlla il microfono/ }),
+    ).toHaveCount(0);
   } finally {
     await db.venue.update({
       where: { id: locale.id },

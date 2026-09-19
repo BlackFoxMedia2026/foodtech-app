@@ -3,30 +3,24 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { componiLicenza, testoDaFirmare, type ContenutoLicenza } from "@/lib/licenza-centralino";
 import { statoCentralino } from "@/server/licenza-centralino";
-import { cambiaServizio, localiConServizi } from "@/server/admin/servizi";
+import { localiConServizi } from "@/server/admin/servizi";
 
 /**
- * Accendere il telefono a un cliente **da Tavolo**.
+ * Chi ha il telefono acceso, e chi lo accende.
  *
- * Prima si faceva emettendo una chiave firmata da un secondo gestionale e
- * incollandola qui: sei gesti in due applicazioni, con un codice da copiare in
- * mezzo. Per un cliente della nostra installazione era un giro inutile, perche
- * il database e nostro e chi accende siamo noi.
- *
- * La firma **non e stata buttata**, ed e la cosa che questi test difendono:
- * resta la strada delle installazioni che non gestiamo, dove un interruttore
- * nel database sarebbe un interruttore che il cliente si gira da solo. Le due
- * strade convivono, e nessuna deve indebolire l'altra.
+ * Per un giorno c'e stato un interruttore nel pannello di Tavolo. E stato
+ * togliuto, e queste prove difendono la ragione: **in questo prodotto Tavolo
+ * non si configura.** Nasce col telefono spento, e ad accenderlo e una chiave
+ * firmata che solo ilmiocentralino puo fabbricare — una cosa che non si
+ * falsifica, al contrario di un booleano che chiunque arrivi al database si
+ * gira da solo.
  *
  * Quello che non deve succedere:
  *
- * - un nome di funzione scritto a mano nel pannello — o rimasto in tabella
- *   dopo un rinominamento — che accende qualcosa che non esiste;
- * - un elenco vuoto interpretato come «nessuna funzione» invece di «tutte»,
- *   che spegnerebbe il telefono a chi l'ha appena comprato;
- * - la storia di un servizio cancellata dallo spegnimento;
- * - chi ha deciso l'accensione sovrascritto da chi ha corretto una nota;
- * - una chiave scaduta che in elenco sembra un telefono acceso.
+ * - una **chiave scaduta** che in elenco sembra un telefono acceso;
+ * - una riga scritta a mano nel database che accende qualcosa;
+ * - un elenco che mostra solo i locali col telefono, e quindi non risponde
+ *   alla domanda «a chi lo accendo?».
  */
 
 const db = new PrismaClient();
@@ -39,24 +33,29 @@ if (!/dev|test/i.test(url)) {
 
 const nostra = generateKeyPairSync("ed25519");
 const PUBBLICA = nostra.publicKey.export({ format: "der", type: "spki" }).toString("base64");
+const impostore = generateKeyPairSync("ed25519");
 const originale = process.env.CENTRALINO_CHIAVE_PUBBLICA;
 
-function chiavePer(venueId: string, scadenza?: string): string {
+function chiavePer(
+  venueId: string,
+  opzioni: { scadenza?: string; conChiave?: import("node:crypto").KeyObject } = {},
+): string {
   const contenuto: ContenutoLicenza = {
     v: 1,
     l: venueId,
     n: "Locale di prova",
-    ...(scadenza ? { e: scadenza } : {}),
+    ...(opzioni.scadenza ? { e: opzioni.scadenza } : {}),
   };
-  const firma = sign(null, Buffer.from(testoDaFirmare(contenuto), "utf8"), nostra.privateKey).toString(
-    "base64url",
-  );
+  const firma = sign(
+    null,
+    Buffer.from(testoDaFirmare(contenuto), "utf8"),
+    opzioni.conChiave ?? nostra.privateKey,
+  ).toString("base64url");
   return componiLicenza(contenuto, firma);
 }
 
 let venueId = "";
 let orgId = "";
-const ADMIN = "capo@blackfoxmedia.test";
 
 beforeAll(async () => {
   const unico = `${PREFISSO}${Date.now()}`;
@@ -67,7 +66,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   process.env.CENTRALINO_CHIAVE_PUBBLICA = PUBBLICA;
-  await db.venueServizio.deleteMany({ where: { venueId } });
   await db.venue.update({
     where: { id: venueId },
     data: { phoneLicenseKey: null, phoneLicenseActivatedAt: null },
@@ -80,108 +78,19 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-  await db.venueServizio.deleteMany({ where: { venueId } });
   await db.venue.delete({ where: { id: venueId } }).catch(() => {});
   await db.organization.delete({ where: { id: orgId } }).catch(() => {});
   await db.$disconnect();
 });
 
-describe("l'interruttore della piattaforma", () => {
-  it("accende il telefono senza nessuna chiave da incollare", async () => {
-    expect((await statoCentralino(venueId)).attivo).toBe(false);
-
-    await cambiaServizio(venueId, { servizio: "CENTRALINO", attivo: true }, ADMIN);
-
+describe("cosa accende il telefono", () => {
+  it("nasce spento", async () => {
     const stato = await statoCentralino(venueId);
-    expect(stato.attivo).toBe(true);
-    expect(stato.origine).toBe("piattaforma");
-    /* Non scade: un servizio che accendiamo noi si spegne quando lo spegniamo
-       noi, e una scadenza qui sarebbe un telefono che muore un sabato sera
-       senza che nessuno l'abbia deciso. */
-    expect(stato.scadeIl).toBeNull();
-    expect(stato.chiaveLeggibile).toBeNull();
+    expect(stato.attivo).toBe(false);
+    expect(stato.origine).toBeNull();
   });
 
-  it("senza funzioni scelte le accende tutte", async () => {
-    await cambiaServizio(venueId, { servizio: "CENTRALINO", attivo: true, funzioni: [] }, ADMIN);
-    const stato = await statoCentralino(venueId);
-    // Un elenco vuoto e un servizio completo, come nella chiave.
-    expect(stato.funzioni).toEqual(["riconoscimento", "prenotazioni", "statistiche"]);
-  });
-
-  it("con le funzioni scelte accende solo quelle", async () => {
-    await cambiaServizio(
-      venueId,
-      { servizio: "CENTRALINO", attivo: true, funzioni: ["riconoscimento"] },
-      ADMIN,
-    );
-    expect((await statoCentralino(venueId)).funzioni).toEqual(["riconoscimento"]);
-  });
-
-  it("un nome di funzione che non esiste non accende niente", async () => {
-    /* Puo arrivarci da un rinominamento o da una riga scritta a mano: passa
-       dall'elenco chiuso, e quello che non ne fa parte cade. */
-    await cambiaServizio(venueId, { servizio: "CENTRALINO", attivo: true }, ADMIN);
-    await db.venueServizio.updateMany({
-      where: { venueId },
-      data: { funzioni: ["riconoscimento", "teletrasporto"] },
-    });
-    expect((await statoCentralino(venueId)).funzioni).toEqual(["riconoscimento"]);
-  });
-
-  it("spegnendolo il telefono si spegne, ma la storia resta", async () => {
-    await cambiaServizio(venueId, { servizio: "CENTRALINO", attivo: true }, ADMIN);
-    await cambiaServizio(venueId, { servizio: "CENTRALINO", attivo: false }, ADMIN);
-
-    expect((await statoCentralino(venueId)).attivo).toBe(false);
-    const riga = await db.venueServizio.findFirstOrThrow({ where: { venueId } });
-    // La riga c'è ancora: davanti a «da ieri non va» la domanda è quando e chi.
-    expect(riga.attivo).toBe(false);
-    expect(riga.spentoIl).not.toBeNull();
-    expect(riga.attivatoDa).toBe(ADMIN);
-  });
-
-  it("chi ha deciso non viene sovrascritto da chi corregge una nota", async () => {
-    await cambiaServizio(
-      venueId,
-      { servizio: "CENTRALINO", attivo: true, nota: "prova di due settimane" },
-      ADMIN,
-    );
-    const prima = await db.venueServizio.findFirstOrThrow({ where: { venueId } });
-
-    await cambiaServizio(
-      venueId,
-      { servizio: "CENTRALINO", attivo: false, nota: "scaduta la prova" },
-      "qualcunaltro@blackfoxmedia.test",
-    );
-    const dopo = await db.venueServizio.findFirstOrThrow({ where: { venueId } });
-
-    expect(dopo.attivatoDa).toBe(prima.attivatoDa);
-    expect(dopo.nota).toBe("scaduta la prova");
-  });
-
-  it("riaccendere è una decisione nuova: chi e quando si aggiornano", async () => {
-    await cambiaServizio(venueId, { servizio: "CENTRALINO", attivo: true }, ADMIN);
-    await cambiaServizio(venueId, { servizio: "CENTRALINO", attivo: false }, ADMIN);
-    await cambiaServizio(
-      venueId,
-      { servizio: "CENTRALINO", attivo: true },
-      "unaltro@blackfoxmedia.test",
-    );
-    const riga = await db.venueServizio.findFirstOrThrow({ where: { venueId } });
-    expect(riga.attivatoDa).toBe("unaltro@blackfoxmedia.test");
-    expect(riga.spentoIl).toBeNull();
-  });
-
-  it("su un locale che non esiste non scrive niente", async () => {
-    await expect(
-      cambiaServizio("locale-inventato", { servizio: "CENTRALINO", attivo: true }, ADMIN),
-    ).rejects.toThrow("locale_non_trovato");
-  });
-});
-
-describe("la chiave firmata resta una strada", () => {
-  it("accende anche senza interruttore, e si vede che viene da lì", async () => {
+  it("la chiave firmata lo accende, e si vede che viene da lì", async () => {
     await db.venue.update({
       where: { id: venueId },
       data: { phoneLicenseKey: chiavePer(venueId), phoneLicenseActivatedAt: new Date() },
@@ -191,56 +100,58 @@ describe("la chiave firmata resta una strada", () => {
     expect(stato.origine).toBe("chiave");
   });
 
-  it("l'interruttore spento non spegne una chiave valida", async () => {
-    /* Sono due strade, non una con precedenza: un cliente può aver comprato
-       la chiave prima e poi essere passato a noi, e il telefono non deve
-       spegnersi nel mezzo perché una riga dice «false». */
-    await db.venue.update({
-      where: { id: venueId },
-      data: { phoneLicenseKey: chiavePer(venueId), phoneLicenseActivatedAt: new Date() },
-    });
-    await cambiaServizio(venueId, { servizio: "CENTRALINO", attivo: false }, ADMIN);
-    expect((await statoCentralino(venueId)).attivo).toBe(true);
-  });
-
-  it("una chiave scaduta, in elenco, non passa per un telefono acceso", async () => {
+  it("una chiave di un altro non accende niente", async () => {
+    /* La prova che conta non e «una chiave buona funziona» — quella funziona
+       sempre — ma «una chiave che *sembra* buona viene rifiutata». */
     await db.venue.update({
       where: { id: venueId },
       data: {
-        phoneLicenseKey: chiavePer(venueId, "2020-01-01"),
+        phoneLicenseKey: chiavePer(venueId, { conChiave: impostore.privateKey }),
         phoneLicenseActivatedAt: new Date(),
       },
     });
-    expect((await statoCentralino(venueId)).attivo).toBe(false);
+    const stato = await statoCentralino(venueId);
+    expect(stato.attivo).toBe(false);
+    expect(stato.motivoSpento).toBe("non_piu_valida");
+  });
 
-    const riga = (await localiConServizi()).find((l) => l.venueId === venueId);
-    /* In elenco si dice **chiave presente**, non «attivo»: la firma non si
-       riverifica riga per riga, e dichiararlo acceso sarebbe la solita spunta
-       che afferma un fatto invece di leggerlo. */
-    expect(riga?.centralino.attivo).toBe(false);
-    expect(riga?.centralino.haChiave).toBe(true);
+  it("una chiave scaduta non accende, e lo dice in un modo diverso", async () => {
+    await db.venue.update({
+      where: { id: venueId },
+      data: {
+        phoneLicenseKey: chiavePer(venueId, { scadenza: "2020-01-01" }),
+        phoneLicenseActivatedAt: new Date(),
+      },
+    });
+    const stato = await statoCentralino(venueId);
+    expect(stato.attivo).toBe(false);
+    /* «Ce l'avevi e adesso no» e diverso da «non l'hai mai comprato»: sono due
+       schermate diverse, la prima spiega e la seconda offre. */
+    expect(stato.motivoSpento).toBe("scaduta");
   });
 });
 
-describe("l'elenco per il pannello", () => {
-  it("mostra tutti i locali, non solo quelli accesi", async () => {
-    /* La domanda di quella schermata è «a chi lo accendo?», e un elenco dei
-       soli accesi non la può rispondere. */
+describe("l'elenco del pannello", () => {
+  it("mostra tutti i locali, non solo quelli col telefono", async () => {
+    /* La domanda di quella schermata e «a chi lo accendo?», e un elenco dei
+       soli accesi non la puo rispondere. */
     const elenco = await localiConServizi();
     expect(elenco.some((l) => l.venueId === venueId)).toBe(true);
   });
 
-  it("dice chi l'ha acceso e cosa comprende", async () => {
-    await cambiaServizio(
-      venueId,
-      { servizio: "CENTRALINO", attivo: true, funzioni: ["prenotazioni"], nota: "pagato" },
-      ADMIN,
-    );
+  it("dice «ha una chiave», non «attivo»", async () => {
+    /* La firma non si riverifica riga per riga su una schermata che elenca
+       tutti i locali: dichiararlo acceso farebbe passare una chiave scaduta per
+       un telefono che funziona. */
+    await db.venue.update({
+      where: { id: venueId },
+      data: {
+        phoneLicenseKey: chiavePer(venueId, { scadenza: "2020-01-01" }),
+        phoneLicenseActivatedAt: new Date(),
+      },
+    });
     const riga = (await localiConServizi()).find((l) => l.venueId === venueId);
-    expect(riga?.centralino.attivo).toBe(true);
-    expect(riga?.centralino.origine).toBe("piattaforma");
-    expect(riga?.centralino.funzioni).toEqual(["prenotazioni"]);
-    expect(riga?.centralino.attivatoDa).toBe(ADMIN);
-    expect(riga?.centralino.nota).toBe("pagato");
+    expect(riga?.centralino.haChiave).toBe(true);
+    expect(riga?.centralino.attivo).toBe(false);
   });
 });

@@ -286,22 +286,23 @@ test("il telefono squilla anche per chi non sta guardando la sala", async ({
   }
 });
 
-test("si risponde da qualunque pagina: il telefono sta nel guscio", async ({
-  page,
-}) => {
+test("Tavolo non risponde alle telefonate: nessun telefono nel guscio", async ({ page }) => {
   /**
-   * La decisione di prodotto: **si risponde dentro Tavolo**. Il centralino
-   * consegna le chiamate e non risponde più a niente.
+   * La decisione di prodotto, e **è cambiata**: Tavolo governa i dati, non
+   * risponde. Risponde il cellulare del locale; se non risponde o è occupato,
+   * la telefonata la prende il risponditore del centralino.
    *
-   * Il telefono nel browser stava sulla pagina Telefono: chi guardava la carta
-   * vedeva squillare — il riquadro della chiamata è nel guscio dalla fase 3 —
-   * e per rispondere doveva cambiare pagina. Con una telefonata che dura venti
-   * secondi, quel cambio di pagina è la telefonata persa.
+   * Rispondere dal browser era costruito e funzionante — WebRTC, permesso del
+   * microfono, pannello su ogni schermata — e **non è stato cancellato**: sta
+   * dietro `RISPONDE_DAL_BROWSER` in `src/lib/rispondere-da-tavolo.ts`, spento
+   * da un punto solo. Il modello è cambiato tre volte in due giorni, e
+   * cancellare una cosa che funziona sarebbe stato l'errore caro.
    *
-   * Qui si verifica la cosa che un occhio non vede e che rompe tutto: che il
-   * telefono sia montato **una volta sola**. Due copie in pagina vorrebbero
-   * dire due registrazioni SIP con la stessa utenza, e la stessa chiamata che
-   * squilla due volte sullo stesso schermo.
+   * Questa prova verifica il prodotto **come viene pubblicato**: con
+   * l'interruttore spento non si monta nessun telefono, su nessuna pagina,
+   * anche quando i dati SIP nel database ci sono. Il giorno che qualcuno
+   * riaccende quella costante, questa prova diventa rossa — ed è giusto:
+   * riaccendere una funzione va deciso, non scoperto.
    */
   const locale = await db.venue.findFirstOrThrow({
     where: { slug: E2E.venueSlug },
@@ -312,8 +313,8 @@ test("si risponde da qualunque pagina: il telefono sta nel guscio", async ({
     data: {
       phoneLicenseKey: licenzaDiProva(locale.id, "Locale di prova"),
       phoneLicenseActivatedAt: new Date(),
-      /* I dati del telefono nel browser: senza, il componente non si monta —
-         ed è giusto, ma allora questa prova non proverebbe niente. */
+      /* I dati SIP **ci sono**: è la parte che conta. Prima bastavano loro a
+         far comparire il telefono, e adesso non bastano più. */
       phoneSipServer: "wss://esempio.invalido:7443/ws",
       phoneSipUser: "interno-99",
       phoneSipPassword: "prova-non-vera",
@@ -321,17 +322,15 @@ test("si risponde da qualunque pagina: il telefono sta nel guscio", async ({
   });
 
   try {
-    /* Un elemento audio nascosto per pagina: è il telefono montato. Non si
-       verifica la registrazione SIP — quella richiede un centralino vero — ma
-       che il componente ci sia, e **una volta sola**. */
     for (const dove of ["/service", "/menu", "/telefono"]) {
       await page.goto(dove);
-      await expect(page.locator("audio")).toHaveCount(1, { timeout: 30_000 });
+      /* L'elemento audio nascosto **è** il telefono montato: zero significa
+         che non c'è, e con lui non c'è la richiesta del microfono. */
+      await expect(page.locator("audio")).toHaveCount(0, { timeout: 30_000 });
     }
 
-    /* E sulla pagina del Telefono c'è scritto dove si risponde, invece di un
-       secondo riquadro che si collegherebbe per conto suo. */
-    await expect(page.getByText(/qualunque pagina/)).toBeVisible();
+    // E niente riga che dica dove si risponde: non si risponde da qui.
+    await expect(page.getByText(/qualunque pagina/)).toHaveCount(0);
   } finally {
     await db.venue.update({
       where: { id: locale.id },
