@@ -90,6 +90,25 @@ export type ContenutoLicenza = {
   f?: string[];
   /** Quando è stata emessa, `AAAA-MM-GG`. Solo per leggerla. */
   d?: string;
+  /**
+   * **Revoca**: questa non è una chiave che accende, è una che spegne.
+   *
+   * ## Perché la revoca è firmata come la licenza
+   *
+   * Spegnere il telefono di un ristorante è un comando come accenderlo, e una
+   * richiesta non firmata sarebbe un modo per spegnere il telefono di un
+   * concorrente il sabato sera. Stessa chiave privata, stesso marchio, stessa
+   * verifica: cambia solo cosa dice.
+   *
+   * ## Perché serve la data, e non è decorativa
+   *
+   * Una revoca è un messaggio che resta valido per sempre — la firma non
+   * scade. Senza la data, quella di giugno riapplicata a settembre
+   * spegnerebbe un cliente riattivato nel frattempo. Con la data, Tavolo
+   * applica una revoca **solo se è più recente della chiave che sta
+   * spegnendo**.
+   */
+  r?: true;
 };
 
 export type LicenzaDivisa = {
@@ -161,7 +180,18 @@ export function dividiLicenza(valore: string | null | undefined): LicenzaDivisa 
   if (typeof c.l !== "string" || !c.l) return null;
   if (c.e != null && !(typeof c.e === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c.e))) return null;
   if (c.f != null && !(Array.isArray(c.f) && c.f.every((x) => typeof x === "string"))) return null;
+  /* La revoca: **solo `true`**, e non un valore qualunque che sia vero. Una
+     stringa `"no"` è vera in JavaScript, e con un controllo generoso un
+     comando scritto male spegnerebbe un ristorante. */
+  if (c.r != null && c.r !== true) return null;
 
+  /*
+    Il contenuto si **ricostruisce** campo per campo invece di passare
+    l'oggetto letto: quello che non è dichiarato qui non esiste, e un campo
+    aggiunto domani dall'altra parte non arriva per sbaglio dentro la logica di
+    questa parte. È anche il motivo per cui `r` ha dovuto essere aggiunto qui
+    prima di funzionare — ed è il verso giusto in cui costare fatica.
+  */
   return {
     contenuto: {
       v: 1,
@@ -170,6 +200,7 @@ export function dividiLicenza(valore: string | null | undefined): LicenzaDivisa 
       e: typeof c.e === "string" ? c.e : undefined,
       f: Array.isArray(c.f) ? (c.f as string[]) : undefined,
       d: typeof c.d === "string" ? c.d : undefined,
+      ...(c.r === true ? { r: true as const } : {}),
     },
     firmato: `${marchio}.${corpo}`,
     firma,

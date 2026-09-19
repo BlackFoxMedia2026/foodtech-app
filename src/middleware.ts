@@ -59,6 +59,13 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname.startsWith("/api/public/availability")) {
     return { rule: RATE_LIMITS.publicAvailability, bucket: "public-availability" };
   }
+  if (pathname === "/api/v1/licenza") {
+    /* Accende e spegne il telefono di un locale, e non chiede un token: la
+       prova e la firma. Il limite serve proprio per questo — senza, sarebbe il
+       posto da cui provare chiavi a caso. Severo come una prenotazione
+       pubblica: accendere un locale e un gesto che si fa una volta. */
+    return { rule: RATE_LIMITS.publicBooking, bucket: "licenza", methods: ["POST"] };
+  }
   if (pathname === "/api/public/riprendi") {
     /* Severo come una prenotazione dal widget, ed e la stessa cosa: scrive una
        prenotazione. Il token la protegge gia da chi passa per caso, ma un
