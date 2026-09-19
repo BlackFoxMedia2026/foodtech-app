@@ -14,6 +14,7 @@ import { interrotteDaSeguire } from "@/server/voice/recupero-link";
 import { Interrotte } from "@/components/telefono/interrotte";
 import { DaApprovare } from "@/components/telefono/insight";
 import { can } from "@/lib/tenant";
+import { RISPONDE_DAL_BROWSER } from "@/lib/rispondere-da-tavolo";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +92,12 @@ export default async function TelefonoPage({
     due volte sullo stesso schermo. Qui resta una riga che dice **dove** si
     risponde — un fatto, non uno stato che potrebbe contraddire quello vero.
   */
-  const rispondeNelBrowser = telefono.pronto && capacita.browser;
+  /* Spento col resto: in questo prodotto Tavolo non risponde alle telefonate
+     — vedi `src/lib/rispondere-da-tavolo.ts`. La riga diceva **dove** si
+     risponde, e adesso la risposta è «dal cellulare del locale», che non è una
+     cosa che Tavolo debba raccontare su questa pagina. */
+  const rispondeNelBrowser =
+    RISPONDE_DAL_BROWSER && telefono.pronto && capacita.browser;
 
   return (
     /* Il telefono nel browser entra **dentro** l'elenco e non accanto: la

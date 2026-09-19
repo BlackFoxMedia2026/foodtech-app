@@ -466,3 +466,61 @@ dall'interruzione alla prenotazione e prova che il link **non vale due volte**.
 2. **l'imbuto dell'abbandono** (§55-57): il passo su cui la gente riattacca è
    già scritto in tabella (`VoiceRecovery.passo`), i numeri no;
 3. **la voce che parla e capisce** (fasi 15-18), che resta il pezzo grosso.
+
+---
+
+## 14. Il modello si ferma qui: come CoverManager
+
+Il 19 settembre 2026, dopo tre giri. La forma definitiva, in quattro righe:
+
+1. **il cellulare del locale risponde**, sempre lui per primo;
+2. **occupato o nessuna risposta → il risponditore del centralino**;
+3. **il centralino fa tutta la telefonia** — trunk, numeri, deviazioni,
+   risponditore, rimando al locale — e manda a Tavolo le prenotazioni e le
+   chiamate che ha visto;
+4. **Tavolo governa i dati**: prenotazioni, ospiti, sala, storico, recupero
+   delle interrotte. Non risponde e non si configura.
+
+### Cosa è stato togliuto da Tavolo, e perché
+
+- **rispondere dal browser.** Era costruito e funzionante — WebRTC, permesso
+  del microfono, pannello su ogni schermata — e non è stato cancellato: sta
+  dietro `RISPONDE_DAL_BROWSER` in `src/lib/rispondere-da-tavolo.ts`, spento da
+  **un punto solo**. Il modello è cambiato tre volte in due giorni, e
+  cancellare una cosa che funziona sarebbe stato l'errore caro. Cercare quella
+  costante dice in tre secondi tutto quello che quella funzione toccava;
+- **l'interruttore dei servizi** nel pannello di piattaforma. Per un giorno il
+  telefono si accendeva da due posti: una chiave firmata, e un booleano in
+  tabella. Due strade verso lo stesso «sì» sono anche due posti in cui cercare
+  quando la risposta è «no» — e un booleano lo gira chiunque arrivi al
+  database, una firma Ed25519 no. `VenueServizio` resta in tabella **segnata
+  superata**: la migrazione che la toglie è distruttiva su dati che da qui non
+  si possono guardare;
+- **il montaggio della linea e l'assegnazione dei numeri** dal pannello di
+  Tavolo. Tornano dove vivono le telefonate. Con loro sono spariti
+  `CENTRALINO_URL`, `CENTRALINO_UTENTE`, `CENTRALINO_PASSWORD` dalle variabili
+  di produzione, e il ruolo di amministratore dell'utente di servizio sul
+  centralino è stato revocato: **un segreto in meno da custodire** è l'unico
+  vantaggio che si porta dietro un passo indietro.
+
+`/admin/locali` resta, **in sola lettura**: risponde a una domanda che serve
+davvero — chi ha il telefono, da quando, su quali linee — e guardare non è
+configurare.
+
+### Il limite di questo modello, detto una volta per tutte
+
+Con la deviazione, **Tavolo non vede le telefonate a cui risponde il
+cellulare**: vede solo quelle deviate. È identico per il concorrente. Il
+«vediamo tutte le chiamate, anche quelle risposte» valeva solo con la
+scatoletta attaccata a una linea fissa (§3), e in questo modello non c'è.
+
+### Cosa resta da fare
+
+1. **l'accensione da remoto**: oggi la chiave si emette su ilmiocentralino e
+   qualcuno la incolla in Tavolo. Va spinta — e serve la decisione sulla
+   revoca: immediata (revoca firmata) o per scadenza;
+2. **il risponditore deve dichiarare le interrotte** a Tavolo: il link del
+   recupero esiste e non ha ancora chi lo innesca (`PonteTavolo.interrotta` è
+   scritto, non collegato);
+3. **un canale SMS**, senza cui il link non parte;
+4. **la voce che parla e capisce** (fasi 15-18).

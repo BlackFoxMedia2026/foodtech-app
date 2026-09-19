@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { readApiError } from "@/lib/api-client";
 import { COSA_CHIEDERE, OPERATORI, operatoreDa } from "@/lib/operatori-telefonici";
 import { PermessoMicrofono } from "@/components/telefono/permesso-microfono";
+import { RISPONDE_DAL_BROWSER } from "@/lib/rispondere-da-tavolo";
 import { daQuando } from "@/lib/utils";
 import type { StatoSipVista } from "./centralino";
 
@@ -677,6 +678,7 @@ export function CollegaTelefono({
         </div>
       ),
     },
+    ...(RISPONDE_DAL_BROWSER ? [
     {
       numero: 6,
       titolo: "Rispondi dentro Tavolo",
@@ -761,7 +763,8 @@ export function CollegaTelefono({
           </div>
         </form>
       ),
-    },
+    } satisfies Passo,
+    ] : []),
   ];
 
   /* L'ordine è quello in cui si fanno, e il conto salta quello che è una

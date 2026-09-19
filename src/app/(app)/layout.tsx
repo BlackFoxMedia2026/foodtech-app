@@ -8,6 +8,7 @@ import { AvvisiProvider } from "@/components/ui/avvisi";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { versioneServizio } from "@/server/versione-servizio";
 import { statoTelefonoBrowser } from "@/server/telefono-browser";
+import { RISPONDE_DAL_BROWSER } from "@/lib/rispondere-da-tavolo";
 import { capacitaDi } from "@/server/voice/provider";
 import { TelefonoBrowser } from "@/components/telefono/telefono-browser";
 import { VoiceGlobale } from "@/components/telefono/voice-globale";
@@ -74,12 +75,28 @@ export default async function AppShell({
     (`pronto`), e il fornitore sa fare WebRTC (`browser`) — i dati SIP possono
     essere su una linea che non lo fa, e il riquadro si collegherebbe a vuoto.
   */
-  const sip = telefonoPerMe
-    ? await statoTelefonoBrowser(ctx.venueId)
-    : { pronto: false };
+  /*
+    **Spento**: in questo prodotto Tavolo non risponde alle telefonate.
+
+    Risponde il cellulare del locale; se non risponde o è occupato, la
+    telefonata la prende il risponditore del centralino. Vedi
+    `src/lib/rispondere-da-tavolo.ts` — la costante è una sola perché
+    riaccendere questa funzione deve costare una riga, non una caccia.
+
+    Quando è spento non si interroga nemmeno il database per i dati SIP: sono
+    due letture per schermata che non servirebbero a niente.
+  */
+  const sip =
+    telefonoPerMe && RISPONDE_DAL_BROWSER
+      ? await statoTelefonoBrowser(ctx.venueId)
+      : { pronto: false };
   const capacita =
-    telefonoPerMe && sip.pronto ? await capacitaDi(ctx.venueId) : null;
-  const rispondeQui = Boolean(telefonoPerMe && sip.pronto && capacita?.browser);
+    telefonoPerMe && RISPONDE_DAL_BROWSER && sip.pronto
+      ? await capacitaDi(ctx.venueId)
+      : null;
+  const rispondeQui = Boolean(
+    RISPONDE_DAL_BROWSER && telefonoPerMe && sip.pronto && capacita?.browser,
+  );
   const showBrandSetup =
     ctx.venue.onboardingStatus === "NOT_STARTED" &&
     can(ctx.role, "manage_venue");

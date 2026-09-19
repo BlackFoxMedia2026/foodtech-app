@@ -1,7 +1,6 @@
 import { createPublicKey, verify } from "node:crypto";
 import { db } from "@/lib/db";
 import {
-  FUNZIONI_CENTRALINO,
   dividiLicenza,
   fineValidita,
   funzioniDi,
@@ -203,51 +202,35 @@ export async function statoCentralino(
     select: {
       phoneLicenseKey: true,
       phoneLicenseActivatedAt: true,
-      /* L'interruttore della piattaforma. Si legge **insieme** alla chiave e
-         non al posto: un cliente puo avere entrambe — l'abbiamo acceso noi e
-         lui ha anche una chiave di prima — e non e un conflitto da risolvere
-         con una precedenza arbitraria: se una delle due dice si, il telefono
-         e acceso. */
-      servizi: {
-        where: { servizio: "CENTRALINO" },
-        select: { attivo: true, funzioni: true, attivatoIl: true },
-        take: 1,
-      },
     },
   });
-
-  const acceso = locale?.servizi[0];
-  if (acceso?.attivo) {
-    return {
-      attivo: true,
-      /* Vuoto = tutte quelle di oggi, come nella chiave: un elenco vuoto non e
-         un servizio senza funzioni, e un servizio completo. */
-      funzioni: funzioniValide(acceso.funzioni),
-      /* Non scade. Un servizio che accendiamo noi si spegne quando lo
-         spegniamo noi: una scadenza qui vorrebbe dire un telefono che si
-         spegne da solo un sabato sera senza che nessuno l'abbia deciso. */
-      scadeIl: null,
-      attivatoIl: acceso.attivatoIl,
-      chiaveLeggibile: null,
-      motivoSpento: null,
-      origine: "piattaforma",
-    };
-  }
-
-  return statoDaChiave(venueId, locale?.phoneLicenseKey ?? null, locale?.phoneLicenseActivatedAt ?? null, adesso);
+  return statoDaChiave(
+    venueId,
+    locale?.phoneLicenseKey ?? null,
+    locale?.phoneLicenseActivatedAt ?? null,
+    adesso,
+  );
 }
 
-/**
- * Solo le funzioni che esistono davvero, e tutte quando l'elenco e vuoto.
- *
- * Un nome scritto a mano nel pannello — o rimasto in tabella dopo che una
- * funzione e stata rinominata — non deve poter accendere niente: qui si passa
- * dall'elenco chiuso, e quello che non ne fa parte cade.
- */
-function funzioniValide(elenco: string[]): FunzioneCentralino[] {
-  if (elenco.length === 0) return [...FUNZIONI_CENTRALINO];
-  return FUNZIONI_CENTRALINO.filter((f) => elenco.includes(f));
-}
+/*
+  ## Una sola verita su «il telefono e acceso?»
+
+  Per un giorno ce ne sono state due: la chiave firmata, e un interruttore in
+  una tabella (`VenueServizio`) che un super amministratore girava dal pannello
+  di Tavolo. L'interruttore e stato togliuto, e la ragione non e estetica.
+
+  In questo prodotto **Tavolo non si configura**: nasce col telefono spento, e
+  ad accenderlo e ilmiocentralino. La chiave firmata e esattamente questo — una
+  cosa che solo chi ha la chiave privata puo fabbricare, e che Tavolo
+  riverifica a ogni lettura — mentre un booleano in tabella e una cosa che
+  chiunque possa scrivere nel database si accende da solo.
+
+  Due strade verso lo stesso «si» erano anche due posti in cui cercare quando
+  la risposta e «no». `VenueServizio` resta in tabella e **non la legge
+  nessuno**: e segnata superata, come le tre tabelle morte del telefono e
+  `BookingEvent`. Cancellarla e una migrazione distruttiva su dati che non
+  possiamo guardare, e non vale il rischio per un nome.
+*/
 
 /**
  * Lo stato, data la chiave già letta.

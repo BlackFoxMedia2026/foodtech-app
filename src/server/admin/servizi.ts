@@ -1,40 +1,20 @@
-import { z } from "zod";
 import { db } from "@/lib/db";
-import { FUNZIONI_CENTRALINO } from "@/lib/licenza-centralino";
 
 /**
- * I servizi dei locali, dal pannello di piattaforma.
+ * Il telefono dei locali, visto dal pannello di piattaforma.
  *
- * ## Cosa manda in pensione
+ * ## Solo lettura, e non per caso
  *
- * Il centralino si accendeva incollando una **chiave firmata** emessa da un
- * secondo gestionale. Per un cliente della nostra installazione era un giro
- * inutile: sei gesti in due applicazioni, due chiavi in versi opposti, e in
- * mezzo un codice da copiare. Il database e nostro e chi accende siamo noi —
- * quindi si accende da qui, con un interruttore.
+ * Qui non si accende e non si spegne niente. Per un giorno c'era un
+ * interruttore, poi la direzione e diventata quella giusta: **Tavolo non si
+ * configura**, nasce col telefono spento e ad accenderlo e la chiave firmata
+ * che solo ilmiocentralino puo fabbricare. Due strade verso lo stesso «si»
+ * erano anche due posti in cui cercare quando la risposta e «no».
  *
- * **La firma non va in pensione**: resta la strada delle installazioni che non
- * gestiamo noi, dove un interruttore nel database sarebbe un interruttore che
- * il cliente si gira da solo. Le due strade convivono e nessuna indebolisce
- * l'altra (vedi `statoCentralino`).
- *
- * ## Cosa questo file non fa
- *
- * Non controlla chi sta chiamando. Il controllo del super amministratore sta
- * **nella rotta**, come per tutto il resto del pannello: una funzione di
- * server che si fida del suo chiamante e una funzione che prima o poi viene
- * chiamata da un altro posto.
+ * Quello che resta risponde a una domanda che serve davvero: **chi ha il
+ * telefono, da quando, e su quali linee** — tutti i clienti in una schermata.
+ * Guardare non e configurare.
  */
-
-export const ServizioInput = z.object({
-  servizio: z.literal("CENTRALINO"),
-  attivo: z.boolean(),
-  /** Vuoto = tutte quelle di oggi. */
-  funzioni: z.array(z.enum(FUNZIONI_CENTRALINO)).optional(),
-  nota: z.string().trim().max(300).optional(),
-});
-
-export type ServizioInputType = z.infer<typeof ServizioInput>;
 
 export type LocaleConServizi = {
   venueId: string;
@@ -122,52 +102,5 @@ export async function localiConServizi(): Promise<LocaleConServizi[]> {
       ultimaChiamata: l.phoneCalls[0]?.startedAt ?? null,
       tenantCentralino: l.centralinoTenantId,
     };
-  });
-}
-
-/**
- * Accende o spegne un servizio.
- *
- * **Lo spegnimento non cancella la riga**: resta con `spentoIl` e con chi
- * l'aveva acceso. Cancellarla vorrebbe dire perdere la storia di un servizio
- * che qualcuno ha pagato per due mesi — e davanti a «da ieri non va» la prima
- * domanda e quando e chi.
- */
-export async function cambiaServizio(
-  venueId: string,
-  raw: unknown,
-  adminEmail: string,
-  adesso = new Date(),
-) {
-  const dati = ServizioInput.parse(raw);
-
-  const locale = await db.venue.findUnique({ where: { id: venueId }, select: { id: true } });
-  if (!locale) throw new Error("locale_non_trovato");
-
-  const comune = {
-    attivo: dati.attivo,
-    funzioni: dati.funzioni ?? [],
-    ...(dati.nota !== undefined ? { nota: dati.nota || null } : {}),
-    spentoIl: dati.attivo ? null : adesso,
-  };
-
-  await db.venueServizio.upsert({
-    where: { venueId_servizio: { venueId, servizio: dati.servizio } },
-    create: {
-      venueId,
-      servizio: dati.servizio,
-      ...comune,
-      /* Chi ha **deciso**, e quando: si scrive all'accensione e non si
-         sovrascrive a ogni salvataggio della nota. Un campo «ultima modifica»
-         risponde a una domanda che nessuno fa. */
-      attivatoDa: adminEmail,
-      attivatoIl: adesso,
-    },
-    update: {
-      ...comune,
-      /* Riaccendere e una decisione nuova: chi e quando si aggiornano. Cambiare
-         solo la nota o le funzioni, no. */
-      ...(dati.attivo ? { attivatoDa: adminEmail, attivatoIl: adesso } : {}),
-    },
   });
 }

@@ -2860,6 +2860,20 @@ enum VoiceRecoveryInvio {
   NON_RIUSCITO
 }
 
+/// **Superata.** Non la legge nessuno.
+///
+/// Per un giorno il telefono si accendeva con un interruttore girato da un
+/// super amministratore dal pannello di Tavolo. La direzione e cambiata, ed e
+/// quella giusta: **Tavolo non si configura**. Nasce col telefono spento, e ad
+/// accenderlo e la chiave firmata che solo ilmiocentralino puo fabbricare —
+/// una cosa che non si falsifica, al contrario di un booleano che chiunque
+/// arrivi al database si gira da solo.
+///
+/// Resta in tabella e non si cancella: la migrazione che la toglie e
+/// distruttiva su dati che da qui non si possono guardare, e non vale il
+/// rischio per un nome. Segnata come le tre tabelle morte del telefono e
+/// `BookingEvent` — vedi `src/server/licenza-centralino.ts`.
+///
 /// Un servizio acceso a un locale da chi gestisce la piattaforma.
 ///
 /// ## Perche esiste, e cosa manda in pensione

@@ -1,64 +1,44 @@
 import { Badge } from "@/components/ui/badge";
-import { ServiziLocale } from "@/components/admin/servizi-locale";
-import { LineeLocale } from "@/components/admin/linee-locale";
-import { MontaLinea } from "@/components/admin/monta-linea";
 import { NOME_FUNZIONE_CENTRALINO, type FunzioneCentralino } from "@/lib/licenza-centralino";
 import { daQuando } from "@/lib/utils";
 import { localiConServizi } from "@/server/admin/servizi";
-import { configurato } from "@/server/admin/centralino-remoto";
 
 export const dynamic = "force-dynamic";
 
 /**
- * I locali e i loro servizi.
+ * I locali e il loro telefono: **si guarda, non si tocca**.
  *
- * ## Perché questa pagina esiste
+ * ## Perché qui non ci sono pulsanti
  *
- * Perché il centralino si accendeva **da un altro gestionale**: si emetteva
- * una chiave firmata su ilmiocentralino, si copiava, si apriva Tavolo e la si
- * incollava. Sei gesti in due applicazioni, con due chiavi che viaggiano in
- * versi opposti — e per un cliente della nostra installazione era un giro
- * inutile: il database è nostro.
+ * Perché in questo prodotto Tavolo non si configura. Il telefono si accende
+ * con una **chiave firmata** che solo ilmiocentralino può fabbricare, e la
+ * linea — trunk, numeri, deviazioni — vive dove arrivano le telefonate.
+ * Accendere un cliente da due posti diversi vuol dire due verità su un
+ * telefono, e due posti in cui cercare quando la risposta è «non funziona».
  *
- * Adesso il telefono è **un servizio di Tavolo**, che un nostro super
- * amministratore accende a chi lo compra. Il secondo gestionale resta dov'è
- * per quello che sa fare lui — le linee, i trunk, l'audio — ma non è più un
- * posto dove passare per far funzionare un cliente.
+ * Per un giorno i pulsanti c'erano, ed erano stati costruiti bene: sono stati
+ * togliuti insieme alle credenziali di servizio che li facevano funzionare —
+ * un segreto in meno da custodire.
  *
- * ## La firma non è stata buttata
+ * ## Cosa resta, e perché serve
  *
- * Resta la strada delle installazioni che non gestiamo noi, dove un
- * interruttore nel database sarebbe un interruttore che il cliente si gira da
- * solo. Qui si dice quando c'è anche una chiave, invece di nasconderlo: due
- * verità sullo stesso telefono si scoprono male.
+ * Quello che questa pagina risponde è una domanda sola: **chi ha il telefono
+ * acceso, da quando, e su quali linee.** È l'unico posto da cui si vede
+ * insieme a tutti i clienti, e serve prima di rispondere a «al Nomad
+ * funziona?». Guardare non è configurare.
  */
 export default async function AdminLocaliPage() {
   const locali = await localiConServizi();
-  const accesi = locali.filter((l) => l.centralino.attivo).length;
-  /* Se da qui si puo comandare il centralino. Si legge una volta e si passa
-     giu: e una variabile d'ambiente, non uno stato per locale. */
-  const collegato = configurato();
+  const conChiave = locali.filter((l) => l.centralino.haChiave).length;
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="t-titolo-pagina">Locali e servizi</h1>
-          <p className="t-nota mt-1">
-            {locali.length} locali, {accesi} col centralino acceso da qui.
-          </p>
-        </div>
-        {/* Montare una linea è un lavoro che si fa poche volte e riguarda
-            **tutti** i locali: sta in testata, non dentro la riga di uno. */}
-        {collegato && (
-          <MontaLinea
-            locali={locali.map((l) => ({
-              venueId: l.venueId,
-              nome: l.nome,
-              organizzazione: l.organizzazione,
-            }))}
-          />
-        )}
+      <header>
+        <h1 className="t-titolo-pagina">Locali e telefono</h1>
+        <p className="t-nota mt-1">
+          {locali.length} locali, {conChiave} con una chiave del centralino. Si accende e si
+          configura da ilmiocentralino: qui si guarda.
+        </p>
       </header>
 
       <div className="space-y-3">
@@ -74,15 +54,15 @@ export default async function AdminLocaliPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {l.centralino.attivo ? (
-                  <Badge tone="success">Centralino acceso</Badge>
-                ) : l.centralino.haChiave ? (
-                  /* Una chiave c'è, e non la verifichiamo riga per riga: dirla
-                     «attiva» qui sarebbe dichiarare un fatto invece di
-                     leggerlo, e una chiave scaduta passerebbe per accesa. */
-                  <Badge tone="warning">Ha una chiave</Badge>
+                {/* «Ha una chiave», non «attivo»: la firma non si riverifica
+                    riga per riga su una schermata che elenca tutti i locali, e
+                    dichiararlo acceso farebbe passare una chiave scaduta per un
+                    telefono che funziona. Lo stato vero lo dice la scheda del
+                    locale, dove la chiave viene verificata. */}
+                {l.centralino.haChiave ? (
+                  <Badge tone="success">Ha una chiave</Badge>
                 ) : (
-                  <Badge tone="neutral">Spento</Badge>
+                  <Badge tone="neutral">Telefono spento</Badge>
                 )}
                 <span className="t-nota">
                   {l.ultimaChiamata
@@ -92,36 +72,38 @@ export default async function AdminLocaliPage() {
               </div>
             </div>
 
-            <div className="mt-3 space-y-3 border-t border-border/60 pt-3">
-              <ServiziLocale
-                venueId={l.venueId}
-                attivo={l.centralino.attivo}
-                funzioni={l.centralino.funzioni}
-                nota={l.centralino.nota}
-              />
-              {l.centralino.attivo && (
-                <p className="t-nota mt-2">
-                  {l.centralino.funzioni.length === 0
-                    ? "Tutte le funzioni"
-                    : l.centralino.funzioni
-                        .map((f) => NOME_FUNZIONE_CENTRALINO[f as FunzioneCentralino] ?? f)
-                        .join(" · ")}
-                  {l.centralino.attivatoDa && ` · acceso da ${l.centralino.attivatoDa}`}
-                  {l.centralino.attivatoIl && ` ${daQuando(l.centralino.attivatoIl)}`}
-                  {l.centralino.haChiave && " · ha anche una chiave firmata"}
+            <div className="mt-3 border-t border-border/60 pt-3">
+              <p className="t-etichetta mb-1.5">Le linee</p>
+              {l.linee.length > 0 ? (
+                <ul className="flex flex-wrap gap-2">
+                  {l.linee.map((linea) => (
+                    <li
+                      key={linea.numero}
+                      className="rounded-full border border-border px-2.5 py-1 font-mono text-xs"
+                    >
+                      {linea.numero}
+                      {linea.etichetta && (
+                        <span className="ml-1.5 font-sans text-muted-foreground">
+                          {linea.etichetta}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="t-nota">
+                  Nessuna linea dichiarata dal centralino. Finché non gliene assegni una là, nella
+                  procedura di collegamento non compare nessun numero da dettare all&apos;operatore.
                 </p>
               )}
-              {l.centralino.nota && <p className="t-nota mt-1">«{l.centralino.nota}»</p>}
 
-              <div className="border-t border-border/60 pt-3">
-                <p className="t-etichetta mb-1.5">Le linee</p>
-                <LineeLocale
-                  venueId={l.venueId}
-                  linee={l.linee}
-                  tenantCentralino={l.tenantCentralino}
-                  collegato={collegato}
-                />
-              </div>
+              {l.centralino.funzioni.length > 0 && (
+                <p className="t-nota mt-2">
+                  {l.centralino.funzioni
+                    .map((f) => NOME_FUNZIONE_CENTRALINO[f as FunzioneCentralino] ?? f)
+                    .join(" · ")}
+                </p>
+              )}
             </div>
           </section>
         ))}
