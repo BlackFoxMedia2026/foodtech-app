@@ -328,7 +328,7 @@ export function TelefonoBrowser({
           ? "Questo computer non ha un microfono: il browser non ne trova nessuno. Serve una cuffia o un microfono collegato."
           : occupato
             ? "Il microfono c'è ma è occupato da un'altra applicazione, o bloccato dal sistema. Su Mac: Impostazioni di Sistema → Privacy e sicurezza → Microfono."
-            : "Il browser ha detto no senza chiedere niente: per questo sito il microfono è già bloccato, e si sblocca solo dalle impostazioni del sito.",
+            : "Il browser ha detto no senza chiedere niente. I posti da controllare sono due, in quest'ordine: 1) questo sito — l'icona a sinistra dell'indirizzo → Microfono → Consenti, poi ricarica; 2) su Mac, se lì era già «Consenti», Impostazioni di Sistema → Privacy e sicurezza → Microfono → Chrome acceso.",
       );
 
       /* «Bloccato» solo quando lo è davvero: un microfono che non c'è non è un
@@ -477,10 +477,15 @@ export function TelefonoBrowser({
             </Button>
             {microfonoBloccato && (
               <span className="t-nota max-w-[22rem]">
-                Se è bloccato per questo sito, si sblocca in tre clic: l&apos;icona a
-                sinistra dell&apos;indirizzo (il lucchetto o i due cursori) →{" "}
-                <strong>Microfono</strong> → <strong>Consenti</strong>, poi ricarica la
-                pagina.
+                {/* Due posti e non uno, ed e la correzione: su Mac il permesso
+                    del sito e quello di sistema sono **due** interruttori, e
+                    mandare a girare solo il primo lascia chi ha il secondo
+                    spento a girarlo per niente — poi ci chiama. */}
+                Da controllare in quest&apos;ordine: <strong>1)</strong> questo sito —
+                l&apos;icona a sinistra dell&apos;indirizzo (il lucchetto o i due cursori) →{" "}
+                <strong>Microfono</strong> → <strong>Consenti</strong>, poi ricarica;{" "}
+                <strong>2)</strong> su Mac, se lì era già «Consenti», Impostazioni di
+                Sistema → Privacy e sicurezza → Microfono → Chrome acceso.
               </span>
             )}
           </>
