@@ -358,8 +358,12 @@ test("col microfono bloccato, premere il pulsante dice cosa fare", async ({
     // risposta prima che il telefono squilli.
     await expect(page.getByText("Microfono spento")).toBeVisible({ timeout: 30_000 });
 
-    /* La strada che esiste davvero, con i clic esatti. */
+    /* Le strade che esistono davvero, e sono **due**: su Mac il permesso del
+       sito e quello di sistema sono due interruttori diversi, e mandare a
+       girare solo il primo lascia chi ha il secondo spento a girarlo per
+       niente. */
     await expect(page.getByText(/icona a sinistra dell'indirizzo/)).toBeVisible();
+    await expect(page.getByText(/Privacy e sicurezza/)).toBeVisible();
 
     /* E la riga che conta: **premere dice qualcosa**.
 
@@ -368,7 +372,9 @@ test("col microfono bloccato, premere il pulsante dice cosa fare", async ({
        risposta del tentativo. Senza questa asserzione, un pulsante che non
        risponde tornerebbe a passare. */
     await page.getByRole("button", { name: /Controlla il microfono/ }).click();
-    await expect(page.getByText(/è già bloccato/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/ha detto no senza chiedere/)).toBeVisible({
+      timeout: 15_000,
+    });
   } finally {
     await db.venue.update({
       where: { id: locale.id },

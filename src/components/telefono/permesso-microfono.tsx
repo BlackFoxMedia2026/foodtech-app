@@ -92,7 +92,7 @@ export function PermessoMicrofono() {
           ? "Questo computer non ha un microfono: il browser non ne trova nessuno. Serve una cuffia o un microfono collegato."
           : nome === "NotReadableError" || nome === "TrackStartError"
             ? "Il microfono c'è ma è occupato o bloccato dal sistema: chiudi le altre applicazioni che lo usano, e su Mac controlla Impostazioni di Sistema → Privacy e sicurezza → Microfono."
-            : "Il browser ha detto no senza chiedere: per questo sito il microfono è già bloccato, e si sblocca solo dalle sue impostazioni.",
+            : "Il browser ha detto no senza chiedere niente. I posti da controllare sono due, in quest'ordine: 1) questo sito — l'icona a sinistra dell'indirizzo → Microfono → Consenti, poi ricarica; 2) su Mac, se lì era già «Consenti», Impostazioni di Sistema → Privacy e sicurezza → Microfono → Chrome acceso.",
       );
       setStato(
         nome === "NotFoundError" || nome === "DevicesNotFoundError"
