@@ -52,6 +52,33 @@ export type EsitoPrenotazioneTelefonica = {
   ospite: { id: string; nome: string } | null;
 };
 
+/**
+ * Il nome detto a voce, diviso come lo vuole la scheda dell'ospite.
+ *
+ * Una persona al telefono dice «Laura» o «Laura Bianchi», non due campi. Si
+ * divide al primo spazio e il resto è cognome: «Anna Maria Rossi» diventa
+ * Anna + «Maria Rossi», che è meno sbagliato del contrario e comunque
+ * correggibile a mano.
+ *
+ * `null` quando non c'è niente di utile: un nome vuoto scriverebbe una scheda
+ * senza nome, che è peggio del segnaposto — quella non si trova più cercando.
+ */
+export function dividiNomeParlato(
+  detto: string | null | undefined,
+): { firstName: string; lastName: string | null } | null {
+  const pulito = (detto ?? "").replace(/\s+/g, " ").trim();
+  if (!pulito) return null;
+  const spazio = pulito.indexOf(" ");
+  if (spazio < 0) return { firstName: pulito.slice(0, 80), lastName: null };
+  return {
+    firstName: pulito.slice(0, spazio).slice(0, 80),
+    lastName: pulito.slice(spazio + 1).slice(0, 80),
+  };
+}
+
+/** I nomi che mettiamo noi quando non ne abbiamo uno vero. */
+const NOMI_SEGNAPOSTO = ["Da richiamare", "Prenotazione telefonica"];
+
 /** Come si chiama la chiave dell'idempotenza: il prefisso dice da dove viene. */
 function chiaveTentativo(idCentralino: string): string {
   return `centralino:${idCentralino}`;
@@ -68,6 +95,16 @@ export async function registraPrenotazioneTelefonica(
     persone: number;
     quando: Date;
     nota?: string | null;
+    /**
+     * Il nome su cui mettere il tavolo, quando chi ha risposto l'ha chiesto.
+     *
+     * Il risponditore a tasti non può chiederlo — un nome non si digita — e
+     * per quello la prenotazione telefonica nasceva intestata a «Da
+     * richiamare». La voce che capisce **lo chiede e lo capisce**, quindi
+     * quando arriva si usa: il ristoratore legge un nome invece di un
+     * segnaposto, e la scheda dell'ospite nasce già giusta.
+     */
+    nome?: string | null;
   },
   adesso: Date = new Date(),
 ): Promise<EsitoPrenotazioneTelefonica> {
@@ -165,21 +202,39 @@ export async function registraPrenotazioneTelefonica(
       : []),
   ].join("\n");
 
+  const detto = dividiNomeParlato(dati.nome);
+
+  /*
+    Se l'ospite c'è già e si chiama ancora come l'avevamo chiamato noi, e
+    adesso un nome vero è arrivato, si scrive.
+
+    **Solo sopra un segnaposto nostro.** Sovrascrivere un nome vero con quello
+    capito da una voce al telefono sarebbe peggio del problema: «Bianchi»
+    diventa «Bianche» e la scheda di un cliente abituale si rovina. Qui invece
+    si sostituisce «Da richiamare», che non è il nome di nessuno.
+  */
+  if (ospiteEsistente && detto && NOMI_SEGNAPOSTO.includes(ospiteEsistente.firstName)) {
+    await db.guest.update({
+      where: { id: ospiteEsistente.id },
+      data: { firstName: detto.firstName, lastName: detto.lastName },
+    });
+  }
+
   const creata = await createBooking(
     venueId,
     {
       ...(ospiteEsistente
         ? { guestId: ospiteEsistente.id }
         : {
-            /* Senza nome non si può creare una scheda, e il risponditore non
-               chiede il nome — chiederlo a tasti non si può. Si usa il numero
-               come nome provvisorio, così la prenotazione esiste e chi
-               richiama scrive il nome vero parlando con la persona. */
+            /* Il nome, quando qualcuno l'ha chiesto. Il risponditore a tasti
+               non può — un nome non si digita — e allora resta il segnaposto:
+               la prenotazione esiste, e chi richiama scrive il nome vero
+               parlando con la persona. */
             guest: {
-              firstName: dati.phone
-                ? "Da richiamare"
-                : "Prenotazione telefonica",
-              lastName: null,
+              firstName:
+                detto?.firstName ??
+                (dati.phone ? "Da richiamare" : "Prenotazione telefonica"),
+              lastName: detto?.lastName ?? null,
               phone: dati.phone ?? null,
             },
           }),
@@ -278,11 +333,23 @@ export async function registraPrenotazioneTelefonica(
     reference: creata.reference,
     giaEsistente: false,
     avvertimenti,
+    /* Il nome che torna è quello **dopo** l'aggiornamento: se fosse quello
+       letto prima, il centralino si sentirebbe rispondere «Da richiamare»
+       subito dopo aver scritto «Laura». */
     ospite: ospiteEsistente
       ? {
           id: ospiteEsistente.id,
-          nome: `${ospiteEsistente.firstName}${ospiteEsistente.lastName ? ` ${ospiteEsistente.lastName}` : ""}`,
+          nome: nomeLeggibile(
+            detto && NOMI_SEGNAPOSTO.includes(ospiteEsistente.firstName)
+              ? detto
+              : { firstName: ospiteEsistente.firstName, lastName: ospiteEsistente.lastName },
+          ),
         }
       : null,
   };
+}
+
+/** Nome e cognome come si leggono in una riga. */
+function nomeLeggibile(p: { firstName: string; lastName: string | null }): string {
+  return `${p.firstName}${p.lastName ? ` ${p.lastName}` : ""}`;
 }

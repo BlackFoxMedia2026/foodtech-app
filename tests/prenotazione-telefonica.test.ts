@@ -14,7 +14,10 @@ import {
   testoDaFirmare,
   type ContenutoLicenza,
 } from "@/lib/licenza-centralino";
-import { registraPrenotazioneTelefonica } from "@/server/prenotazione-telefonica";
+import {
+  dividiNomeParlato,
+  registraPrenotazioneTelefonica,
+} from "@/server/prenotazione-telefonica";
 import { registraEventoChiamata } from "@/server/chiamate";
 
 /**
@@ -387,5 +390,108 @@ describe("le telefonate sulla scheda del cliente", () => {
     const elenco = await chiamateDiOspite(venueId, ospiteId);
     expect(elenco.length).toBeGreaterThan(0);
     expect(elenco[0]?.stato).toBe("MISSED");
+  });
+});
+
+describe("il nome detto alla voce", () => {
+  /**
+   * Il nome arrivava fino a metà strada.
+   *
+   * La voce lo chiede e lo capisce, ma il ponte non lo mandava e Tavolo non lo
+   * accettava: la prenotazione nasceva intestata a «Da richiamare» anche
+   * quando la persona aveva detto come si chiama. Il ristoratore leggeva un
+   * segnaposto e non sapeva chi aspettare.
+   */
+  it("si divide al primo spazio, e un nome vuoto non diventa una scheda senza nome", () => {
+    expect(dividiNomeParlato("Laura")).toEqual({
+      firstName: "Laura",
+      lastName: null,
+    });
+    expect(dividiNomeParlato("  Laura   Bianchi ")).toEqual({
+      firstName: "Laura",
+      lastName: "Bianchi",
+    });
+    expect(dividiNomeParlato("Anna Maria Rossi")).toEqual({
+      firstName: "Anna",
+      lastName: "Maria Rossi",
+    });
+    expect(dividiNomeParlato("   ")).toBeNull();
+    expect(dividiNomeParlato(null)).toBeNull();
+  });
+
+  it("intesta il tavolo alla persona invece che a «Da richiamare»", async () => {
+    const esito = await registraPrenotazioneTelefonica(venueId, {
+      idCentralino: `voce-${Date.now()}`,
+      phone: "+39 333 1112223",
+      persone: 4,
+      quando: domaniAlle20(),
+      nome: "Laura Bianchi",
+    });
+
+    const creata = await db.booking.findUnique({
+      where: { id: esito.id },
+      select: { guest: { select: { firstName: true, lastName: true } } },
+    });
+    expect(creata?.guest?.firstName).toBe("Laura");
+    expect(creata?.guest?.lastName).toBe("Bianchi");
+  });
+
+  it("senza nome resta il segnaposto: il risponditore a tasti non può chiederlo", async () => {
+    const esito = await registraPrenotazioneTelefonica(venueId, {
+      idCentralino: `tasti-${Date.now()}`,
+      phone: "+39 333 1112224",
+      persone: 2,
+      quando: domaniAlle20(),
+    });
+
+    const creata = await db.booking.findUnique({
+      where: { id: esito.id },
+      select: { guest: { select: { firstName: true } } },
+    });
+    expect(creata?.guest?.firstName).toBe("Da richiamare");
+  });
+
+  it("scrive il nome sopra un segnaposto nostro, e non sopra un nome vero", async () => {
+    /* Le due metà della stessa regola. Sovrascrivere «Giulia Abituale» con
+       quello che una voce ha capito al telefono rovinerebbe la scheda di un
+       cliente: «Bianchi» diventa «Bianche» e non si trova più. */
+    const senzaNome = await db.guest.create({
+      data: {
+        venueId,
+        firstName: "Da richiamare",
+        lastName: null,
+        phone: "+39 333 5550001",
+      },
+    });
+
+    await registraPrenotazioneTelefonica(venueId, {
+      idCentralino: `voce-sopra-${Date.now()}`,
+      phone: "+39 333 5550001",
+      persone: 2,
+      quando: domaniAlle20(),
+      nome: "Marco Verdi",
+    });
+    const aggiornato = await db.guest.findUnique({
+      where: { id: senzaNome.id },
+      select: { firstName: true, lastName: true },
+    });
+    expect(aggiornato).toEqual({ firstName: "Marco", lastName: "Verdi" });
+
+    const esito = await registraPrenotazioneTelefonica(venueId, {
+      idCentralino: `voce-abituale-${Date.now()}`,
+      phone: "+39 333 7654321",
+      persone: 2,
+      quando: domaniAlle20(),
+      nome: "Giulietta Sbagliata",
+    });
+    const abituale = await db.guest.findUnique({
+      where: { id: ospiteId },
+      select: { firstName: true, lastName: true },
+    });
+    expect(abituale).toEqual({ firstName: "Giulia", lastName: "Abituale" });
+    expect(esito.ospite?.nome).toBe("Giulia Abituale");
+
+    await db.booking.deleteMany({ where: { guestId: senzaNome.id } });
+    await db.guest.delete({ where: { id: senzaNome.id } });
   });
 });

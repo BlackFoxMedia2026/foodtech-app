@@ -29,6 +29,15 @@ const Corpo = z.object({
   /** Giorno e ora richiesti, in ISO con il fuso. */
   quando: z.string().datetime({ offset: true }),
   nota: z.string().max(500).nullish(),
+  /**
+   * Il nome su cui mettere il tavolo.
+   *
+   * Facoltativo, e resta facoltativo: il risponditore a tasti non può
+   * chiederlo, e pretenderlo qui spegnerebbe le prenotazioni di chi non ha la
+   * voce. Quando c'è, il tavolo nasce intestato a una persona invece che a «Da
+   * richiamare».
+   */
+  nome: z.string().trim().max(120).nullish(),
 });
 
 export async function POST(req: Request) {
@@ -51,6 +60,7 @@ export async function POST(req: Request) {
       persone: corpo.persone,
       quando,
       nota: corpo.nota ?? null,
+      nome: corpo.nome ?? null,
     });
 
     /* Gli avvertimenti tornano al centralino, e servono: il risponditore può
