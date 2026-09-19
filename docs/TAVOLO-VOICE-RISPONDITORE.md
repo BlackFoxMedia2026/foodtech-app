@@ -305,7 +305,7 @@ una chiamata a uno strumento, il server decide. Vale già per `prenota`.
 | Fase | Cosa | Dipende da |
 |---|---|---|
 | **12** | ✅ **fatta** — ingresso, procedura guidata con il test vero, protezione dai cicli | niente |
-| **13** | Recupero: `VoiceRecovery`, token, modulo precompilato, attribuzione `VOICE_RECOVERY` | **un canale SMS** |
+| **13** | ✅ **fatta** — recupero: `VoiceRecovery`, token, schermata precompilata, attribuzione. L'**invio** aspetta un canale SMS | niente per la meccanica |
 | **14** | Numeri del recupero: imbuto, passo d'abbandono, tasso di recupero | fase 13 |
 | **15** | Voce: STT + TTS + motore di conversazione in `voice-core`, `capacita.ai = true` | fornitore STT/TTS |
 | **16** | Conversazione completa: cross-selling parlato, modifica, cancellazione, zona come preferenza, domande personalizzate | fase 15 |
@@ -407,3 +407,62 @@ di finire solo nei log.
 Quello che la fase 12 **non** fa, e va detto: il centralino non legge ancora
 `quandoOccupato`/`quandoNonRisponde` da queste colonne — quelle decisioni
 vivono dentro Asterisk, e per questo la schermata non le offre.
+
+---
+
+## 13. Fase 13, fatta: riprendere la telefonata interrotta
+
+Il 19 settembre 2026. È il punto in cui questo prodotto è più avanti del
+concorrente, e non per poco: di quelle chiamate **lui consegna un elenco da
+scaricare** — lo ha detto il suo cliente, verbatim: *«è possibile scaricare un
+report da cover che ti dice quante sono le persone che non hanno finito la
+prenotazione»* — mentre qui parte un link che riapre la prenotazione **con
+dentro quello che la persona aveva già detto**.
+
+Cosa c'è:
+
+- **`POST /api/v1/telefonia/interrotta`**: il risponditore dice «stava
+  prenotando e ha riattaccato prima di confermare», con quello che aveva
+  raccolto (persone, quando, e **dove** si è interrotta). Idempotente sulla
+  chiamata: il centralino può raccontare due volte la stessa interruzione, e
+  due link sono due messaggi alla stessa persona;
+- **`VoiceRecovery`**: in tabella sta l'**hash** del token, non il token — chi
+  legge il database non deve poter aprire il link di nessuno. Vale una volta e
+  scade in 48 ore;
+- **`/riprendi/<token>`**: una schermata sua, non il modulo pubblico, e per una
+  ragione precisa — quello **pretende un'email**, e di chi ha telefonato
+  abbiamo il numero. Chiedere un indirizzo a chi ha già detto tutto a voce è il
+  modo più veloce di perdere la prenotazione una seconda volta. I campi
+  arrivano pieni e **restano correggibili**: il risponditore può aver capito
+  male, e obbligare a tenere un dato sbagliato produrrebbe una prenotazione
+  falsa;
+- **il locale e il numero vengono dal token**, non dal corpo della richiesta:
+  altrimenti chi avesse un link potrebbe scrivere prenotazioni su un altro
+  locale, o intestarle a un numero che non è il suo;
+- **l'attribuzione sta sulla riga del recupero** (`bookingId`, unico) e non in
+  un valore nuovo fra le fonti: la fonte resta «il telefono», e *come* è
+  tornata la persona lo dice il recupero. Stessa decisione di `handler` contro
+  `source` nella fase 4;
+- **le interrotte compaiono fra le cose da fare** in `/telefono`, con davanti
+  quelle a cui **non è partito niente**: chi ha ricevuto il link sta decidendo,
+  chi non l'ha ricevuto sta aspettando senza saperlo — ed è una telefonata da
+  fare.
+
+**Quello che non si finge, ed è la riga che conta.** Su questa installazione
+non c'è un canale per mandare messaggi: il link esiste, e la riga dice
+`SENZA_CANALE` invece di dirsi mandata. Un «mandato» falso si scopre solo dal
+cliente che non richiama mai. Il giorno che arriva un canale SMS, la stessa
+funzione manda e scrive `MANDATO` senza che si tocchi una riga di questo
+codice.
+
+Verificato: `tsc`, `lint`, **1793** prove di unità (12 nuove in
+`tests/voice-recupero.test.ts`), `build`, e un percorso end-to-end che va
+dall'interruzione alla prenotazione e prova che il link **non vale due volte**.
+
+### Cosa resta, dopo questa
+
+1. **un canale SMS** — è l'unica cosa che separa il recupero dall'essere
+   completo. Tutto il resto è costruito;
+2. **l'imbuto dell'abbandono** (§55-57): il passo su cui la gente riattacca è
+   già scritto in tabella (`VoiceRecovery.passo`), i numeri no;
+3. **la voce che parla e capisce** (fasi 15-18), che resta il pezzo grosso.

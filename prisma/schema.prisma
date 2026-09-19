@@ -274,6 +274,7 @@ model Venue {
   phoneCalls         PhoneCall[]
   voiceNumbers       VoiceNumber[]
   servizi            VenueServizio[]
+  recuperiVoice      VoiceRecovery[]
   /// Come questo locale si chiama **nel centralino**.
   ///
   /// Lo dichiara il centralino stesso insieme alle sue linee, e serve al verso
@@ -2617,6 +2618,7 @@ model PhoneCall {
   transcript PhoneCallTranscript?
   insights   VoiceCRMInsight[]
   callbacks  VoiceCallback[]
+  recupero   VoiceRecovery?
 
   @@unique([venueId, externalId])
   @@index([venueId, status, startedAt])
@@ -2777,6 +2779,87 @@ model PhoneCallTranscript {
 ///
 /// Un numero appartiene a **un** locale: e il confine che impedisce di
 /// mescolare le chiamate di due ristoranti dello stesso gruppo.
+/// Una telefonata interrotta a meta, e il modo di riprenderla.
+///
+/// ## Cos'e, in una riga
+///
+/// Qualcuno ha chiamato, il risponditore ha cominciato a prendere la
+/// prenotazione, e la chiamata e finita **prima della conferma**. Non e un
+/// numero da buttare: e una persona che voleva un tavolo.
+///
+/// ## Perche una tabella e non due colonne su `PhoneCall`
+///
+/// Perche di un recupero servono cose che una chiamata non ha: un **token**
+/// che vale una volta e scade, l'esito dell'invio del messaggio, e la
+/// prenotazione che ne e nata. Quest'ultima e l'attribuzione: non serve un
+/// valore nuovo in `BookingSource` — la fonte resta «il telefono», e *come* e
+/// tornata la persona lo dice questa riga.
+///
+/// ## Il token non si conserva
+///
+/// In tabella sta il suo hash: chi legge il database non deve poter aprire il
+/// link di nessuno. Lo stesso principio del reset della password.
+model VoiceRecovery {
+  id      String @id @default(cuid())
+  venueId String
+
+  /// La chiamata da cui nasce. Nulla se la riga arriva da un'altra strada.
+  phoneCallId String?
+
+  /// Il numero a cui mandare il link: e quello che ha chiamato.
+  numero String @db.VarChar(40)
+
+  /// L'hash del token. Il token vero viaggia **solo** nel messaggio.
+  tokenHash String  @unique
+  scadeIl   DateTime
+
+  // ── quello che il risponditore aveva gia raccolto ────────────────────
+
+  persone Int?
+  /// Data e ora desiderate, quando si sono capite.
+  quando  DateTime?
+  /// Il nome, quando l'ospite era riconosciuto dal numero.
+  nome    String?   @db.VarChar(120)
+  /// Dove si e interrotta: serve a sapere **su cosa** la gente riattacca.
+  /// Vedi `src/lib/voice-recupero.ts` per l'elenco chiuso.
+  passo   String?   @db.VarChar(40)
+
+  // ── com'e andato l'invio ─────────────────────────────────────────────
+
+  invio        VoiceRecoveryInvio @default(DA_MANDARE)
+  /// La riga del registro messaggi, quando il messaggio e partito.
+  messageLogId String?
+
+  // ── com'e finita ────────────────────────────────────────────────────
+
+  /// La prenotazione nata da questo link. **E l'attribuzione del recupero.**
+  bookingId    String?   @unique
+  convertitoIl DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  call  PhoneCall? @relation(fields: [phoneCallId], references: [id], onDelete: SetNull)
+
+  /// Una sola per chiamata: il risponditore puo raccontare due volte la stessa
+  /// interruzione, e due link per la stessa telefonata sono due messaggi alla
+  /// stessa persona.
+  @@unique([phoneCallId])
+  @@index([venueId, createdAt])
+  @@index([venueId, invio])
+}
+
+enum VoiceRecoveryInvio {
+  /// Il link c'e, il messaggio non e ancora partito.
+  DA_MANDARE
+  MANDATO
+  /// Su questa installazione non c'e un canale per mandarlo. **Non e un
+  /// errore da nascondere**: e la ragione per cui il recupero non arriva.
+  SENZA_CANALE
+  NON_RIUSCITO
+}
+
 /// Un servizio acceso a un locale da chi gestisce la piattaforma.
 ///
 /// ## Perche esiste, e cosa manda in pensione
