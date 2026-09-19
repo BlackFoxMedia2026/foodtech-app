@@ -10,6 +10,8 @@ import { DaFare } from "@/components/telefono/da-fare";
 import { risposteDelLocale } from "@/server/voice/conoscenza";
 import { RispostePronte } from "@/components/telefono/risposte-pronte";
 import { insightDaApprovare } from "@/server/voice/insight";
+import { interrotteDaSeguire } from "@/server/voice/recupero-link";
+import { Interrotte } from "@/components/telefono/interrotte";
 import { DaApprovare } from "@/components/telefono/insight";
 import { can } from "@/lib/tenant";
 
@@ -64,7 +66,7 @@ export default async function TelefonoPage({
     ? Number(searchParams.giorni)
     : 7;
 
-  const [elenco, daFare, telefono, capacita, risposte, proposte] =
+  const [elenco, daFare, telefono, capacita, risposte, proposte, interrotte] =
     await Promise.all([
       elencoChiamate(ctx.venueId, { solo, giorni }),
       cosaDaFareAlTelefono(ctx.venueId),
@@ -75,6 +77,9 @@ export default async function TelefonoPage({
        richiesta al server per ogni lettera. */
       risposteDelLocale(ctx.venueId),
       insightDaApprovare(ctx.venueId),
+      /* Le telefonate finite a meta: chi non ha ricevuto il link e una
+         persona da richiamare, e chi lavora al telefono deve vederlo qui. */
+      interrotteDaSeguire(ctx.venueId),
     ]);
 
   /*
@@ -122,6 +127,21 @@ export default async function TelefonoPage({
             ...p,
             quando: p.quando.toISOString(),
           }))}
+          interrotte={
+            <Interrotte
+              fuso={ctx.venue.timezone}
+              righe={interrotte.map((r) => ({
+                id: r.id,
+                numero: r.numero,
+                nome: r.nome,
+                persone: r.persone,
+                quando: r.quando?.toISOString() ?? null,
+                passo: r.passo,
+                invio: r.invio,
+                daRichiamare: r.daRichiamare,
+              }))}
+            />
+          }
           risposte={<RispostePronte risposte={risposte} />}
           approvazioni={
             <DaApprovare

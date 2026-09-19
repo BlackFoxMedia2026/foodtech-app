@@ -72,12 +72,21 @@ export function DaFare({
   richiamate,
   perse,
   fuso,
+  interrotte,
   risposte,
   approvazioni,
 }: {
   richiamate: RichiamataVista[];
   perse: PersaVista[];
   fuso: string;
+  /**
+   * Le telefonate finite a meta.
+   *
+   * Stanno in questa colonna perche una di quelle persone voleva un tavolo e
+   * **non sa se l'ha avuto**: se il link non e partito, e una telefonata da
+   * fare. Arriva come nodo, costruito dalla pagina, come le altre.
+   */
+  interrotte?: React.ReactNode;
   /**
    * Le risposte pronte, costruite dalla pagina.
    *
@@ -103,7 +112,7 @@ export function DaFare({
     timeZone: fuso,
   });
 
-  const niente = richiamate.length === 0 && perse.length === 0;
+  const niente = richiamate.length === 0 && perse.length === 0 && !interrotte;
 
   return (
     /* `aria-label` e non solo il titolo: una `section` senza nome non viene
@@ -140,6 +149,10 @@ export function DaFare({
         </ul>
       )}
 
+      {/* Le interrotte dopo la coda e le perse, prima delle approvazioni: sono
+          telefonate da fare, e vengono dopo quelle che qualcuno ha gia chiesto
+          di richiamare. */}
+      {interrotte}
       {approvazioni}
       {risposte}
     </section>

@@ -59,6 +59,12 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname.startsWith("/api/public/availability")) {
     return { rule: RATE_LIMITS.publicAvailability, bucket: "public-availability" };
   }
+  if (pathname === "/api/public/riprendi") {
+    /* Severo come una prenotazione dal widget, ed e la stessa cosa: scrive una
+       prenotazione. Il token la protegge gia da chi passa per caso, ma un
+       token rubato non deve poter scrivere trecento prenotazioni. */
+    return { rule: RATE_LIMITS.publicBooking, bucket: "riprendi", methods: ["POST"] };
+  }
   if (pathname === "/api/public/recupero-password") {
     return { rule: RATE_LIMITS.recupero, bucket: "recupero", methods: ["POST"] };
   }
