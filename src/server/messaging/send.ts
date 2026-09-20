@@ -172,7 +172,11 @@ async function motivoPerNonMandare(
  * cosa è successo. `QUEUED` significa esattamente questo, e blocca il doppio
  * invio anche mentre il messaggio è ancora in coda.
  */
-async function creaRigaRegistro(message: OutboundMessage) {
+async function creaRigaRegistro(
+  message: OutboundMessage,
+  stato: "QUEUED" | "SKIPPED" = "QUEUED",
+  errore: string | null = null,
+) {
   const preview = (message.preview ?? message.body.replace(/<[^>]+>/g, " ")).trim().slice(0, 300);
   return db.messageLog.create({
     data: {
@@ -185,9 +189,31 @@ async function creaRigaRegistro(message: OutboundMessage) {
       toAddress: message.to,
       subject: message.subject ?? null,
       bodyPreview: preview,
-      status: "QUEUED",
+      status: stato,
+      error: errore,
     },
   });
+}
+
+/**
+ * Lascia la traccia di un messaggio che **non** si è potuto mandare.
+ *
+ * Serve per una cosa precisa: quando un canale non è ancora configurato,
+ * `enqueueMessage` risponde «no_channel» e non scrive niente. Chi guarda i
+ * messaggi del locale non vede nulla, e «nulla» si legge come «non era
+ * previsto nessun messaggio» invece di «era previsto e non è partito». Sono
+ * due cose molto diverse per chi aspetta una conferma.
+ *
+ * Usa la stessa funzione che scrive le righe vere, così la traccia ha gli
+ * stessi campi: il giorno in cui il canale si accende, quelle righe e le nuove
+ * si leggono nello stesso elenco.
+ */
+export async function registraNonMandato(
+  message: OutboundMessage,
+  motivo: string,
+): Promise<{ messageLogId: string }> {
+  const log = await creaRigaRegistro(message, "SKIPPED", motivo);
+  return { messageLogId: log.id };
 }
 
 export type QueueOutcome =

@@ -8,6 +8,7 @@ import { statoCentralino } from "@/server/licenza-centralino";
 import { statoTelefonoBrowser } from "@/server/telefono-browser";
 import { saluteVoice } from "@/server/voice/salute";
 import { vistaIngresso } from "@/server/voice/ingresso";
+import { vistaBenvenuto } from "@/server/voice/benvenuto";
 import { CollegaTelefono } from "@/components/settings/collega-telefono";
 
 export const dynamic = "force-dynamic";
@@ -54,11 +55,12 @@ export default async function CollegaTelefonoPage() {
     (host.startsWith("localhost") ? "http" : "https");
   const indirizzo = `${proto}://${host}`;
 
-  const [stato, sip, salute, ingresso] = await Promise.all([
+  const [stato, sip, salute, ingresso, benvenuto] = await Promise.all([
     statoCentralino(ctx.venueId),
     statoTelefonoBrowser(ctx.venueId),
     saluteVoice(ctx.venueId),
     vistaIngresso(ctx.venueId),
+    vistaBenvenuto(ctx.venueId),
   ]);
 
   return (
@@ -97,6 +99,7 @@ export default async function CollegaTelefonoPage() {
             sottoChiave: sip.sottoChiave,
           }}
           accesoDaNoi={stato.origine === "piattaforma"}
+          benvenuto={benvenuto}
           ingresso={{
             ingresso: ingresso.ingresso,
             numeroPubblico: ingresso.numeroPubblico,

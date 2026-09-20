@@ -94,6 +94,7 @@ export function CollegaTelefono({
   sip,
   ingresso,
   accesoDaNoi,
+  benvenuto,
   canManage,
 }: {
   venueId: string;
@@ -106,6 +107,14 @@ export function CollegaTelefono({
   ultimaChiamata: string | null;
   sip: StatoSipVista;
   ingresso: IngressoVista;
+  /** Cosa dice il risponditore quando alza: vedi `server/voice/benvenuto.ts`. */
+  benvenuto: {
+    testo: string | null;
+    inUso: string;
+    predefinito: string;
+    nomeLocale: string;
+    massimo: number;
+  };
   /**
    * Il telefono l'abbiamo acceso noi dal pannello di piattaforma.
    *
@@ -118,6 +127,9 @@ export function CollegaTelefono({
 }) {
   const router = useRouter();
   const [inCorso, setInCorso] = useState(false);
+  const [saluto, setSaluto] = useState(benvenuto.testo ?? "");
+  const [salutoSalvato, setSalutoSalvato] = useState<string | null>(null);
+  const [erroreSaluto, setErroreSaluto] = useState<string | null>(null);
 
   /* --- passo 2: la chiave della licenza --------------------------------- */
   const [chiave, setChiave] = useState("");
@@ -186,6 +198,37 @@ export function CollegaTelefono({
   const [password, setPassword] = useState("");
   const [erroreSip, setErroreSip] = useState<string | null>(null);
   const [salvato, setSalvato] = useState(false);
+
+  async function salvaBenvenutoOra(e: React.FormEvent) {
+    e.preventDefault();
+    setInCorso(true);
+    setErroreSaluto(null);
+    setSalutoSalvato(null);
+    try {
+      const res = await fetch("/api/venue/centralino/benvenuto", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ testo: saluto }),
+      });
+      if (!res.ok) {
+        throw new Error(
+          await readApiError(res, "Non siamo riusciti a salvare il saluto."),
+        );
+      }
+      const vista = (await res.json()) as { inUso: string };
+      /* Si mostra **quello che si sentirà**, non «salvato»: se ha svuotato il
+         campo, quello che si sentirà è il predefinito, e dirglielo evita la
+         telefonata «ma allora cosa dice?». */
+      setSalutoSalvato(vista.inUso);
+      router.refresh();
+    } catch (err: unknown) {
+      setErroreSaluto(
+        err instanceof Error ? err.message : "Non sono riuscito a salvare.",
+      );
+    } finally {
+      setInCorso(false);
+    }
+  }
 
   async function salvaSip(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -633,6 +676,54 @@ export function CollegaTelefono({
           } satisfies Passo,
         ]
       : []),
+    {
+      numero: 8,
+      titolo: "Scrivi cosa dice il risponditore",
+      cosa: `Quando in sala non risponde nessuno, la voce alza e dice questa frase. Scrivila come la diresti tu: «Salve, benvenuti al ${benvenuto.nomeLocale}…»`,
+      nota: "facoltativo: senza, dice il nome del locale",
+      /* Fatto quando c'e una frase sua. Senza, il risponditore parla comunque
+         — dice il predefinito — e per questo il passo dice «facoltativo»
+         invece di restare rosso a rimproverare qualcosa che funziona. */
+      fatto: benvenuto.testo !== null,
+      corpo: (
+        <form onSubmit={salvaBenvenutoOra} className="space-y-3">
+          <div>
+            <Label htmlFor="saluto-risponditore">La frase del saluto</Label>
+            <textarea
+              id="saluto-risponditore"
+              value={saluto}
+              onChange={(e) => setSaluto(e.target.value.slice(0, benvenuto.massimo))}
+              placeholder={benvenuto.predefinito}
+              rows={3}
+              disabled={!canManage}
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <p className="t-nota mt-1">
+              {saluto.length}/{benvenuto.massimo} caratteri · lascia vuoto per
+              tornare alla frase automatica
+            </p>
+          </div>
+
+          {/* Cosa si sente **adesso**: e l'unica riga che risponde alla
+              domanda vera, e senza di essa un campo vuoto sembra un
+              risponditore muto. */}
+          <p className="rounded-md bg-muted/40 px-3 py-2 text-sm">
+            <span className="t-etichetta block">Adesso dice</span>
+            {salutoSalvato ?? benvenuto.inUso}
+          </p>
+
+          {erroreSaluto && (
+            <p role="alert" className="text-sm text-destructive">
+              {erroreSaluto}
+            </p>
+          )}
+
+          <Button type="submit" size="sm" disabled={inCorso || !canManage}>
+            Salva il saluto
+          </Button>
+        </form>
+      ),
+    } satisfies Passo,
     {
       numero: 7,
       titolo: "Prova con una telefonata",
