@@ -17,7 +17,14 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     return NextResponse.json(await undoGiftCardRedemption(ctx.venueId, params.id, { actor: auditActor(ctx, req) }));
   } catch (err) {
     if (err instanceof GiftCardError) {
-      return apiError(404, "not_found", "Questo utilizzo non esiste o è già stato annullato.");
+      /* Prima erano la stessa risposta, e quel messaggio diceva «o è già stato
+         annullato» senza che niente lo verificasse. Adesso il server lo sa, e
+         le due cose si distinguono: chi ha premuto due volte ha bisogno di
+         sapere che la prima è andata a buon fine. */
+      if (err.code === "gia_annullato") {
+        return apiError(409, err.code, "Questo utilizzo era già stato annullato: la carta è già tornata a posto.");
+      }
+      return apiError(404, "not_found", "Questo utilizzo non esiste.");
     }
     return apiErrorResponse(err);
   }

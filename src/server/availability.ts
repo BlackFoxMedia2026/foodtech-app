@@ -222,6 +222,9 @@ export function zonedCalendarDate(
   return { year: get("year"), month: get("month"), day: get("day") };
 }
 
+/** I minuti di una giornata. Un turno che scavalca la mezzanotte va oltre. */
+export const MINUTI_IN_UN_GIORNO = 1440;
+
 export type ShiftLike = {
   id: string;
   name: string;
@@ -238,11 +241,41 @@ export type ShiftLike = {
  * Il turno che copre l'orario richiesto. Fra più turni sovrapposti vince quello
  * con la capienza minore: davanti a una configurazione ambigua è meglio rifiutare
  * una prenotazione in più che accettarne una impossibile.
+ *
+ * ## I turni che scavalcano la mezzanotte
+ *
+ * Un turno «19:00 → 00:30» si scrive `startMinute 1140, endMinute 1470`: oltre
+ * i 1440 minuti di una giornata, ed è la convenzione voluta (vedi
+ * `lib/turni.ts`). Ma le 00:30 di quel turno **cadono nel giorno dopo**: letto
+ * dall'orologio, quell'istante è sabato al minuto 30, e nessun turno del sabato
+ * comincia prima. Cercandolo solo fra i turni di sabato non lo si trova, e la
+ * risposta diventa «il locale è chiuso» su un orario che le Impostazioni hanno
+ * appena promesso.
+ *
+ * Fino al 20 settembre 2026 succedeva esattamente questo: gli orari dopo
+ * mezzanotte comparivano spenti nel widget e al telefono la voce rispondeva
+ * «il locale non è aperto in questo orario» — a **ogni locale che chiude a
+ * mezzanotte o dopo**, cioè quasi tutti.
+ *
+ * Quindi si guarda anche **la coda del giorno prima**: lo stesso istante,
+ * riletto come minuto 1470 del venerdì. È il ragionamento che
+ * `profilo-tavolo.ts` faceva già per conto suo.
  */
 export function findShiftFor(shifts: ShiftLike[], weekday: number, minuteOfDay: number): ShiftLike | null {
+  const ieri = (weekday + 6) % 7;
   const matching = shifts
-    .filter((s) => s.active && s.weekday === weekday)
-    .filter((s) => minuteOfDay >= s.startMinute && minuteOfDay <= s.endMinute);
+    .filter((s) => s.active)
+    .filter((s) => {
+      if (s.weekday === weekday && minuteOfDay >= s.startMinute && minuteOfDay <= s.endMinute) {
+        return true;
+      }
+      /* La coda di un turno di ieri. Solo se scavalca davvero la mezzanotte:
+         senza questa condizione un turno normale del giorno prima
+         risponderebbe per oggi. */
+      if (s.weekday !== ieri || s.endMinute <= MINUTI_IN_UN_GIORNO) return false;
+      const minutoDaIeri = minuteOfDay + MINUTI_IN_UN_GIORNO;
+      return minutoDaIeri >= s.startMinute && minutoDaIeri <= s.endMinute;
+    });
 
   if (matching.length === 0) return null;
   return matching.reduce((min, s) => (s.capacity < min.capacity ? s : min), matching[0]);

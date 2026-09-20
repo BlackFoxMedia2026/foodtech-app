@@ -1410,6 +1410,14 @@ model GiftCardRedemption {
   reason      String?  @db.VarChar(200)
   createdBy   String?
   createdAt   DateTime @default(now())
+  /// Quando questo utilizzo è stato annullato.
+  ///
+  /// Non serve a nascondere la riga — il saldo si somma con il segno e la
+  /// storia resta — ma a rendere l'annullamento **ripetibile senza danno**.
+  /// Senza questa colonna due clic sullo stesso utilizzo scrivevano due righe
+  /// negative: una carta da 100 € con un utilizzo da 50 finiva con 150 € di
+  /// saldo. È la stessa protezione che `CouponRedemption` ha da sempre.
+  deletedAt   DateTime?
   GiftCard    GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
 
   @@index([giftCardId, createdAt])
@@ -1437,6 +1445,13 @@ model LoyaltyTransaction {
   @@index([guestId, createdAt])
   @@index([venueId, createdAt])
   @@index([orderId])
+  /// Un conto accredita i punti **una volta sola**, e lo dice il database.
+  ///
+  /// L'indice vero è **parziale** — solo `kind = 'EARNED'` — e vive nella
+  /// migrazione `20260920221000_punti_una_volta_per_conto`, perché Prisma non
+  /// sa dichiarare un indice condizionato. Qui resta la nota, perché un
+  /// vincolo che esiste solo in SQL è un vincolo che la prossima persona non
+  /// sa di avere.
 }
 
 model MenuCategory {

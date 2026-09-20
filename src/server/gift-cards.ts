@@ -2,6 +2,7 @@ import { Prisma, type GiftCard, type GiftCardStatus } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { recordAudit, type AuditActor } from "./audit";
+import { residuoDelConto } from "./conto-residuo";
 import { createNotification } from "./notifications";
 import { codiceCasuale } from "./coupons";
 
@@ -254,7 +255,15 @@ export async function debitoGiftCards(venueId: string, now = new Date()) {
 
 export class GiftCardError extends Error {
   constructor(
-    public code: "not_found" | "invalid_amount" | "insufficient_balance" | GiftCardNonValida,
+    public code:
+      | "not_found"
+      | "invalid_amount"
+      | "insufficient_balance"
+      /** Si stava scalando più di quello che il conto deve ancora incassare. */
+      | "oltre_il_conto"
+      /** Questo utilizzo era già stato annullato. */
+      | "gia_annullato"
+      | GiftCardNonValida,
     public detail?: unknown,
   ) {
     super(code);
@@ -297,6 +306,29 @@ export async function redeemGiftCard(
       if (!valida.usable) throw new GiftCardError(valida.reason);
       if (importo > valida.residuoCents) {
         throw new GiftCardError("insufficient_balance", { residuoCents: valida.residuoCents });
+      }
+
+      /*
+        E non oltre quello che il conto deve ancora incassare.
+
+        Il residuo della carta non basta: con una carta da 100 € su un conto da
+        38 €, chi batte 100 azzerava la carta e il conto risultava pagato —
+        62 € del cliente scomparsi. La regola «il resto resta sulla carta» era
+        scritta in un commento e viveva solo in un campo dell'interfaccia.
+
+        Il controllo sta **dentro la transazione serializzabile**: due casse
+        che scalano insieme sullo stesso conto non possono sommare più del
+        totale, perché la seconda rilegge quello che ha scritto la prima.
+      */
+      if (input.orderId) {
+        const conto = await residuoDelConto(tx, input.orderId);
+        if (!conto) throw new GiftCardError("not_found");
+        if (importo > conto.restaCents) {
+          throw new GiftCardError("oltre_il_conto", {
+            restaCents: conto.restaCents,
+            totaleCents: conto.totaleCents,
+          });
+        }
       }
 
       const utilizzo = await tx.giftCardRedemption.create({
@@ -382,6 +414,25 @@ export async function undoGiftCardRedemption(
       if (!utilizzo) throw new GiftCardError("not_found");
       if (utilizzo.amountCents <= 0) throw new GiftCardError("invalid_amount");
 
+      /*
+        Si prende l'utilizzo, e la presa è la condizione stessa della scrittura.
+
+        Un `if (già annullato) return` non basta: due richieste in parallelo lo
+        leggono entrambe «non annullato» e scrivono entrambe la riga negativa.
+        Con `updateMany` la condizione la valuta Postgres, e una sola delle due
+        trova la riga da marcare — l'altra conta zero e si fa dire «già
+        annullato». È lo stesso motivo per cui non basta un controllo prima
+        dell'`INSERT`.
+
+        Prima di questa riga due clic su un utilizzo da 50 € portavano una
+        carta da 100 € a 150 € di saldo, riattivandola.
+      */
+      const presa = await tx.giftCardRedemption.updateMany({
+        where: { id: utilizzo.id, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      if (presa.count === 0) throw new GiftCardError("gia_annullato");
+
       await tx.giftCardRedemption.create({
         data: {
           giftCardId: utilizzo.giftCardId,
@@ -390,6 +441,9 @@ export async function undoGiftCardRedemption(
           bookingId: utilizzo.bookingId,
           reason: "Utilizzo annullato",
           createdBy: opts.actor?.userId ?? null,
+          /* La riga negativa nasce già marcata: è una correzione, non un
+             utilizzo, e non deve comparire fra quelli annullabili. */
+          deletedAt: new Date(),
         },
       });
 
