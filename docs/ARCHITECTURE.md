@@ -2,6 +2,20 @@
 
 Stato al 7 settembre 2026. Descrive il codice come è, non come vorremmo che fosse.
 
+## Dove gira, e perché è scritto qui
+
+Funzioni su Vercel a **Francoforte** (`fra1`), database Neon a Francoforte
+(`eu-central-1`). La regione è dichiarata in `vercel.json` e non è un dettaglio
+di configurazione: senza quella riga Vercel mette le funzioni a Washington
+(`iad1`), e **ogni singola lettura attraversa l'Atlantico due volte**. Non si
+vede come un errore — si vede come un'applicazione lenta, e come richieste che
+scadono: il 20 settembre 2026 il risponditore telefonico ha detto «non posso
+controllare la disponibilità» a un cliente vero perché la risposta arrivava
+oltre il tetto di un secondo e mezzo.
+
+Se un giorno il database si sposta, **questa riga si sposta con lui**. Le due
+regioni devono restare la stessa città.
+
 ## Forma generale
 
 Next.js 14 con App Router. Non ci sono server action: **ogni scrittura passa da una route API**
