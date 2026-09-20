@@ -20,6 +20,7 @@ import {
 } from "./availability";
 import { durataConsigliata } from "./durata-consigliata";
 import { createNotification } from "./notifications";
+import { avvisaConfermaWhatsapp } from "@/server/voice/conferma-whatsapp";
 import { refreshGuestStats } from "./guest-intelligence";
 
 export const BookingInput = z.object({
@@ -606,6 +607,27 @@ export async function updateBooking(
         ? "booking.cancel"
         : "booking.update";
     await recordAudit(opts.actor, action, "booking", id, diff);
+  }
+
+  /**
+   * La sala ha confermato una prenotazione presa dalla voce: si avvisa chi ha
+   * chiamato.
+   *
+   * Qui e non alla creazione, perche quella prenotazione nasce **da
+   * confermare**: dire «e confermata» prima che qualcuno lo fosse sarebbe una
+   * promessa che il locale non ha fatto. Su WhatsApp, perche di chi telefona
+   * sappiamo il numero e non l'indirizzo.
+   *
+   * Non blocca niente: se il messaggio non parte — oggi il canale WhatsApp non
+   * ha ancora un fornitore — resta la sua traccia nel registro dei messaggi e
+   * la conferma vale comunque.
+   */
+  if (
+    updated.status === "CONFIRMED" &&
+    existing.status !== "CONFIRMED" &&
+    existing.source === "VOICE"
+  ) {
+    await avvisaConfermaWhatsapp(venueId, updated.id).catch(() => undefined);
   }
 
   /**
