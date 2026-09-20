@@ -1,6 +1,7 @@
 import { Prisma, type LoyaltyTxnKind } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { residuoDelConto } from "./conto-residuo";
 import { recordAudit, type AuditActor } from "./audit";
 
 /**
@@ -209,8 +210,20 @@ export function descriviMovimento(m: { kind: LoyaltyTxnKind; points: number; rea
  * - il conto non ha un cliente collegato — un tavolo senza nome non ha una
  *   tessera a cui accreditare;
  * - **quel conto ha già i suoi punti**: chiudere due volte lo stesso conto non
- *   deve raddoppiarli. È l'unica difesa che serve, perché la chiave è il
- *   conto, non il momento.
+ *   deve raddoppiarli.
+ *
+ * ## Chi garantisce «una volta sola»
+ *
+ * Il database, con un indice unico parziale su `(orderId)` per i soli
+ * `EARNED` (migrazione `20260920221000_punti_una_volta_per_conto`). La
+ * lettura qui sotto resta perché evita di scrivere quando la risposta si sa
+ * già, ma **non è la difesa**: era l'unica, e non bastava. Due casse che
+ * chiudono lo stesso conto nello stesso istante non vedono la riga l'una
+ * dell'altra — in read committed nessuna delle due la vede — e la scrivevano
+ * entrambe: 160 punti su un conto da 80 €.
+ *
+ * Quando lo scontro arriva, il vincolo lo respinge e qui si risponde «niente
+ * da accreditare», che è la verità: i punti ci sono già.
  */
 export async function accreditaPuntiConto(
   tx: Prisma.TransactionClient,
@@ -232,16 +245,24 @@ export async function accreditaPuntiConto(
   const punti = euro * regole.puntiPerEuro;
   if (punti <= 0) return null;
 
-  await tx.loyaltyTransaction.create({
-    data: {
-      venueId,
-      guestId,
-      orderId,
-      kind: "EARNED",
-      points: punti,
-      reason: `Conto da ${(totalCents / 100).toFixed(2).replace(".", ",")} €`,
-    },
-  });
+  try {
+    await tx.loyaltyTransaction.create({
+      data: {
+        venueId,
+        guestId,
+        orderId,
+        kind: "EARNED",
+        points: punti,
+        reason: `Conto da ${(totalCents / 100).toFixed(2).replace(".", ",")} €`,
+      },
+    });
+  } catch (err) {
+    /* P2002: un'altra chiusura dello stesso conto è arrivata prima. Non è un
+       errore da propagare — il conto è chiuso e i punti ci sono — ma non si
+       accredita niente e non si dice di averlo fatto. */
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return null;
+    throw err;
+  }
 
   const saldo = await puntiDi(guestId, tx);
   await tx.guest.update({ where: { id: guestId }, data: { loyaltyPoints: saldo } });
@@ -253,7 +274,16 @@ export async function accreditaPuntiConto(
 /* -------------------------------------------------------------------------- */
 
 export class LoyaltyError extends Error {
-  constructor(public code: "not_found" | "loyalty_off" | "not_enough_points" | "invalid_points") {
+  constructor(
+    public code:
+      | "not_found"
+      | "loyalty_off"
+      | "not_enough_points"
+      | "invalid_points"
+      /** Si stavano scalando più punti di quello che il conto deve incassare. */
+      | "oltre_il_conto",
+    public detail?: Record<string, unknown>,
+  ) {
     super(code);
   }
 }
@@ -294,6 +324,27 @@ export async function riscattaPunti(
       if (saldo < punti) throw new LoyaltyError("not_enough_points");
 
       const scontoCents = valoreInCentesimi(punti, regole);
+
+      /*
+        Non oltre quello che il conto deve ancora incassare.
+
+        Stessa storia della gift card: si controllava il saldo dell'ospite e
+        non il totale del conto, quindi su un conto da 38 € si potevano
+        bruciare punti per cento. I punti di un cliente sono suoi: consumarli
+        per uno sconto che non esiste è una perdita che si scopre solo quando
+        lui li cerca e non li trova.
+      */
+      if (input.orderId) {
+        const conto = await residuoDelConto(tx, input.orderId);
+        if (!conto) throw new LoyaltyError("not_found");
+        if (scontoCents > conto.restaCents) {
+          throw new LoyaltyError("oltre_il_conto", {
+            restaCents: conto.restaCents,
+            scontoCents,
+          });
+        }
+      }
+
       const movimento = await tx.loyaltyTransaction.create({
         data: {
           venueId,

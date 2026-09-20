@@ -136,6 +136,48 @@ describe("guadagnare punti", () => {
     expect(await puntiDi(guestId)).toBe(30);
   });
 
+  it("il database rifiuta un secondo accredito sullo stesso conto", async () => {
+    /**
+     * La difesa vera, e perché la lettura non bastava.
+     *
+     * Prima c'era solo un «esiste già?» dentro una transazione in read
+     * committed: due casse che chiudono lo stesso conto nello stesso istante
+     * non vedono la riga l'una dell'altra e la scrivono entrambe — 160 punti
+     * su un conto da 80 €. Una prova con due chiamate in fila non lo
+     * dimostrerebbe: la seconda vedrebbe la prima.
+     *
+     * Quindi si prova la cosa che conta davvero: **il database rifiuta la
+     * seconda riga**, chiunque provi a scriverla e in qualunque ordine. Senza
+     * l'indice unico parziale questa scrittura passa, e il test diventa rosso.
+     */
+    const conto = await openOrderForBooking(venueId, bookingId, { actor: attore() });
+    await addLine(venueId, conto.id, { menuItemId: piattoId, quantity: 2 }, { actor: attore() });
+    await closeOrder(venueId, conto.id, { actor: attore() });
+    expect(await puntiDi(guestId)).toBe(30);
+
+    await expect(
+      db.loyaltyTransaction.create({
+        data: { venueId, guestId, orderId: conto.id, kind: "EARNED", points: 30, reason: "doppione" },
+      }),
+    ).rejects.toMatchObject({ code: "P2002" });
+
+    expect(await puntiDi(guestId)).toBe(30);
+  });
+
+  it("un riscatto e un accredito sullo stesso conto convivono", async () => {
+    /* L'indice è parziale di proposito: vale solo per gli accrediti. Sullo
+       stesso conto ci possono essere i punti guadagnati e i punti spesi, e
+       vietarlo sarebbe peggio del difetto che si sta chiudendo. */
+    const conto = await openOrderForBooking(venueId, bookingId, { actor: attore() });
+    await addLine(venueId, conto.id, { menuItemId: piattoId, quantity: 2 }, { actor: attore() });
+    await closeOrder(venueId, conto.id, { actor: attore() });
+
+    const riscatto = await db.loyaltyTransaction.create({
+      data: { venueId, guestId, orderId: conto.id, kind: "REDEEMED", points: -10, amountCents: 100 },
+    });
+    expect(riscatto.id).toBeTruthy();
+  });
+
   it("non accredita niente a un tavolo senza cliente", async () => {
     const senzaOspite = await db.booking.create({
       data: { venueId, partySize: 2, startsAt: new Date(), status: "SEATED", source: "PHONE" },

@@ -221,6 +221,78 @@ describe("sul conto del tavolo", () => {
     expect((await findGiftCardByCode(venueId, c.code))?.residuoCents).toBe(8_500);
   });
 
+  it("non si scala più di quello che il conto deve incassare", async () => {
+    /**
+     * Il difetto che rubava soldi al cliente.
+     *
+     * Il riscatto controllava il residuo **della carta** e mai il totale del
+     * conto. Su un conto da 15 € con una carta da 100 €, chi batteva 100
+     * azzerava la carta: 85 € del cliente scomparsi e il conto segnato
+     * «niente da incassare». La regola «il resto resta sulla carta» stava in
+     * un commento del server e in un campo dell'interfaccia — cioè in nessun
+     * posto che conti.
+     */
+    const c = await carta(10_000);
+    const conto = await openOrderForBooking(venueId, bookingId, { actor: attore() });
+    await addLine(venueId, conto.id, { menuItemId: piattoId, quantity: 1 }, { actor: attore() }); // 15,00 €
+
+    await expect(
+      redeemGiftCard(venueId, { code: c.code, amountCents: 10_000, orderId: conto.id }),
+    ).rejects.toMatchObject({ code: "oltre_il_conto" });
+
+    // La carta non è stata toccata, e il conto resta da incassare.
+    expect((await findGiftCardByCode(venueId, c.code))?.residuoCents).toBe(10_000);
+    const dopo = await getOrder(venueId, conto.id);
+    expect(dopo?.pagamenti.daIncassareCents).toBe(1_500);
+    expect(dopo?.pagamenti.giftCardCents).toBe(0);
+  });
+
+  it("due utilizzi sullo stesso conto non sommano più del totale", async () => {
+    /* Il controllo guarda quello che resta, non il totale: il secondo riscatto
+       deve vedere il primo. */
+    const c = await carta(10_000);
+    const conto = await openOrderForBooking(venueId, bookingId, { actor: attore() });
+    await addLine(venueId, conto.id, { menuItemId: piattoId, quantity: 2 }, { actor: attore() }); // 30,00 €
+
+    await redeemGiftCard(venueId, { code: c.code, amountCents: 2_000, orderId: conto.id });
+    await expect(
+      redeemGiftCard(venueId, { code: c.code, amountCents: 2_000, orderId: conto.id }),
+    ).rejects.toMatchObject({ code: "oltre_il_conto" });
+
+    // Restava 10 €: quello si scala.
+    await redeemGiftCard(venueId, { code: c.code, amountCents: 1_000, orderId: conto.id });
+    const dopo = await getOrder(venueId, conto.id);
+    expect(dopo?.pagamenti.giftCardCents).toBe(3_000);
+    expect(dopo?.pagamenti.daIncassareCents).toBe(0);
+    expect((await findGiftCardByCode(venueId, c.code))?.residuoCents).toBe(7_000);
+  });
+
+  it("annullare due volte lo stesso utilizzo non crea denaro sulla carta", async () => {
+    /**
+     * Due clic, e la carta da 100 € diventava da 150 €.
+     *
+     * L'annullamento scriveva una riga negativa e non marcava l'utilizzo:
+     * niente impediva di annullare due volte lo stesso. La guardia che c'era
+     * (`amountCents <= 0`) impediva di annullare **uno storno**, che è un'altra
+     * cosa.
+     */
+    const c = await carta(10_000);
+    const conto = await openOrderForBooking(venueId, bookingId, { actor: attore() });
+    await addLine(venueId, conto.id, { menuItemId: piattoId, quantity: 4 }, { actor: attore() }); // 60,00 €
+    const uso = await redeemGiftCard(venueId, { code: c.code, amountCents: 5_000, orderId: conto.id });
+    expect((await findGiftCardByCode(venueId, c.code))?.residuoCents).toBe(5_000);
+
+    await undoGiftCardRedemption(venueId, uso.utilizzoId, { actor: attore() });
+    expect((await findGiftCardByCode(venueId, c.code))?.residuoCents).toBe(10_000);
+
+    await expect(
+      undoGiftCardRedemption(venueId, uso.utilizzoId, { actor: attore() }),
+    ).rejects.toMatchObject({ code: "gia_annullato" });
+
+    // Il saldo è quello di prima: niente denaro creato.
+    expect((await findGiftCardByCode(venueId, c.code))?.residuoCents).toBe(10_000);
+  });
+
   it("non entra fra le righe del conto: le righe sono quello che si è mangiato", async () => {
     const c = await carta(2_000);
     const conto = await openOrderForBooking(venueId, bookingId, { actor: attore() });

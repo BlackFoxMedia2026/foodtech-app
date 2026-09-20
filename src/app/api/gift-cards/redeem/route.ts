@@ -35,8 +35,28 @@ export async function POST(req: Request) {
           `Su questa gift card restano ${formatCurrency(residuo, "EUR")}: scala questa cifra e fai pagare il resto.`,
         );
       }
+      if (err.code === "oltre_il_conto") {
+        /* Si dice la cifra giusta, non «non si può»: chi è alla cassa deve
+           sapere quanto scalare, e che il resto rimane sulla carta del
+           cliente invece di essere bruciato. */
+        const d = err.detail as { restaCents?: number; totaleCents?: number } | undefined;
+        const resta = d?.restaCents ?? 0;
+        return apiError(
+          409,
+          err.code,
+          resta > 0
+            ? `Su questo conto restano da incassare ${formatCurrency(resta, "EUR")}: puoi scalare al massimo questa cifra, il resto rimane sulla gift card.`
+            : "Questo conto è già coperto da gift card o punti: non c'è altro da scalare.",
+        );
+      }
       if (err.code === "invalid_amount") {
         return apiError(400, err.code, "L'importo da scalare deve essere maggiore di zero.");
+      }
+      if (err.code === "gia_annullato") {
+        /* Non arriva da questa rotta — riscattare non annulla niente — ma il
+           tipo dell'errore la comprende, e indicizzare una tabella che non ha
+           questa voce darebbe `undefined` a schermo. */
+        return apiError(409, err.code, "Questo utilizzo era già stato annullato.");
       }
       return apiError(409, err.code, MOTIVO_GIFT_CARD[err.code]);
     }
