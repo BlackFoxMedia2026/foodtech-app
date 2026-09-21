@@ -107,7 +107,12 @@ export function linkQr(f: FontiContenuto): string | null {
 /** Gli indirizzi che il prodotto conosce già, per il locale che si sta usando. */
 export function destinazioneAutomatica(kind: TipoQr, origine: string, slug: string): string | null {
   const base = origine.replace(/\/+$/, "");
-  if (kind === "MENU") return `${base}/m/${slug}`;
+  /* `?da=qr` serve a una domanda che il ristoratore fa davvero: «la gente
+     inquadra il codice sul tavolo, o apre il link che ho messo su Instagram?».
+     Senza questo segno le due letture sono indistinguibili. I codici già
+     stampati continuano a funzionare: contano come «link», ed è la verità
+     disponibile su di loro. */
+  if (kind === "MENU") return `${base}/m/${slug}?da=qr`;
   if (kind === "BOOKING") return `${base}/book?venue=${slug}`;
   return null;
 }

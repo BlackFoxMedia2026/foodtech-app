@@ -70,8 +70,8 @@ funzioni esistenti.
 | `ChatSession`, `ChatMessage` | prenotare chiacchierando, con la bozza salvata | medio; oggi lo fa la voce al telefono, che è la stessa idea su un altro canale |
 | `Ticket` | vendere i biglietti delle esperienze | medio, e serve l'incasso (Stripe) |
 | `Review` | importare le recensioni da Google e TripAdvisor | medio: serve una chiave API di Google |
-| `StaffRequest` | ferie e cambi turno chiesti dal dipendente | piccolo, e il personale c'è già tutto |
-| `MenuScan` | quante volte è stata letta la carta dal QR | **piccolissimo**: una riga in `/m/[slug]` |
+| ~~`StaffRequest`~~ | ferie e cambi turno | **fatta il 21 settembre**: `/staff/richieste`, si chiedono e si decidono |
+| ~~`MenuScan`~~ | quante volte si legge la carta | **fatta il 21 settembre**, la metà onesta: si conta, **non** si raccolgono contatti |
 | `CostEntry` | food cost variabile / magazzino | grande, ed è il pezzo che nessun concorrente ha (vedi l'audit) |
 | `WifiSession` | chi si è collegato al Wi-Fi | vuota **di proposito**, documentato in `ARCHITECTURE.md` |
 
@@ -79,9 +79,11 @@ funzioni esistenti.
 del tipo `/// NON IMPLEMENTATA (21 set 2026): vedi docs/TABELLE-SENZA-CODICE.md`.
 Costa niente e toglie l'ambiguità: chi legge lo schema sa cosa può usare.
 
-Due di queste sono lavoro di poche ore e restituiscono un numero vero:
-`MenuScan` (quante volte si legge la carta) e `StaffRequest` (le richieste di
-ferie). Se le vuoi, sono le prime da fare.
+**Fatte il 21 settembre**, le due che erano lavoro di ore: `MenuScan` (quante
+volte si legge la carta, senza raccogliere nessun contatto — i campi `email`,
+`phone` e `consentMarketing` restano vuoti di proposito, perché raccogliere
+contatti è un'altra funzione con dentro il consenso) e `StaffRequest` (ferie e
+permessi, da chiedere e da decidere, in `/staff/richieste`).
 
 ---
 
@@ -109,5 +111,4 @@ cosa peggiore di tutte: non è una funzione mancante, è un dato falso.
    fatto per l'indice dei punti.
 2. **Il conteggio in produzione**, o l'autorizzazione a leggerlo: senza,
    cancellare è un atto di fede.
-3. **Se vuoi i due lavori piccoli** (`MenuScan`, `StaffRequest`): sono ore, non
-   giorni.
+3. ~~I due lavori piccoli~~: fatti il 21 settembre.

@@ -18,11 +18,23 @@ import { cn } from "@/lib/utils";
  * nell'indirizzo, così passando da una vista all'altra non si torna a oggi;
  * i filtri viaggiano in `sessionStorage` (vedi `useFiltriStaff`).
  */
-export function StaffSwitch({ vista, giorno, className }: { vista: "persone" | "turni"; giorno?: string; className?: string }) {
+export function StaffSwitch({
+  vista,
+  giorno,
+  className,
+}: {
+  vista: "persone" | "turni" | "richieste";
+  giorno?: string;
+  className?: string;
+}) {
   const coda = giorno ? `?g=${giorno}` : "";
   const voci = [
     { chiave: "persone" as const, label: "Persone", href: `/staff${coda}` },
     { chiave: "turni" as const, label: "Turni", href: `/staff/turni${coda}` },
+    /* Le richieste stanno qui e non in un menu: si guardano **prima** di
+       scrivere i turni, e una pagina raggiungibile solo dall'indirizzo è una
+       pagina che nessuno apre. */
+    { chiave: "richieste" as const, label: "Richieste", href: "/staff/richieste" },
   ];
 
   return (
