@@ -28,10 +28,12 @@ import { listInviti, listTeam } from "@/server/team";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { saluteVoice } from "@/server/voice/salute";
 import { vistaIngresso } from "@/server/voice/ingresso";
+import { vistaCalendario } from "@/server/calendario";
 import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
 import { AccessoTeam } from "@/components/settings/accesso-team";
 import { Centralino } from "@/components/settings/centralino";
 import { SezioneImpostazioni } from "@/components/settings/sezione-impostazioni";
+import { CalendarioPrenotazioni } from "@/components/settings/calendario-prenotazioni";
 import { AltreSezioniMobile } from "@/components/settings/navigazione-impostazioni";
 import { IndiceImpostazioni } from "@/components/settings/indice-impostazioni";
 import { PARTI, parteDa } from "@/lib/parti-impostazioni";
@@ -177,6 +179,7 @@ export default async function SettingsPage({
     centralino,
     salute,
     ingresso,
+    calendario,
   ] = await Promise.all([
     db.venue.findMany({
       where: { orgId: ctx.orgId },
@@ -205,6 +208,7 @@ export default async function SettingsPage({
     statoCentralino(ctx.venueId),
     saluteVoice(ctx.venueId),
     vistaIngresso(ctx.venueId),
+    vistaCalendario(ctx.venueId),
   ]);
 
   /* `manage_venue`, la stessa capacità che chiedono le rotte `/api/team/*`:
@@ -437,6 +441,12 @@ export default async function SettingsPage({
                 cutoffMin={ctx.venue.bookingCutoffMin}
                 overbookingPct={ctx.venue.overbookingPct}
                 largePartyFrom={ctx.venue.largePartyFrom}
+                canManage={can(ctx.role, "manage_venue")}
+              />
+
+              <CalendarioPrenotazioni
+                percorsoIniziale={calendario.percorso}
+                indirizzo={baseUrl}
                 canManage={can(ctx.role, "manage_venue")}
               />
 
