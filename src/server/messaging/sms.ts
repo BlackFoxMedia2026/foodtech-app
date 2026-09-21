@@ -52,28 +52,91 @@ const API = "https://api.brevo.com/v3/transactionalSMS/sms";
  */
 const TETTO_MS = 10_000;
 
+/** Undici caratteri: e il massimo di un mittente alfanumerico, non una scelta. */
+const MITTENTE_MAX = 11;
+
 /**
- * Il nome o il numero che il cliente vede come mittente.
+ * Il valore che accende il canale lasciando il mittente a ogni locale.
  *
- * Brevo lo chiama `sender` e accetta un nome alfanumerico (massimo undici
- * caratteri, com'è lo standard). Non ha un valore per difetto: un mittente
- * sbagliato è un messaggio che arriva a nome di qualcun altro, e indovinarlo
- * sarebbe peggio che non mandare.
+ * Serve perche due cose diverse vanno decise separatamente: **se** mandare SMS
+ * — costano, e li accende chi sa di accenderli — e **a nome di chi**. La chiave
+ * del fornitore c'e gia per le email: senza questo interruttore il canale si
+ * accenderebbe da solo alla prima pubblicazione, e i primi a saperlo sarebbero
+ * i clienti.
  */
-export function mittenteSms(): string | null {
-  const s = process.env.BREVO_SMS_SENDER?.trim();
-  return s || null;
+export const MITTENTE_DAL_LOCALE = "locale";
+
+/**
+ * Come si chiama chi manda, e perche e **il nome del locale**.
+ *
+ * Il cliente riceve un SMS da «Nomad», non da «Tavolo»: il rapporto ce l'ha col
+ * ristorante, e un mittente che non conosce e un messaggio che sembra spam —
+ * quindi non letto, quindi un tavolo vuoto. Noi non siamo il mittente di
+ * niente: siamo il posto da cui parte.
+ *
+ * ## Perche si deriva e non si configura
+ *
+ * Perche la variabile d'ambiente e **una per installazione** e i locali sono
+ * tanti: un mittente scritto una volta arriverebbe a nome dello stesso
+ * ristorante ai clienti di tutti. Il nome ce l'ha gia ogni locale, e questo lo
+ * riduce a quello che uno standard di trent'anni permette: undici caratteri,
+ * solo lettere e numeri.
+ *
+ * ## Il taglio rispetta le parole
+ *
+ * «Trattoria dell'Angolo» diventa `Trattoria`, non `Trattoriad`: un nome
+ * tagliato a meta di una parola sembra un errore, e un mittente che sembra un
+ * errore fa lo stesso danno di un mittente sconosciuto.
+ */
+export function mittenteDaNome(nomeLocale: string | null | undefined): string | null {
+  if (!nomeLocale) return null;
+
+  const parole = nomeLocale
+    .normalize("NFD")
+    /* Via gli accenti: «Cafe» invece di «Cafè». Un mittente alfanumerico non
+       li accetta, e mandarli vorrebbe dire un rifiuto del fornitore su ogni
+       messaggio di quel locale. */
+    .replace(/[\u0300-\u036f]/g, "")
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean);
+  if (parole.length === 0) return null;
+
+  let mittente = parole[0]!.slice(0, MITTENTE_MAX);
+  for (const parola of parole.slice(1)) {
+    if (mittente.length + parola.length > MITTENTE_MAX) break;
+    mittente += parola;
+  }
+  return mittente;
 }
 
 /**
- * Se il canale è utilizzabile **adesso**.
+ * Il mittente da usare per questo messaggio.
+ *
+ * Un valore scritto a mano nella variabile vince sempre: serve il giorno in cui
+ * un operatore telefonico pretende un mittente registrato, e allora e quello e
+ * nessun altro.
+ */
+export function mittenteSms(nomeLocale?: string | null): string | null {
+  const scelto = process.env.BREVO_SMS_SENDER?.trim();
+  if (!scelto) return null;
+  if (scelto.toLowerCase() !== MITTENTE_DAL_LOCALE) return scelto.slice(0, MITTENTE_MAX);
+  return mittenteDaNome(nomeLocale);
+}
+
+/**
+ * Se il canale e utilizzabile **adesso**.
  *
  * Si legge a ogni chiamata e non al caricamento del modulo: una chiave
  * aggiunta dopo l'avvio sarebbe invisibile, e nei test non si potrebbe provare
  * il percorso «canale acceso» senza mandare un messaggio vero.
+ *
+ * Non guarda il nome del locale: quello dipende dal singolo messaggio, e un
+ * canale «non disponibile» per un locale col nome fatto di soli simboli
+ * spegnerebbe gli SMS di tutti gli altri. Quel caso lo prende `mandaSms`, che
+ * solleva dicendo cosa manca.
  */
 export function smsConfigurato(): boolean {
-  return !!process.env.BREVO_API_KEY?.trim() && !!mittenteSms();
+  return !!process.env.BREVO_API_KEY?.trim() && !!process.env.BREVO_SMS_SENDER?.trim();
 }
 
 /**
@@ -138,10 +201,21 @@ export function esitoBrevoSms(stato: number, corpo: RispostaBrevo | null): { pro
  * scrivere nel registro, e un errore inghiottito qui diventerebbe un messaggio
  * dichiarato mandato.
  */
-export async function mandaSms(dati: { to: string; body: string }): Promise<{ providerId: string }> {
+export async function mandaSms(dati: {
+  to: string;
+  body: string;
+  /** Il locale a nome del quale si manda: diventa il mittente. */
+  nomeLocale?: string | null;
+}): Promise<{ providerId: string }> {
   const chiave = process.env.BREVO_API_KEY?.trim();
-  const sender = mittenteSms();
-  if (!chiave || !sender) throw new Error("sms_not_configured");
+  if (!chiave) throw new Error("sms_not_configured");
+  const sender = mittenteSms(dati.nomeLocale);
+  if (!sender) {
+    /* La chiave c'e e il mittente no: succede solo con un nome di locale fatto
+       di soli simboli. Si dice **quale** delle due cose manca, o si va a
+       cercare la chiave sbagliata. */
+    throw new Error("nessun mittente utilizzabile per questo locale");
+  }
 
   const recipient = numeroPerBrevo(dati.to);
   if (!recipient) throw new Error("numero non utilizzabile per un SMS");
