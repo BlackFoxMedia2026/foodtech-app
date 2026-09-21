@@ -1,12 +1,46 @@
 import { db } from "@/lib/db";
-import { startOfDay, endOfDay } from "@/lib/utils";
-import { dateKeyInVenue } from "@/lib/venue-time";
+import {
+  DEFAULT_VENUE_TIMEZONE,
+  dateKeyInVenue,
+  giornataInVenue,
+  shiftDateKey,
+} from "@/lib/venue-time";
+import { zonedCalendarDate, zonedDayAndMinute, zonedTimeToInstant } from "./availability";
 import { assenzeAttese } from "./assenze-attese";
 import { incassoDelGiorno } from "./orders";
-import { capienzaDelGiorno, quantoPieno } from "./capienza-giorno";
+import { capienzaDelGiorno, giornoDellaSettimana, quantoPieno } from "./capienza-giorno";
 
-function isSameCalendarDay(a: Date, b: Date) {
-  return a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+/**
+ * La giornata **del locale**, non quella del server.
+ *
+ * Tutto questo file lavorava con `getDay()`, `getHours()` e `startOfDay`, che
+ * rispondono nel fuso del processo: su Vercel è UTC. Domenica all'una di notte
+ * a Roma è sabato 23:00 per il server, e la Panoramica mostrava la giornata di
+ * **ieri** — coperti, occupazione, incasso stimato — fra mezzanotte e le due,
+ * cioè nell'ora esatta in cui si chiudono i conti e un gestore guarda i numeri
+ * della serata.
+ *
+ * `venue-time.ts` risolve questa cosa per il resto dell'applicazione dal 7
+ * settembre; qui non era arrivata.
+ */
+function datiDaChiave(chiave: string): { year: number; month: number; day: number } {
+  const [y, m, d] = chiave.split("-").map(Number);
+  return { year: y!, month: m ?? 1, day: d ?? 1 };
+}
+
+/* La giornata del locale sta in `lib/venue-time.ts`: la chiedono anche
+   l'agente e chi verrà dopo, e due copie della stessa aritmetica divergono. */
+const giornata = giornataInVenue;
+
+/**
+ * Stesso giorno del calendario, **nel fuso del locale**.
+ *
+ * Un compleanno è una data senza ora, e confrontarla col fuso del processo
+ * fa comparire (o sparire) la torta un giorno prima. Il mese e il giorno si
+ * leggono dallo stesso formattatore, così non si mescolano due fusi.
+ */
+function isSameCalendarDay(a: Date, b: Date, fuso: string) {
+  return dateKeyInVenue(a, fuso).slice(5) === dateKeyInVenue(b, fuso).slice(5);
 }
 
 function pctChange(current: number, previous: number) {
@@ -14,22 +48,22 @@ function pctChange(current: number, previous: number) {
   return Math.round(((current - previous) / previous) * 100);
 }
 
-async function getServiceWindow(venueId: string, day: Date) {
+async function getServiceWindow(venueId: string, day: Date, fuso: string) {
+  const { weekday, minuteOfDay } = zonedDayAndMinute(day, fuso);
   const shifts = await db.shift.findMany({
-    where: { venueId, weekday: day.getDay(), active: true },
+    where: { venueId, weekday, active: true },
     orderBy: { startMinute: "asc" },
   });
   if (shifts.length === 0) return null;
 
-  const nowMinutes = day.getHours() * 60 + day.getMinutes();
+  const nowMinutes = minuteOfDay;
   const current = shifts.find((s) => nowMinutes >= s.startMinute && nowMinutes <= s.endMinute);
   const next = shifts.find((s) => s.startMinute > nowMinutes);
   return current ?? next ?? shifts[shifts.length - 1];
 }
 
-async function getDayStats(venueId: string, day: Date, avgSpend: number | null) {
-  const dayStart = startOfDay(day);
-  const dayEnd = endOfDay(day);
+async function getDayStats(venueId: string, day: Date, avgSpend: number | null, fuso: string) {
+  const { inizio: dayStart, fine: dayEnd } = giornata(day, fuso);
 
   const [bookings, noShowCount, service, capacity] = await Promise.all([
     db.booking.findMany({
@@ -40,7 +74,7 @@ async function getDayStats(venueId: string, day: Date, avgSpend: number | null) 
     db.booking.count({
       where: { venueId, startsAt: { gte: dayStart, lte: dayEnd }, status: "NO_SHOW" },
     }),
-    getServiceWindow(venueId, day),
+    getServiceWindow(venueId, day, fuso),
     /*
       La capienza della **giornata**, la stessa che usa la previsione. Qui si
       prendeva quella di un turno solo e ci si dividevano i coperti di tutto il
@@ -48,7 +82,7 @@ async function getDayStats(venueId: string, day: Date, avgSpend: number | null) 
       cento lo mascherava in «100% pieno» mentre la previsione, per lo stesso
       giorno, diceva 44%. Vedi server/capienza-giorno.ts.
     */
-    capienzaDelGiorno(venueId, day),
+    capienzaDelGiorno(venueId, day, fuso),
   ]);
 
   const totalCovers = bookings.reduce((s, b) => s + b.partySize, 0);
@@ -75,16 +109,23 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
    */
   const venue = await db.venue.findUnique({
     where: { id: venueId },
-    select: { avgSpendCents: true },
+    select: { avgSpendCents: true, timezone: true },
   });
   const avgSpend = venue?.avgSpendCents ? venue.avgSpendCents / 100 : null;
+  /* Il fuso si legge **una volta** e si passa a tutti: lo si rileggeva più
+     sotto per il solo incasso, e intanto il resto della Panoramica usava
+     quello del server. */
+  const fuso = venue?.timezone ?? DEFAULT_VENUE_TIMEZONE;
 
-  const yesterday = new Date(day);
-  yesterday.setDate(day.getDate() - 1);
+  /* Ieri è il giorno civile prima, nel fuso del locale: sottrarre 24 ore a un
+     istante sbaglia la notte in cui l'ora cambia. Mezzogiorno perché è l'ora
+     che non cade mai dentro un cambio d'ora. */
+  const chiaveOggi = dateKeyInVenue(day, fuso);
+  const yesterday = zonedTimeToInstant(datiDaChiave(shiftDateKey(chiaveOggi, -1)), 12 * 60, fuso);
 
   const [today, prev] = await Promise.all([
-    getDayStats(venueId, day, avgSpend),
-    getDayStats(venueId, yesterday, avgSpend),
+    getDayStats(venueId, day, avgSpend, fuso),
+    getDayStats(venueId, yesterday, avgSpend, fuso),
   ]);
 
   /**
@@ -99,24 +140,29 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
     oggi: day,
   });
 
-  // Trend ultimi 7 giorni (per il grafico "Andamento settimanale")
-  const weekAgo = new Date(startOfDay(day));
-  weekAgo.setDate(weekAgo.getDate() - 6);
+  /*
+    Andamento degli ultimi sette giorni, contato sui **giorni del locale**.
+
+    Prima i sacchetti erano le date UTC (`toISOString().slice(0, 10)`): una
+    cena delle 23:30 a Roma finiva nel giorno dopo, e d'estate bastavano le
+    22:00. Il grafico spostava i coperti della sera su domani, tutti i giorni.
+  */
+  const chiavi = Array.from({ length: 7 }, (_, i) => shiftDateKey(chiaveOggi, i - 6));
+  const inizioSettimana = zonedTimeToInstant(datiDaChiave(chiavi[0]!), 0, fuso);
+  const { fine: fineOggi } = giornata(day, fuso);
   const weekBookings = await db.booking.findMany({
-    where: { venueId, startsAt: { gte: weekAgo, lte: endOfDay(day) } },
+    where: { venueId, startsAt: { gte: inizioSettimana, lte: fineOggi } },
     select: { startsAt: true, partySize: true, status: true },
   });
 
   const trend: { day: string; covers: number; bookings: number }[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(weekAgo);
-    d.setDate(weekAgo.getDate() + i);
-    const key = d.toISOString().slice(0, 10);
+  for (const key of chiavi) {
     const filtered = weekBookings.filter(
-      (b) => b.startsAt.toISOString().slice(0, 10) === key && b.status !== "CANCELLED",
+      (b) => dateKeyInVenue(b.startsAt, fuso) === key && b.status !== "CANCELLED",
     );
+    const d = zonedTimeToInstant(datiDaChiave(key), 12 * 60, fuso);
     trend.push({
-      day: d.toLocaleDateString("it-IT", { weekday: "short" }),
+      day: new Intl.DateTimeFormat("it-IT", { weekday: "short", timeZone: fuso }).format(d),
       covers: filtered.reduce((s, b) => s + b.partySize, 0),
       bookings: filtered.length,
     });
@@ -126,13 +172,11 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
   const weekComparisonPct = pctChange(todayCovers, lastWeekAvgCovers);
 
   // L'incasso vero della giornata: la somma dei conti chiusi.
-  const venueFuso = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
-  const fuso = venueFuso?.timezone ?? "Europe/Rome";
-  const incassoOggi = await incassoDelGiorno(venueId, dateKeyInVenue(day, fuso), fuso);
+  const incassoOggi = await incassoDelGiorno(venueId, chiaveOggi, fuso);
 
   // Alert operativi di oggi, contati dai dati reali della giornata
   const birthdays = today.bookings.filter(
-    (b) => b.occasion === "BIRTHDAY" || (b.guest?.birthday && isSameCalendarDay(b.guest.birthday, day)),
+    (b) => b.occasion === "BIRTHDAY" || (b.guest?.birthday && isSameCalendarDay(b.guest.birthday, day, fuso)),
   ).length;
   const pendingConfirmations = today.bookings.filter((b) => b.status === "PENDING").length;
   const allergies = today.bookings.filter((b) => b.guest?.allergies).length;

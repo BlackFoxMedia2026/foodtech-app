@@ -14,6 +14,7 @@ import {
   type Scadenza,
 } from "@/lib/scheda-dipendente";
 import { costruisciScadenze } from "@/lib/scadenze-dipendente";
+import { contrattoInVigore } from "@/lib/staff-contracts";
 import { raggruppaAssenze } from "@/server/staff-presenze";
 
 /**
@@ -109,6 +110,71 @@ describe("le scadenze di una persona", () => {
     expect(s.find((x) => x.chiave === "contratto")?.stato).toBe("valido");
     const s2 = costruisciScadenze({ ...dati, contratti: [{ startDate: fra(-100), endDate: fra(20), contractType: "TEMPO_DETERMINATO" }] }, OGGI);
     expect(s2.find((x) => x.chiave === "contratto")?.stato).toBe("in_scadenza");
+  });
+});
+
+describe("il buco fra due contratti", () => {
+  /**
+   * Il difetto di conformità, e perché sembrava tutto a posto.
+   *
+   * Contratto scaduto il 31 agosto, rinnovo registrato in anticipo dal 1°
+   * ottobre, oggi 20 settembre. La scheda scriveva «Contratto · valido, scade
+   * il 31 marzo»: guardava il **rinnovo** — perché è quello cominciato per
+   * ultimo — e leggeva il suo stato «non ancora iniziato» come se fosse buono.
+   * Intanto la persona lavorava senza contratto in vigore, e la card
+   * nell'elenco non segnalava niente.
+   */
+  const scaduto = {
+    startDate: new Date("2026-01-01"),
+    endDate: new Date("2026-08-31"),
+    contractType: "TEMPO_DETERMINATO" as const,
+  };
+  const rinnovo = {
+    startDate: new Date("2026-10-01"),
+    endDate: new Date("2027-03-31"),
+    contractType: "TEMPO_DETERMINATO" as const,
+  };
+  const IL_20_SETTEMBRE = new Date("2026-09-20T12:00:00.000Z");
+
+  const vuoti = { visite: [], corsi: [], documenti: [] };
+
+  it("in mezzo a due contratti la persona non è coperta, e si dice", () => {
+    const s = costruisciScadenze({ ...vuoti, contratti: [scaduto, rinnovo] }, IL_20_SETTEMBRE);
+    const contratto = s.find((x) => x.titolo === "Contratto");
+    expect(contratto?.stato).toBe("scaduto");
+    expect(contratto?.dettaglio).toMatch(/Nessun contratto in vigore/);
+    /* E si dice **da quando** si torna coperti: senza, chi legge non sa se è
+       un buco di due giorni o di tre mesi. */
+    expect(contratto?.dettaglio).toMatch(/1 ottobre/);
+  });
+
+  it("quando il rinnovo è cominciato, torna valido", () => {
+    const s = costruisciScadenze(
+      { ...vuoti, contratti: [scaduto, rinnovo] },
+      new Date("2026-10-05T12:00:00.000Z"),
+    );
+    const contratto = s.find((x) => x.titolo === "Contratto");
+    expect(contratto?.stato).toBe("valido");
+    expect(contratto?.dettaglio).toMatch(/31 marzo/);
+  });
+
+  it("un contratto a tempo indeterminato copre oggi e sempre", () => {
+    const s = costruisciScadenze(
+      {
+        ...vuoti,
+        contratti: [{ startDate: new Date("2024-03-12"), endDate: null, contractType: "TEMPO_INDETERMINATO" as const }],
+      },
+      IL_20_SETTEMBRE,
+    );
+    expect(s.find((x) => x.titolo === "Contratto")?.stato).toBe("valido");
+  });
+
+  it("contrattoInVigore risponde a «oggi», non a «l'ultimo registrato»", () => {
+    expect(contrattoInVigore([scaduto, rinnovo], IL_20_SETTEMBRE)).toBeNull();
+    expect(contrattoInVigore([scaduto, rinnovo], new Date("2026-06-01T12:00:00.000Z"))).toBe(scaduto);
+    expect(contrattoInVigore([scaduto, rinnovo], new Date("2026-11-01T12:00:00.000Z"))).toBe(rinnovo);
+    /* I confini sono compresi: l'ultimo giorno di contratto è coperto. */
+    expect(contrattoInVigore([scaduto], new Date("2026-08-31T12:00:00.000Z"))).toBe(scaduto);
   });
 });
 

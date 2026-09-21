@@ -1,6 +1,7 @@
 import type { StaffTrainingKind } from "@prisma/client";
 import {
   CONTRACT_EXPIRING_SOON_THRESHOLD_DAYS,
+  contrattoInVigore,
   getContractStatus,
   pickCurrentContract,
   staffContractTypeLabel,
@@ -83,9 +84,36 @@ export function costruisciScadenze(dati: DatiScadenze, oggi: Date = new Date()):
     out.push(scadenzaCorso(`corso:${chiave}`, nomeCorso(c), c, oggi));
   }
 
-  // Contratto: quello attuale.
-  const attuale = pickCurrentContract(dati.contratti);
-  if (attuale) {
+  /*
+    Contratto: quello **in vigore oggi**, non semplicemente l'ultimo registrato.
+
+    La differenza è il buco fra due contratti. Con un contratto scaduto il 31
+    agosto e un rinnovo che parte il 1° ottobre, il 20 settembre questa riga
+    scriveva «valido, scade il 31 marzo» — perché guardava il rinnovo e ne
+    leggeva lo stato «non ancora iniziato» come se fosse buono. La persona
+    stava lavorando senza contratto in vigore, e né la scheda né la card
+    nell'elenco dicevano niente.
+  */
+  const inVigore = contrattoInVigore(dati.contratti, oggi);
+  const attuale = inVigore ?? pickCurrentContract(dati.contratti);
+  if (attuale && !inVigore) {
+    /* Nessun contratto copre oggi. Si dice questo, e si dice da quando: è un
+       fatto di conformità, e il prossimo rinnovo non lo sana retroattivamente. */
+    const prossimo = pickCurrentContract(
+      dati.contratti.filter((c) => c.startDate.getTime() > oggi.getTime()),
+    );
+    out.push({
+      chiave: "contratto",
+      titolo: "Contratto",
+      tab: "lavoro",
+      scadeIl: null,
+      stato: "scaduto",
+      dettaglio: prossimo
+        ? `Nessun contratto in vigore: il prossimo inizia il ${dataLunga(prossimo.startDate)}`
+        : "Nessun contratto in vigore",
+      giorni: null,
+    });
+  } else if (attuale) {
     const statoContratto = getContractStatus(attuale, oggi);
     const stato =
       statoContratto === "EXPIRED" ? "scaduto" : statoContratto === "EXPIRING_SOON" ? "in_scadenza" : "valido";
