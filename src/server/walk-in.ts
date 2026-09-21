@@ -103,6 +103,7 @@ export async function countWalkInsToday(venueId: string, from: Date, to: Date) {
   return db.booking.count({
     where: {
       venueId,
+      deletedAt: null,
       source: "WALK_IN",
       startsAt: { gte: from, lte: to },
       status: { notIn: ["CANCELLED", "NO_SHOW"] },

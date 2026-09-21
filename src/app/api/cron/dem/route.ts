@@ -1,6 +1,7 @@
 import { eseguiCron } from "@/lib/cron";
 import { db } from "@/lib/db";
 import { controllaDominiInAttesa } from "@/server/dem/dominio";
+import { chiudiLeProgrammate } from "@/server/dem/programmate";
 import { controllaReputazione } from "@/server/dem/statistiche";
 
 /**
@@ -18,6 +19,17 @@ import { controllaReputazione } from "@/server/dem/statistiche";
 export async function GET(req: Request) {
   return eseguiCron("dem", req, async () => {
     const domini = await controllaDominiInAttesa();
+
+    /*
+      Le campagne programmate che il fornitore ha già mandato.
+
+      Senza questo passaggio restavano «Programmata · Partirà all'ora
+      indicata» per sempre — anche il giorno dopo — e gli invii impegnati non
+      tornavano né fra quelli usati né fra quelli disponibili: un cliente che
+      programma quattro campagne si trovava il piano esaurito con «zero
+      inviate». Ogni venti minuti, perché nessuno guarda il minuto esatto.
+    */
+    const programmate = await chiudiLeProgrammate();
 
     /*
       La reputazione si guarda a chi ha inviato **di recente**: su chi non
@@ -39,6 +51,9 @@ export async function GET(req: Request) {
     }
 
     return {
+      programmateGuardate: programmate.guardate,
+      programmateInviate: programmate.inviate,
+      programmateNonRiuscite: programmate.nonRiuscite,
       dominiControllati: domini.controllati,
       dominiPronti: domini.diventatiPronti,
       localiValutati: attivi.length,

@@ -112,6 +112,9 @@ export async function registraPrenotazioneTelefonica(
 
   /* Prima si guarda se c'è già: costa una lettura su un indice unico, e
      risparmia tutto il resto quando il centralino sta solo ritentando. */
+  /* Come in `widget-defenses`: la chiave e unica su tutta la tabella, righe
+     cancellate comprese. Filtrarle farebbe fallire il ritentativo del
+     centralino con un errore di chiave duplicata. */
   const gia = await db.booking.findUnique({
     where: { idempotencyKey: chiave },
     select: {

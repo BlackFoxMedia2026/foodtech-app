@@ -78,7 +78,9 @@ export async function avvisaConfermaWhatsapp(
   bookingId: string,
 ): Promise<EsitoAvviso> {
   const b = await db.booking.findFirst({
-    where: { id: bookingId, venueId },
+    /* Una prenotazione cancellata non manda messaggi: il cliente riceverebbe
+       «confermata» per un tavolo che in sala non esiste piu. */
+    where: { id: bookingId, venueId, deletedAt: null },
     select: {
       id: true,
       source: true,

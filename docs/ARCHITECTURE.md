@@ -218,6 +218,32 @@ volta sola, e se il processo muore **dopo** aver dato l'ordine di invio, al
 giro dopo la campagna finisce in «non riuscita» con scritto perché — mai un
 secondo invio alla cieca a clienti veri.
 
+### Una campagna programmata la chiude qualcuno
+
+Programmare una campagna significa affidarla al fornitore — «mandala venerdì
+alle nove» — e quella richiesta è l'ultima cosa che facevamo. Da noi la
+campagna restava `SCHEDULED` **per sempre**: venerdì le email uscivano e la
+schermata continuava a dire «Partirà all'ora indicata».
+
+Il danno che si paga era `reservedCount`: gli invii riservati non venivano né
+consumati né restituiti, quindi sparivano dalla quota del mese senza comparire
+fra quelli usati. Chi programma quattro campagne si trovava il piano esaurito
+con «zero inviate».
+
+Il cron `dem` (ogni venti minuti) chiude le programmate scadute:
+
+- **si guardano le statistiche del fornitore, non l'orologio.** «L'ora è
+  passata» non è «è partita»: la lista può essere vuota, la chiave scaduta, il
+  contenuto rifiutato. Solo un `sent > 0` fa dichiarare inviata una campagna;
+- **la data d'invio è quella dell'appuntamento**, non quella del cron: una
+  campagna uscita alle nove non deve risultare partita alle tre di notte;
+- **dopo sei ore senza un invio si dichiara non riuscita**, la quota torna
+  disponibile e al locale arriva un avviso con scritto cosa fare. Una campagna
+  che non parte e non lo dice a nessuno non la rifà nessuno;
+- **il passaggio di stato è il lucchetto** (`updateMany` con
+  `status: "SCHEDULED"` dentro la scrittura): due giri di cron che si
+  sovrappongono non consumano gli invii due volte.
+
 ### Lo stato di una prenotazione lo decide il canale, non il client
 
 `BookingInput.status` **non** viene usato in creazione: lo stato dipende dalla
@@ -733,9 +759,17 @@ così la notte del cambio d'ora non salta un giorno.
   segnalato come difetto **leggendo questa riga**, non il codice: è il costo di
   un documento che non si aggiorna.
 - **Nessuna cache.** 54 pagine su 64 sono `force-dynamic`, nessun `revalidate`.
-- **Soft delete a metà.** `Booking` e `Payment` hanno `deletedAt`/`deletedBy` ma il codice
-  cancella davvero, e le liste non filtrano quei campi. Ospiti, camerieri e tavoli non hanno
-  nemmeno i campi. Chi implementa il ripristino deve fare entrambe le cose insieme.
+- ~~**Soft delete a metà.**~~ **Fatto il 21 settembre 2026 per `Booking`**: il cestino
+  scrive `deletedAt`/`deletedBy` (condizione dentro la scrittura, quindi due clic non
+  registrano due cancellazioni), i contatori dell'ospite si rifanno, e la riga esce da
+  liste, ricerca, disponibilità, storia e messaggi. Due letture **non** filtrano di
+  proposito, e lo dicono nel codice: la chiave di idempotenza (unica su tutta la tabella,
+  righe cancellate comprese — filtrarla farebbe fallire il ritentativo con un errore di
+  chiave duplicata) e l'esportazione dei dati dell'ospite (diritto di accesso: riguarda
+  quello che abbiamo). Manca il **ripristino da interfaccia**: oggi una prenotazione
+  cancellata per sbaglio si rimette in piedi solo da database.
+  `Payment` ha ancora i campi e nessuno li scrive; ospiti, camerieri e tavoli non hanno
+  nemmeno i campi.
 - **Due fattori, calendario, letture della carta e richieste del personale**
   esistono dal 21 settembre: erano campi e tabelle dichiarati e mai scritti.
   Quello che resta dichiarato e non fatto è in `docs/TABELLE-SENZA-CODICE.md`,

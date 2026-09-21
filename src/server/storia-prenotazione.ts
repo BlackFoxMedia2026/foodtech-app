@@ -130,7 +130,7 @@ export async function storiaPrenotazione(
     timeZone: fuso,
   });
   const prenotazione = await db.booking.findFirst({
-    where: { id: bookingId, venueId },
+    where: { id: bookingId, venueId, deletedAt: null },
     select: {
       id: true,
       createdAt: true,

@@ -107,6 +107,7 @@ export async function listBookings(
 ) {
   return db.booking.findMany({
     where: {
+      deletedAt: null,
       venueId,
       startsAt:
         opts.from || opts.to ? { gte: opts.from, lte: opts.to } : undefined,
@@ -511,7 +512,7 @@ export async function updateBooking(
   opts: BookingWriteOptions = {},
 ) {
   const data = BookingInput.partial().parse(raw);
-  const existing = await db.booking.findFirst({ where: { id, venueId } });
+  const existing = await db.booking.findFirst({ where: { deletedAt: null, id, venueId } });
   if (!existing) throw new Error("not_found");
 
   const nextStatus = data.status ?? existing.status;
@@ -666,20 +667,59 @@ export async function updateBooking(
   return updated;
 }
 
+/**
+ * Cancellare una prenotazione: la riga **resta**, e non la vede nessuno.
+ *
+ * ## Perché non si cancella davvero
+ *
+ * Perché una prenotazione non è una riga sola. Ha i suoi conti, i suoi
+ * pagamenti, i suoi messaggi, la sua storia. Con la cancellazione vera —
+ * quella che c'era fino al 21 settembre 2026 — la storia sparisce, i
+ * `BookingEvent` se li porta via la cascata, e conti e pagamenti restano
+ * **senza prenotazione**: il denaro incassato smette di essere collegato alla
+ * sera in cui è entrato. Chi cancella per sbaglio la prenotazione di stasera
+ * non ha nessun modo di rimetterla.
+ *
+ * I campi `deletedAt` e `deletedBy` erano nello schema dal principio e nessuno
+ * li scriveva: mezza funzione, che è peggio di una funzione che manca — la
+ * colonna c'è e sembra che qualcosa la usi. Venti letture filtravano già le
+ * righe cancellate, e non ce n'era mai nessuna.
+ *
+ * ## La condizione sta dentro la scrittura
+ *
+ * Due clic sul cestino non producono due registrazioni: la seconda non trova
+ * più una prenotazione non cancellata, e risponde «non c'è».
+ *
+ * ## Cosa NON fa
+ *
+ * Non libera il posto in agenda di nascosto: le letture della disponibilità
+ * filtrano le cancellate, quindi il tavolo torna prenotabile — che è quello
+ * che si vuole — ma i contatori dell'ospite vanno rifatti, perché una visita
+ * cancellata non è una visita.
+ */
 export async function deleteBooking(
   venueId: string,
   id: string,
   actor?: AuditActor,
 ) {
   const existing = await db.booking.findFirst({
-    where: { id, venueId },
+    where: { deletedAt: null, id, venueId },
     include: { guest: true },
   });
   if (!existing) throw new Error("not_found");
-  const deleted = await db.booking.delete({ where: { id } });
-  // La cancellazione è definitiva (Booking ha i campi per il soft delete ma le
-  // liste non li filtrano ancora): il registro è l'unico posto in cui resta
-  // traccia di cosa c'era.
+
+  const messa = await db.booking.updateMany({
+    where: { id, venueId, deletedAt: null },
+    data: { deletedAt: new Date(), deletedBy: actor?.userId ?? null },
+  });
+  if (messa.count === 0) throw new Error("not_found");
+
+  /* I contatori della scheda ospite: una prenotazione cancellata non conta
+     come visita né come assenza. Senza questa riga un cliente resterebbe con
+     una visita in più per sempre, e le sue statistiche sono quelle su cui il
+     locale decide come trattarlo. */
+  if (existing.guestId) await refreshGuestStats(existing.guestId);
+
   await recordAudit(actor, "booking.delete", "booking", id, {
     prenotazione: {
       quando: existing.startsAt.toISOString(),
@@ -691,7 +731,11 @@ export async function deleteBooking(
         : null,
     },
   });
-  return deleted;
+
+  /* Si restituisce quella che c'era: chi ha chiamato vuole sapere cosa ha
+     cancellato, e leggerla di nuovo dopo darebbe la riga con `deletedAt`
+     addosso — vera, e non quella che l'interfaccia sta mostrando. */
+  return existing;
 }
 
 /* -------------------------------------------------------------------------- */

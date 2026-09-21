@@ -19,7 +19,7 @@ function bucketOf(startsAt: Date) {
 
 async function fetchBookingsInRange(venueId: string, from: Date, to: Date): Promise<BookingRow[]> {
   return db.booking.findMany({
-    where: { venueId, startsAt: { gte: from, lt: to } },
+    where: { deletedAt: null, venueId, startsAt: { gte: from, lt: to } },
     select: { partySize: true, status: true, guestId: true, startsAt: true, source: true },
   });
 }

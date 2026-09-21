@@ -37,10 +37,10 @@ export async function assenzeAttese({
 
   const [storiche, storicheAssenti] = await Promise.all([
     db.booking.count({
-      where: { venueId, startsAt: { gte: novantaGiorni, lt: startOfDay(oggi) }, status: { not: "CANCELLED" } },
+      where: { deletedAt: null, venueId, startsAt: { gte: novantaGiorni, lt: startOfDay(oggi) }, status: { not: "CANCELLED" } },
     }),
     db.booking.count({
-      where: { venueId, startsAt: { gte: novantaGiorni, lt: startOfDay(oggi) }, status: "NO_SHOW" },
+      where: { deletedAt: null, venueId, startsAt: { gte: novantaGiorni, lt: startOfDay(oggi) }, status: "NO_SHOW" },
     }),
   ]);
 
