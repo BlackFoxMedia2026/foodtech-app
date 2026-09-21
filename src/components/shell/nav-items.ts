@@ -1,6 +1,8 @@
 import { CalendarRange, CreditCard, Gift, LayoutDashboard, LineChart, Megaphone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 import { cn } from "@/lib/utils";
+import { can, type Ability } from "@/lib/abilities";
+import type { StaffRole } from "@prisma/client";
 
 export type NavItem = {
   href: string;
@@ -36,6 +38,21 @@ export type NavItem = {
    * voci principali si spiegano da sole.
    */
   descrizione?: string;
+  /**
+   * La capacità richiesta per **vedere** questa voce.
+   *
+   * Nasce da un difetto vero: un account `WAITER` vedeva in barra «Staff» e
+   * nel menu del profilo «Pagamenti», cioè i contratti dei colleghi e gli
+   * incassi del locale. `can()` esisteva da settimane e diceva di no a
+   * entrambe — semplicemente nessuno gliel'aveva chiesto, perché la
+   * navigazione era una lista di costanti senza permessi.
+   *
+   * **Nascondere non è proteggere**, e le pagine dietro queste voci hanno il
+   * loro controllo. Questa è la metà che rende il prodotto onesto: mostrare a
+   * qualcuno una porta che gli si chiuderà in faccia è peggio che non
+   * mostrarla.
+   */
+  ability?: Ability;
   /**
    * Le voci che stanno **dentro** questa: la voce diventa un menu, e cliccarla
    * non porta da nessuna parte — apre l'elenco.
@@ -199,12 +216,13 @@ export const PRIMARY_NAV: NavItem[] = [
     Il percorso è `/staff`, con `/waiters` che reindirizza: i link già mandati
     per i contratti in scadenza continuano ad aprirsi.
   */
-  { href: "/staff", label: "Staff", icon: Users },
+  { href: "/staff", label: "Staff", icon: Users, ability: "manage_staff" },
   {
     href: "/marketing",
     label: "Marketing",
     icon: Megaphone,
     matchPrefixes: ["/campaigns", "/insights"],
+    ability: "edit_marketing",
     sottovoci: MARKETING_NAV,
   },
   { href: "/menu", label: "Menu", icon: UtensilsCrossed },
@@ -238,8 +256,8 @@ export const PROFILE_NAV: NavItem[] = [
     — più la chiave `esperienze` nelle due tabelle dell'assistente
     (`ai/tools/navigation.ts` e `ai/intent-router.ts`).
   */
-  { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "gestione" },
-  { href: "/settings", label: "Impostazioni", icon: Settings, gruppo: "account" },
+  { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "gestione", ability: "view_revenue" },
+  { href: "/settings", label: "Impostazioni", icon: Settings, gruppo: "account", ability: "manage_venue" },
 ];
 
 export const ALL_NAV = [...PRIMARY_NAV, ...PROFILE_NAV];
@@ -306,17 +324,32 @@ export function sottovoceAttiva(pathname: string, item: NavItem): NavItem | unde
   return item.sottovoci?.find((v) => sottoA(pathname, v.href));
 }
 
+/**
+ * Le voci che questo ruolo può vedere.
+ *
+ * Senza ruolo non filtra niente, e serve ai punti in cui la navigazione si
+ * disegna prima di conoscerlo (l'assistente, i test). Passarlo è la regola.
+ */
+export function vociPermesse(voci: NavItem[], role?: StaffRole): NavItem[] {
+  if (!role) return voci;
+  return voci.filter((v) => !v.ability || can(role, v.ability));
+}
+
 /** Le voci del menu profilo, raggruppate e nell'ordine dei gruppi. */
-export function profiloPerGruppo(): { label: string; voci: NavItem[] }[] {
+export function profiloPerGruppo(role?: StaffRole): { label: string; voci: NavItem[] }[] {
+  const ammesse = vociPermesse(PROFILE_NAV, role);
   return GRUPPI_PROFILO.map((g) => ({
     label: g.label,
-    voci: PROFILE_NAV.filter((v) => v.gruppo === g.key),
+    voci: ammesse.filter((v) => v.gruppo === g.key),
   })).filter((g) => g.voci.length > 0);
 }
 
 /** Le voci principali che non stanno nella barra in basso del telefono. */
-export function primarieFuoriDallaBarra(): NavItem[] {
-  return PRIMARY_NAV.filter((v) => !MOBILE_NAV.includes(v));
+export function primarieFuoriDallaBarra(role?: StaffRole): NavItem[] {
+  return vociPermesse(
+    PRIMARY_NAV.filter((v) => !MOBILE_NAV.includes(v)),
+    role,
+  );
 }
 
 /**

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Fraunces, Inter, Space_Mono } from "next/font/google";
 import { Header } from "@/components/shell/header";
 import { BrandSetupDialog } from "@/components/settings/brand-setup-dialog";
@@ -6,6 +7,7 @@ import { VenueTimeProvider } from "@/components/shell/venue-time-provider";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { AvvisiProvider } from "@/components/ui/avvisi";
 import { ProviderImpostazioni } from "@/components/settings/contesto-impostazioni";
+import { risolviContestoStaff } from "@/server/contesto-staff";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const display = Fraunces({
@@ -18,6 +20,27 @@ const mono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], variable: 
 
 export default async function AppShell({ children }: { children: React.ReactNode }) {
   const ctx = await getActiveVenue();
+
+  /*
+    **Il bivio fra i due ambienti** (§48 del brief).
+
+    Chi lavora durante il servizio non deve atterrare nel back office e poi
+    cercare la strada: la Staff App è casa sua, e ci arriva entrando. La
+    regola sta in `staffAppEHome()` ed è scritta sul ruolo d'accesso, cioè su
+    una decisione che qualcuno ha preso creando l'account.
+
+    Sta qui e non nel middleware perché il middleware gira sull'edge, senza
+    Prisma: per sapere se questo account ha un'anagrafica collegata serve una
+    lettura del database, e questo è il primo punto del rendering in cui si
+    può fare. Non è una difesa — le difese stanno nelle rotte e nelle pagine,
+    una per una — è un instradamento.
+  */
+  const staff = await risolviContestoStaff();
+  if (staff.stato === "ok" && staff.contesto.staffAppEHome) redirect("/staff-app");
+
+  /* Chi ha entrambe le vedute trova la Staff App nel menu del profilo. */
+  const conStaffApp = staff.stato === "ok";
+
   const showBrandSetup = ctx.venue.onboardingStatus === "NOT_STARTED" && can(ctx.role, "manage_venue");
 
   const venueList = ctx.allMemberships.map((m) => ({
@@ -47,6 +70,8 @@ export default async function AppShell({ children }: { children: React.ReactNode
         user={{ name: ctx.session.user?.name, email: ctx.session.user?.email }}
         venues={venueList}
         activeVenueId={ctx.venueId}
+        role={ctx.role}
+        conStaffApp={conStaffApp}
       />
       {/*
         `main` dà la sua altezza alle pagine invece di scorrere.
@@ -66,7 +91,7 @@ export default async function AppShell({ children }: { children: React.ReactNode
         <VenueTimeProvider timezone={ctx.venue.timezone}>{children}</VenueTimeProvider>
       </main>
 
-      <MobileNav canManageBookings={can(ctx.role, "manage_bookings")} />
+      <MobileNav canManageBookings={can(ctx.role, "manage_bookings")} role={ctx.role} />
       {showBrandSetup && <BrandSetupDialog initialName={ctx.venue.name} />}
     </div>
     </ProviderImpostazioni>

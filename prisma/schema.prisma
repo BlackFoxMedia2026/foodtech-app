@@ -241,7 +241,7 @@ model Venue {
   /// va riverificata a ogni lettura: se conservassimo solo «acceso: sì», una
   /// riga cambiata a mano nel database darebbe il centralino a chi non l'ha
   /// comprato. La firma è la prova, e la prova va tenuta.
-  phoneLicenseKey      String?
+  phoneLicenseKey         String?
   /// Quando è stata inserita. Nullo = il centralino non è mai stato acceso qui.
   phoneLicenseActivatedAt DateTime?
   /// L'ultimo istante di validità, copiato dalla chiave per poterlo mostrare
@@ -315,6 +315,7 @@ model Venue {
   demSesTenant       DemSesTenant?
   campaignRecipients CampaignRecipient[]
   campaignEvents     CampaignEvent[]
+  comande            Comanda[]
 
   @@unique([orgId, slug])
 }
@@ -398,30 +399,30 @@ model Room {
 // both; Room.activeLayoutMode says which one is currently rendered, so
 // switching modes never destroys the other's data (see floor-plan upload).
 model RoomLayout {
-  id             String   @id @default(cuid())
-  roomId         String   @unique
-  room           Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  unit           String   @default("m")
-  pixelsPerMeter Int      @default(100)
-  elements       Json     @default("[]")
+  id             String    @id @default(cuid())
+  roomId         String    @unique
+  room           Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  unit           String    @default("m")
+  pixelsPerMeter Int       @default(100)
+  elements       Json      @default("[]")
   /// Quali livelli sono accesi sulla piantina (tavoli, struttura, aree,
   /// testi, immagine originale). Sta sulla sala e non sull'utente: chi apre
   /// la Sala deve trovare la piantina come l'ha lasciata il collega.
-  layers         Json     @default("{}")
+  layers         Json      @default("{}")
   /// Quanti tavoli il locale dichiara di possedere, per forma. La libreria
   /// dell'editor ne sottrae quelli già posizionati e mostra la disponibilità
   /// residua.
-  inventory      Json     @default("{}")
+  inventory      Json      @default("{}")
   /// Nome, superficie e dimensioni quando non si ricavano dalla geometria e
   /// il locale li scrive a mano.
-  meta           Json     @default("{}")
+  meta           Json      @default("{}")
   /// Il risultato grezzo del riconoscimento della planimetria, conservato
   /// accanto agli elementi che ne sono derivati: se domani il riconoscimento
   /// migliora si rigenera senza richiedere di ricaricare l'immagine.
   analysis       Json?
   analyzedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Table {
@@ -470,6 +471,7 @@ model Table {
   staffAssignments StaffAssignment[]
   payments         Payment[]
   qrCodes          QrCode[]
+  comande          Comanda[]
 
   @@unique([venueId, label])
 }
@@ -624,6 +626,7 @@ model Booking {
   idempotencyKey    String?            @unique
   Campaign          Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   orders            Order[]
+  comande           Comanda[]
   guest             Guest?             @relation(fields: [guestId], references: [id])
   table             Table?             @relation(fields: [tableId], references: [id])
   venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
@@ -1508,52 +1511,75 @@ model Notification {
   meta      Json?
   readAt    DateTime?
   createdAt DateTime         @default(now())
+  /// Il destinatario, quando ce n'è **uno solo**.
+  ///
+  /// Nullo su tutte le notifiche che esistevano prima, ed è il
+  /// comportamento giusto: quelle sono avvisi del locale — una prenotazione
+  /// arrivata, una recensione — e li legge chi passa dalla campanella.
+  /// «I tuoi due piatti sono pronti» invece ha un nome e un cognome, e se
+  /// finisse nella campanella di tutti sarebbe rumore per quattro persone su
+  /// cinque.
+  waiterId  String?
   Venue     Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  waiter    Waiter?          @relation(fields: [waiterId], references: [id], onDelete: Cascade)
 
   @@index([venueId, createdAt])
   @@index([venueId, readAt])
+  @@index([waiterId, readAt, createdAt])
 }
 
 model Order {
-  id            String              @id @default(cuid())
-  reference     String              @unique
-  venueId       String
-  guestId       String?
+  id               String              @id @default(cuid())
+  reference        String              @unique
+  venueId          String
+  guestId          String?
   /// La prenotazione a cui questo conto appartiene, quando è un conto al
   /// tavolo. Mancava: c'era solo `tableLabel`, una stringa, quindi il conto
   /// non si poteva ricondurre alla serata di nessuno — e sono i coperti di
   /// una prenotazione a trasformare un totale in un incasso attribuibile.
-  bookingId     String?
-  kind          OrderKind           @default(TAKEAWAY)
-  status        OrderStatus         @default(RECEIVED)
-  paymentStatus PaymentStatus       @default(PENDING)
+  bookingId        String?
+  kind             OrderKind           @default(TAKEAWAY)
+  status           OrderStatus         @default(RECEIVED)
+  paymentStatus    PaymentStatus       @default(PENDING)
   /// Obbligatori per l'asporto e la consegna, senza senso per un conto al
   /// tavolo: lì il cliente è la prenotazione. Erano `NOT NULL`, e l'unico modo
   /// di aprire un conto al tavolo sarebbe stato inventare un nome e un
   /// telefono — cioè scrivere dati finti, che è quello che questo progetto
   /// passa il tempo a togliere.
-  customerName  String?
-  phone         String?
-  email         String?
-  address       String?
-  scheduledAt   DateTime
-  totalCents    Int                 @default(0)
-  currency      String              @default("EUR")
-  notes         String?
-  stripeId      String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  preparedAt    DateTime?
-  readyAt       DateTime?
-  completedAt   DateTime?
-  cancelledAt   DateTime?
-  tableLabel    String?             @db.VarChar(40)
-  Guest         Guest?              @relation(fields: [guestId], references: [id])
-  Venue         Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  booking       Booking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  OrderItem     OrderItem[]
-  payments      Payment[]
-  allocations   PaymentAllocation[]
+  customerName     String?
+  phone            String?
+  email            String?
+  address          String?
+  scheduledAt      DateTime
+  totalCents       Int                 @default(0)
+  currency         String              @default("EUR")
+  notes            String?
+  stripeId         String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  preparedAt       DateTime?
+  readyAt          DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  tableLabel       String?             @db.VarChar(40)
+  /// Quando il tavolo ha **chiesto** il conto.
+  ///
+  /// Finora «al conto» era un'ipotesi: la sala lo deduceva dal fatto che la
+  /// seduta avesse superato la durata prevista (`deriveTableLiveStatus`). È
+  /// una stima utile e resta, ma non è la stessa cosa — un tavolo può stare
+  /// due ore e non aver chiesto niente, e un altro chiedere il conto dopo
+  /// quaranta minuti. Questo è il fatto: qualcuno l'ha chiesto, a
+  /// quest'ora. Nullo su tutto lo storico, ed è corretto — di quei tavoli
+  /// non lo sapevamo.
+  contoRichiestoAt DateTime?
+  Guest            Guest?              @relation(fields: [guestId], references: [id])
+  Venue            Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  booking          Booking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  OrderItem        OrderItem[]
+  comande          Comanda[]
+  ospiti           OrderGuest[]
+  payments         Payment[]
+  allocations      PaymentAllocation[]
 
   @@index([venueId, createdAt])
   @@index([venueId, status, scheduledAt])
@@ -1561,18 +1587,259 @@ model Order {
 }
 
 model OrderItem {
-  id          String              @id @default(cuid())
-  orderId     String
-  menuItemId  String?
-  name        String
-  priceCents  Int
-  quantity    Int                 @default(1)
-  notes       String?
-  MenuItem    MenuItem?           @relation(fields: [menuItemId], references: [id])
-  Order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  allocations PaymentAllocation[]
+  id           String              @id @default(cuid())
+  orderId      String
+  menuItemId   String?
+  name         String
+  priceCents   Int
+  quantity     Int                 @default(1)
+  notes        String?
+  /// La tranche con cui questa riga va (o è andata) in cucina.
+  ///
+  /// **Nullo** sulle righe battute dal back office, che sono voci di conto e
+  /// non sono mai passate da una comanda: l'app di sala le legge sempre
+  /// filtrando su questo campo, così le due strade non si mescolano.
+  comandaId    String?
+  /// A chi va servito questo piatto. Nullo = «tutto il tavolo».
+  orderGuestId String?
+  /// Lo stato della **singola riga**, che non è quello della comanda: la
+  /// cucina manda fuori un piatto alla volta, e «due piatti pronti su
+  /// quattro» è la frase che serve al cameriere. Ha senso solo con
+  /// `comandaId` valorizzato.
+  status       ComandaRigaStatus   @default(BOZZA)
+  /// Gli allergeni **dichiarati dall'ospite per questa riga**, che sono una
+  /// cosa diversa da `MenuItem.allergens` (cosa c'è dentro il piatto). Qui
+  /// sta «questa persona è allergica», e va stampato in cucina in grande.
+  allergens    String[]            @default([])
+  allergyNote  String?             @db.VarChar(300)
+  sentAt       DateTime?
+  readyAt      DateTime?
+  servedAt     DateTime?
+  MenuItem     MenuItem?           @relation(fields: [menuItemId], references: [id])
+  Order        Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  comanda      Comanda?            @relation(fields: [comandaId], references: [id], onDelete: SetNull)
+  ospite       OrderGuest?         @relation(fields: [orderGuestId], references: [id], onDelete: SetNull)
+  modifiche    OrderItemModifica[]
+  allocations  PaymentAllocation[]
 
   @@index([orderId])
+  @@index([comandaId])
+  @@index([orderGuestId])
+}
+
+// ========================================================================== //
+//  La comanda                                                                //
+// ========================================================================== //
+
+/// **Una tranche di piatti mandata in cucina.**
+///
+/// Non è un `Order`, ed è la distinzione che regge tutto il modulo. `Order` è
+/// il **conto** del tavolo: apre quando le persone si siedono, chiude quando
+/// pagano, e ne esiste **uno** per serata. La comanda è quello che si manda
+/// alla brigata, e in una serata ne partono quattro o cinque dallo stesso
+/// tavolo — prima le bevande, poi gli antipasti, poi i secondi, poi i dolci.
+///
+/// Modellarla come un secondo `Order` avrebbe spezzato il conto in cinque
+/// pezzi, e il tavolo 12 a fine serata avrebbe avuto cinque totali. Qui la
+/// comanda sta **dentro** il conto: `Order` resta l'unico posto in cui si
+/// legge quanto deve il tavolo, e `Comanda` risponde a «cosa è già partito e a
+/// che punto è».
+///
+/// ## Il §22 del brief in una riga
+///
+/// «NON considerare una comanda come qualcosa che blocca il tavolo dopo il
+/// primo invio»: è vero per costruzione, perché la relazione è uno-a-molti e
+/// una comanda inviata non impedisce di aprirne un'altra in bozza.
+///
+/// ## Perché `invioKey`
+///
+/// Un cameriere che tocca due volte «Invia in cucina» su una rete che arranca
+/// deve mandare **una** comanda. Il client genera una chiave per tentativo, e
+/// l'unicità la garantisce il database — non un controllo applicativo, che due
+/// richieste in parallelo si scambierebbero senza vedersi. Stessa difesa che
+/// `Booking.idempotencyKey` fa per il widget pubblico.
+model Comanda {
+  id             String           @id @default(cuid())
+  venueId        String
+  /// Il conto a cui questa tranche appartiene. Obbligatorio: una comanda
+  /// senza conto è cibo che esce dalla cucina e non finisce su nessun totale.
+  orderId        String
+  tableId        String?
+  bookingId      String?
+  /// Chi l'ha battuta. Nullo solo se l'anagrafica viene cancellata dopo: la
+  /// comanda resta, perché è un fatto successo.
+  waiterId       String?
+  /// Progressivo **dentro il conto**: la prima, la seconda, la terza. Non è
+  /// un identificativo globale — quello è `id` — è il numero che il cameriere
+  /// legge nello storico del tavolo.
+  numero         Int
+  status         ComandaStatus    @default(BOZZA)
+  /// Chi ha preso in carico questa comanda. Oggi sempre `INTERNO`: la coda di
+  /// cucina di Tavolo. Esiste da subito perché il giorno in cui una comanda
+  /// parte verso un POS esterno bisogna poter rispondere a «questa dov'è
+  /// andata», e aggiungere la colonna dopo vorrebbe dire non saperlo per
+  /// tutto lo storico precedente.
+  fornitore      FornitoreComanda @default(INTERNO)
+  /// L'identificativo che il fornitore esterno ci restituisce, quando ce n'è
+  /// uno. Sempre nullo finché il fornitore è quello interno.
+  fornitoreRef   String?          @db.VarChar(120)
+  /// Una nota per la cucina, valida per tutta la tranche.
+  nota           String?          @db.VarChar(500)
+  /// La chiave del **tentativo di invio**: due tap sullo stesso pulsante
+  /// portano la stessa chiave, e il secondo trova la comanda già inviata.
+  invioKey       String?          @unique
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  sentAt         DateTime?
+  acknowledgedAt DateTime?
+  preparingAt    DateTime?
+  readyAt        DateTime?
+  servedAt       DateTime?
+  cancelledAt    DateTime?
+  venue          Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  order          Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  table          Table?           @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  booking        Booking?         @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  waiter         Waiter?          @relation(fields: [waiterId], references: [id], onDelete: SetNull)
+  righe          OrderItem[]
+  eventi         ComandaEvento[]
+
+  @@unique([orderId, numero])
+  @@index([venueId, status, sentAt])
+  @@index([venueId, createdAt])
+  @@index([tableId, createdAt])
+  @@index([waiterId, createdAt])
+}
+
+/// Lo storico degli stati di una comanda: **chi** l'ha mossa e **quando**.
+///
+/// Le colonne `sentAt`/`readyAt`/... su `Comanda` rispondono a «quando è
+/// successo» e bastano a disegnare una schermata. Non rispondono a «chi» e
+/// non reggono i passaggi che si ripetono — una comanda modificata torna in
+/// preparazione una seconda volta, e quella seconda volta sovrascriverebbe la
+/// prima. Il §42 del brief chiede di sapere sempre chi ha fatto cosa: è qui.
+model ComandaEvento {
+  id        String         @id @default(cuid())
+  comandaId String
+  /// Nullo sul primo evento: prima della bozza non c'era niente.
+  da        ComandaStatus?
+  a         ComandaStatus
+  at        DateTime       @default(now())
+  /// La persona dell'organico che ha mosso la comanda, quando è una persona.
+  waiterId  String?
+  /// L'account, per i casi in cui non c'è un'anagrafica dietro (un manager
+  /// che chiude una comanda dal back office).
+  userId    String?
+  nota      String?        @db.VarChar(300)
+  comanda   Comanda        @relation(fields: [comandaId], references: [id], onDelete: Cascade)
+  waiter    Waiter?        @relation(fields: [waiterId], references: [id], onDelete: SetNull)
+
+  @@index([comandaId, at])
+}
+
+/// **Un commensale**, per dividere piatti e conto.
+///
+/// Si creano automaticamente all'apertura del tavolo, uno per coperto, con un
+/// nome provvisorio («Ospite 1»). Il cameriere può rinominarli: «Marco»,
+/// «Laura». Non sono `Guest` del CRM e non devono diventarlo — un commensale
+/// è una posizione a tavola per una sera, un `Guest` è una persona con una
+/// storia, un telefono e un consenso. Confonderli riempirebbe il CRM di
+/// «Ospite 3».
+model OrderGuest {
+  id        String      @id @default(cuid())
+  orderId   String
+  /// La posizione: 1, 2, 3... Regge l'ordinamento e il nome per difetto.
+  ordering  Int
+  label     String      @db.VarChar(60)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  righe     OrderItem[]
+
+  @@unique([orderId, ordering])
+  @@index([orderId])
+}
+
+/// **Una variazione su una riga di comanda**: cottura, senza, extra, porzione.
+///
+/// Righe e non colonne su `OrderItem`, per due motivi. Il primo: sono un
+/// numero variabile — «al sangue, senza sale, extra patate» sono tre, e tre
+/// colonne non basterebbero comunque. Il secondo: l'extra ha un **prezzo**, e
+/// un prezzo che va sul conto deve poter stare su una riga sua, non dentro una
+/// stringa da riparsare.
+///
+/// `priceCents` è un **delta**, quasi sempre zero: una cottura non costa, una
+/// salsa in più sì. Non si somma al totale leggendo queste righe: il delta
+/// viene **già incorporato** in `OrderItem.priceCents` quando la riga si
+/// salva, ed è deliberato — così ogni conto già scritto (totale del conto,
+/// food cost, quote di un conto diviso) continua a tornare senza che nessuno
+/// debba sapere che esistono i modificatori. Qui il delta resta per poterlo
+/// **mostrare** separato: «Tagliata 24,00 + salsa 2,00».
+model OrderItemModifica {
+  id          String              @id @default(cuid())
+  orderItemId String
+  kind        ComandaModificaKind
+  /// Cosa c'è scritto sul foglio della cucina: «Al sangue», «Senza pecorino»,
+  /// «Extra patate». Testo libero e non un catalogo, perché ogni cucina ha il
+  /// suo — i suggerimenti stanno in `lib/personalizzazioni.ts`.
+  label       String              @db.VarChar(80)
+  priceCents  Int                 @default(0)
+  ordering    Int                 @default(0)
+  item        OrderItem           @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+}
+
+/// Gli stati di una comanda, nell'ordine in cui si attraversano.
+///
+/// `RICEVUTA` esiste separata da `INVIATA` e non è un doppione: «è partita» lo
+/// sa la sala, «è arrivata a qualcuno» lo dice la cucina. Chi ha appena
+/// premuto invia su una rete incerta ha bisogno di vedere la seconda, non la
+/// prima.
+enum ComandaStatus {
+  BOZZA
+  INVIATA
+  RICEVUTA
+  IN_PREPARAZIONE
+  PRONTA
+  SERVITA
+  ANNULLATA
+}
+
+/// Lo stato di una **riga**. Gli stessi nomi della comanda meno `RICEVUTA`:
+/// la presa in carico riguarda il foglio intero, il singolo piatto no.
+enum ComandaRigaStatus {
+  BOZZA
+  INVIATA
+  IN_PREPARAZIONE
+  PRONTA
+  SERVITA
+  ANNULLATA
+}
+
+enum ComandaModificaKind {
+  /// Una scelta fra alternative previste: «Impasto integrale».
+  VARIANTE
+  /// Un ingrediente tolto: «Senza pecorino».
+  SENZA
+  /// Un'aggiunta, spesso a pagamento: «Extra patate».
+  EXTRA
+  /// «Al sangue», «Ben cotta».
+  COTTURA
+  /// «Porzione piccola», «Mezza porzione».
+  PORZIONE
+}
+
+/// Chi prende in carico la comanda.
+///
+/// Oggi **un solo valore**, e va detto perché: il §44 del brief vieta di
+/// simulare integrazioni che non abbiamo. Qui non c'è nessun collegamento
+/// finto — c'è una colonna che oggi vale sempre `INTERNO` e un'interfaccia
+/// (`server/comande/fornitore.ts`) con una sola implementazione. Il giorno in
+/// cui arriva Lightspeed si aggiunge un valore qui e una classe là, e
+/// l'interfaccia della sala non cambia di una riga.
+enum FornitoreComanda {
+  INTERNO
 }
 
 model POSConnector {
@@ -1730,6 +1997,9 @@ model Waiter {
   trainings             StaffTraining[]
   medicalChecks         StaffMedicalCheck[]
   notes                 StaffNote[]
+  comande               Comanda[]
+  comandaEventi         ComandaEvento[]
+  notifiche             Notification[]
 
   @@unique([venueId, userId])
   @@index([venueId, createdAt])
@@ -2766,6 +3036,22 @@ enum NotificationKind {
   /// Invii fermati per proteggere la reputazione del dominio.
   DEM_SENDING_PAUSED
   DEM_PAYMENT_FAILED
+  /// I piatti di una comanda sono pronti al passe. È **la** notifica del
+  /// servizio: arriva al cameriere di quel tavolo, non alla campanella del
+  /// locale.
+  COMANDA_PRONTA
+  /// La cucina ha preso in carico la comanda. Discreta: conferma che il
+  /// foglio è arrivato a qualcuno, che è la domanda di chi ha appena inviato.
+  COMANDA_PRESA_IN_CARICO
+  /// Una comanda già in preparazione è stata modificata dalla sala: la
+  /// cucina deve saperlo, e chi ha modificato deve sapere che lo sa.
+  COMANDA_MODIFICATA
+  /// A questa persona è stato assegnato un tavolo che prima non aveva.
+  TAVOLO_ASSEGNATO
+  /// Il turno comincia fra poco.
+  TURNO_IMMINENTE
+  /// Una comunicazione del locale alla squadra.
+  COMUNICAZIONE_STAFF
 }
 
 enum OrderKind {
@@ -3024,11 +3310,12 @@ model DemPlan {
   /// I piani `PRIVATE` esistono ma non compaiono nel confronto: è il posto per
   /// un enterprise trattato a mano, senza inventare una seconda tabella.
   visibility    DemPlanVisibility @default(PUBLIC)
+
   /// Spazio per ciò che verrà — sconti, pacchetti extra, promozioni a tempo —
   /// senza che una colonna vuota per cliente stia in tabella da oggi.
-  metadata      Json?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   subscriptions DemSubscription[] @relation("DemSubscriptionPlan")
   scheduledFor  DemSubscription[] @relation("DemSubscriptionScheduledPlan")

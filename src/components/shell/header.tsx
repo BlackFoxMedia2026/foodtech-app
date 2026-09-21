@@ -1,11 +1,12 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Agent } from "@/components/agent/agent";
-import { PRIMARY_NAV, classiVoce, isNavActive, titoloPagina } from "@/components/shell/nav-items";
+import { PRIMARY_NAV, classiVoce, isNavActive, titoloPagina, vociPermesse } from "@/components/shell/nav-items";
+import type { StaffRole } from "@prisma/client";
 import { MarketingMenu } from "./marketing-menu";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
@@ -43,12 +44,28 @@ export function Header({
   user,
   venues,
   activeVenueId,
+  role,
+  conStaffApp = false,
 }: {
   user: { name?: string | null; email?: string | null };
   venues: { id: string; name: string; city: string | null }[];
   activeVenueId: string;
+  /** Il ruolo di chi guarda: decide quali voci esistono in barra. */
+  role: StaffRole;
+  /** Vero quando questa persona ha anche un'anagrafica, e quindi la Staff App. */
+  conStaffApp?: boolean;
 }) {
   const pathname = usePathname();
+  /* Le voci filtrate una volta sola: le usano sia la fila sia la misura
+     della pillola, e due elenchi diversi farebbero scorrere la pillola su
+     una voce che non c'è.
+
+     `useMemo` non è un'ottimizzazione: senza, il filtro restituisce un array
+     nuovo a ogni render, l'effetto che misura la pillola lo vede cambiato,
+     richiama `setIndicator` con un oggetto anch'esso nuovo, e il render
+     successivo riparte da capo — la testata è montata su ogni pagina, quindi
+     il ciclo si portava dietro tutto `(app)`. */
+  const voci = useMemo(() => vociPermesse(PRIMARY_NAV, role), [role]);
   const inImpostazioni = pathname === "/settings" || pathname.startsWith("/settings/");
   // `HTMLElement` e non `HTMLAnchorElement`: Marketing non è un link ma il
   // bottone che apre il suo menu, e occupa lo stesso posto in fila.
@@ -68,10 +85,10 @@ export function Header({
     // Dentro le Impostazioni questa fila non è montata: misurarla darebbe zero
     // e la pillola ricomparirebbe larga zero all'uscita.
     if (inImpostazioni) return;
-    const activeItem = PRIMARY_NAV.find((item) => isNavActive(pathname, item));
+    const activeItem = voci.find((item) => isNavActive(pathname, item));
     const el = activeItem ? itemRefs.current.get(activeItem.href) : undefined;
     setIndicator(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
-  }, [pathname, inImpostazioni]);
+  }, [pathname, inImpostazioni, voci]);
 
   return (
     <header className="relative z-10 bg-background">
@@ -118,7 +135,7 @@ export function Header({
               />
             )}
 
-            {PRIMARY_NAV.map((item) => {
+            {voci.map((item) => {
               const Icon = item.icon;
               const active = isNavActive(pathname, item);
               const registra = (el: HTMLElement | null) => {
@@ -183,7 +200,7 @@ export function Header({
           <Agent />
           <RicercaGlobale />
           <NotificationBell />
-          <ProfileMenu user={user} />
+          <ProfileMenu user={user} role={role} conStaffApp={conStaffApp} />
         </div>
       </div>
     </header>

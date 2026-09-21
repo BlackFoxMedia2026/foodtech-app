@@ -155,12 +155,25 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(-6px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        /* Il respiro di «c'è un piatto pronto», nella Staff App.
+
+           Non è un lampeggio e non cambia dimensione: cambia **opacità**,
+           fra 1 e 0,55, in due secondi e mezzo. Una cosa che pulsa forte su
+           una schermata che si guarda per un secondo si legge come un
+           allarme, e in sala gli allarmi finti si imparano a ignorare in una
+           serata. Questo si nota solo se lo sguardo resta lì, che è
+           esattamente quando serve. */
+        respiro: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.55" },
+        },
       },
       animation: {
         "fade-in": "fade-in 220ms ease-out",
         "slide-up": "slide-up 240ms ease-out",
         mesh: "mesh 18s ease-in-out infinite",
         "cambio-area": "cambio-area 300ms cubic-bezier(0.22, 1, 0.36, 1)",
+        respiro: "respiro 2500ms ease-in-out infinite",
       },
     },
   },

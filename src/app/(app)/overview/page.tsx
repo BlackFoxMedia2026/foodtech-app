@@ -4,7 +4,7 @@ import { Briefing } from "@/components/overview/briefing";
 import { ProssimePrenotazioni } from "@/components/overview/prossime-prenotazioni";
 import { QuickActions } from "@/components/overview/quick-actions";
 import { WeekTrend } from "@/components/overview/week-trend";
-import { getActiveVenue } from "@/lib/tenant";
+import { can, getActiveVenue } from "@/lib/tenant";
 import { getOverview } from "@/server/insights";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +58,7 @@ export default async function OverviewPage() {
         incasso={data.incasso}
         currency={ctx.venue.currency}
         deltaIncasso={data.comparisons.revenue}
+        mostraIncasso={can(ctx.role, "view_revenue")}
       />
 
       {/*

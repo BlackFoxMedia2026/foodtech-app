@@ -50,3 +50,11 @@ next-env.d.ts
 
 # Tavole di Claude Design: materiale di lavoro, non prodotto
 .design-*/
+
+# Archivio file su disco: il ripiego di `server/archivio-file.ts` quando manca
+# BLOB_READ_WRITE_TOKEN. Sono i file caricati in locale, non sorgente.
+.archivio-locale/
+
+# Dati di lingua dell'OCR: li scarica tesseract al primo uso e li tiene qui.
+# Sono dati, non sorgente (5 MB l'uno).
+*.traineddata

@@ -100,6 +100,7 @@ export function Briefing({
   incasso,
   currency,
   deltaIncasso,
+  mostraIncasso = true,
 }: {
   prenotazioni: number;
   coperti: number;
@@ -112,6 +113,16 @@ export function Briefing({
   currency: string;
   /** Il confronto con ieri sulle stime, da `comparisons.revenue`. */
   deltaIncasso?: number | null;
+  /**
+   * Se mostrare il blocco dei soldi.
+   *
+   * Falso per i ruoli senza `view_revenue`. Il permesso esisteva da settimane
+   * e diceva di no — semplicemente questa fascia non glielo aveva mai
+   * chiesto, e un account di sala leggeva l'incasso del locale nella prima
+   * riga della prima schermata. Gli altri tre blocchi restano: prenotazioni,
+   * coperti e pienezza sono il lavoro, non i conti.
+   */
+  mostraIncasso?: boolean;
 }) {
   if (coperti === 0) return null;
 
@@ -143,22 +154,24 @@ export function Briefing({
     });
   }
 
-  blocchi.push({
-    chiave: "incasso",
-    icona: Wallet,
-    etichetta: soldi.label,
-    corta: soldi.corta,
-    valore: soldi.valore,
-    // Il confronto con ieri sta nella stessa riga piccola della nota: le due
-    // cose non capitano insieme (la nota parla di conti chiusi, e con i conti
-    // chiusi il confronto non si fa) e una seconda riga sotto il numero
-    // alzerebbe tutta la fascia.
-    nota:
-      soldi.nota ??
-      (soldi.delta != null && soldi.delta !== 0
-        ? `${soldi.delta > 0 ? "▲" : "▼"} ${Math.abs(soldi.delta)}% vs ieri`
-        : undefined),
-  });
+  if (mostraIncasso) {
+    blocchi.push({
+      chiave: "incasso",
+      icona: Wallet,
+      etichetta: soldi.label,
+      corta: soldi.corta,
+      valore: soldi.valore,
+      // Il confronto con ieri sta nella stessa riga piccola della nota: le due
+      // cose non capitano insieme (la nota parla di conti chiusi, e con i conti
+      // chiusi il confronto non si fa) e una seconda riga sotto il numero
+      // alzerebbe tutta la fascia.
+      nota:
+        soldi.nota ??
+        (soldi.delta != null && soldi.delta !== 0
+          ? `${soldi.delta > 0 ? "▲" : "▼"} ${Math.abs(soldi.delta)}% vs ieri`
+          : undefined),
+    });
+  }
 
   return (
     <section className="fissa">

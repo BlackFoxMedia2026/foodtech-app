@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_ROOM_LAYERS,
   boundingBox,
@@ -10,10 +10,33 @@ import {
   wallPolygon,
   type RoomElement,
 } from "@/lib/room-layout";
-import { analysisToElements, FloorPlanAnalysisSchema, summarizeAnalysis } from "@/lib/floorplan-analysis";
-import { fallbackAnalysis } from "@/server/floorplan-analysis";
+import {
+  analysisToElements,
+  FloorPlanAnalysisSchema,
+  normalizzaTipoArea,
+  summarizeAnalysis,
+} from "@/lib/floorplan-analysis";
+import { analyzeFloorPlan, fallbackAnalysis } from "@/server/floorplan-analysis";
 import { posizioniSedie, dimensioneDisegnata } from "@/lib/tavolo-geometria";
 import { generateLShape, generateRectangle } from "@/components/floor/editor/perimetro";
+
+/* Il riconoscimento chiama OpenAI e rilegge il file dall'archivio: qui non
+   deve succedere né l'una né l'altra cosa. Quello che si verifica è come
+   `analyzeFloorPlan` reagisce a un rifiuto, non che sappia telefonare. */
+const creaCompletamento = vi.fn();
+vi.mock("openai", () => ({
+  default: class {
+    chat = { completions: { create: creaCompletamento } };
+  },
+}));
+vi.mock("@/server/archivio-file", () => ({
+  leggiFile: async () => new Uint8Array([1, 2, 3]).buffer,
+}));
+
+/** L'errore come lo lancia il client OpenAI: un oggetto con `status`. */
+function rifiuto(status: number) {
+  return Object.assign(new Error(`HTTP ${status}`), { status });
+}
 
 /**
  * La piantina della Sala, verificata dove può mentire senza che si veda.
@@ -198,5 +221,140 @@ describe("le sedie dicono quanti posti ci sono", () => {
     const due = dimensioneDisegnata({ shape: "SQUARE", seats: 2 });
     const otto = dimensioneDisegnata({ shape: "SQUARE", seats: 8 });
     expect(otto.w).toBeGreaterThan(due.w);
+  });
+});
+
+/**
+ * Quando il riconoscimento fallisce, la piantina di partenza arriva lo stesso.
+ * Quello che cambia è la riga che il ristoratore legge: se dice «non siamo
+ * riusciti a leggere questa planimetria» mentre il vero problema è una chiave
+ * sbagliata, ricaricherà la stessa immagine finché non si stanca.
+ */
+describe("perché il riconoscimento non ha funzionato", () => {
+  beforeEach(() => {
+    creaCompletamento.mockReset();
+    (process.env as Record<string, string | undefined>).OPENAI_API_KEY = "sk-di-prova";
+  });
+
+  it("una chiave rifiutata nomina la chiave", async () => {
+    creaCompletamento.mockRejectedValue(rifiuto(401));
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.source).toBe("fallback");
+    expect(a.note).toContain("OPENAI_API_KEY");
+  });
+
+  it("il credito finito non si confonde con un'immagine illeggibile", async () => {
+    creaCompletamento.mockRejectedValue(rifiuto(429));
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.note).toContain("credito");
+    expect(a.note).not.toContain("leggere questa planimetria");
+  });
+
+  it("un modello che non esiste nomina il modello", async () => {
+    creaCompletamento.mockRejectedValue(rifiuto(404));
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.note).toContain("OPENAI_VISION_MODEL");
+  });
+
+  it("un guasto senza nome resta la frase generica", async () => {
+    creaCompletamento.mockRejectedValue(new Error("boom"));
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.note).toContain("non è riuscito a leggere questa planimetria");
+  });
+
+  it("senza chiave il messaggio resta quello della funzione spenta", async () => {
+    delete (process.env as Record<string, string | undefined>).OPENAI_API_KEY;
+    const a = await analyzeFloorPlan({ imageUrl: "/api/archivio-locale/sala/x.png" });
+    expect(a.note).toContain("non è configurato su questo ambiente");
+    expect(creaCompletamento).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * La lettura del riconoscitore non si butta via per un campo.
+ *
+ * Il caso vero, il 21 settembre 2026: su una planimetria di casa `gpt-4o-mini`
+ * ha risposto `AREA_LAVANDERIA`, `AREA_BAGNO` e `AREA_SOGGIORNO` — tipi che non
+ * esistono da noi. Lo schema rifiutava l'intero oggetto e il ristoratore
+ * leggeva «non siamo riusciti a leggere questa planimetria», mentre dodici muri
+ * e le misure reali erano stati letti benissimo.
+ */
+describe("un campo sbagliato non butta via la planimetria", () => {
+  const letturaVera = {
+    version: 1,
+    source: "ai",
+    confidence: 0.85,
+    widthM: 11.26,
+    depthM: 9.44,
+    walls: [
+      { x1: 0.1, y1: 0.1, x2: 0.9, y2: 0.1, thickness: 0.012 },
+      { x1: 0.9, y1: 0.1, x2: 0.9, y2: 0.9, thickness: 0.012 },
+    ],
+    rooms: [
+      { x: 0.1, y: 0.1, width: 0.3, height: 0.2, kind: "AREA_KITCHEN", label: "CUCINA" },
+      { x: 0.5, y: 0.1, width: 0.2, height: 0.2, kind: "AREA_LAVANDERIA", label: "LAVANDERIA" },
+      { x: 0.1, y: 0.4, width: 0.6, height: 0.5, kind: "AREA_SOGGIORNO", label: "SOGGIORNO" },
+      { x: 0.7, y: 0.4, width: 0.2, height: 0.2, kind: "AREA_BAGNO", label: "BAGNO" },
+    ],
+  };
+
+  it("i tipi inventati diventano il nostro più vicino, e i muri restano tutti", () => {
+    const a = FloorPlanAnalysisSchema.parse(letturaVera);
+    expect(a.walls).toHaveLength(2);
+    expect(a.widthM).toBe(11.26);
+    expect(a.rooms.map((r) => r.kind)).toEqual([
+      "AREA_KITCHEN",
+      "AREA_STORAGE",
+      "AREA_ZONE",
+      "AREA_WC",
+    ]);
+  });
+
+  it("il nome scritto sulla planimetria resta quello, non diventa «Magazzino»", () => {
+    const a = FloorPlanAnalysisSchema.parse(letturaVera);
+    expect(a.rooms.map((r) => r.label)).toEqual(["CUCINA", "LAVANDERIA", "SOGGIORNO", "BAGNO"]);
+  });
+
+  it("un muro impossibile se ne va da solo, gli altri restano", () => {
+    const a = FloorPlanAnalysisSchema.parse({
+      ...letturaVera,
+      walls: [
+        { x1: 0.1, y1: 0.1, x2: 0.9, y2: 0.1 },
+        { x1: 7, y1: "molto", x2: null, y2: 0.4 },
+        { x1: 0.2, y1: 0.2, x2: 0.2, y2: 0.8 },
+      ],
+    });
+    expect(a.walls).toHaveLength(2);
+  });
+
+  it("senza nemmeno un muro buono resta il ripiego, che è già previsto", () => {
+    const a = FloorPlanAnalysisSchema.parse({ ...letturaVera, walls: [{ x1: 9, y1: 9, x2: 9, y2: 9 }] });
+    // `analyzeFloorPlan` guarda proprio questo per decidere di ripiegare sul
+    // perimetro invece di consegnare una sala senza pareti.
+    expect(a.walls).toHaveLength(0);
+  });
+});
+
+describe("il tipo di ambiente, ricondotto al nostro", () => {
+  it("un valore che già esiste passa intatto", () => {
+    expect(normalizzaTipoArea("AREA_BAR")).toBe("AREA_BAR");
+  });
+
+  it("le parole italiane della planimetria bastano a indovinare", () => {
+    expect(normalizzaTipoArea("AREA_LAVANDERIA")).toBe("AREA_STORAGE");
+    expect(normalizzaTipoArea("AREA_BAGNO")).toBe("AREA_WC");
+    expect(normalizzaTipoArea("AREA_SCALE")).toBe("AREA_STAIRS");
+    expect(normalizzaTipoArea("AREA_DEHORS")).toBe("AREA_TERRACE");
+  });
+
+  it("quando il tipo non dice niente, si guarda l'etichetta", () => {
+    expect(normalizzaTipoArea("QUALCOSA", "Dispensa")).toBe("AREA_STORAGE");
+    expect(normalizzaTipoArea(null, "Cucina calda")).toBe("AREA_KITCHEN");
+  });
+
+  it("quando non dice niente nemmeno l'etichetta, è una zona", () => {
+    expect(normalizzaTipoArea(undefined)).toBe("AREA_ZONE");
+    expect(normalizzaTipoArea(42, { non: "una stringa" })).toBe("AREA_ZONE");
+    expect(normalizzaTipoArea("AREA_SOGGIORNO", "SOGGIORNO")).toBe("AREA_ZONE");
   });
 });

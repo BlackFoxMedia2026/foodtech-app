@@ -13,6 +13,7 @@ import {
   type NavItem,
 } from "@/components/shell/nav-items";
 import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
+import type { StaffRole } from "@prisma/client";
 
 /**
  * Navigazione da telefono, pensata per il servizio.
@@ -26,7 +27,14 @@ import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
  * Tutti i bersagli sono almeno 44×44 px, che è il minimo perché un dito li
  * prenda senza sbagliare.
  */
-export function MobileNav({ canManageBookings }: { canManageBookings: boolean }) {
+export function MobileNav({
+  canManageBookings,
+  role,
+}: {
+  canManageBookings: boolean;
+  /** Il ruolo: «Altro» porta solo le sezioni che questo ruolo può aprire. */
+  role: StaffRole;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [altroOpen, setAltroOpen] = useState(false);
@@ -54,7 +62,7 @@ export function MobileNav({ canManageBookings }: { canManageBookings: boolean })
     gli stessi nomi e le stesse descrizioni — la lista vive in un posto solo,
     `MARKETING_NAV`.
   */
-  const altreSezioni = primarieFuoriDallaBarra();
+  const altreSezioni = primarieFuoriDallaBarra(role);
   const altroAttivo = altreSezioni.some((i) => isNavActive(pathname, i));
 
   function vaiA(href: string) {
