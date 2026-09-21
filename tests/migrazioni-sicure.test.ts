@@ -1,7 +1,12 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { esaminaMigrazione, senzaCommenti, serraturaOccupata } from "@/lib/migration-safety";
+import {
+  ambienteDelleMigrazioni,
+  esaminaMigrazione,
+  senzaCommenti,
+  serraturaOccupata,
+} from "@/lib/migration-safety";
 
 /**
  * Il freno sulle migrazioni delle anteprime.
@@ -160,5 +165,46 @@ describe("la serratura del database", () => {
     expect(serraturaOccupata('ERROR: relation "Guest" does not exist')).toBe(false);
     expect(serraturaOccupata("syntax error at or near ALTAR")).toBe(false);
     expect(serraturaOccupata("")).toBe(false);
+  });
+});
+
+describe("la connessione con cui si migra", () => {
+  /*
+    Il 21 settembre 2026 una migrazione fermata di proposito ha bloccato tutte
+    le pubblicazioni successive, e non per il suo contenuto: la serratura di
+    Prisma era stata presa **attraverso il pooler**, il processo e morto, e
+    pgbouncer ha tenuto vivo il collegamento con la serratura dentro. Anche il
+    comando che sblocca vuole quella serratura, quindi non si poteva nemmeno
+    rimediare.
+  */
+  it("preferisce l'indirizzo diretto, quando c'e", () => {
+    const env = ambienteDelleMigrazioni({
+      DATABASE_URL: "postgres://pooler.esempio/db?pgbouncer=true",
+      DATABASE_URL_UNPOOLED: "postgres://diretto.esempio/db",
+    });
+    expect(env.DATABASE_URL).toBe("postgres://diretto.esempio/db");
+    // L'indirizzo del pooler non si perde: serve all'applicazione.
+    expect(env.DATABASE_URL_UNPOOLED).toBe("postgres://diretto.esempio/db");
+  });
+
+  it("accetta anche il nome che usa Vercel Postgres", () => {
+    const env = ambienteDelleMigrazioni({
+      DATABASE_URL: "postgres://pooler.esempio/db",
+      POSTGRES_URL_NON_POOLING: "postgres://diretto.esempio/db",
+    });
+    expect(env.DATABASE_URL).toBe("postgres://diretto.esempio/db");
+  });
+
+  it("dove non c'e nessun pooler non cambia niente", () => {
+    /* Un database locale, o un fornitore senza pooler: l'indirizzo e uno solo
+       e va usato quello. Inventare un secondo nome romperebbe lo sviluppo. */
+    const env = ambienteDelleMigrazioni({ DATABASE_URL: "postgres://localhost:5432/dev" });
+    expect(env.DATABASE_URL).toBe("postgres://localhost:5432/dev");
+  });
+
+  it("non tocca l'ambiente di chi la chiama", () => {
+    const originale = { DATABASE_URL: "a", DATABASE_URL_UNPOOLED: "b" };
+    ambienteDelleMigrazioni(originale);
+    expect(originale.DATABASE_URL).toBe("a");
   });
 });

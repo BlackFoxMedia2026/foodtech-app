@@ -3,7 +3,11 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { esaminaMigrazione, serraturaOccupata } from "../src/lib/migration-safety";
+import {
+  ambienteDelleMigrazioni,
+  esaminaMigrazione,
+  serraturaOccupata,
+} from "../src/lib/migration-safety";
 
 /**
  * Applica le migrazioni, con un freno per le anteprime.
@@ -69,9 +73,15 @@ const ATTESA_MS = 12_000;
  * quell'errore: una migrazione scritta male deve fallire subito e forte.
  */
 function applica() {
+  /* La connessione diretta, non quella del pooler: vedi
+     `ambienteDelleMigrazioni` in `src/lib/migration-safety.ts`. */
+  const env = ambienteDelleMigrazioni();
+  if (env.DATABASE_URL !== process.env.DATABASE_URL) {
+    console.log("[migrazioni] uso la connessione diretta al database, non il pooler.");
+  }
   for (let tentativo = 1; tentativo <= TENTATIVI; tentativo++) {
     try {
-      const esito = execFileSync("npx", ["prisma", "migrate", "deploy"], { encoding: "utf8" });
+      const esito = execFileSync("npx", ["prisma", "migrate", "deploy"], { encoding: "utf8", env });
       console.log(esito.trim());
       return;
     } catch (err) {

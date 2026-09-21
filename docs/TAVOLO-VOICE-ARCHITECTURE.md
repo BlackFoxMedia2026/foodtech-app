@@ -285,7 +285,7 @@ il controllo sta nella rotta, non in una variabile che si può accendere.
 | Area | Impatto |
 |---|---|
 | `PhoneCall` | additivo |
-| `CallLog`, `MissedCall`, `VoiceBookingDraft` | **cancellate** (verificate vuote) |
+| `CallLog`, `MissedCall`, `VoiceBookingDraft` | **cancellate il 21 set 2026**, e non erano vuote: due righe ciascuna, del seed della vetrina di aprile. «Verificate vuote» qui era scritto prima di verificarlo — vedi `docs/TABELLE-SENZA-CODICE.md` |
 | `BookingSource` | un valore in più: additivo, nessun dato rotto |
 | `abilities.ts` | sei capacità in più; la matrice cambia per MANAGER/RECEPTION/MARKETING |
 | `layout.tsx` | un componente in più nel guscio |

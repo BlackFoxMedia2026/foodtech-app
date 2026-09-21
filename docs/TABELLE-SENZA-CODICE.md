@@ -62,23 +62,66 @@ vorrebbe dire qualche minuto di errori su letture normalissime.
 Le sette tabelle no: **nessuna riga di codice le interrogava**, quindi nessun
 client vecchio ci manda una query e si possono cancellare subito.
 
-### Il conteggio in produzione non serviva: lo fa la migrazione
+### Il conteggio in produzione non serviva: lo ha fatto la migrazione
 
 Era il punto in cui questo documento si fermava — «cancellare è un atto di
-fede». La fede non serve: **la verifica sta dentro la migrazione**. Prima di
-cancellare qualunque cosa, un blocco `DO` conta le righe delle sette tabelle,
-i pagamenti con importi in valuta e le organizzazioni con una valuta di base
-diversa da EUR. Se trova **una riga sola** solleva un'eccezione che nomina la
-tabella e il numero, e la transazione torna indietro: niente cancellato,
-niente da rimediare.
+fede». La fede non serve: **la verifica sta dentro la migrazione**, e il 21
+settembre 2026 ha funzionato al primo colpo. La prima versione contava tutte le
+righe e si è fermata dicendo cosa c'era:
 
-Provata: eseguita con dentro una tabella che ha righe, si ferma dicendo
-`Venue: 3 righe`. Ed è marcata distruttiva da `src/lib/migration-safety.ts`,
-quindi **le anteprime non la applicano** — solo una pubblicazione vera.
+```
+CallLog: 2   MissedCall: 2   VoiceBookingDraft: 2
+StaffShift: 6   FloorDecor: 8   MessageTemplate: 8
+```
 
-Se in produzione ci fosse davvero qualcosa, il messaggio dice cosa fare: se
-sono righe di demo si cancellano a mano e si ripete, se sono dati veri la
-sostituzione non è completa e la migrazione va rifatta.
+Niente cancellato, transazione tornata indietro, pubblicazione fallita in modo
+visibile. **Io le credevo vuote** — lo diceva anche il commento nello schema —
+e non lo erano: sono le righe del seed della vetrina di aprile 2026, l'unica
+cosa che le abbia mai scritte (`docs/TAVOLO-VOICE-ARCHITECTURE.md`: «chi la
+scrive: solo la demo; chi la legge: nessuno»).
+
+Quindi la guardia ora non chiede «sono vuote?» ma la domanda che conta:
+**qualcuno ha ricominciato a scriverci?** Si ferma se trova una riga creata da
+giugno 2026 in poi — da lì in avanti nessun codice le ha toccate, e il lavoro
+del telefono di settembre ha creato tabelle nuove proprio perché queste erano
+morte. Una riga recente vorrebbe dire che l'assunto è falso.
+
+La soglia è una data e non un numero perché un numero invecchia: se domani il
+seed della vetrina ne scrive nove invece di otto, un controllo sul conteggio si
+fermerebbe per niente. Una riga **recente** invece è sempre la cosa che deve
+far fermare tutto.
+
+Provata in entrambi i versi su una tabella che ha righe: con la soglia nel
+passato si ferma (`Venue: 3 righe recenti`), con la soglia nel futuro passa.
+
+Ed è marcata distruttiva da `src/lib/migration-safety.ts`, quindi **le
+anteprime non la applicano** — solo una pubblicazione vera.
+
+### Il prezzo di una guardia che si ferma
+
+Una migrazione fallita in produzione **blocca le pubblicazioni successive**
+(Prisma risponde `P3018`: «new migrations cannot be applied before the error is
+recovered from»). Il sito continua a funzionare — la pubblicazione precedente
+resta in piedi — ma finché quella riga di storico non viene sbloccata, nessun
+deploy passa: si sblocca segnando la migrazione come tornata indietro
+(`prisma migrate resolve`, opzione «rolled-back»), e va fatto sul database di
+produzione.
+
+È il costo giusto da pagare per non cancellare dati per sbaglio, e va saputo
+prima: **una guardia che ferma una migrazione ferma anche la fila**.
+
+E una seconda cosa, che il 21 settembre è costata più della prima. La
+serratura di Prisma (`pg_advisory_lock`) vive per **tutta la sessione**, e
+quella migrazione l'aveva presa passando dal **pooler**: il processo del build
+è morto, pgbouncer ha tenuto vivo il collegamento al server, e la serratura è
+rimasta chiusa con dentro nessuno. Da lì ogni pubblicazione moriva dopo dieci
+secondi d'attesa — e nemmeno il comando che sblocca la migrazione si poteva
+eseguire, perché vuole la stessa serratura.
+
+Da adesso le migrazioni passano dalla **connessione diretta** di Neon
+(`DATABASE_URL_UNPOOLED`), non dal pooler: vedi `ambienteDelleMigrazioni` in
+`src/lib/migration-safety.ts`, con le prove in `tests/migrazioni-sicure.test.ts`.
+Una serratura di sessione ha senso solo su una sessione che è davvero la tua.
 
 ---
 
