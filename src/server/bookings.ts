@@ -651,31 +651,15 @@ export async function updateBooking(
     await avvisaConfermaWhatsapp(venueId, updated.id).catch(() => undefined);
   }
 
-  /**
-   * Una disdetta si annuncia solo se riguarda **le prossime quarantott'ore**.
-   *
-   * Quella per il mese prossimo non cambia niente a nessuno oggi; quella per
-   * stasera è un tavolo da rivendere — e il centro controllo, se in lista
-   * d'attesa c'è qualcuno che ci sta, lo dice già con il nome. Qui serve per
-   * chi non sta guardando quella schermata.
-   */
-  if (
-    updated.status === "CANCELLED" &&
-    existing.status !== "CANCELLED" &&
-    updated.startsAt.getTime() - Date.now() < 48 * 3_600_000 &&
-    updated.startsAt.getTime() > Date.now()
-  ) {
-    const chi = updated.guest
-      ? `${updated.guest.firstName}${updated.guest.lastName ? ` ${updated.guest.lastName}` : ""}`
-      : "Una prenotazione";
-    await createNotification(venueId, {
-      kind: "BOOKING_CANCELLED",
-      title: `${chi} ha disdetto: ${updated.partySize} coperti liberi`,
-      body: `Erano attesi ${formatDayAndTime(updated.startsAt)}${
-        updated.table ? ` al ${updated.table.label}` : ""
-      }.`,
-      link: "/service",
-      meta: { bookingId: updated.id },
+  if (updated.status === "CANCELLED" && existing.status !== "CANCELLED") {
+    await annunciaDisdetta(venueId, {
+      id: updated.id,
+      startsAt: updated.startsAt,
+      partySize: updated.partySize,
+      nome: updated.guest
+        ? `${updated.guest.firstName}${updated.guest.lastName ? ` ${updated.guest.lastName}` : ""}`
+        : null,
+      tavolo: updated.table?.label ?? null,
     });
   }
 
@@ -708,4 +692,45 @@ export async function deleteBooking(
     },
   });
   return deleted;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  L'annuncio di una disdetta                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Dice alla sala che un tavolo si è liberato.
+ *
+ * Sta qui, in una funzione sola, perché una disdetta arriva da **due strade**:
+ * dal gestionale e dal telefono. Quando questo blocco era dentro
+ * `updateBooking`, la disdetta presa al telefono cambiava lo stato e non
+ * avvisava nessuno: il tavolo restava apparecchiato tutta la sera, che è
+ * esattamente il danno che disdire al telefono doveva evitare.
+ *
+ * Si annuncia solo se riguarda **le prossime quarantott'ore**: quella per il
+ * mese prossimo non cambia niente a nessuno oggi, quella per stasera è un
+ * tavolo da rivendere.
+ */
+export async function annunciaDisdetta(
+  venueId: string,
+  p: {
+    id: string;
+    startsAt: Date;
+    partySize: number;
+    nome: string | null;
+    tavolo: string | null;
+  },
+  adesso: Date = new Date(),
+): Promise<void> {
+  const fra = p.startsAt.getTime() - adesso.getTime();
+  if (fra <= 0 || fra >= 48 * 3_600_000) return;
+
+  const chi = p.nome?.trim() || "Una prenotazione";
+  await createNotification(venueId, {
+    kind: "BOOKING_CANCELLED",
+    title: `${chi} ha disdetto: ${p.partySize} coperti liberi`,
+    body: `Erano attesi ${formatDayAndTime(p.startsAt)}${p.tavolo ? ` al ${p.tavolo}` : ""}.`,
+    link: "/service",
+    meta: { bookingId: p.id },
+  });
 }

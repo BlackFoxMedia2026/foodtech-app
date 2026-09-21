@@ -125,13 +125,33 @@ export async function risponditorePerCentralino(venueId: string): Promise<{
   saluto: string;
   locale: string;
   fuso: string;
+  risposte: { argomento: string; risposta: string }[];
 }> {
-  const [conf, venue] = await Promise.all([
+  const [conf, venue, risposte] = await Promise.all([
     db.voiceConfiguration.findUnique({
       where: { venueId },
       select: { aiSaluto: true },
     }),
     db.venue.findUnique({ where: { id: venueId }, select: { name: true, timezone: true } }),
+    /*
+      Le risposte che il locale ha **già scritto**.
+
+      Arrivano insieme al saluto perché è una domanda sola — «cosa devo dire
+      quando alzo?» — e perché il momento in cui servono è lo stesso. Solo
+      quelle attive: una risposta spenta è una risposta che il locale ha deciso
+      di non dare più, e ripeterla al telefono sarebbe peggio che non averla.
+
+      Un tetto di quaranta: sono poche e corte per disegno (vedi
+      `server/voice/conoscenza.ts`), e un elenco che cresce senza limite
+      finirebbe dentro le istruzioni del modello — dove ogni riga costa, e le
+      ultime vengono lette peggio delle prime.
+    */
+    db.voiceKnowledgeItem.findMany({
+      where: { venueId, attivo: true },
+      orderBy: [{ categoria: "asc" }, { createdAt: "asc" }],
+      take: 40,
+      select: { categoria: true, argomenti: true, risposta: true },
+    }),
   ]);
 
   const nome = venue?.name ?? "ristorante";
@@ -139,5 +159,12 @@ export async function risponditorePerCentralino(venueId: string): Promise<{
     saluto: conf?.aiSaluto?.trim() || benvenutoPredefinito(nome),
     locale: nome,
     fuso: venue?.timezone ?? "Europe/Rome",
+    risposte: risposte.map((r) => ({
+      /* L'argomento è quello che il locale ha scritto, se l'ha scritto: la
+         categoria è una classificazione nostra, e «ORARI» è meno utile di
+         «a che ora chiudete la domenica». */
+      argomento: r.argomenti[0]?.trim() || r.categoria,
+      risposta: r.risposta.trim(),
+    })),
   };
 }

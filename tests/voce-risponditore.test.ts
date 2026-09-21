@@ -7,6 +7,7 @@ import {
   salvaBenvenuto,
   vistaBenvenuto,
 } from "@/server/voice/benvenuto";
+import { aggiornaRisposta, creaRisposta } from "@/server/voice/conoscenza";
 import { disponibilitaPerTelefono } from "@/server/voice/disponibilita-telefono";
 import { testoConferma, avvisaConfermaWhatsapp } from "@/server/voice/conferma-whatsapp";
 import { registraPrenotazioneTelefonica } from "@/server/prenotazione-telefonica";
@@ -129,6 +130,50 @@ describe("il saluto del risponditore", () => {
     const perIlCentralino = await risponditorePerCentralino(venueId);
     expect(perIlCentralino.saluto).toBe(benvenutoPredefinito(nomeLocale));
     expect(perIlCentralino.saluto.length).toBeGreaterThan(0);
+  });
+
+  it("porta al centralino le risposte che il locale ha scritto", async () => {
+    /*
+      Sono l'unica cosa che la voce puo dire su orari, parcheggio e cani: senza
+      queste, alla domanda piu frequente che le fanno la risposta onesta e
+      «non lo so» — e chi chiama riattacca e chiama un altro ristorante.
+
+      Arrivano con il saluto perche e la stessa domanda, e perche il momento in
+      cui servono e lo stesso: mentre il telefono squilla.
+    */
+    const attiva = await creaRisposta(venueId, {
+      categoria: "ORARI",
+      argomenti: ["a che ora chiudete", "orario di chiusura"],
+      risposta: "La cucina chiude alle 23.",
+    });
+    const spenta = await creaRisposta(venueId, {
+      categoria: "ALTRO",
+      argomenti: ["si porta il cane"],
+      risposta: "Non piu: e cambiata la regola.",
+    });
+    await aggiornaRisposta(venueId, spenta.id, { attivo: false });
+
+    const perIlCentralino = await risponditorePerCentralino(venueId);
+    /* L'argomento e quello scritto dal locale, non la nostra categoria:
+       «ORARI» e meno utile di «a che ora chiudete» a un modello che deve
+       capire se la domanda e questa. */
+    expect(perIlCentralino.risposte).toContainEqual({
+      argomento: "a che ora chiudete",
+      risposta: "La cucina chiude alle 23.",
+    });
+    /* Una risposta spenta e una risposta che il locale ha deciso di non dare
+       piu: ripeterla al telefono sarebbe peggio che non averla. */
+    expect(perIlCentralino.risposte.map((r) => r.risposta)).not.toContain(
+      "Non piu: e cambiata la regola.",
+    );
+
+    await db.voiceKnowledgeItem.delete({ where: { id: attiva.id } });
+    await db.voiceKnowledgeItem.delete({ where: { id: spenta.id } });
+  });
+
+  it("senza risposte scritte non manda un elenco finto", async () => {
+    const perIlCentralino = await risponditorePerCentralino(venueId);
+    expect(perIlCentralino.risposte).toEqual([]);
   });
 
   it("rifiuta un testo più lungo della colonna", async () => {
