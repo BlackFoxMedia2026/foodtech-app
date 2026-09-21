@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { MessageChannel } from "@prisma/client";
 import { db } from "@/lib/db";
 import { enqueueJob } from "@/server/jobs/queue";
+import { mandaSms, smsConfigurato } from "@/server/messaging/sms";
 
 /**
  * Un solo punto da cui escono i messaggi verso gli ospiti.
@@ -118,14 +119,32 @@ const PROVIDERS: Record<MessageChannel, Provider> = {
       return esitoResend(res);
     },
   },
-  // Il posto è pronto e la firma è quella giusta: quando ci sarà un fornitore,
-  // qui va l'adattatore e non cambia nient'altro. Vedi docs/INTEGRATIONS.md.
+  /*
+    Gli SMS, dal 21 settembre 2026. Il posto era pronto da settimane e diceva
+    sempre «no»: promemoria, sondaggi, automazioni e il link per riprendere una
+    telefonata interrotta finivano tutti in `no_channel`. Vedi
+    `server/messaging/sms.ts` per il perché del fornitore.
+  */
   SMS: {
-    available: () => false,
-    async send() {
-      throw new Error("sms_not_configured");
+    available: smsConfigurato,
+    async send(message) {
+      return mandaSms({ to: message.to, body: message.body });
     },
   },
+  /*
+    WhatsApp **non** si finge.
+
+    Non manca un adattatore: mancano un account WhatsApp Business e un
+    **modello di messaggio approvato da Meta** per ogni tipo di messaggio. Fuori
+    dalle ventiquattr'ore da un messaggio del cliente, un testo libero non si
+    può mandare — è una regola del canale, non del fornitore. Un adattatore
+    scritto qui adesso risponderebbe «non autorizzato» a ogni invio, e la
+    differenza fra «non configurato» e «configurato e rotto» la pagherebbe chi
+    aspetta una conferma.
+
+    Finché non c'è, `canalePerTelefono` manda un SMS: arriva sullo stesso
+    telefono, e nel registro c'è scritto SMS. Vedi `docs/INTEGRATIONS.md`.
+  */
   WHATSAPP: {
     available: () => false,
     async send() {
@@ -133,6 +152,25 @@ const PROVIDERS: Record<MessageChannel, Provider> = {
     },
   },
 };
+
+/**
+ * Il canale con cui raggiungere un **numero di telefono**, oggi.
+ *
+ * Di chi chiama sappiamo il numero e non l'indirizzo, quindi la domanda non è
+ * «email o SMS?» ma «con che cosa arrivo su quel telefono?». WhatsApp quando
+ * ci sarà — costa meno e si legge di più — altrimenti un SMS. `null` quando
+ * non c'è niente: e allora chi chiama questa funzione **lo dice** invece di
+ * dichiarare mandato un messaggio che non parte.
+ *
+ * Sta qui e non nei posti che mandano perché altrimenti sarebbero tre copie
+ * della stessa decisione, e il giorno in cui WhatsApp si accende ne
+ * cambierebbe una sola.
+ */
+export function canalePerTelefono(): MessageChannel | null {
+  if (channelAvailable("WHATSAPP")) return "WHATSAPP";
+  if (channelAvailable("SMS")) return "SMS";
+  return null;
+}
 
 export function channelAvailable(channel: MessageChannel): boolean {
   return PROVIDERS[channel]?.available() ?? false;

@@ -81,7 +81,12 @@ function applica() {
   }
   for (let tentativo = 1; tentativo <= TENTATIVI; tentativo++) {
     try {
-      const esito = execFileSync("npx", ["prisma", "migrate", "deploy"], { encoding: "utf8", env });
+      const esito = execFileSync("npx", ["prisma", "migrate", "deploy"], {
+        encoding: "utf8",
+        /* `NodeJS.ProcessEnv` pretende `NODE_ENV`: qui l'ambiente nasce da
+           `process.env` e ce l'ha, ma il tipo generico non lo sa. */
+        env: env as NodeJS.ProcessEnv,
+      });
       console.log(esito.trim());
       return;
     } catch (err) {

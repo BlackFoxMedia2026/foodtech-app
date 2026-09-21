@@ -15,9 +15,18 @@ export async function GET(req: Request) {
     const risultati = await sendDueReminders();
     const per = (esito: string) => risultati.filter((r) => r.outcome === esito).length;
 
+    /* Quanti per canale, non solo quanti: cento promemoria accodati non
+       dicono se sono cento email gratis o cento SMS che si pagano, e quella
+       differenza la vuole sapere chi guarda la fattura. */
+    const perCanale = (canale: string) =>
+      risultati.filter((r) => r.outcome === "queued" && r.canale === canale).length;
+
     return {
       totale: risultati.length,
       inCoda: per("queued"),
+      email: perCanale("EMAIL"),
+      sms: perCanale("SMS"),
+      whatsapp: perCanale("WHATSAPP"),
       senzaContatto: per("no_address"),
       canaleAssente: per("no_channel"),
       giaMandati: per("duplicate"),

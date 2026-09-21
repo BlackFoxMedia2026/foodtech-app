@@ -1,10 +1,10 @@
 import { db } from "@/lib/db";
-import { enqueueMessage, registraNonMandato } from "@/server/messaging/send";
+import { canalePerTelefono, enqueueMessage, registraNonMandato } from "@/server/messaging/send";
 
 /**
  * Il messaggio a chi ha prenotato al telefono, quando la sala conferma.
  *
- * ## Perché WhatsApp e non una mail
+ * ## Perché un messaggio sul telefono e non una mail
  *
  * Perché di chi chiama sappiamo **il numero**, non l'indirizzo. Chiederglielo
  * a voce vorrebbe dire far dettare una mail al telefono, che si sbaglia una
@@ -19,14 +19,17 @@ import { enqueueMessage, registraNonMandato } from "@/server/messaging/send";
  * nessuno l'ha confermata è la promessa che il ristorante non ha fatto — e la
  * mantiene comunque, tenendo un tavolo che non voleva dare.
  *
- * ## Finché il canale non c'è, resta la traccia
+ * ## WhatsApp quando ci sarà, un SMS da subito
  *
- * WhatsApp in questa installazione **non ha ancora un fornitore**: serve un
- * account WhatsApp Business e un modello di messaggio approvato. Fino ad
- * allora ogni conferma lascia una riga `SKIPPED` nel registro dei messaggi,
- * col testo che sarebbe partito. Il giorno che il fornitore c'è, non cambia
- * nient'altro che quello — e nel frattempo nessuno crede che il cliente sia
- * stato avvisato.
+ * WhatsApp costa meno e si legge di più, ma vuole un account WhatsApp Business
+ * e un **modello approvato da Meta** per ogni tipo di messaggio: fuori dalle
+ * ventiquattr'ore da un messaggio del cliente, un testo libero non si può
+ * mandare, ed è una regola del canale. Dal 21 settembre 2026 c'è il canale
+ * SMS, quindi questa conferma **parte davvero** — e il giorno in cui WhatsApp
+ * si accende cambia da sola, perché il canale lo scegle `canalePerTelefono`.
+ *
+ * Se non c'è nessuno dei due resta una riga `SKIPPED` nel registro col testo
+ * che sarebbe partito: nessuno crede che il cliente sia stato avvisato.
  */
 
 /** Il tipo di messaggio: con `bookingId` è anche la chiave anti-doppione. */
@@ -112,9 +115,20 @@ export async function avvisaConfermaWhatsapp(
     fuso: b.venue.timezone,
   });
 
+  /*
+    Il canale lo decide `canalePerTelefono`: WhatsApp quando ci sarà, un SMS
+    finché non c'è. Arriva sullo stesso telefono, e nel registro c'è scritto
+    quale dei due è partito — non «WhatsApp» per un SMS.
+
+    Quando non c'è nessuno dei due si sceglie `WHATSAPP` per la traccia: è il
+    canale che quel messaggio **vorrebbe**, e la riga `SKIPPED` dice al locale
+    cosa manca per accenderlo.
+  */
+  const canale = canalePerTelefono() ?? ("WHATSAPP" as const);
+
   const messaggio = {
     venueId,
-    channel: "WHATSAPP" as const,
+    channel: canale,
     to: numero,
     body: testo,
     guestId: b.guestId,
