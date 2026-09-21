@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { classifyIntent } from "@/server/ai/intent-router";
 import { toolRegistry } from "@/server/ai/tool-registry";
@@ -165,6 +165,21 @@ describe("quando la misura non basta, la risposta lo dice", () => {
 
 describe("con dati veri, le risposte portano i numeri", () => {
   it("chi rischia di mancare distingue il ritardo dalla storia di assenze", async () => {
+    /**
+     * L'orologio è fermo, e non è pignoleria.
+     *
+     * Questa prova metteva una prenotazione «fra novanta minuti» a partire da
+     * adesso. Eseguita dopo le 22:30 del locale, quei novanta minuti cadono nel
+     * giorno dopo: la prenotazione futura non c'era più e il test diventava
+     * rosso — la notte del 21 settembre 2026 è successo, e per mezz'ora ho
+     * cercato un difetto nelle mie modifiche che non c'era.
+     *
+     * Con un istante fisso a metà serata la prova dice la stessa cosa a
+     * qualunque ora la si esegua. `shouldAdvanceTime` lascia camminare i timer
+     * veri, che a Prisma servono per le sue connessioni.
+     */
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-09-21T18:00:00.000Z")); // 20:00 a Roma
     const adesso = new Date();
     const ospiteConStoria = await db.guest.create({
       data: {
@@ -222,6 +237,8 @@ describe("con dati veri, le risposte portano i numeri", () => {
 
     await db.booking.deleteMany({ where: { venueId } });
     await db.guest.deleteMany({ where: { venueId } });
+
+    vi.useRealTimers();
   });
 
   it("il giorno peggiore confronta solo i giorni misurati abbastanza", async () => {

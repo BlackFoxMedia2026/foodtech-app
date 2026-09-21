@@ -6,6 +6,8 @@ import {
   combineTablesForBooking,
   splitTablesForBooking,
 } from "@/server/booking-floor";
+import { updateBooking } from "@/server/bookings";
+import { checkAvailability } from "@/server/availability";
 
 /**
  * Unire e dividere i tavoli.
@@ -274,5 +276,66 @@ describe("«nessun tavolo» dice quale nessun tavolo", () => {
     expect(daUnire.tables.length).toBeGreaterThan(0);
     // E il séparé non unibile non compare.
     expect(daUnire.tables.map((t) => t.tableId)).not.toContain(fisso);
+  });
+});
+
+describe("sciogliere la tavolata quando il tavolo cambia", () => {
+  /**
+   * Il difetto che rendeva invendibile un tavolo vuoto.
+   *
+   * `assignBookingToTable` azzerava i tavoli accostati, con la motivazione
+   * scritta accanto. La modifica normale della prenotazione no: su una
+   * tavolata T1+T2, «rimuovi tavolo» manda `{ tableId: null }` e lasciava
+   * `[T2]` attaccato. Da quel momento T2 risultava occupato per la
+   * disponibilità e per la sala, e chi provava ad assegnarlo si sentiva dire
+   * «è stato appena assegnato a un'altra prenotazione» — una prenotazione che
+   * nell'elenco non ha nessun tavolo.
+   */
+  it("togliere il tavolo libera anche gli accostati", async () => {
+    const b = await prenotazione(8);
+    await combineTablesForBooking(venueId, b.id, [t1, t2], { actor: attore() });
+
+    await updateBooking(venueId, b.id, { tableId: null }, { actor: attore() });
+
+    const dopo = await db.booking.findUniqueOrThrow({ where: { id: b.id } });
+    expect(dopo.tableId).toBeNull();
+    expect(dopo.combinedTableIds).toEqual([]);
+
+    /* La prova che conta davvero: T2 torna vendibile. Prima rispondeva
+       «occupato» a nome di una prenotazione senza tavoli. */
+    const libero = await checkAvailability(venueId, {
+      startsAt: ORA,
+      durationMin: 105,
+      partySize: 2,
+      tableId: t2,
+    });
+    expect(libero.available).toBe(true);
+  });
+
+  it("spostare la prenotazione su un altro tavolo scioglie la tavolata", async () => {
+    const b = await prenotazione(8);
+    await combineTablesForBooking(venueId, b.id, [t1, t2], { actor: attore() });
+
+    /* Il caso vero: il gruppo si riduce e passa a un tavolo solo. Spostare
+       otto persone su un tavolo da quattro viene rifiutato, ed è giusto: la
+       prima versione di questo test lo pretendeva e aveva torto il test. */
+    await updateBooking(venueId, b.id, { tableId: t3, partySize: 4 }, { actor: attore() });
+
+    const dopo = await db.booking.findUniqueOrThrow({ where: { id: b.id } });
+    expect(dopo.tableId).toBe(t3);
+    expect(dopo.combinedTableIds).toEqual([]);
+  });
+
+  it("una modifica che non tocca il tavolo lascia la tavolata dov'è", async () => {
+    /* L'altra metà della regola: cambiare una nota non deve sciogliere niente,
+       altrimenti si perde una tavolata per un gesto che non la riguarda. */
+    const b = await prenotazione(8);
+    await combineTablesForBooking(venueId, b.id, [t1, t2], { actor: attore() });
+
+    await updateBooking(venueId, b.id, { notes: "vicino alla finestra" }, { actor: attore() });
+
+    const dopo = await db.booking.findUniqueOrThrow({ where: { id: b.id } });
+    expect(dopo.tableId).toBe(t1);
+    expect(dopo.combinedTableIds).toEqual([t2]);
   });
 });

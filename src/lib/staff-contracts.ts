@@ -106,6 +106,46 @@ export function pickCurrentContract<T extends { startDate: Date }>(contracts: T[
   return [...contracts].sort((a, b) => b.startDate.getTime() - a.startDate.getTime())[0];
 }
 
+/**
+ * Il contratto **in vigore oggi**, che è una domanda diversa da «l'ultimo».
+ *
+ * `pickCurrentContract` risponde «quello che è cominciato per ultimo», ed è
+ * giusto per la scheda: mostra il rinnovo appena registrato. Ma per sapere se
+ * una persona può lavorare oggi serve sapere se c'è un contratto che **copre
+ * oggi**, e le due risposte si separano proprio nel caso che conta:
+ *
+ *     contratto A   01/01 → 31/08   (scaduto)
+ *     contratto B   01/10 → 31/03   (registrato in anticipo)
+ *     oggi          20/09
+ *
+ * `pickCurrentContract` sceglie B, il suo stato è «non ancora iniziato», e la
+ * scheda scriveva «valido, scade il 31 marzo» mentre la persona stava
+ * lavorando **senza contratto in vigore**. Il contratto A, il solo scaduto,
+ * non veniva nemmeno guardato.
+ *
+ * `null` quando nessuno copre oggi: è la risposta che mancava.
+ */
+export function contrattoInVigore<T extends { startDate: Date; endDate: Date | null }>(
+  contracts: T[],
+  today: Date = new Date(),
+): T | null {
+  /* Il confronto è **fra giorni**, non fra istanti: `startDate` e `endDate`
+     sono date senza ora, e l'ultimo giorno di contratto è coperto per tutto il
+     giorno. Con i millisecondi, un contratto che finisce il 31 agosto
+     risultava scaduto già alle 00:01 del 31. È la stessa cura che
+     `getContractStatus` ha da sempre, e la prima versione di questa funzione
+     non l'aveva: l'ha trovata il test. */
+  const oggi = startOfDay(today).getTime();
+  const coprono = contracts.filter((c) => {
+    if (startOfDay(c.startDate).getTime() > oggi) return false;
+    return c.endDate === null || startOfDay(c.endDate).getTime() >= oggi;
+  });
+  if (coprono.length === 0) return null;
+  /* Se per errore ce n'è più d'uno, vince quello cominciato per ultimo: è il
+     più recente, e comunque la scheda mostra l'elenco completo. */
+  return [...coprono].sort((a, b) => b.startDate.getTime() - a.startDate.getTime())[0];
+}
+
 export function sortContractsByStartDateDesc<T extends { startDate: Date }>(contracts: T[]): T[] {
   return [...contracts].sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 }

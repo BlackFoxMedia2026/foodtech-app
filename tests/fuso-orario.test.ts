@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VENUE_TIMEZONE, dateKeyInVenue, shiftDateKey, todayInVenue } from "@/lib/venue-time";
+import {
+  DEFAULT_VENUE_TIMEZONE,
+  dateKeyInVenue,
+  giornataInVenue,
+  mezzanotteInVenue,
+  shiftDateKey,
+  todayInVenue,
+} from "@/lib/venue-time";
 
 /**
  * Il bug che questi test impediscono di tornare: «oggi» era calcolato in UTC
@@ -87,5 +94,80 @@ describe("spostarsi di un giorno", () => {
     // Lavorando su date pure il risultato non dipende dai fusi.
     expect(shiftDateKey("2026-10-24", 1)).toBe("2026-10-25");
     expect(shiftDateKey("2026-10-25", 1)).toBe("2026-10-26");
+  });
+});
+
+describe("l'inizio e la fine della giornata del locale", () => {
+  /**
+   * L'aritmetica su cui poggiano la Panoramica e l'agente.
+   *
+   * Prima ognuno se la faceva con `startOfDay` di `lib/utils`, che risponde
+   * nel fuso del processo: all'una di notte a Roma davano la giornata di ieri,
+   * e la Panoramica mostrava coperti e incasso della serata sbagliata proprio
+   * nell'ora in cui si chiudono i conti.
+   */
+  it("delimita il giorno civile del locale, non quello del server", () => {
+    // 00:30 del 21 settembre a Roma: per il server è ancora il 20.
+    const istante = new Date("2026-09-20T22:30:00.000Z");
+    const { inizio, fine } = giornataInVenue(istante, "Europe/Rome");
+
+    expect(inizio.toISOString()).toBe("2026-09-20T22:00:00.000Z"); // 00:00 del 21 a Roma
+    expect(fine.toISOString()).toBe("2026-09-21T21:59:59.999Z"); // 23:59:59.999 del 21
+    expect(istante >= inizio && istante <= fine).toBe(true);
+  });
+
+  it("la fine è l'ultimo millisecondo, non la mezzanotte dopo", () => {
+    /* Si usa con `lte`: con la mezzanotte dopo, una prenotazione delle 00:00
+       di domani cadrebbe dentro due giornate. */
+    const { fine } = giornataInVenue(new Date("2026-09-21T12:00:00.000Z"), "Europe/Rome");
+    const mezzanotteDopo = mezzanotteInVenue("2026-09-22", "Europe/Rome");
+    expect(mezzanotteDopo.getTime() - fine.getTime()).toBe(1);
+  });
+
+  it("funziona anche dodici fusi più avanti", () => {
+    /* Auckland: il caso che smaschera un test che passa solo perché la
+       macchina ha il fuso giusto. */
+    const { inizio } = giornataInVenue(new Date("2026-09-20T13:00:00.000Z"), "Pacific/Auckland");
+    expect(dateKeyInVenue(inizio, "Pacific/Auckland")).toBe("2026-09-21");
+  });
+
+  it("la notte del cambio d'ora la giornata dura venticinque ore", () => {
+    /* Il 25 ottobre 2026 Roma torna a UTC+1: quel giorno ha venticinque ore, e
+       una formula a giorni fissi lo sbaglia. Sono i due passaggi di
+       `mezzanotteInVenue`. */
+    const { inizio, fine } = giornataInVenue(new Date("2026-10-25T10:00:00.000Z"), "Europe/Rome");
+    const ore = (fine.getTime() + 1 - inizio.getTime()) / 3_600_000;
+    expect(ore).toBe(25);
+    expect(inizio.toISOString()).toBe("2026-10-24T22:00:00.000Z");
+  });
+
+  it("dove l'ora cambia a mezzanotte, il giorno comincia quando comincia", () => {
+    /**
+     * Il caso che ha smentito la mia prima versione.
+     *
+     * In Cile l'orologio cambia **a mezzanotte**: la mezzanotte del 6 settembre
+     * 2026 non esiste, il giorno comincia all'01:00. La formula che correggeva
+     * il fuso due volte finiva alle 23:00 del **5 settembre** — un giorno di
+     * prenotazioni attribuito alla data sbagliata, due volte l'anno.
+     */
+    const inizio = mezzanotteInVenue("2026-09-06", "America/Santiago");
+    expect(dateKeyInVenue(inizio, "America/Santiago")).toBe("2026-09-06");
+    expect(inizio.toISOString()).toBe("2026-09-06T04:00:00.000Z"); // 01:00 locali
+
+    /* E la giornata intera resta dentro il suo giorno, dai due lati. */
+    const { inizio: i2, fine } = giornataInVenue(inizio, "America/Santiago");
+    expect(i2.getTime()).toBe(inizio.getTime());
+    expect(dateKeyInVenue(fine, "America/Santiago")).toBe("2026-09-06");
+  });
+
+  it("mezzanotte non scivola al giorno dopo", () => {
+    /* `en-CA` scrive mezzanotte come «24»: letta come numero sposta di un
+       giorno. È il difetto che farebbe cadere le prenotazioni di mezzanotte. */
+    expect(mezzanotteInVenue("2026-09-21", "Europe/Rome").toISOString()).toBe(
+      "2026-09-20T22:00:00.000Z",
+    );
+    expect(mezzanotteInVenue("2026-01-15", "Europe/Rome").toISOString()).toBe(
+      "2026-01-14T23:00:00.000Z",
+    );
   });
 });

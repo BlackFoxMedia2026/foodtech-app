@@ -540,6 +540,27 @@ export async function updateBooking(
       startsAt: data.startsAt ?? undefined,
       durationMin: data.durationMin ?? undefined,
       tableId: data.tableId === undefined ? undefined : data.tableId,
+      /*
+        Cambiare tavolo scioglie la tavolata.
+
+        Senza questa riga i tavoli accostati restavano attaccati a una
+        prenotazione spostata altrove — o rimasta senza tavolo. Su una tavolata
+        T4+T5, «rimuovi tavolo» manda `{ tableId: null }` e lasciava `[T5]`:
+        da quel momento T5 risultava occupato per il widget e per il walk-in, e
+        chi provava ad assegnarlo si sentiva dire «è stato appena assegnato a
+        un'altra prenotazione» — una prenotazione che nell'elenco non ha nessun
+        tavolo. Un tavolo vuoto invendibile, e nessuna schermata che dica
+        perché.
+
+        `assignBookingToTable` lo faceva già, con la stessa motivazione
+        scritta. Questa strada no, e le due strade portano allo stesso posto.
+
+        La tavolata si rifà dal suo gesto (`combine-tables`): non si prova a
+        indovinare quali tavoli tenere.
+      */
+      ...(data.tableId !== undefined && data.tableId !== existing.tableId
+        ? { combinedTableIds: [] }
+        : {}),
       status: data.status ?? undefined,
       source: data.source ?? undefined,
       occasion: data.occasion ?? undefined,
