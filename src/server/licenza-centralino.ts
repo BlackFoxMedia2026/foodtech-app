@@ -134,6 +134,24 @@ export function verificaLicenza(
     };
   }
 
+  /*
+    Una revoca non accende.
+
+    E la stessa firma e lo stesso formato — cambia una parola dentro — quindi
+    senza questo controllo `verificaLicenza` la leggerebbe come una licenza
+    valida e **accenderebbe il telefono con il comando che serve a spegnerlo**.
+    Il messaggio non arriva a nessun ristoratore: ci arriva solo chi incolla
+    nel posto sbagliato una cosa che abbiamo emesso noi.
+  */
+  if (divisa.contenuto.r) {
+    return {
+      ok: false,
+      motivo: "malformata",
+      messaggio:
+        "Questa non è una chiave che accende il telefono: è un comando di spegnimento. Scrivici, te ne mandiamo una buona.",
+    };
+  }
+
   const scadeIl = fineValidita(divisa.contenuto.e);
   if (scadeIl && scadeIl <= adesso) {
     return {
@@ -164,6 +182,16 @@ export type StatoCentralino = {
    * che sono due schermate diverse: la prima offre, la seconda spiega.
    */
   motivoSpento: "scaduta" | "non_piu_valida" | null;
+  /**
+   * Da dove viene l'accensione.
+   *
+   * `piattaforma` = l'ha acceso un nostro super amministratore dal pannello;
+   * `chiave` = c'e una licenza firmata, che e la strada delle installazioni
+   * che non gestiamo noi. Serve alle schermate: con `piattaforma` non si
+   * chiede di incollare niente, e la procedura di collegamento salta i due
+   * passi della chiave invece di mostrarli fatti a metà.
+   */
+  origine: "piattaforma" | "chiave" | null;
 };
 
 const SPENTO: StatoCentralino = {
@@ -173,6 +201,7 @@ const SPENTO: StatoCentralino = {
   attivatoIl: null,
   chiaveLeggibile: null,
   motivoSpento: null,
+  origine: null,
 };
 
 /**
@@ -193,8 +222,33 @@ export async function statoCentralino(
       phoneLicenseActivatedAt: true,
     },
   });
-  return statoDaChiave(venueId, locale?.phoneLicenseKey ?? null, locale?.phoneLicenseActivatedAt ?? null, adesso);
+  return statoDaChiave(
+    venueId,
+    locale?.phoneLicenseKey ?? null,
+    locale?.phoneLicenseActivatedAt ?? null,
+    adesso,
+  );
 }
+
+/*
+  ## Una sola verita su «il telefono e acceso?»
+
+  Per un giorno ce ne sono state due: la chiave firmata, e un interruttore in
+  una tabella (`VenueServizio`) che un super amministratore girava dal pannello
+  di Tavolo. L'interruttore e stato togliuto, e la ragione non e estetica.
+
+  In questo prodotto **Tavolo non si configura**: nasce col telefono spento, e
+  ad accenderlo e ilmiocentralino. La chiave firmata e esattamente questo — una
+  cosa che solo chi ha la chiave privata puo fabbricare, e che Tavolo
+  riverifica a ogni lettura — mentre un booleano in tabella e una cosa che
+  chiunque possa scrivere nel database si accende da solo.
+
+  Due strade verso lo stesso «si» erano anche due posti in cui cercare quando
+  la risposta e «no». `VenueServizio` resta in tabella e **non la legge
+  nessuno**: e segnata superata, come le tre tabelle morte del telefono e
+  `BookingEvent`. Cancellarla e una migrazione distruttiva su dati che non
+  possiamo guardare, e non vale il rischio per un nome.
+*/
 
 /**
  * Lo stato, data la chiave già letta.
@@ -230,6 +284,7 @@ export function statoDaChiave(
     attivatoIl: attivatoIl ?? null,
     chiaveLeggibile: leggibile,
     motivoSpento: null,
+    origine: "chiave",
   };
 }
 
@@ -291,6 +346,96 @@ export async function spegniCentralino(venueId: string): Promise<void> {
       phoneLicenseFeatures: [],
     },
   });
+}
+
+export type EsitoRevoca =
+  | { ok: true; spento: boolean }
+  | { ok: false; motivo: MotivoLicenza | "non_e_una_revoca" | "vecchia"; messaggio: string };
+
+/**
+ * Applica una **revoca firmata**: spegne il telefono di un locale, subito.
+ *
+ * ## Perché firmata, e non una richiesta autenticata
+ *
+ * Perché spegnere il telefono di un ristorante il sabato sera è un danno, e
+ * deve poterlo fare **solo chi ha la chiave privata** — la stessa con cui si
+ * accende. Un token, per quanto segreto, è una cosa che si può rubare a un
+ * server; una firma Ed25519 non si fabbrica.
+ *
+ * ## La data non è decorativa: è la difesa dal riuso
+ *
+ * Una revoca resta valida per sempre, perché la firma non scade. Riapplicata a
+ * settembre, quella emessa a giugno spegnerebbe un cliente riattivato nel
+ * frattempo — e nessuno capirebbe perché. Quindi si applica **solo se è più
+ * recente della chiave che sta spegnendo**: la data dentro la revoca contro il
+ * momento in cui la licenza è stata attivata.
+ *
+ * Il giorno è la granularità che abbiamo (`AAAA-MM-GG`), e per una revoca
+ * riemessa lo stesso giorno di una riattivazione questo confronto è generoso:
+ * la lascia passare. È il verso giusto in cui sbagliare — chi ha riattivato
+ * può riattivare di nuovo, chi doveva spegnere ha spento.
+ */
+export async function applicaRevoca(chiave: string, adesso: Date = new Date()): Promise<EsitoRevoca> {
+  const divisa = dividiLicenza(chiave);
+  if (!divisa) {
+    return { ok: false, motivo: "malformata", messaggio: "Questo non è un comando del centralino." };
+  }
+
+  const pubblica = chiavePubblica();
+  if (!pubblica) {
+    return {
+      ok: false,
+      motivo: "non_configurato",
+      messaggio: "Su questa installazione il centralino non è configurato.",
+    };
+  }
+
+  const autentica = verify(
+    null,
+    Buffer.from(divisa.firmato, "utf8"),
+    pubblica,
+    Buffer.from(divisa.firma, "base64url"),
+  );
+  if (!autentica) {
+    return { ok: false, motivo: "firma", messaggio: "Questo comando non è autentico." };
+  }
+
+  if (!divisa.contenuto.r) {
+    /* Una licenza mandata alla revoca **non spegne**: sarebbe il verso
+       opposto dello stesso errore, e spegnerebbe un cliente con il comando
+       che serve ad accenderlo. */
+    return {
+      ok: false,
+      motivo: "non_e_una_revoca",
+      messaggio: "Questa è una chiave che accende, non una revoca.",
+    };
+  }
+
+  const locale = await db.venue.findUnique({
+    where: { id: divisa.contenuto.l },
+    select: { id: true, phoneLicenseKey: true, phoneLicenseActivatedAt: true },
+  });
+  if (!locale) {
+    return { ok: false, motivo: "altro_locale", messaggio: "Questo locale non esiste." };
+  }
+
+  /* Già spento: si risponde bene e si dice che non c'era niente da spegnere.
+     Un errore qui farebbe ritentare chi ha già ottenuto il risultato. */
+  if (!locale.phoneLicenseKey) return { ok: true, spento: false };
+
+  const emessa = fineValidita(divisa.contenuto.d);
+  const attivata = locale.phoneLicenseActivatedAt;
+  if (emessa && attivata && emessa.getTime() < attivata.getTime()) {
+    return {
+      ok: false,
+      motivo: "vecchia",
+      messaggio:
+        "Questa revoca è più vecchia della chiave in uso: il locale è stato riattivato dopo. Emettine una nuova.",
+    };
+  }
+
+  await spegniCentralino(locale.id);
+  return { ok: true, spento: true };
 }
 
 /**

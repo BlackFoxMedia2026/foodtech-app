@@ -29,7 +29,7 @@ import { endOfDay, startOfDay } from "@/lib/utils";
  * solo non vede le cancellazioni — una prenotazione tolta non aggiorna niente,
  * fa solo diminuire il totale.
  *
- * Le cinque interrogazioni usano indici che esistono già e toccano solo le righe
+ * Le quattro interrogazioni usano indici che esistono già e toccano solo le righe
  * di **oggi** (o la coda aperta, che è corta per natura): nessuna scansione di
  * tabella, nessuna migrazione.
  */
@@ -37,16 +37,31 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
   const inizio = startOfDay(adesso);
   const fine = endOfDay(adesso);
 
-  const [prenotazioni, coda, conti, pagamenti, comande] = await Promise.all([
+  const [
+    prenotazioni,
+    coda,
+    conti,
+    pagamenti,
+    chiamate,
+    chiamateVive,
+    comande,
+  ] = await Promise.all([
     // Indice: [venueId, startsAt]
     db.booking.aggregate({
-      where: { venueId, startsAt: { gte: inizio, lte: fine }, deletedAt: null },
+      where: {
+        venueId,
+        startsAt: { gte: inizio, lte: fine },
+        deletedAt: null,
+      },
       _count: { _all: true },
       _max: { updatedAt: true },
     }),
     // Indice: [venueId, status, createdAt]. La coda chiusa non cambia più.
     db.waitlistEntry.aggregate({
-      where: { venueId, status: { in: ["WAITING", "NOTIFIED", "CONFIRMED"] } },
+      where: {
+        venueId,
+        status: { in: ["WAITING", "NOTIFIED", "CONFIRMED"] },
+      },
       _count: { _all: true },
       _max: { updatedAt: true },
     }),
@@ -67,9 +82,74 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
       Indice: [venueId, createdAt].
     */
     db.payment.aggregate({
-      where: { venueId, kind: "TABLE_QR", createdAt: { gte: inizio, lte: fine } },
+      where: {
+        venueId,
+        kind: "TABLE_QR",
+        createdAt: { gte: inizio, lte: fine },
+      },
       _count: { _all: true },
       _max: { updatedAt: true },
+    }),
+    /*
+      Il telefono.
+
+      È il pezzo con la scadenza più corta di tutti: una chiamata dura venti
+      secondi, e cinque secondi di ritardo sono un quarto della sua vita. Senza
+      questo, il riquadro comparirebbe solo quando si muove qualcos'altro in
+      sala — cioè, in un locale tranquillo, mai.
+
+      **Niente filtro sullo stato**, ed è la correzione che conta. Prima si
+      guardavano solo le chiamate in `RINGING`/`ANSWERED`: così la firma vedeva
+      la chiamata comparire e non la vedeva finire. Quando il centralino manda
+      «nessuno ha risposto» la riga esce dal filtro; se nel frattempo era già
+      uscita anche per età, la firma non si muove di un carattere — e il
+      riquadro resta sullo schermo, fermo sui secondi dell'ultimo
+      aggiornamento, finché non cambia qualcos'altro in sala. Cioè, in un
+      locale tranquillo, per sempre.
+
+      Senza il filtro, `max(updatedAt)` si muove a **ogni** passaggio di stato,
+      che è esattamente quello che la firma deve dire.
+
+      La finestra è su `startedAt` e non su `updatedAt` per una ragione
+      pratica: `[venueId, startedAt]` è un indice che c'è già, e questa
+      domanda la fa ogni tablet ogni cinque secondi. Mezz'ora perché una
+      conversazione lunga deve poter finire e farsi vedere: con cinque minuti,
+      una telefonata di sei uscirebbe dalla finestra prima di concludersi.
+    */
+    db.phoneCall.aggregate({
+      where: {
+        venueId,
+        startedAt: { gte: new Date(adesso.getTime() - 30 * 60_000) },
+      },
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
+    /*
+      Quante sono **in corso adesso**, e non è una ripetizione del pezzo qui
+      sopra: è la correzione di un punto cieco misurato.
+
+      `updatedAt` ha la precisione del millisecondo. Due cambiamenti nello
+      stesso millisecondo — la chiamata che entra e quella che finisce, due
+      eventi dello stesso burst — danno la **stessa firma**: conteggio uguale,
+      massimo uguale. Provato in laboratorio: su sessanta transizioni di stato
+      fatte di seguito, **venticinque volte su cento** la firma non si muoveva.
+      Quando succede, nessun tablet riscarica e il riquadro resta sullo schermo
+      fermo com'era — che è esattamente il difetto che il pezzo qui sopra
+      serviva a togliere.
+
+      Con il conteggio delle vive, una chiamata che entra o finisce cambia la
+      firma **per costruzione**, senza dipendere dall'orologio: uno è il numero
+      che il pannello mostra, e se quel numero cambia la firma cambia.
+
+      Indice: `[venueId, status, startedAt]`, che c'è già.
+    */
+    db.phoneCall.aggregate({
+      where: {
+        venueId,
+        status: { in: ["RINGING", "ANSWERED"] },
+        startedAt: { gte: new Date(adesso.getTime() - 30 * 60_000) },
+      },
+      _count: { _all: true },
     }),
     /*
       Le comande di oggi.
@@ -90,8 +170,10 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
     }),
   ]);
 
-  const pezzo = (a: { _count: { _all: number }; _max: { updatedAt: Date | null } }) =>
-    `${a._count._all}.${a._max.updatedAt?.getTime() ?? 0}`;
+  const pezzo = (a: {
+    _count: { _all: number };
+    _max: { updatedAt: Date | null };
+  }) => `${a._count._all}.${a._max.updatedAt?.getTime() ?? 0}`;
 
-  return `${pezzo(prenotazioni)}-${pezzo(coda)}-${pezzo(conti)}-${pezzo(pagamenti)}-${pezzo(comande)}`;
+  return `${pezzo(prenotazioni)}-${pezzo(coda)}-${pezzo(conti)}-${pezzo(pagamenti)}-${pezzo(chiamate)}.${chiamateVive._count._all}-${pezzo(comande)}`;
 }

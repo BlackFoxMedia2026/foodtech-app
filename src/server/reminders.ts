@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { signBookingToken } from "@/lib/booking-token";
 import { dateKeyInVenue } from "@/lib/venue-time";
-import { enqueueMessage } from "./messaging/send";
+import { canalePerTelefono, enqueueMessage } from "./messaging/send";
 
 /**
  * Promemoria prima del servizio.
@@ -23,6 +23,18 @@ import { enqueueMessage } from "./messaging/send";
  *   subito anche mentre il messaggio è ancora in coda.
  * - **Mai a chi non aspetta niente.** Chi ha annullato, chi è già arrivato,
  *   chi non ha lasciato un contatto: nessun messaggio.
+ *
+ * ## Chi non ha lasciato una mail, dal 21 settembre 2026
+ *
+ * Fino a quel giorno il promemoria era **solo email**, e chi non aveva un
+ * indirizzo riceveva `no_address`: cioè niente. Erano esattamente le
+ * prenotazioni **prese al telefono** — di chi chiama sappiamo il numero, non
+ * la mail — che sono anche quelle con più assenze, perché nessuno ha lasciato
+ * un dato che lo lega a quella sera.
+ *
+ * Adesso: la mail quando c'è, un **SMS** quando c'è solo il numero. Non
+ * entrambi — due promemoria per la stessa cena sono un fastidio, e il secondo
+ * si paga.
  */
 
 export const REMINDER_KINDS = {
@@ -57,6 +69,14 @@ export type ReminderResult = {
    * che questa riscrittura serve a togliere.
    */
   outcome: "queued" | "duplicate" | "no_address" | "no_channel";
+  /**
+   * Con che cosa e stato mandato.
+   *
+   * Serve al registro del cron: «cento promemoria accodati» non dice se sono
+   * cento email gratis o cento SMS che si pagano, e quella differenza la vuole
+   * sapere chi guarda la fattura.
+   */
+  canale?: "EMAIL" | "SMS" | "WHATSAPP";
 };
 
 function formatOra(instant: Date, timezone: string) {
@@ -123,6 +143,44 @@ function corpo(opts: {
 }
 
 /**
+ * Il promemoria in un SMS.
+ *
+ * ## Perché senza lettere accentate
+ *
+ * Perché un SMS con una sola lettera accentata **cambia alfabeto**: da GSM-7
+ * (centosessanta caratteri per messaggio) passa a UCS-2, e i caratteri
+ * diventano **settanta**. Lo stesso testo costa il doppio o il triplo, e nessun
+ * errore lo dice: si scopre dalla fattura. Quindi «puoi» e non «può», «e» dove
+ * si può, e un test che controlla che nessuno rimetta gli accenti per fare la
+ * frase più bella (`tests/promemoria-sms.test.ts`).
+ *
+ * ## Perché un solo link, e perché quello per annullare
+ *
+ * Perché il tavolo da rivendere è l'unica cosa che vale davvero: chi viene non
+ * deve fare niente, chi non viene deve poterlo dire **in un tocco**. Una
+ * telefonata da fare è la frizione che produce i no-show. Il link di conferma
+ * sta nella mail, dove non costa niente averne due.
+ */
+export function testoPromemoriaSms(dati: {
+  nome: string | null;
+  locale: string;
+  quando: "oggi" | "domani";
+  ora: string;
+  persone: number;
+  linkAnnulla: string;
+}): string {
+  const persone = `${dati.persone} ${dati.persone === 1 ? "persona" : "persone"}`;
+  /* Senza nome la frase comincia con la maiuscola: «ti aspettiamo…» con la
+     minuscola si legge come un messaggio tagliato a meta, e un messaggio che
+     sembra rotto si legge come un imbroglio. */
+  const apertura = dati.nome ? `${dati.nome}, ti aspettiamo` : "Ti aspettiamo";
+  return (
+    `${apertura} ${dati.quando} alle ${dati.ora} da ${dati.locale}, ${persone}. ` +
+    `Se non puoi venire, annulla qui: ${dati.linkAnnulla}`
+  );
+}
+
+/**
  * Manda i promemoria dovuti in questo momento, per tutti i locali attivi.
  *
  * Il tempo si misura in istanti assoluti — la differenza fra adesso e l'inizio
@@ -153,16 +211,27 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
         messages: { none: { kind, status: { in: ["QUEUED", "SENT", "DELIVERED"] } } },
       },
       include: {
-        guest: { select: { id: true, firstName: true, email: true, marketingOptIn: true } },
+        guest: {
+          select: { id: true, firstName: true, email: true, phone: true, marketingOptIn: true },
+        },
         venue: { select: { id: true, name: true, timezone: true, phone: true } },
       },
       take: 200,
     });
 
     for (const booking of bookings) {
-      const email = booking.guest?.email;
-      if (!email) {
-        risultati.push({ kind, bookingId: booking.id, outcome: "no_address" });
+      const email = booking.guest?.email?.trim() || null;
+      const telefono = booking.guest?.phone?.trim() || null;
+      /* La mail ha la precedenza: costa zero, ci stanno due pulsanti e il
+         testo lungo. L'SMS e per chi non l'ha lasciata — e si paga, quindi non
+         si manda a chi ha gia ricevuto la mail. */
+      const canaleTelefono = telefono ? canalePerTelefono() : null;
+      if (!email && !canaleTelefono) {
+        risultati.push({
+          kind,
+          bookingId: booking.id,
+          outcome: telefono ? "no_channel" : "no_address",
+        });
         continue;
       }
 
@@ -170,39 +239,58 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
       const quando = dateKeyInVenue(booking.startsAt, timezone) === dateKeyInVenue(now, timezone) ? "oggi" : "domani";
       const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-      const esito = await enqueueMessage({
+      const comuni = {
         venueId: booking.venueId,
         venueName: booking.venue.name,
-        channel: "EMAIL",
-        to: email,
         guestId: booking.guest?.id ?? null,
         bookingId: booking.id,
         kind,
-        subject:
-          quando === "domani"
-            ? `Ci vediamo domani alle ${formatOra(booking.startsAt, timezone)}?`
-            : `Ci vediamo oggi alle ${formatOra(booking.startsAt, timezone)}?`,
-        body: corpo({
-          guestName: booking.guest?.firstName ?? "",
-          venueName: booking.venue.name,
-          giorno: formatGiorno(booking.startsAt, timezone),
-          ora: formatOra(booking.startsAt, timezone),
-          partySize: booking.partySize,
-          quando,
-          confirmUrl: `${base}/b/${signBookingToken(booking.id, "confirm")}`,
-          cancelUrl: `${base}/b/${signBookingToken(booking.id, "cancel")}`,
-          venuePhone: booking.venue.phone,
-        }),
-        preview: `Promemoria prenotazione del ${formatGiorno(booking.startsAt, timezone)} alle ${formatOra(
-          booking.startsAt,
-          timezone,
-        )}`,
-      });
+      };
+
+      const esito = email
+        ? await enqueueMessage({
+            ...comuni,
+            channel: "EMAIL" as const,
+            to: email,
+            subject:
+              quando === "domani"
+                ? `Ci vediamo domani alle ${formatOra(booking.startsAt, timezone)}?`
+                : `Ci vediamo oggi alle ${formatOra(booking.startsAt, timezone)}?`,
+            body: corpo({
+              guestName: booking.guest?.firstName ?? "",
+              venueName: booking.venue.name,
+              giorno: formatGiorno(booking.startsAt, timezone),
+              ora: formatOra(booking.startsAt, timezone),
+              partySize: booking.partySize,
+              quando,
+              confirmUrl: `${base}/b/${signBookingToken(booking.id, "confirm")}`,
+              cancelUrl: `${base}/b/${signBookingToken(booking.id, "cancel")}`,
+              venuePhone: booking.venue.phone,
+            }),
+            preview: `Promemoria prenotazione del ${formatGiorno(
+              booking.startsAt,
+              timezone,
+            )} alle ${formatOra(booking.startsAt, timezone)}`,
+          })
+        : await enqueueMessage({
+            ...comuni,
+            channel: canaleTelefono!,
+            to: telefono!,
+            body: testoPromemoriaSms({
+              nome: booking.guest?.firstName?.trim() || null,
+              locale: booking.venue.name,
+              quando,
+              ora: formatOra(booking.startsAt, timezone),
+              persone: booking.partySize,
+              linkAnnulla: `${base}/b/${signBookingToken(booking.id, "cancel")}`,
+            }),
+          });
 
       risultati.push({
         kind,
         bookingId: booking.id,
         outcome: esito.queued ? "queued" : esito.reason,
+        canale: email ? "EMAIL" : canaleTelefono!,
       });
     }
   }

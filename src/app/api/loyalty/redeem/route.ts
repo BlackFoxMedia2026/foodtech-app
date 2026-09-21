@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatCurrency } from "@/lib/utils";
 import { z } from "zod";
 import { apiError, apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { auditActor } from "@/server/audit";
@@ -31,6 +32,18 @@ export async function POST(req: Request) {
       }
       if (err.code === "not_enough_points") {
         return apiError(409, err.code, "Questo cliente non ha abbastanza punti.");
+      }
+      if (err.code === "oltre_il_conto") {
+        /* I punti del cliente sono suoi: si dice quanto resta da coprire
+           invece di bruciarne più del necessario. */
+        const resta = (err.detail as { restaCents?: number } | undefined)?.restaCents ?? 0;
+        return apiError(
+          409,
+          err.code,
+          resta > 0
+            ? `Su questo conto restano da incassare ${formatCurrency(resta, "EUR")}: i punti non possono valere più di questa cifra.`
+            : "Questo conto è già coperto: non serve usare altri punti.",
+        );
       }
       return apiError(400, err.code, "I punti da usare devono essere un numero maggiore di zero.");
     }

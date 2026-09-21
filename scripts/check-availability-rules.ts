@@ -516,6 +516,98 @@ check(
   dentroLaCapienza.available && dentroLaCapienza.oltreCapienza === false,
 );
 
+/* ------------------- i turni che scavalcano la mezzanotte ------------------- */
+
+/*
+  Il difetto del 20 settembre 2026, e perché non se ne era accorto nessuno.
+
+  «Cena 19:00 → 00:30» si scrive `endMinute = 1470`, oltre i 1440 minuti di una
+  giornata: è la convenzione voluta, e le Impostazioni mostrano «ultimo orario
+  00:30». Ma quell'istante, letto dall'orologio, è **il giorno dopo** al minuto
+  30 — e cercando il turno solo fra quelli di quel giorno non si trova niente.
+  Risultato: «il locale non è aperto in questo orario» su un orario appena
+  promesso, nel widget e al telefono, per ogni locale che chiude a mezzanotte o
+  dopo.
+
+  Queste verifiche non c'erano: le 65 precedenti usano tutte un turno che
+  finisce alle 23:00.
+*/
+
+const cenaLunga: ShiftLike = {
+  ...dinner,
+  id: "s-cena-lunga",
+  name: "Cena lunga",
+  weekday: 5, // venerdì
+  startMinute: 19 * 60,
+  endMinute: 24 * 60 + 30, // 00:30 del sabato
+};
+
+// Venerdì 7 agosto 2026, 22:00 a Roma → dentro il turno, nel suo stesso giorno.
+const VENERDI_22 = new Date("2026-08-07T20:00:00.000Z");
+// Sabato 8 agosto 2026, 00:15 a Roma → la coda del turno del venerdì.
+const SABATO_0015 = new Date("2026-08-07T22:15:00.000Z");
+// Sabato 8 agosto, 01:00 a Roma → fuori anche dalla coda.
+const SABATO_0100 = new Date("2026-08-07T23:00:00.000Z");
+
+const dentroIlVenerdi = zonedDayAndMinute(VENERDI_22, ROME);
+check(
+  "un turno lungo copre il suo orario normale",
+  findShiftFor([cenaLunga], dentroIlVenerdi.weekday, dentroIlVenerdi.minuteOfDay)?.id === "s-cena-lunga",
+);
+
+const dopoMezzanotte = zonedDayAndMinute(SABATO_0015, ROME);
+check(
+  "le 00:15 del sabato appartengono al turno del venerdì",
+  findShiftFor([cenaLunga], dopoMezzanotte.weekday, dopoMezzanotte.minuteOfDay)?.id === "s-cena-lunga",
+  `weekday ${dopoMezzanotte.weekday}, minuto ${dopoMezzanotte.minuteOfDay}`,
+);
+
+const oltreLaCoda = zonedDayAndMinute(SABATO_0100, ROME);
+check(
+  "all'una di notte il turno è finito",
+  findShiftFor([cenaLunga], oltreLaCoda.weekday, oltreLaCoda.minuteOfDay) === null,
+);
+
+check(
+  "un turno normale di ieri non risponde per oggi",
+  // `dinner` è la domenica e finisce alle 23:00: non scavalca niente, quindi
+  // non deve coprire le 00:15 del lunedì.
+  findShiftFor([dinner], 1, 15) === null,
+);
+
+const prenotabileDopoMezzanotte = evaluateAvailability(
+  { startsAt: SABATO_0015, durationMin: 105, partySize: 2 },
+  ctx({ shifts: [cenaLunga] }),
+);
+check(
+  "una prenotazione alle 00:15 si accetta, e non dice che il locale è chiuso",
+  prenotabileDopoMezzanotte.available,
+  prenotabileDopoMezzanotte.issues.map((i) => i.code).join(", "),
+);
+
+const orariDelVenerdi = buildDaySlots(
+  {
+    date: { year: 2026, month: 8, day: 7 },
+    partySize: 2,
+    durationMin: 105,
+    now: new Date("2026-08-07T10:00:00.000Z"),
+  },
+  ctx({ shifts: [cenaLunga] }),
+);
+const slotDopoMezzanotte = orariDelVenerdi.shifts
+  .flatMap((t) => t.slots)
+  .filter((x) => x.label === "00:00" || x.label === "00:15" || x.label === "00:30");
+check(
+  "gli orari dopo mezzanotte compaiono fra quelli del venerdì",
+  slotDopoMezzanotte.length === 3,
+  `trovati ${slotDopoMezzanotte.length}`,
+);
+check(
+  "e sono prenotabili, non spenti",
+  slotDopoMezzanotte.length > 0 && slotDopoMezzanotte.every((x) => x.available),
+  slotDopoMezzanotte.map((x) => `${x.label}=${x.available}`).join(" "),
+);
+
 /* ---------------------------------- esito ---------------------------------- */
 
 console.log(`\n  ${passed} verifiche superate`);

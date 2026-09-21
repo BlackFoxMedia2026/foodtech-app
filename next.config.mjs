@@ -29,6 +29,19 @@ const sicurezza = [
 
 const nextConfig = {
   reactStrictMode: true,
+  /*
+    Dove finisce la build.
+
+    `.next` per difetto, come sempre. La variabile serve a un caso preciso e
+    reale: **due `next dev` sullo stesso progetto** — per esempio uno aperto da
+    chi sviluppa e uno avviato per una verifica su un'altra porta. Condividendo
+    la stessa cartella si sovrascrivono i moduli a vicenda, e il sintomo è
+    quello che non si dimentica più: `__webpack_modules__[moduleId] is not a
+    function` su una pagina che fino a un minuto prima funzionava.
+
+        NEXT_DIST_DIR=.next-verifica npm run dev -- -p 3007
+  */
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
     /*

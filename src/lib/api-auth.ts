@@ -1,6 +1,7 @@
 import { logErrore } from "./observability";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { auth } from "./auth";
 import { resolveActiveVenue, type ActiveVenueContext } from "./tenant";
 import { can, type Ability } from "./abilities";
 import { messaggioDiValidazione } from "./validation-message";
@@ -50,6 +51,35 @@ export function apiError(status: number, code: string, message: string, detail?:
 }
 
 /** 401 quando manca la sessione, 403 quando manca il locale o la capacità. */
+/**
+ * Solo «chi sei», senza chiedere un locale.
+ *
+ * `requireVenueApi` risponde **403 no_venue** a chi non appartiene a nessun
+ * ristorante, ed è giusto per tutto quello che riguarda un locale. Ma non per
+ * l'accesso di una persona: l'amministratore di piattaforma non appartiene a
+ * nessun locale — è la sua condizione normale, dichiarata in
+ * `lib/super-admin.ts` — e con quel 403 non poteva **accendere i due fattori
+ * sul proprio accesso**. Cioè la difesa mancava proprio a chi vede tutti i
+ * locali.
+ *
+ * Da qui passa solo ciò che appartiene alla persona: i suoi due fattori, la
+ * sua password, le sue sessioni.
+ */
+export async function requireUtenteApi(): Promise<
+  { ok: true; userId: string; email: string } | { ok: false; response: NextResponse }
+> {
+  const session = await auth();
+  const u = session?.user as { id?: string; email?: string } | undefined;
+  const userId = (session as { uid?: string } | null)?.uid ?? u?.id;
+  if (!userId || !u?.email) {
+    return {
+      ok: false,
+      response: apiError(401, "unauthenticated", "Sessione scaduta. Rientra per continuare."),
+    };
+  }
+  return { ok: true, userId, email: u.email };
+}
+
 export async function requireVenueApi(ability?: Ability): Promise<VenueApiResult> {
   const resolved = await resolveActiveVenue();
 
@@ -176,6 +206,17 @@ export function apiErrorResponse(err: unknown) {
     */
     dem_quota_insufficient: 402,
     dem_sending_paused: 409,
+    /*
+      Il budget di infrastruttura è un limite **nostro**, non del piano del
+      cliente: 409 e non 402, perché non c'è niente che il ristorante possa
+      pagare per sbloccarlo. Lo sblocca un'autorizzazione del Super Admin.
+    */
+    dem_budget_exceeded: 409,
+    /*
+      Non sapere quanto costa un invio è un guasto nostro, e 503 lo dice:
+      riprova più tardi, il problema non è la tua richiesta.
+    */
+    cost_calculation_unavailable: 503,
   };
   if (code && perCodice[code]) {
     return apiError(perCodice[code], code, err instanceof Error ? err.message : "Operazione non possibile.",

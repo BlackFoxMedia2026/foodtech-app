@@ -73,6 +73,9 @@ export async function esportaOspite(
   if (!ospite) throw new ExportError("not_found");
 
   const [prenotazioni, conti, movimenti, coupon, wifi, messaggi, consensi, sondaggi] = await Promise.all([
+    /* Senza filtro sulle cancellate, di proposito: questo e il diritto di
+       accesso, e riguarda **quello che abbiamo**. Una prenotazione cancellata
+       dal locale resta un dato dell'ospite finche e in tabella. */
     db.booking.findMany({
       where: { venueId, guestId },
       orderBy: { startsAt: "desc" },

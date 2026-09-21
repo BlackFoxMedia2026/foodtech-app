@@ -29,7 +29,15 @@ import {
   rilasciaQuota,
   riservaQuota,
 } from "@/server/dem/consumo";
-import { InviiSospesi, QuotaInsufficiente } from "@/server/dem/errori";
+import {
+  BudgetInfrastrutturaSuperato,
+  CostoNonCalcolabile,
+  InviiSospesi,
+  QuotaInsufficiente,
+} from "@/server/dem/errori";
+import { verificaPreInvio } from "@/lib/costi-infrastruttura";
+import { assicuraPeriodoCosti, rilasciaCosto, riservaCosto, stimaCostoInvio } from "@/server/costi/riserva";
+import { logAttenzione } from "@/lib/observability";
 import { mittenteDi } from "@/server/dem/dominio";
 import { sesAttivo } from "@/server/dem/ses";
 import { createNotification } from "@/server/notifications";
@@ -536,7 +544,19 @@ async function queueCampaign(venueId: string, campaignId: string, at?: Date) {
   if (destinatari.length === 0) throw new Error("no_recipients");
 
   const riserva = await riservaQuota(venueId, destinatari.length);
-  if (!riserva.riservata) throw new QuotaInsufficiente(riserva);
+  if (!riserva.riservata) {
+    await registraBlocco(campaignId, "EMAIL_LIMIT_EXCEEDED", {
+      destinatari: destinatari.length,
+      disponibili: riserva.disponibili,
+      mancanti: riserva.mancanti,
+    });
+    throw new QuotaInsufficiente(riserva);
+  }
+
+  /* Vive fuori dal `try` perché è il `catch` a doverlo restituire: un impegno
+     preso e non rilasciato occuperebbe il budget del cliente fino a fine mese,
+     per una campagna che non è mai partita. */
+  const impegnato = { centesimi: 0 };
 
   try {
     await scattaSnapshot(campaignId, venueId, destinatari);
@@ -556,6 +576,77 @@ async function queueCampaign(venueId: string, campaignId: string, at?: Date) {
       finché non parla con il suo fornitore di domini.
     */
     const conDominioProprio = sesAttivo() && (await mittenteDi(venueId)) !== null;
+
+    /*
+      Il freno economico, e **solo** sulla strada nostra.
+
+      Quando la campagna la consegna il fornitore esterno il costo non è di
+      Amazon, e impegnare questo budget bloccherebbe un cliente per una spesa
+      che non stiamo sostenendo.
+
+      Il controllo e l'impegno sono la stessa `UPDATE` condizionata dentro
+      `riservaCosto`: due campagne preparate nello stesso istante non possono
+      leggere lo stesso residuo e passare tutte e due.
+    */
+    if (conDominioProprio) {
+      const { periodo } = await assicuraPeriodoCosti(venueId);
+      const stima = await stimaCostoInvio(destinatari.length, periodo.billingCurrency);
+      const haBudget = periodo.budgetCents !== null && periodo.budgetCents > 0;
+
+      if (!stima.calcolabile) {
+        // Senza budget non c'è niente da proteggere; con un budget attivo si
+        // ferma, perché un costo ignoto vale zero in ogni controllo successivo.
+        if (haBudget && !periodo.allowOverage) {
+          await registraBlocco(campaignId, "COST_CALCULATION_UNAVAILABLE", { motivo: stima.motivo });
+          throw new CostoNonCalcolabile(stima.motivo);
+        }
+      } else {
+        const esito = verificaPreInvio({
+          invii: { usati: 0, riservati: 0, limite: Number.MAX_SAFE_INTEGER },
+          costo: {
+            spesoCents: periodo.amountCents ?? 0,
+            impegnatoCents: periodo.reservedCents,
+            budgetCents: periodo.budgetCents,
+            calcolabile: true,
+          },
+          destinatari: destinatari.length,
+          costoStimatoCents: stima.centesimi,
+          allowOverage: periodo.allowOverage,
+          soglie: {
+            warningPct: periodo.warningPct,
+            criticalPct: periodo.criticalPct,
+            hardLimitPct: periodo.hardLimitPct,
+          },
+        });
+
+        const fermaLInvio = async (motivo: string, eccedenza: number) => {
+          // Il dettaglio economico resta nei log, sulla riga della campagna e
+          // nel pannello: al cliente esce solo che l'invio è sospeso.
+          logAttenzione("costi.invio_bloccato", { venueId, campaignId, motivo, eccedenzaCents: eccedenza });
+          await registraBlocco(campaignId, motivo, {
+            spesoCents: periodo.amountCents ?? 0,
+            impegnatoCents: periodo.reservedCents,
+            stimaCents: stima.centesimi,
+            budgetCents: periodo.budgetCents,
+            totaleCents: (periodo.amountCents ?? 0) + periodo.reservedCents + stima.centesimi,
+            eccedenzaCents: eccedenza,
+            destinatari: destinatari.length,
+          });
+        };
+
+        if (!esito.consentito) {
+          await fermaLInvio(esito.motivo, esito.eccedenza);
+          throw new BudgetInfrastrutturaSuperato(esito.eccedenza);
+        }
+
+        const impegno = await riservaCosto(venueId, stima.centesimi);
+        if (!impegno.riservato) {
+          await fermaLInvio("BUDGET_LIMIT_EXCEEDED", impegno.eccedenza);
+          throw new BudgetInfrastrutturaSuperato(impegno.eccedenza);
+        }
+        impegnato.centesimi = impegno.centesimi;
+      }
+    }
 
     if (conDominioProprio) {
       await enqueueJob({
@@ -591,6 +682,11 @@ async function queueCampaign(venueId: string, campaignId: string, at?: Date) {
       data: {
         recipientsCount: destinatari.length,
         reservedCount: destinatari.length,
+        reservedCostCents: impegnato.centesimi,
+        // La campagna parte: il blocco di ieri non riguarda più nessuno.
+        blockedAt: null,
+        blockedReason: null,
+        blockedDetail: Prisma.DbNull,
         usagePeriod: riserva.ciclo,
         queuedAt: new Date(),
         ...(at ? { status: "SCHEDULED", scheduledAt: at } : { status: "QUEUED" }),
@@ -598,8 +694,29 @@ async function queueCampaign(venueId: string, campaignId: string, at?: Date) {
     });
   } catch (err) {
     await rilasciaQuota(venueId, riserva.ciclo, destinatari.length);
+    if (impegnato.centesimi > 0) await rilasciaCosto(venueId, riserva.ciclo, impegnato.centesimi);
     throw err;
   }
+}
+
+/**
+ * Scrive perché una campagna non è partita.
+ *
+ * Non solleva mai: sta dentro il percorso di un rifiuto, e un errore qui
+ * trasformerebbe «la campagna è bloccata, ecco perché» in un 500 che non
+ * spiega niente. Se la riga non si scrive, il blocco resta comunque nei log.
+ */
+async function registraBlocco(
+  campaignId: string,
+  motivo: string,
+  dettaglio: Prisma.InputJsonValue,
+): Promise<void> {
+  await db.campaign
+    .update({
+      where: { id: campaignId },
+      data: { blockedAt: new Date(), blockedReason: motivo, blockedDetail: dettaglio },
+    })
+    .catch(() => undefined);
 }
 
 /**
@@ -612,12 +729,20 @@ async function queueCampaign(venueId: string, campaignId: string, at?: Date) {
 async function liberaRiserva(campaignId: string) {
   const campaign = await db.campaign.findUnique({
     where: { id: campaignId },
-    select: { venueId: true, usagePeriod: true, reservedCount: true },
+    select: { venueId: true, usagePeriod: true, reservedCount: true, reservedCostCents: true },
   });
-  if (!campaign || campaign.reservedCount <= 0 || !campaign.usagePeriod) return;
+  if (!campaign || !campaign.usagePeriod) return;
+  if (campaign.reservedCount <= 0 && campaign.reservedCostCents <= 0) return;
 
   await rilasciaQuota(campaign.venueId, campaign.usagePeriod, campaign.reservedCount);
-  await db.campaign.update({ where: { id: campaignId }, data: { reservedCount: 0 } });
+  /* Il budget impegnato torna disponibile insieme agli invii: si libera quello
+     che era stato **tolto**, non un costo ricalcolato adesso — il listino nel
+     frattempo può essere cambiato. */
+  await rilasciaCosto(campaign.venueId, campaign.usagePeriod, campaign.reservedCostCents);
+  await db.campaign.update({
+    where: { id: campaignId },
+    data: { reservedCount: 0, reservedCostCents: 0 },
+  });
 }
 
 /**
@@ -742,11 +867,11 @@ export async function getCampaignAttribution(venueId: string, campaignId: string
 
   const [dentro, fuori] = await Promise.all([
     db.booking.findMany({
-      where: { ...comuni, createdAt: { gte: sentAt, lte: fineFinestra } },
+      where: { deletedAt: null, ...comuni, createdAt: { gte: sentAt, lte: fineFinestra } },
       select: { partySize: true },
     }),
     db.booking.count({
-      where: { ...comuni, createdAt: { gt: fineFinestra } },
+      where: { deletedAt: null, ...comuni, createdAt: { gt: fineFinestra } },
     }),
   ]);
 
@@ -773,6 +898,86 @@ async function segnaNonRiuscita(campaignId: string, venueId: string, nome: strin
     body: motivo,
     link: `/campaigns/${campaignId}`,
   });
+}
+
+/**
+ * Chiude i conti di una campagna programmata, **una volta sola**.
+ *
+ * ## Perché la condizione sta dentro la scrittura
+ *
+ * Perché questa funzione la chiama un cron, e un cron gira due volte più
+ * spesso di quanto si crede: due giri che si sovrappongono, un tentativo
+ * ripetuto dopo un errore di rete. Un `if (status === "SCHEDULED")` seguito da
+ * un `update` li lascerebbe passare entrambi, e **gli invii verrebbero
+ * consumati due volte** — un cliente che ha mandato mille email ne vedrebbe
+ * duemila scalate dal piano.
+ *
+ * Il passaggio di stato è il lucchetto: solo chi lo cambia davvero (`count`
+ * uguale a uno) va avanti a toccare la quota.
+ *
+ * ## Le due strade
+ *
+ * `inviati` è la campagna uscita: gli invii diventano consumati, e da quel
+ * momento la schermata dice «inviata» con il numero vero del fornitore.
+ * `nonRiuscita` è l'ora passata senza che sia uscito niente: gli invii tornano
+ * disponibili e al locale arriva un avviso con scritto cosa fare.
+ */
+export async function chiudiCampagnaProgrammata(
+  campaignId: string,
+  esito:
+    | { inviati: number; aperti?: number; quando: Date }
+    | { nonRiuscita: string },
+): Promise<boolean> {
+  const campaign = await db.campaign.findUnique({
+    where: { id: campaignId },
+    select: { venueId: true, name: true, usagePeriod: true, reservedCount: true },
+  });
+  if (!campaign) return false;
+
+  if ("nonRiuscita" in esito) {
+    /* Il lucchetto vale anche qui: due avvisi «campagna non inviata» per la
+       stessa campagna sono due telefonate all'assistenza. */
+    const preso = await db.campaign.updateMany({
+      where: { id: campaignId, status: "SCHEDULED" },
+      data: { status: "FAILED" },
+    });
+    if (preso.count === 0) return false;
+
+    if (campaign.reservedCount > 0 && campaign.usagePeriod) {
+      await rilasciaQuota(campaign.venueId, campaign.usagePeriod, campaign.reservedCount);
+      await db.campaign.update({ where: { id: campaignId }, data: { reservedCount: 0 } });
+    }
+    await createNotification(campaign.venueId, {
+      kind: "AUTOMATION_FAILED",
+      title: `Campagna non inviata: ${campaign.name}`,
+      body: esito.nonRiuscita,
+      link: `/campaigns/${campaignId}`,
+    });
+    return true;
+  }
+
+  const preso = await db.campaign.updateMany({
+    where: { id: campaignId, status: "SCHEDULED" },
+    data: {
+      status: "SENT",
+      sentCount: esito.inviati,
+      ...(esito.aperti !== undefined ? { openedCount: esito.aperti } : {}),
+      sendingStartedAt: esito.quando,
+      sentAt: esito.quando,
+    },
+  });
+  if (preso.count === 0) return false;
+
+  /* Gli invii impegnati diventano consumati. Senza questa riga restavano
+     impegnati per sempre: fuori dalla quota disponibile e fuori da quella
+     usata, cioè spariti — e il cliente si trovava il piano esaurito con «zero
+     campagne inviate». */
+  if (campaign.reservedCount > 0 && campaign.usagePeriod) {
+    await consumaQuota(campaign.venueId, campaign.usagePeriod, campaign.reservedCount);
+    await db.campaign.update({ where: { id: campaignId }, data: { reservedCount: 0 } });
+    await controllaSoglie(campaign.venueId);
+  }
+  return true;
 }
 
 /** La chiave del lavoro di invio di una campagna: una sola, per campagna. */

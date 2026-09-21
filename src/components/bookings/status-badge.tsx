@@ -45,12 +45,21 @@ export const STATI: BookingStatus[] = [...STATI_OPERATIVI, ...STATI_NEGATIVI];
 
 const SOURCE: Record<BookingSource, string> = {
   WIDGET: "Sito",
+  /* «Telefono» per entrambe, e non «Voice» per una: per il ristoratore sono
+     la stessa cosa — una prenotazione arrivata per telefono. La differenza fra
+     `PHONE` (scritta a mano da chi ha risposto) e `VOICE` (nata dentro Tavolo
+     Voice) serve a noi nelle analitiche, non a lui in un elenco. */
   PHONE: "Telefono",
+  VOICE: "Telefono",
   WALK_IN: "Walk-in",
   GOOGLE: "Google",
   SOCIAL: "Social",
   CONCIERGE: "Concierge",
   EVENT: "Evento",
+  /* «Importata» e non il nome del gestionale di prima: quello lo sa chi ha
+     fatto l'importazione, e in una pillola larga due centimetri serve sapere
+     che quella riga non l'ha presa nessuno qui. */
+  IMPORT: "Importata",
 };
 
 export function StatusBadge({ status }: { status: BookingStatus }) {

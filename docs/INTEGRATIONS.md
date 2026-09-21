@@ -97,15 +97,22 @@ configurato: meglio un cron fermo che un endpoint che chiunque trovi l'URL può 
 
 ## Dichiarate ma non implementate
 
+Aggiornata il 21 settembre 2026. Cinque righe di questa tabella erano **false**:
+centralino, Wi-Fi e SMS sono stati costruiti nel frattempo, e le tre tabelle
+del telefono citate qui sotto sono state cancellate. Un documento che dichiara
+mancante una cosa che c'è manda a costruirla due volte.
+
 | Integrazione | Cosa esiste | Cosa manca |
 |---|---|---|
-| **Stripe** | la dipendenza in `package.json`, `Payment.stripePaymentId`, `Booking.depositCents`/`depositStatus` | **tutto il codice**. Zero riferimenti in `src/` |
-| **POS** | `POSConnector`, `POSEvent` | tutto |
-| **Connettori generici** | `Connector`, `ConnectorEvent` | tutto |
-| **Centralino / voce** | `CallLog`, `MissedCall`, `VoiceBookingDraft` | tutto |
-| **Wi-Fi captive portal** | `WifiLead`, `WifiSession` | tutto |
-| **WhatsApp / SMS** | il posto in `PROVIDERS` con la firma giusta (`src/server/messaging/send.ts`) | il fornitore. Aggiungerlo non tocca nient'altro; finché non c'è, chi chiama riceve `no_channel` e nessuna interfaccia li offre |
-| **Reserve with Google** | `BookingSource.GOOGLE` | tutto |
+| **Stripe** | `server/stripe-connect.ts`, `pagamenti-tavolo.ts`, `conto-tavolo.ts`: il conto al tavolo si paga davvero | le **caparre** sulla prenotazione (`Booking.depositCents`/`depositStatus` sono ancora dichiarati e non scritti) |
+| **SMS** | **fatto**: `server/messaging/sms.ts` (Brevo, lo stesso account delle email). Promemoria a chi ha lasciato solo il numero, conferma di chi prenota al telefono, link per riprendere una chiamata interrotta | niente di tecnico: serve `BREVO_SMS_SENDER=locale`, che accende il canale e usa il **nome di ogni ristorante** come mittente (undici caratteri alfanumerici, tagliati solo fra le parole). Vuoto = canale spento, e il registro dice `SKIPPED` col testo che sarebbe partito |
+| **WhatsApp** | il posto in `PROVIDERS` con la firma giusta, e `canalePerTelefono()` che lo preferirà da sé appena c'è | un account WhatsApp Business e un **modello approvato da Meta per ogni tipo di messaggio**: fuori dalle 24 ore da un messaggio del cliente un testo libero non si può mandare, ed è una regola del canale. Finché non c'è, quei messaggi partono come SMS |
+| **Centralino / voce** | **fatto**: `server/voice/**`, `api/v1/telefonia/**`, il centralino in `blackfox-voice`. Risponde, riconosce chi chiama, prende e disdice prenotazioni, controlla la disponibilità | la prova con una telefonata vera sulla linea del cliente |
+| **Wi-Fi captive portal** | **fatto**: `server/wifi.ts`, `/wifi/[slug]`, `WifiLead` | `WifiSession` resta vuota di proposito (vedi `ARCHITECTURE.md`) |
+| **POS** | `POSConnector`, `POSEvent` | tutto, e dipende da quale cassa usano i clienti |
+| **Connettori generici** | `Connector`, `ConnectorEvent` | tutto: un adattatore per canale e un accordo commerciale per ognuno |
+| **Reserve with Google** | `BookingSource.GOOGLE` | tutto: serve un account partner |
+| **Importazione da un altro gestionale** | **fatta**: `/settings/importa`, `lib/import-csv.ts`, `server/importazione.ts`. CSV con clienti, prenotazioni o entrambi; anteprima che non scrive; ricaricare lo stesso file non duplica | niente. Le colonne non riconosciute si elencano nella schermata: si aggiungono a `ALIAS` quando un file vero ne porta di nuove |
 
 ## Come si aggiunge un'integrazione
 

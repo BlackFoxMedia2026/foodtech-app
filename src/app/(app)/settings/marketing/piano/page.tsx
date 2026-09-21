@@ -46,7 +46,7 @@ export default async function PianoDemPage({
           delle Impostazioni: tornare indietro e dover ricercare dove si era è
           il modo più semplice di far sembrare lunga una pagina corta. */}
       <Button asChild variant="ghost" size="sm" className="-ml-2 self-start">
-        <Link href="/settings#marketing">
+        <Link href="/settings?sez=marketing">
           <ArrowLeft className="h-4 w-4" /> Impostazioni
         </Link>
       </Button>

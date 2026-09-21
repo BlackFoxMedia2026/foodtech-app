@@ -107,3 +107,43 @@ export function esaminaMigrazione(sql: string): Verdetto {
   }).map((d) => d.cosa);
   return motivi.length > 0 ? { distruttiva: true, motivi: [...new Set(motivi)] } : { distruttiva: false };
 }
+
+/* -------------------------------------------------------------------------- */
+/*  La connessione con cui si migra                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Le migrazioni passano dalla connessione **diretta**, non dal pooler.
+ *
+ * Il 21 settembre 2026 una migrazione si è fermata di proposito — una guardia
+ * che ha trovato dati dove non dovevano essercene — e ha lasciato dietro un
+ * guaio che non c'entrava niente col suo lavoro: la serratura di Prisma
+ * (`pg_advisory_lock`, che vive per **tutta la sessione**) l'aveva presa una
+ * connessione attraverso pgbouncer. Il processo del build è morto, il pooler
+ * ha tenuto vivo il collegamento al server, e la serratura è rimasta chiusa
+ * con dentro nessuno. Da quel momento ogni pubblicazione moriva dopo dieci
+ * secondi d'attesa — e nemmeno il comando che sblocca la migrazione si poteva
+ * eseguire, perché vuole la stessa serratura.
+ *
+ * Neon dà due indirizzi: quello con il pooler (`DATABASE_URL`, giusto per
+ * l'applicazione, che apre e chiude connessioni a raffica) e quello diretto
+ * (`DATABASE_URL_UNPOOLED`). Le migrazioni vogliono il secondo, ed è anche
+ * quello che dice la documentazione di Neon: una serratura di sessione ha
+ * senso solo su una sessione che è davvero la tua.
+ *
+ * Dove l'indirizzo diretto non c'è — un altro fornitore, un database locale —
+ * si usa quello normale: è il comportamento di prima, e va bene dove non c'è
+ * nessun pooler in mezzo.
+ *
+ * Il tipo è `Record<string, string | undefined>` e non `NodeJS.ProcessEnv`
+ * perché Next dichiara `NODE_ENV` **obbligatoria** in quel tipo: un test che
+ * passa due indirizzi e nient'altro non compilerebbe, e per farlo compilare si
+ * finirebbe a scrivere un ambiente finto completo — cioè a non provare niente.
+ */
+export function ambienteDelleMigrazioni<T extends Record<string, string | undefined>>(
+  env: T = process.env as unknown as T,
+): T {
+  const diretto = env.DATABASE_URL_UNPOOLED ?? env.POSTGRES_URL_NON_POOLING;
+  if (!diretto) return env;
+  return { ...env, DATABASE_URL: diretto };
+}

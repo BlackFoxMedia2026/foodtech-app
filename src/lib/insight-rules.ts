@@ -8,11 +8,13 @@ import { computeDelta } from "./period-delta";
 export const SOURCE_LABELS: Record<string, string> = {
   WIDGET: "Widget sito",
   PHONE: "Telefono",
+  VOICE: "Telefono (Voice)",
   WALK_IN: "Walk-in",
   GOOGLE: "Google",
   SOCIAL: "Social",
   CONCIERGE: "Manuale",
   EVENT: "Evento",
+  IMPORT: "Importate",
 };
 
 interface SlotDatum {

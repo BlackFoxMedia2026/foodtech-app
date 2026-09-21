@@ -53,18 +53,27 @@ export const MAX_CAMBIAMENTI = 4;
  * prenotazione a cui è attaccato.
  */
 const AZIONI: Partial<
-  Record<AuditAction, { frase: (soggetto: string | null) => string; tipo: "prenotazione" | "attesa" | "conto" }>
+  Record<
+    AuditAction,
+    {
+      frase: (soggetto: string | null) => string;
+      tipo: "prenotazione" | "attesa" | "conto";
+    }
+  >
 > = {
   "booking.create": {
-    frase: (s) => (s ? `ha preso la prenotazione di ${s}` : "ha preso una prenotazione"),
+    frase: (s) =>
+      s ? `ha preso la prenotazione di ${s}` : "ha preso una prenotazione",
     tipo: "prenotazione",
   },
   "booking.create_forced": {
-    frase: (s) => (s ? `ha forzato la prenotazione di ${s}` : "ha forzato una prenotazione"),
+    frase: (s) =>
+      s ? `ha forzato la prenotazione di ${s}` : "ha forzato una prenotazione",
     tipo: "prenotazione",
   },
   "booking.walk_in": {
-    frase: (s) => (s ? `ha accomodato ${s} come walk-in` : "ha accomodato un walk-in"),
+    frase: (s) =>
+      s ? `ha accomodato ${s} come walk-in` : "ha accomodato un walk-in",
     tipo: "prenotazione",
   },
   "booking.update": {
@@ -76,7 +85,8 @@ const AZIONI: Partial<
     tipo: "prenotazione",
   },
   "booking.assign_table": {
-    frase: (s) => (s ? `ha assegnato un tavolo a ${s}` : "ha assegnato un tavolo"),
+    frase: (s) =>
+      s ? `ha assegnato un tavolo a ${s}` : "ha assegnato un tavolo",
     tipo: "prenotazione",
   },
   "booking.assign_table_forced": {
@@ -108,15 +118,20 @@ const AZIONI: Partial<
     tipo: "attesa",
   },
   "waitlist.confirm": {
-    frase: (s) => (s ? `ha confermato ${s}` : "ha confermato una riga in lista"),
+    frase: (s) =>
+      s ? `ha confermato ${s}` : "ha confermato una riga in lista",
     tipo: "attesa",
   },
   "waitlist.seat": {
-    frase: (s) => (s ? `ha accomodato ${s} dalla lista` : "ha accomodato qualcuno dalla lista"),
+    frase: (s) =>
+      s
+        ? `ha accomodato ${s} dalla lista`
+        : "ha accomodato qualcuno dalla lista",
     tipo: "attesa",
   },
   "waitlist.close": {
-    frase: (s) => (s ? `ha chiuso la riga di ${s}` : "ha chiuso una riga in lista"),
+    frase: (s) =>
+      s ? `ha chiuso la riga di ${s}` : "ha chiuso una riga in lista",
     tipo: "attesa",
   },
 };
@@ -131,11 +146,27 @@ export type Cambiamento = {
 };
 
 /** Il nome di battesimo: «Anna Conti» → «Anna», «anna@x.it» → «anna». */
-function primoNome(nome: string | null | undefined, email: string | null | undefined): string {
+/**
+ * Il nome con cui si chiama una persona in sala.
+ *
+ * Esportata perché la storia di una prenotazione ha lo stesso bisogno — «Anna
+ * ha spostato alle 21:00» — e due modi di ricavare un nome dallo stesso
+ * registro finirebbero per chiamare la stessa persona in due modi diversi in
+ * due schermate.
+ */
+export function primoNome(
+  nome: string | null | undefined,
+  email: string | null | undefined,
+): string {
   const dal = (nome ?? "").trim().split(/\s+/)[0];
   if (dal) return dal;
+  /* Dalla parte prima della chiocciola, **con la maiuscola**: questo valore
+     finisce in mezzo a una frase come nome di persona — «anna ha spostato alle
+     21:00» si legge come un errore di stampa, e chi legge non sa che quel nome
+     viene da un indirizzo email. */
   const prima = (email ?? "").split("@")[0]?.trim();
-  return prima || "Qualcuno";
+  if (!prima) return "Qualcuno";
+  return prima.charAt(0).toUpperCase() + prima.slice(1);
 }
 
 export async function ultimiCambiamenti(
@@ -180,18 +211,30 @@ export async function ultimiCambiamenti(
 
   /* ---- i nomi: di chi ha agito, e di chi ha subìto ---- */
   const utenti = await db.user.findMany({
-    where: { id: { in: [...new Set(scelte.map((r) => r.actorId).filter((v): v is string => !!v))] } },
+    where: {
+      id: {
+        in: [
+          ...new Set(
+            scelte.map((r) => r.actorId).filter((v): v is string => !!v),
+          ),
+        ],
+      },
+    },
     select: { id: true, name: true, email: true },
   });
-  const nomeUtente = new Map(utenti.map((u) => [u.id, primoNome(u.name, u.email)]));
+  const nomeUtente = new Map(
+    utenti.map((u) => [u.id, primoNome(u.name, u.email)]),
+  );
 
   const diTipo = (t: "prenotazione" | "attesa" | "conto") =>
-    scelte.filter((r) => AZIONI[r.action as AuditAction]?.tipo === t && r.entityId).map((r) => r.entityId!);
+    scelte
+      .filter((r) => AZIONI[r.action as AuditAction]?.tipo === t && r.entityId)
+      .map((r) => r.entityId!);
 
   const idPrenotazioni = diTipo("prenotazione");
   const prenotazioni = idPrenotazioni.length
     ? await db.booking.findMany({
-        where: { id: { in: idPrenotazioni }, venueId },
+        where: { deletedAt: null, id: { in: idPrenotazioni }, venueId },
         select: {
           id: true,
           partySize: true,
@@ -265,7 +308,9 @@ export async function ultimiCambiamenti(
 
       return {
         id: r.id,
-        chi: r.actorId ? (nomeUtente.get(r.actorId) ?? primoNome(null, r.actorEmail)) : primoNome(null, r.actorEmail),
+        chi: r.actorId
+          ? (nomeUtente.get(r.actorId) ?? primoNome(null, r.actorEmail))
+          : primoNome(null, r.actorEmail),
         cosa: regola.frase(soggetto),
         quando: r.createdAt,
       };

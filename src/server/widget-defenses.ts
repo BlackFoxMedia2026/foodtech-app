@@ -71,6 +71,15 @@ export async function giaFattaConQuestaChiave(
   chiave: string | null,
 ): Promise<PrenotazioneGiaFatta | null> {
   if (!chiave) return null;
+  /*
+    Qui **non** si filtra `deletedAt`, ed e voluto.
+
+    Questa lettura serve a non scrivere due prenotazioni per un cliente che ha
+    premuto due volte, e la chiave e unica su tutta la tabella — le righe
+    cancellate compresa. Filtrandole, la seconda richiesta non troverebbe
+    niente, proverebbe a scrivere, e il database la respingerebbe per chiave
+    duplicata: al cliente uscirebbe un errore invece della sua prenotazione.
+  */
   return db.booking.findFirst({
     where: { venueId, idempotencyKey: chiave },
     select: { id: true, reference: true, startsAt: true, partySize: true },

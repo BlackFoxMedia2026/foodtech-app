@@ -32,7 +32,9 @@ export function AvgSpendSettings({
   canManage: boolean;
 }) {
   const router = useRouter();
-  const [valore, setValore] = useState(initialCents != null ? String(initialCents / 100) : "");
+  const [valore, setValore] = useState(
+    initialCents != null ? String(initialCents / 100) : "",
+  );
   const [salvando, setSalvando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [salvato, setSalvato] = useState(false);
@@ -43,7 +45,8 @@ export function AvgSpendSettings({
     setError(null);
     setSalvato(false);
 
-    const numero = valore.trim() === "" ? null : Number(valore.replace(",", "."));
+    const numero =
+      valore.trim() === "" ? null : Number(valore.replace(",", "."));
     const res = await fetch("/api/venue/avg-spend", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -52,7 +55,9 @@ export function AvgSpendSettings({
     setSalvando(false);
 
     if (!res.ok) {
-      setError(await readApiError(res, "Non siamo riusciti a salvare. Riprova."));
+      setError(
+        await readApiError(res, "Non siamo riusciti a salvare. Riprova."),
+      );
       return;
     }
     setSalvato(true);
@@ -68,7 +73,10 @@ export function AvgSpendSettings({
         <RigaImpostazione
           nome="Scontrino medio per persona"
           htmlFor="avg-spend"
-          descrizione="Lasciandolo vuoto, Tavolo non mostra nessuna stima invece di mostrarne una inventata. Quando saranno collegati ordini o incassi, il dato reale prenderà il posto della stima."
+          /* Una riga: quello che serve per decidere se scriverlo. Il resto —
+             che il dato reale prenderà il posto della stima quando ci saranno
+             ordini o incassi — è vero e non cambia la decisione di adesso. */
+          descrizione="Lasciandolo vuoto, Tavolo non mostra nessuna stima invece di mostrarne una inventata."
         >
           <div className="flex items-center gap-2">
             <Input
@@ -86,7 +94,12 @@ export function AvgSpendSettings({
             <span className="text-sm text-muted-foreground">€</span>
           </div>
           {canManage && (
-            <Button type="submit" variant="outline" size="sm" disabled={salvando}>
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              disabled={salvando}
+            >
               {salvando ? "Salvo…" : "Salva"}
             </Button>
           )}

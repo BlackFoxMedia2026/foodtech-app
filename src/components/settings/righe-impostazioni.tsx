@@ -50,27 +50,39 @@ export function GruppoImpostazioni({
   className?: string;
 }) {
   return (
-    <section className={cn("space-y-3", className)}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    /*
+      La testata sta **dentro** la scheda, e non sopra.
+
+      Prima era un titolo grigio appoggiato sul fondo della pagina con un
+      riquadro di righe sotto: su una sezione con quattro gruppi si leggevano
+      otto blocchi di testo tutti dello stesso peso, e niente diceva dove
+      finisse una cosa e cominciasse l'altra. Era il difetto che faceva
+      sembrare questa pagina «un elenco di voci».
+
+      Con la testata dentro, ogni gruppo è **un oggetto**: si vede il suo
+      inizio, la sua fine, e il comando che vale per tutto quello che contiene.
+    */
+    <section
+      className={cn(
+        "riquadro overflow-hidden rounded-xl border-border/80 bg-white/[0.02]",
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border/60 px-4 py-3.5 md:px-5 md:py-4">
         <div className="min-w-0">
           <h3 className="t-titolo-sezione">{titolo}</h3>
           {descrizione && (
-            <p className="mt-0.5 max-w-3xl text-sm text-muted-foreground">{descrizione}</p>
+            <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-muted-foreground md:text-sm">
+              {descrizione}
+            </p>
           )}
         </div>
-        {azione && <div className="flex shrink-0 items-center gap-2">{azione}</div>}
+        {azione && (
+          <div className="flex shrink-0 items-center gap-2">{azione}</div>
+        )}
       </div>
 
-      {/*
-        Il riquadro del gruppo è **appena** staccato dal fondo: niente gradiente
-        e niente ombra come `.surface`. Con quattro sezioni di gruppi in una
-        pagina che scorre, venti superfici che galleggiano diventano rumore —
-        e l'alone era la cosa che faceva sembrare questa pagina meno adulta del
-        prodotto intorno.
-      */}
-      <div className="riquadro rounded-xl border-border/80 bg-white/[0.02] px-4 md:px-5">
-        {children}
-      </div>
+      <div className="px-4 md:px-5">{children}</div>
     </section>
   );
 }
@@ -110,17 +122,28 @@ export function RigaImpostazione({
   className?: string;
 }) {
   const Nome = htmlFor ? "label" : "p";
-  return (
-    <div
-      className={cn(
-        "grid gap-x-8 gap-y-3 border-b border-border/60 py-4 last:border-b-0 md:py-5",
-        larga
-          ? "md:grid-cols-1"
-          : "md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:items-center",
-        className,
-      )}
-    >
-      <div className="min-w-0">
+
+  /*
+    **Nome e valore sulla stessa riga, vicini.**
+
+    Su uno schermo da 1440 il valore stava incollato al bordo destro, a
+    milletrecento pixel dal nome: l'occhio faceva un viaggio per ogni riga, e
+    quaranta viaggi sono la sensazione di leggere un registro. Adesso la
+    colonna del valore è larga il necessario e la coppia si legge in un colpo
+    d'occhio — la larghezza della pagina la limita la pagina, non questa riga.
+
+    E la **spiegazione va sotto entrambi**, non accanto al nome: è la parte che
+    si legge la prima volta e mai più, e messa in mezzo separava il nome dal
+    suo valore.
+  */
+  if (larga) {
+    return (
+      <div
+        className={cn(
+          "border-b border-border/60 py-3.5 last:border-b-0 md:py-4",
+          className,
+        )}
+      >
         <Nome
           {...(htmlFor ? { htmlFor } : {})}
           className={cn(
@@ -131,20 +154,48 @@ export function RigaImpostazione({
           {nome}
         </Nome>
         {descrizione && (
-          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground md:text-sm">
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
             {descrizione}
           </p>
         )}
+        {children && <div className="mt-3">{children}</div>}
       </div>
-      {children && (
-        <div
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "border-b border-border/60 py-3.5 last:border-b-0 md:py-4",
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <Nome
+          {...(htmlFor ? { htmlFor } : {})}
           className={cn(
-            "flex flex-wrap items-center gap-2",
-            larga ? "md:justify-start" : "md:justify-end",
+            "min-w-0 flex-1 text-sm font-medium text-foreground md:text-[0.9375rem]",
+            htmlFor && "cursor-pointer",
           )}
         >
-          {children}
-        </div>
+          {nome}
+        </Nome>
+        {children && (
+          /* `min-w-0` e non `shrink-0`: un valore lungo — l'indirizzo del
+             modulo di prenotazione — sforava il bordo della scheda sul
+             telefono, perché una colonna che non si stringe non fa andare a
+             capo il testo che contiene. I controlli veri (campi, pulsanti,
+             tendine) hanno la loro larghezza minima e vanno a capo per conto
+             loro grazie al `flex-wrap` della riga. */
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            {children}
+          </div>
+        )}
+      </div>
+      {descrizione && (
+        <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+          {descrizione}
+        </p>
       )}
     </div>
   );
@@ -184,9 +235,30 @@ export function ValoreImpostazione({
   );
 }
 
-/** Il valore che non c'è: detto, non lasciato vuoto. */
-export function ValoreVuoto({ children = "non impostato" }: { children?: ReactNode }) {
-  return <span className="text-sm text-tertiary-foreground md:text-right">{children}</span>;
+/**
+ * Il valore che non c'è: **si vede che manca**, non è un grigio come gli altri.
+ *
+ * Prima «non caricato», «non scelti» e «non configurato» erano scritti con lo
+ * stesso grigio di «Locale di prova» e «Google»: su quaranta righe niente
+ * distingueva le cose fatte da quelle da fare, e per saperlo bisognava leggere
+ * ogni singolo valore. Adesso è un bollino con il bordo tratteggiato — la
+ * forma che in questo prodotto dice «qui manca qualcosa» — e le assenze si
+ * contano con un'occhiata, che è l'unica cosa per cui si entra in una pagina
+ * di configurazione.
+ *
+ * Tratteggiato e non pieno di proposito: un bollino d'allarme su sei righe di
+ * un locale nuovo trasformerebbe le impostazioni in un elenco di errori.
+ */
+export function ValoreVuoto({
+  children = "non impostato",
+}: {
+  children?: ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-tertiary-foreground">
+      {children}
+    </span>
+  );
 }
 
 /**
@@ -206,7 +278,12 @@ export function RigaLibera({
   className?: string;
 }) {
   return (
-    <div className={cn("border-b border-border/60 py-4 last:border-b-0 md:py-5", className)}>
+    <div
+      className={cn(
+        "border-b border-border/60 py-4 last:border-b-0 md:py-5",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -219,8 +296,16 @@ export function RigaLibera({
  * fondo alla schermata è un «Salvato.» che non si vede: sta accanto al
  * pulsante che l'ha prodotto.
  */
-export function EsitoSalvataggio({ salvato, errore }: { salvato?: boolean; errore?: string | null }) {
-  if (errore) return <span className="text-sm text-destructive-soft">{errore}</span>;
-  if (salvato) return <span className="text-sm text-sage-strong">Salvato.</span>;
+export function EsitoSalvataggio({
+  salvato,
+  errore,
+}: {
+  salvato?: boolean;
+  errore?: string | null;
+}) {
+  if (errore)
+    return <span className="text-sm text-destructive-soft">{errore}</span>;
+  if (salvato)
+    return <span className="text-sm text-sage-strong">Salvato.</span>;
   return null;
 }

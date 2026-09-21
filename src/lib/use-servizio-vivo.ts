@@ -57,9 +57,15 @@ async function controlla() {
     if (res.ok) {
       const { v } = (await res.json()) as { v: string };
       attesa = ATTESA_MINIMA_MS;
-      // Il primo giro registra solo la versione: la fotografia è quella che il
-      // server ha già reso, e riscaricarla subito sarebbe una richiesta
-      // buttata.
+      /* Il primo giro registra solo la versione: la fotografia è quella che
+         il server ha già reso, e riscaricarla subito sarebbe una richiesta
+         buttata.
+
+         Quando però la pagina ha passato la **sua** versione (vedi
+         `partiDa`), il punto di partenza è già fissato e questo ramo non si
+         percorre: così quello che succede fra la resa della pagina e il primo
+         giro non viene assorbito in silenzio. Era un buco di cinque secondi
+         su cui si perdeva una chiamata al telefono, che dura venti. */
       if (versione === null) versione = v;
       else if (v !== versione) {
         versione = v;
@@ -153,7 +159,20 @@ function fermaSeNessuno() {
  * pulsante «aggiorna»**: non c'è niente che quel pulsante faccia e che non
  * succeda già da solo.
  */
-export function useServizioVivo(scarica: () => Promise<void>) {
+export function useServizioVivo(
+  scarica: () => Promise<void>,
+  /**
+   * La versione con cui il server ha reso questa pagina.
+   *
+   * Passarla chiude un buco di cinque secondi: senza, la sonda prende come
+   * punto di partenza la **propria** prima interrogazione, e tutto quello che
+   * succede fra la resa della pagina e quel primo giro finisce dentro il punto
+   * di partenza — cioè non fa aggiornare niente. Su una prenotazione si
+   * recupera al cambiamento successivo; su una chiamata al telefono, che dura
+   * venti secondi, cinque secondi persi sono un terzo della sua vita.
+   */
+  partiDa?: string,
+) {
   const [ultimo, setUltimo] = useState<Date | null>(null);
   const [aggiornando, setAggiornando] = useState(false);
 
@@ -201,12 +220,25 @@ export function useServizioVivo(scarica: () => Promise<void>) {
   useEffect(() => {
     const mio = () => aggiornaOra();
     iscritti.add(mio);
+    /*
+      Il punto di partenza si fissa **qui**, all'iscrizione, e non nel corpo
+      del rendering.
+
+      Nel corpo non funzionava, e il modo in cui non funzionava vale la pena
+      scriverlo: in sviluppo React monta ogni componente due volte, e la
+      pulizia del primo montaggio chiama `fermaSeNessuno()`, che azzera la
+      versione. I due rendering erano già passati, quindi il valore messo là
+      veniva cancellato **dopo** — e la sonda ripartiva dal proprio primo giro,
+      cioè il buco che questo parametro serve a chiudere. Un difetto che
+      esisteva solo in sviluppo, ed è lì che si scrivono le prove.
+    */
+    if (partiDa && versione === null) versione = partiDa;
     programma(CONTROLLO_MS);
     return () => {
       iscritti.delete(mio);
       fermaSeNessuno();
     };
-  }, [aggiornaOra]);
+  }, [aggiornaOra, partiDa]);
 
   // Tornando sulla scheda dopo una pausa non si aspetta il prossimo controllo:
   // si ricarica subito, e si riparte da quella versione. Lo stesso quando il

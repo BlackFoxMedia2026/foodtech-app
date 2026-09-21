@@ -286,6 +286,11 @@ export async function unisciOspiti(
     };
 
     // Le righe che portano `guestId`: si spostano tutte sulla principale.
+    //
+    // Anche quelle cancellate, di proposito: restano in tabella, e lasciarle
+    // agganciate a una scheda che sta per sparire vorrebbe dire righe che
+    // puntano al vuoto — e un eventuale ripristino riporterebbe in agenda una
+    // prenotazione senza ospite.
     conta(
       "prenotazioni",
       (await tx.booking.updateMany({ where: { guestId: duplicatoId }, data: { guestId: principaleId } })).count,

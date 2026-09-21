@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { endOfDay, startOfDay } from "@/lib/utils";
+import { giornataInVenue } from "@/lib/venue-time";
 import { durataUmana } from "@/lib/durata";
 import { frasePrevisione } from "@/lib/liberazione";
 import { getFloorLive } from "@/server/floor-live";
@@ -44,11 +44,21 @@ export const chiRischiaAssenzaTool: Tool = {
   ability: null,
   async run(ctx) {
     const now = new Date();
+    /*
+      «Oggi» è il giorno **del locale**.
+
+      Con `startOfDay` del processo — UTC su Vercel — all'una di notte a Roma
+      la domanda «chi rischia di mancare» guardava la giornata di ieri: i
+      ritardi di adesso non c'erano, e chi deve ancora arrivare nemmeno. È lo
+      stesso difetto della Panoramica, e si vedeva solo di notte, cioè quando
+      quella domanda si fa.
+    */
+    const { inizio, fine } = giornataInVenue(now, ctx.venueTimezone);
     const prenotazioni = await db.booking.findMany({
       where: {
         venueId: ctx.venueId,
         deletedAt: null,
-        startsAt: { gte: startOfDay(now), lte: endOfDay(now) },
+        startsAt: { gte: inizio, lte: fine },
         status: { in: ["CONFIRMED", "PENDING"] },
       },
       include: { guest: { select: { firstName: true, lastName: true, noShowCount: true, totalVisits: true } } },

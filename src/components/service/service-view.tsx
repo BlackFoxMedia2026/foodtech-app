@@ -2,7 +2,14 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, ListOrdered, Timer, UserCheck, Users, UtensilsCrossed } from "lucide-react";
+import {
+  Clock,
+  ListOrdered,
+  Timer,
+  UserCheck,
+  Users,
+  UtensilsCrossed,
+} from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,15 +20,20 @@ import { ServiceBookingCard } from "@/components/service/service-booking-card";
 import { ServiceWaitlistCard } from "@/components/service/service-waitlist-card";
 import { ServiceSwitch } from "@/components/service/service-switch";
 import { AvvisiServizio } from "@/components/service/avvisi-servizio";
-import { PassoServizio, SelettorePassi } from "@/components/service/flusso-servizio";
+import {
+  PassoServizio,
+  SelettorePassi,
+} from "@/components/service/flusso-servizio";
 import type { ServiceInsight } from "@/server/service-intelligence";
 import { useServizioVivo } from "@/lib/use-servizio-vivo";
+import { RiepilogoTelefono } from "@/components/telefono/riepilogo-servizio";
 import { CambiamentiRecenti } from "@/components/service/cambiamenti-recenti";
 
 /** I tre momenti, nell'ordine in cui li vive chi entra. */
 type Passo = "arrivo" | "attesa" | "accomodati";
 
-const plurale = (n: number, uno: string, molti: string) => `${n} ${n === 1 ? uno : molti}`;
+const plurale = (n: number, uno: string, molti: string) =>
+  `${n} ${n === 1 ? uno : molti}`;
 
 /**
  * La schermata del servizio.
@@ -61,7 +73,9 @@ export function ServiceView({
   // qualcosa è cambiato e chiama questa funzione solo se la risposta è sì.
   const scarica = useCallback(
     async (finestra = window_) => {
-      const res = await fetch(`/api/service?window=${finestra}`, { cache: "no-store" });
+      const res = await fetch(`/api/service?window=${finestra}`, {
+        cache: "no-store",
+      });
       // Una rete che salta per un istante non deve svuotare la schermata:
       // resta l'ultima fotografia buona, con l'ora a cui è stata presa.
       if (res.ok) setSnapshot(await res.json());
@@ -69,10 +83,11 @@ export function ServiceView({
     [window_],
   );
 
-  const { ultimo, aggiornaOra } = useServizioVivo(scarica);
+  const { ultimo, aggiornaOra } = useServizioVivo(scarica, initial.versione);
 
   const aggiorna = useCallback(
-    (finestra?: number) => (finestra === undefined ? aggiornaOra() : scarica(finestra)),
+    (finestra?: number) =>
+      finestra === undefined ? aggiornaOra() : scarica(finestra),
     [aggiornaOra, scarica],
   );
 
@@ -103,9 +118,14 @@ export function ServiceView({
   // L'attesa più lunga è il dato che decide chi si accomoda per primo, e
   // l'unico della banda che si accende: se qualcuno aspetta da mezz'ora,
   // quello è il numero da vedere senza aprire la colonna.
-  const attesaPiuLunga = snapshot.waitlist.reduce((m, e) => Math.max(m, e.waitingMin), 0);
+  const attesaPiuLunga = snapshot.waitlist.reduce(
+    (m, e) => Math.max(m, e.waitingMin),
+    0,
+  );
 
-  const seduti = snapshot.seated.filter((b) => !snapshot.freeingSoon.some((f) => f.id === b.id));
+  const seduti = snapshot.seated.filter(
+    (b) => !snapshot.freeingSoon.some((f) => f.id === b.id),
+  );
 
   return (
     /*
@@ -153,17 +173,39 @@ export function ServiceView({
             la frase di prima.
           */}
           {snapshot.cambiamenti.length > 0 ? (
-            <CambiamentiRecenti cambiamenti={snapshot.cambiamenti} ultimo={ultimo} />
+            <CambiamentiRecenti
+              cambiamenti={snapshot.cambiamenti}
+              ultimo={ultimo}
+            />
           ) : (
             ultimo && (
               <span className="hidden t-nota sm:inline">
                 aggiornato alle{" "}
-                {ultimo.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                {ultimo.toLocaleTimeString("it-IT", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
               </span>
             )
           )}
         </div>
       </header>
+
+      {/*
+        Il riquadro della chiamata **non è più qui**.
+
+        Stava in questa pagina, e voleva dire che chi guardava la carta o la
+        scheda di un cliente non vedeva squillare niente. Adesso vive nel
+        guscio (`components/telefono/voice-globale.tsx`) e compare su qualunque
+        pagina, compresa questa.
+
+        Al suo posto resta quello che il Servizio deve dire del telefono: **cosa
+        chiede di essere fatto**. Non lo storico, non i conteggi della giornata
+        — quelli stanno nella pagina Telefono. Il Servizio non diventa un call
+        center: mostra le due righe che riguardano il servizio di adesso.
+      */}
+      <RiepilogoTelefono />
 
       {/*
         Su tablet ci stanno tutti e sei, e ci devono stare: a 820 px la fascia
@@ -205,7 +247,11 @@ export function ServiceView({
           etichetta="In ritardo"
           valore={c.inRitardo}
           allarme={c.inRitardo > 0}
-          nota={c.nonArrivate > 0 ? `+${c.nonArrivate} mai ${c.nonArrivate === 1 ? "arrivata" : "arrivate"}` : undefined}
+          nota={
+            c.nonArrivate > 0
+              ? `+${c.nonArrivate} mai ${c.nonArrivate === 1 ? "arrivata" : "arrivate"}`
+              : undefined
+          }
         />
         <CartaKpi
           icona={ListOrdered}
@@ -231,7 +277,11 @@ export function ServiceView({
         passi={[
           { chiave: "arrivo", corto: "In arrivo", conteggio: inArrivo.length },
           { chiave: "attesa", corto: "In attesa", conteggio: gruppiInAttesa },
-          { chiave: "accomodati", corto: "Accomodati", conteggio: snapshot.seated.length },
+          {
+            chiave: "accomodati",
+            corto: "Accomodati",
+            conteggio: snapshot.seated.length,
+          },
         ]}
       />
 
@@ -284,7 +334,9 @@ export function ServiceView({
                   }}
                   className={cn(
                     "min-h-[36px] rounded-full px-2.5 text-xs tabular-nums transition-colors",
-                    window_ === m ? "bg-cream text-clay-ink" : "bg-current/10 text-muted-foreground",
+                    window_ === m
+                      ? "bg-cream text-clay-ink"
+                      : "bg-current/10 text-muted-foreground",
                   )}
                 >
                   {m}
@@ -318,12 +370,15 @@ export function ServiceView({
           {snapshot.next.length === 0 ? (
             snapshot.late.length === 0 && (
               <EmptyState icon={Clock} title="Nessun arrivo in vista" compact>
-                Nei prossimi {window_} minuti non è previsto nessuno. Allarga la finestra per guardare
-                più avanti.
+                Nei prossimi {window_} minuti non è previsto nessuno. Allarga la
+                finestra per guardare più avanti.
               </EmptyState>
             )
           ) : (
-            <Gruppo titolo={`Attesi · ${snapshot.next.length}`} muto={snapshot.late.length === 0}>
+            <Gruppo
+              titolo={`Attesi · ${snapshot.next.length}`}
+              muto={snapshot.late.length === 0}
+            >
               {snapshot.next.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
@@ -355,7 +410,9 @@ export function ServiceView({
                 {attesaPiuLunga > 0 && (
                   <>
                     {" · attesa più lunga "}
-                    <span className="font-medium text-accent-strong">{durataUmana(attesaPiuLunga)}</span>
+                    <span className="font-medium text-accent-strong">
+                      {durataUmana(attesaPiuLunga)}
+                    </span>
                   </>
                 )}
               </>
@@ -363,7 +420,9 @@ export function ServiceView({
           }
         >
           {snapshot.arrived.length > 0 && (
-            <Gruppo titolo={`Arrivati, da accomodare · ${snapshot.arrived.length}`}>
+            <Gruppo
+              titolo={`Arrivati, da accomodare · ${snapshot.arrived.length}`}
+            >
               {snapshot.arrived.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
@@ -378,7 +437,10 @@ export function ServiceView({
           )}
 
           {snapshot.waitlist.length > 0 && (
-            <Gruppo titolo={`In lista · ${snapshot.waitlist.length}`} muto={snapshot.arrived.length === 0}>
+            <Gruppo
+              titolo={`In lista · ${snapshot.waitlist.length}`}
+              muto={snapshot.arrived.length === 0}
+            >
               {snapshot.waitlist.map((e, i) => (
                 <ServiceWaitlistCard
                   key={e.id}
@@ -393,8 +455,9 @@ export function ServiceView({
 
           {gruppiInAttesa === 0 && (
             <EmptyState icon={ListOrdered} title="Nessuno in attesa" compact>
-              Qui compare chi è arrivato senza tavolo e chi è in lista. Quando il locale è pieno,
-              aggiungi la coda: appena un tavolo si libera Tavolo ti dice chi ci sta.
+              Qui compare chi è arrivato senza tavolo e chi è in lista. Quando
+              il locale è pieno, aggiungi la coda: appena un tavolo si libera
+              Tavolo ti dice chi ci sta.
             </EmptyState>
           )}
         </PassoServizio>
@@ -428,7 +491,10 @@ export function ServiceView({
           )}
 
           {seduti.length > 0 && (
-            <Gruppo titolo={`Seduti · ${seduti.length}`} muto={snapshot.freeingSoon.length === 0}>
+            <Gruppo
+              titolo={`Seduti · ${seduti.length}`}
+              muto={snapshot.freeingSoon.length === 0}
+            >
               {seduti.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
@@ -454,7 +520,11 @@ export function ServiceView({
               compact
               action={
                 snapshot.waitlist.length > 0 ? (
-                  <Button size="sm" variant="accent" onClick={() => setPasso("attesa")}>
+                  <Button
+                    size="sm"
+                    variant="accent"
+                    onClick={() => setPasso("attesa")}
+                  >
                     Vedi chi aspetta
                   </Button>
                 ) : undefined
@@ -466,13 +536,15 @@ export function ServiceView({
                   {snapshot.waitlist.length === 1
                     ? "c'è un gruppo che aspetta"
                     : `ci sono ${snapshot.waitlist.length} gruppi che aspettano`}
-                  {c.personeInAttesa > 0 ? `, ${c.personeInAttesa} persone in tutto` : ""}. Da lì si
-                  accomoda il primo tavolo.
+                  {c.personeInAttesa > 0
+                    ? `, ${c.personeInAttesa} persone in tutto`
+                    : ""}
+                  . Da lì si accomoda il primo tavolo.
                 </>
               ) : (
                 <>
-                  Nessuno è ancora seduto. Appena il primo ospite arriva, lo segni qui con un tocco e la
-                  sala si aggiorna da sola.
+                  Nessuno è ancora seduto. Appena il primo ospite arriva, lo
+                  segni qui con un tocco e la sala si aggiorna da sola.
                 </>
               )}
             </EmptyState>
@@ -506,7 +578,12 @@ function Gruppo({
   return (
     <div className="space-y-2">
       {!muto && (
-        <p className={cn("text-xs font-medium", allarme ? "text-accent-strong" : "text-tertiary-foreground")}>
+        <p
+          className={cn(
+            "text-xs font-medium",
+            allarme ? "text-accent-strong" : "text-tertiary-foreground",
+          )}
+        >
           {titolo}
         </p>
       )}

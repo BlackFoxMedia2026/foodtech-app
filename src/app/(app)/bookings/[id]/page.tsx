@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Users, Clock, Phone, Mail, NotebookText } from "lucide-react";
+import {
+  ArrowLeft,
+  Users,
+  Clock,
+  Phone,
+  Mail,
+  NotebookText,
+} from "lucide-react";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { can } from "@/lib/abilities";
@@ -13,20 +20,39 @@ import { StatusBadge, SourceBadge } from "@/components/bookings/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { cosaSapere, etichettaOccasione } from "@/lib/cosa-sapere";
 import { CosaSapere } from "@/components/guests/cosa-sapere";
-import { ApprovaPrenotazione, SelettoreStato } from "@/components/bookings/selettore-stato";
+import {
+  ApprovaPrenotazione,
+  SelettoreStato,
+} from "@/components/bookings/selettore-stato";
+import { storiaPrenotazione } from "@/server/storia-prenotazione";
+import { StoriaPrenotazione } from "@/components/bookings/storia";
 
-export default async function BookingDetail({ params }: { params: { id: string } }) {
+export default async function BookingDetail({
+  params,
+}: {
+  params: { id: string };
+}) {
   const ctx = await getActiveVenue();
   /* Le azioni si mostrano solo a chi può farle: l'API chiede `manage_bookings`,
      e un pulsante che risponde «non puoi» è peggio di un pulsante che non c'è. */
   const canManage = can(ctx.role, "manage_bookings");
   const item = await db.booking.findFirst({
-    where: { id: params.id, venueId: ctx.venueId },
+    where: { deletedAt: null, id: params.id, venueId: ctx.venueId },
     include: { guest: true, table: true, payments: true },
   });
   if (!item) notFound();
 
-  const guestName = item.guest ? `${item.guest.firstName} ${item.guest.lastName ?? ""}`.trim() : "Walk-in";
+  /* La storia si legge dopo aver trovato la prenotazione: prima non si saprebbe
+     nemmeno se è di questo locale. */
+  const storia = await storiaPrenotazione(
+    ctx.venueId,
+    item.id,
+    ctx.venue.timezone,
+  );
+
+  const guestName = item.guest
+    ? `${item.guest.firstName} ${item.guest.lastName ?? ""}`.trim()
+    : "Walk-in";
 
   return (
     <div className="schermo animate-fade-in gap-4">
@@ -42,7 +68,9 @@ export default async function BookingDetail({ params }: { params: { id: string }
         <div>
           <p className="t-etichetta">Prenotazione</p>
           <h1 className="text-display text-3xl">{guestName}</h1>
-          <p className="text-sm text-muted-foreground">{formatDateTime(item.startsAt)}</p>
+          <p className="text-sm text-muted-foreground">
+            {formatDateTime(item.startsAt)}
+          </p>
         </div>
         {/* Da un link condiviso questa pagina si poteva leggere e non fare:
             nessuna azione sulla prenotazione, mentre la lista le aveva. Sono
@@ -58,7 +86,11 @@ export default async function BookingDetail({ params }: { params: { id: string }
           <SourceBadge source={item.source} />
           {canManage ? (
             <>
-              <SelettoreStato bookingId={item.id} stato={item.status} nome={guestName} />
+              <SelettoreStato
+                bookingId={item.id}
+                stato={item.status}
+                nome={guestName}
+              />
               {item.status === "PENDING" && (
                 <ApprovaPrenotazione bookingId={item.id} nome={guestName} />
               )}
@@ -76,13 +108,30 @@ export default async function BookingDetail({ params }: { params: { id: string }
               <CardTitle>Dettagli servizio</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4 text-sm">
-              <Info icon={Users} label="Persone" value={String(item.partySize)} />
-              <Info icon={Clock} label="Durata" value={`${item.durationMin} min`} />
-              <Info label="Tavolo" value={item.table?.label ?? "Da assegnare"} />
+              <Info
+                icon={Users}
+                label="Persone"
+                value={String(item.partySize)}
+              />
+              <Info
+                icon={Clock}
+                label="Durata"
+                value={`${item.durationMin} min`}
+              />
+              <Info
+                label="Tavolo"
+                value={item.table?.label ?? "Da assegnare"}
+              />
               {/* «BIRTHDAY» è come lo scrive il database, non come si dice. */}
-              <Info label="Occasione" value={etichettaOccasione(item.occasion) ?? "—"} />
+              <Info
+                label="Occasione"
+                value={etichettaOccasione(item.occasion) ?? "—"}
+              />
               {item.depositCents > 0 && (
-                <Info label="Caparra" value={formatCurrency(item.depositCents, ctx.venue.currency)} />
+                <Info
+                  label="Caparra"
+                  value={formatCurrency(item.depositCents, ctx.venue.currency)}
+                />
               )}
               {/*
                 Il riferimento **per intero**, e copiabile.
@@ -96,10 +145,19 @@ export default async function BookingDetail({ params }: { params: { id: string }
               <div className="col-span-2">
                 <p className="t-etichetta">Riferimento</p>
                 <div className="mt-0.5 flex items-center gap-1">
-                  <code className="break-all font-mono text-xs">{item.reference}</code>
-                  <CopyButton value={item.reference} variant="ghost" size="sm" aria-label="Copia il riferimento" />
+                  <code className="break-all font-mono text-xs">
+                    {item.reference}
+                  </code>
+                  <CopyButton
+                    value={item.reference}
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Copia il riferimento"
+                  />
                 </div>
-                <p className="t-nota">È quello che il cliente ha ricevuto per email.</p>
+                <p className="t-nota">
+                  È quello che il cliente ha ricevuto per email.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -167,6 +225,8 @@ export default async function BookingDetail({ params }: { params: { id: string }
           </Card>
         </div>
 
+        <StoriaPrenotazione voci={storia} fuso={ctx.venue.timezone} />
+
         {(item.notes || item.internalNotes) && (
           <Card>
             <CardHeader>
@@ -189,7 +249,15 @@ export default async function BookingDetail({ params }: { params: { id: string }
   );
 }
 
-function Info({ icon: Icon, label, value }: { icon?: React.ElementType; label: string; value: string }) {
+function Info({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon?: React.ElementType;
+  label: string;
+  value: string;
+}) {
   return (
     <div>
       <p className="t-etichetta">{label}</p>

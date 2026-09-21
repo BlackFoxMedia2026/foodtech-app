@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Etichetta } from "@/components/ui/etichetta";
 import { formatDate } from "@/lib/utils";
 import type { OspiteRiconosciuto } from "@/server/guest-match";
@@ -35,9 +41,33 @@ type TableOpt = { id: string; label: string; seats: number };
 export function BookingForm({
   tables,
   onClose,
+  iniziale,
 }: {
   tables: TableOpt[];
   onClose?: () => void;
+  /**
+   * Quello che si sa già, quando si arriva qui da una telefonata.
+   *
+   * Non è una comodità: chi apre questo modulo ha una persona in linea che
+   * sta dicendo il suo nome, e ridigitare un numero che il prodotto conosce
+   * già è il momento in cui si sbaglia una cifra. I pulsanti «Prenota» del
+   * riquadro della chiamata e della pagina Telefono passano da qui — e per
+   * due giorni hanno passato i dati nell'indirizzo a una pagina che non li
+   * leggeva, cioè erano un pulsante che perdeva il numero.
+   */
+  iniziale?: {
+    telefono?: string;
+    nome?: string;
+    cognome?: string;
+    /**
+     * La telefonata da cui si arriva, quando si arriva dal telefono.
+     *
+     * Viaggia col resto e la rotta la gestisce a parte: serve a legare la
+     * prenotazione alla chiamata, che nello storico smette così di essere
+     * «nessuno ha risposto» e spegne la richiamata in coda.
+     */
+    chiamataId?: string;
+  };
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -71,8 +101,10 @@ export function BookingForm({
     sola sono nove buttate. E si comincia a chiedere da sei cifre: sotto, la
     domanda non ha abbastanza informazione per avere una risposta utile.
   */
-  const [telefono, setTelefono] = useState("");
-  const [riconosciuto, setRiconosciuto] = useState<OspiteRiconosciuto | null>(null);
+  const [telefono, setTelefono] = useState(iniziale?.telefono ?? "");
+  const [riconosciuto, setRiconosciuto] = useState<OspiteRiconosciuto | null>(
+    null,
+  );
   const formRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
@@ -84,9 +116,13 @@ export function BookingForm({
     let annullato = false;
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/guests/riconosci?phone=${encodeURIComponent(telefono)}`);
+        const res = await fetch(
+          `/api/guests/riconosci?phone=${encodeURIComponent(telefono)}`,
+        );
         if (annullato || !res.ok) return;
-        const { ospite } = (await res.json()) as { ospite: OspiteRiconosciuto | null };
+        const { ospite } = (await res.json()) as {
+          ospite: OspiteRiconosciuto | null;
+        };
         if (!annullato) setRiconosciuto(ospite);
       } catch {
         // Una richiesta che non torna non deve fare niente di visibile: il
@@ -105,7 +141,8 @@ export function BookingForm({
     const form = formRef.current;
     if (!form) return;
     const [nome, ...resto] = riconosciuto.nome.split(" ");
-    const campo = (name: string) => form.elements.namedItem(name) as HTMLInputElement | null;
+    const campo = (name: string) =>
+      form.elements.namedItem(name) as HTMLInputElement | null;
     const primo = campo("firstName");
     const secondo = campo("lastName");
     if (primo) primo.value = nome ?? "";
@@ -113,7 +150,11 @@ export function BookingForm({
     primo?.focus();
   }
 
-  const quando = forceOpen ? (date && manualTime ? `${date}T${manualTime}` : null) : slot;
+  const quando = forceOpen
+    ? date && manualTime
+      ? `${date}T${manualTime}`
+      : null
+    : slot;
 
   useEffect(() => {
     if (durataToccata || !quando) return;
@@ -174,6 +215,7 @@ export function BookingForm({
       occasion: fd.get("occasion") || null,
       notes: fd.get("notes") || null,
       ...(forceOpen ? { force: { reason: forceReason.trim() } } : {}),
+      ...(iniziale?.chiamataId ? { chiamataId: iniziale.chiamataId } : {}),
     };
 
     const res = await fetch("/api/bookings", {
@@ -185,7 +227,12 @@ export function BookingForm({
     if (!res.ok) {
       // Il server spiega già perché ha rifiutato — locale chiuso, servizio pieno,
       // tavolo occupato. Mostrarlo tale e quale è più utile di un messaggio generico.
-      setError(await readApiError(res, "Non siamo riusciti a salvare la prenotazione. Riprova."));
+      setError(
+        await readApiError(
+          res,
+          "Non siamo riusciti a salvare la prenotazione. Riprova.",
+        ),
+      );
       return;
     }
     router.refresh();
@@ -200,11 +247,22 @@ export function BookingForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="firstName">Nome</Label>
-          <Input id="firstName" name="firstName" required placeholder="Lorenzo" />
+          <Input
+            id="firstName"
+            name="firstName"
+            required
+            placeholder="Lorenzo"
+            defaultValue={iniziale?.nome ?? ""}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="lastName">Cognome</Label>
-          <Input id="lastName" name="lastName" placeholder="Ferri" />
+          <Input
+            id="lastName"
+            name="lastName"
+            placeholder="Ferri"
+            defaultValue={iniziale?.cognome ?? ""}
+          />
         </div>
         {/* Il telefono prende la riga intera: al telefono è il campo più
             importante dopo il nome, e da quando l'email è nel secondo livello
@@ -241,8 +299,10 @@ export function BookingForm({
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="text-sm font-medium">{riconosciuto.nome}</p>
             <p className="t-nota">
-              {riconosciuto.visite} {riconosciuto.visite === 1 ? "visita" : "visite"}
-              {riconosciuto.ultimaVisita && ` · ultima il ${formatDate(riconosciuto.ultimaVisita)}`}
+              {riconosciuto.visite}{" "}
+              {riconosciuto.visite === 1 ? "visita" : "visite"}
+              {riconosciuto.ultimaVisita &&
+                ` · ultima il ${formatDate(riconosciuto.ultimaVisita)}`}
             </p>
           </div>
 
@@ -257,10 +317,12 @@ export function BookingForm({
             )}
             {riconosciuto.assenze > 0 && (
               <Etichetta linguaggio="segnale" icona={AlertTriangle}>
-                {riconosciuto.assenze} {riconosciuto.assenze === 1 ? "assenza" : "assenze"}
+                {riconosciuto.assenze}{" "}
+                {riconosciuto.assenze === 1 ? "assenza" : "assenze"}
               </Etichetta>
             )}
-            {(riconosciuto.livello === "VIP" || riconosciuto.livello === "AMBASSADOR") && (
+            {(riconosciuto.livello === "VIP" ||
+              riconosciuto.livello === "AMBASSADOR") && (
               <Etichetta linguaggio="manuale">
                 {riconosciuto.livello === "AMBASSADOR" ? "Ambassador" : "VIP"}
               </Etichetta>
@@ -304,7 +366,9 @@ export function BookingForm({
             max={50}
             value={partySize}
             onChange={(e) => {
-              setPartySize(Math.min(50, Math.max(1, Number(e.target.value) || 1)));
+              setPartySize(
+                Math.min(50, Math.max(1, Number(e.target.value) || 1)),
+              );
               setSlot(null);
             }}
             required
@@ -324,12 +388,17 @@ export function BookingForm({
               required
             />
             <p className="text-xs text-muted-foreground">
-              Con la forzatura attiva l&apos;orario è libero: il controllo di disponibilità non viene
-              eseguito.
+              Con la forzatura attiva l&apos;orario è libero: il controllo di
+              disponibilità non viene eseguito.
             </p>
           </div>
         ) : (
-          <SlotPicker date={giorno} partySize={partySize} value={slot} onChange={setSlot} />
+          <SlotPicker
+            date={giorno}
+            partySize={partySize}
+            value={slot}
+            onChange={setSlot}
+          />
         )}
       </div>
 
@@ -346,12 +415,15 @@ export function BookingForm({
           />
           <span>
             <span className="flex items-center gap-1.5 font-medium">
-              <AlertTriangle className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
+              <AlertTriangle
+                className="h-3.5 w-3.5 text-accent-strong"
+                aria-hidden="true"
+              />
               Accetta comunque, oltre i limiti
             </span>
             <span className="mt-0.5 block text-xs text-muted-foreground">
-              Salta il controllo su orari, capienza e tavolo. Serve un motivo, e resta scritto nel
-              registro con il tuo nome.
+              Salta il controllo su orari, capienza e tavolo. Serve un motivo, e
+              resta scritto nel registro con il tuo nome.
             </span>
           </span>
         </label>
@@ -394,91 +466,106 @@ export function BookingForm({
         </summary>
 
         <div className="space-y-5 border-t border-border p-3">
-      <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" placeholder="ospite@email.com" />
-        <p className="t-nota">
-          Serve solo per la conferma scritta e il promemoria: al telefono il numero basta.
-        </p>
-      </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="ospite@email.com"
+            />
+            <p className="t-nota">
+              Serve solo per la conferma scritta e il promemoria: al telefono il
+              numero basta.
+            </p>
+          </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label>Tavolo</Label>
-          <Select name="tableId">
-            <SelectTrigger>
-              <SelectValue placeholder="Assegna in seguito" />
-            </SelectTrigger>
-            <SelectContent>
-              {tables.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.label} · {t.seats} posti
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="durationMin">Durata (min)</Label>
-          <Input
-            id="durationMin"
-            name="durationMin"
-            type="number"
-            min={15}
-            max={480}
-            value={durata}
-            onChange={(e) => {
-              setDurataToccata(true);
-              setDurata(Number(e.target.value));
-            }}
-          />
-        </div>
-      </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Tavolo</Label>
+              <Select name="tableId">
+                <SelectTrigger>
+                  <SelectValue placeholder="Assegna in seguito" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tables.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.label} · {t.seats} posti
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="durationMin">Durata (min)</Label>
+              <Input
+                id="durationMin"
+                name="durationMin"
+                type="number"
+                min={15}
+                max={480}
+                value={durata}
+                onChange={(e) => {
+                  setDurataToccata(true);
+                  setDurata(Number(e.target.value));
+                }}
+              />
+            </div>
+          </div>
 
-      {durataNota && !durataToccata && (
-        <p className="t-nota">Durata proposta: {durataNota}</p>
-      )}
-      {durataToccata && (
-        <p className="t-nota">
-          Durata scelta a mano: resta questa, la misura del locale non la corregge.
-        </p>
-      )}
+          {durataNota && !durataToccata && (
+            <p className="t-nota">Durata proposta: {durataNota}</p>
+          )}
+          {durataToccata && (
+            <p className="t-nota">
+              Durata scelta a mano: resta questa, la misura del locale non la
+              corregge.
+            </p>
+          )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label>Fonte</Label>
-          <Select name="source" defaultValue="PHONE">
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="PHONE">Telefono</SelectItem>
-              <SelectItem value="WIDGET">Sito</SelectItem>
-              <SelectItem value="WALK_IN">Walk-in</SelectItem>
-              <SelectItem value="GOOGLE">Google</SelectItem>
-              <SelectItem value="SOCIAL">Social</SelectItem>
-              <SelectItem value="CONCIERGE">Concierge</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Occasione</Label>
-          <Select name="occasion">
-            <SelectTrigger><SelectValue placeholder="Nessuna" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="BIRTHDAY">Compleanno</SelectItem>
-              <SelectItem value="ANNIVERSARY">Anniversario</SelectItem>
-              <SelectItem value="BUSINESS">Lavoro</SelectItem>
-              <SelectItem value="DATE">Romantica</SelectItem>
-              <SelectItem value="CELEBRATION">Celebrazione</SelectItem>
-              <SelectItem value="OTHER">Altro</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Fonte</Label>
+              <Select name="source" defaultValue="PHONE">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PHONE">Telefono</SelectItem>
+                  <SelectItem value="WIDGET">Sito</SelectItem>
+                  <SelectItem value="WALK_IN">Walk-in</SelectItem>
+                  <SelectItem value="GOOGLE">Google</SelectItem>
+                  <SelectItem value="SOCIAL">Social</SelectItem>
+                  <SelectItem value="CONCIERGE">Concierge</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Occasione</Label>
+              <Select name="occasion">
+                <SelectTrigger>
+                  <SelectValue placeholder="Nessuna" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BIRTHDAY">Compleanno</SelectItem>
+                  <SelectItem value="ANNIVERSARY">Anniversario</SelectItem>
+                  <SelectItem value="BUSINESS">Lavoro</SelectItem>
+                  <SelectItem value="DATE">Romantica</SelectItem>
+                  <SelectItem value="CELEBRATION">Celebrazione</SelectItem>
+                  <SelectItem value="OTHER">Altro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="notes">Note</Label>
-        <Textarea id="notes" name="notes" placeholder="Allergie, preferenze, richieste speciali…" />
-      </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="notes">Note</Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              placeholder="Allergie, preferenze, richieste speciali…"
+            />
+          </div>
         </div>
       </details>
 
@@ -497,7 +584,11 @@ export function BookingForm({
             submitting || (forceOpen ? forceReason.trim().length < 3 : !slot)
           }
         >
-          {submitting ? "Salvataggio…" : forceOpen ? "Forza e crea" : "Crea prenotazione"}
+          {submitting
+            ? "Salvataggio…"
+            : forceOpen
+              ? "Forza e crea"
+              : "Crea prenotazione"}
         </Button>
       </div>
     </form>

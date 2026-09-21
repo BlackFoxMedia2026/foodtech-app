@@ -23,7 +23,15 @@ model User {
   /// tablet perso in sala, e una persona che non lavora più qui.
   sessionsRevokedAt      DateTime?
   totpEnabled            Boolean             @default(false)
+  /// Il segreto del codice a sei cifre, **cifrato a riposo** (`lib/cifratura`).
+  /// Chi legge il database non deve poter generare i codici di nessuno.
   totpSecret             String?
+  /// L'ultimo passo di trenta secondi già consumato: un codice usato non si
+  /// riusa. È la parte che lo standard lascia a chi lo implementa.
+  totpUltimoPasso        Int?
+  /// I codici di recupero, uno per riga e **solo come impronta**: si mostrano
+  /// una volta sola al momento dell'attivazione e non esiste nessun percorso
+  /// che li restituisca in chiaro.
   recoveryCodesHash      String[]            @default([])
   /// L'ultimo accesso riuscito. Si scrive in `authorize` (lib/auth.ts), una
   /// volta per login, non a ogni richiesta: serve alla scheda del dipendente
@@ -57,15 +65,14 @@ model Session {
 }
 
 model Organization {
-  id           String          @id @default(cuid())
-  name         String
-  slug         String          @unique
-  plan         Plan            @default(STARTER)
-  createdAt    DateTime        @default(now())
-  baseCurrency String          @default("EUR")
-  AuditLog     AuditLog[]
-  venues       Venue[]
-  members      OrgMembership[]
+  id        String          @id @default(cuid())
+  name      String
+  slug      String          @unique
+  plan      Plan            @default(STARTER)
+  createdAt DateTime        @default(now())
+  AuditLog  AuditLog[]
+  venues    Venue[]
+  members   OrgMembership[]
 }
 
 model OrgMembership {
@@ -251,13 +258,46 @@ model Venue {
   /// motivo: leggerle costa una colonna, non una verifica.
   phoneLicenseFeatures    String[]  @default([])
 
+  /// Il telefono nel browser: dove registrarsi, e con che credenziale.
+  ///
+  /// Sono i dati che il centralino consegna insieme alla chiave. Stanno sul
+  /// locale e non sull'utente perche il telefono del ristorante e **uno**: chi
+  /// e in sala risponde da qualunque schermo, e squilla su tutti quelli aperti.
+  ///
+  /// `phoneSipServer` e l'indirizzo `wss://…`, `phoneSipUser` l'utenza SIP.
+  phoneSipServer   String?
+  phoneSipUser     String?
+  /// La password SIP, **cifrata** (`lib/cifratura.ts`).
+  ///
+  /// Va riletta e mandata al browser — SIP.js deve autenticarsi — quindi non si
+  /// puo ridurre a un'impronta come una password di persona. Cifrata a riposo e
+  /// il massimo che si puo fare, e va guardato in faccia: questa credenziale
+  /// esce dal server. Vale verso un solo centralino, per un solo locale, e si
+  /// cambia da qui.
+  phoneSipPassword String?
+
   agentConversations AgentConversation[]
   agentUsages        AgentUsage[]
+  phoneCalls         PhoneCall[]
+  voiceNumbers       VoiceNumber[]
+  servizi            VenueServizio[]
+  recuperiVoice      VoiceRecovery[]
+  /// Come questo locale si chiama **nel centralino**.
+  ///
+  /// Lo dichiara il centralino stesso insieme alle sue linee, e serve al verso
+  /// opposto: con questo, il pannello di piattaforma puo chiedere al centralino
+  /// di assegnare un numero a questo locale — invece di far aprire il secondo
+  /// gestionale a chi accende un cliente. Nullo finche il centralino non si e
+  /// mai presentato.
+  centralinoTenantId String?
+  voiceConfiguration VoiceConfiguration?
+  voiceCallbacks     VoiceCallback[]
+  voiceInsights      VoiceCRMInsight[]
+  voiceKnowledge     VoiceKnowledgeItem[]
   ApiToken           ApiToken[]
   AutomationWorkflow AutomationWorkflow[]
   BackgroundJob      BackgroundJob[]
   bookings           Booking[]
-  CallLog            CallLog[]
   campaigns          Campaign[]
   ChatSession        ChatSession[]
   Connector          Connector[]
@@ -266,7 +306,6 @@ model Venue {
   Coupon             Coupon[]
   CouponRedemption   CouponRedemption[]
   experiences        Experience[]
-  FloorDecor         FloorDecor[]
   GiftCard           GiftCard[]
   guests             Guest[]
   GuestProviderLink  GuestProviderLink[]
@@ -275,8 +314,6 @@ model Venue {
   MenuItemCost       MenuItemCost[]
   MenuScan           MenuScan[]
   MessageLog         MessageLog[]
-  MessageTemplate    MessageTemplate[]
-  MissedCall         MissedCall[]
   Notification       Notification[]
   Order              Order[]
   POSConnector       POSConnector[]
@@ -287,7 +324,6 @@ model Venue {
   ReviewLinkClick    ReviewLinkClick[]
   rooms              Room[]
   shifts             Shift[]
-  StaffShift         StaffShift[]
   Survey             Survey[]
   tables             Table[]
   blocks             TableBlock[]
@@ -316,6 +352,10 @@ model Venue {
   campaignRecipients CampaignRecipient[]
   campaignEvents     CampaignEvent[]
   comande            Comanda[]
+  usageEvents        UsageEvent[]
+  costPeriods        CostPeriod[]
+  costOverrides      CostOverride[]
+  platformAlerts     PlatformAlert[]
 
   @@unique([orgId, slug])
 }
@@ -383,7 +423,6 @@ model Room {
   activeLayoutMode    RoomLayoutMode?
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @default(now()) @updatedAt
-  FloorDecor          FloorDecor[]
   venue               Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
   tables              Table[]
   waiterAssignments   WaiterAssignment[]
@@ -572,6 +611,9 @@ model Guest {
   waitlistEntries        WaitlistEntry[]
   surveys                Survey[]
   campaignRecipients     CampaignRecipient[]
+  phoneCalls             PhoneCall[]
+  voiceCallbacks         VoiceCallback[]
+  voiceInsights          VoiceCRMInsight[]
 
   @@index([venueId, email])
   @@index([venueId, phone])
@@ -579,32 +621,32 @@ model Guest {
 }
 
 model Booking {
-  id                String             @id @default(cuid())
-  reference         String             @unique @default(cuid())
-  venueId           String
-  guestId           String?
-  tableId           String?
-  partySize         Int
-  startsAt          DateTime
-  durationMin       Int                @default(105)
-  status            BookingStatus      @default(CONFIRMED)
-  source            BookingSource      @default(WIDGET)
-  occasion          Occasion?
-  notes             String?
-  internalNotes     String?
-  depositCents      Int                @default(0)
-  depositStatus     DepositStatus      @default(NONE)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  arrivedAt         DateTime?
-  seatedAt          DateTime?
-  closedAt          DateTime?
-  budgetCents       Int?
-  eventType         String?            @db.VarChar(60)
-  isGroup           Boolean            @default(false)
-  combinedTableIds  String[]           @default([])
-  deletedAt         DateTime?
-  deletedBy         String?
+  id               String           @id @default(cuid())
+  reference        String           @unique @default(cuid())
+  venueId          String
+  guestId          String?
+  tableId          String?
+  partySize        Int
+  startsAt         DateTime
+  durationMin      Int              @default(105)
+  status           BookingStatus    @default(CONFIRMED)
+  source           BookingSource    @default(WIDGET)
+  occasion         Occasion?
+  notes            String?
+  internalNotes    String?
+  depositCents     Int              @default(0)
+  depositStatus    DepositStatus    @default(NONE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  arrivedAt        DateTime?
+  seatedAt         DateTime?
+  closedAt         DateTime?
+  budgetCents      Int?
+  eventType        String?          @db.VarChar(60)
+  isGroup          Boolean          @default(false)
+  combinedTableIds String[]         @default([])
+  deletedAt        DateTime?
+  deletedBy        String?
   /// La campagna da cui arriva questa prenotazione, quando arriva da una.
   ///
   /// Si valorizza solo dal widget pubblico, quando il link cliccato porta con
@@ -615,7 +657,7 @@ model Booking {
   /// Serve per rispondere a «quante prenotazioni ha portato quell'email».
   /// Prima c'era `Campaign.bookedCount`, che nessuno scriveva e che mostrava
   /// zero su ogni campagna.
-  campaignId        String?
+  campaignId       String?
   /// La chiave che il widget genera per **un** tentativo di prenotazione.
   ///
   /// Serve a una cosa sola: un cliente che tocca «Prenota» due volte sulla
@@ -623,19 +665,19 @@ model Booking {
   /// la stessa chiave si restituisce la prenotazione già creata invece di
   /// farne un'altra — e l'unicità la garantisce il database, non un controllo
   /// che due richieste in parallelo si scambierebbero senza vedersi.
-  idempotencyKey    String?            @unique
-  Campaign          Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  orders            Order[]
-  comande           Comanda[]
-  guest             Guest?             @relation(fields: [guestId], references: [id])
-  table             Table?             @relation(fields: [tableId], references: [id])
-  venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  BookingEvent      BookingEvent[]
-  BookingPreorder   BookingPreorder?
-  payments          Payment[]
-  VoiceBookingDraft VoiceBookingDraft?
-  messages          MessageLog[]
-  Survey            Survey?
+  idempotencyKey   String?          @unique
+  Campaign         Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  orders           Order[]
+  comande          Comanda[]
+  guest            Guest?           @relation(fields: [guestId], references: [id])
+  table            Table?           @relation(fields: [tableId], references: [id])
+  venue            Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  BookingEvent     BookingEvent[]
+  BookingPreorder  BookingPreorder?
+  payments         Payment[]
+  messages         MessageLog[]
+  Survey           Survey?
+  phoneCalls       PhoneCall[]
 
   @@index([venueId, startsAt])
   @@index([venueId, status])
@@ -663,6 +705,9 @@ model Experience {
   @@unique([venueId, slug])
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): la vendita e il check-in non esistono: `experiences.ts` legge `tickets` e conta **sempre zero**.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model Ticket {
   id           String       @id @default(cuid())
   experienceId String
@@ -734,6 +779,26 @@ model Campaign {
   bookings          Booking[]
   recipients        CampaignRecipient[]
   events            CampaignEvent[]
+
+  /// Quanto costo di infrastruttura questa campagna tiene impegnato, in
+  /// centesimi. Serve a liberare **esattamente** quello che era stato tolto
+  /// quando la campagna finisce o viene annullata: ricalcolarlo dopo, con un
+  /// listino che nel frattempo può essere cambiato, libererebbe una cifra
+  /// diversa.
+  reservedCostCents Int @default(0)
+
+  /// Perché questa campagna non è partita, quando il freno l'ha fermata.
+  ///
+  /// Si scrive al momento del rifiuto e non si ricalcola: i numeri che hanno
+  /// prodotto il blocco sono quelli di allora. `blockedDetail` lo legge **solo**
+  /// il pannello di piattaforma — al ristoratore esce un messaggio neutro,
+  /// perché il nostro tetto di spesa su di lui non lo riguarda.
+  blockedAt     DateTime?
+  /// `EMAIL_LIMIT_EXCEEDED`, `BUDGET_LIMIT_EXCEEDED`, `COST_CALCULATION_UNAVAILABLE`.
+  blockedReason String?   @db.VarChar(40)
+  blockedDetail Json?
+
+  usageEvents UsageEvent[]
 
   @@index([venueId, status, createdAt])
 }
@@ -900,9 +965,6 @@ model Payment {
   refundedAt              DateTime?
   deletedAt               DateTime?
   deletedBy               String?
-  fxAmountBaseCents       Int?
-  fxBaseCurrency          String?             @db.VarChar(3)
-  fxRateToBase            Decimal?            @db.Decimal(12, 6)
   booking                 Booking?            @relation(fields: [bookingId], references: [id])
   guest                   Guest?              @relation(fields: [guestId], references: [id])
   venue                   Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
@@ -1051,6 +1113,28 @@ model AutomationWorkflow {
   @@index([venueId, trigger, active])
 }
 
+/// SUPERATA — non usarla.
+///
+/// Undici categorie di evento, in tabella dal primo giorno, **mai scritte e
+/// mai lette da nessuna riga di codice**. La quarta tabella morta trovata in
+/// questo prodotto: le prime tre erano del telefono — `CallLog`, `MissedCall`
+/// e `VoiceBookingDraft`, cancellate il 21 settembre 2026.
+///
+/// Il piano della fase 6 di Tavolo Voice diceva di accenderla. Guardando cosa
+/// ci sarebbe finito dentro, si e visto che **ogni evento ha gia la sua
+/// casa**: com'e nata sta sulla riga (`createdAt` + `source`), la telefonata
+/// da cui e nata in `PhoneCall.bookingId`, i messaggi in `MessageLog`
+/// (con l'esito), chi ha cambiato cosa in `AuditLog` con la differenza —
+/// compreso il cliente che conferma dal suo link, con attore «guest».
+///
+/// Accenderla voleva dire scrivere una seconda copia di quello che c'e, e in
+/// questo prodotto «due posti che dicono la stessa cosa sono un posto in cui
+/// uno dei due invecchia» e una regola scritta. La storia di una prenotazione
+/// si legge dai fatti: `src/server/storia-prenotazione.ts`.
+///
+/// Non si cancella perche cancellare una tabella e l'unico passo che non si
+/// torna indietro, e perche il giorno in cui servisse un evento che **non** ha
+/// una casa altrove, questa e il posto dove metterlo.
 model BookingEvent {
   id        String           @id @default(cuid())
   bookingId String
@@ -1064,6 +1148,9 @@ model BookingEvent {
   @@index([bookingId, createdAt])
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): preordine dei piatti in prenotazione.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model BookingPreorder {
   id                  String                @id @default(cuid())
   bookingId           String                @unique
@@ -1076,6 +1163,9 @@ model BookingPreorder {
   BookingPreorderItem BookingPreorderItem[]
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): preordine dei piatti in prenotazione.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model BookingPreorderItem {
   id              String          @id @default(cuid())
   preorderId      String
@@ -1089,27 +1179,9 @@ model BookingPreorderItem {
   @@index([preorderId])
 }
 
-model CallLog {
-  id                String             @id @default(cuid())
-  venueId           String
-  fromNumber        String
-  toNumber          String?
-  direction         CallDirection      @default(INBOUND)
-  status            CallStatus         @default(QUEUED)
-  recordingUrl      String?
-  transcript        String?
-  durationSec       Int?
-  intent            String?
-  draftId           String?            @unique
-  startedAt         DateTime?
-  endedAt           DateTime?
-  createdAt         DateTime           @default(now())
-  VoiceBookingDraft VoiceBookingDraft? @relation(fields: [draftId], references: [id])
-  Venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@index([venueId, createdAt])
-}
-
+/// **NON IMPLEMENTATA** (21 set 2026): prenotare chiacchierando.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model ChatMessage {
   id          String      @id @default(cuid())
   sessionId   String
@@ -1123,6 +1195,9 @@ model ChatMessage {
   @@index([sessionId, createdAt])
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): prenotare chiacchierando.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model ChatSession {
   id             String        @id @default(cuid())
   venueId        String
@@ -1147,6 +1222,9 @@ model ChatSession {
   @@index([venueId, createdAt])
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): prenotazioni in ingresso dai portali.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model Connector {
   id             String           @id @default(cuid())
   venueId        String
@@ -1167,6 +1245,9 @@ model Connector {
   @@index([venueId, status])
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): prenotazioni in ingresso dai portali.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model ConnectorEvent {
   id          String               @id @default(cuid())
   connectorId String
@@ -1202,6 +1283,9 @@ model ConsentLog {
   @@index([venueId, channel, createdAt])
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): food cost variabile e magazzino.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model CostEntry {
   id          String       @id @default(cuid())
   venueId     String
@@ -1280,36 +1364,6 @@ model CouponRedemption {
   @@index([venueId, redeemedAt])
 }
 
-model ExchangeRate {
-  id        String   @id @default(cuid())
-  from      String   @db.VarChar(3)
-  to        String   @db.VarChar(3)
-  rate      Decimal  @db.Decimal(12, 6)
-  fetchedAt DateTime @default(now())
-
-  @@unique([from, to, fetchedAt])
-  @@index([from, to])
-}
-
-model FloorDecor {
-  id        String    @id @default(cuid())
-  venueId   String
-  roomId    String?
-  kind      DecorKind
-  label     String?
-  posX      Int       @default(0)
-  posY      Int       @default(0)
-  width     Int       @default(80)
-  height    Int       @default(80)
-  rotation  Int       @default(0)
-  color     String?
-  createdAt DateTime  @default(now())
-  Room      Room?     @relation(fields: [roomId], references: [id])
-  Venue     Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@index([venueId])
-}
-
 model GiftCard {
   id                 String               @id @default(cuid())
   venueId            String
@@ -1334,15 +1388,23 @@ model GiftCard {
 }
 
 model GiftCardRedemption {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   giftCardId  String
   amountCents Int
   bookingId   String?
   orderId     String?
-  reason      String?  @db.VarChar(200)
+  reason      String?   @db.VarChar(200)
   createdBy   String?
-  createdAt   DateTime @default(now())
-  GiftCard    GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  /// Quando questo utilizzo è stato annullato.
+  ///
+  /// Non serve a nascondere la riga — il saldo si somma con il segno e la
+  /// storia resta — ma a rendere l'annullamento **ripetibile senza danno**.
+  /// Senza questa colonna due clic sullo stesso utilizzo scrivevano due righe
+  /// negative: una carta da 100 € con un utilizzo da 50 finiva con 150 € di
+  /// saldo. È la stessa protezione che `CouponRedemption` ha da sempre.
+  deletedAt   DateTime?
+  GiftCard    GiftCard  @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
 
   @@index([giftCardId, createdAt])
   @@index([orderId])
@@ -1365,6 +1427,13 @@ model LoyaltyTransaction {
   createdBy   String?
   createdAt   DateTime       @default(now())
   Guest       Guest          @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  /// Un conto accredita i punti **una volta sola**, e lo dice il database.
+  ///
+  /// L'indice vero è **parziale** — solo `kind = 'EARNED'` — e vive nella
+  /// migrazione `20260920221000_punti_una_volta_per_conto`, perché Prisma non
+  /// sa dichiarare un indice condizionato. Qui resta la nota, perché un
+  /// vincolo che esiste solo in SQL è un vincolo che la prossima persona non
+  /// sa di avere.
 
   @@index([guestId, createdAt])
   @@index([venueId, createdAt])
@@ -1417,6 +1486,9 @@ model MenuItemCost {
   @@index([venueId])
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): quante volte si legge la carta dal QR.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model MenuScan {
   id               String         @id @default(cuid())
   venueId          String
@@ -1470,35 +1542,6 @@ model MessageLog {
   @@index([venueId, createdAt])
   @@index([venueId, deletedAt])
   @@index([bookingId, kind])
-}
-
-model MessageTemplate {
-  id        String           @id @default(cuid())
-  venueId   String
-  name      String
-  channel   CampaignChannel  @default(EMAIL)
-  subject   String?
-  body      String
-  category  TemplateCategory @default(GENERIC)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  Venue     Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@unique([venueId, name])
-  @@index([venueId, category])
-}
-
-model MissedCall {
-  id             String    @id @default(cuid())
-  venueId        String
-  fromNumber     String
-  attempts       Int       @default(1)
-  callbackSentAt DateTime?
-  notes          String?
-  createdAt      DateTime  @default(now())
-  Venue          Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@index([venueId, createdAt])
 }
 
 model Notification {
@@ -1842,6 +1885,9 @@ enum FornitoreComanda {
   INTERNO
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): integrazione con la cassa.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model POSConnector {
   id            String             @id @default(cuid())
   venueId       String
@@ -1862,6 +1908,9 @@ model POSConnector {
   @@index([venueId, status])
 }
 
+/// **NON IMPLEMENTATA** (21 set 2026): integrazione con la cassa.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model POSEvent {
   id             String         @id @default(cuid())
   posConnectorId String
@@ -2429,6 +2478,9 @@ enum WorkShiftKind {
 // richiesta pendente non deve toccare il calendario, altrimenti il
 // responsabile legge una settimana che nessuno ha deciso. Qui la richiesta
 // vive accanto al turno, e solo l'approvazione lo riscrive.
+/// **NON IMPLEMENTATA** (21 set 2026): ferie e cambi turno chiesti dal dipendente.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
 model StaffRequest {
   id                   String             @id @default(cuid())
   venueId              String
@@ -2479,21 +2531,6 @@ enum StaffRequestStatus {
 // collegato a niente. Non e' il turno di WorkShift, che e' qui sopra. Resta in
 // piedi solo perche' toglierlo e' una migrazione distruttiva, e quelle
 // bloccano le migrazioni in attesa sulle anteprime (vedi scripts/migrate-safe.ts).
-model StaffShift {
-  id          String   @id @default(cuid())
-  venueId     String
-  staffName   String
-  role        String?
-  date        DateTime
-  hours       Float    @default(8)
-  hourlyCents Int      @default(1200)
-  notes       String?
-  createdAt   DateTime @default(now())
-  Venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@index([venueId, date])
-}
-
 model Survey {
   id             String          @id @default(cuid())
   token          String          @unique
@@ -2521,26 +2558,6 @@ model SurveyResponse {
   Survey    Survey    @relation(fields: [surveyId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
-}
-
-model VoiceBookingDraft {
-  id            String      @id @default(cuid())
-  venueId       String
-  callerName    String?
-  phone         String?
-  partySize     Int?
-  preferredDate String?
-  preferredTime String?
-  notes         String?
-  status        DraftStatus @default(NEW)
-  bookingId     String?     @unique
-  reviewedBy    String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  CallLog       CallLog?
-  Booking       Booking?    @relation(fields: [bookingId], references: [id])
-
-  @@index([venueId, createdAt])
 }
 
 model WaitlistEntry {
@@ -2575,6 +2592,8 @@ model WaitlistEntry {
   Venue              Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
   guest              Guest?         @relation(fields: [guestId], references: [id], onDelete: SetNull)
   preferredRoom      Room?          @relation(fields: [preferredRoomId], references: [id], onDelete: SetNull)
+
+  phoneCalls PhoneCall[]
 
   @@index([venueId, status, createdAt])
 }
@@ -2685,6 +2704,805 @@ enum LoyaltyTier {
   AMBASSADOR
 }
 
+/// Una chiamata al telefono del locale, mentre succede.
+///
+/// Esiste per una schermata sola: chi risponde deve sapere **chi sta
+/// chiamando** prima di dire pronto. Non e un registro telefonico — quello ce
+/// l'ha il centralino, che vede tutto il traffico — e non tiene le chiamate
+/// per sempre: tiene quelle di oggi, perche il loro valore dura il tempo di
+/// uno squillo.
+///
+/// Le righe le scrive il centralino attraverso `/api/v1/telefonia/chiamata`.
+/// Ogni evento della stessa chiamata (squilla, risposto, chiuso) arriva con lo
+/// stesso `externalId`: la riga si aggiorna invece di moltiplicarsi, e una
+/// consegna ripetuta — che su una rete succede — non crea una seconda chiamata.
+model PhoneCall {
+  id      String @id @default(cuid())
+  venueId String
+
+  /// L'identificativo che la chiamata ha **nel centralino**.
+  ///
+  /// Unico per locale, e serve all'idempotenza: il centralino puo rimandare lo
+  /// stesso evento se non ha ricevuto la nostra risposta, e senza questo
+  /// vincolo una chiamata comparirebbe due volte sullo schermo di chi risponde.
+  externalId String
+
+  /// Il numero di chi chiama, come lo manda il centralino. Nullo quando arriva
+  /// riservato: e un caso previsto, non un guasto.
+  fromNumber String?
+
+  /// Il numero **chiamato**: quale linea del locale ha squillato.
+  ///
+  /// Serve quando un locale ha piu numeri — quello sul menu e quello sui
+  /// volantini — e vuole sapere quale porta le telefonate.
+  toNumber String?
+
+  /// A quale linea e arrivata, quando la linea e censita in `VoiceNumber`.
+  voiceNumberId String?
+
+  /// Entrante o uscente. Oggi sono tutte entranti e il valore per difetto lo
+  /// dice; la colonna esiste perche una richiamata fatta da Tavolo e una
+  /// chiamata uscente, e senza questo campo finirebbe in mezzo alle altre.
+  direction PhoneCallDirection @default(INBOUND)
+
+  status PhoneCallStatus @default(RINGING)
+
+  /// Chi l'ha gestita: una persona, l'intelligenza artificiale, entrambe.
+  ///
+  /// Sta qui e non in un secondo valore di `BookingSource`: la fonte di una
+  /// prenotazione e «il telefono», e *chi* ha risposto e un attributo della
+  /// chiamata. Mettere `VOICE_AI` fra le fonti farebbe esplodere quell'enum a
+  /// ogni canale nuovo.
+  handler PhoneCallHandler @default(NONE)
+
+  /// Com'e finita, in una parola sola dell'elenco chiuso.
+  ///
+  /// Nullo mentre la chiamata e in corso: «non si sa ancora» e diverso da
+  /// «niente da fare», e sono due righe diverse nello storico.
+  outcome PhoneCallOutcome?
+
+  /// Quante volte questa chiamata e stata rimandata al locale.
+  ///
+  /// E la protezione dai cicli, e serve perche le due cose che vogliamo
+  /// convivono male: l'operatore devia a noi **quando il numero e occupato**,
+  /// e il risponditore rimanda al locale **quando non ce la fa**. Se il numero
+  /// e ancora occupato, l'operatore devia di nuovo a noi, e la persona gira
+  /// fra i due per sempre sentendo ogni volta lo stesso saluto.
+  ///
+  /// Un contatore sulla riga della chiamata, e non un limite dentro Asterisk,
+  /// perche il giro passa **fuori** dal centralino: ogni passaggio e una
+  /// chiamata nuova per lui, e a riconoscerla resta l'identificativo che porta
+  /// con se. Vedi `src/server/voice/rimando.ts`.
+  rimandi Int @default(0)
+
+  /// Il riassunto della chiamata, quando esiste chi lo scrive.
+  ///
+  /// Corto di proposito e **su questa riga**: si legge nell'elenco, mentre la
+  /// trascrizione — che e lunga — sta in una tabella a parte per non pesare su
+  /// ogni lettura dello storico.
+  summary String? @db.VarChar(600)
+
+  /// La nota che chi risponde scrive **durante** la chiamata.
+  ///
+  /// Resta sulla chiamata finche qualcuno non decide se portarla sulla
+  /// prenotazione o nel profilo dell'ospite: una nota detta al telefono non e
+  /// automaticamente un dato del CRM.
+  notes String? @db.VarChar(1000)
+
+  startedAt  DateTime  @default(now())
+  answeredAt DateTime?
+  endedAt    DateTime?
+
+  /// L'ospite riconosciuto dal numero, quando ce n'e uno.
+  ///
+  /// Si scrive **al momento dello squillo** e non si ricalcola: se domani la
+  /// scheda cambia numero, questa chiamata resta attribuita a chi era in quel
+  /// momento. Una storia che si riscrive non e una storia.
+  guestId String?
+
+  /// La prenotazione nata da questa chiamata, quando nasce.
+  bookingId String?
+
+  /// La riga di lista d'attesa nata da questa chiamata.
+  ///
+  /// Una telefonata a locale pieno non e una telefonata persa: e una persona
+  /// in coda, e il legame serve a saperlo quando quel posto si libera.
+  waitlistId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue       Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest       Guest?         @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  booking     Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  waitlist    WaitlistEntry? @relation(fields: [waitlistId], references: [id], onDelete: SetNull)
+  voiceNumber VoiceNumber?   @relation(fields: [voiceNumberId], references: [id], onDelete: SetNull)
+
+  events     PhoneCallEvent[]
+  recording  PhoneCallRecording?
+  transcript PhoneCallTranscript?
+  insights   VoiceCRMInsight[]
+  callbacks  VoiceCallback[]
+  recupero   VoiceRecovery?
+
+  @@unique([venueId, externalId])
+  @@index([venueId, status, startedAt])
+  @@index([venueId, startedAt])
+  /// Le chiamate di una giornata per esito: e la lettura delle analitiche.
+  @@index([venueId, outcome, startedAt])
+}
+
+enum PhoneCallStatus {
+  /// Sta squillando: e lo stato per cui questa tabella esiste.
+  RINGING
+  /// Qualcuno ha risposto.
+  ANSWERED
+  /// In attesa: la conversazione e aperta e la voce e sospesa.
+  HELD
+  /// Nessuno ha risposto. Non e la stessa cosa di «chiusa»: una persona che ha
+  /// chiamato e non ha trovato nessuno e una persona da richiamare.
+  MISSED
+  /// Ha lasciato un messaggio in segreteria.
+  VOICEMAIL
+  /// Non e riuscita per un guasto — linea, fornitore, rete. Diverso da
+  /// «nessuno ha risposto»: la` c'era qualcuno che non ha alzato.
+  FAILED
+  /// Finita, dopo che qualcuno aveva risposto.
+  ENDED
+}
+
+enum PhoneCallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum PhoneCallHandler {
+  HUMAN
+  AI
+  /// Cominciata dall'intelligenza artificiale e passata a una persona.
+  HYBRID
+  /// Nessuno: squillata e finita.
+  NONE
+}
+
+/// Com'e finita una chiamata.
+///
+/// Elenco **chiuso** di proposito: con un campo di testo libero, due mesi dopo
+/// ci sono «prenotato», «prenotazione», «booking» e «PRENOTATO» nella stessa
+/// colonna, e nessuna analitica sta in piedi.
+enum PhoneCallOutcome {
+  BOOKING_CREATED
+  BOOKING_UPDATED
+  BOOKING_CANCELLED
+  WAITLIST_ADDED
+  /// Voleva sapere una cosa e l'ha saputa: orari, indirizzo, se si porta il cane.
+  INFORMATION
+  TRANSFERRED
+  CALLBACK_REQUIRED
+  MISSED
+  VOICEMAIL
+  /// Ha chiamato, si e parlato, non c'era niente da fare.
+  NO_ACTION
+  FAILED
+}
+
+/// Gli eventi di una chiamata, in ordine.
+///
+/// Event sourcing leggero: la riga `PhoneCall` dice **com'e adesso**, questi
+/// dicono **cos'e successo**. Serve per due cose che senza sarebbero
+/// impossibili: capire una chiamata andata storta tre giorni dopo, e sapere
+/// *chi* ha fatto cosa — una persona, l'intelligenza artificiale, il
+/// centralino.
+model PhoneCallEvent {
+  id     String @id @default(cuid())
+  callId String
+
+  kind PhoneCallEventKind
+
+  /// Chi l'ha provocato: l'identificativo di un utente, `ai`, o `system`.
+  /// Testo e non una relazione perche l'attore puo non essere una persona.
+  actor String? @db.VarChar(64)
+
+  meta Json?
+
+  createdAt DateTime @default(now())
+
+  call PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId, createdAt])
+}
+
+enum PhoneCallEventKind {
+  CALL_RECEIVED
+  CALL_ANSWERED
+  CALL_HELD
+  CALL_RESUMED
+  CALL_TRANSFERRED
+  CALL_ENDED
+  CALL_MISSED
+  AI_STARTED
+  AI_ESCALATED
+  BOOKING_CREATED
+  BOOKING_UPDATED
+  BOOKING_CANCELLED
+  WAITLIST_ADDED
+  MESSAGE_SENT
+  CALLBACK_CREATED
+  CALLBACK_RESOLVED
+  CRM_INSIGHT_CREATED
+  NOTE_ADDED
+  /// Qualcuno ha detto **com'e finita** una chiamata.
+  ///
+  /// Serve distinto da NOTE_ADDED: l'esito e un valore dell'elenco chiuso su
+  /// cui si contano le telefonate del mese, una nota e testo libero. Nel
+  /// registro si deve poter rileggere chi ha chiuso quella chiamata e quando,
+  /// perche un esito scritto a mano e una decisione di una persona.
+  OUTCOME_SET
+}
+
+/// La registrazione di una chiamata, quando il fornitore la produce.
+///
+/// In una tabella a parte e non su `PhoneCall` per due ragioni: l'elenco delle
+/// chiamate non deve portarsi dietro nulla di tutto questo, e una
+/// registrazione ha una **scadenza** propria — si cancella quando il locale
+/// ha detto di cancellarla, senza toccare la chiamata.
+/// **NON IMPLEMENTATA** (21 set 2026): registrazione delle chiamate.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
+model PhoneCallRecording {
+  id     String @id @default(cuid())
+  callId String @unique
+
+  /// Dove sta il file, presso il fornitore o nel nostro archivio.
+  url         String
+  durationSec Int?
+  /// Quando va cancellata, dai giorni di conservazione del locale.
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  call PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+/// La trascrizione di una chiamata.
+///
+/// Separata perche e **lunga**: su `PhoneCall` la porterebbe con se ogni
+/// lettura dello storico. Ed e contenuto della chiamata, non un dato del
+/// cliente: quello che finisce nel CRM passa da `VoiceCRMInsight`, con
+/// l'approvazione di una persona.
+/// **NON IMPLEMENTATA** (21 set 2026): trascrizione delle chiamate.
+/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
+/// prima di costruirci sopra o di cancellarla.
+model PhoneCallTranscript {
+  id     String @id @default(cuid())
+  callId String @unique
+
+  testo     String
+  lingua    String?  @db.VarChar(8)
+  fornitore String?  @db.VarChar(40)
+  createdAt DateTime @default(now())
+
+  call PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+}
+
+/// Una linea telefonica del locale.
+///
+/// Un numero appartiene a **un** locale: e il confine che impedisce di
+/// mescolare le chiamate di due ristoranti dello stesso gruppo.
+/// Una telefonata interrotta a meta, e il modo di riprenderla.
+///
+/// ## Cos'e, in una riga
+///
+/// Qualcuno ha chiamato, il risponditore ha cominciato a prendere la
+/// prenotazione, e la chiamata e finita **prima della conferma**. Non e un
+/// numero da buttare: e una persona che voleva un tavolo.
+///
+/// ## Perche una tabella e non due colonne su `PhoneCall`
+///
+/// Perche di un recupero servono cose che una chiamata non ha: un **token**
+/// che vale una volta e scade, l'esito dell'invio del messaggio, e la
+/// prenotazione che ne e nata. Quest'ultima e l'attribuzione: non serve un
+/// valore nuovo in `BookingSource` — la fonte resta «il telefono», e *come* e
+/// tornata la persona lo dice questa riga.
+///
+/// ## Il token non si conserva
+///
+/// In tabella sta il suo hash: chi legge il database non deve poter aprire il
+/// link di nessuno. Lo stesso principio del reset della password.
+model VoiceRecovery {
+  id      String @id @default(cuid())
+  venueId String
+
+  /// La chiamata da cui nasce. Nulla se la riga arriva da un'altra strada.
+  phoneCallId String?
+
+  /// Il numero a cui mandare il link: e quello che ha chiamato.
+  numero String @db.VarChar(40)
+
+  /// L'hash del token. Il token vero viaggia **solo** nel messaggio.
+  tokenHash String   @unique
+  scadeIl   DateTime
+
+  // ── quello che il risponditore aveva gia raccolto ────────────────────
+
+  persone Int?
+  /// Data e ora desiderate, quando si sono capite.
+  quando  DateTime?
+  /// Il nome, quando l'ospite era riconosciuto dal numero.
+  nome    String?   @db.VarChar(120)
+  /// Dove si e interrotta: serve a sapere **su cosa** la gente riattacca.
+  /// Vedi `src/lib/voice-recupero.ts` per l'elenco chiuso.
+  passo   String?   @db.VarChar(40)
+
+  // ── com'e andato l'invio ─────────────────────────────────────────────
+
+  invio        VoiceRecoveryInvio @default(DA_MANDARE)
+  /// La riga del registro messaggi, quando il messaggio e partito.
+  messageLogId String?
+
+  // ── com'e finita ────────────────────────────────────────────────────
+
+  /// La prenotazione nata da questo link. **E l'attribuzione del recupero.**
+  bookingId    String?   @unique
+  convertitoIl DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  call  PhoneCall? @relation(fields: [phoneCallId], references: [id], onDelete: SetNull)
+
+  /// Una sola per chiamata: il risponditore puo raccontare due volte la stessa
+  /// interruzione, e due link per la stessa telefonata sono due messaggi alla
+  /// stessa persona.
+  @@unique([phoneCallId])
+  @@index([venueId, createdAt])
+  @@index([venueId, invio])
+}
+
+enum VoiceRecoveryInvio {
+  /// Il link c'e, il messaggio non e ancora partito.
+  DA_MANDARE
+  MANDATO
+  /// Su questa installazione non c'e un canale per mandarlo. **Non e un
+  /// errore da nascondere**: e la ragione per cui il recupero non arriva.
+  SENZA_CANALE
+  NON_RIUSCITO
+}
+
+/// **Superata.** Non la legge nessuno.
+///
+/// Per un giorno il telefono si accendeva con un interruttore girato da un
+/// super amministratore dal pannello di Tavolo. La direzione e cambiata, ed e
+/// quella giusta: **Tavolo non si configura**. Nasce col telefono spento, e ad
+/// accenderlo e la chiave firmata che solo ilmiocentralino puo fabbricare —
+/// una cosa che non si falsifica, al contrario di un booleano che chiunque
+/// arrivi al database si gira da solo.
+///
+/// Resta in tabella e non si cancella: la migrazione che la toglie e
+/// distruttiva su dati che da qui non si possono guardare, e non vale il
+/// rischio per un nome. Segnata come le tre tabelle morte del telefono e
+/// `BookingEvent` — vedi `src/server/licenza-centralino.ts`.
+///
+/// Un servizio acceso a un locale da chi gestisce la piattaforma.
+///
+/// ## Perche esiste, e cosa manda in pensione
+///
+/// Il centralino si accendeva incollando una **chiave firmata** emessa da un
+/// secondo gestionale (ilmiocentralino): sei gesti in due applicazioni, e due
+/// chiavi che viaggiano in versi opposti. La firma resta indispensabile per
+/// un'installazione che non gestiamo noi — la` un interruttore nel database
+/// sarebbe un interruttore che il cliente si gira da solo — ma per i clienti
+/// della nostra installazione il secondo gestionale era solo un giro in piu:
+/// il database e nostro, e chi accende e un nostro super amministratore.
+///
+/// Quindi due strade verso lo stesso risultato, e nessuna delle due indebolisce
+/// l'altra: **l'interruttore** per i nostri clienti, **la chiave firmata** per
+/// le installazioni altrui. Vedi `src/server/licenza-centralino.ts`.
+///
+/// ## Perche una tabella e non una colonna
+///
+/// Perche di un servizio acceso servono tre cose che una colonna booleana non
+/// tiene: **chi** l'ha acceso, **quando**, e **cosa comprende**. Davanti a «da
+/// ieri il telefono non va» la prima domanda e chi ha toccato cosa, e la
+/// risposta deve essere in tabella.
+model VenueServizio {
+  id       String         @id @default(cuid())
+  venueId  String
+  servizio ServizioLocale
+
+  attivo Boolean @default(true)
+
+  /// Le funzioni comprese. **Vuoto = tutte quelle di oggi**, come nella chiave:
+  /// un elenco vuoto non e un servizio senza funzioni, e un servizio completo.
+  funzioni String[]
+
+  /// Chi ha deciso, e quando. Non «chi ha toccato per ultimo»: l'email di chi
+  /// l'ha acceso resta anche dopo uno spegnimento e una riaccensione.
+  attivatoDa String?   @db.VarChar(200)
+  attivatoIl DateTime  @default(now())
+  /// Quando e stato spento, se e spento. Nullo mentre e acceso.
+  spentoIl   DateTime?
+
+  /// Perche: «prova di due settimane», «non ha pagato giugno». Si legge in
+  /// elenco, e serve a chi non era presente alla decisione.
+  nota String? @db.VarChar(300)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, servizio])
+  @@index([servizio, attivo])
+}
+
+enum ServizioLocale {
+  /// Il telefono dentro Tavolo: chi sta chiamando, le chiamate, le
+  /// prenotazioni raccolte, i numeri.
+  CENTRALINO
+}
+
+model VoiceNumber {
+  id      String @id @default(cuid())
+  venueId String
+
+  /// Chi fornisce la linea: `blackfox`, e domani altri.
+  fornitore String @db.VarChar(40)
+
+  /// Il numero come lo conosce il fornitore (E.164 dove possibile).
+  numeroEsterno  String
+  /// Il numero come si mostra al ristoratore, se diverso.
+  numeroMostrato String?
+
+  /// A cosa serve questa linea, per il ristoratore: «il numero sul menu».
+  etichetta String? @db.VarChar(80)
+
+  attivo Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue    Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  chiamate PhoneCall[]
+
+  @@unique([fornitore, numeroEsterno])
+  @@index([venueId, attivo])
+}
+
+/// Come questo locale vuole che si comporti il telefono.
+///
+/// Una riga per locale, creata alla prima configurazione. Quando non c'e, il
+/// telefono si comporta come `HUMAN_ONLY`: risponde chi c'e, e nessuna
+/// macchina parla con i clienti di nessuno senza che qualcuno l'abbia deciso.
+model VoiceConfiguration {
+  id      String @id @default(cuid())
+  venueId String @unique
+
+  modalita VoiceMode @default(HUMAN_ONLY)
+
+  // ── da dove entrano le chiamate ──────────────────────────────────────
+
+  /// Come le telefonate arrivano a Tavolo. **Nullo = non ancora scelto**, e
+  /// non c'e un valore per difetto che indovina: le due strade richiedono
+  /// gesti diversi al ristoratore, e partire da quella sbagliata gli fa
+  /// chiamare l'operatore per niente.
+  ingresso VoiceIngresso?
+
+  /// Il numero che i clienti chiamano da sempre. Quello del locale, non il
+  /// nostro: serve alla procedura guidata per dire di quale numero si parla
+  /// quando si chiede la deviazione all'operatore.
+  numeroPubblico String? @db.VarChar(40)
+
+  /// L'operatore telefonico del locale, per mostrare le istruzioni **sue** e
+  /// non quelle di un altro. Vedi `src/lib/operatori-telefonici.ts`.
+  operatore String? @db.VarChar(40)
+
+  /// Dopo quanti squilli il ristoratore ha chiesto la deviazione.
+  ///
+  /// E **informativo**: su una SIM il numero di squilli lo imposta
+  /// l'operatore, non noi. Si conserva per poterlo ricordare a chi torna sulla
+  /// schermata sei mesi dopo — non per farne qualcosa.
+  squilliChiesti Int?
+
+  /// Quando la deviazione e stata chiesta all'operatore.
+  ///
+  /// Serve alla prova: una telefonata arrivata **prima** di questa data non
+  /// dimostra che la deviazione funzioni — era arrivata da un'altra strada.
+  deviazioneChiestaIl DateTime?
+
+  /// Quanti secondi si lascia squillare prima del ripiego, in `HUMAN_FIRST`.
+  ///
+  /// **NON LETTO DA NESSUNO** (21 set 2026), come `squilliChiesti` qui sopra e
+  /// per la stessa ragione: su una deviazione il numero di squilli lo imposta
+  /// l'operatore telefonico, e noi vediamo la chiamata solo quando ce la
+  /// manda. Resta informativo.
+  secondiDiSquillo Int @default(20)
+
+  /// Cosa fare in ognuna delle quattro situazioni (§35 del brief).
+  ///
+  /// Colonne separate e non un `Json`: sono quattro decisioni che una
+  /// schermata mostra come quattro tendine, e in un `Json` non si puo
+  /// nemmeno interrogarle.
+  ///
+  /// **NON LETTE DA NESSUNO** (21 set 2026), e non per pigrizia: due delle
+  /// quattro situazioni **non le sappiamo distinguere**. Con la deviazione,
+  /// «occupato» e «non risponde» arrivano a noi identiche — la chiamata la
+  /// manda l'operatore telefonico e non dice perche. E l'unica azione diversa
+  /// dalla voce che qualcuno sceglierebbe (`FORWARD`) richiede che il
+  /// centralino apra una gamba in uscita verso `numeroInoltro`: oggi nessuno
+  /// chiede `/api/v1/telefonia/rimando`, che e la rotta fatta per quello.
+  ///
+  /// Quattro tendine in una schermata, con questi campi cosi, sarebbero
+  /// **una regola che vive solo nell'interfaccia**: il ristoratore scegliebbe
+  /// e il telefono farebbe quello che fa adesso. Prima va costruito
+  /// l'inoltro nel centralino, e provato con una telefonata vera.
+  /// Vedi `docs/TABELLE-SENZA-CODICE.md`.
+  /// **NON LETTA DA NESSUNO** (21 set 2026): vedi il commento qui sopra.
+  quandoAperto      VoiceRoutingTarget @default(HUMAN)
+  /// **NON LETTA DA NESSUNO** (21 set 2026): vedi il commento qui sopra.
+  quandoChiuso      VoiceRoutingTarget @default(VOICEMAIL)
+  /// **NON LETTA DA NESSUNO** (21 set 2026): e una delle due situazioni che
+  /// non sappiamo nemmeno distinguere da `quandoNonRisponde`.
+  quandoOccupato    VoiceRoutingTarget @default(VOICEMAIL)
+  /// **NON LETTA DA NESSUNO** (21 set 2026): vedi `quandoOccupato`.
+  quandoNonRisponde VoiceRoutingTarget @default(VOICEMAIL)
+
+  /// Il numero a cui inoltrare, quando una delle quattro dice `FORWARD`.
+  ///
+  /// Questo **si legge** (`server/voice/rimando.ts`), ma per il rimando che
+  /// il risponditore chiede in mezzo a una conversazione, non per le quattro
+  /// situazioni qui sopra.
+  numeroInoltro String?
+
+  // ── il recupero delle chiamate perse ─────────────────────────────────
+
+  /// Se mandare un messaggio a chi ha chiamato e non ha trovato nessuno.
+  ///
+  /// **NON LETTO** (21 set 2026): manca il canale, non la voglia. Mandare un
+  /// messaggio richiede SMS o WhatsApp, e su questa installazione non c'e
+  /// nessuno dei due — `apriRecupero` lo dichiara `SENZA_CANALE` invece di
+  /// dirsi mandato. Accendere questo campo non farebbe partire niente.
+  recuperoPerseAttivo    Boolean         @default(false)
+  /// Su quale canale. Nullo = nessuno configurato su questa installazione.
+  /// **NON LETTO** (21 set 2026): vedi `recuperoPerseAttivo`.
+  recuperoPerseCanale    MessageChannel?
+  /// Dopo quanti minuti. Zero = subito.
+  ///
+  /// **NON LETTO** (21 set 2026). La grazia esiste e sta in
+  /// `server/voice/recupero.ts` (`GRAZIA_MINUTI`, dieci), uguale per tutti.
+  /// Leggere questo campo cambierebbe in silenzio il comportamento di ogni
+  /// locale che non l'ha mai visto — il valore per difetto e cinque, e
+  /// nessuno l'ha scelto.
+  recuperoPerseMinuti    Int             @default(5)
+  /// Il testo, con `{{bookingUrl}}` e `{{venueName}}`.
+  /// **NON LETTO** (21 set 2026): vedi `recuperoPerseAttivo`. Il testo di
+  /// oggi e `testoRecupero` in `server/voice/recupero-link.ts`.
+  recuperoPerseTesto     String?         @db.VarChar(600)
+  /// Se creare comunque una riga «da richiamare» per il personale.
+  ///
+  /// **SUPERATO** (21 set 2026), e non va collegato cosi com'e. Il disegno di
+  /// oggi tiene separate due liste di proposito: «Da fare» sono le chiamate di
+  /// cui **nessuno ha deciso**, la coda delle richiamate sono gli **impegni
+  /// presi**. La prima si svuota decidendo, la seconda lavorando. Riempire la
+  /// seconda da sola le fonde, e una coda che si riempie per conto suo si
+  /// smette di guardare. Vedi `server/voice/richiamate.ts`.
+  recuperoCreaRichiamata Boolean         @default(true)
+
+  // ── le registrazioni ─────────────────────────────────────────────────
+
+  /// **NON LETTI DA NESSUNO** (21 set 2026): la registrazione delle chiamate
+  /// non esiste da nessuna parte, ne qui ne nel centralino, e le tabelle che
+  /// la conserverebbero (`PhoneCallRecording`, `PhoneCallTranscript`) sono
+  /// vuote. Serve spazio dove tenere l'audio, un avviso a chi chiama e una
+  /// scadenza che cancelli davvero: e una funzione, non un campo.
+  registrazioniAttive   Boolean               @default(false)
+  /// **NON LETTO** (21 set 2026): vedi `registrazioniAttive`.
+  registrazioniConsenso VoiceRecordingConsent @default(OFF)
+  /// Per quanti giorni si conservano. Oltre, si cancellano.
+  /// **NON LETTO** (21 set 2026): vedi `registrazioniAttive`. E il campo che
+  /// mancherebbe di piu: senza una scadenza che cancella davvero, «trenta
+  /// giorni» e una promessa scritta e mai mantenuta.
+  registrazioniGiorni   Int                   @default(30)
+
+  // ── chi risponde, quando risponde una macchina ───────────────────────
+
+  /// Il nome con cui si presenta. Il **come** si comporta non si configura da
+  /// qui: le regole del sistema non sono un campo di testo.
+  aiNome   String? @db.VarChar(40)
+  /// **SUPERATO** (21 set 2026): la voce risponde nella **lingua di chi
+  /// chiama** — glielo dicono le istruzioni nel centralino — e il saluto e
+  /// testo libero scritto dal ristoratore, quindi la sua lingua e quella in
+  /// cui l'ha scritto. Una lingua fissata qui farebbe rispondere in italiano a
+  /// un turista che chiede un tavolo in inglese.
+  aiLingua String  @default("it")
+  aiSaluto String? @db.VarChar(300)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+}
+
+/// Da dove entrano le telefonate in Tavolo.
+///
+/// Le due strade non sono equivalenti, e la differenza si vede nei numeri:
+/// dal gateway la chiamata entra **prima** che qualcuno risponda, quindi
+/// Tavolo vede anche le telefonate che il personale prende e puo dire quante
+/// non riesce a prendere; dalla deviazione vede solo quello che l'operatore
+/// gli devia, e le altre non esistono. Vedi
+/// `/docs/TAVOLO-VOICE-RISPONDITORE.md`.
+enum VoiceIngresso {
+  /// La scatoletta attaccata alla linea del locale (gateway FXO).
+  /// Niente operatore, niente numero nuovo, niente deviazione.
+  GATEWAY
+  /// Deviazione di chiamata dal numero del locale verso un numero nostro.
+  /// L'unica strada possibile quando il locale usa un cellulare: a una SIM
+  /// non si attacca nessuna scatoletta.
+  DEVIAZIONE
+}
+
+enum VoiceMode {
+  /// Il telefono non fa parte di Tavolo.
+  OFF
+  /// Risponde chi c'e. Nessuna macchina parla con i clienti.
+  HUMAN_ONLY
+  /// Squilla alle persone; se nessuno risponde, il ripiego configurato.
+  HUMAN_FIRST
+  /// Risponde la macchina, e passa a una persona quando serve.
+  AI_FIRST
+}
+
+enum VoiceRoutingTarget {
+  HUMAN
+  AI
+  VOICEMAIL
+  FORWARD
+  /// Dice una frase e chiude.
+  MESSAGE
+}
+
+enum VoiceRecordingConsent {
+  /// Non si registra.
+  OFF
+  /// Si annuncia all'inizio che la chiamata e registrata.
+  ANNOUNCE
+  /// Si registra solo se **entrambi** acconsentono.
+  BOTH_PARTIES
+}
+
+/// Una persona da richiamare.
+///
+/// E la coda operativa: una chiamata persa non e una riga di storico, e un
+/// lavoro da fare. `MissedCall` voleva essere questo, non e mai stata
+/// collegata a niente, ed e stata cancellata il 21 settembre 2026.
+model VoiceCallback {
+  id      String @id @default(cuid())
+  venueId String
+
+  /// Il numero da richiamare. Resta anche se la scheda dell'ospite cambia.
+  numero String
+
+  guestId String?
+  callId  String?
+
+  stato VoiceCallbackStatus @default(OPEN)
+
+  /// Quante volte si e provato a richiamare.
+  tentativi Int @default(0)
+
+  /// Entro quando conviene richiamare: serve a dire «in ritardo».
+  entro DateTime?
+
+  chiusoIl DateTime?
+  chiusoDa String?
+  nota     String?   @db.VarChar(400)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest Guest?     @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  call  PhoneCall? @relation(fields: [callId], references: [id], onDelete: SetNull)
+  /// **Una sola richiamata aperta per numero.** Il vincolo e un indice unico
+  /// parziale (`WHERE stato = 'OPEN'`), scritto a mano nella migrazione perche
+  /// Prisma non sa dichiarare un unico condizionato: vedi
+  /// `20260918140000_tavolo_voice_fase4`. Sta nel database e non in un
+  /// controllo perche due persone che premono «da richiamare» sulla stessa
+  /// chiamata, nello stesso istante, non si vedrebbero a vicenda — e in coda
+  /// comparirebbe due volte la stessa persona.
+
+  @@index([venueId, stato, createdAt])
+}
+
+enum VoiceCallbackStatus {
+  OPEN
+  DONE
+  /// Deciso di non richiamare: e una decisione, non una dimenticanza.
+  IGNORED
+}
+
+/// Un'informazione emersa in chiamata, **da approvare**.
+///
+/// Il punto di questa tabella e il campo `stato`. Quello che una macchina
+/// deduce da una telefonata non entra nel profilo di un cliente finche una
+/// persona non premo «salva»: un CRM riempito di deduzioni non verificate e
+/// peggio di un CRM vuoto, perche non si sa piu cosa e vero.
+model VoiceCRMInsight {
+  id      String  @id @default(cuid())
+  venueId String
+  callId  String
+  guestId String?
+
+  /// Di che tipo: `preferenza`, `allergia`, `occasione`, `nota`.
+  tipo String @db.VarChar(40)
+
+  /// Il testo dell'informazione, come si mostrerebbe sulla scheda.
+  valore String @db.VarChar(300)
+
+  stato VoiceInsightStatus @default(PENDING)
+
+  decisoDa String?
+  decisoIl DateTime?
+
+  createdAt DateTime @default(now())
+
+  venue Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  call  PhoneCall @relation(fields: [callId], references: [id], onDelete: Cascade)
+  guest Guest?    @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, stato, createdAt])
+}
+
+enum VoiceInsightStatus {
+  PENDING
+  SAVED
+  IGNORED
+}
+
+/// Quello che il locale ha deciso di far sapere al telefono.
+///
+/// La base di conoscenza esiste perche una macchina che risponde **non deve
+/// inventare**: se la risposta non e qui, si dice «faccio verificare dal
+/// personale». Un'informazione sbagliata sugli allergeni detta al telefono e
+/// un danno vero.
+model VoiceKnowledgeItem {
+  id      String @id @default(cuid())
+  venueId String
+
+  categoria VoiceKnowledgeCategory
+
+  /// Le forme in cui la domanda puo arrivare: «parcheggio», «dove parcheggio».
+  argomenti String[] @default([])
+
+  risposta String @db.VarChar(1200)
+
+  attivo Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, categoria, attivo])
+}
+
+enum VoiceKnowledgeCategory {
+  LOCALE
+  ORARI
+  MENU
+  ALLERGIE
+  ACCESSIBILITA
+  PARCHEGGIO
+  BAMBINI
+  ANIMALI
+  GRUPPI
+  EVENTI
+  PAGAMENTI
+  ALTRO
+}
+
 enum BookingStatus {
   CONFIRMED
   PENDING
@@ -2697,12 +3515,25 @@ enum BookingStatus {
 
 enum BookingSource {
   WIDGET
+  /// Presa da una persona dello staff al telefono. Resta per le righe
+  /// esistenti e per chi scrive a mano: non si tocca il passato.
   PHONE
+  /// Nata da Tavolo Voice. Chi ha risposto — persona o macchina — sta su
+  /// `PhoneCall.handler`, non in un secondo valore qui: un enum che cresce a
+  /// ogni combinazione diventa illeggibile.
+  VOICE
   WALK_IN
   GOOGLE
   SOCIAL
   CONCIERGE
   EVENT
+  /// Arrivata con un file, da un altro gestionale.
+  ///
+  /// Un valore suo e non il riuso di `CONCIERGE`: «da dove arrivano le
+  /// prenotazioni» e una delle domande che questo prodotto risponde, e
+  /// contare duemila righe importate fra quelle prese a mano sarebbe una
+  /// risposta falsa per sempre. Vedi `server/importazione.ts`.
+  IMPORT
 }
 
 enum Occasion {
@@ -2826,20 +3657,6 @@ enum BookingEventKind {
   CANCELLED
 }
 
-enum CallDirection {
-  INBOUND
-  OUTBOUND
-}
-
-enum CallStatus {
-  QUEUED
-  RINGING
-  IN_PROGRESS
-  COMPLETED
-  MISSED
-  FAILED
-}
-
 enum ChatRole {
   USER
   BOT
@@ -2931,34 +3748,6 @@ enum CouponStatus {
   PAUSED
   EXPIRED
   ARCHIVED
-}
-
-enum DecorKind {
-  PLANT
-  SOFA
-  ARMCHAIR
-  BAR
-  COUNTER
-  KITCHEN
-  DJ_BOOTH
-  STAGE
-  COLUMN
-  DIVIDER
-  DOOR
-  WINDOW
-  ENTRANCE
-  RESTROOM
-  POOL
-  STAIRS
-  RUG
-  LAMP
-  LABEL
-}
-
-enum DraftStatus {
-  NEW
-  CONFIRMED
-  REJECTED
 }
 
 enum GiftCardStatus {
@@ -3123,18 +3912,6 @@ enum Sentiment {
   PROMOTER
   PASSIVE
   DETRACTOR
-}
-
-enum TemplateCategory {
-  GENERIC
-  WELCOME
-  REMINDER
-  THANK_YOU
-  PROMO
-  WIN_BACK
-  BIRTHDAY
-  ANNIVERSARY
-  EVENT
 }
 
 enum WaitlistStatus {
@@ -3313,12 +4090,32 @@ model DemPlan {
 
   /// Spazio per ciò che verrà — sconti, pacchetti extra, promozioni a tempo —
   /// senza che una colonna vuota per cliente stia in tabella da oggi.
-  metadata       Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   subscriptions DemSubscription[] @relation("DemSubscriptionPlan")
   scheduledFor  DemSubscription[] @relation("DemSubscriptionScheduledPlan")
+
+  /// Quanto siamo disposti a spendere in infrastruttura per un cliente di
+  /// questo piano, in centesimi al mese. Nullo = nessun tetto, e allora il
+  /// freno economico non interviene: resta solo il limite di invii.
+  ///
+  /// Sta sul **piano** e non sul cliente perché il margine si decide una volta
+  /// per prodotto: se un Business costa 49,90 e ne spendiamo 60 di
+  /// infrastruttura, il problema è il piano. Il caso singolo si tratta con un
+  /// `CostOverride`, che ha un nome e una data accanto.
+  awsBudgetCents Int?
+  /// Le soglie, in percentuale del budget. Vivono in tabella perché il giorno
+  /// che si toccano non si deve pubblicare una versione dell'applicazione.
+  warningPct     Int     @default(75)
+  criticalPct    Int     @default(90)
+  hardLimitPct   Int     @default(100)
+  /// Al limite: si blocca, o si lascia passare e si guarda dopo?
+  ///
+  /// Falso di proposito. Un tetto che non ferma niente è una decorazione, e il
+  /// giorno che serve davvero la differenza fra i due valori sono soldi veri.
+  allowOverage   Boolean @default(false)
 
   @@index([active, sortOrder])
 }
@@ -3670,4 +4467,355 @@ enum DemTenantStatus {
   /// Fermato da noi o dal fornitore. Non cancella niente.
   PAUSED
   FAILED
+}
+
+// ─── Costi dell'infrastruttura ───────────────────────────────────────────────
+//
+// Quanto ci costa **davvero** ogni cliente, e il freno che impedisce a un
+// cliente di costare più di quanto paga.
+//
+// Una premessa che spiega la forma di tutte e cinque le tabelle: **Amazon non
+// sa dirci quanto costa un singolo cliente**. SES fattura per account e
+// regione, i tenant non sono una dimensione della fatturazione, e nessuna API
+// risponde «questo ristorante: 28,43 €». Quindi le quantità sono nostre e
+// reali (gli invii che partono, gli eventi che tornano), il prezzo è un
+// listino configurabile, e la fattura vera serve a **riconciliare il totale** —
+// se il totale non torna, è il listino a essere sbagliato, e si corregge lì
+// invece che in cinquanta righe.
+//
+// `provider` e `service` sono stringhe e non enum di proposito: aggiungere un
+// fornitore o un servizio non deve richiedere una migrazione, e il giorno che
+// entra un secondo fornitore di email o un servizio di SMS queste tabelle
+// reggono senza modifiche.
+
+/// Il listino: quanto costa un'unità di un servizio, in un periodo.
+///
+/// Sostituisce `DEM_COSTO_PER_MILLE_USD`, che era una variabile d'ambiente:
+/// cambiare un prezzo significava pubblicare una versione dell'applicazione, e
+/// i prezzi di Amazon cambiano quando decide Amazon.
+///
+/// Gli scaglioni (`tierStart`/`tierEnd`) esistono perché i listini a volume
+/// sono la norma: oltre una certa quantità il prezzo unitario scende. Con un
+/// solo scaglione aperto (`tierEnd` nullo) il listino è piatto, ed è il caso
+/// di oggi.
+model ProviderPrice {
+  id        String  @id @default(cuid())
+  provider  String  @db.VarChar(40)
+  /// `SES_SEND`, `SES_TENANT`, `SES_DELIVERABILITY`, `SES_VALIDATION`,
+  /// `DATA_TRANSFER`, `DEDICATED_IP`. Un servizio che non usiamo non ha righe
+  /// attive, e non compare da nessuna parte: è così che si accende e si spegne
+  /// una voce di costo senza toccare il codice.
+  service   String  @db.VarChar(40)
+  /// Come si chiama nel dettaglio costi, in italiano e per esteso.
+  label     String  @db.VarChar(80)
+  /// `EMAIL_1000`, `GB`, `MONTH`, `VALIDATION_1000`.
+  unit      String  @db.VarChar(40)
+  /// Sei decimali perché un prezzo per mille email ha senso fino al
+  /// millesimo di centesimo, e arrotondare qui significa sbagliare di euro su
+  /// un milione di invii.
+  unitPrice Decimal @db.Decimal(12, 6)
+  currency  String  @default("USD") @db.VarChar(3)
+  region    String? @db.VarChar(20)
+
+  tierStart Int  @default(0)
+  tierEnd   Int?
+
+  /// La validità nel tempo: un prezzo non si modifica, se ne apre uno nuovo.
+  /// Ricalcolare marzo con il listino di settembre riscriverebbe la storia.
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  active        Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provider, service, active, effectiveFrom])
+}
+
+/// Il ledger: una riga per ogni consumo, non un contatore.
+///
+/// `DemUsagePeriod` conta gli invii del ciclo e basta a dire «quanti me ne
+/// restano». Non basta a dire **quando** sono stati consumati, da quale
+/// campagna, a che prezzo, e quindi non basta né per il grafico giornaliero né
+/// per il costo di una singola campagna.
+///
+/// `idempotencyKey` è la difesa contro il doppio conteggio: un webhook che
+/// ripete un evento, un lavoro in coda che riprende da metà, una
+/// riconciliazione rieseguita. La seconda scrittura viola il vincolo e non
+/// aggiunge niente — la stessa forma già usata da `DemEvent`.
+model UsageEvent {
+  id         String  @id @default(cuid())
+  venueId    String
+  campaignId String?
+
+  provider  String @db.VarChar(40)
+  service   String @db.VarChar(40)
+  /// `EMAIL_SENT`, `EMAIL_DELIVERED`, `TEST_SEND`, `TENANT_MONTH`, `BYTES_OUT`.
+  ///
+  /// Gli invii di prova passano davvero da Amazon e quindi si pagano: stanno
+  /// nel ledger come gli altri, con un tipo loro perché una campagna di prova
+  /// e una campagna vera non vanno confuse quando si guarda la marginalità.
+  eventType String @db.VarChar(40)
+
+  /// Dove si trova questo consumo nella sua vita.
+  ///
+  /// `RESERVED` è impegnato e non ancora speso — non entra nel costo. `SENT` è
+  /// partito davvero, e Amazon lo fattura. `FAILED` è stato rifiutato **prima**
+  /// di essere accettato: non si paga, e si registra lo stesso perché un tasso
+  /// di rifiuto che sale è una notizia. `CANCELLED` libera un impegno che non
+  /// diventerà mai un invio. `RECONCILED` è una rettifica nata dal confronto
+  /// con la fattura vera.
+  ///
+  /// Solo `SENT` e `RECONCILED` fanno somma: è l'unica definizione di «costo»
+  /// che non gonfia il conto di un cliente con campagne programmate e mai
+  /// partite.
+  status String @default("SENT") @db.VarChar(20)
+
+  quantity Int
+  unit     String @db.VarChar(40)
+
+  /// Il prezzo **applicato in quel momento**, copiato dal listino. Non si
+  /// rilegge il listino per ricostruire un costo passato: il listino cambia, e
+  /// il costo di agosto deve restare quello di agosto.
+  unitPrice     Decimal  @db.Decimal(12, 6)
+  estimatedCost Decimal  @db.Decimal(12, 6)
+  /// Il costo vero, quando la fattura arriva. Nullo fino ad allora, e la
+  /// differenza fra i due è la misura di quanto il listino è tarato male.
+  actualCost    Decimal? @db.Decimal(12, 6)
+  currency      String   @db.VarChar(3)
+
+  /// `2026-09`: il ciclo a cui questo consumo appartiene, scritto una volta
+  /// sola. Ricavarlo dalla data a ogni lettura significherebbe sbagliarlo il
+  /// giorno che un cliente avrà un ciclo che non comincia il primo del mese.
+  yearMonth String @db.VarChar(7)
+
+  idempotencyKey  String  @unique @db.VarChar(200)
+  providerEventId String? @unique @db.VarChar(250)
+
+  occurredAt DateTime
+  createdAt  DateTime @default(now())
+
+  venue    Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, yearMonth, status])
+  @@index([venueId, occurredAt])
+  @@index([campaignId])
+}
+
+/// L'aggregato per cliente e ciclo: il costo maturato, il budget, lo stato.
+///
+/// Esiste per una ragione sola, ed è che una dashboard che somma un milione di
+/// righe a ogni apertura è una dashboard che nessuno apre. Le soglie e il
+/// budget sono **copiati** dal piano quando il ciclo nasce: cambiare il budget
+/// di un piano a metà mese non deve riscrivere retroattivamente lo stato di
+/// chi quel mese l'ha già quasi finito.
+model CostPeriod {
+  id          String   @id @default(cuid())
+  venueId     String
+  yearMonth   String   @db.VarChar(7)
+  periodStart DateTime
+  periodEnd   DateTime
+
+  /// Il costo nella valuta in cui il fornitore fattura, e quello convertito
+  /// nella nostra. Si salvano entrambi con il cambio applicato e la sua data:
+  /// una conversione fatta al volo in una pagina è un numero che non si può
+  /// più verificare (vedi `ExchangeRate`).
+  originalAmount   Decimal   @db.Decimal(12, 6)
+  originalCurrency String    @default("USD") @db.VarChar(3)
+  exchangeRate     Decimal?  @db.Decimal(12, 6)
+  exchangeRateAt   DateTime?
+  /// Il costo contabilizzato, in centesimi della nostra valuta. Nullo quando
+  /// non conosciamo il cambio: meglio una colonna vuota che un euro inventato.
+  amountCents      Int?
+  /// Il costo **impegnato** da campagne programmate o a metà strada.
+  ///
+  /// Esiste per la stessa ragione di `DemUsagePeriod.reserved`, applicata ai
+  /// soldi invece che agli invii: senza, due campagne preparate lo stesso
+  /// pomeriggio leggono entrambe lo stesso budget residuo e passano tutte e
+  /// due. Il controllo «ci sta?» e la sottrazione devono stare nella stessa
+  /// istruzione SQL, e questa è la colonna su cui gira.
+  reservedCents    Int       @default(0)
+  billingCurrency  String    @default("EUR") @db.VarChar(3)
+
+  /// Budget e soglie **congelati** dal piano all'apertura del ciclo.
+  budgetCents  Int?
+  warningPct   Int     @default(75)
+  criticalPct  Int     @default(90)
+  hardLimitPct Int     @default(100)
+  allowOverage Boolean @default(false)
+
+  /// La previsione a fine ciclo, ricalcolata a ogni aggiornamento.
+  forecastCents Int?
+
+  /// `NORMALE`, `ATTENZIONE`, `CRITICO`, `LIMITE`.
+  stato String @default("NORMALE") @db.VarChar(20)
+
+  /// Le soglie già annunciate in questo ciclo. Un avviso che si ripete a ogni
+  /// aggiornamento smette di essere un avviso — stessa difesa di
+  /// `DemUsagePeriod.notified`.
+  notified Int[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, yearMonth])
+  @@index([stato])
+}
+
+/// Un superamento autorizzato a mano, con chi l'ha autorizzato.
+///
+/// Non è una colonna sul ciclo: un permesso senza un nome e una data accanto è
+/// una modifica che nessuno sa più spiegare tre mesi dopo, quando il costo del
+/// mese è il doppio del previsto e il budget del piano risulta ancora quello
+/// di prima.
+model CostOverride {
+  id        String @id @default(cuid())
+  venueId   String
+  yearMonth String @db.VarChar(7)
+
+  /// `BUDGET` (in centesimi) o `EMAILS` (in invii).
+  kind     String  @db.VarChar(20)
+  oldValue Int
+  newValue Int
+  note     String? @db.VarChar(300)
+
+  /// Chi l'ha deciso. L'email e non solo l'id: un account cancellato non deve
+  /// far sparire la responsabilità di una decisione economica.
+  actorEmail String   @db.VarChar(160)
+  createdAt  DateTime @default(now())
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, yearMonth])
+}
+
+/// Gli avvisi di piattaforma: quelli che leggiamo **noi**.
+///
+/// Non si possono mettere in `Notification`, che è legata al locale e la legge
+/// il ristoratore nel suo pannello: «ha raggiunto il 75% del budget AWS» è un
+/// nostro conto economico, e il cliente non deve nemmeno sapere che esiste.
+///
+/// Il vincolo unico su (locale, tipo, ciclo) è ciò che impedisce di generare
+/// lo stesso avviso a ogni passaggio del cron.
+model PlatformAlert {
+  id        String  @id @default(cuid())
+  venueId   String
+  yearMonth String  @db.VarChar(7)
+  /// `BUDGET_WARNING`, `BUDGET_CRITICAL`, `BUDGET_LIMIT`, `FORECAST_OVERRUN`.
+  kind      String  @db.VarChar(40)
+  /// `ATTENZIONE`, `CRITICO`, `LIMITE`.
+  level     String  @db.VarChar(20)
+  title     String  @db.VarChar(160)
+  body      String? @db.VarChar(500)
+  meta      Json?
+
+  /// Quando l'avviso è stato mandato per email, e a chi. Nullo = mai mandato.
+  emailedAt DateTime?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, yearMonth, kind])
+  @@index([createdAt])
+  @@index([readAt])
+}
+
+/// La riconciliazione: cosa dice Amazon, cosa abbiamo attribuito noi, e la
+/// differenza che non appartiene a nessuno.
+///
+/// ## Tre numeri che non vanno mai sommati né confusi
+///
+/// `awsReported` è la fattura: il costo vero dell'account, per servizio e per
+/// mese. `allocated` è la somma di quello che il nostro ledger ha attribuito
+/// ai clienti. `unallocated` è la differenza — e **non è un errore**: sono i
+/// costi che Amazon fattura all'account e che nessun cliente ha generato da
+/// solo (verifiche di dominio, messaggi di prova, traffico di servizio), più
+/// l'imprecisione del listino.
+///
+/// Il motivo per cui restano tre colonne e non diventano una: Amazon **non sa
+/// dire quanto costa un singolo ristorante**. SES fattura per account e
+/// regione, i tenant non sono una dimensione della fatturazione. Spalmare la
+/// differenza sui clienti pro quota produrrebbe numeri che sembrano precisi e
+/// non lo sono, e su quei numeri decideremmo i prezzi dei piani.
+///
+/// Da qui anche la regola sul ledger: le stime già scritte **non si toccano**.
+/// Una correzione nasce come riga nuova (`status = RECONCILED`), così la
+/// differenza fra quello che credevamo e quello che era resta leggibile.
+model CostReconciliation {
+  id        String @id @default(cuid())
+  provider  String @db.VarChar(40)
+  yearMonth String @db.VarChar(7)
+  /// Vuoto quando la fonte non distingue la regione. Non nullo, perché una
+  /// colonna nulla dentro un vincolo di unicità in Postgres non si comporta
+  /// come ci si aspetta: due righe «senza regione» sarebbero entrambe valide.
+  region    String @default("") @db.VarChar(20)
+
+  /// Quanto dichiara Amazon, nella valuta in cui fattura. Nullo finché non
+  /// l'abbiamo chiesto — o finché non abbiamo il permesso per chiederlo.
+  awsReportedAmount   Decimal? @db.Decimal(14, 6)
+  awsReportedCurrency String?  @db.VarChar(3)
+
+  /// Quanto ha attribuito il nostro ledger, sommando i clienti.
+  allocatedAmount   Decimal @default(0) @db.Decimal(14, 6)
+  allocatedCurrency String  @default("USD") @db.VarChar(3)
+
+  /// La parte che non appartiene a nessun cliente. Può essere **negativa**:
+  /// significa che abbiamo attribuito più di quanto Amazon fattura, cioè che
+  /// il listino sovrastima. È un'informazione, non un errore da nascondere.
+  unallocatedAmount Decimal? @db.Decimal(14, 6)
+  /// Di quanto il reale si scosta dalla stima, in percentuale. È il numero con
+  /// cui si corregge il listino.
+  scostamentoPct    Decimal? @db.Decimal(8, 4)
+
+  /// Il controllo di tenuta del ledger: quanti invii dice il nostro contatore
+  /// e quanti eventi `SEND` ci ha rimandato Amazon. Se il secondo è molto più
+  /// basso, non stiamo ricevendo gli eventi — e le statistiche dei clienti
+  /// sono ferme senza che nessuno se ne accorga.
+  inviiLedger Int @default(0)
+  inviiSes    Int @default(0)
+
+  /// `COST_EXPLORER`, `MANUALE`, `NON_DISPONIBILE`.
+  fonte String  @default("NON_DISPONIBILE") @db.VarChar(40)
+  /// `IN_ATTESA`, `RICONCILIATO`, `SOLO_STIMA`.
+  stato String  @default("IN_ATTESA") @db.VarChar(20)
+  note  String? @db.VarChar(300)
+
+  /// Quando abbiamo chiesto il dato ad Amazon. Serve a non richiederlo a ogni
+  /// giro di cron: Cost Explorer si paga a richiesta.
+  fetchedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([provider, yearMonth, region])
+  @@index([yearMonth])
+}
+
+/// Il cambio fra due valute, a una certa data.
+///
+/// Amazon fattura in dollari e noi ragioniamo in euro. La conversione non si fa
+/// nella pagina: un numero convertito al volo non si può più verificare — fra
+/// tre mesi nessuno sa a che tasso è stato calcolato, e due schermate aperte a
+/// dieci minuti di distanza mostrano due euro diversi per lo stesso dollaro.
+///
+/// Una riga per lettura, mai un aggiornamento: il costo di agosto è stato
+/// contabilizzato al cambio di agosto, e sovrascriverlo renderebbe irripetibile
+/// il conto di un mese chiuso.
+///
+/// Nasce qui e non riusa `ExchangeRate`, che è stata eliminata il 21 settembre
+/// 2026 insieme alle altre tabelle senza scrittori: quella non aveva un
+/// padrone, questa sì — è del modulo costi, e si popola sola dal cron.
+model CambioValuta {
+  id      String   @id @default(cuid())
+  da      String   @db.VarChar(3)
+  a       String   @db.VarChar(3)
+  tasso   Decimal  @db.Decimal(12, 6)
+  lettoIl DateTime @default(now())
+  /// Da dove arriva il tasso: `MANUALE` finché non c'è una fonte automatica.
+  fonte   String   @default("MANUALE") @db.VarChar(40)
+
+  @@index([da, a, lettoIl])
 }

@@ -107,24 +107,71 @@ chiama:
 ```json
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": [
-      "ses:GetAccount",
-      "ses:CreateTenant",
-      "ses:GetTenant",
-      "ses:CreateTenantResourceAssociation",
-      "ses:CreateConfigurationSet",
-      "ses:CreateConfigurationSetEventDestination",
-      "ses:CreateEmailIdentity",
-      "ses:GetEmailIdentity",
-      "ses:PutEmailIdentityMailFromAttributes",
-      "ses:SendEmail"
-    ],
-    "Resource": "*"
-  }]
+  "Statement": [
+    {
+      "Sid": "InvioEConfigurazione",
+      "Effect": "Allow",
+      "Action": [
+        "ses:GetAccount",
+        "ses:CreateTenant",
+        "ses:GetTenant",
+        "ses:CreateTenantResourceAssociation",
+        "ses:CreateConfigurationSet",
+        "ses:CreateConfigurationSetEventDestination",
+        "ses:CreateEmailIdentity",
+        "ses:GetEmailIdentity",
+        "ses:PutEmailIdentityMailFromAttributes",
+        "ses:SendEmail"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DiagnosticaSolaLettura",
+      "Effect": "Allow",
+      "Action": [
+        "ses:ListTenants",
+        "ses:ListConfigurationSets",
+        "ses:GetConfigurationSetEventDestinations"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RiconciliazioneFattura",
+      "Effect": "Allow",
+      "Action": "ce:GetCostAndUsage",
+      "Resource": "*"
+    }
+  ]
 }
 ```
+
+### Perché ognuna di queste azioni
+
+Il primo blocco è l'invio: sono le dieci che il modulo usa per spedire e per preparare lo
+spazio di un cliente. Non ne serve nessun'altra.
+
+Il secondo blocco è **diagnostica in sola lettura**, e serve al pannello «Stato
+infrastruttura email»: confrontare i tenant e gli insiemi di configurazione che il nostro
+database si aspetta con quelli che esistono davvero su AWS, e verificare che la
+destinazione degli eventi sia presente **e accesa**. Senza, il pannello non mente: scrive
+«non verificabile» e dice quale permesso manca. Sono letture: nessuna di queste può
+cambiare qualcosa.
+
+> **Nota su una lettura che c'era già.** `ses:GetAccount` e `ses:GetTenant` stanno nel
+> primo blocco e non nel secondo, anche se sono letture: le usava già il codice di invio
+> prima che esistesse la diagnostica — `GetAccount` per sapere se l'account è ancora in
+> sandbox prima di accendere il modulo a un cliente, `GetTenant` per non ricreare uno
+> spazio che esiste. Spostarle qui sotto avrebbe fatto sembrare che l'invio possa
+> funzionare senza, e non è vero.
+
+Il terzo è la riconciliazione con la fattura. `ce:GetCostAndUsage` **non supporta i
+permessi per risorsa**: Cost Explorer non ha ARN su cui puntare, quindi `"Resource": "*"`
+è l'unica forma possibile — non è una scorciatoia. La lettura si paga 0,01 $ a richiesta e
+il codice non la chiama più di due volte al giorno.
+
+**Quello che non c'è, di proposito:** nessun `ses:*`, nessun `ce:*`, nessuna
+cancellazione. Un utente che può spedire non deve poter cancellare l'identità di un
+cliente, e la diagnostica non ha motivo di poter scrivere niente.
 
 Dove l'infrastruttura lo permette, **un ruolo invece di una coppia di chiavi**: il client non
 le passa a mano, quindi basta non impostarle e le trova l'ambiente.

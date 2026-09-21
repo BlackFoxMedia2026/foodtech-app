@@ -58,3 +58,6 @@ next-env.d.ts
 # Dati di lingua dell'OCR: li scarica tesseract al primo uso e li tiene qui.
 # Sono dati, non sorgente (5 MB l'uno).
 *.traineddata
+
+# Cartelle di build di un secondo `next dev` (vedi NEXT_DIST_DIR in next.config.mjs)
+.next-*

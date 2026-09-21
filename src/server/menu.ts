@@ -665,6 +665,10 @@ export async function getRendimentoPiatto(venueId: string, id: string): Promise<
 /* -------------------------------------------------------------------------- */
 
 export type MenuPubblico = {
+  /** Serve a segnare la lettura: vedi `server/menu-letture.ts`. */
+  venueId: string;
+  /** Il fuso del locale: una lettura appartiene alla **sua** giornata. */
+  timezone: string;
   venueName: string;
   brandLogoUrl: string | null;
   brandAccent: string | null;
@@ -692,7 +696,14 @@ export type MenuPubblico = {
 export async function getMenuPubblico(slug: string, menuKey = "main"): Promise<MenuPubblico | null> {
   const venue = await db.venue.findFirst({
     where: { slug, active: true },
-    select: { id: true, name: true, brandLogoUrl: true, brandAccent: true, currency: true },
+    select: {
+      id: true,
+      name: true,
+      timezone: true,
+      brandLogoUrl: true,
+      brandAccent: true,
+      currency: true,
+    },
   });
   if (!venue) return null;
 
@@ -703,6 +714,8 @@ export async function getMenuPubblico(slug: string, menuKey = "main"): Promise<M
   });
 
   return {
+    venueId: venue.id,
+    timezone: venue.timezone,
     venueName: venue.name,
     brandLogoUrl: venue.brandLogoUrl,
     brandAccent: venue.brandAccent,

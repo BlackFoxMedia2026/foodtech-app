@@ -29,11 +29,16 @@ export default async function PaginaReimpostaPassword({ params }: { params: { to
           <div className="surface p-6 text-center">
             <h1 className="text-display text-2xl">Questo link non è più valido</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Può essere scaduto, già usato, o non essere mai esistito. Chiedi al responsabile del locale di
-              generarne un altro: ci vogliono dieci secondi.
+              Può essere scaduto, già usato, o non essere mai esistito. Richiedine un altro: ci vogliono
+              dieci secondi.
             </p>
             <p className="mt-4 text-sm">
-              <Link href="/sign-in" className="underline">
+              <Link href="/password-dimenticata" className="underline">
+                Mandami un altro link
+              </Link>
+            </p>
+            <p className="mt-2 text-sm">
+              <Link href="/sign-in" className="text-muted-foreground underline">
                 Ricordi la password? Entra
               </Link>
             </p>

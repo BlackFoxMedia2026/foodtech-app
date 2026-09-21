@@ -198,16 +198,36 @@ export async function impostaPassword(venueId: string, waiterId: string, raw: un
   await recordAudit(actor, "waiter.account_password", "waiter", waiterId, { email: persona.user.email });
 }
 
+/**
+ * Apre un reset per un account e restituisce il token **in chiaro una volta
+ * sola**: nel database va solo il suo hash, e da lì non si torna indietro.
+ *
+ * Sta qui, e non nei due posti che la chiamano, perché le due strade per
+ * reimpostare una password — il responsabile che genera il link, e la persona
+ * che se lo fa mandare da sola — devono aprire lo **stesso** reset: stessa
+ * durata, stesso hash, stesso token che si consuma. Due copie di queste
+ * quattro righe sarebbero due scadenze che prima o poi divergono.
+ *
+ * Aprire un reset nuovo **chiude quello vecchio**: la colonna è una, e l'hash
+ * di prima viene sovrascritto. È la cosa giusta — chi chiede il link due volte
+ * usa quello arrivato per ultimo — ed è la ragione per cui questa funzione non
+ * controlla se un reset era già aperto.
+ */
+export async function apriReset(userId: string) {
+  const token = randomBytes(32).toString("hex");
+  const scadeIl = new Date(Date.now() + ORE_VALIDITA_RESET * 3_600_000);
+  await db.user.update({
+    where: { id: userId },
+    data: { passwordResetHash: hashToken(token), passwordResetExpiresAt: scadeIl },
+  });
+  return { token, scadeIl };
+}
+
 /** Un link per reimpostare la password, da consegnare a mano. */
 export async function generaLinkReset(venueId: string, waiterId: string, baseUrl: string, actor?: AuditActor) {
   const persona = await personaConAccount(venueId, waiterId);
   if (!persona.user) throw new AccountError("senza_account");
-  const token = randomBytes(32).toString("hex");
-  const scadeIl = new Date(Date.now() + ORE_VALIDITA_RESET * 3_600_000);
-  await db.user.update({
-    where: { id: persona.user.id },
-    data: { passwordResetHash: hashToken(token), passwordResetExpiresAt: scadeIl },
-  });
+  const { token, scadeIl } = await apriReset(persona.user.id);
   await recordAudit(actor, "waiter.account_reset_link", "waiter", waiterId, { email: persona.user.email, scadeIl: scadeIl.toISOString() });
   return { link: `${baseUrl}/reimposta-password/${token}`, scadeIl };
 }

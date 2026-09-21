@@ -1,14 +1,26 @@
 import { z } from "zod";
 import type { BookingStatus } from "@prisma/client";
 import { fieldDiff, recordAudit, type AuditActor } from "./audit";
+import type { BookingSource } from "@prisma/client";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
-import { sendBookingConfirmationEmail, sendPendingBookingNotificationEmail } from "./emails";
+import {
+  sendBookingConfirmationEmail,
+  sendPendingBookingNotificationEmail,
+} from "./emails";
 import { trovaOCreaOspite } from "./guest-match";
-import { deriveTableStatus, type TableOperationalStatus } from "@/lib/table-status";
-import { assertAvailability, OCCUPYING_STATUSES, type Canale } from "./availability";
+import {
+  deriveTableStatus,
+  type TableOperationalStatus,
+} from "@/lib/table-status";
+import {
+  assertAvailability,
+  OCCUPYING_STATUSES,
+  type Canale,
+} from "./availability";
 import { durataConsigliata } from "./durata-consigliata";
 import { createNotification } from "./notifications";
+import { avvisaConfermaWhatsapp } from "@/server/voice/conferma-whatsapp";
 import { refreshGuestStats } from "./guest-intelligence";
 
 export const BookingInput = z.object({
@@ -33,10 +45,38 @@ export const BookingInput = z.object({
   durationMin: z.coerce.number().int().min(15).max(480).optional(),
   tableId: z.string().optional().nullable(),
   status: z
-    .enum(["CONFIRMED", "PENDING", "ARRIVED", "SEATED", "COMPLETED", "CANCELLED", "NO_SHOW"])
+    .enum([
+      "CONFIRMED",
+      "PENDING",
+      "ARRIVED",
+      "SEATED",
+      "COMPLETED",
+      "CANCELLED",
+      "NO_SHOW",
+    ])
     .default("CONFIRMED"),
-  source: z.enum(["WIDGET", "PHONE", "WALK_IN", "GOOGLE", "SOCIAL", "CONCIERGE", "EVENT"]).default("PHONE"),
-  occasion: z.enum(["BIRTHDAY", "ANNIVERSARY", "BUSINESS", "DATE", "CELEBRATION", "OTHER"]).optional().nullable(),
+  source: z
+    .enum([
+      "WIDGET",
+      "PHONE",
+      "WALK_IN",
+      "GOOGLE",
+      "SOCIAL",
+      "CONCIERGE",
+      "EVENT",
+    ])
+    .default("PHONE"),
+  occasion: z
+    .enum([
+      "BIRTHDAY",
+      "ANNIVERSARY",
+      "BUSINESS",
+      "DATE",
+      "CELEBRATION",
+      "OTHER",
+    ])
+    .optional()
+    .nullable(),
   notes: z.string().optional().nullable(),
   internalNotes: z.string().optional().nullable(),
   depositCents: z.coerce.number().int().nonnegative().default(0),
@@ -67,8 +107,10 @@ export async function listBookings(
 ) {
   return db.booking.findMany({
     where: {
+      deletedAt: null,
       venueId,
-      startsAt: opts.from || opts.to ? { gte: opts.from, lte: opts.to } : undefined,
+      startsAt:
+        opts.from || opts.to ? { gte: opts.from, lte: opts.to } : undefined,
       status: opts.status ? (opts.status as any) : undefined,
     },
     include: { guest: true, table: true },
@@ -122,6 +164,12 @@ function determineBookingStatus(source: string): "CONFIRMED" | "PENDING" {
   // sono già state gestite da una persona umana al momento dell'inserimento.
   // Tutte le altre fonti (widget, Google, social, ecc.) restano in attesa di
   // approvazione manuale: nessuna conferma automatica.
+  //
+  // `VOICE` sta di proposito **fuori** da questo elenco, e la differenza con
+  // `PHONE` è tutta qui: al telefono ha risposto una persona che ha parlato
+  // col cliente, il risponditore ha raccolto una sequenza di tasti. La prima
+  // si conferma da sé, la seconda la conferma il locale — altrimenti il primo
+  // tasto sbagliato tiene un tavolo vuoto un sabato sera.
   if (source === "PHONE" || source === "WALK_IN") {
     return "CONFIRMED";
   }
@@ -182,9 +230,28 @@ export type BookingWriteOptions = {
    * finisce nel registro, con nome e ora.
    */
   forceReason?: string;
+  /**
+   * La fonte imposta da chi chiama, **solo da codice server**.
+   *
+   * Esiste per `VOICE`, e per la stessa ragione dello stato: `VOICE` significa
+   * «l'ha raccolta il risponditore del centralino, senza che nessuno abbia
+   * parlato col cliente», e da quella fonte dipende il fatto che la
+   * prenotazione **non** si autoconfermi. Se stesse fra i campi accettati dal
+   * corpo di una richiesta, chiunque potrebbe dichiarare che una prenotazione
+   * l'ha presa una macchina — o, peggio, che l'ha presa una persona quando
+   * l'ha presa una macchina.
+   *
+   * Per questo `VOICE` non è nell'elenco di `BookingInput`: da fuori non si
+   * può scrivere, e questa è la porta che si raggiunge solo da dentro.
+   */
+  source?: BookingSource;
 };
 
-export async function createBooking(venueId: string, raw: unknown, opts: BookingWriteOptions = {}) {
+export async function createBooking(
+  venueId: string,
+  raw: unknown,
+  opts: BookingWriteOptions = {},
+) {
   const data = BookingInput.parse(raw);
 
   // La durata: quella scritta se qualcuno l'ha scelta, altrimenti quella
@@ -193,7 +260,12 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
   // decide se questa prenotazione ci sta.
   const durationMin =
     data.durationMin ??
-    (await durataConsigliata(venueId, { partySize: data.partySize, startsAt: data.startsAt })).durataMin;
+    (
+      await durataConsigliata(venueId, {
+        partySize: data.partySize,
+        startsAt: data.startsAt,
+      })
+    ).durataMin;
 
   if (!opts.skipAvailabilityCheck) {
     await assertAvailability(venueId, {
@@ -230,7 +302,10 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
     }
   }
 
-  const status = opts.status ?? determineBookingStatus(data.source);
+  /* La fonte vera: quella imposta da codice server vince su quella dei dati.
+     È l'unica strada per cui una prenotazione può dirsi `VOICE`. */
+  const fonte = opts.source ?? data.source;
+  const status = opts.status ?? determineBookingStatus(fonte);
 
   const booking = await db.booking.create({
     data: {
@@ -241,7 +316,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       startsAt: data.startsAt,
       durationMin,
       status,
-      source: data.source,
+      source: fonte,
       occasion: data.occasion ?? null,
       campaignId: opts.campaignId ?? null,
       notes: data.notes ?? null,
@@ -250,7 +325,8 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       idempotencyKey: opts.idempotencyKey ?? null,
       // Se nasce già arrivata o seduta, l'orologio parte adesso: senza questi
       // istanti la Sala non saprebbe da quanto quel tavolo è occupato.
-      arrivedAt: status === "ARRIVED" || status === "SEATED" ? new Date() : null,
+      arrivedAt:
+        status === "ARRIVED" || status === "SEATED" ? new Date() : null,
       seatedAt: status === "SEATED" ? new Date() : null,
     },
     include: { guest: true, table: true, venue: true },
@@ -281,7 +357,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
       booking.startsAt,
       bookingTime,
       booking.partySize,
-      booking.reference
+      booking.reference,
     );
   } else if (status === "PENDING") {
     const ownerMembership = await db.orgMembership.findFirst({
@@ -302,7 +378,7 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
         bookingTime,
         booking.partySize,
         booking.reference,
-        guestPhone || "Non disponibile"
+        guestPhone || "Non disponibile",
       );
     }
   }
@@ -338,8 +414,14 @@ export async function createBooking(venueId: string, raw: unknown, opts: Booking
  * che in italiano non lo dice nessuno. Due formattatori e la parola in mezzo.
  */
 function formatDayAndTime(quando: Date): string {
-  const giorno = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric" }).format(quando);
-  const ora = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" }).format(quando);
+  const giorno = new Intl.DateTimeFormat("it-IT", {
+    weekday: "long",
+    day: "numeric",
+  }).format(quando);
+  const ora = new Intl.DateTimeFormat("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(quando);
   return `${giorno} alle ${ora}`;
 }
 
@@ -348,6 +430,7 @@ function fonteUmana(source: string): string {
   const nomi: Record<string, string> = {
     WIDGET: "sito",
     PHONE: "telefono",
+    VOICE: "risponditore",
     WALK_IN: "walk-in",
     GOOGLE: "Google",
     SOCIAL: "social",
@@ -429,12 +512,17 @@ export async function updateBooking(
   opts: BookingWriteOptions = {},
 ) {
   const data = BookingInput.partial().parse(raw);
-  const existing = await db.booking.findFirst({ where: { id, venueId } });
+  const existing = await db.booking.findFirst({ where: { deletedAt: null, id, venueId } });
   if (!existing) throw new Error("not_found");
 
   const nextStatus = data.status ?? existing.status;
-  const stillOccupies = OCCUPYING_STATUSES.includes(nextStatus as (typeof OCCUPYING_STATUSES)[number]);
-  const touchesAvailability = richiedeVerificaDisponibilita(data, existing.status);
+  const stillOccupies = OCCUPYING_STATUSES.includes(
+    nextStatus as (typeof OCCUPYING_STATUSES)[number],
+  );
+  const touchesAvailability = richiedeVerificaDisponibilita(
+    data,
+    existing.status,
+  );
 
   if (!opts.skipAvailabilityCheck && touchesAvailability && stillOccupies) {
     await assertAvailability(venueId, {
@@ -453,6 +541,27 @@ export async function updateBooking(
       startsAt: data.startsAt ?? undefined,
       durationMin: data.durationMin ?? undefined,
       tableId: data.tableId === undefined ? undefined : data.tableId,
+      /*
+        Cambiare tavolo scioglie la tavolata.
+
+        Senza questa riga i tavoli accostati restavano attaccati a una
+        prenotazione spostata altrove — o rimasta senza tavolo. Su una tavolata
+        T4+T5, «rimuovi tavolo» manda `{ tableId: null }` e lasciava `[T5]`:
+        da quel momento T5 risultava occupato per il widget e per il walk-in, e
+        chi provava ad assegnarlo si sentiva dire «è stato appena assegnato a
+        un'altra prenotazione» — una prenotazione che nell'elenco non ha nessun
+        tavolo. Un tavolo vuoto invendibile, e nessuna schermata che dica
+        perché.
+
+        `assignBookingToTable` lo faceva già, con la stessa motivazione
+        scritta. Questa strada no, e le due strade portano allo stesso posto.
+
+        La tavolata si rifà dal suo gesto (`combine-tables`): non si prova a
+        indovinare quali tavoli tenere.
+      */
+      ...(data.tableId !== undefined && data.tableId !== existing.tableId
+        ? { combinedTableIds: [] }
+        : {}),
       status: data.status ?? undefined,
       source: data.source ?? undefined,
       occasion: data.occasion ?? undefined,
@@ -485,10 +594,14 @@ export async function updateBooking(
       ...(data.status && data.status !== existing.status
         ? {
             arrivedAt: ARRIVATO_DA.includes(data.status)
-              ? existing.arrivedAt ?? new Date()
+              ? (existing.arrivedAt ?? new Date())
               : null,
-            seatedAt: SEDUTO_DA.includes(data.status) ? existing.seatedAt ?? new Date() : null,
-            closedAt: CHIUSO_DA.includes(data.status) ? existing.closedAt ?? new Date() : null,
+            seatedAt: SEDUTO_DA.includes(data.status)
+              ? (existing.seatedAt ?? new Date())
+              : null,
+            closedAt: CHIUSO_DA.includes(data.status)
+              ? (existing.closedAt ?? new Date())
+              : null,
           }
         : {}),
     },
@@ -511,58 +624,157 @@ export async function updateBooking(
   if (diff) {
     // Annullare non è "modificare": chi legge il registro cerca le
     // cancellazioni, e non deve trovarle nascoste fra i cambi di nota.
-    const action = updated.status === "CANCELLED" && existing.status !== "CANCELLED"
-      ? "booking.cancel"
-      : "booking.update";
+    const action =
+      updated.status === "CANCELLED" && existing.status !== "CANCELLED"
+        ? "booking.cancel"
+        : "booking.update";
     await recordAudit(opts.actor, action, "booking", id, diff);
   }
 
   /**
-   * Una disdetta si annuncia solo se riguarda **le prossime quarantott'ore**.
+   * La sala ha confermato una prenotazione presa dalla voce: si avvisa chi ha
+   * chiamato.
    *
-   * Quella per il mese prossimo non cambia niente a nessuno oggi; quella per
-   * stasera è un tavolo da rivendere — e il centro controllo, se in lista
-   * d'attesa c'è qualcuno che ci sta, lo dice già con il nome. Qui serve per
-   * chi non sta guardando quella schermata.
+   * Qui e non alla creazione, perche quella prenotazione nasce **da
+   * confermare**: dire «e confermata» prima che qualcuno lo fosse sarebbe una
+   * promessa che il locale non ha fatto. Su WhatsApp, perche di chi telefona
+   * sappiamo il numero e non l'indirizzo.
+   *
+   * Non blocca niente: se il messaggio non parte — oggi il canale WhatsApp non
+   * ha ancora un fornitore — resta la sua traccia nel registro dei messaggi e
+   * la conferma vale comunque.
    */
   if (
-    updated.status === "CANCELLED" &&
-    existing.status !== "CANCELLED" &&
-    updated.startsAt.getTime() - Date.now() < 48 * 3_600_000 &&
-    updated.startsAt.getTime() > Date.now()
+    updated.status === "CONFIRMED" &&
+    existing.status !== "CONFIRMED" &&
+    existing.source === "VOICE"
   ) {
-    const chi = updated.guest
-      ? `${updated.guest.firstName}${updated.guest.lastName ? ` ${updated.guest.lastName}` : ""}`
-      : "Una prenotazione";
-    await createNotification(venueId, {
-      kind: "BOOKING_CANCELLED",
-      title: `${chi} ha disdetto: ${updated.partySize} coperti liberi`,
-      body: `Erano attesi ${formatDayAndTime(updated.startsAt)}${
-        updated.table ? ` al ${updated.table.label}` : ""
-      }.`,
-      link: "/service",
-      meta: { bookingId: updated.id },
+    await avvisaConfermaWhatsapp(venueId, updated.id).catch(() => undefined);
+  }
+
+  if (updated.status === "CANCELLED" && existing.status !== "CANCELLED") {
+    await annunciaDisdetta(venueId, {
+      id: updated.id,
+      startsAt: updated.startsAt,
+      partySize: updated.partySize,
+      nome: updated.guest
+        ? `${updated.guest.firstName}${updated.guest.lastName ? ` ${updated.guest.lastName}` : ""}`
+        : null,
+      tavolo: updated.table?.label ?? null,
     });
   }
 
   return updated;
 }
 
-export async function deleteBooking(venueId: string, id: string, actor?: AuditActor) {
-  const existing = await db.booking.findFirst({ where: { id, venueId }, include: { guest: true } });
+/**
+ * Cancellare una prenotazione: la riga **resta**, e non la vede nessuno.
+ *
+ * ## Perché non si cancella davvero
+ *
+ * Perché una prenotazione non è una riga sola. Ha i suoi conti, i suoi
+ * pagamenti, i suoi messaggi, la sua storia. Con la cancellazione vera —
+ * quella che c'era fino al 21 settembre 2026 — la storia sparisce, i
+ * `BookingEvent` se li porta via la cascata, e conti e pagamenti restano
+ * **senza prenotazione**: il denaro incassato smette di essere collegato alla
+ * sera in cui è entrato. Chi cancella per sbaglio la prenotazione di stasera
+ * non ha nessun modo di rimetterla.
+ *
+ * I campi `deletedAt` e `deletedBy` erano nello schema dal principio e nessuno
+ * li scriveva: mezza funzione, che è peggio di una funzione che manca — la
+ * colonna c'è e sembra che qualcosa la usi. Venti letture filtravano già le
+ * righe cancellate, e non ce n'era mai nessuna.
+ *
+ * ## La condizione sta dentro la scrittura
+ *
+ * Due clic sul cestino non producono due registrazioni: la seconda non trova
+ * più una prenotazione non cancellata, e risponde «non c'è».
+ *
+ * ## Cosa NON fa
+ *
+ * Non libera il posto in agenda di nascosto: le letture della disponibilità
+ * filtrano le cancellate, quindi il tavolo torna prenotabile — che è quello
+ * che si vuole — ma i contatori dell'ospite vanno rifatti, perché una visita
+ * cancellata non è una visita.
+ */
+export async function deleteBooking(
+  venueId: string,
+  id: string,
+  actor?: AuditActor,
+) {
+  const existing = await db.booking.findFirst({
+    where: { deletedAt: null, id, venueId },
+    include: { guest: true },
+  });
   if (!existing) throw new Error("not_found");
-  const deleted = await db.booking.delete({ where: { id } });
-  // La cancellazione è definitiva (Booking ha i campi per il soft delete ma le
-  // liste non li filtrano ancora): il registro è l'unico posto in cui resta
-  // traccia di cosa c'era.
+
+  const messa = await db.booking.updateMany({
+    where: { id, venueId, deletedAt: null },
+    data: { deletedAt: new Date(), deletedBy: actor?.userId ?? null },
+  });
+  if (messa.count === 0) throw new Error("not_found");
+
+  /* I contatori della scheda ospite: una prenotazione cancellata non conta
+     come visita né come assenza. Senza questa riga un cliente resterebbe con
+     una visita in più per sempre, e le sue statistiche sono quelle su cui il
+     locale decide come trattarlo. */
+  if (existing.guestId) await refreshGuestStats(existing.guestId);
+
   await recordAudit(actor, "booking.delete", "booking", id, {
     prenotazione: {
       quando: existing.startsAt.toISOString(),
       coperti: existing.partySize,
       stato: existing.status,
       tavolo: existing.tableId,
-      ospite: existing.guest ? `${existing.guest.firstName} ${existing.guest.lastName}` : null,
+      ospite: existing.guest
+        ? `${existing.guest.firstName} ${existing.guest.lastName}`
+        : null,
     },
   });
-  return deleted;
+
+  /* Si restituisce quella che c'era: chi ha chiamato vuole sapere cosa ha
+     cancellato, e leggerla di nuovo dopo darebbe la riga con `deletedAt`
+     addosso — vera, e non quella che l'interfaccia sta mostrando. */
+  return existing;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  L'annuncio di una disdetta                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Dice alla sala che un tavolo si è liberato.
+ *
+ * Sta qui, in una funzione sola, perché una disdetta arriva da **due strade**:
+ * dal gestionale e dal telefono. Quando questo blocco era dentro
+ * `updateBooking`, la disdetta presa al telefono cambiava lo stato e non
+ * avvisava nessuno: il tavolo restava apparecchiato tutta la sera, che è
+ * esattamente il danno che disdire al telefono doveva evitare.
+ *
+ * Si annuncia solo se riguarda **le prossime quarantott'ore**: quella per il
+ * mese prossimo non cambia niente a nessuno oggi, quella per stasera è un
+ * tavolo da rivendere.
+ */
+export async function annunciaDisdetta(
+  venueId: string,
+  p: {
+    id: string;
+    startsAt: Date;
+    partySize: number;
+    nome: string | null;
+    tavolo: string | null;
+  },
+  adesso: Date = new Date(),
+): Promise<void> {
+  const fra = p.startsAt.getTime() - adesso.getTime();
+  if (fra <= 0 || fra >= 48 * 3_600_000) return;
+
+  const chi = p.nome?.trim() || "Una prenotazione";
+  await createNotification(venueId, {
+    kind: "BOOKING_CANCELLED",
+    title: `${chi} ha disdetto: ${p.partySize} coperti liberi`,
+    body: `Erano attesi ${formatDayAndTime(p.startsAt)}${p.tavolo ? ` al ${p.tavolo}` : ""}.`,
+    link: "/service",
+    meta: { bookingId: p.id },
+  });
 }

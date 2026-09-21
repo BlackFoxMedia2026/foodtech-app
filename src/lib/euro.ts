@@ -1,18 +1,20 @@
-import { formatCurrency } from "@/lib/utils";
-
 /**
- * Un importo della Staff App, scritto in euro a partire dai centesimi.
+ * Gli importi, formattati in un posto solo.
  *
- * È una scorciatoia su `formatCurrency`, non un secondo formattatore: in sala
- * gli importi compaiono in una decina di punti — card del tavolo, comanda,
- * conto, menù — e scriverli ogni volta per esteso significava, prima o poi,
- * dimenticare `useGrouping` da qualche parte e rimettere in circolo lo
- * *hydration mismatch* che `formatCurrency` documenta e risolve.
- *
- * La valuta resta un parametro perché il locale ce l'ha in tabella, ma la
- * Staff App oggi non la trasporta fin qui: finché non lo fa, l'euro del nome
- * è anche il valore predefinito.
+ * `null` non diventa «€0,00»: diventa «non disponibile». È la regola di §21
+ * della richiesta, e vale la pena tenerla in una funzione invece che in ogni
+ * componente — perché basta una schermata che scrive zero al posto di un dato
+ * mancante per far passare per gratuito un cliente che non stiamo misurando.
  */
-export function euro(cents: number, currency = "EUR") {
-  return formatCurrency(cents, currency);
+const FORMATO = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+
+export function euro(centesimi: number | null | undefined): string {
+  if (centesimi === null || centesimi === undefined) return "non disponibile";
+  return FORMATO.format(centesimi / 100);
+}
+
+/** Con il segno davanti: serve agli scostamenti, dove «+» e «−» sono il dato. */
+export function euroConSegno(centesimi: number): string {
+  const segno = centesimi > 0 ? "+" : "";
+  return `${segno}${FORMATO.format(centesimi / 100)}`;
 }

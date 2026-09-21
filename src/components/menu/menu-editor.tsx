@@ -91,11 +91,21 @@ export function MenuEditor({
   currency,
   canEdit,
   filtroIniziale,
+  letture,
 }: {
   categorie: MenuCategoryView[];
   venueSlug: string;
   currency: string;
   canEdit: boolean;
+  /**
+   * Quante volte la carta è stata letta, e quante dal QR sul tavolo.
+   *
+   * Diviso in due perché sono due domande diverse: «la gente inquadra il
+   * codice?» e «il link che ho messo su Instagram funziona?». Il numero c'è
+   * solo da quando si è cominciato a contare (21 settembre 2026), e la
+   * schermata lo dice invece di far credere che sia sempre stato così.
+   */
+  letture?: { totale: number; dalQr: number; giorni: number };
   /** Il filtro con cui aprire la carta, da `?filtro=` — vedi la nota sotto. */
   filtroIniziale?: string;
 }) {
@@ -318,6 +328,19 @@ export function MenuEditor({
             <TooltipContent>Vedi il menu pubblico</TooltipContent>
           </Tooltip>
         </div>
+
+        {letture && letture.totale > 0 && (
+          /* Si mostra **solo quando c'è un numero**: «letta 0 volte» non è
+             un'informazione, è una tabella vuota che sembra un fallimento. */
+          <p className="t-nota">
+            Letta <strong>{letture.totale}</strong>{" "}
+            {letture.totale === 1 ? "volta" : "volte"} negli ultimi{" "}
+            {letture.giorni} giorni
+            {letture.dalQr > 0 && <> · {letture.dalQr} dal QR sul tavolo</>}.
+            Una lettura per telefono al giorno: chi riapre la carta fra i
+            secondi e il dolce conta una volta.
+          </p>
+        )}
       </TooltipProvider>
 
       {cercabile && filtrando && (

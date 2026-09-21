@@ -1,4 +1,4 @@
-import { CalendarRange, CreditCard, Gift, LayoutDashboard, LineChart, Megaphone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
+import { CalendarRange, CreditCard, Gift, LayoutDashboard, LineChart, Megaphone, Phone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 import { cn } from "@/lib/utils";
 import { can, type Ability } from "@/lib/abilities";
@@ -39,6 +39,15 @@ export type NavItem = {
    */
   descrizione?: string;
   /**
+   * La voce compare **solo se il locale ha il telefono collegato**.
+   *
+   * Non è nascosta per pudore: è una funzione che si compra, e un locale che
+   * non l'ha comprata non deve trovarsi in barra una voce che apre una pagina
+   * vuota o un cartello pubblicitario. Dove si compra è scritto in
+   * Impostazioni → Telefono, che è il posto dove si guarda cosa c'è da avere.
+   */
+  soloConTelefono?: boolean;
+  /**
    * La capacità richiesta per **vedere** questa voce.
    *
    * Nasce da un difetto vero: un account `WAITER` vedeva in barra «Staff» e
@@ -51,6 +60,10 @@ export type NavItem = {
    * loro controllo. Questa è la metà che rende il prodotto onesto: mostrare a
    * qualcuno una porta che gli si chiuderà in faccia è peggio che non
    * mostrarla.
+   *
+   * Si somma a `soloConTelefono`, non lo sostituisce: sono due domande
+   * diverse — «questo locale ha comprato la funzione?» e «questa persona può
+   * usarla?» — e una voce deve passarle entrambe.
    */
   ability?: Ability;
   /**
@@ -200,6 +213,18 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/floor", label: "Sala", icon: DiningTableIcon },
   { href: "/guests", label: "Ospiti", icon: TuxedoGuestIcon },
   /*
+    «Telefono» sta fra gli Ospiti e lo Staff, cioè dentro le voci che si
+    aprono **durante** il servizio. Non è un'impostazione: chi risponde al
+    telefono ci torna venti volte in una sera, per vedere chi ha chiamato e
+    non ha trovato nessuno.
+  */
+  {
+    href: "/telefono",
+    label: "Telefono",
+    icon: Phone,
+    soloConTelefono: true,
+  },
+  /*
     «Staff», non più «Camerieri».
 
     Il nome vecchio descriveva metà della pagina: lì dentro ci sono i ruoli di
@@ -220,9 +245,9 @@ export const PRIMARY_NAV: NavItem[] = [
   {
     href: "/marketing",
     label: "Marketing",
+    ability: "edit_marketing",
     icon: Megaphone,
     matchPrefixes: ["/campaigns", "/insights"],
-    ability: "edit_marketing",
     sottovoci: MARKETING_NAV,
   },
   { href: "/menu", label: "Menu", icon: UtensilsCrossed },
@@ -256,8 +281,20 @@ export const PROFILE_NAV: NavItem[] = [
     — più la chiave `esperienze` nelle due tabelle dell'assistente
     (`ai/tools/navigation.ts` e `ai/intent-router.ts`).
   */
-  { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "gestione", ability: "view_revenue" },
-  { href: "/settings", label: "Impostazioni", icon: Settings, gruppo: "account", ability: "manage_venue" },
+  {
+    href: "/payments",
+    label: "Pagamenti",
+    icon: CreditCard,
+    gruppo: "gestione",
+    ability: "view_revenue",
+  },
+  {
+    href: "/settings",
+    label: "Impostazioni",
+    icon: Settings,
+    gruppo: "account",
+    ability: "manage_venue",
+  },
 ];
 
 export const ALL_NAV = [...PRIMARY_NAV, ...PROFILE_NAV];
@@ -336,7 +373,9 @@ export function vociPermesse(voci: NavItem[], role?: StaffRole): NavItem[] {
 }
 
 /** Le voci del menu profilo, raggruppate e nell'ordine dei gruppi. */
-export function profiloPerGruppo(role?: StaffRole): { label: string; voci: NavItem[] }[] {
+export function profiloPerGruppo(
+  role?: StaffRole,
+): { label: string; voci: NavItem[] }[] {
   const ammesse = vociPermesse(PROFILE_NAV, role);
   return GRUPPI_PROFILO.map((g) => ({
     label: g.label,
@@ -345,10 +384,16 @@ export function profiloPerGruppo(role?: StaffRole): { label: string; voci: NavIt
 }
 
 /** Le voci principali che non stanno nella barra in basso del telefono. */
-export function primarieFuoriDallaBarra(role?: StaffRole): NavItem[] {
-  return vociPermesse(
-    PRIMARY_NAV.filter((v) => !MOBILE_NAV.includes(v)),
-    role,
+export function primarieFuoriDallaBarra(
+  telefonoAttivo = false,
+  role?: StaffRole,
+): NavItem[] {
+  /* Passa dal **filtro** e non da `PRIMARY_NAV`: una voce che si compra non
+     deve comparire nel menu «Altro» del telefono a chi non l'ha comprata. Il
+     primo tentativo prendeva l'elenco intero, e la voce era nascosta in barra
+     e visibile sul telefono — cioè nascosta per metà, che è peggio di niente. */
+  return vociPrincipali(telefonoAttivo, role).filter(
+    (v) => !MOBILE_NAV.includes(v),
   );
 }
 
@@ -375,6 +420,7 @@ const TITOLI_EXTRA: Record<string, string | [lungo: string, breve: string]> = {
   "/bookings/new": ["Nuova prenotazione", "Nuova prenot."],
   "/guests/doppioni": ["Possibili doppioni", "Doppioni"],
   "/staff/turni": "Turni",
+  "/staff/richieste": "Richieste",
   "/settings/brand": "Brand",
   "/settings/wifi": ["Portale Wi-Fi", "Wi-Fi"],
   "/marketing/automations": "Automazioni",
@@ -443,5 +489,27 @@ export function classiVoce(active: boolean) {
   return cn(
     "relative z-10 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium leading-tight transition-colors md:min-w-0 xl:flex-row xl:gap-2 xl:px-3 xl:py-2 xl:text-sm 2xl:px-3.5",
     active ? "text-forest" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+  );
+}
+
+/**
+ * Le voci della barra per **questo** locale.
+ *
+ * Il filtro sta qui e non nella testata perché la stessa domanda la fa anche
+ * la barra in basso del telefono: due elenchi che si filtrano per conto
+ * proprio divergono al primo cambiamento.
+ */
+export function vociPrincipali(
+  telefonoAttivo: boolean,
+  role?: StaffRole,
+): NavItem[] {
+  /* I due filtri si sommano nello stesso posto, ed è il motivo per cui questa
+     funzione esiste: «il locale ce l'ha» e «questa persona può» sono due
+     domande diverse, ma una voce che ne fallisce una sola non deve comparire.
+     Applicarle in due punti diversi vorrebbe dire, prima o poi, applicarne
+     una sola da qualche parte. */
+  return vociPermesse(
+    PRIMARY_NAV.filter((v) => !v.soloConTelefono || telefonoAttivo),
+    role,
   );
 }

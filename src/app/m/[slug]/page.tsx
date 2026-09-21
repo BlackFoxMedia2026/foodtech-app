@@ -1,5 +1,7 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getMenuPubblico, nomeAllergene, nomeRegime } from "@/server/menu";
+import { segnaLetturaCarta } from "@/server/menu-letture";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -36,10 +38,31 @@ export default async function MenuPubblicoPage({
   searchParams,
 }: {
   params: { slug: string };
-  searchParams: { carta?: string };
+  searchParams: { carta?: string; da?: string };
 }) {
   const menu = await getMenuPubblico(params.slug, searchParams.carta || "main");
   if (!menu) notFound();
+
+  /*
+    Si segna la lettura, e **non si aspetta**.
+
+    È una statistica: se la scrittura è lenta o fallisce, un cliente seduto al
+    tavolo deve leggere i piatti comunque. Per lo stesso motivo la funzione non
+    solleva mai.
+
+    `da=qr` distingue chi ha inquadrato il codice sul tavolo da chi ha aperto
+    un link: sono due domande diverse — «la gente usa il QR?» e «il link su
+    Instagram funziona?» — e un totale unico non risponde a nessuna.
+  */
+  const intestazioni = headers();
+  void segnaLetturaCarta({
+    venueId: menu.venueId,
+    menuKey: searchParams.carta || "main",
+    source: searchParams.da === "qr" ? "QR" : "LINK",
+    ip: intestazioni.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+    userAgent: intestazioni.get("user-agent"),
+    fuso: menu.timezone,
+  });
 
   return (
     <div className="min-h-screen bg-background p-4 text-foreground">

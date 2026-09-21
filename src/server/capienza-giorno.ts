@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
 
 /**
  * Quanti coperti può servire il locale **in un giorno**.
@@ -20,10 +21,21 @@ import { db } from "@/lib/db";
  * turni non sappiamo quanto sia pieno, e va detto invece di dividere per un
  * numero inventato (prima era `?? 90`, cioè la capienza di un ristorante che
  * non è questo).
+ *
+ * ## Il giorno della settimana è quello del locale
+ *
+ * `day.getDay()` risponde nel fuso **del processo**, che su Vercel è UTC:
+ * all'una di notte a Roma è ancora ieri per il server, e la capienza sommata
+ * era quella del giorno sbagliato — proprio nell'ora in cui si chiudono i
+ * conti e qualcuno guarda la Panoramica.
  */
-export async function capienzaDelGiorno(venueId: string, day: Date): Promise<number | null> {
+export async function capienzaDelGiorno(
+  venueId: string,
+  day: Date,
+  fuso: string = DEFAULT_VENUE_TIMEZONE,
+): Promise<number | null> {
   const turni = await db.shift.findMany({
-    where: { venueId, weekday: day.getDay(), active: true },
+    where: { venueId, weekday: giornoDellaSettimana(day, fuso), active: true },
     select: { capacity: true },
   });
   if (turni.length === 0) return null;
@@ -42,4 +54,27 @@ export async function capienzaDelGiorno(venueId: string, day: Date): Promise<num
 export function quantoPieno(coperti: number, capienza: number | null): number | null {
   if (capienza == null || capienza <= 0) return null;
   return Math.round((coperti / capienza) * 100);
+}
+
+/**
+ * Il giorno della settimana di un istante, nel fuso del locale.
+ *
+ * Sta qui e non in `venue-time.ts` perché serve solo a chi somma i turni: la
+ * forma `0 = domenica` è quella di `Date.getDay()` e di `Shift.weekday`, e
+ * portarla in giro invoglierebbe a usarla al posto di `dateKeyInVenue`.
+ */
+export function giornoDellaSettimana(
+  istante: Date,
+  fuso: string = DEFAULT_VENUE_TIMEZONE,
+): number {
+  const chiave = new Intl.DateTimeFormat("en-CA", {
+    timeZone: fuso,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(istante);
+  const [y, m, d] = chiave.split("-").map(Number);
+  /* Costruito in UTC: il giorno della settimana di una data civile non
+     dipende dal fuso in cui la si guarda. */
+  return new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1)).getUTCDay();
 }

@@ -55,9 +55,13 @@ export function BookingWindowSettings({
   canManage: boolean;
 }) {
   const router = useRouter();
-  const [giorni, setGiorni] = useState(windowDays != null ? String(windowDays) : "");
+  const [giorni, setGiorni] = useState(
+    windowDays != null ? String(windowDays) : "",
+  );
   const [preavviso, setPreavviso] = useState(String(cutoffMin ?? 0));
-  const [oltre, setOltre] = useState(overbookingPct != null ? String(overbookingPct) : "");
+  const [oltre, setOltre] = useState(
+    overbookingPct != null ? String(overbookingPct) : "",
+  );
   const [gruppo, setGruppo] = useState(String(largePartyFrom));
   const [salvando, setSalvando] = useState(false);
   const [salvato, setSalvato] = useState(false);
@@ -88,25 +92,34 @@ export function BookingWindowSettings({
     });
     setSalvando(false);
     if (!res.ok) {
-      setError(await readApiError(res, "Non siamo riusciti a salvare. Riprova."));
+      setError(
+        await readApiError(res, "Non siamo riusciti a salvare. Riprova."),
+      );
       return;
     }
     setSalvato(true);
     router.refresh();
   }
 
-  const quando = PREAVVISI.find((p) => p.valore === preavviso)?.etichetta ?? "Fino all'ultimo minuto";
+  const quando =
+    PREAVVISI.find((p) => p.valore === preavviso)?.etichetta ??
+    "Fino all'ultimo minuto";
 
   return (
     <form onSubmit={salva}>
       <GruppoImpostazioni
         titolo="Quando si prenota dal sito"
-        descrizione="Vale solo per il widget e per il link pubblico. Al telefono e in sala continui ad accettare quello che vuoi, fino all'ultimo minuto."
+        descrizione="Vale solo per il modulo pubblico: al telefono e in sala accetti quello che vuoi."
         azione={
           canManage && (
             <>
               <EsitoSalvataggio salvato={salvato} errore={error} />
-              <Button type="submit" variant="accent" size="sm" disabled={salvando}>
+              <Button
+                type="submit"
+                variant="accent"
+                size="sm"
+                disabled={salvando}
+              >
                 {salvando ? "Salvo…" : "Salva"}
               </Button>
             </>
@@ -116,7 +129,7 @@ export function BookingWindowSettings({
         <RigaImpostazione
           nome="Con quanto anticipo al massimo"
           htmlFor="fin-giorni"
-          descrizione="Vuoto vuol dire nessun limite. Chi lo mette di solito sceglie 60 o 90: oltre, i piani cambiano e le disdette aumentano."
+          descrizione="Vuoto vuol dire nessun limite. Chi lo mette sceglie 60 o 90 giorni."
         >
           <Input
             id="fin-giorni"
@@ -162,7 +175,17 @@ export function BookingWindowSettings({
         <RigaImpostazione
           nome="Quanto puoi accettare oltre la capienza"
           htmlFor="fin-oltre"
-          descrizione="Una quota di prenotazioni non si presenta, e tenere i tavoli vuoti per prudenza costa serate. Su un turno da 90 coperti, il 10% vuol dire accettarne 99. Vale per tutti i canali, anche il telefono. In sala gli orari oltre la capienza dichiarata sono segnati con un puntino — accettare non vuol dire non saperlo."
+          /* Una riga, non cinque.
+           
+             Il ragionamento — una quota non si presenta, tenere i tavoli vuoti
+             per prudenza costa serate, su 90 coperti il 10% vuol dire
+             accettarne 99, in sala gli orari oltre la capienza sono segnati
+             con un puntino — era tutto scritto qui dentro, sempre aperto: tre
+             righe di testo sopra un campo da due cifre, su una pagina dove
+             questo succedeva in cinque punti. Quello che serve per **decidere
+             adesso** sta in una riga; il resto è nella nota in fondo al
+             gruppo, che dice cosa vedrà il cliente. */
+          descrizione="Quanti coperti accettare oltre la capienza dichiarata, sapendo che una quota non si presenta. Vale per tutti i canali."
         >
           <Input
             id="fin-oltre"
@@ -182,7 +205,7 @@ export function BookingWindowSettings({
         <RigaImpostazione
           nome="Da quante persone si passa alla telefonata"
           htmlFor="fin-gruppo"
-          descrizione="Sopra questo numero il modulo pubblico non fa compilare niente: dice di chiamare e mostra il tuo numero. Era fisso a dodici, che va bene per una trattoria e non per una sala che fa banchetti — il punto in cui una prenotazione diventa un'organizzazione lo sai tu."
+          descrizione="Sopra questo numero il modulo non fa compilare niente: dice di chiamare e mostra il tuo numero."
         >
           <Input
             id="fin-gruppo"
@@ -205,7 +228,10 @@ export function BookingWindowSettings({
         */}
         <RigaLibera>
           <p className="flex items-start gap-2 text-sm text-card-foreground/80">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />
+            <Info
+              className="mt-0.5 h-4 w-4 shrink-0 text-accent-strong"
+              aria-hidden="true"
+            />
             <span>
               Dal sito si prenota{" "}
               {giorniNum == null
@@ -217,8 +243,10 @@ export function BookingWindowSettings({
               {preavvisoNum === 0
                 ? "e resta aperto fino all'ultimo minuto"
                 : `e si chiude ${quando.toLowerCase()}`}
-              . Fuori da questa finestra il cliente legge che può chiamare, non che è tutto pieno.
-              {oltreNum > 0 && ` Oltre la capienza si accetta fino al ${oltreNum}% in più, su ogni canale.`}
+              . Fuori da questa finestra il cliente legge che può chiamare, non
+              che è tutto pieno.
+              {oltreNum > 0 &&
+                ` Oltre la capienza si accetta fino al ${oltreNum}% in più, su ogni canale.`}
               {` Da ${gruppoNum + 1} persone in su il modulo manda a telefonare.`}
             </span>
           </p>
