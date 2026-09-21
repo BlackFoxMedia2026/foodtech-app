@@ -115,6 +115,7 @@ export type AuditAction =
   | "venue.voice_ingresso"
   | "venue.voice_benvenuto"
   | "venue.calendario_link"
+  | "utente.due_fattori"
   | "venue.avg_spend_update"
   /* La chiave del centralino: quando e da chi. Davanti a «il telefono non
      funziona più» è la prima cosa da guardare. */
@@ -182,6 +183,41 @@ export function auditActor(ctx: ActiveVenueContext, req?: Request): AuditActor {
     email: ctx.session.user?.email ?? null,
     orgId: ctx.orgId,
     venueId: ctx.venueId,
+    ip: headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+    userAgent: headers?.get("user-agent")?.slice(0, 255) ?? null,
+  };
+}
+
+/**
+ * Chi compie un'azione **sul proprio accesso**, dove un locale può non esserci.
+ *
+ * `AuditLog` richiede un'organizzazione (la colonna ha un vincolo verso
+ * `Organization`), e l'amministratore di piattaforma non appartiene a nessuna:
+ * per lui una riga di registro non si può scrivere. Quindi qui si restituisce
+ * `undefined`, e `recordAudit` — che accetta un attore facoltativo — non
+ * scrive niente.
+ *
+ * **Non si inventa un'organizzazione per far quadrare il registro.** Una riga
+ * attribuita a un locale dove quell'azione non è successa è peggio di una riga
+ * che manca: la prima la si legge e ci si crede.
+ */
+export async function auditAttoreDelProprioAccesso(
+  utente: { userId: string; email: string },
+  req?: Request,
+): Promise<AuditActor | undefined> {
+  const appartenenza = await db.venueMembership.findFirst({
+    where: { userId: utente.userId, disabledAt: null },
+    orderBy: { createdAt: "asc" },
+    select: { venueId: true, venue: { select: { orgId: true } } },
+  });
+  if (!appartenenza?.venue?.orgId) return undefined;
+
+  const headers = req?.headers;
+  return {
+    userId: utente.userId,
+    email: utente.email,
+    orgId: appartenenza.venue.orgId,
+    venueId: appartenenza.venueId,
     ip: headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
     userAgent: headers?.get("user-agent")?.slice(0, 255) ?? null,
   };

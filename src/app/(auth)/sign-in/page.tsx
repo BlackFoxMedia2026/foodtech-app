@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/shell/logo";
-import { messaggioAccesso } from "@/lib/errori-accesso";
+import { chiedeIlCodice, messaggioAccesso } from "@/lib/errori-accesso";
 
 /**
  * Questa installazione è la vetrina dimostrativa pubblica?
@@ -39,6 +39,10 @@ function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  /* Il campo del codice compare **dopo** il primo tentativo, e solo a chi ha i
+     due fattori accesi: chiederlo a tutti in partenza aggiungerebbe una
+     domanda a ogni accesso del mondo per proteggerne una parte. */
+  const [serveCodice, setServeCodice] = useState(false);
 
   /**
    * L'ingresso alla vetrina: le stesse credenziali di prima, ma per una
@@ -77,9 +81,13 @@ function SignInForm() {
       const res = await signIn("credentials", {
         email: String(fd.get("email")),
         password: String(fd.get("password")),
+        codice: String(fd.get("codice") ?? ""),
         redirect: false,
       });
       if (res?.error) {
+        /* Se manca il codice non è un fallimento da rosso: è una domanda in
+           più. Si apre il campo e si dice cosa serve. */
+        if (chiedeIlCodice(res.error)) setServeCodice(true);
         setError(messaggioAccesso(res.error, res.status));
         return;
       }
@@ -181,6 +189,31 @@ function SignInForm() {
                   </button>
                 </div>
               </div>
+
+              {serveCodice && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="codice">Codice a sei cifre</Label>
+                  <Input
+                    id="codice"
+                    name="codice"
+                    /* `text` e non `number`: i frecciolini su un codice non
+                       hanno senso, e su telefono `inputMode` dà comunque il
+                       tastierino numerico. */
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    maxLength={19}
+                    placeholder="123456"
+                    aria-describedby="codice-aiuto"
+                    className="h-11 text-sm shadow-[inset_0_3px_8px_rgba(0,0,0,0.25)]"
+                  />
+                  <p id="codice-aiuto" className="t-nota">
+                    Dall&apos;app di autenticazione. Se non hai il telefono, va
+                    bene uno dei codici di recupero che hai salvato.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end">

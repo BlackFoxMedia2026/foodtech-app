@@ -29,7 +29,9 @@ import { statoCentralino } from "@/server/licenza-centralino";
 import { saluteVoice } from "@/server/voice/salute";
 import { vistaIngresso } from "@/server/voice/ingresso";
 import { vistaCalendario } from "@/server/calendario";
+import { statoDueFattori } from "@/server/due-fattori";
 import { MieiDispositivi } from "@/components/settings/miei-dispositivi";
+import { DueFattori } from "@/components/settings/due-fattori";
 import { AccessoTeam } from "@/components/settings/accesso-team";
 import { Centralino } from "@/components/settings/centralino";
 import { SezioneImpostazioni } from "@/components/settings/sezione-impostazioni";
@@ -180,6 +182,7 @@ export default async function SettingsPage({
     salute,
     ingresso,
     calendario,
+    dueFattori,
   ] = await Promise.all([
     db.venue.findMany({
       where: { orgId: ctx.orgId },
@@ -209,6 +212,7 @@ export default async function SettingsPage({
     saluteVoice(ctx.venueId),
     vistaIngresso(ctx.venueId),
     vistaCalendario(ctx.venueId),
+    statoDueFattori(ctx.userId),
   ]);
 
   /* `manage_venue`, la stessa capacità che chiedono le rotte `/api/team/*`:
@@ -760,6 +764,14 @@ export default async function SettingsPage({
               {/* Sta qui e non in «Il locale» perché riguarda il proprio accesso,
                 non il ristorante: è la stessa sezione dove si legge lo stato
                 delle integrazioni e dei lavori. */}
+              {/* Prima dei dispositivi: l'accesso in due passi è la difesa, i
+                  dispositivi sono l'elenco di chi è entrato. */}
+              <DueFattori
+                attivo={dueFattori.attivo}
+                codiciRimasti={dueFattori.codiciRimasti}
+                segretoInChiaro={dueFattori.segretoInChiaro}
+              />
+
               <MieiDispositivi />
 
               <AccessoTeam

@@ -1,4 +1,5 @@
 import type { NextAuthOptions } from "next-auth";
+import { verificaSecondoFattore } from "@/server/due-fattori";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
@@ -39,6 +40,13 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        /* Il codice a sei cifre. Sta qui e non in una seconda pagina perché
+           NextAuth con le credenziali fa **un solo** giro: una pagina
+           intermedia richiederebbe di tenere da parte la password, cioè di
+           avere la password in due posti invece di uno. Il modulo lo chiede
+           solo a chi ha i due fattori accesi, e lo scopre dal primo
+           tentativo. */
+        codice: { label: "Codice", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials.password) return null;
@@ -46,6 +54,22 @@ export const authOptions: NextAuthOptions = {
         if (!user?.passwordHash) return null;
         const ok = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!ok) return null;
+
+        /*
+          Il secondo fattore, quando è acceso.
+
+          Si solleva un errore **con un nome**, invece di restituire `null`:
+          «serve il codice» e «la password è sbagliata» sono due schermate
+          diverse, e confonderle manda chi ha i due fattori a cambiare una
+          password che va benissimo. Il nome arriva al modulo in
+          `res.error`, e `lib/errori-accesso.ts` lo traduce.
+        */
+        if (user.totpEnabled) {
+          const esito = await verificaSecondoFattore(user, credentials.codice);
+          if (!esito.ok) {
+            throw new Error(esito.perche === "mancante" ? "ServeCodice" : "CodiceNonValido");
+          }
+        }
         // L'ultimo accesso, per la scheda del dipendente. Una scrittura per
         // login, non una per richiesta; e se fallisce non impedisce di
         // entrare — è un'informazione, non un controllo.

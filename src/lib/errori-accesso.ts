@@ -29,9 +29,30 @@ export const ERRORE_TROPPI_TENTATIVI = "TroppiTentativi";
  * password è sbagliata, la cambia, e resta fuori — perché il problema era il
  * tempo, non la password.
  */
+export const ERRORE_SERVE_CODICE = "ServeCodice";
+export const ERRORE_CODICE_NON_VALIDO = "CodiceNonValido";
+
+/** Vero quando la schermata deve **chiedere** il codice a sei cifre. */
+export function chiedeIlCodice(errore: string | null | undefined): boolean {
+  return errore === ERRORE_SERVE_CODICE || errore === ERRORE_CODICE_NON_VALIDO;
+}
+
 export function messaggioAccesso(errore: string | null | undefined, stato?: number): string {
   if (errore === ERRORE_TROPPI_TENTATIVI || stato === 429) {
     return "Troppi tentativi di seguito. Aspetta qualche minuto e riprova: non è detto che la password sia sbagliata.";
+  }
+  /*
+    I due fattori: due messaggi diversi, e nessuno dei due parla di password.
+
+    «Credenziali non valide» a chi ha i due fattori accesi è il messaggio che
+    manda a cambiare una password che va benissimo — la stessa trappola del
+    429, in un altro punto.
+  */
+  if (errore === ERRORE_SERVE_CODICE) {
+    return "Su questo accesso serve anche il codice a sei cifre dell'app di autenticazione.";
+  }
+  if (errore === ERRORE_CODICE_NON_VALIDO) {
+    return "Il codice non è valido o è già stato usato. Aspetta che l'app ne mostri uno nuovo, oppure usa un codice di recupero.";
   }
   return "Credenziali non valide.";
 }
