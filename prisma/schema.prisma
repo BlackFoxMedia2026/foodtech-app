@@ -23,7 +23,15 @@ model User {
   /// tablet perso in sala, e una persona che non lavora più qui.
   sessionsRevokedAt      DateTime?
   totpEnabled            Boolean             @default(false)
+  /// Il segreto del codice a sei cifre, **cifrato a riposo** (`lib/cifratura`).
+  /// Chi legge il database non deve poter generare i codici di nessuno.
   totpSecret             String?
+  /// L'ultimo passo di trenta secondi già consumato: un codice usato non si
+  /// riusa. È la parte che lo standard lascia a chi lo implementa.
+  totpUltimoPasso        Int?
+  /// I codici di recupero, uno per riga e **solo come impronta**: si mostrano
+  /// una volta sola al momento dell'attivazione e non esiste nessun percorso
+  /// che li restituisca in chiaro.
   recoveryCodesHash      String[]            @default([])
   /// L'ultimo accesso riuscito. Si scrive in `authorize` (lib/auth.ts), una
   /// volta per login, non a ogni richiesta: serve alla scheda del dipendente
