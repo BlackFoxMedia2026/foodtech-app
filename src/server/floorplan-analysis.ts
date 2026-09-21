@@ -79,7 +79,7 @@ REGOLE
 - "walls": i muri portanti e il perimetro. Ogni muro e' un segmento {x1,y1,x2,y2,thickness}. thickness e' relativo alla larghezza dell'immagine (tipicamente 0.006-0.02).
 - "dividers": tramezzi e divisori interni sottili, stesso formato dei muri.
 - "doors" e "windows": {x,y,width,angle}. x,y e' il CENTRO dell'apertura sul muro; angle in gradi, 0 = apertura su muro orizzontale, 90 = su muro verticale.
-- "rooms": gli ambienti riconoscibili come rettangoli {x,y,width,height,kind,label}. x,y e' l'angolo in alto a sinistra. "kind" e' uno di: AREA_ZONE, AREA_KITCHEN, AREA_BAR, AREA_WC, AREA_STORAGE, AREA_PRIVATE, AREA_ENTRANCE, AREA_TERRACE, AREA_STAIRS. "label" e' il testo leggibile sulla planimetria se c'e' (es. "DISPENSA", "LAVAGGIO"), altrimenti null.
+- "rooms": gli ambienti riconoscibili come rettangoli {x,y,width,height,kind,label}. x,y e' l'angolo in alto a sinistra. "kind" e' ESATTAMENTE uno di: AREA_ZONE, AREA_KITCHEN, AREA_BAR, AREA_WC, AREA_STORAGE, AREA_PRIVATE, AREA_ENTRANCE, AREA_TERRACE, AREA_STAIRS. Non inventare altri valori: se l'ambiente non rientra in nessuno (un soggiorno, una camera, un corridoio) usa AREA_ZONE e metti il nome vero in "label". "label" e' il testo leggibile sulla planimetria se c'e' (es. "DISPENSA", "LAVAGGIO", "SOGGIORNO"), altrimenti null.
 - "serviceAreas": banconi, banchi di servizio, zone di passaggio, stesso formato di rooms.
 - "entrances": ingressi e uscite {x,y,width,angle}.
 - "labels": scritte presenti sulla planimetria che non corrispondono a un ambiente {x,y,text}.
