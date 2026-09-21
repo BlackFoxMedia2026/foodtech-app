@@ -206,6 +206,17 @@ export function apiErrorResponse(err: unknown) {
     */
     dem_quota_insufficient: 402,
     dem_sending_paused: 409,
+    /*
+      Il budget di infrastruttura è un limite **nostro**, non del piano del
+      cliente: 409 e non 402, perché non c'è niente che il ristorante possa
+      pagare per sbloccarlo. Lo sblocca un'autorizzazione del Super Admin.
+    */
+    dem_budget_exceeded: 409,
+    /*
+      Non sapere quanto costa un invio è un guasto nostro, e 503 lo dice:
+      riprova più tardi, il problema non è la tua richiesta.
+    */
+    cost_calculation_unavailable: 503,
   };
   if (code && perCodice[code]) {
     return apiError(perCodice[code], code, err instanceof Error ? err.message : "Operazione non possibile.",

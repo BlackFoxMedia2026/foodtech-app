@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import { vietaDatiDemo } from "../src/lib/ambiente-dati";
 import { PrismaClient, BookingStatus, BookingSource, Occasion, LoyaltyTier, TableShape, VenueKind } from "@prisma/client";
 import { contatoriDaPrenotazioni } from "../src/lib/visite";
 import { lunediDi } from "../src/lib/turni";
@@ -22,14 +23,12 @@ import bcrypt from "bcryptjs";
   difesa contro la fretta — e blocca solo l'esecuzione involontaria, non quella
   voluta.
 */
-const url = process.env.DATABASE_URL ?? "";
-if (!/dev|test/i.test(url) && process.env.SEED_DEMO_PRODUZIONE !== "1") {
-  throw new Error(
-    "Questo seed scrive centinaia di righe e riscrive gli stati delle prenotazioni dei locali demo.\n" +
-      "DATABASE_URL non contiene 'dev' né 'test': se è davvero il database di produzione e lo vuoi,\n" +
-      "ripeti il comando con SEED_DEMO_PRODUZIONE=1 davanti. Prima però fai una copia.",
-  );
-}
+const guardia = vietaDatiDemo(
+  process.env.DATABASE_URL ?? "",
+  process.env.SEED_DEMO_PRODUZIONE === "1",
+  "Questo seed scrive centinaia di righe e riscrive gli stati delle prenotazioni dei locali demo",
+);
+if (guardia) throw new Error(guardia);
 
 const db = new PrismaClient();
 

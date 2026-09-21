@@ -20,6 +20,9 @@ import { AnnullaCampagna } from "@/components/campaigns/annulla-campagna";
 import { statoCampagna } from "@/lib/campaign-status";
 import { RisultatiDem } from "@/components/campaigns/risultati-dem";
 import { risultatiCampagna } from "@/server/dem/statistiche";
+import { superAdminCorrente } from "@/lib/super-admin";
+import { PannelloBlocco } from "@/components/costi/pannello-blocco";
+import { dettaglioCosti } from "@/server/costi/dettaglio";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +45,26 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
   // Finché non è uscita niente, si può ancora fermare: programmata o in coda.
   const annullabile = campaign.status === "SCHEDULED" || campaign.status === "QUEUED";
   const avanzamento = inCoda ? await getCampaignSendProgress(ctx.venueId, campaign.id) : null;
+
+  /*
+    Il riquadro del blocco economico.
+
+    Due condizioni, e servono entrambe: la campagna è stata fermata dal freno,
+    e chi guarda amministra la piattaforma. Il controllo su chi guarda è
+    **server-side** — la pagina non rende nemmeno il markup — perché nascondere
+    con il CSS un dato che il cliente non deve avere significa spedirglielo lo
+    stesso.
+  */
+  const admin = await superAdminCorrente();
+  const blocco =
+    admin.ok && campaign.blockedReason && campaign.blockedAt
+      ? {
+          motivo: campaign.blockedReason,
+          quando: campaign.blockedAt,
+          dati: (campaign.blockedDetail as Record<string, unknown> | null) ?? {},
+        }
+      : null;
+  const costi = blocco ? await dettaglioCosti(ctx.venueId) : null;
   const resa = await getCampaignAttribution(ctx.venueId, campaign.id);
   // I risultati dettagliati esistono solo per le campagne che abbiamo mandato
   // noi, destinatario per destinatario: su quelle consegnate a un fornitore
@@ -68,6 +91,19 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
       </header>
 
       <div className="fill-scroll space-y-6 pr-0.5">
+        {/* In cima a tutto: se la campagna è ferma, è la prima cosa da sapere. */}
+        {blocco && costi && (
+          <PannelloBlocco
+            campaignId={campaign.id}
+            venueId={ctx.venueId}
+            blocco={blocco}
+            budgetBaseCents={costi.budgetBaseCents}
+            overrideBudgetCents={costi.overrideBudgetCents}
+            budgetCents={costi.budgetCents}
+            emailLimite={costi.emailLimite}
+          />
+        )}
+
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>

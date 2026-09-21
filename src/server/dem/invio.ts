@@ -6,6 +6,9 @@ import { signUnsubscribeToken } from "@/lib/unsubscribe-token";
 import { logEvento } from "@/lib/observability";
 import type { JobOutcome, JobRef } from "@/server/jobs/queue";
 import { consumaQuota, rilasciaQuota } from "./consumo";
+import { registraUso } from "@/server/costi/ledger";
+import { consumaCosto, rilasciaCosto } from "@/server/costi/riserva";
+import { PROVIDER_AWS } from "@/server/costi/periodo";
 import { avvisa, avvisoCampagnaInviata } from "./avvisi";
 import { mittenteDi } from "./dominio";
 import { controllaReputazione } from "./statistiche";
@@ -256,12 +259,14 @@ async function aggiornaConti(
 ): Promise<void> {
   const campagna = await db.campaign.findUnique({
     where: { id: campaignId },
-    select: { usagePeriod: true, reservedCount: true },
+    select: { usagePeriod: true, reservedCount: true, reservedCostCents: true },
   });
   if (!campagna?.usagePeriod) return;
 
   if (inviati > 0) await consumaQuota(venueId, campagna.usagePeriod, inviati);
   if (saltati > 0) await rilasciaQuota(venueId, campagna.usagePeriod, saltati);
+
+  await registraConsumoInfrastruttura(campaignId, venueId, campagna.usagePeriod, inviati, saltati, campagna.reservedCount, campagna.reservedCostCents);
 
   await db.campaign.update({
     where: { id: campaignId },
@@ -269,8 +274,84 @@ async function aggiornaConti(
       sentCount: { increment: inviati },
       failedCount: { increment: saltati },
       reservedCount: Math.max(0, campagna.reservedCount - inviati - saltati),
+      reservedCostCents: Math.max(0, campagna.reservedCostCents - quotaDiCosto(campagna, inviati + saltati)),
     },
   });
+}
+
+/** La fetta di budget impegnato che corrisponde a una parte dei destinatari. */
+function quotaDiCosto(campagna: { reservedCount: number; reservedCostCents: number }, quanti: number): number {
+  if (campagna.reservedCount <= 0) return 0;
+  return Math.min(campagna.reservedCostCents, Math.round((campagna.reservedCostCents * quanti) / campagna.reservedCount));
+}
+
+/**
+ * Scrive nel ledger quello che è appena costato, e sposta l'impegno in speso.
+ *
+ * ## Si paga per gli accettati, non per i tentativi
+ *
+ * `inviati` sono i messaggi per cui Amazon ha restituito un identificativo:
+ * quelli li ha presi in carico e li fattura. `saltati` comprende sia chi non
+ * era più raggiungibile — e non è mai partito niente — sia i rifiuti prima
+ * dell'accettazione, che Amazon non fattura. Contarli come costo gonfierebbe
+ * il conto del cliente con email mai uscite.
+ *
+ * I falliti si scrivono lo stesso, a costo zero e con stato `FAILED`: un tasso
+ * di rifiuto che sale è una notizia, e senza una riga non si vedrebbe.
+ *
+ * ## Una chiave per lotto
+ *
+ * Questo modulo gira dentro un lavoro in coda che può riprendere da metà. La
+ * chiave tiene dentro campagna, ciclo e numero di invii già fatti: lo stesso
+ * lotto rieseguito trova la riga già scritta e non raddoppia niente.
+ */
+async function registraConsumoInfrastruttura(
+  campaignId: string,
+  venueId: string,
+  ciclo: string,
+  inviati: number,
+  saltati: number,
+  riservatiPrima: number,
+  costoRiservato: number,
+): Promise<void> {
+  const giaFatti = await db.campaignRecipient.count({
+    where: { campaignId, status: { in: ["SENT", "FAILED", "SKIPPED"] } },
+  });
+
+  if (inviati > 0) {
+    await registraUso({
+      venueId,
+      campaignId,
+      provider: PROVIDER_AWS,
+      service: "SES_SEND",
+      eventType: "EMAIL_SENT",
+      quantity: inviati,
+      yearMonth: ciclo,
+      idempotencyKey: `campagna:${campaignId}:${ciclo}:lotto:${giaFatti}:inviati`,
+    });
+
+    /* Lo speso si muove sul **costo impegnato**, non su una stima rifatta
+       adesso: è la stessa cifra che era stata tolta dal budget quando la
+       campagna è stata accodata, e le due devono tornare al centesimo. */
+    const fetta = quotaDiCosto({ reservedCount: riservatiPrima, reservedCostCents: costoRiservato }, inviati);
+    await consumaCosto(venueId, ciclo, fetta);
+  }
+
+  if (saltati > 0) {
+    await registraUso({
+      venueId,
+      campaignId,
+      provider: PROVIDER_AWS,
+      service: "SES_SEND",
+      eventType: "EMAIL_SENT",
+      quantity: saltati,
+      yearMonth: ciclo,
+      idempotencyKey: `campagna:${campaignId}:${ciclo}:lotto:${giaFatti}:saltati`,
+      status: "FAILED",
+    });
+
+    await rilasciaCosto(venueId, ciclo, quotaDiCosto({ reservedCount: riservatiPrima, reservedCostCents: costoRiservato }, saltati));
+  }
 }
 
 /** Ultimo lotto fatto: la campagna è finita. */

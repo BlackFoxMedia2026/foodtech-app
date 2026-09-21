@@ -25,9 +25,11 @@
     "db:seed-e2e": "tsx prisma/seed-e2e.ts",
     "token:telefonia": "tsx scripts/token-telefonia.ts",
     "centralino:chiavi": "tsx scripts/centralino-licenza.ts --chiavi",
-    "centralino:licenza": "tsx scripts/centralino-licenza.ts"
+    "centralino:licenza": "tsx scripts/centralino-licenza.ts",
+    "listino:iniziale": "tsx scripts/listino-iniziale.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-cost-explorer": "^3.917.0",
     "@aws-sdk/client-sesv2": "^3.1132.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",

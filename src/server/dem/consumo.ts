@@ -42,6 +42,18 @@ import { abbonamentoDi, limiteDi, type AbbonamentoConPiano } from "./abbonamento
  * perso la corsa — la stessa forma che usa già `claimJob` nella coda.
  */
 
+/**
+ * Gli invii concessi in più da un'autorizzazione del Super Admin, per questo
+ * ciclo. Zero quando non ce ne sono, che è quasi sempre.
+ */
+async function inviiAutorizzatiInPiu(venueId: string, yearMonth: string): Promise<number> {
+  const righe = await db.costOverride.findMany({
+    where: { venueId, yearMonth, kind: "EMAILS" },
+    select: { oldValue: true, newValue: true },
+  });
+  return righe.reduce((somma, r) => somma + Math.max(0, r.newValue - r.oldValue), 0);
+}
+
 export type PeriodoCorrente = {
   sub: AbbonamentoConPiano;
   periodo: DemUsagePeriod;
@@ -60,8 +72,24 @@ export type PeriodoCorrente = {
  */
 export async function periodoCorrente(venueId: string, adesso = new Date()): Promise<PeriodoCorrente> {
   const sub = await abbonamentoDi(venueId, adesso);
-  const limite = limiteDi(sub);
   const yearMonth = cicloDi(sub.currentPeriodStart);
+  /*
+    Il tetto del ciclo è quello del piano **più** quanto il Super Admin ha
+    autorizzato in più per questo mese.
+
+    Sta qui e non solo nella colonna perché questa funzione riallinea
+    `monthlyLimit` al piano ogni volta che li trova diversi — serve all'upgrade
+    a metà mese — e senza questa somma cancellerebbe l'autorizzazione alla
+    prima lettura successiva, silenziosamente, fermando la campagna che era
+    stata appena sbloccata.
+
+    E la somma vale per un ciclo solo: al mese nuovo non c'è nessuna riga da
+    trovare, quindi il tetto torna da sé quello del piano. È l'unico modo per
+    cui «temporaneo» non dipende da qualcuno che si ricorda di togliere una
+    riga.
+  */
+  const extra = await inviiAutorizzatiInPiu(venueId, yearMonth);
+  const limite = limiteDi(sub) + extra;
 
   // `upsert` non è al riparo dalla corsa: due richieste che aprono il ciclo
   // nello stesso istante arrivano entrambe al `create`, e una delle due trova
