@@ -131,6 +131,9 @@ export type AuditAction =
   | "venue.centralino_chiave_emessa"
   | "venue.centralino_chiave_revocata"
   | "venue.wifi_update"
+  /** Un file di un altro gestionale portato dentro: quante righe, cosa e stato
+   * creato, quali colonne non abbiamo capito. */
+  | "venue.import"
   | "venue.review_links_update"
   | "venue.booking_window_update"
   | "team.invite"

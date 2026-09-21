@@ -1,0 +1,17 @@
+-- Una prenotazione importata da un altro gestionale si riconosce.
+--
+-- Serve un valore suo, e non il riuso di uno esistente, per due ragioni:
+--
+--  1. **le analitiche.** «Da dove arrivano le prenotazioni» e una delle
+--     domande che questo prodotto risponde: contare fra i walk-in duemila
+--     righe arrivate con un file vorrebbe dire una risposta falsa per sempre,
+--     e nessun modo di accorgersene;
+--  2. **il passato non si tocca.** Chi importa porta dentro anche le cene di
+--     tre anni fa: quelle righe non sono prenotazioni prese da noi, e devono
+--     poter essere distinte da quelle vere quando si guarda uno storico.
+--
+-- Additiva: un valore in piu su un enum non rompe nessuna riga esistente. Le
+-- schermate che mostrano la provenienza hanno una mappa **esaustiva** dei
+-- valori (`src/components/bookings/status-badge.tsx`), quindi TypeScript si
+-- ferma se qualcuno aggiunge un valore e si dimentica l'etichetta.
+ALTER TYPE "BookingSource" ADD VALUE IF NOT EXISTS 'IMPORT';

@@ -56,6 +56,10 @@ const SOURCE: Record<BookingSource, string> = {
   SOCIAL: "Social",
   CONCIERGE: "Concierge",
   EVENT: "Evento",
+  /* «Importata» e non il nome del gestionale di prima: quello lo sa chi ha
+     fatto l'importazione, e in una pillola larga due centimetri serve sapere
+     che quella riga non l'ha presa nessuno qui. */
+  IMPORT: "Importata",
 };
 
 export function StatusBadge({ status }: { status: BookingStatus }) {

@@ -3258,6 +3258,13 @@ enum BookingSource {
   SOCIAL
   CONCIERGE
   EVENT
+  /// Arrivata con un file, da un altro gestionale.
+  ///
+  /// Un valore suo e non il riuso di `CONCIERGE`: «da dove arrivano le
+  /// prenotazioni» e una delle domande che questo prodotto risponde, e
+  /// contare duemila righe importate fra quelle prese a mano sarebbe una
+  /// risposta falsa per sempre. Vedi `server/importazione.ts`.
+  IMPORT
 }
 
 enum Occasion {
