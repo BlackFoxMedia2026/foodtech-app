@@ -110,6 +110,19 @@ produzione.
 È il costo giusto da pagare per non cancellare dati per sbaglio, e va saputo
 prima: **una guardia che ferma una migrazione ferma anche la fila**.
 
+E una seconda cosa, che il 21 settembre è costata più della prima. La
+serratura di Prisma (`pg_advisory_lock`) vive per **tutta la sessione**, e
+quella migrazione l'aveva presa passando dal **pooler**: il processo del build
+è morto, pgbouncer ha tenuto vivo il collegamento al server, e la serratura è
+rimasta chiusa con dentro nessuno. Da lì ogni pubblicazione moriva dopo dieci
+secondi d'attesa — e nemmeno il comando che sblocca la migrazione si poteva
+eseguire, perché vuole la stessa serratura.
+
+Da adesso le migrazioni passano dalla **connessione diretta** di Neon
+(`DATABASE_URL_UNPOOLED`), non dal pooler: vedi `ambienteDelleMigrazioni` in
+`src/lib/migration-safety.ts`, con le prove in `tests/migrazioni-sicure.test.ts`.
+Una serratura di sessione ha senso solo su una sessione che è davvero la tua.
+
 ---
 
 ## Promesse: da tenere, dichiarandole
