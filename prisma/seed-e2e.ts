@@ -1,5 +1,21 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { vietaDatiDemo } from "../src/lib/ambiente-dati";
+
+/*
+  La stessa difesa del seed della demo, che qui mancava.
+
+  Questo file **svuota e ricostruisce** il locale dei percorsi automatici: su
+  un database vero cancellerebbe righe di un cliente. Il rischio non è teorico —
+  è il comando che si lancia più spesso, e il terminale sbagliato è sempre a un
+  Alt-Tab di distanza.
+*/
+const guardia = vietaDatiDemo(
+  process.env.DATABASE_URL ?? "",
+  process.env.SEED_DEMO_PRODUZIONE === "1",
+  "Questo comando svuota e ricrea il locale dei percorsi automatici",
+);
+if (guardia) throw new Error(guardia);
 
 /**
  * I dati dei test end-to-end.

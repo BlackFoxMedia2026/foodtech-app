@@ -54,3 +54,6 @@ next-env.d.ts
 # Archivio file su disco: il ripiego di `server/archivio-file.ts` quando manca
 # BLOB_READ_WRITE_TOKEN. Sono i file caricati in locale, non sorgente.
 .archivio-locale/
+
+# Cartelle di build di un secondo `next dev` (vedi NEXT_DIST_DIR in next.config.mjs)
+.next-*

@@ -213,6 +213,19 @@ export async function assicuraInsiemeConfigurazione(venueId: string): Promise<st
  * mostriamo: costano zero da ricevere, e il giorno che servono i dati ci sono
  * già invece di cominciare da quel giorno.
  */
+export const EVENTI_ATTESI = [
+  "SEND",
+  "DELIVERY",
+  "OPEN",
+  "CLICK",
+  "BOUNCE",
+  "COMPLAINT",
+  "REJECT",
+  "DELIVERY_DELAY",
+  "RENDERING_FAILURE",
+  "SUBSCRIPTION",
+] as const;
+
 async function collegaEventi(insieme: string): Promise<void> {
   const topic = process.env.SES_EVENT_SNS_TOPIC_ARN;
   if (!topic) {
@@ -229,18 +242,7 @@ async function collegaEventi(insieme: string): Promise<void> {
         EventDestination: {
           Enabled: true,
           SnsDestination: { TopicArn: topic },
-          MatchingEventTypes: [
-            "SEND",
-            "DELIVERY",
-            "OPEN",
-            "CLICK",
-            "BOUNCE",
-            "COMPLAINT",
-            "REJECT",
-            "DELIVERY_DELAY",
-            "RENDERING_FAILURE",
-            "SUBSCRIPTION",
-          ],
+          MatchingEventTypes: [...EVENTI_ATTESI],
         },
       }),
     );
