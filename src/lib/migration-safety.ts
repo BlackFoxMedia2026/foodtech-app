@@ -134,10 +134,15 @@ export function esaminaMigrazione(sql: string): Verdetto {
  * Dove l'indirizzo diretto non c'è — un altro fornitore, un database locale —
  * si usa quello normale: è il comportamento di prima, e va bene dove non c'è
  * nessun pooler in mezzo.
+ *
+ * Il tipo è `Record<string, string | undefined>` e non `NodeJS.ProcessEnv`
+ * perché Next dichiara `NODE_ENV` **obbligatoria** in quel tipo: un test che
+ * passa due indirizzi e nient'altro non compilerebbe, e per farlo compilare si
+ * finirebbe a scrivere un ambiente finto completo — cioè a non provare niente.
  */
-export function ambienteDelleMigrazioni(
-  env: NodeJS.ProcessEnv = process.env,
-): NodeJS.ProcessEnv {
+export function ambienteDelleMigrazioni<T extends Record<string, string | undefined>>(
+  env: T = process.env as unknown as T,
+): T {
   const diretto = env.DATABASE_URL_UNPOOLED ?? env.POSTGRES_URL_NON_POOLING;
   if (!diretto) return env;
   return { ...env, DATABASE_URL: diretto };

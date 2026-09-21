@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { signBookingToken, verifyBookingToken } from "@/lib/booking-token";
 import { alreadySent, esitoResend } from "@/server/messaging/send";
@@ -25,13 +25,19 @@ if (!/dev|test/i.test(url)) {
 
 let venueId = "";
 let guestId = "";
+/** Chi ha lasciato solo il numero: e il caso di chi prenota al telefono. */
+let guestSoloTelefonoId = "";
 
 /** Una prenotazione fra ~2h45: dentro la finestra del promemoria "3 ore". */
-async function prenotazioneFraPoco(status: "CONFIRMED" | "CANCELLED" | "ARRIVED" = "CONFIRMED", conEmail = true) {
+async function prenotazioneFraPoco(
+  status: "CONFIRMED" | "CANCELLED" | "ARRIVED" = "CONFIRMED",
+  chi: boolean | "solo-telefono" = true,
+) {
+  const guest = chi === "solo-telefono" ? guestSoloTelefonoId : chi ? guestId : null;
   return db.booking.create({
     data: {
       venueId,
-      guestId: conEmail ? guestId : null,
+      guestId: guest,
       partySize: 2,
       startsAt: new Date(Date.now() + 2.7 * 3600 * 1000),
       status,
@@ -57,6 +63,12 @@ beforeAll(async () => {
   guestId = (
     await db.guest.create({
       data: { venueId, firstName: "Prova", lastName: "Ospite", email: `${PREFISSO}ospite@test.local` },
+    })
+  ).id;
+  /* Numero inventato, come sempre: nessun numero vero nel codice. */
+  guestSoloTelefonoId = (
+    await db.guest.create({
+      data: { venueId, firstName: "Solo", lastName: "Telefono", phone: "+393339998877" },
     })
   ).id;
 }, 60_000);
@@ -159,6 +171,77 @@ describe("chi riceve il promemoria", () => {
     const esiti = await sendDueReminders();
     expect(esiti.find((e) => e.bookingId === booking.id && e.kind === REMINDER_KINDS.hours)).toBeUndefined();
 
+    await db.messageLog.deleteMany({ where: { bookingId: booking.id } });
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+});
+
+describe("chi ha lasciato solo il numero", () => {
+  /*
+    Fino al 21 settembre 2026 questa persona non riceveva **niente**: il
+    promemoria era solo email e per lei tornava `no_address`. Erano proprio le
+    prenotazioni prese al telefono — di chi chiama sappiamo il numero, non la
+    mail — cioe quelle con piu assenze.
+  */
+  const ambiente = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...ambiente };
+  });
+
+  it("con il canale SMS acceso riceve un SMS, e il registro dice SMS", async () => {
+    process.env.BREVO_API_KEY = "chiave-di-prova";
+    process.env.BREVO_SMS_SENDER = "Tavolo";
+
+    const booking = await prenotazioneFraPoco("CONFIRMED", "solo-telefono");
+    const esiti = await sendDueReminders();
+    const mio = esiti.find((e) => e.bookingId === booking.id && e.kind === REMINDER_KINDS.hours);
+
+    expect(mio?.outcome).toBe("queued");
+    expect(mio?.canale).toBe("SMS");
+
+    /* Nel registro c'e scritto SMS e il numero, non «EMAIL» e un indirizzo che
+       non esiste: il locale deve poter vedere cosa e partito e dove. */
+    const riga = await db.messageLog.findFirstOrThrow({
+      where: { bookingId: booking.id, kind: REMINDER_KINDS.hours },
+    });
+    expect(riga.channel).toBe("SMS");
+    expect(riga.toAddress).toBe("+393339998877");
+    expect(riga.bodyPreview).toContain("annulla qui");
+
+    await db.backgroundJob.deleteMany({ where: { venueId } });
+    await db.messageLog.deleteMany({ where: { bookingId: booking.id } });
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("con il canale spento lo dice, e non finge un invio", async () => {
+    delete process.env.BREVO_API_KEY;
+    const booking = await prenotazioneFraPoco("CONFIRMED", "solo-telefono");
+    const esiti = await sendDueReminders();
+    const mio = esiti.find((e) => e.bookingId === booking.id && e.kind === REMINDER_KINDS.hours);
+
+    /* «Canale assente» e diverso da «nessun contatto»: il primo si risolve
+       configurando, il secondo chiedendo un dato al cliente. */
+    expect(mio?.outcome).toBe("no_channel");
+    expect(await db.messageLog.count({ where: { bookingId: booking.id } })).toBe(0);
+
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("chi ha la mail riceve la mail, e **non** anche l'SMS", async () => {
+    /* Due promemoria per la stessa cena sono un fastidio, e il secondo si
+       paga: l'SMS e per chi non ha lasciato un indirizzo, non un rinforzo. */
+    process.env.BREVO_API_KEY = "chiave-di-prova";
+    process.env.BREVO_SMS_SENDER = "Tavolo";
+
+    const booking = await prenotazioneFraPoco("CONFIRMED", true);
+    const esiti = await sendDueReminders();
+    const miei = esiti.filter((e) => e.bookingId === booking.id && e.kind === REMINDER_KINDS.hours);
+
+    expect(miei).toHaveLength(1);
+    expect(miei[0]!.canale).toBe("EMAIL");
+
+    await db.backgroundJob.deleteMany({ where: { venueId } });
     await db.messageLog.deleteMany({ where: { bookingId: booking.id } });
     await db.booking.delete({ where: { id: booking.id } });
   });
