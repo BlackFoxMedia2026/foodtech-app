@@ -71,8 +71,10 @@ export default async function ConfirmationPage(props: { searchParams?: { booking
 
   if (!bookingId) return <NonTrovata isEmbed={isEmbed} />;
 
-  const booking = await db.booking.findUnique({
-    where: { id: bookingId },
+  /* `findFirst` e non `findUnique` perche il filtro non e solo la chiave: una
+     prenotazione cancellata non deve mostrare una pagina di conferma. */
+  const booking = await db.booking.findFirst({
+    where: { id: bookingId, deletedAt: null },
     include: { guest: true, venue: true },
   });
 

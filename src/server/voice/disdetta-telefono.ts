@@ -189,7 +189,7 @@ export async function disdiciDalTelefono(
   if (riga.startsAt.getTime() < adesso.getTime()) return { ok: false, perche: "gia_passata" };
 
   const disdetta = await db.booking.updateMany({
-    where: { id: riga.id, venueId, status: { in: [...DISDICIBILI] } },
+    where: { id: riga.id, venueId, deletedAt: null, status: { in: [...DISDICIBILI] } },
     data: { status: "CANCELLED" },
   });
   if (disdetta.count === 0) {

@@ -37,7 +37,7 @@ export default async function BookingDetail({
      e un pulsante che risponde «non puoi» è peggio di un pulsante che non c'è. */
   const canManage = can(ctx.role, "manage_bookings");
   const item = await db.booking.findFirst({
-    where: { id: params.id, venueId: ctx.venueId },
+    where: { deletedAt: null, id: params.id, venueId: ctx.venueId },
     include: { guest: true, table: true, payments: true },
   });
   if (!item) notFound();

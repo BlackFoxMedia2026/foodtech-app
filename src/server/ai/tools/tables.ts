@@ -9,7 +9,7 @@ export const getAvailableTablesTool: Tool = {
 
     const now = new Date();
     const activeBookings = await db.booking.findMany({
-      where: { venueId: ctx.venueId, status: { in: ["CONFIRMED", "ARRIVED", "SEATED"] }, startsAt: { lte: now } },
+      where: { deletedAt: null, venueId: ctx.venueId, status: { in: ["CONFIRMED", "ARRIVED", "SEATED"] }, startsAt: { lte: now } },
       select: { tableId: true, startsAt: true, durationMin: true },
     });
     const busyTableIds = new Set(

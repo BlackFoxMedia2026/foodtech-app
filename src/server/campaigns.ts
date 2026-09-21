@@ -742,11 +742,11 @@ export async function getCampaignAttribution(venueId: string, campaignId: string
 
   const [dentro, fuori] = await Promise.all([
     db.booking.findMany({
-      where: { ...comuni, createdAt: { gte: sentAt, lte: fineFinestra } },
+      where: { deletedAt: null, ...comuni, createdAt: { gte: sentAt, lte: fineFinestra } },
       select: { partySize: true },
     }),
     db.booking.count({
-      where: { ...comuni, createdAt: { gt: fineFinestra } },
+      where: { deletedAt: null, ...comuni, createdAt: { gt: fineFinestra } },
     }),
   ]);
 
@@ -773,6 +773,86 @@ async function segnaNonRiuscita(campaignId: string, venueId: string, nome: strin
     body: motivo,
     link: `/campaigns/${campaignId}`,
   });
+}
+
+/**
+ * Chiude i conti di una campagna programmata, **una volta sola**.
+ *
+ * ## Perché la condizione sta dentro la scrittura
+ *
+ * Perché questa funzione la chiama un cron, e un cron gira due volte più
+ * spesso di quanto si crede: due giri che si sovrappongono, un tentativo
+ * ripetuto dopo un errore di rete. Un `if (status === "SCHEDULED")` seguito da
+ * un `update` li lascerebbe passare entrambi, e **gli invii verrebbero
+ * consumati due volte** — un cliente che ha mandato mille email ne vedrebbe
+ * duemila scalate dal piano.
+ *
+ * Il passaggio di stato è il lucchetto: solo chi lo cambia davvero (`count`
+ * uguale a uno) va avanti a toccare la quota.
+ *
+ * ## Le due strade
+ *
+ * `inviati` è la campagna uscita: gli invii diventano consumati, e da quel
+ * momento la schermata dice «inviata» con il numero vero del fornitore.
+ * `nonRiuscita` è l'ora passata senza che sia uscito niente: gli invii tornano
+ * disponibili e al locale arriva un avviso con scritto cosa fare.
+ */
+export async function chiudiCampagnaProgrammata(
+  campaignId: string,
+  esito:
+    | { inviati: number; aperti?: number; quando: Date }
+    | { nonRiuscita: string },
+): Promise<boolean> {
+  const campaign = await db.campaign.findUnique({
+    where: { id: campaignId },
+    select: { venueId: true, name: true, usagePeriod: true, reservedCount: true },
+  });
+  if (!campaign) return false;
+
+  if ("nonRiuscita" in esito) {
+    /* Il lucchetto vale anche qui: due avvisi «campagna non inviata» per la
+       stessa campagna sono due telefonate all'assistenza. */
+    const preso = await db.campaign.updateMany({
+      where: { id: campaignId, status: "SCHEDULED" },
+      data: { status: "FAILED" },
+    });
+    if (preso.count === 0) return false;
+
+    if (campaign.reservedCount > 0 && campaign.usagePeriod) {
+      await rilasciaQuota(campaign.venueId, campaign.usagePeriod, campaign.reservedCount);
+      await db.campaign.update({ where: { id: campaignId }, data: { reservedCount: 0 } });
+    }
+    await createNotification(campaign.venueId, {
+      kind: "AUTOMATION_FAILED",
+      title: `Campagna non inviata: ${campaign.name}`,
+      body: esito.nonRiuscita,
+      link: `/campaigns/${campaignId}`,
+    });
+    return true;
+  }
+
+  const preso = await db.campaign.updateMany({
+    where: { id: campaignId, status: "SCHEDULED" },
+    data: {
+      status: "SENT",
+      sentCount: esito.inviati,
+      ...(esito.aperti !== undefined ? { openedCount: esito.aperti } : {}),
+      sendingStartedAt: esito.quando,
+      sentAt: esito.quando,
+    },
+  });
+  if (preso.count === 0) return false;
+
+  /* Gli invii impegnati diventano consumati. Senza questa riga restavano
+     impegnati per sempre: fuori dalla quota disponibile e fuori da quella
+     usata, cioè spariti — e il cliente si trovava il piano esaurito con «zero
+     campagne inviate». */
+  if (campaign.reservedCount > 0 && campaign.usagePeriod) {
+    await consumaQuota(campaign.venueId, campaign.usagePeriod, campaign.reservedCount);
+    await db.campaign.update({ where: { id: campaignId }, data: { reservedCount: 0 } });
+    await controllaSoglie(campaign.venueId);
+  }
+  return true;
 }
 
 /** La chiave del lavoro di invio di una campagna: una sola, per campagna. */

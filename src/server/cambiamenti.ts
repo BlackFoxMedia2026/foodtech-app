@@ -234,7 +234,7 @@ export async function ultimiCambiamenti(
   const idPrenotazioni = diTipo("prenotazione");
   const prenotazioni = idPrenotazioni.length
     ? await db.booking.findMany({
-        where: { id: { in: idPrenotazioni }, venueId },
+        where: { deletedAt: null, id: { in: idPrenotazioni }, venueId },
         select: {
           id: true,
           partySize: true,

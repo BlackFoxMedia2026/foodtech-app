@@ -67,12 +67,12 @@ async function getDayStats(venueId: string, day: Date, avgSpend: number | null, 
 
   const [bookings, noShowCount, service, capacity] = await Promise.all([
     db.booking.findMany({
-      where: { venueId, startsAt: { gte: dayStart, lte: dayEnd }, status: { not: "CANCELLED" } },
+      where: { deletedAt: null, venueId, startsAt: { gte: dayStart, lte: dayEnd }, status: { not: "CANCELLED" } },
       include: { guest: true, table: true },
       orderBy: { startsAt: "asc" },
     }),
     db.booking.count({
-      where: { venueId, startsAt: { gte: dayStart, lte: dayEnd }, status: "NO_SHOW" },
+      where: { deletedAt: null, venueId, startsAt: { gte: dayStart, lte: dayEnd }, status: "NO_SHOW" },
     }),
     getServiceWindow(venueId, day, fuso),
     /*
@@ -151,7 +151,7 @@ export async function getOverview(venueId: string, day: Date = new Date()) {
   const inizioSettimana = zonedTimeToInstant(datiDaChiave(chiavi[0]!), 0, fuso);
   const { fine: fineOggi } = giornata(day, fuso);
   const weekBookings = await db.booking.findMany({
-    where: { venueId, startsAt: { gte: inizioSettimana, lte: fineOggi } },
+    where: { deletedAt: null, venueId, startsAt: { gte: inizioSettimana, lte: fineOggi } },
     select: { startsAt: true, partySize: true, status: true },
   });
 

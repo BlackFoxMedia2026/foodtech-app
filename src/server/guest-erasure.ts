@@ -203,6 +203,12 @@ export async function anonimizzaOspite(
 
     // 2. Le note scritte *sulla* persona, sulle prenotazioni. Le prenotazioni
     //    restano: sono i coperti di quelle serate.
+    //
+    //    Qui **non** si filtrano le cancellate, e non e una dimenticanza: una
+    //    prenotazione cancellata e ancora in tabella, e le note che ha dentro
+    //    sono dati di quella persona. Una cancellazione che le lasciasse
+    //    scritte renderebbe la cancellazione dei dati incompleta proprio sulle
+    //    righe che nessuno guarda piu.
     const prenotazioni = await tx.booking.updateMany({
       where: { venueId, guestId },
       data: { notes: null, internalNotes: null },

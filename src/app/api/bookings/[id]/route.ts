@@ -9,7 +9,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const ctx = await requireVenueApi();
   if (!ctx.ok) return ctx.response;
   const item = await db.booking.findFirst({
-    where: { id: params.id, venueId: ctx.venueId },
+    where: { deletedAt: null, id: params.id, venueId: ctx.venueId },
     include: { guest: true, table: true, payments: true },
   });
   if (!item) return NextResponse.json({ error: "not_found" }, { status: 404 });
