@@ -36,6 +36,8 @@ import { AccessoTeam } from "@/components/settings/accesso-team";
 import { Centralino } from "@/components/settings/centralino";
 import { SezioneImpostazioni } from "@/components/settings/sezione-impostazioni";
 import { CalendarioPrenotazioni } from "@/components/settings/calendario-prenotazioni";
+import { SmsPromemoria } from "@/components/settings/sms-promemoria";
+import { channelAvailable } from "@/server/messaging/send";
 import { AltreSezioniMobile } from "@/components/settings/navigazione-impostazioni";
 import { IndiceImpostazioni } from "@/components/settings/indice-impostazioni";
 import { PARTI, parteDa } from "@/lib/parti-impostazioni";
@@ -451,6 +453,15 @@ export default async function SettingsPage({
               <CalendarioPrenotazioni
                 percorsoIniziale={calendario.percorso}
                 indirizzo={baseUrl}
+                canManage={can(ctx.role, "manage_venue")}
+              />
+
+              {/* Sta fra le prenotazioni perche il messaggio che manda piu
+                spesso e il promemoria: e quello che porta o non porta la gente
+                al tavolo. */}
+              <SmsPromemoria
+                attivi={ctx.venue.smsAttivi}
+                canaleDisponibile={channelAvailable("SMS")}
                 canManage={can(ctx.role, "manage_venue")}
               />
 

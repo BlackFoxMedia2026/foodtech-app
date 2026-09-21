@@ -144,7 +144,7 @@ const PROVIDERS: Record<MessageChannel, Provider> = {
     differenza fra «non configurato» e «configurato e rotto» la pagherebbe chi
     aspetta una conferma.
 
-    Finché non c'è, `canalePerTelefono` manda un SMS: arriva sullo stesso
+    Finché non c'è, `canaleTelefonoPerLocale` manda un SMS: arriva sullo stesso
     telefono, e nel registro c'è scritto SMS. Vedi `docs/INTEGRATIONS.md`.
   */
   WHATSAPP: {
@@ -156,7 +156,7 @@ const PROVIDERS: Record<MessageChannel, Provider> = {
 };
 
 /**
- * Il canale con cui raggiungere un **numero di telefono**, oggi.
+ * Il canale con cui raggiungere un **numero di telefono**, per questo locale.
  *
  * Di chi chiama sappiamo il numero e non l'indirizzo, quindi la domanda non è
  * «email o SMS?» ma «con che cosa arrivo su quel telefono?». WhatsApp quando
@@ -164,13 +164,28 @@ const PROVIDERS: Record<MessageChannel, Provider> = {
  * non c'è niente: e allora chi chiama questa funzione **lo dice** invece di
  * dichiarare mandato un messaggio che non parte.
  *
- * Sta qui e non nei posti che mandano perché altrimenti sarebbero tre copie
- * della stessa decisione, e il giorno in cui WhatsApp si accende ne
- * cambierebbe una sola.
+ * ## Perché vuole il consenso del locale
+ *
+ * Perché il canale si configura per **installazione** (una chiave, un
+ * mittente) ma un SMS **si paga** e arriva sul telefono di un cliente vero. Il
+ * 21 settembre 2026, accendendo la variabile, il controllo prima di partire ha
+ * trovato una prenotazione di stasera di un locale **vetrina** — dati
+ * inventati, ospite con solo il numero: il promemoria sarebbe partito verso un
+ * numero finto, che però può essere il numero di qualcuno.
+ *
+ * Quindi due interruttori, e servono entrambi: la chiave dice che il canale
+ * *esiste*, `Venue.smsAttivi` dice che *questo* ristorante lo usa. Spento per
+ * difetto, come tutto quello che costa.
+ *
+ * È una funzione pura di proposito — il valore arriva da chi ha già letto il
+ * locale — così non aggiunge una lettura al database per ogni messaggio.
  */
-export function canalePerTelefono(): MessageChannel | null {
+export function canaleTelefonoPerLocale(smsAttivi: boolean): MessageChannel | null {
+  /* WhatsApp resta fuori da questo controllo finché non esiste: il giorno che
+     ci sarà, avrà il suo — i messaggi su WhatsApp costano meno di un SMS e la
+     decisione del locale potrebbe essere diversa. */
   if (channelAvailable("WHATSAPP")) return "WHATSAPP";
-  if (channelAvailable("SMS")) return "SMS";
+  if (smsAttivi && channelAvailable("SMS")) return "SMS";
   return null;
 }
 

@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { signBookingToken } from "@/lib/booking-token";
 import { dateKeyInVenue } from "@/lib/venue-time";
-import { canalePerTelefono, enqueueMessage } from "./messaging/send";
+import { canaleTelefonoPerLocale, enqueueMessage } from "./messaging/send";
 
 /**
  * Promemoria prima del servizio.
@@ -35,6 +35,11 @@ import { canalePerTelefono, enqueueMessage } from "./messaging/send";
  * Adesso: la mail quando c'è, un **SMS** quando c'è solo il numero. Non
  * entrambi — due promemoria per la stessa cena sono un fastidio, e il secondo
  * si paga.
+ *
+ * L'SMS parte solo dai locali che l'hanno acceso (`Venue.smsAttivi`, spento
+ * per difetto): in produzione vivono anche i locali vetrina con dati
+ * inventati, e un promemoria verso un numero finto può arrivare a uno
+ * sconosciuto. Vedi `canaleTelefonoPerLocale`.
  */
 
 export const REMINDER_KINDS = {
@@ -214,7 +219,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
         guest: {
           select: { id: true, firstName: true, email: true, phone: true, marketingOptIn: true },
         },
-        venue: { select: { id: true, name: true, timezone: true, phone: true } },
+        venue: { select: { id: true, name: true, timezone: true, phone: true, smsAttivi: true } },
       },
       take: 200,
     });
@@ -225,7 +230,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
       /* La mail ha la precedenza: costa zero, ci stanno due pulsanti e il
          testo lungo. L'SMS e per chi non l'ha lasciata — e si paga, quindi non
          si manda a chi ha gia ricevuto la mail. */
-      const canaleTelefono = telefono ? canalePerTelefono() : null;
+      const canaleTelefono = telefono ? canaleTelefonoPerLocale(booking.venue.smsAttivi) : null;
       if (!email && !canaleTelefono) {
         risultati.push({
           kind,

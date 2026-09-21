@@ -8,7 +8,7 @@ import {
   numeroPerBrevo,
   smsConfigurato,
 } from "@/server/messaging/sms";
-import { canalePerTelefono, channelAvailable } from "@/server/messaging/send";
+import { canaleTelefonoPerLocale, channelAvailable } from "@/server/messaging/send";
 import { testoPromemoriaSms } from "@/server/reminders";
 
 /**
@@ -80,13 +80,26 @@ describe("quando il canale è acceso", () => {
   });
 
   it("per un telefono si usa l'SMS finché WhatsApp non c'è, e niente se manca tutto", () => {
-    expect(canalePerTelefono()).toBe("SMS");
+    expect(canaleTelefonoPerLocale(true)).toBe("SMS");
     /* WhatsApp non si finge: vuole un account Business e un modello approvato
        da Meta. Quando ci sarà, questa funzione lo preferirà da sola. */
     expect(channelAvailable("WHATSAPP")).toBe(false);
 
     delete process.env.BREVO_API_KEY;
-    expect(canalePerTelefono()).toBeNull();
+    expect(canaleTelefonoPerLocale(true)).toBeNull();
+  });
+
+  it("**servono due interruttori**: la chiave e il consenso del locale", () => {
+    /*
+      Il canale si configura per installazione, ma un SMS si paga e arriva sul
+      telefono di un cliente vero. Il 21 settembre 2026, accendendo la
+      variabile, il controllo ha trovato una prenotazione di stasera di un
+      locale **vetrina** — dati inventati, ospite con solo il numero: il
+      promemoria sarebbe partito verso un numero finto, che puo essere il
+      numero di qualcuno.
+    */
+    expect(canaleTelefonoPerLocale(false)).toBeNull();
+    expect(canaleTelefonoPerLocale(true)).toBe("SMS");
   });
 });
 

@@ -57,6 +57,10 @@ beforeAll(async () => {
       slug: `${PREFISSO}v${Date.now()}`,
       timezone: "Europe/Rome",
       phone: "+39 02 000 0000",
+      /* Gli SMS si accendono **un locale per volta**: qui si accendono di
+         proposito, perche e il locale di prova. Un locale che non li ha
+         accesi non manda niente, e c'e un test che lo prova. */
+      smsAttivi: true,
     },
   });
   venueId = venue.id;
@@ -211,6 +215,29 @@ describe("chi ha lasciato solo il numero", () => {
 
     await db.backgroundJob.deleteMany({ where: { venueId } });
     await db.messageLog.deleteMany({ where: { bookingId: booking.id } });
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("un locale che non ha acceso gli SMS non ne manda, anche col canale pronto", async () => {
+    /*
+      E la difesa nata il 21 settembre 2026: accendendo il canale in
+      produzione, il controllo ha trovato una prenotazione di stasera di un
+      locale **vetrina** con un ospite che ha solo il numero. Il promemoria
+      sarebbe partito verso un numero inventato, che puo essere il numero di
+      qualcuno.
+    */
+    process.env.BREVO_API_KEY = "chiave-di-prova";
+    process.env.BREVO_SMS_SENDER = "locale";
+    await db.venue.update({ where: { id: venueId }, data: { smsAttivi: false } });
+
+    const booking = await prenotazioneFraPoco("CONFIRMED", "solo-telefono");
+    const esiti = await sendDueReminders();
+    const mio = esiti.find((e) => e.bookingId === booking.id && e.kind === REMINDER_KINDS.hours);
+
+    expect(mio?.outcome).toBe("no_channel");
+    expect(await db.messageLog.count({ where: { bookingId: booking.id } })).toBe(0);
+
+    await db.venue.update({ where: { id: venueId }, data: { smsAttivi: true } });
     await db.booking.delete({ where: { id: booking.id } });
   });
 
