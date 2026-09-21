@@ -554,6 +554,30 @@ export default async function SettingsPage({
                   )}
                 </RigaImpostazione>
               </GruppoImpostazioni>
+
+              {/*
+                L'importazione sta fra gli **ospiti** e non nel sistema: quello
+                che si porta dentro sono i clienti, e questa e la sezione dove
+                si va a cercarli. Nel sistema ci finirebbe fra le chiavi e i
+                registri, dove nessuno la troverebbe il giorno in cui arriva
+                da un altro gestionale con un file in mano.
+              */}
+              <GruppoImpostazioni
+                titolo="Porta dentro i tuoi clienti"
+                descrizione="Il file esportato dal gestionale di prima: prima ti mostriamo cosa succederebbe, poi importi."
+                azione={
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/settings/importa">Importa</Link>
+                  </Button>
+                }
+              >
+                <RigaImpostazione
+                  nome="Da dove"
+                  descrizione="CSV con clienti, prenotazioni o entrambi. Riconosciamo le colonne italiane e inglesi."
+                >
+                  <ValoreVuoto>un file per volta</ValoreVuoto>
+                </RigaImpostazione>
+              </GruppoImpostazioni>
             </SezioneImpostazioni>
           )}
 

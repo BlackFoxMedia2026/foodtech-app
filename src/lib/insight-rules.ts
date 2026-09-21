@@ -14,6 +14,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   SOCIAL: "Social",
   CONCIERGE: "Manuale",
   EVENT: "Evento",
+  IMPORT: "Importate",
 };
 
 interface SlotDatum {
