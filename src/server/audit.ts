@@ -114,6 +114,7 @@ export type AuditAction =
   /** Da dove entrano le chiamate: scatoletta o deviazione dall'operatore. */
   | "venue.voice_ingresso"
   | "venue.voice_benvenuto"
+  | "venue.calendario_link"
   | "venue.avg_spend_update"
   /* La chiave del centralino: quando e da chi. Davanti a «il telefono non
      funziona più» è la prima cosa da guardare. */
