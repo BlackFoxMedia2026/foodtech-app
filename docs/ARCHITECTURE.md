@@ -1,6 +1,15 @@
 # Architettura
 
-Stato al 7 settembre 2026. Descrive il codice come è, non come vorremmo che fosse.
+Numeri misurati il **21 settembre 2026**; il resto del documento è del 7
+settembre e descrive il codice come è, non come vorremmo che fosse.
+
+> **Sui numeri di questo documento.** Fino al 21 settembre dicevano «46 route,
+> 72 modelli, 115 componenti, 21 moduli server, 56 verifiche»: sbagliati di un
+> fattore due o quattro, perché scritti una volta e mai ricontati. Un documento
+> che sbaglia i numeri li fa ricontare a mano a chiunque lo legga — e l'audit
+> del 20 settembre ci è caduto dentro, segnalando come difetto una cosa già
+> sistemata da giorni. Se li tocchi, misurali: i comandi sono in fondo a questa
+> sezione.
 
 ## Dove gira, e perché è scritto qui
 
@@ -26,14 +35,35 @@ dominio in `src/server/`; i componenti client scrivono via `fetch` verso le rout
 src/app/(app)/…        pagine dell'applicazione (componenti server)
 src/app/(auth)/…       accesso
 src/app/book/…         widget pubblico di prenotazione
-src/app/api/…          46 route: l'unico modo di scrivere
-src/components/…       115 componenti, per area funzionale
-src/server/…           logica di dominio, 21 moduli — l'unico posto che parla col database
-src/lib/…              infrastruttura condivisa (sessione, permessi, fuso, limiti, database)
+src/app/api/…          195 route: l'unico modo di scrivere
+src/components/…       296 componenti, per area funzionale
+src/server/…           logica di dominio, 154 moduli — l'unico posto che parla col database
+src/lib/…              105 moduli di infrastruttura (sessione, permessi, fuso, limiti, database)
 src/middleware.ts      limite di frequenza, prima di tutto il resto
 src/app/b/[token]/     la pagina dell'ospite: conferma o annulla dal promemoria
-prisma/                schema (72 modelli) e migrazioni versionate
-tests/                 56 verifiche
+prisma/                schema (100 modelli, 97 enum, 4292 righe) e 45 migrazioni
+tests/                 119 file di verifiche + 13 end-to-end
+```
+
+64 pagine, di cui **54 senza cache** (`force-dynamic`): `revalidate` non è
+usato da nessuna parte. È una scelta che non è mai stata presa — è quello che
+succede quando ogni pagina legge dati che cambiano durante il servizio — e il
+giorno che il traffico crescerà sarà il primo posto da guardare.
+
+**Ventitré dei cento modelli non hanno una riga di codice** che li scriva: sette
+sono resti di funzioni sostituite, gli altri sono funzioni promesse e non fatte.
+Ognuno porta una riga nello schema che lo dice. L'elenco, con cosa costa tenerli
+e cosa costa cancellarli, è in `docs/TABELLE-SENZA-CODICE.md`.
+
+### Come si ricontano
+
+```bash
+find src/app/api -name route.ts | wc -l          # rotte API
+grep -c '^model ' prisma/schema.prisma           # modelli
+grep -c '^enum ' prisma/schema.prisma            # enum
+find src/components -name '*.tsx' | wc -l        # componenti
+find src/server -name '*.ts' | wc -l             # moduli di dominio
+find tests -name '*.test.ts' | wc -l             # file di verifiche
 ```
 
 ## I quattro strati e le loro responsabilità
@@ -697,10 +727,17 @@ così la notte del cambio d'ora non salta un giorno.
 - **Le campagne programmate restano «programmate».** L'orario lo tiene il fornitore, e
   nessuno riporta indietro il momento in cui è partita davvero: lo stato non diventa mai
   «inviata». Si risolve leggendo le statistiche del fornitore, non con un altro cron.
-- **Le prenotazioni hanno ancora un tetto fisso** (`take: 200` in `listBookings`). Sulla
-  giornata è generoso — duecento prenotazioni in un giorno sono un locale grande — ma su un
-  intervallo ampio i dati spariscono in silenzio come succedeva agli ospiti.
-- **Nessuna cache.** 17 pagine su 25 sono `force-dynamic`, nessun `revalidate`.
+- ~~**Le prenotazioni hanno ancora un tetto fisso.**~~ **Sistemato**: `listBookings`
+  accetta `limite` e non ne impone nessuno; chi legge una giornata non lo passa,
+  perché è la capienza del locale a fare da tetto. L'audit del 20 settembre l'ha
+  segnalato come difetto **leggendo questa riga**, non il codice: è il costo di
+  un documento che non si aggiorna.
+- **Nessuna cache.** 54 pagine su 64 sono `force-dynamic`, nessun `revalidate`.
 - **Soft delete a metà.** `Booking` e `Payment` hanno `deletedAt`/`deletedBy` ma il codice
   cancella davvero, e le liste non filtrano quei campi. Ospiti, camerieri e tavoli non hanno
   nemmeno i campi. Chi implementa il ripristino deve fare entrambe le cose insieme.
+- **Due fattori, calendario, letture della carta e richieste del personale**
+  esistono dal 21 settembre: erano campi e tabelle dichiarati e mai scritti.
+  Quello che resta dichiarato e non fatto è in `docs/TABELLE-SENZA-CODICE.md`,
+  e i difetti trovati dall'audit sono in `docs/AUDIT-2026-09-20.md` — tutti
+  chiusi.
