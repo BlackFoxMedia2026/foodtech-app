@@ -95,7 +95,13 @@ describe("dove porta il codice", () => {
   });
 
   it("menu e prenotazione li compone il prodotto, non chi scrive", () => {
-    expect(destinazioneAutomatica("MENU", "https://x.it/", "aurora")).toBe("https://x.it/m/aurora");
+    /* Il QR del menù porta `?da=qr`: serve a distinguere chi inquadra il
+       codice sul tavolo da chi apre un link (vedi `server/menu-letture.ts`).
+       Senza quel segno le due letture sono indistinguibili, e la domanda «la
+       gente usa il QR?» non ha risposta. */
+    expect(destinazioneAutomatica("MENU", "https://x.it/", "aurora")).toBe(
+      "https://x.it/m/aurora?da=qr",
+    );
     expect(destinazioneAutomatica("BOOKING", "https://x.it", "aurora")).toBe(
       "https://x.it/book?venue=aurora",
     );

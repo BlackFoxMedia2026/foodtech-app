@@ -1,5 +1,6 @@
 import { can, getActiveVenue } from "@/lib/tenant";
 import { getMenu } from "@/server/menu";
+import { lettureCarta } from "@/server/menu-letture";
 import { MenuEditor } from "@/components/menu/menu-editor";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,10 @@ export default async function MenuPage({
   searchParams: { filtro?: string };
 }) {
   const ctx = await getActiveVenue();
-  const categorie = await getMenu(ctx.venueId);
+  const [categorie, letture] = await Promise.all([
+    getMenu(ctx.venueId),
+    lettureCarta(ctx.venueId),
+  ]);
 
   return (
     <div className="schermo animate-fade-in gap-3">
@@ -22,6 +26,7 @@ export default async function MenuPage({
         /* Da Analisi si arriva qui con il filtro già acceso: vedi la nota in
            menu-editor.tsx. */
         filtroIniziale={searchParams.filtro}
+        letture={letture}
       />
     </div>
   );

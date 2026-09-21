@@ -367,6 +367,7 @@ const TITOLI_EXTRA: Record<string, string | [lungo: string, breve: string]> = {
   "/bookings/new": ["Nuova prenotazione", "Nuova prenot."],
   "/guests/doppioni": ["Possibili doppioni", "Doppioni"],
   "/staff/turni": "Turni",
+  "/staff/richieste": "Richieste",
   "/settings/brand": "Brand",
   "/settings/wifi": ["Portale Wi-Fi", "Wi-Fi"],
   "/marketing/automations": "Automazioni",

@@ -116,6 +116,8 @@ export type AuditAction =
   | "venue.voice_benvenuto"
   | "venue.calendario_link"
   | "utente.due_fattori"
+  | "staff.richiesta"
+  | "staff.richiesta_decisa"
   | "venue.avg_spend_update"
   /* La chiave del centralino: quando e da chi. Davanti a «il telefono non
      funziona più» è la prima cosa da guardare. */
