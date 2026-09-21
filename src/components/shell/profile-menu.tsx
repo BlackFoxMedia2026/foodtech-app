@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut } from "lucide-react";
+import { LogOut, Smartphone } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PROFILE_NAV, isNavActive, profiloPerGruppo } from "@/components/shell/nav-items";
+import type { StaffRole } from "@prisma/client";
 import { cn, initials } from "@/lib/utils";
 
 /**
@@ -37,9 +38,18 @@ import { cn, initials } from "@/lib/utils";
  * - **la voce aperta si vede**, come nella barra: senza, una sezione del menu
  *   profilo è l'unico posto del prodotto dove non si sa dove si è.
  */
-export function ProfileMenu({ user }: { user: { name?: string | null; email?: string | null } }) {
+export function ProfileMenu({
+  user,
+  role,
+  /** Vero quando questa persona ha anche l'app di servizio: si offre la strada. */
+  conStaffApp = false,
+}: {
+  user: { name?: string | null; email?: string | null };
+  role: StaffRole;
+  conStaffApp?: boolean;
+}) {
   const pathname = usePathname();
-  const gruppi = profiloPerGruppo();
+  const gruppi = profiloPerGruppo(role);
   /*
     Chi sta dentro una voce del menu profilo (Esperienze, Pagamenti, Attesa,
     Impostazioni) non ha nessuna voce accesa in barra: l'unico segno di dove si
@@ -94,6 +104,27 @@ export function ProfileMenu({ user }: { user: { name?: string | null; email?: st
             })}
           </div>
         ))}
+
+        {conStaffApp && (
+          /*
+            La strada per l'app di servizio.
+            
+            Sta qui e non in barra perché chi ha tutte e due le vedute è un
+            responsabile che lavora in ufficio e ogni tanto scende in sala:
+            passa di qua una volta a servizio, non venti volte al giorno. Chi
+            invece **vive** in sala non vede mai questa testata — entra
+            direttamente nella Staff App.
+          */
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/staff-app" className="flex items-center gap-2.5">
+                <Smartphone className="h-4 w-4 shrink-0" aria-hidden="true" />
+                Vista di servizio
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
 
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => signOut({ callbackUrl: "/sign-in" })}>

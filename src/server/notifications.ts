@@ -74,13 +74,28 @@ export async function createNotification(
   });
 }
 
+/**
+ * La campanella del locale mostra **solo gli avvisi del locale**.
+ *
+ * Da quando esistono le notifiche personali della Staff App (`waiterId`
+ * valorizzato), questo filtro è quello che impedisce a «i tuoi due piatti sono
+ * pronti» di comparire nella campanella di tutti: sarebbe rumore per quattro
+ * persone su cinque, e renderebbe inutile la campanella per la quinta. Le
+ * personali si leggono da `server/staff-app/notifiche.ts`.
+ */
+const SOLO_DEL_LOCALE = { waiterId: null } as const;
+
 export async function listNotifications(
   venueId: string,
   role: StaffRole,
   opts: { limit?: number } = {},
 ) {
   return db.notification.findMany({
-    where: { venueId, kind: { notIn: restrictedKinds(role) } },
+    where: {
+      venueId,
+      ...SOLO_DEL_LOCALE,
+      kind: { notIn: restrictedKinds(role) },
+    },
     orderBy: { createdAt: "desc" },
     take: opts.limit ?? 30,
   });
@@ -91,7 +106,12 @@ export async function countUnreadNotifications(
   role: StaffRole,
 ) {
   return db.notification.count({
-    where: { venueId, kind: { notIn: restrictedKinds(role) }, readAt: null },
+    where: {
+      venueId,
+      ...SOLO_DEL_LOCALE,
+      kind: { notIn: restrictedKinds(role) },
+      readAt: null,
+    },
   });
 }
 
@@ -101,7 +121,12 @@ export async function markNotificationRead(
   id: string,
 ) {
   const existing = await db.notification.findFirst({
-    where: { id, venueId, kind: { notIn: restrictedKinds(role) } },
+    where: {
+      id,
+      venueId,
+      ...SOLO_DEL_LOCALE,
+      kind: { notIn: restrictedKinds(role) },
+    },
   });
   if (!existing) throw new Error("not_found");
   return db.notification.update({
@@ -115,7 +140,12 @@ export async function markAllNotificationsRead(
   role: StaffRole,
 ) {
   return db.notification.updateMany({
-    where: { venueId, kind: { notIn: restrictedKinds(role) }, readAt: null },
+    where: {
+      venueId,
+      ...SOLO_DEL_LOCALE,
+      kind: { notIn: restrictedKinds(role) },
+      readAt: null,
+    },
     data: { readAt: new Date() },
   });
 }

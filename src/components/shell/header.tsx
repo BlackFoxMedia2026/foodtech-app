@@ -11,6 +11,7 @@ import {
   isNavActive,
   titoloPagina,
 } from "@/components/shell/nav-items";
+import type { StaffRole } from "@prisma/client";
 import { MarketingMenu } from "./marketing-menu";
 import { VenueSwitcher } from "./venue-switcher";
 import { ProfileMenu } from "./profile-menu";
@@ -49,19 +50,30 @@ export function Header({
   user,
   venues,
   activeVenueId,
+  role,
   telefonoAttivo = false,
+  conStaffApp = false,
 }: {
   user: { name?: string | null; email?: string | null };
   venues: { id: string; name: string; city: string | null }[];
   activeVenueId: string;
+  /** Il ruolo di chi guarda: decide quali voci esistono in barra. */
+  role: StaffRole;
   /** Se questo locale ha il telefono collegato: decide la voce «Telefono». */
   telefonoAttivo?: boolean;
+  /** Vero quando questa persona ha anche un'anagrafica, e quindi la Staff App. */
+  conStaffApp?: boolean;
 }) {
   const pathname = usePathname();
   /* Memoizzata perché entra nelle dipendenze dell'effetto che misura la
      pillola: un array nuovo a ogni rendering rifarebbe la misura a ogni
-     battito. */
-  const voci = useMemo(() => vociPrincipali(telefonoAttivo), [telefonoAttivo]);
+     battito. Le voci passano da **due** filtri, che `vociPrincipali` applica
+     insieme: quello che il locale ha comprato e quello che questo ruolo può
+     aprire. */
+  const voci = useMemo(
+    () => vociPrincipali(telefonoAttivo, role),
+    [telefonoAttivo, role],
+  );
   const inImpostazioni =
     pathname === "/settings" || pathname.startsWith("/settings/");
   // `HTMLElement` e non `HTMLAnchorElement`: Marketing non è un link ma il
@@ -217,7 +229,7 @@ export function Header({
               testata restano tre. */}
           <IndicatoreTelefono />
           <NotificationBell />
-          <ProfileMenu user={user} />
+          <ProfileMenu user={user} role={role} conStaffApp={conStaffApp} />
         </div>
       </div>
     </header>

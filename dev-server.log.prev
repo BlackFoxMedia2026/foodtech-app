@@ -1,0 +1,16 @@
+
+> tavolo@0.1.0 dev
+> next dev -p 3001
+
+  ▲ Next.js 14.2.18
+  - Local:        http://localhost:3001
+  - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 1515ms
+ ✓ Compiled / in 324ms (521 modules)
+ GET / 200 in 437ms
+ ✓ Compiled /src/middleware in 238ms (73 modules)
+ ✓ Compiled /api/notifications in 358ms (555 modules)
+ GET /api/notifications 200 in 559ms
+[?25h

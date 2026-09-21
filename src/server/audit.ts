@@ -43,6 +43,22 @@ export type AuditAction =
   | "order.line_update"
   | "order.close"
   | "order.cancel"
+  /*
+    La comanda: la tranche di piatti che va in cucina, dentro il conto.
+
+    Ne resta traccia qui **oltre** a `ComandaEvento` e non è un doppione: là
+    si registra lo stato e chi l'ha mosso, e serve alla schermata del tavolo;
+    qui si registra l'azione con IP e dispositivo, e serve quando a fine
+    serata due piatti non tornano. Sono due domande diverse fatte da due
+    persone diverse.
+  */
+  | "comanda.line_add"
+  | "comanda.line_update"
+  | "comanda.line_remove"
+  | "comanda.send"
+  | "comanda.status"
+  | "comanda.cancel"
+  | "comanda.guest_rename"
   | "menu.category_create"
   | "menu.category_update"
   | "menu.category_delete"

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Fraunces, Inter, Space_Mono } from "next/font/google";
 import { Header } from "@/components/shell/header";
 import { BrandSetupDialog } from "@/components/settings/brand-setup-dialog";
@@ -12,6 +13,7 @@ import { RISPONDE_DAL_BROWSER } from "@/lib/rispondere-da-tavolo";
 import { capacitaDi } from "@/server/voice/provider";
 import { TelefonoBrowser } from "@/components/telefono/telefono-browser";
 import { VoiceGlobale } from "@/components/telefono/voice-globale";
+import { risolviContestoStaff } from "@/server/contesto-staff";
 
 const sans = Inter({
   subsets: ["latin"],
@@ -37,6 +39,32 @@ export default async function AppShell({
   children: React.ReactNode;
 }) {
   const ctx = await getActiveVenue();
+
+  /*
+    **Il bivio fra i due ambienti** (§48 del brief).
+
+    Chi lavora durante il servizio non deve atterrare nel back office e poi
+    cercare la strada: la Staff App è casa sua, e ci arriva entrando. La
+    regola sta in `staffAppEHome()` ed è scritta sul ruolo d'accesso, cioè su
+    una decisione che qualcuno ha preso creando l'account.
+
+    Sta qui e non nel middleware perché il middleware gira sull'edge, senza
+    Prisma: per sapere se questo account ha un'anagrafica collegata serve una
+    lettura del database, e questo è il primo punto del rendering in cui si
+    può fare. Non è una difesa — le difese stanno nelle rotte e nelle pagine,
+    una per una — è un instradamento.
+
+    Prima delle letture del telefono, e non dopo: chi viene rimandato alla
+    Staff App non deve pagare tre interrogazioni per una schermata che non
+    vedrà.
+  */
+  const staff = await risolviContestoStaff();
+  if (staff.stato === "ok" && staff.contesto.staffAppEHome)
+    redirect("/staff-app");
+
+  /* Chi ha entrambe le vedute trova la Staff App nel menu del profilo. */
+  const conStaffApp = staff.stato === "ok";
+
   /* La voce «Telefono» in barra compare solo se il locale ce l'ha. La lettura
      è una riga e una firma da verificare, e sta nel guscio perché la barra è
      qui: farla dentro la pagina vorrebbe dire una barra che cambia dopo. */
@@ -141,7 +169,9 @@ export default async function AppShell({
             }}
             venues={venueList}
             activeVenueId={ctx.venueId}
+            role={ctx.role}
             telefonoAttivo={telefonoPerMe}
+            conStaffApp={conStaffApp}
           />
           {/*
         `main` dà la sua altezza alle pagine invece di scorrere.
@@ -166,6 +196,7 @@ export default async function AppShell({
           <MobileNav
             telefonoAttivo={telefonoPerMe}
             canManageBookings={can(ctx.role, "manage_bookings")}
+            role={ctx.role}
           />
           {showBrandSetup && <BrandSetupDialog initialName={ctx.venue.name} />}
         </div>
