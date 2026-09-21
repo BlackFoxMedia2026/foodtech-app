@@ -3088,6 +3088,11 @@ model VoiceConfiguration {
   deviazioneChiestaIl DateTime?
 
   /// Quanti secondi si lascia squillare prima del ripiego, in `HUMAN_FIRST`.
+  ///
+  /// **NON LETTO DA NESSUNO** (21 set 2026), come `squilliChiesti` qui sopra e
+  /// per la stessa ragione: su una deviazione il numero di squilli lo imposta
+  /// l'operatore telefonico, e noi vediamo la chiamata solo quando ce la
+  /// manda. Resta informativo.
   secondiDiSquillo Int @default(20)
 
   /// Cosa fare in ognuna delle quattro situazioni (§35 del brief).
@@ -3095,32 +3100,85 @@ model VoiceConfiguration {
   /// Colonne separate e non un `Json`: sono quattro decisioni che una
   /// schermata mostra come quattro tendine, e in un `Json` non si puo
   /// nemmeno interrogarle.
+  ///
+  /// **NON LETTE DA NESSUNO** (21 set 2026), e non per pigrizia: due delle
+  /// quattro situazioni **non le sappiamo distinguere**. Con la deviazione,
+  /// «occupato» e «non risponde» arrivano a noi identiche — la chiamata la
+  /// manda l'operatore telefonico e non dice perche. E l'unica azione diversa
+  /// dalla voce che qualcuno sceglierebbe (`FORWARD`) richiede che il
+  /// centralino apra una gamba in uscita verso `numeroInoltro`: oggi nessuno
+  /// chiede `/api/v1/telefonia/rimando`, che e la rotta fatta per quello.
+  ///
+  /// Quattro tendine in una schermata, con questi campi cosi, sarebbero
+  /// **una regola che vive solo nell'interfaccia**: il ristoratore scegliebbe
+  /// e il telefono farebbe quello che fa adesso. Prima va costruito
+  /// l'inoltro nel centralino, e provato con una telefonata vera.
+  /// Vedi `docs/TABELLE-SENZA-CODICE.md`.
+  /// **NON LETTA DA NESSUNO** (21 set 2026): vedi il commento qui sopra.
   quandoAperto      VoiceRoutingTarget @default(HUMAN)
+  /// **NON LETTA DA NESSUNO** (21 set 2026): vedi il commento qui sopra.
   quandoChiuso      VoiceRoutingTarget @default(VOICEMAIL)
+  /// **NON LETTA DA NESSUNO** (21 set 2026): e una delle due situazioni che
+  /// non sappiamo nemmeno distinguere da `quandoNonRisponde`.
   quandoOccupato    VoiceRoutingTarget @default(VOICEMAIL)
+  /// **NON LETTA DA NESSUNO** (21 set 2026): vedi `quandoOccupato`.
   quandoNonRisponde VoiceRoutingTarget @default(VOICEMAIL)
 
   /// Il numero a cui inoltrare, quando una delle quattro dice `FORWARD`.
+  ///
+  /// Questo **si legge** (`server/voice/rimando.ts`), ma per il rimando che
+  /// il risponditore chiede in mezzo a una conversazione, non per le quattro
+  /// situazioni qui sopra.
   numeroInoltro String?
 
   // ── il recupero delle chiamate perse ─────────────────────────────────
 
   /// Se mandare un messaggio a chi ha chiamato e non ha trovato nessuno.
+  ///
+  /// **NON LETTO** (21 set 2026): manca il canale, non la voglia. Mandare un
+  /// messaggio richiede SMS o WhatsApp, e su questa installazione non c'e
+  /// nessuno dei due — `apriRecupero` lo dichiara `SENZA_CANALE` invece di
+  /// dirsi mandato. Accendere questo campo non farebbe partire niente.
   recuperoPerseAttivo    Boolean         @default(false)
   /// Su quale canale. Nullo = nessuno configurato su questa installazione.
+  /// **NON LETTO** (21 set 2026): vedi `recuperoPerseAttivo`.
   recuperoPerseCanale    MessageChannel?
   /// Dopo quanti minuti. Zero = subito.
+  ///
+  /// **NON LETTO** (21 set 2026). La grazia esiste e sta in
+  /// `server/voice/recupero.ts` (`GRAZIA_MINUTI`, dieci), uguale per tutti.
+  /// Leggere questo campo cambierebbe in silenzio il comportamento di ogni
+  /// locale che non l'ha mai visto — il valore per difetto e cinque, e
+  /// nessuno l'ha scelto.
   recuperoPerseMinuti    Int             @default(5)
   /// Il testo, con `{{bookingUrl}}` e `{{venueName}}`.
+  /// **NON LETTO** (21 set 2026): vedi `recuperoPerseAttivo`. Il testo di
+  /// oggi e `testoRecupero` in `server/voice/recupero-link.ts`.
   recuperoPerseTesto     String?         @db.VarChar(600)
   /// Se creare comunque una riga «da richiamare» per il personale.
+  ///
+  /// **SUPERATO** (21 set 2026), e non va collegato cosi com'e. Il disegno di
+  /// oggi tiene separate due liste di proposito: «Da fare» sono le chiamate di
+  /// cui **nessuno ha deciso**, la coda delle richiamate sono gli **impegni
+  /// presi**. La prima si svuota decidendo, la seconda lavorando. Riempire la
+  /// seconda da sola le fonde, e una coda che si riempie per conto suo si
+  /// smette di guardare. Vedi `server/voice/richiamate.ts`.
   recuperoCreaRichiamata Boolean         @default(true)
 
   // ── le registrazioni ─────────────────────────────────────────────────
 
+  /// **NON LETTI DA NESSUNO** (21 set 2026): la registrazione delle chiamate
+  /// non esiste da nessuna parte, ne qui ne nel centralino, e le tabelle che
+  /// la conserverebbero (`PhoneCallRecording`, `PhoneCallTranscript`) sono
+  /// vuote. Serve spazio dove tenere l'audio, un avviso a chi chiama e una
+  /// scadenza che cancelli davvero: e una funzione, non un campo.
   registrazioniAttive   Boolean               @default(false)
+  /// **NON LETTO** (21 set 2026): vedi `registrazioniAttive`.
   registrazioniConsenso VoiceRecordingConsent @default(OFF)
   /// Per quanti giorni si conservano. Oltre, si cancellano.
+  /// **NON LETTO** (21 set 2026): vedi `registrazioniAttive`. E il campo che
+  /// mancherebbe di piu: senza una scadenza che cancella davvero, «trenta
+  /// giorni» e una promessa scritta e mai mantenuta.
   registrazioniGiorni   Int                   @default(30)
 
   // ── chi risponde, quando risponde una macchina ───────────────────────
@@ -3128,6 +3186,11 @@ model VoiceConfiguration {
   /// Il nome con cui si presenta. Il **come** si comporta non si configura da
   /// qui: le regole del sistema non sono un campo di testo.
   aiNome   String? @db.VarChar(40)
+  /// **SUPERATO** (21 set 2026): la voce risponde nella **lingua di chi
+  /// chiama** — glielo dicono le istruzioni nel centralino — e il saluto e
+  /// testo libero scritto dal ristoratore, quindi la sua lingua e quella in
+  /// cui l'ha scritto. Una lingua fissata qui farebbe rispondere in italiano a
+  /// un turista che chiede un tavolo in inglese.
   aiLingua String  @default("it")
   aiSaluto String? @db.VarChar(300)
 

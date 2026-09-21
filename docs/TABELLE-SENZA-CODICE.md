@@ -94,13 +94,39 @@ numeri.
 
 | | Cosa succede oggi |
 |---|---|
-| `Ticket` | `src/server/experiences.ts` calcola `ticketsSold` includendo `tickets`: la risposta è **sempre 0**. La sezione Esperienze è fuori dalla navigazione, quindi non si vede — ma appena la si rimette in menu, mostra uno zero che sembra un dato |
+| `Ticket` | `src/server/experiences.ts` calcola `ticketsSold` includendo `tickets`: la risposta è **sempre 0**. La schermata però non mostra lo zero (`ticketsSold > 0 &&`), quindi oggi non c'è nessun dato falso davanti a nessuno: c'è un contatore che non può mai accendersi, e una lettura in più a ogni elenco. Appena si vendono i biglietti funziona da sé; se si decide di non venderli, si toglie |
 | `Review` | `src/server/reviews.ts` lo dichiara: «resta una tabella senza codice». Nessun import da Google/TripAdvisor. Il ponte `ReviewLink` invece funziona e conta i clic |
 | `WifiSession` | vuota di proposito e documentata |
 
 **Raccomandazione:** prima di rimettere Esperienze in navigazione, o si vendono
 i biglietti o si toglie il contatore. Un contatore che mostra sempre zero è la
 cosa peggiore di tutte: non è una funzione mancante, è un dato falso.
+
+---
+
+## I campi mai letti di `VoiceConfiguration`
+
+Non sono tabelle: sono **colonne** dentro una tabella viva, e per questo sono
+più insidiose. Quattordici delle ventotto colonne di `VoiceConfiguration` non
+le legge nessuno, e non si possono collegare in silenzio: quasi tutte hanno un
+valore per difetto che **nessuno ha scelto**, e leggerlo cambierebbe il
+comportamento di locali che quella schermata non l'hanno mai vista.
+
+| Campi | Perché non sono collegati |
+|---|---|
+| `quandoAperto`, `quandoChiuso`, `quandoOccupato`, `quandoNonRisponde` | Due delle quattro situazioni **non le sappiamo distinguere**: con la deviazione, «occupato» e «non risponde» arrivano identiche, perché è l'operatore telefonico a mandarci la chiamata e non dice perché. E l'unica azione diversa dalla voce che qualcuno sceglierebbe — inoltrare a un numero — richiede che il centralino apra una gamba in uscita: `/api/v1/telefonia/rimando` esiste in Tavolo e **nessuno la chiama**. Quattro tendine, oggi, sarebbero una regola che vive solo nell'interfaccia |
+| `secondiDiSquillo` | Come `squilliChiesti`: su una deviazione gli squilli li imposta l'operatore. Informativo |
+| `recuperoPerseAttivo`, `recuperoPerseCanale`, `recuperoPerseTesto` | Manca **il canale**, non la voglia: SMS e WhatsApp non ci sono su questa installazione, e `apriRecupero` lo dichiara (`SENZA_CANALE`) invece di dirsi mandato |
+| `recuperoPerseMinuti` | La grazia esiste ed è uguale per tutti (`GRAZIA_MINUTI`, dieci minuti). Il valore per difetto qui è cinque: leggerlo dimezzerebbe l'attesa a chiunque, senza che nessuno l'abbia chiesto |
+| `recuperoCreaRichiamata` | **Superato.** «Da fare» e la coda delle richiamate sono due liste diverse di proposito — la prima è ciò di cui nessuno ha deciso, la seconda sono impegni presi. Riempire la seconda da sola le fonde, e una coda che si riempie per conto suo si smette di guardare |
+| `registrazioniAttive`, `registrazioniConsenso`, `registrazioniGiorni` | La registrazione non esiste né qui né nel centralino, e serve spazio, un avviso a chi chiama e una scadenza che cancelli davvero: è una funzione, non un campo |
+| `aiLingua` | **Superato** dal 21 settembre: la voce risponde nella lingua di chi chiama. Una lingua fissata qui farebbe rispondere in italiano a un turista |
+
+**Raccomandazione:** nessuno di questi si collega «tanto per»; ognuno è
+annotato nello schema con il motivo. I due che valgono un lavoro vero, in
+ordine: **l'inoltro nel centralino** (sblocca le quattro situazioni, e serve
+una telefonata vera per provarlo) e **il canale dei messaggi** (sblocca il
+recupero delle perse, e serve un fornitore SMS o WhatsApp).
 
 ---
 
