@@ -1,5 +1,9 @@
 import { db } from "@/lib/db";
-import { canalePerTelefono, enqueueMessage, registraNonMandato } from "@/server/messaging/send";
+import {
+  canaleTelefonoPerLocale,
+  enqueueMessage,
+  registraNonMandato,
+} from "@/server/messaging/send";
 
 /**
  * Il messaggio a chi ha prenotato al telefono, quando la sala conferma.
@@ -26,7 +30,9 @@ import { canalePerTelefono, enqueueMessage, registraNonMandato } from "@/server/
  * ventiquattr'ore da un messaggio del cliente, un testo libero non si può
  * mandare, ed è una regola del canale. Dal 21 settembre 2026 c'è il canale
  * SMS, quindi questa conferma **parte davvero** — e il giorno in cui WhatsApp
- * si accende cambia da sola, perché il canale lo scegle `canalePerTelefono`.
+ * si accende cambia da sola, perché il canale lo sceglie
+ * `canaleTelefonoPerLocale` — che chiede anche il consenso del locale, perché
+ * un SMS si paga.
  *
  * Se non c'è nessuno dei due resta una riga `SKIPPED` nel registro col testo
  * che sarebbe partito: nessuno crede che il cliente sia stato avvisato.
@@ -91,7 +97,7 @@ export async function avvisaConfermaWhatsapp(
       startsAt: true,
       guestId: true,
       guest: { select: { firstName: true, lastName: true, phone: true } },
-      venue: { select: { name: true, timezone: true } },
+      venue: { select: { name: true, timezone: true, smsAttivi: true } },
     },
   });
   if (!b) return { mandato: false, perche: "non_trovata" };
@@ -116,7 +122,7 @@ export async function avvisaConfermaWhatsapp(
   });
 
   /*
-    Il canale lo decide `canalePerTelefono`: WhatsApp quando ci sarà, un SMS
+    Il canale lo decide `canaleTelefonoPerLocale`: WhatsApp quando ci sarà, un SMS
     finché non c'è. Arriva sullo stesso telefono, e nel registro c'è scritto
     quale dei due è partito — non «WhatsApp» per un SMS.
 
@@ -124,7 +130,7 @@ export async function avvisaConfermaWhatsapp(
     canale che quel messaggio **vorrebbe**, e la riga `SKIPPED` dice al locale
     cosa manca per accenderlo.
   */
-  const canale = canalePerTelefono() ?? ("WHATSAPP" as const);
+  const canale = canaleTelefonoPerLocale(b.venue.smsAttivi) ?? ("WHATSAPP" as const);
 
   const messaggio = {
     venueId,

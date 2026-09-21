@@ -1,0 +1,18 @@
+-- Gli SMS si accendono **un locale per volta**, e da spenti.
+--
+-- Il canale SMS esiste dal 21 settembre 2026 e si accende con una variabile
+-- d'ambiente. Quella variabile però è **una per installazione**: accesa,
+-- valeva per tutti i ristoranti dello stesso Tavolo — compresi i due locali
+-- vetrina che vivono in produzione con dati inventati.
+--
+-- Provando ad accenderla, la verifica ha trovato una prenotazione di stasera
+-- di «Aurora Bistrot» con un ospite che ha solo il numero: un promemoria
+-- sarebbe partito verso un numero finto, che però può essere il numero di
+-- qualcuno. Un SMS non richiesto a uno sconosciuto, a spese nostre.
+--
+-- Da qui questa colonna, e il valore per difetto **falso**: un messaggio che
+-- si paga e che arriva sul telefono di un cliente si accende con un gesto
+-- deliberato, locale per locale, da chi sa cosa sta accendendo. È la stessa
+-- forma che hanno già le altre cose che costano (`wifiAutoCouponEnabled`,
+-- `recuperoPerseAttivo`): niente si accende da solo.
+ALTER TABLE "Venue" ADD COLUMN IF NOT EXISTS "smsAttivi" BOOLEAN NOT NULL DEFAULT false;

@@ -95,6 +95,23 @@ model Venue {
   slug                   String
   kind                   VenueKind @default(RESTAURANT)
   timezone               String    @default("Europe/Rome")
+
+  /// Se questo locale manda **SMS**.
+  ///
+  /// Spento per difetto, e si accende un locale per volta. Il canale SMS si
+  /// configura per installazione (una chiave, un mittente), ma un messaggio
+  /// che si paga e che arriva sul telefono di un cliente non si accende per
+  /// tutti insieme: in produzione vivono anche i locali vetrina con dati
+  /// inventati, e il 21 settembre 2026 il controllo prima di accendere ha
+  /// trovato una prenotazione di uno di quelli con un ospite che ha solo il
+  /// numero. Un promemoria sarebbe partito verso un numero finto — che però
+  /// puo essere il numero di qualcuno.
+  ///
+  /// Da acceso: promemoria a chi ha lasciato solo il telefono, conferma di chi
+  /// ha prenotato parlando col risponditore, link per riprendere una chiamata
+  /// interrotta. Da spento resta la riga `SKIPPED` nel registro dei messaggi
+  /// col testo che sarebbe partito.
+  smsAttivi Boolean @default(false)
   /// Quanti punti fedeltà per ogni euro speso. Nullo = raccolta punti spenta.
   ///
   /// Sta qui e non in una costante perché è una decisione commerciale del

@@ -131,6 +131,9 @@ export type AuditAction =
   | "venue.centralino_chiave_emessa"
   | "venue.centralino_chiave_revocata"
   | "venue.wifi_update"
+  /** Gli SMS di un locale accesi o spenti: sono messaggi che si pagano e che
+   * arrivano sul telefono dei clienti. */
+  | "venue.sms_update"
   /** Un file di un altro gestionale portato dentro: quante righe, cosa e stato
    * creato, quali colonne non abbiamo capito. */
   | "venue.import"
