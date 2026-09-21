@@ -247,17 +247,17 @@ describe("il telefono come fonte di prenotazioni", () => {
   });
 });
 
-describe("le tre tabelle superate", () => {
-  it("esistono ancora, e nessuna tabella nuova le tocca", async () => {
-    /* Restano solo perché contengono righe di demo di aprile 2026, e il brief
-       dice di non perdere dati. Sono marcate nello schema: è quello che mi è
-       mancato il 17 settembre, quando ne ho creata una quarta perché queste
-       sembravano vive. */
-    expect(await db.callLog.count({ where: { venueId } })).toBe(0);
-    expect(await db.missedCall.count({ where: { venueId } })).toBe(0);
-    expect(await db.voiceBookingDraft.count({ where: { venueId } })).toBe(0);
-  });
-});
+/*
+  Qui c'era una prova sulle «tre tabelle superate» — `CallLog`, `MissedCall`,
+  `VoiceBookingDraft` — che contava le righe per dimostrare che nessuna
+  tabella nuova le toccasse.
+
+  Il 21 settembre 2026 sono state **cancellate** (migrazione
+  `20260921120000_via_i_sette_resti`), quindi non c'e piu niente da contare:
+  quello che difendeva ora lo difende il database, che non ha nemmeno la
+  tabella. La prova che non ci fosse dentro niente l'ha fatta la guardia della
+  migrazione, che si ferma se trova una riga sola.
+*/
 
 /* ────────────────────────────────────────────────────────────────────────────
    Gli eventi che nascono da soli.

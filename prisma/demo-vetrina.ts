@@ -1817,9 +1817,11 @@ export async function creaContattiWifiDemo(db: PrismaClient, venueId: string) {
  *   biglietti non si vendono da Tavolo (la pagina lo scrive) e nessun codice
  *   crea quelle righe. «12 venduti» sarebbe una promessa che il prodotto non
  *   mantiene.
- * - **`Review`, `CostEntry`, `StaffShift`, `BookingEvent`, `FloorDecor`,
- *   `WifiSession`, `MissedCall`, `CallLog`, `MenuScan`, `BookingPreorder`** —
- *   nessuna schermata le legge. Popolarle sarebbe lavoro invisibile.
+ * - **`Review`, `CostEntry`, `BookingEvent`, `WifiSession`, `MenuScan`,
+ *   `BookingPreorder`** — nessuna schermata le legge. Popolarle sarebbe lavoro
+ *   invisibile. (`StaffShift`, `FloorDecor`, `MissedCall` e `CallLog` erano in
+ *   questo elenco e il 21 settembre 2026 sono state **cancellate**: vedi
+ *   `docs/TABELLE-SENZA-CODICE.md`.)
  * - **la piantina della sala** (`Room.floorPlanUrl`, `RoomLayout`) — è
  *   un'immagine che il locale carica; non si inventa con una riga.
  */

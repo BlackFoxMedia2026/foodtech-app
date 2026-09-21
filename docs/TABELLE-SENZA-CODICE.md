@@ -33,25 +33,52 @@ Tre categorie, non due:
 
 ---
 
-## Resti: cancellabili senza perdere niente
+## Resti: ~~cancellabili~~ **cancellate il 21 settembre 2026**
 
-Sostituite da qualcosa che oggi funziona. Per queste la cancellazione è pulizia,
-non una scelta di prodotto.
+Migrazione `prisma/migrations/20260921120000_via_i_sette_resti`.
 
-| Tabella | Sostituita da | Note |
-|---|---|---|
-| `CallLog` | `PhoneCall` | prima generazione della telefonia |
-| `MissedCall` | `PhoneCall` + `VoiceCallback` | lo schema stesso ammette: «voleva essere questo e non è mai stata collegata a niente» |
-| `VoiceBookingDraft` | `VoiceRecovery` | il recupero della chiamata interrotta fa questo, e funziona |
-| `StaffShift` | `WorkShift` | la prima versione dei turni; porta `hourlyCents`, e il costo del lavoro non esiste da nessuna parte |
-| `FloorDecor` | `RoomLayout.elements` (JSON) | **tutti** i 14 valori di `DecorKind` mai usati |
-| `MessageTemplate` | i testi nel codice (`automations/catalogue.ts`, `campaign-templates.ts`) | insieme all'enum `TemplateCategory` |
-| `ExchangeRate` | niente: il multivaluta non è mai partito | con `Organization.baseCurrency` e i tre campi `Payment.fx*` |
+| Tabella | Sostituita da |
+|---|---|
+| `CallLog`, `MissedCall` | `PhoneCall` (+ `PhoneCallEvent`, `VoiceCallback`) |
+| `VoiceBookingDraft` | `VoiceRecovery` — il recupero della chiamata interrotta |
+| `StaffShift` | `WorkShift` |
+| `FloorDecor` | `RoomLayout.elements` (JSON) |
+| `MessageTemplate` | i testi nel codice (`automations/catalogue.ts`, `campaign-templates.ts`) |
+| `ExchangeRate` | niente: il multivaluta non è mai partito |
 
-**Raccomandazione:** cancellarle, in una migrazione sola, **dopo** aver
-verificato che siano vuote in produzione. La verifica è una riga di SQL per
-tabella e la posso preparare io; il conteggio lo devi guardare tu, o darmi
-l'accesso.
+Con loro sono andati via cinque tipi che esistevano solo per queste tabelle:
+`DecorKind` e i suoi diciannove valori di arredamento, `TemplateCategory`,
+`DraftStatus`, `CallDirection`, `CallStatus`.
+
+**Le colonne del multivaluta in due passi.** `Payment.fxAmountBaseCents`,
+`fxBaseCurrency`, `fxRateToBase` e `Organization.baseCurrency` escono dallo
+schema con questa pubblicazione e dal database con la successiva. È la regola
+di `prisma/migrations/README.md` letta al rovescio: mentre il deploy nuovo si
+costruisce ed esegue le migrazioni, le istanze **vecchie** stanno ancora
+servendo, e il loro client Prisma seleziona quelle colonne in ogni lettura di
+un pagamento o di un'organizzazione. Cancellarle nello stesso rilascio
+vorrebbe dire qualche minuto di errori su letture normalissime.
+
+Le sette tabelle no: **nessuna riga di codice le interrogava**, quindi nessun
+client vecchio ci manda una query e si possono cancellare subito.
+
+### Il conteggio in produzione non serviva: lo fa la migrazione
+
+Era il punto in cui questo documento si fermava — «cancellare è un atto di
+fede». La fede non serve: **la verifica sta dentro la migrazione**. Prima di
+cancellare qualunque cosa, un blocco `DO` conta le righe delle sette tabelle,
+i pagamenti con importi in valuta e le organizzazioni con una valuta di base
+diversa da EUR. Se trova **una riga sola** solleva un'eccezione che nomina la
+tabella e il numero, e la transazione torna indietro: niente cancellato,
+niente da rimediare.
+
+Provata: eseguita con dentro una tabella che ha righe, si ferma dicendo
+`Venue: 3 righe`. Ed è marcata distruttiva da `src/lib/migration-safety.ts`,
+quindi **le anteprime non la applicano** — solo una pubblicazione vera.
+
+Se in produzione ci fosse davvero qualcosa, il messaggio dice cosa fare: se
+sono righe di demo si cancellano a mano e si ripete, se sono dati veri la
+sostituzione non è completa e la migrazione va rifatta.
 
 ---
 
@@ -132,9 +159,13 @@ recupero delle perse, e serve un fornitore SMS o WhatsApp).
 
 ## Cosa serve da te
 
-1. **La lista da cancellare.** Io propongo i sette «resti». Dimmi sì e preparo
-   la migrazione — con dentro il controllo che si ferma se trova righe, come ho
-   fatto per l'indice dei punti.
-2. **Il conteggio in produzione**, o l'autorizzazione a leggerlo: senza,
-   cancellare è un atto di fede.
-3. ~~I due lavori piccoli~~: fatti il 21 settembre.
+1. ~~La lista da cancellare~~ e ~~il conteggio in produzione~~: **fatte il 21
+   settembre**. I sette resti sono cancellati, e il conteggio lo fa la
+   migrazione stessa — si ferma se trova una riga sola, così non serve che
+   nessuno guardi il database prima.
+2. ~~I due lavori piccoli~~: fatti il 21 settembre.
+3. **Quello che resta da decidere sono le promesse**, e sono decisioni di
+   prodotto, non pulizia: preordine dei piatti, connettori dei canali,
+   integrazione con la cassa, registrazione delle chiamate, biglietti,
+   recensioni importate, food cost variabile. Ognuna ha nello schema la riga
+   che dice che non è implementata.
