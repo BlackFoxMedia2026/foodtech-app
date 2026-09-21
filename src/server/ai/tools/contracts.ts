@@ -1,5 +1,9 @@
 import { db } from "@/lib/db";
-import { getContractStatusDetail, pickCurrentContract } from "@/lib/staff-contracts";
+import {
+  contrattoInVigore,
+  getContractStatusDetail,
+  pickCurrentContract,
+} from "@/lib/staff-contracts";
 import type { Tool } from "../types";
 
 /** Gated by "manage_contracts" (see agent-service.ts's requireAbility call) —
@@ -30,19 +34,65 @@ export const getExpiringContractsTool: Tool = {
       .filter((c) => c.daysRemaining >= 0 && c.daysRemaining <= windowDays)
       .sort((a, b) => a.daysRemaining - b.daysRemaining);
 
-    if (upcoming.length === 0) {
-      return { text: `Nessun contratto in scadenza nei prossimi ${windowDays} giorni.` };
+    /*
+      Chi **oggi** non è coperto da nessun contratto.
+
+      È più urgente di una scadenza fra venti giorni, e prima non compariva:
+      `pickCurrentContract` scegli il contratto cominciato per ultimo, quindi
+      con un contratto scaduto il mese scorso e un rinnovo che parte il mese
+      prossimo guardava il rinnovo — «non ancora iniziato» — e non vedeva
+      niente da segnalare. Nel frattempo quella persona lavora senza contratto
+      in vigore, e chiedere «chi ha il contratto in scadenza?» e sentirsi
+      rispondere «nessuno» è la risposta peggiore possibile.
+
+      Lo stesso ragionamento della scheda del dipendente, e la stessa funzione:
+      «chi copre oggi» è una domanda diversa da «qual è l'ultimo».
+    */
+    const scoperti = [...byWaiter.values()]
+      .filter((list) => list.length > 0 && !contrattoInVigore(list))
+      .map((list) => pickCurrentContract(list))
+      .filter((c): c is NonNullable<typeof c> => !!c);
+
+    const nome = (w: { firstName: string; lastName: string | null }) =>
+      `${w.firstName}${w.lastName ? ` ${w.lastName}` : ""}`;
+
+    if (upcoming.length === 0 && scoperti.length === 0) {
+      return {
+        text: `Nessun contratto in scadenza nei prossimi ${windowDays} giorni, e nessuno senza contratto in vigore.`,
+      };
+    }
+
+    const pezzi: string[] = [];
+    if (scoperti.length > 0) {
+      /* I nomi nel testo e non solo nell'elenco: all'agente si chiede a voce,
+         e «una persona senza contratto» senza dire chi obbliga a cercarla. */
+      pezzi.push(
+        `${scoperti.length === 1 ? "Una persona è" : `${scoperti.length} persone sono`} ` +
+          `senza contratto in vigore adesso: ${scoperti.map((c) => nome(c.waiter)).join(", ")}.`,
+      );
+    }
+    if (upcoming.length > 0) {
+      pezzi.push(
+        `${upcoming.length} ${upcoming.length === 1 ? "contratto scade" : "contratti scadono"} ` +
+          `nei prossimi ${windowDays} giorni: ${upcoming.map(({ contract }) => nome(contract.waiter)).join(", ")}.`,
+      );
     }
 
     return {
-      text: `${upcoming.length} contratti in scadenza nei prossimi ${windowDays} giorni.`,
+      text: pezzi.join(" "),
       structured: {
         type: "list",
-        title: "Contratti in scadenza",
-        items: upcoming.map(({ contract }) => ({
-          title: `${contract.waiter.firstName} ${contract.waiter.lastName}`,
-          subtitle: getContractStatusDetail(contract),
-        })),
+        title: "Contratti da guardare",
+        items: [
+          ...scoperti.map((c) => ({
+            title: nome(c.waiter),
+            subtitle: "Senza contratto in vigore adesso",
+          })),
+          ...upcoming.map(({ contract }) => ({
+            title: nome(contract.waiter),
+            subtitle: getContractStatusDetail(contract),
+          })),
+        ],
       },
     };
   },
