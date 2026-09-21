@@ -65,15 +65,14 @@ model Session {
 }
 
 model Organization {
-  id           String          @id @default(cuid())
-  name         String
-  slug         String          @unique
-  plan         Plan            @default(STARTER)
-  createdAt    DateTime        @default(now())
-  baseCurrency String          @default("EUR")
-  AuditLog     AuditLog[]
-  venues       Venue[]
-  members      OrgMembership[]
+  id        String          @id @default(cuid())
+  name      String
+  slug      String          @unique
+  plan      Plan            @default(STARTER)
+  createdAt DateTime        @default(now())
+  AuditLog  AuditLog[]
+  venues    Venue[]
+  members   OrgMembership[]
 }
 
 model OrgMembership {
@@ -299,7 +298,6 @@ model Venue {
   AutomationWorkflow AutomationWorkflow[]
   BackgroundJob      BackgroundJob[]
   bookings           Booking[]
-  CallLog            CallLog[]
   campaigns          Campaign[]
   ChatSession        ChatSession[]
   Connector          Connector[]
@@ -308,7 +306,6 @@ model Venue {
   Coupon             Coupon[]
   CouponRedemption   CouponRedemption[]
   experiences        Experience[]
-  FloorDecor         FloorDecor[]
   GiftCard           GiftCard[]
   guests             Guest[]
   GuestProviderLink  GuestProviderLink[]
@@ -317,8 +314,6 @@ model Venue {
   MenuItemCost       MenuItemCost[]
   MenuScan           MenuScan[]
   MessageLog         MessageLog[]
-  MessageTemplate    MessageTemplate[]
-  MissedCall         MissedCall[]
   Notification       Notification[]
   Order              Order[]
   POSConnector       POSConnector[]
@@ -329,7 +324,6 @@ model Venue {
   ReviewLinkClick    ReviewLinkClick[]
   rooms              Room[]
   shifts             Shift[]
-  StaffShift         StaffShift[]
   Survey             Survey[]
   tables             Table[]
   blocks             TableBlock[]
@@ -424,7 +418,6 @@ model Room {
   activeLayoutMode    RoomLayoutMode?
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @default(now()) @updatedAt
-  FloorDecor          FloorDecor[]
   venue               Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
   tables              Table[]
   waiterAssignments   WaiterAssignment[]
@@ -622,32 +615,32 @@ model Guest {
 }
 
 model Booking {
-  id                String             @id @default(cuid())
-  reference         String             @unique @default(cuid())
-  venueId           String
-  guestId           String?
-  tableId           String?
-  partySize         Int
-  startsAt          DateTime
-  durationMin       Int                @default(105)
-  status            BookingStatus      @default(CONFIRMED)
-  source            BookingSource      @default(WIDGET)
-  occasion          Occasion?
-  notes             String?
-  internalNotes     String?
-  depositCents      Int                @default(0)
-  depositStatus     DepositStatus      @default(NONE)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  arrivedAt         DateTime?
-  seatedAt          DateTime?
-  closedAt          DateTime?
-  budgetCents       Int?
-  eventType         String?            @db.VarChar(60)
-  isGroup           Boolean            @default(false)
-  combinedTableIds  String[]           @default([])
-  deletedAt         DateTime?
-  deletedBy         String?
+  id               String           @id @default(cuid())
+  reference        String           @unique @default(cuid())
+  venueId          String
+  guestId          String?
+  tableId          String?
+  partySize        Int
+  startsAt         DateTime
+  durationMin      Int              @default(105)
+  status           BookingStatus    @default(CONFIRMED)
+  source           BookingSource    @default(WIDGET)
+  occasion         Occasion?
+  notes            String?
+  internalNotes    String?
+  depositCents     Int              @default(0)
+  depositStatus    DepositStatus    @default(NONE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  arrivedAt        DateTime?
+  seatedAt         DateTime?
+  closedAt         DateTime?
+  budgetCents      Int?
+  eventType        String?          @db.VarChar(60)
+  isGroup          Boolean          @default(false)
+  combinedTableIds String[]         @default([])
+  deletedAt        DateTime?
+  deletedBy        String?
   /// La campagna da cui arriva questa prenotazione, quando arriva da una.
   ///
   /// Si valorizza solo dal widget pubblico, quando il link cliccato porta con
@@ -658,7 +651,7 @@ model Booking {
   /// Serve per rispondere a «quante prenotazioni ha portato quell'email».
   /// Prima c'era `Campaign.bookedCount`, che nessuno scriveva e che mostrava
   /// zero su ogni campagna.
-  campaignId        String?
+  campaignId       String?
   /// La chiave che il widget genera per **un** tentativo di prenotazione.
   ///
   /// Serve a una cosa sola: un cliente che tocca «Prenota» due volte sulla
@@ -666,19 +659,18 @@ model Booking {
   /// la stessa chiave si restituisce la prenotazione già creata invece di
   /// farne un'altra — e l'unicità la garantisce il database, non un controllo
   /// che due richieste in parallelo si scambierebbero senza vedersi.
-  idempotencyKey    String?            @unique
-  Campaign          Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  orders            Order[]
-  guest             Guest?             @relation(fields: [guestId], references: [id])
-  table             Table?             @relation(fields: [tableId], references: [id])
-  venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  BookingEvent      BookingEvent[]
-  BookingPreorder   BookingPreorder?
-  payments          Payment[]
-  VoiceBookingDraft VoiceBookingDraft?
-  messages          MessageLog[]
-  Survey            Survey?
-  phoneCalls        PhoneCall[]
+  idempotencyKey   String?          @unique
+  Campaign         Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  orders           Order[]
+  guest            Guest?           @relation(fields: [guestId], references: [id])
+  table            Table?           @relation(fields: [tableId], references: [id])
+  venue            Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  BookingEvent     BookingEvent[]
+  BookingPreorder  BookingPreorder?
+  payments         Payment[]
+  messages         MessageLog[]
+  Survey           Survey?
+  phoneCalls       PhoneCall[]
 
   @@index([venueId, startsAt])
   @@index([venueId, status])
@@ -946,9 +938,6 @@ model Payment {
   refundedAt              DateTime?
   deletedAt               DateTime?
   deletedBy               String?
-  fxAmountBaseCents       Int?
-  fxBaseCurrency          String?             @db.VarChar(3)
-  fxRateToBase            Decimal?            @db.Decimal(12, 6)
   booking                 Booking?            @relation(fields: [bookingId], references: [id])
   guest                   Guest?              @relation(fields: [guestId], references: [id])
   venue                   Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
@@ -1101,8 +1090,8 @@ model AutomationWorkflow {
 ///
 /// Undici categorie di evento, in tabella dal primo giorno, **mai scritte e
 /// mai lette da nessuna riga di codice**. La quarta tabella morta trovata in
-/// questo prodotto: le prime tre erano del telefono (vedi `CallLog`,
-/// `MissedCall`, `VoiceBookingDraft`).
+/// questo prodotto: le prime tre erano del telefono — `CallLog`, `MissedCall`
+/// e `VoiceBookingDraft`, cancellate il 21 settembre 2026.
 ///
 /// Il piano della fase 6 di Tavolo Voice diceva di accenderla. Guardando cosa
 /// ci sarebbe finito dentro, si e visto che **ogni evento ha gia la sua
@@ -1161,41 +1150,6 @@ model BookingPreorderItem {
   BookingPreorder BookingPreorder @relation(fields: [preorderId], references: [id], onDelete: Cascade)
 
   @@index([preorderId])
-}
-
-/// SUPERATA — non usarla. La chiamata e `PhoneCall`.
-///
-/// Scritta da nessuno e letta da nessuno: arrivo fino allo schema in un primo
-/// tentativo di questo stesso progetto e non fu mai collegata. Il 17 settembre
-/// 2026 ne e nata una quarta (`PhoneCall`) proprio perche questa era qui e
-/// sembrava viva: la registrazione sta in `PhoneCallRecording`, la
-/// trascrizione in `PhoneCallTranscript`, l'intento in `PhoneCall.outcome`, la
-/// bozza in `PhoneCall` stessa.
-///
-/// Resta per ora solo perche contiene righe di demo di aprile 2026. Si
-/// cancellera quando saranno tolte.
-/// **RESTO** (21 set 2026): sostituita da `PhoneCall`.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
-model CallLog {
-  id                String             @id @default(cuid())
-  venueId           String
-  fromNumber        String
-  toNumber          String?
-  direction         CallDirection      @default(INBOUND)
-  status            CallStatus         @default(QUEUED)
-  recordingUrl      String?
-  transcript        String?
-  durationSec       Int?
-  intent            String?
-  draftId           String?            @unique
-  startedAt         DateTime?
-  endedAt           DateTime?
-  createdAt         DateTime           @default(now())
-  VoiceBookingDraft VoiceBookingDraft? @relation(fields: [draftId], references: [id])
-  Venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@index([venueId, createdAt])
 }
 
 /// **NON IMPLEMENTATA** (21 set 2026): prenotare chiacchierando.
@@ -1383,42 +1337,6 @@ model CouponRedemption {
   @@index([venueId, redeemedAt])
 }
 
-/// **RESTO** (21 set 2026): il multivaluta non è mai partito.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
-model ExchangeRate {
-  id        String   @id @default(cuid())
-  from      String   @db.VarChar(3)
-  to        String   @db.VarChar(3)
-  rate      Decimal  @db.Decimal(12, 6)
-  fetchedAt DateTime @default(now())
-
-  @@unique([from, to, fetchedAt])
-  @@index([from, to])
-}
-
-/// **RESTO** (21 set 2026): sostituita da `RoomLayout.elements`.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
-model FloorDecor {
-  id        String    @id @default(cuid())
-  venueId   String
-  roomId    String?
-  kind      DecorKind
-  label     String?
-  posX      Int       @default(0)
-  posY      Int       @default(0)
-  width     Int       @default(80)
-  height    Int       @default(80)
-  rotation  Int       @default(0)
-  color     String?
-  createdAt DateTime  @default(now())
-  Room      Room?     @relation(fields: [roomId], references: [id])
-  Venue     Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@index([venueId])
-}
-
 model GiftCard {
   id                 String               @id @default(cuid())
   venueId            String
@@ -1443,14 +1361,14 @@ model GiftCard {
 }
 
 model GiftCardRedemption {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   giftCardId  String
   amountCents Int
   bookingId   String?
   orderId     String?
-  reason      String?  @db.VarChar(200)
+  reason      String?   @db.VarChar(200)
   createdBy   String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   /// Quando questo utilizzo è stato annullato.
   ///
   /// Non serve a nascondere la riga — il saldo si somma con il segno e la
@@ -1459,7 +1377,7 @@ model GiftCardRedemption {
   /// negative: una carta da 100 € con un utilizzo da 50 finiva con 150 € di
   /// saldo. È la stessa protezione che `CouponRedemption` ha da sempre.
   deletedAt   DateTime?
-  GiftCard    GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  GiftCard    GiftCard  @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
 
   @@index([giftCardId, createdAt])
   @@index([orderId])
@@ -1482,10 +1400,6 @@ model LoyaltyTransaction {
   createdBy   String?
   createdAt   DateTime       @default(now())
   Guest       Guest          @relation(fields: [guestId], references: [id], onDelete: Cascade)
-
-  @@index([guestId, createdAt])
-  @@index([venueId, createdAt])
-  @@index([orderId])
   /// Un conto accredita i punti **una volta sola**, e lo dice il database.
   ///
   /// L'indice vero è **parziale** — solo `kind = 'EARNED'` — e vive nella
@@ -1493,6 +1407,10 @@ model LoyaltyTransaction {
   /// sa dichiarare un indice condizionato. Qui resta la nota, perché un
   /// vincolo che esiste solo in SQL è un vincolo che la prossima persona non
   /// sa di avere.
+
+  @@index([guestId, createdAt])
+  @@index([venueId, createdAt])
+  @@index([orderId])
 }
 
 model MenuCategory {
@@ -1597,46 +1515,6 @@ model MessageLog {
   @@index([venueId, createdAt])
   @@index([venueId, deletedAt])
   @@index([bookingId, kind])
-}
-
-/// **RESTO** (21 set 2026): i testi vivono nel codice.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
-model MessageTemplate {
-  id        String           @id @default(cuid())
-  venueId   String
-  name      String
-  channel   CampaignChannel  @default(EMAIL)
-  subject   String?
-  body      String
-  category  TemplateCategory @default(GENERIC)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  Venue     Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@unique([venueId, name])
-  @@index([venueId, category])
-}
-
-/// SUPERATA — non usarla. La coda da richiamare e `VoiceCallback`.
-///
-/// Stessa storia di `CallLog`: `attempts` e `callbackSentAt` sono quello che
-/// `VoiceCallback` fa con `tentativi` e `stato`, collegato all'ospite e alla
-/// chiamata.
-/// **RESTO** (21 set 2026): sostituita da `PhoneCall` + `VoiceCallback`.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
-model MissedCall {
-  id             String    @id @default(cuid())
-  venueId        String
-  fromNumber     String
-  attempts       Int       @default(1)
-  callbackSentAt DateTime?
-  notes          String?
-  createdAt      DateTime  @default(now())
-  Venue          Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@index([venueId, createdAt])
 }
 
 model Notification {
@@ -2359,24 +2237,6 @@ enum StaffRequestStatus {
 // collegato a niente. Non e' il turno di WorkShift, che e' qui sopra. Resta in
 // piedi solo perche' toglierlo e' una migrazione distruttiva, e quelle
 // bloccano le migrazioni in attesa sulle anteprime (vedi scripts/migrate-safe.ts).
-/// **RESTO** (21 set 2026): sostituita da `WorkShift`.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
-model StaffShift {
-  id          String   @id @default(cuid())
-  venueId     String
-  staffName   String
-  role        String?
-  date        DateTime
-  hours       Float    @default(8)
-  hourlyCents Int      @default(1200)
-  notes       String?
-  createdAt   DateTime @default(now())
-  Venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  @@index([venueId, date])
-}
-
 model Survey {
   id             String          @id @default(cuid())
   token          String          @unique
@@ -2404,35 +2264,6 @@ model SurveyResponse {
   Survey    Survey    @relation(fields: [surveyId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
-}
-
-/// SUPERATA — non usarla.
-///
-/// La prenotazione raccolta al telefono nasce direttamente come `Booking`
-/// `PENDING` con `source = VOICE` (vedi `server/prenotazione-telefonica.ts`):
-/// una bozza in una tabella a parte era un secondo posto dove guardare, e il
-/// ristoratore ne ha gia uno — le prenotazioni da confermare.
-/// **RESTO** (21 set 2026): sostituita da `VoiceRecovery`.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
-model VoiceBookingDraft {
-  id            String      @id @default(cuid())
-  venueId       String
-  callerName    String?
-  phone         String?
-  partySize     Int?
-  preferredDate String?
-  preferredTime String?
-  notes         String?
-  status        DraftStatus @default(NEW)
-  bookingId     String?     @unique
-  reviewedBy    String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  CallLog       CallLog?
-  Booking       Booking?    @relation(fields: [bookingId], references: [id])
-
-  @@index([venueId, createdAt])
 }
 
 model WaitlistEntry {
@@ -2896,7 +2727,7 @@ model VoiceRecovery {
   numero String @db.VarChar(40)
 
   /// L'hash del token. Il token vero viaggia **solo** nel messaggio.
-  tokenHash String  @unique
+  tokenHash String   @unique
   scadeIl   DateTime
 
   // ── quello che il risponditore aveva gia raccolto ────────────────────
@@ -2983,8 +2814,8 @@ enum VoiceRecoveryInvio {
 /// ieri il telefono non va» la prima domanda e chi ha toccato cosa, e la
 /// risposta deve essere in tabella.
 model VenueServizio {
-  id      String         @id @default(cuid())
-  venueId String
+  id       String         @id @default(cuid())
+  venueId  String
   servizio ServizioLocale
 
   attivo Boolean @default(true)
@@ -3250,8 +3081,8 @@ enum VoiceRecordingConsent {
 /// Una persona da richiamare.
 ///
 /// E la coda operativa: una chiamata persa non e una riga di storico, e un
-/// lavoro da fare. `MissedCall` voleva essere questo e non e mai stata
-/// collegata a niente.
+/// lavoro da fare. `MissedCall` voleva essere questo, non e mai stata
+/// collegata a niente, ed e stata cancellata il 21 settembre 2026.
 model VoiceCallback {
   id      String @id @default(cuid())
   venueId String
@@ -3525,20 +3356,6 @@ enum BookingEventKind {
   CANCELLED
 }
 
-enum CallDirection {
-  INBOUND
-  OUTBOUND
-}
-
-enum CallStatus {
-  QUEUED
-  RINGING
-  IN_PROGRESS
-  COMPLETED
-  MISSED
-  FAILED
-}
-
 enum ChatRole {
   USER
   BOT
@@ -3630,34 +3447,6 @@ enum CouponStatus {
   PAUSED
   EXPIRED
   ARCHIVED
-}
-
-enum DecorKind {
-  PLANT
-  SOFA
-  ARMCHAIR
-  BAR
-  COUNTER
-  KITCHEN
-  DJ_BOOTH
-  STAGE
-  COLUMN
-  DIVIDER
-  DOOR
-  WINDOW
-  ENTRANCE
-  RESTROOM
-  POOL
-  STAIRS
-  RUG
-  LAMP
-  LABEL
-}
-
-enum DraftStatus {
-  NEW
-  CONFIRMED
-  REJECTED
 }
 
 enum GiftCardStatus {
@@ -3806,18 +3595,6 @@ enum Sentiment {
   PROMOTER
   PASSIVE
   DETRACTOR
-}
-
-enum TemplateCategory {
-  GENERIC
-  WELCOME
-  REMINDER
-  THANK_YOU
-  PROMO
-  WIN_BACK
-  BIRTHDAY
-  ANNIVERSARY
-  EVENT
 }
 
 enum WaitlistStatus {

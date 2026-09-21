@@ -100,6 +100,18 @@ describe("le migrazioni di questo repo", () => {
     // precedente, così durante il deploy nessun client Prisma ha selezionato
     // una colonna appena cancellata. Vedi prisma/migrations/README.md.
     "20260907230000_via_bookedcount",
+    // I sette resti: `CallLog`, `MissedCall`, `VoiceBookingDraft`, `StaffShift`,
+    // `FloorDecor`, `MessageTemplate`, `ExchangeRate` — sostituite da
+    // `PhoneCall`, `VoiceRecovery`, `WorkShift`, `RoomLayout.elements` e dai
+    // testi nel codice. **Nessuna riga di codice le interrogava**, quindi
+    // nessun client Prisma vecchio ci manda una query durante il rilascio.
+    //
+    // Che fossero vuote non era un fatto verificabile da qui — il database di
+    // produzione non si guarda — e per questo il fatto lo verifica la
+    // migrazione stessa: un blocco `DO` conta le righe e si ferma nominando
+    // tabella e numero se ne trova una sola. Vedi
+    // docs/TABELLE-SENZA-CODICE.md.
+    "20260921120000_via_i_sette_resti",
   ];
 
   const cartella = join(process.cwd(), "prisma", "migrations");
