@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  MITTENTE_DAL_LOCALE,
   esitoBrevoSms,
   mandaSms,
+  mittenteDaNome,
   mittenteSms,
   numeroPerBrevo,
   smsConfigurato,
@@ -30,7 +32,9 @@ const ambiente = { ...process.env };
 
 beforeEach(() => {
   process.env.BREVO_API_KEY = "chiave-di-prova";
-  process.env.BREVO_SMS_SENDER = "Tavolo";
+  /* «locale» e l'interruttore: accende il canale e lascia il mittente al nome
+     di ogni ristorante. */
+  process.env.BREVO_SMS_SENDER = MITTENTE_DAL_LOCALE;
 });
 
 afterEach(() => {
@@ -39,18 +43,31 @@ afterEach(() => {
 });
 
 describe("quando il canale è acceso", () => {
-  it("serve la chiave **e** il mittente: con uno solo non si manda", () => {
+  it("serve la chiave **e** l'interruttore: con uno solo non si manda", () => {
     expect(smsConfigurato()).toBe(true);
 
     delete process.env.BREVO_SMS_SENDER;
-    /* Un mittente indovinato è un messaggio che arriva a nome di qualcun
-       altro: meglio canale spento. */
+    /* La chiave del fornitore c'e gia per le email: senza un interruttore
+       suo, il canale si accenderebbe da solo alla prima pubblicazione e i
+       primi a saperlo sarebbero i clienti. */
     expect(smsConfigurato()).toBe(false);
-    expect(mittenteSms()).toBeNull();
+    expect(mittenteSms("Nomad")).toBeNull();
 
-    process.env.BREVO_SMS_SENDER = "Tavolo";
+    process.env.BREVO_SMS_SENDER = MITTENTE_DAL_LOCALE;
     delete process.env.BREVO_API_KEY;
     expect(smsConfigurato()).toBe(false);
+  });
+
+  it("il mittente e il nome del locale, non il nostro", () => {
+    /* Il cliente ha un rapporto col ristorante: un mittente che non conosce e
+       un messaggio che sembra spam, quindi non letto, quindi un tavolo vuoto. */
+    expect(mittenteSms("Nomad")).toBe("Nomad");
+  });
+
+  it("un mittente scritto a mano vince sempre", () => {
+    /* Serve il giorno in cui un operatore pretende un mittente registrato. */
+    process.env.BREVO_SMS_SENDER = "Tavolo";
+    expect(mittenteSms("Nomad")).toBe("Tavolo");
   });
 
   it("la disponibilità si legge a ogni chiamata, non all'avvio", () => {
@@ -73,6 +90,36 @@ describe("quando il canale è acceso", () => {
   });
 });
 
+describe("il nome del locale come mittente", () => {
+  it("taglia rispettando le parole, non a meta", () => {
+    /* Undici caratteri e il massimo di un mittente alfanumerico. «Trattoriad»
+       sembra un errore, e un mittente che sembra un errore fa lo stesso danno
+       di uno sconosciuto. */
+    expect(mittenteDaNome("Trattoria dell'Angolo")).toBe("Trattoria");
+    expect(mittenteDaNome("Riva Beach Club")).toBe("RivaBeach");
+    expect(mittenteDaNome("Nomad")).toBe("Nomad");
+  });
+
+  it("toglie accenti, spazi e punteggiatura", () => {
+    /* Un mittente con un accento lo rifiuta il fornitore, su **ogni**
+       messaggio di quel locale. */
+    /* «Caffedel» e non «CaffedelPor»: si fermano le parole intere, e «Porto»
+       non ci sta. Meglio perdere una parola che tagliarla. */
+    expect(mittenteDaNome("Caffè del Porto")).toBe("Caffedel");
+    expect(mittenteDaNome("Da Gino & Co.")).toBe("DaGinoCo");
+  });
+
+  it("una parola piu lunga di undici si taglia, e non sparisce", () => {
+    expect(mittenteDaNome("Ristorantissimo")).toBe("Ristorantis");
+  });
+
+  it("un nome fatto di soli simboli non produce un mittente finto", () => {
+    expect(mittenteDaNome("***")).toBeNull();
+    expect(mittenteDaNome("")).toBeNull();
+    expect(mittenteDaNome(null)).toBeNull();
+  });
+});
+
 describe("il numero come lo vuole il fornitore", () => {
   it("prefisso internazionale, senza il più", () => {
     /* Il numero scritto come lo scrive l'operatore in sala verrebbe rifiutato
@@ -86,7 +133,9 @@ describe("il numero come lo vuole il fornitore", () => {
     expect(numeroPerBrevo("412")).toBeNull();
     const chiamate = vi.fn();
     globalThis.fetch = chiamate as never;
-    await expect(mandaSms({ to: "412", body: "ciao" })).rejects.toThrow(/numero/);
+    await expect(mandaSms({ to: "412", body: "ciao", nomeLocale: "Nomad" })).rejects.toThrow(
+      /numero/,
+    );
     expect(chiamate).not.toHaveBeenCalled();
   });
 });
@@ -124,7 +173,9 @@ describe("la richiesta che parte", () => {
     });
     globalThis.fetch = chiamate as never;
 
-    expect(await mandaSms({ to: E164, body: "Ti aspettiamo domani" })).toEqual({ providerId: "42" });
+    expect(
+      await mandaSms({ to: E164, body: "Ti aspettiamo domani", nomeLocale: "Nomad" }),
+    ).toEqual({ providerId: "42" });
 
     const [url, opzioni] = chiamate.mock.calls[0]!;
     expect(String(url)).toContain("transactionalSMS");
@@ -132,7 +183,7 @@ describe("la richiesta che parte", () => {
     expect(o.headers["api-key"]).toBe("chiave-di-prova");
     const corpo = JSON.parse(o.body);
     expect(corpo).toMatchObject({
-      sender: "Tavolo",
+      sender: "Nomad",
       recipient: "393331112233",
       content: "Ti aspettiamo domani",
       /* `transactional` e non `marketing`: un promemoria di una prenotazione
@@ -146,7 +197,9 @@ describe("la richiesta che parte", () => {
     delete process.env.BREVO_API_KEY;
     const chiamate = vi.fn();
     globalThis.fetch = chiamate as never;
-    await expect(mandaSms({ to: E164, body: "ciao" })).rejects.toThrow("sms_not_configured");
+    await expect(mandaSms({ to: E164, body: "ciao", nomeLocale: "Nomad" })).rejects.toThrow(
+      "sms_not_configured",
+    );
     expect(chiamate).not.toHaveBeenCalled();
   });
 });

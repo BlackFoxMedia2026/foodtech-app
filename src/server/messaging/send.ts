@@ -128,7 +128,9 @@ const PROVIDERS: Record<MessageChannel, Provider> = {
   SMS: {
     available: smsConfigurato,
     async send(message) {
-      return mandaSms({ to: message.to, body: message.body });
+      /* Il nome del locale diventa il mittente: il cliente riceve da «Nomad»,
+         non da un nome che non conosce. Vedi `mittenteSms`. */
+      return mandaSms({ to: message.to, body: message.body, nomeLocale: message.venueName });
     },
   },
   /*
