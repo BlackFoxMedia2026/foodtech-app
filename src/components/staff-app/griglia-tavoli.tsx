@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, BellRing, ChefHat, ReceiptText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { STATO_STAFF_BREVE, STATO_STAFF_LABEL } from "@/lib/stato-tavolo-staff";
 import type { TavoloStaff } from "@/server/staff-app/sala";
 import { GlifoTavolo, RIQUADRO_GLIFO } from "./glifo-tavolo";
+import { CALORE_RICHIAMO, ICONA_RICHIAMO } from "./segni-richiamo";
 
 /**
  * **I tavoli come tasti.**
@@ -45,13 +45,6 @@ import { GlifoTavolo, RIQUADRO_GLIFO } from "./glifo-tavolo";
  * uno che aspetta i primi.
  */
 
-const ICONA_RICHIAMO = {
-  PIATTI_PRONTI: BellRing,
-  CONTO: ReceiptText,
-  ALLERGIA: AlertTriangle,
-  NOTA: ChefHat,
-} as const;
-
 export function CardTavoloGriglia({
   tavolo,
   scala,
@@ -67,8 +60,19 @@ export function CardTavoloGriglia({
 }) {
   const richiamo = tavolo.richiamo;
   const Icona = richiamo ? ICONA_RICHIAMO[richiamo.tipo] : null;
-  const allarme = richiamo?.tipo === "ALLERGIA";
-  const urgente = tavolo.tono === "urgente" || allarme;
+  const calore = richiamo ? CALORE_RICHIAMO[richiamo.tipo] : null;
+  const allarme = calore === "allarme";
+  /*
+    Solo i richiami «caldi» accendono il tasto.
+
+    Da quando un tavolo seduto senza comanda è un richiamo — e lo è, ed è il
+    motivo di tutta questa riscrittura — la metà della sala ha un richiamo
+    quasi sempre. Se ognuno di essi alzasse il bordo, la Sala tornerebbe la
+    schermata uniforme che la griglia esisteva per non essere: dodici tasti
+    accesi non distinguono niente da niente, e un tavolo da riassettare
+    griderebbe come due piatti che si freddano.
+  */
+  const urgente = tavolo.tono === "urgente" || allarme || calore === "ora";
 
   /*
     `overflow-hidden` è una **garanzia**, non una rifinitura: il disegno del
@@ -108,7 +112,11 @@ export function CardTavoloGriglia({
           aria-hidden="true"
           className={cn(
             "absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full",
-            allarme ? "bg-destructive/20 text-destructive-soft" : "bg-accent/25 text-accent-strong",
+            allarme
+              ? "bg-destructive/20 text-destructive-soft"
+              : calore === "ora"
+                ? "bg-accent/25 text-accent-strong"
+                : "bg-card-sunken text-tertiary-foreground",
           )}
         >
           <Icona

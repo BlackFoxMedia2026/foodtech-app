@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   BellRing,
@@ -10,6 +11,7 @@ import {
   Plus,
   ReceiptText,
   StickyNote,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { euro } from "@/lib/euro";
@@ -26,6 +28,7 @@ import { TestataRitorno } from "./testata-staff";
 import { Foglio } from "./foglio";
 import { MenuComanda } from "./menu-comanda";
 import { RiepilogoComanda } from "./riepilogo-comanda";
+import { CALORE_RICHIAMO, daQuanto } from "./segni-richiamo";
 
 /**
  * **Il tavolo aperto** — §7, §8, §14, §20, §23, §25, §26.
@@ -95,15 +98,44 @@ export function TavoloOperativo({
     }
   }
 
-  async function apriComanda() {
+  const apriComanda = useCallback(async () => {
     const esito = await azione(() =>
       chiedi<{ orderId: string; comanda: ComandaView }>(
-        `/api/staff-app/tavolo/${tavolo.tableId}/comanda`,
+        `/api/staff-app/tavolo/${iniziale.tableId}/comanda`,
         { metodo: "POST" },
       ),
     );
     if (esito) setMenuAperto(true);
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iniziale.tableId]);
+
+  /*
+    **«Prendi comanda» dalla dashboard.**
+
+    La card di «Da gestire ora» non apre un suo flusso di comanda: porta qui
+    con `?comanda=1`, e il menu si apre da solo sul tavolo e sulla
+    prenotazione giusti. Il cameriere non riseleziona niente perché non c'è
+    niente da selezionare — è lo stesso schermo, lo stesso conto, la stessa
+    bozza che troverebbe entrando a mano.
+
+    Un secondo percorso «comanda rapida» sarebbe stato più veloce da scrivere
+    e avrebbe prodotto due modi di aprire una comanda: quello usato e quello
+    che si rompe senza che nessuno se ne accorga.
+
+    `partito` impedisce che la sonda del realtime, che riscrive lo stato ogni
+    volta che qualcosa si muove in sala, riapra il menu dopo che è stato
+    chiuso: il parametro resta nell'indirizzo finché non si torna indietro.
+  */
+  const parametri = useSearchParams();
+  const vuoleComanda = parametri.get("comanda") === "1";
+  const partito = useRef(false);
+
+  useEffect(() => {
+    if (!vuoleComanda || partito.current) return;
+    if (!permessi.includes("create_orders") || !iniziale.seduta) return;
+    partito.current = true;
+    void apriComanda();
+  }, [vuoleComanda, permessi, iniziale.seduta, apriComanda]);
 
   function cambiaStato(a: string, testo: string) {
     return azione(
@@ -131,18 +163,32 @@ export function TavoloOperativo({
     <div className="schermo">
       <TestataRitorno
         titolo={`Tavolo ${tavolo.label}`}
-        sottotitolo={[
-          tavolo.seduta ? `${tavolo.seduta.coperti} ospiti` : `${tavolo.posti} posti`,
-          tavolo.roomName,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
+        sottotitolo={[tavolo.seduta?.ospite, tavolo.roomName].filter(Boolean).join(" · ")}
         indietro="/staff-app/sala"
         tono={tavolo.tono}
         azione={<EtichettaStato stato={tavolo.stato} tono={tavolo.tono} />}
       />
 
       <div className="fill-scroll space-y-3 px-4 pb-4 pt-3">
+        {/*
+          **Chi c'è, da quando, e chi lo segue** — prima di tutto il resto.
+
+          La testata è una barra di navigazione alta 56 px: ci sta il nome del
+          tavolo e poco altro, e troncava il cognome degli ospiti. Questa
+          scheda è la seduta vera e propria, e risponde in tre righe alle
+          domande con cui si arriva su un tavolo: chi è seduto, da che ora, in
+          che situazione — e, quando non ce l'ha nessuno, il tasto per
+          prenderselo.
+        */}
+        {tavolo.seduta && (
+          <SchedaSeduta
+            tavolo={tavolo}
+            puoPrendere={puo("manage_tables")}
+            inCorso={inCorso}
+            onPreso={ricarica}
+          />
+        )}
+
         {/* Il richiamo, se c'è: sopra a tutto. */}
         {pronte.length > 0 && (
           <section className="rounded-lg border border-accent/70 bg-accent/15 p-3">
@@ -362,6 +408,116 @@ export function TavoloOperativo({
         </>
       )}
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  La seduta: chi c'è, da quando, chi lo segue                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * **La scheda della seduta.**
+ *
+ * Tre fatti e un tasto, e ognuno risponde a una domanda che prima si faceva
+ * scorrendo o non si poteva fare per niente:
+ *
+ * - **chi è seduto e da che ora.** Il nome stava nella barra di navigazione,
+ *   dove veniva troncato al primo cognome lungo; l'ora di seduta non c'era da
+ *   nessuna parte, e «quando si sono seduti» è la domanda con cui si decide
+ *   se proporre i dolci;
+ * - **in che situazione**, con il cronometro. È lo stesso richiamo della
+ *   dashboard, calcolato dalla stessa funzione: un tavolo che in Home è
+ *   «appena seduti» e qui dicesse «occupato» sarebbero due prodotti;
+ * - **chi lo segue.** Non esisteva. Un cameriere che apriva un tavolo non
+ *   sapeva se ci fosse già un collega sopra, e un tavolo di nessuno non
+ *   poteva diventare di qualcuno senza passare dal maître.
+ *
+ * «Prendo io» sta qui e non fra le azioni in fondo perché non è un'operazione
+ * sul tavolo: è una dichiarazione su **chi sono io rispetto a questo tavolo**,
+ * e appartiene all'intestazione come il nome dell'ospite.
+ */
+function SchedaSeduta({
+  tavolo,
+  puoPrendere,
+  inCorso,
+  onPreso,
+}: {
+  tavolo: TavoloAperto;
+  puoPrendere: boolean;
+  inCorso: boolean;
+  onPreso: () => void | Promise<void>;
+}) {
+  const avvisi = useAvvisi();
+  const [prendendo, setPrendendo] = useState(false);
+  const seduta = tavolo.seduta;
+  if (!seduta) return null;
+
+  const quanto = daQuanto(tavolo.daMinutiStato);
+  const calore = tavolo.richiamo ? CALORE_RICHIAMO[tavolo.richiamo.tipo] : null;
+
+  async function prendi() {
+    if (prendendo) return;
+    setPrendendo(true);
+    try {
+      await chiedi(`/api/staff-app/tavolo/${tavolo.tableId}/in-carico`, { metodo: "POST" });
+      avvisi.mostra(`Tavolo ${tavolo.label} è tuo`);
+      await onPreso();
+    } catch (e) {
+      avvisi.problema(
+        e instanceof ErroreStaff ? e.message : "Non è stato possibile prendere il tavolo.",
+      );
+    } finally {
+      setPrendendo(false);
+    }
+  }
+
+  return (
+    <section className="sa-piano p-3.5">
+      <p className="sa-scheda truncate">{seduta.ospite}</p>
+      <p className="t-nota mt-1">
+        {[
+          seduta.coperti === 1 ? "1 ospite" : `${seduta.coperti} ospiti`,
+          seduta.dalle ? `dalle ${seduta.dalle}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </p>
+
+      {tavolo.richiamo && (
+        <p
+          className={cn(
+            "mt-2 flex items-baseline gap-2 text-sm font-medium",
+            calore === "allarme"
+              ? "text-destructive-soft"
+              : calore === "ora"
+                ? "text-accent-strong"
+                : "text-tertiary-foreground",
+          )}
+        >
+          <span className="min-w-0 flex-1">{tavolo.richiamo.testo}</span>
+          {quanto && <span className="t-nota shrink-0 tabular-nums">{quanto}</span>}
+        </p>
+      )}
+
+      <div className="mt-3 flex items-center gap-3 border-t border-border pt-3">
+        <Users className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <p className="t-nota min-w-0 flex-1 truncate">
+          {tavolo.coperto.length > 0
+            ? `Segue ${tavolo.coperto.map((c) => c.nome).join(", ")}`
+            : "Nessun cameriere assegnato"}
+        </p>
+        {puoPrendere && !tavolo.mio && (
+          <button
+            type="button"
+            disabled={inCorso || prendendo}
+            onClick={prendi}
+            className="sa-tocco shrink-0 rounded-full border border-border-strong px-3.5 py-2 text-[0.8125rem] font-medium text-accent-strong disabled:opacity-60"
+          >
+            Prendo io
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 

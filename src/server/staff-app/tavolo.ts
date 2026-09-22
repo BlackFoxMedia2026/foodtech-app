@@ -4,8 +4,10 @@ import { dateKeyInVenue } from "@/lib/venue-time";
 import { deriveTableLiveStatus } from "@/lib/table-status";
 import {
   riassumiComande,
+  richiamoTavolo,
   statoTavoloStaff,
   TONO_STATO,
+  type Richiamo,
   type StatoTavoloStaff,
   type TonoStato,
 } from "@/lib/stato-tavolo-staff";
@@ -13,7 +15,7 @@ import { sommeDelConto } from "@/server/conto-tavolo";
 import { openOrderForBooking } from "@/server/orders";
 import { recordAudit, type AuditActor } from "@/server/audit";
 import { assicuraOspiti, comandeDelConto, type ComandaView, type OspiteView } from "@/server/comande/comande";
-import { servizioCorrente, tavoliAssegnatiA } from "./sala";
+import { copertureDelServizio, servizioCorrente, type Copertura } from "./sala";
 
 /**
  * **Il tavolo aperto.**
@@ -60,6 +62,17 @@ export type TavoloAperto = {
   stato: StatoTavoloStaff;
   tono: TonoStato;
   mio: boolean;
+  /**
+   * **Chi segue questo tavolo**, per nome. Vuoto quando non lo segue nessuno.
+   *
+   * Sta nella testata del tavolo aperto perché è la prima domanda di chi
+   * arriva su un tavolo che non è suo — «ce l'ha già qualcuno?» — e perché
+   * senza risposta il tasto «prendo io» sarebbe un tasto che si preme al
+   * buio.
+   */
+  coperto: Copertura[];
+  /** Seduti e senza nessun cameriere assegnato: si può prendere in carico. */
+  scoperto: boolean;
   servizio: string;
   /** Chi c'è adesso. Nullo su un tavolo libero. */
   seduta: {
@@ -69,6 +82,8 @@ export type TavoloAperto = {
     startsAt: string;
     seatedAt: string | null;
     daMinuti: number | null;
+    /** L'ora in cui si sono seduti, nel fuso del locale: «11:15». */
+    dalle: string | null;
     status: string;
   } | null;
   conto: ContoTavoloStaff | null;
@@ -79,6 +94,19 @@ export type TavoloAperto = {
   note: NotaTavolo[];
   /** Piatti pronti al passe su questo tavolo, in pezzi. */
   piattiPronti: number;
+  /**
+   * **Cosa chiede questo tavolo adesso**, calcolato con la stessa funzione
+   * della dashboard e della Sala.
+   *
+   * Non è una ripetizione di quello che si legge scorrendo la pagina: è la
+   * riga che si legge *senza* scorrere, in testata, e soprattutto è la
+   * garanzia che il tavolo dica la stessa cosa in tutte e tre le schermate.
+   * Un tavolo che in Home è «appena seduti» e aprendolo è «occupato» sono due
+   * prodotti.
+   */
+  richiamo: Richiamo | null;
+  /** Da quanti minuti dura la situazione corrente. Vedi `Richiamo.daMinuti`. */
+  daMinutiStato: number | null;
 };
 
 export class TavoloError extends Error {
@@ -153,7 +181,7 @@ export async function apriTavolo(
      vorrebbe dire due letture delle fasce per la stessa risposta. */
   const servizio = await servizioCorrente(ctx.venueId, ctx.timezone, adesso);
 
-  const [prenotazioni, blocchi, miei] = await Promise.all([
+  const [prenotazioni, blocchi, coperture] = await Promise.all([
     db.booking.findMany({
       where: {
         venueId: ctx.venueId,
@@ -173,8 +201,10 @@ export async function apriTavolo(
       where: { venueId: ctx.venueId, tableId, startsAt: { lte: adesso }, endsAt: { gte: adesso } },
       select: { id: true },
     }),
-    tavoliAssegnatiA(ctx.venueId, ctx.waiterId, giorno, servizio),
+    copertureDelServizio(ctx.venueId, giorno, servizio),
   ]);
+
+  const chiCopre = coperture.get(tableId) ?? [];
 
   const base = deriveTableLiveStatus(
     tavolo,
@@ -241,6 +271,57 @@ export async function apriTavolo(
     pagamentoInCorso: (conto?.inCorsoCents ?? 0) > 0,
   });
 
+  /*
+    **Il cronometro dello stato**, dalle stesse date che la Sala legge in
+    blocco — qui però su una sola serie di comande, quindi si leggono a mano
+    invece di aggregarle in `comandePerTavolo`.
+
+    La regola è la stessa e vale la pena ripeterla: per i piatti al passe
+    conta il **più vecchio**, perché è quello che si fredda. Prendere l'ultimo
+    azzererebbe il conteggio ogni volta che la cucina manda fuori qualcos'altro
+    dello stesso tavolo.
+  */
+  const istante = (s: string | null | undefined) => (s ? new Date(s).getTime() : null);
+  const minimo = (valori: (number | null)[]) => {
+    const buoni = valori.filter((v): v is number => v !== null);
+    return buoni.length > 0 ? Math.min(...buoni) : null;
+  };
+  const massimo = (valori: (number | null)[]) => {
+    const buoni = valori.filter((v): v is number => v !== null);
+    return buoni.length > 0 ? Math.max(...buoni) : null;
+  };
+
+  const vive = comande.filter((c) => c.status !== "ANNULLATA");
+  const sedutiDa = corrente?.seatedAt?.getTime() ?? null;
+  const primoPronto = minimo(vive.filter((c) => c.status === "PRONTA").map((c) => istante(c.readyAt)));
+  const ultimoInvio = massimo(vive.map((c) => istante(c.sentAt)));
+  const ultimoServito = massimo(vive.map((c) => istante(c.servedAt)));
+  const bozzaAperta = minimo(
+    vive.filter((c) => c.status === "BOZZA" && c.righe.length > 0).map((c) => istante(c.createdAt)),
+  );
+  const inizioStato =
+    stato === "CONTO" || stato === "PAGAMENTO"
+      ? istante(conto?.contoRichiestoAt ?? null)
+      : stato === "IN_SERVIZIO"
+        ? (primoPronto ?? ultimoInvio)
+        : stato === "COMANDA_INVIATA"
+          ? ultimoInvio
+          : stato === "ORDINAZIONE"
+            ? bozzaAperta
+            : stato === "SERVITO" || stato === "VERSO_IL_CONTO"
+              ? (ultimoServito ?? sedutiDa)
+              : sedutiDa;
+
+  const daMinutiStato =
+    inizioStato === null ? null : Math.max(0, Math.round((adesso.getTime() - inizioStato) / 60_000));
+
+  const allergie =
+    comande
+      .flatMap((c) => c.righe)
+      .filter((r) => r.status !== "ANNULLATA" && r.status !== "SERVITA")
+      .filter((r) => r.allergeni.length > 0 || r.notaAllergia).length +
+    (corrente?.guest?.allergies ? 1 : 0);
+
   return {
     tableId: tavolo.id,
     label: tavolo.label,
@@ -249,7 +330,9 @@ export async function apriTavolo(
     roomName: tavolo.room?.name ?? null,
     stato,
     tono: TONO_STATO[stato],
-    mio: miei.has(tavolo.id),
+    mio: chiCopre.some((c) => c.waiterId === ctx.waiterId),
+    coperto: chiCopre,
+    scoperto: chiCopre.length === 0 && !!corrente,
     servizio,
     seduta: corrente
       ? {
@@ -262,6 +345,14 @@ export async function apriTavolo(
           seatedAt: corrente.seatedAt?.toISOString() ?? null,
           daMinuti: corrente.seatedAt
             ? Math.max(0, Math.round((adesso.getTime() - corrente.seatedAt.getTime()) / 60_000))
+            : null,
+          dalle: corrente.seatedAt
+            ? new Intl.DateTimeFormat("it-IT", {
+                timeZone: ctx.timezone,
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              }).format(corrente.seatedAt)
             : null,
           status: corrente.status,
         }
@@ -285,6 +376,16 @@ export async function apriTavolo(
         })
       : [],
     piattiPronti,
+    richiamo: richiamoTavolo({
+      stato,
+      piattiPronti,
+      contoRichiesto: !!conto?.contoRichiestoAt,
+      allergie,
+      dettaglioAllergia: corrente?.guest?.allergies ?? null,
+      notaImportante: null,
+      daMinuti: daMinutiStato,
+    }),
+    daMinutiStato,
   };
 }
 

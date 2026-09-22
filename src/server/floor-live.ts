@@ -33,6 +33,16 @@ export type TableLiveInfo = {
     partySize: number;
     /** Orario previsto, come istante ISO. */
     startsAt: string;
+    /**
+     * **Quando si sono seduti davvero**, come istante ISO. Nullo finché
+     * nessuno li ha accomodati.
+     *
+     * Diverso da `startsAt`, che è l'ora prenotata: un tavolo delle 20:00 che
+     * si siede alle 20:25 sta lì da cinque minuti e non da trenta, e tutti i
+     * cronometri del servizio — «appena seduti», «da controllare» — contano da
+     * qui.
+     */
+    seatedAt: string | null;
     status: string;
     /** Per chi è seduto: minuti alla fine prevista (negativo = oltre). */
     minutesToFree: number | null;
@@ -312,6 +322,7 @@ export async function getFloorLive(
               : "Senza nome",
             partySize: corrente.partySize,
             startsAt: corrente.startsAt.toISOString(),
+            seatedAt: corrente.seatedAt?.toISOString() ?? null,
             status: corrente.status,
             minutesToFree: liberazione ? liberazione.minuti : null,
             liberoVerso: liberazione ? comeLiberoVerso(liberazione, tipica?.misurate ?? null) : null,

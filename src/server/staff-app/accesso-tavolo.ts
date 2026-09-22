@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { dateKeyInVenue } from "@/lib/venue-time";
 import { getFloorLive } from "@/server/floor-live";
 import type { PermessoStaff } from "@/lib/permessi-staff";
-import { servizioCorrente, tavoliAssegnatiA } from "./sala";
+import { copertureDelServizio, servizioCorrente } from "./sala";
 
 /**
  * **Questo tavolo è tuo?**
@@ -24,8 +24,26 @@ export async function tavoloConsentito(
   if (ctx.permessi.includes("view_all_tables")) return true;
   const servizio = await servizioCorrente(ctx.venueId, ctx.timezone, adesso);
   const giorno = dateKeyInVenue(adesso, ctx.timezone);
-  const miei = await tavoliAssegnatiA(ctx.venueId, ctx.waiterId, giorno, servizio);
-  return miei.has(tableId);
+  const coperture = await copertureDelServizio(ctx.venueId, giorno, servizio);
+  const chiCopre = coperture.get(tableId) ?? [];
+  if (chiCopre.some((c) => c.waiterId === ctx.waiterId)) return true;
+
+  /*
+    **Il tavolo scoperto passa**, ed è la stessa distinzione che questo file
+    fa già più in basso per i tavoli liberi, spostata di un passo.
+
+    `view_all_tables` protegge **i tavoli degli altri**: il conto di un
+    collega, la comanda che sta battendo, le allergie dei suoi ospiti. Un
+    tavolo su cui *nessuno* è assegnato non è di un collega — è del servizio,
+    e rifiutarlo vuol dire che quattro persone sedute restano fuori dalla
+    portata di chiunque non sia il maître. Nei locali che non usano le
+    assegnazioni, cioè tanti, vuol dire che la Staff App di un cameriere non
+    apre nessun tavolo mai.
+
+    Il momento in cui smette di passare è preciso: appena qualcuno preme
+    «prendo io», la copertura c'è e questo ramo si chiude per tutti gli altri.
+  */
+  return chiCopre.length === 0;
 }
 
 /**

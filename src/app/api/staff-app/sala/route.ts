@@ -33,6 +33,10 @@ export async function GET(req: Request) {
           manifesta cinque secondi dopo essere entrati.
         */
         ancheLiberi: true,
+        /* E per lo stesso motivo gli scoperti: la pagina li mostra, e un
+           aggiornamento che li togliesse farebbe sparire dallo schermo
+           proprio i tavoli che non ha ancora preso nessuno. */
+        ancheScoperti: true,
       },
     );
     return NextResponse.json(sala, { headers: { "Cache-Control": "no-store" } });

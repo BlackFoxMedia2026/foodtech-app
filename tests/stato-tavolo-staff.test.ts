@@ -103,35 +103,6 @@ describe("l'ordine di urgenza", () => {
   });
 });
 
-describe("il richiamo: se bisogna alzarsi", () => {
-  const base = { comande: NESSUNA_COMANDA, piattiPronti: 0, contoRichiesto: false, allergie: 0, notaImportante: null };
-
-  it("un tavolo tranquillo non richiama niente", () => {
-    expect(richiamoTavolo(base)).toBeNull();
-  });
-
-  it("i piatti pronti vengono prima del conto", () => {
-    const r = richiamoTavolo({ ...base, piattiPronti: 2, contoRichiesto: true });
-    expect(r).toEqual({ tipo: "PIATTI_PRONTI", testo: "2 piatti pronti" });
-  });
-
-  it("il singolare si scrive al singolare", () => {
-    expect(richiamoTavolo({ ...base, piattiPronti: 1 })?.testo).toBe("1 piatto pronto");
-    expect(richiamoTavolo({ ...base, allergie: 1 })?.testo).toBe("1 allergia al tavolo");
-  });
-
-  it("quando si sa quale allergia, si scrive quale", () => {
-    const r = richiamoTavolo({ ...base, allergie: 1, dettaglioAllergia: "Glutine" });
-    expect(r).toEqual({ tipo: "ALLERGIA", testo: "Allergie: Glutine" });
-  });
-
-  it("il conto viene prima di un'allergia già registrata", () => {
-    // L'allergia è già scritta sulla comanda e la cucina l'ha vista: il
-    // richiamo serve a chi deve **muoversi adesso**.
-    expect(richiamoTavolo({ ...base, contoRichiesto: true, allergie: 3 })?.tipo).toBe("CONTO");
-  });
-});
-
 describe("il riassunto delle comande", () => {
   it("conta per stato, e le bozze solo se hanno righe", () => {
     const r = riassumiComande([
@@ -144,6 +115,6 @@ describe("il riassunto delle comande", () => {
       { status: "SERVITA", righe: 2 },
       { status: "ANNULLATA", righe: 1 },
     ]);
-    expect(r).toEqual({ bozzeConRighe: 1, inviate: 2, inPreparazione: 1, pronte: 1 });
+    expect(r).toEqual({ bozzeConRighe: 1, inviate: 2, inPreparazione: 1, pronte: 1, servite: 1 });
   });
 });

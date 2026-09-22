@@ -1,28 +1,26 @@
 import Link from "next/link";
-import { ArrowRight, FileText } from "lucide-react";
+import { ArrowRight, BellRing, FileText } from "lucide-react";
 import { getContestoStaff } from "@/lib/staff-auth";
 import { puo } from "@/lib/permessi-staff";
 import { salutoCon } from "@/lib/saluto";
 import { TestataSaluto } from "@/components/staff-app/testata-staff";
 import { CardTurno, ProssimoTurno } from "@/components/staff-app/card-turno";
-import {
-  DaAccomodareHome,
-  DaFare,
-  Sezione,
-  type CosaDaFare,
-} from "@/components/staff-app/sezioni-home";
+import { Sezione } from "@/components/staff-app/sezioni-home";
+import { DaGestireOra } from "@/components/staff-app/da-gestire";
 import { TavoliHome } from "@/components/staff-app/tavoli-home";
-import { RIQUADRO_GLIFO, scalaPerGlifi } from "@/components/staff-app/glifo-tavolo";
+import { SondaHome } from "@/components/staff-app/sonda-home";
 import { prossimoTurno, turnoDiOggi } from "@/server/staff-app/turno";
-import { salaDelCameriere, soloMiei, tavoliLiberi } from "@/server/staff-app/sala";
+import {
+  daGestireOra,
+  MAX_DA_GESTIRE,
+  salaDelCameriere,
+  soloMiei,
+  tavoliLiberi,
+} from "@/server/staff-app/sala";
 import { contaComandePronte } from "@/server/comande/comande";
 import { scadenzeDi } from "@/server/staff-app/documenti";
-import type { TavoloStaff } from "@/server/staff-app/sala";
 
 export const dynamic = "force-dynamic";
-
-/** Quante cose da fare stanno in Home. Il resto si trova in Sala e Comande. */
-const MAX_DA_FARE = 3;
 
 /**
  * **La Home della Staff App.**
@@ -35,28 +33,30 @@ const MAX_DA_FARE = 3;
  *
  * 1. **chi sei e dove sei** — due righe;
  * 2. **il turno**, due righe: un badge e una barra;
- * 3. **da accomodare** — chi è già dentro il locale e aspetta un tavolo;
- * 4. **da fare** — le tre cose che chiedono di alzarsi, se ce ne sono;
- * 5. **i miei tavoli** — disegnati, non descritti;
- * 6. **i tavoli liberi** — quattro, non dodici.
+ * 3. **da gestire ora** — la coda: chi aspetta in piedi e i tavoli che
+ *    chiedono qualcosa, in ordine di urgenza vera;
+ * 4. **i miei tavoli** — righe compatte, quelli che sto seguendo;
+ * 5. **i tavoli liberi** — pastiglie in una riga che scorre di lato.
  *
- * Il terzo punto sta sopra il quarto perché una persona in piedi che guarda
- * la sala non aspetta il suo turno dietro a un piatto pronto.
+ * ## Perché la terza sezione è nuova, e perché le altre si sono ristrette
  *
- * I primi tre punti stanno dentro i primi 300 px, che è quello che si vede
- * senza scorrere su un iPhone SE: turno, azione urgente e l'inizio dei
- * propri tavoli. Prima la sola card del turno ne occupava 210.
+ * La domanda che questa schermata deve risolvere in meno di un secondo è
+ * **«chi devo gestire adesso?»**. Prima non la risolveva: c'erano quattro
+ * sezioni — da fare, da accomodare, i miei tavoli, i tavoli disponibili — e
+ * una famiglia appena accomodata non stava in nessuna delle quattro. Non
+ * aveva un piatto pronto né un conto chiesto, quindi non era «da fare»; non
+ * era assegnata a nessuno, quindi non era «un mio tavolo»; non era libera.
+ * Compariva solo per caso, quando aveva una nota qualsiasi da mostrare.
  *
- * ## Cosa è uscito, ed è la parte che conta
+ * Nel frattempo sei tasti quadrati di **tavoli vuoti** si prendevano più di
+ * mezza schermata: i posti liberi pesavano più dei clienti già seduti.
  *
- * - **ruolo, area e conteggio tavoli** dalla card del turno: il ruolo è chi
- *   sei, l'area la dice la Sala, i tavoli sono disegnati più in basso;
- * - **il riquadro delle comande**: le comande hanno una voce in barra, e
- *   quello che di loro riguarda *adesso* — un piatto pronto — è una riga di
- *   «Da fare», dove c'è scritto anche a quale tavolo portarlo;
- * - **il testo dalle card dei tavoli**: nome ospite, minuti, conto e stato
- *   per esteso si leggono aprendo il tavolo. In griglia erano sei righe per
- *   sei card, cioè la schermata che si scorre invece di guardarla.
+ * Adesso c'è **una coda sola** in cima, e tutto il resto è rimpicciolito
+ * fino alla misura del suo compito: ritrovare un tavolo che sto già
+ * seguendo (una riga), sapere dove far sedere quattro persone (una
+ * pastiglia).
+ *
+ * ## Cosa continua a non esserci
  *
  * Niente incassi, niente coperti del giorno, niente andamento: durante il
  * servizio ogni riga che non risponde a «dove devo andare e cosa devo fare»
@@ -135,13 +135,20 @@ export default async function HomeStaff() {
             adesso,
             tuttaLaSala: puo(ctx.permessi, "view_all_tables"),
             /*
-              I liberi arrivano nella **stessa** lettura dei propri tavoli, non
-              in una seconda: `salaDelCameriere` fa tre interrogazioni in tutto
-              qualunque sia il numero di tavoli, e chiederle due volte per
-              separare «i miei» dai «liberi» raddoppierebbe il costo della
-              schermata che si apre più spesso di tutte.
+              I liberi e gli **scoperti** arrivano nella stessa lettura dei
+              propri tavoli, non in una seconda: `salaDelCameriere` fa poche
+              interrogazioni in tutto qualunque sia il numero di tavoli, e
+              chiederle due volte per separare «i miei» dagli altri
+              raddoppierebbe il costo della schermata che si apre più spesso
+              di tutte.
+
+              `ancheScoperti` è la riga che fa esistere questa dashboard: senza
+              di essa un tavolo appena accomodato dal maître, su cui nessuno è
+              stato assegnato, non comparirebbe sul telefono di nessuno. Il
+              perché per esteso sta su `OpzioniSala`.
             */
             ancheLiberi: true,
+            ancheScoperti: true,
           },
         )
       : null,
@@ -150,103 +157,80 @@ export default async function HomeStaff() {
       : 0,
   ]);
 
-  /*
-    **Tutti**, non i primi quattro.
+  const coda = sala ? daGestireOra(sala, MAX_DA_GESTIRE) : [];
+  const restanti = sala ? Math.max(0, daGestireOra(sala).length - coda.length) : 0;
 
-    I tavoli erano tagliati a quattro liberi e sei propri, con un «Tutti i 12»
-    che rimandava alla Sala. Aveva senso quando erano righe di testo da
-    leggere: sei righe sono mezzo schermo. Da quando sono tasti da premere il
-    taglio è un difetto — si cerca il tavolo dodici, non lo si trova, e si
-    scopre che bisogna aprire un'altra schermata per premere un tasto che
-    qui c'era spazio per mostrare. Dodici tasti in griglia sono sei righe:
-    si scorre una volta.
+  /*
+    **Tutti i liberi**, non i primi quattro.
+
+    Erano tagliati a quattro, con un «Tutti i 12» che rimandava alla Sala.
+    Aveva senso quando erano tasti quadrati: dodici tasti sono sei righe di
+    schermo. Da quando sono pastiglie su una riga che scorre di lato, dodici
+    costano quanto quattro — e cercare il tavolo dodici senza trovarlo era il
+    difetto che il taglio produceva.
   */
   const miei = sala ? soloMiei(sala) : [];
   const liberi = sala ? tavoliLiberi(sala) : [];
-  const daFare = cosaCeDaFare(sala?.tavoli ?? [], pronteInCucina);
+  const ospitiInAttesa = sala?.daAccomodare ?? [];
 
   /*
-    Una scala sola per tutti i disegni della schermata, calcolata sui tavoli
-    che si stanno davvero mostrando. Sta qui e non dentro le griglie perché
-    due griglie con due scale diverse renderebbero incomparabili i tavoli di
-    sopra con quelli di sotto — e la ragione per cui li si disegna è proprio
-    poterli confrontare a colpo d'occhio.
+    La riga della cucina compare **solo quando nessun tavolo la copre**.
+    «T4 · 2 piatti da servire» dice dove andare, «2 comande pronte al passe»
+    no, e messe una sopra l'altra sono la ripetizione che questa schermata
+    aveva in tre punti su quattro. Resta per il caso in cui il piatto pronto è
+    di un tavolo che non si sta guardando, ed è l'unico in cui aggiunge
+    qualcosa.
   */
-  const scalaGlifi = scalaPerGlifi([...miei, ...liberi], RIQUADRO_GLIFO);
+  const cucinaScoperta =
+    pronteInCucina > 0 && !coda.some((t) => t.richiamo?.tipo === "PIATTI_PRONTI");
 
   return (
     <div className="schermo">
+      <SondaHome />
       {testata}
       <div className="fill-scroll space-y-5 px-5 pb-6">
         <CardTurno turno={turno} />
 
-        {/* Chi è in piedi all'ingresso prima di tutto il resto: §1 e §2. */}
-        {sala && <DaAccomodareHome ospiti={sala.daAccomodare} />}
+        <DaGestireOra
+          tavoli={coda}
+          ospiti={ospitiInAttesa}
+          permessi={ctx.permessi}
+          restanti={restanti}
+        />
 
-        <DaFare cose={daFare} />
+        {cucinaScoperta && (
+          <Link
+            href="/staff-app/comande"
+            className="sa-tocco flex min-h-[56px] items-center gap-3 rounded-[14px] border border-accent/40 bg-accent/10 px-3.5"
+          >
+            <BellRing
+              className="h-5 w-5 shrink-0 animate-respiro text-accent-strong motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <span className="sa-corpo min-w-0 flex-1 truncate font-medium">
+              {pronteInCucina === 1
+                ? "1 comanda pronta al passe"
+                : `${pronteInCucina} comande pronte al passe`}
+            </span>
+            <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </Link>
+        )}
 
         {sala && (
           /*
-            I tavoli sono tasti, e un tasto su un tavolo libero apre le
+            I tavoli liberi sono tasti, e un tasto su un tavolo libero apre le
             **scelte** invece della schermata del tavolo: il perché sta in
             `tavoli-home.tsx`. Da qui passano solo i dati.
           */
           <TavoliHome
             miei={miei}
             liberi={liberi}
-            scala={scalaGlifi}
-            inAttesa={sala.daAccomodare.length}
+            inAttesa={ospitiInAttesa.length}
             puoAccomodare={puo(ctx.permessi, "manage_tables")}
+            codaVuota={coda.length === 0 && ospitiInAttesa.length === 0}
           />
         )}
       </div>
     </div>
   );
-}
-
-/**
- * **Cosa c'è da fare adesso**, in tre righe al massimo.
- *
- * I tavoli arrivano già ordinati per urgenza da `salaDelCameriere` — piatti
- * pronti, poi conti, poi allergie, poi note — quindi qui non si riordina
- * niente: si prendono i primi con un richiamo e si traducono in righe.
- *
- * ## La riga della cucina, e quando non c'è
- *
- * Un piatto pronto può arrivare da due parti: dal tavolo che lo aspetta
- * (`richiamo.tipo === "PIATTI_PRONTI"`) o dal conteggio delle comande
- * battute da questa persona. Sono lo stesso fatto visto dalla sala e dal
- * passe.
- *
- * Quando il tavolo lo dice già, **la riga della cucina non si aggiunge**:
- * «T4 · Piatti pronti» dice dove andare, «1 pronta in cucina» no, e messe
- * una sopra l'altra sono la ripetizione che questa schermata aveva in tre
- * punti su quattro. La riga della cucina compare solo quando nessun tavolo
- * visibile la copre — cioè quando il piatto pronto è di un tavolo che non
- * si sta guardando, ed è l'unico caso in cui aggiunge qualcosa.
- */
-function cosaCeDaFare(tavoli: TavoloStaff[], pronteInCucina: number): CosaDaFare[] {
-  const cose: CosaDaFare[] = tavoli
-    .filter((t) => t.richiamo)
-    .slice(0, MAX_DA_FARE)
-    .map((t) => ({
-      id: t.tableId,
-      href: `/staff-app/tavolo/${t.tableId}`,
-      tipo: t.richiamo!.tipo,
-      dove: t.label,
-      testo: t.richiamo!.testo,
-    }));
-
-  const unTavoloLoDiceGia = cose.some((c) => c.tipo === "PIATTI_PRONTI");
-  if (pronteInCucina > 0 && !unTavoloLoDiceGia && cose.length < MAX_DA_FARE) {
-    cose.push({
-      id: "cucina",
-      href: "/staff-app/comande",
-      tipo: "PIATTI_PRONTI",
-      dove: null,
-      testo: pronteInCucina === 1 ? "1 comanda pronta al passe" : `${pronteInCucina} comande pronte al passe`,
-    });
-  }
-
-  return cose;
 }

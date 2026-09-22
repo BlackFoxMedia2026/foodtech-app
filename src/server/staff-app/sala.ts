@@ -4,6 +4,7 @@ import { dateKeyInVenue } from "@/lib/venue-time";
 import { getFloorLive, type TableLiveInfo } from "@/server/floor-live";
 import { ospitiDaAccomodare, type OspiteDaAccomodare } from "./da-accomodare";
 import {
+  chiedeUnGesto,
   riassumiComande,
   richiamoTavolo,
   statoTavoloStaff,
@@ -75,6 +76,23 @@ export type TavoloStaff = {
   altezza: number | null;
   /** Vero se questo tavolo è assegnato a chi guarda. */
   mio: boolean;
+  /**
+   * **Chi lo sta seguendo.** Vuoto quando non è assegnato a nessuno.
+   *
+   * Sta sulla card perché la domanda «ce l'ha già qualcuno?» è quella che si
+   * fa a voce attraverso la sala dieci volte a sera, ed è l'unica cosa che
+   * separa un tavolo da prendere in carico da uno su cui si sta pestando i
+   * piedi a un collega.
+   */
+  coperto: Copertura[];
+  /**
+   * **Seduto e di nessuno.** Il caso che ha fatto nascere questo lavoro.
+   *
+   * Non è «non è mio»: è *non è di nessuno*. Un tavolo che il maître ha
+   * accomodato e su cui non ha assegnato niente non appartiene a un collega —
+   * appartiene al servizio, e finché qualcuno non lo prende resta scoperto.
+   */
+  scoperto: boolean;
   stato: StatoTavoloStaff;
   tono: TonoStato;
   /** Chi c'è: coperti e nome, quando il tavolo è occupato. */
@@ -83,6 +101,17 @@ export type TavoloStaff = {
   bookingId: string | null;
   /** Da quanti minuti sono seduti. */
   daMinuti: number | null;
+  /**
+   * Da quanti minuti il tavolo si trova **in questo stato**.
+   *
+   * L'altra metà di `daMinuti`, e quella che serve a decidere: una tavolata
+   * seduta da un'ora e mezza a cui è appena arrivato il dolce non chiede
+   * niente; una seduta da dodici minuti senza comanda sì. Il ragionamento
+   * per esteso sta su `MomentiDelTavolo`.
+   */
+  daMinutiStato: number | null;
+  /** L'ora in cui si sono seduti, nel fuso del locale: «11:15». */
+  dalle: string | null;
   orderId: string | null;
   totaleCents: number | null;
   residuoCents: number | null;
@@ -121,6 +150,68 @@ export type SalaStaff = {
 /** I tavoli di chi guarda, in cima; il resto — liberi compresi — dietro. */
 export function soloMiei(sala: SalaStaff): TavoloStaff[] {
   return sala.tavoli.filter((t) => t.mio);
+}
+
+/**
+ * **L'ordine della coda**, in una funzione sola.
+ *
+ * Tre criteri, e sono tre domande in sequenza:
+ *
+ * 1. **cosa chiede questo tavolo?** — il rango del richiamo
+ *    (`RANGO_RICHIAMO`): i piatti che si freddano prima dei conti, i conti
+ *    prima delle tovaglie vuote. Chi non chiede niente va in fondo;
+ * 2. **da quanto lo chiede?** — a parità di motivo passa avanti chi aspetta
+ *    da più tempo. È il criterio che trasforma un elenco in una coda: senza,
+ *    due tavoli appena seduti restavano in ordine alfabetico e quello che
+ *    aspettava da un quarto d'ora finiva sotto;
+ * 3. **è mio?** — solo a parità di tutto il resto. Il tavolo di un collega
+ *    con due piatti al passe viene comunque prima del mio che non chiede
+ *    niente: in sala si serve il locale, non il proprio rango.
+ *
+ * L'etichetta chiude, ed è l'unico ordine stabile quando non succede niente.
+ */
+export function confrontaPerUrgenza(a: TavoloStaff, b: TavoloStaff): number {
+  const ra = a.richiamo?.rango ?? Number.MAX_SAFE_INTEGER;
+  const rb = b.richiamo?.rango ?? Number.MAX_SAFE_INTEGER;
+  if (ra !== rb) return ra - rb;
+
+  const ma = a.richiamo?.daMinuti ?? -1;
+  const mb = b.richiamo?.daMinuti ?? -1;
+  if (ma !== mb) return mb - ma;
+
+  if (a.mio !== b.mio) return a.mio ? -1 : 1;
+  return a.label.localeCompare(b.label, "it", { numeric: true });
+}
+
+/**
+ * **Da gestire ora**: i tavoli che chiedono qualcosa, già in ordine.
+ *
+ * Il filtro è `richiamo !== null`, e vale la pena dire cosa *non* è: non è
+ * «i tavoli occupati» e non è «i miei tavoli». Un tavolo con i secondi in
+ * cucina non è in questa lista pur essendo pieno — la cucina ci sta
+ * lavorando e chi serve non deve fare niente — e un tavolo scoperto con
+ * quattro persone appena sedute ci sta pur non essendo di nessuno.
+ *
+ * È la differenza fra una dashboard che racconta com'è messa la sala e una
+ * che risponde a «chi devo gestire adesso».
+ */
+/**
+ * Quante card di «Da gestire ora» stanno in Home. Il resto si conta, e si
+ * apre in Sala.
+ *
+ * Sta **qui e non nel componente**, ed è una lezione già pagata in questo
+ * progetto (vedi `RIQUADRO_GLIFO` in `glifo-tavolo.tsx`): una costante
+ * esportata da un modulo `"use client"` e letta da una pagina del server non
+ * è un numero, è un riferimento al client. `slice(0, riferimento)` non
+ * solleva niente — restituisce una lista vuota, e la sezione più importante
+ * della dashboard sparisce in silenzio. È successo mentre si scriveva questa,
+ * e dallo schermo sembrava che la coda non trovasse nessun tavolo.
+ */
+export const MAX_DA_GESTIRE = 4;
+
+export function daGestireOra(sala: SalaStaff, limite?: number): TavoloStaff[] {
+  const coda = sala.tavoli.filter((t) => chiedeUnGesto(t.richiamo)).sort(confrontaPerUrgenza);
+  return limite === undefined ? coda : coda.slice(0, limite);
 }
 
 /**
@@ -210,22 +301,125 @@ export async function tavoliAssegnatiA(
   giorno: string,
   servizio: string,
 ): Promise<Set<string>> {
+  const coperture = await copertureDelServizio(venueId, giorno, servizio);
+  const ids = new Set<string>();
+  for (const [tableId, chi] of coperture) {
+    if (chi.some((c) => c.waiterId === waiterId)) ids.add(tableId);
+  }
+  return ids;
+}
+
+/** Chi copre un tavolo: nome e identificativo, per scriverlo sulla card. */
+export type Copertura = { waiterId: string; nome: string };
+
+/**
+ * **Chi copre cosa**, per tutto il servizio, in due letture.
+ *
+ * `tavoliAssegnatiA` rispondeva a «quali sono i miei», che basta a filtrare
+ * una schermata e non basta più: la dashboard deve sapere anche **quali non
+ * sono di nessuno**, perché quelli sono il problema che questo lavoro esiste
+ * per risolvere. Un tavolo appena accomodato dal maître, su cui nessuno è
+ * stato assegnato, oggi non compare sul telefono di nessun cameriere: non è
+ * mio, non è libero, quindi non è da nessuna parte.
+ *
+ * Adesso «i miei» si ricavano da qui — una fonte sola, due letture per tutta
+ * la sala invece di due per persona — e la differenza fra «di un collega» e
+ * «di nessuno» si può finalmente fare.
+ *
+ * Le due tabelle restano due (`StaffAssignment` dalla piantina,
+ * `WaiterAssignment` da Camerieri): il perché, e perché non si sceglie, sta
+ * nel commento di `server/staff-assignments.ts`.
+ */
+export async function copertureDelServizio(
+  venueId: string,
+  giorno: string,
+  servizio: string,
+): Promise<Map<string, Copertura[]>> {
   const data = giornoUtc(giorno);
+  const nome = (w: { firstName: string; lastName: string }) =>
+    `${w.firstName} ${w.lastName}`.trim();
+
   const [perTavolo, perCameriere] = await Promise.all([
     db.staffAssignment.findMany({
-      where: { venueId, waiterId, date: data, service: servizio, scope: "TABLE" },
-      select: { tableId: true },
+      where: { venueId, date: data, service: servizio, scope: "TABLE" },
+      select: {
+        tableId: true,
+        waiterId: true,
+        waiter: { select: { firstName: true, lastName: true } },
+      },
     }),
     db.waiterAssignment.findMany({
-      where: { venueId, waiterId, date: data, service: servizio },
-      select: { tableIds: true },
+      where: { venueId, date: data, service: servizio },
+      select: {
+        tableIds: true,
+        waiterId: true,
+        waiter: { select: { firstName: true, lastName: true } },
+      },
     }),
   ]);
 
-  const ids = new Set<string>();
-  for (const a of perTavolo) if (a.tableId) ids.add(a.tableId);
-  for (const a of perCameriere) for (const t of a.tableIds) ids.add(t);
-  return ids;
+  const mappa = new Map<string, Copertura[]>();
+  const aggiungi = (tableId: string, c: Copertura) => {
+    const chi = mappa.get(tableId) ?? [];
+    if (!chi.some((x) => x.waiterId === c.waiterId)) chi.push(c);
+    mappa.set(tableId, chi);
+  };
+
+  for (const a of perTavolo) {
+    if (a.tableId) aggiungi(a.tableId, { waiterId: a.waiterId, nome: nome(a.waiter) });
+  }
+  for (const a of perCameriere) {
+    for (const t of a.tableIds) aggiungi(t, { waiterId: a.waiterId, nome: nome(a.waiter) });
+  }
+  return mappa;
+}
+
+/**
+ * **Quando il tavolo è entrato nello stato in cui si trova.**
+ *
+ * Non è un dato in più da scrivere: sono le colonne che le comande timbrano
+ * già a ogni passaggio (`sentAt`, `readyAt`, `servedAt`, `Booking.seatedAt`,
+ * `Order.contoRichiestoAt`), lette insieme. Serve a rispondere alla domanda
+ * che la dashboard faceva mancare: non «da quanto sono seduti» — che un
+ * tavolo a cui è appena arrivato il secondo non aiuta — ma **da quanto dura
+ * questa situazione**.
+ *
+ * Il caso che conta è `primoPronto`: fra due piatti al passe il minuto che
+ * decide è quello del **più vecchio**, perché è quello che si sta freddando.
+ * Prendere il più recente vorrebbe dire azzerare il cronometro ogni volta che
+ * la cucina manda fuori qualcos'altro dello stesso tavolo.
+ */
+type MomentiDelTavolo = {
+  /** La bozza più vecchia con qualcosa dentro: da quando si sta ordinando. */
+  bozzaAperta: Date | null;
+  /** L'ultimo invio in cucina. */
+  ultimoInvio: Date | null;
+  /** Il piatto pronto da più tempo: quello che si fredda. */
+  primoPronto: Date | null;
+  /** L'ultimo piatto arrivato al tavolo. */
+  ultimoServito: Date | null;
+  /** Vero se non è rimasto niente da portare né da cucinare. */
+  tuttoServito: boolean;
+};
+
+const NESSUN_MOMENTO: MomentiDelTavolo = {
+  bozzaAperta: null,
+  ultimoInvio: null,
+  primoPronto: null,
+  ultimoServito: null,
+  tuttoServito: false,
+};
+
+function prima(a: Date | null, b: Date | null): Date | null {
+  if (!a) return b;
+  if (!b) return a;
+  return a < b ? a : b;
+}
+
+function dopo(a: Date | null, b: Date | null): Date | null {
+  if (!a) return b;
+  if (!b) return a;
+  return a > b ? a : b;
 }
 
 /** Le comande vive di oggi, raggruppate per tavolo. */
@@ -234,33 +428,86 @@ async function comandePerTavolo(venueId: string, da: Date, a: Date) {
     where: {
       venueId,
       createdAt: { gte: da, lte: a },
-      status: { in: ["BOZZA", "INVIATA", "RICEVUTA", "IN_PREPARAZIONE", "PRONTA"] },
+      status: { in: ["BOZZA", "INVIATA", "RICEVUTA", "IN_PREPARAZIONE", "PRONTA", "SERVITA"] },
     },
     select: {
       tableId: true,
       status: true,
+      createdAt: true,
+      sentAt: true,
       _count: { select: { righe: true } },
       righe: {
-        where: { NOT: { status: { in: ["ANNULLATA", "SERVITA"] } } },
-        select: { status: true, quantity: true, allergens: true, allergyNote: true },
+        /*
+          Le righe **servite** entrano adesso, e non è un allargamento
+          gratuito: senza di loro non si sa se il tavolo ha finito di
+          mangiare, cioè non esiste «da controllare». Restano fuori solo le
+          annullate, che non sono mai esistite per nessuno.
+
+          Quello che conta ancora sulle sole righe vive — piatti pronti,
+          allergie da portare — si filtra qui sotto per stato, non nella
+          query: una seconda interrogazione per la stessa tabella costerebbe
+          più della decina di righe in più che questa porta.
+        */
+        where: { NOT: { status: "ANNULLATA" } },
+        select: {
+          status: true,
+          quantity: true,
+          allergens: true,
+          allergyNote: true,
+          readyAt: true,
+          servedAt: true,
+        },
       },
     },
   });
 
   const mappa = new Map<
     string,
-    { comande: { status: (typeof righe)[number]["status"]; righe: number }[]; pronti: number; allergie: number }
+    {
+      comande: { status: (typeof righe)[number]["status"]; righe: number }[];
+      pronti: number;
+      allergie: number;
+      momenti: MomentiDelTavolo;
+    }
   >();
 
   for (const c of righe) {
     if (!c.tableId) continue;
-    const voce = mappa.get(c.tableId) ?? { comande: [], pronti: 0, allergie: 0 };
+    const voce = mappa.get(c.tableId) ?? {
+      comande: [],
+      pronti: 0,
+      allergie: 0,
+      momenti: { ...NESSUN_MOMENTO, tuttoServito: true },
+    };
     voce.comande.push({ status: c.status, righe: c._count.righe });
+    if (c.status === "BOZZA" && c._count.righe > 0) {
+      voce.momenti.bozzaAperta = prima(voce.momenti.bozzaAperta, c.createdAt);
+    }
+    voce.momenti.ultimoInvio = dopo(voce.momenti.ultimoInvio, c.sentAt);
+
     for (const r of c.righe) {
-      if (r.status === "PRONTA") voce.pronti += r.quantity;
-      if (r.allergens.length > 0 || r.allergyNote) voce.allergie += 1;
+      if (r.status === "PRONTA") {
+        voce.pronti += r.quantity;
+        voce.momenti.primoPronto = prima(voce.momenti.primoPronto, r.readyAt);
+      }
+      if (r.status === "SERVITA") {
+        voce.momenti.ultimoServito = dopo(voce.momenti.ultimoServito, r.servedAt);
+      } else {
+        /* Una riga non servita è qualcosa che il tavolo aspetta ancora: che
+           sia in bozza, in cucina o al passe. Basta lei a togliere il
+           «hanno finito». */
+        voce.momenti.tuttoServito = false;
+        if (r.allergens.length > 0 || r.allergyNote) voce.allergie += 1;
+      }
     }
     mappa.set(c.tableId, voce);
+  }
+
+  /* Un tavolo su cui non è mai stato servito niente non ha «finito»: ha solo
+     una comanda vuota. Senza questa riga un tavolo con una bozza appena
+     aperta risulterebbe pronto per i dolci. */
+  for (const voce of mappa.values()) {
+    if (!voce.momenti.ultimoServito) voce.momenti.tuttoServito = false;
   }
   return mappa;
 }
@@ -297,6 +544,30 @@ export type OpzioniSala = {
    * perché il filtro è sullo stato e non sull'assegnazione.
    */
   ancheLiberi?: boolean;
+  /**
+   * Includere anche i tavoli **scoperti**: gente seduta, nessun cameriere
+   * assegnato.
+   *
+   * È la stessa distinzione di `ancheLiberi`, spostata di un passo.
+   * `view_all_tables` protegge **i tavoli degli altri** — il conto di un
+   * collega, la comanda che sta battendo, le allergie dei suoi ospiti. Un
+   * tavolo scoperto non è di un collega: è di nessuno, e un tavolo con
+   * quattro persone sedute che non compare sul telefono di nessuno è
+   * esattamente il modo in cui una famiglia resta venti minuti senza che le
+   * si avvicini qualcuno.
+   *
+   * Quello che si vede non è lo stesso di `view_all_tables`: si vede il
+   * tavolo che si potrebbe prendere in carico adesso. Appena qualcuno lo
+   * prende, smette di essere scoperto e sparisce dalla vista di tutti gli
+   * altri — il filtro è sulla copertura, non su una lista da tenere
+   * aggiornata.
+   *
+   * Nei locali che non usano le assegnazioni **tutti i tavoli sono
+   * scoperti**, e la Staff App si comporta come se avessero la sala intera.
+   * È deliberato: oggi in quei locali un cameriere non vede *niente*, che è
+   * peggio di qualunque cosa questo flag possa mostrare di troppo.
+   */
+  ancheScoperti?: boolean;
   roomId?: string | null;
   adesso?: Date;
 };
@@ -314,7 +585,7 @@ export async function salaDelCameriere(
   const fineGiorno = new Date(adesso);
   fineGiorno.setHours(23, 59, 59, 999);
 
-  const [live, tavoli, miei, comande, conti, daAccomodare] = await Promise.all([
+  const [live, tavoli, coperture, comande, conti, daAccomodare] = await Promise.all([
     getFloorLive(ctx.venueId, { now: adesso, roomId: opts.roomId ?? null }),
     db.table.findMany({
       where: { venueId: ctx.venueId, ...(opts.roomId ? { roomId: opts.roomId } : {}) },
@@ -330,7 +601,7 @@ export async function salaDelCameriere(
         room: { select: { id: true, name: true } },
       },
     }),
-    tavoliAssegnatiA(ctx.venueId, ctx.waiterId, giorno, servizio),
+    copertureDelServizio(ctx.venueId, giorno, servizio),
     comandePerTavolo(ctx.venueId, inizioGiorno, fineGiorno),
     db.order.findMany({
       where: { venueId: ctx.venueId, status: { in: ["RECEIVED", "PREPARING", "READY"] } },
@@ -339,18 +610,44 @@ export async function salaDelCameriere(
     ospitiDaAccomodare(ctx.venueId, ctx.timezone, adesso),
   ]);
 
-  const contoRichiestoPerTavolo = new Map<string, boolean>();
+  /* La **data** e non un booleano: da qui esce anche il cronometro del
+     richiamo «conto richiesto», che è la differenza fra «lo hanno chiesto» e
+     «lo hanno chiesto sette minuti fa». */
+  const contoRichiestoPerTavolo = new Map<string, Date | null>();
   for (const o of conti) {
-    if (o.booking?.tableId) contoRichiestoPerTavolo.set(o.booking.tableId, !!o.contoRichiestoAt);
+    if (o.booking?.tableId) contoRichiestoPerTavolo.set(o.booking.tableId, o.contoRichiestoAt);
   }
+
+  const oraLocale = new Intl.DateTimeFormat("it-IT", {
+    timeZone: ctx.timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const minutiDa = (d: Date | null | undefined): number | null =>
+    d ? Math.max(0, Math.round((adesso.getTime() - d.getTime()) / 60_000)) : null;
 
   const righe: TavoloStaff[] = [];
 
   for (const t of tavoli) {
-    const mio = miei.has(t.id);
+    const chiCopre = coperture.get(t.id) ?? [];
+    const mio = chiCopre.some((c) => c.waiterId === ctx.waiterId);
     const info = live.byTableId[t.id];
     const base = info?.status ?? "LIBERO";
-    if (!mio && !opts.tuttaLaSala && !(opts.ancheLiberi && base === "LIBERO")) continue;
+    /*
+      Un tavolo **scoperto** conta come seduta senza padrone solo se ci sta
+      davvero qualcuno: un libero senza assegnazioni è semplicemente libero, e
+      lo copre già `ancheLiberi`.
+    */
+    const scoperto = chiCopre.length === 0 && base !== "LIBERO" && base !== "BLOCCATO";
+    if (
+      !mio &&
+      !opts.tuttaLaSala &&
+      !(opts.ancheLiberi && base === "LIBERO") &&
+      !(opts.ancheScoperti && scoperto)
+    ) {
+      continue;
+    }
     const dati = comande.get(t.id);
     const riassunto = riassumiComande(dati?.comande ?? []);
     const pronti = dati?.pronti ?? 0;
@@ -359,7 +656,8 @@ export async function salaDelCameriere(
        seduto. Per chi serve il tavolo sono la stessa cosa — una persona a cui
        un ingrediente fa male. */
     const allergie = (dati?.allergie ?? 0) + (info?.current?.allergies ? 1 : 0);
-    const contoRichiesto = contoRichiestoPerTavolo.get(t.id) ?? false;
+    const contoRichiestoAt = contoRichiestoPerTavolo.get(t.id) ?? null;
+    const contoRichiesto = !!contoRichiestoAt;
     const pagamentoInCorso = info?.current?.conto?.pagamentoInCorso ?? false;
 
     const stato = statoTavoloStaff(base, riassunto, { contoRichiesto, pagamentoInCorso });
@@ -369,10 +667,35 @@ export async function salaDelCameriere(
        prevista**, che è l'altra metà. Qui serve «da quanto sono lì», che è la
        domanda di chi deve decidere se è ora di proporre i dolci. */
     const seduti = info?.current;
-    const daMinuti =
+    const sedutiDa =
       seduti && seduti.status === "SEATED"
-        ? Math.max(0, Math.round((adesso.getTime() - new Date(seduti.startsAt).getTime()) / 60_000))
+        ? new Date(seduti.seatedAt ?? seduti.startsAt)
         : null;
+    const daMinuti = minutiDa(sedutiDa);
+
+    /*
+      **Il cronometro dello stato**, stato per stato.
+
+      Ogni riga è una data che il prodotto timbra già: nessuna colonna nuova,
+      nessun «stato cambiato alle». La regola che le tiene insieme è che si
+      conta da quando è cominciata *la cosa che chiede attenzione*, non da
+      quando è cominciata la serata — e per i piatti pronti quella cosa è il
+      piatto più vecchio al passe, non l'ultimo uscito dalla cucina.
+    */
+    const momenti = dati?.momenti ?? NESSUN_MOMENTO;
+    const daMinutiStato = minutiDa(
+      stato === "CONTO" || stato === "PAGAMENTO"
+        ? contoRichiestoAt
+        : stato === "IN_SERVIZIO"
+          ? (momenti.primoPronto ?? momenti.ultimoInvio)
+          : stato === "COMANDA_INVIATA"
+            ? momenti.ultimoInvio
+            : stato === "ORDINAZIONE"
+              ? momenti.bozzaAperta
+              : stato === "SERVITO" || stato === "VERSO_IL_CONTO"
+                ? (momenti.ultimoServito ?? sedutiDa)
+                : sedutiDa,
+    );
 
     righe.push({
       tableId: t.id,
@@ -384,22 +707,27 @@ export async function salaDelCameriere(
       larghezza: t.width,
       altezza: t.height,
       mio,
+      coperto: chiCopre,
+      scoperto,
       stato,
       tono: TONO_STATO[stato],
       ospiti: seduti?.partySize ?? null,
       ospite: seduti?.guestName ?? null,
       bookingId: seduti?.bookingId ?? null,
       daMinuti,
+      daMinutiStato,
+      dalle: sedutiDa ? oraLocale.format(sedutiDa) : null,
       orderId: seduti?.conto?.orderId ?? null,
       totaleCents: seduti?.conto?.totalCents ?? null,
       residuoCents: seduti?.conto?.residuoCents ?? null,
       richiamo: richiamoTavolo({
-        comande: riassunto,
+        stato,
         piattiPronti: pronti,
         contoRichiesto,
         allergie,
         dettaglioAllergia: info?.current?.allergies ?? null,
         notaImportante: nota,
+        daMinuti: daMinutiStato,
       }),
       badge: {
         bozza: riassunto.bozzeConRighe > 0,
@@ -414,27 +742,9 @@ export async function salaDelCameriere(
   }
 
   /*
-    L'ordine è l'urgenza, non l'alfabeto.
-
-    Chi apre l'app durante il servizio deve trovare in cima quello che chiede
-    di alzarsi: i piatti pronti prima di tutto, poi i conti. A parità, i propri
-    tavoli davanti a quelli degli altri, e infine l'etichetta — che è l'unico
-    ordine stabile quando non c'è niente da fare.
+    L'ordine è l'urgenza, non l'alfabeto: vedi `confrontaPerUrgenza`.
   */
-  const peso: Record<Richiamo["tipo"] | "NESSUNO", number> = {
-    PIATTI_PRONTI: 0,
-    CONTO: 1,
-    ALLERGIA: 2,
-    NOTA: 3,
-    NESSUNO: 4,
-  };
-  righe.sort((a, b) => {
-    const pa = peso[a.richiamo?.tipo ?? "NESSUNO"];
-    const pb = peso[b.richiamo?.tipo ?? "NESSUNO"];
-    if (pa !== pb) return pa - pb;
-    if (a.mio !== b.mio) return a.mio ? -1 : 1;
-    return a.label.localeCompare(b.label, "it", { numeric: true });
-  });
+  righe.sort(confrontaPerUrgenza);
 
   const sale = [
     ...new Map(

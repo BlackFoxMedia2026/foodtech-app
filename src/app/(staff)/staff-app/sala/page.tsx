@@ -50,7 +50,13 @@ export default async function SalaStaffPage() {
       nessuno — si vedrebbe chi aspetta e nessun posto dove metterlo, che è
       il modo più preciso di rendere inutile la schermata.
     */
-    { ancheLiberi: true },
+    /*
+      E i tavoli **scoperti**: gente seduta e nessun cameriere assegnato. La
+      Sala è la schermata in cui si va a prendere un tavolo, e un tavolo che
+      non è di nessuno è precisamente quello che si va a prendere. Il perché
+      per esteso sta su `OpzioniSala.ancheScoperti`.
+    */
+    { ancheLiberi: true, ancheScoperti: true },
   );
 
   return (

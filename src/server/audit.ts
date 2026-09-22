@@ -121,6 +121,10 @@ export type AuditAction =
   | "table.qr_on"
   | "table.qr_off"
   | "table.qr_rotate"
+  /* Chi copre un tavolo in un servizio. Lo scrive il maître dalla piantina e,
+     da quando esiste «prendo io», anche il cameriere dal telefono: a fine
+     serata «chi seguiva il dodici alle nove» è una domanda che si fa. */
+  | "table.assign_staff"
   | "room.delete"
   | "contract.create"
   | "contract.update"
