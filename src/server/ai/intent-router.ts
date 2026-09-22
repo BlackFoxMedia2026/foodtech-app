@@ -31,6 +31,8 @@ const SECTION_ROUTES = [
   "buoni",
   "wifi",
   "qr",
+  "eventi",
+  "gruppi",
   "pagamenti",
   "analytics",
 ];

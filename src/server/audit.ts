@@ -131,6 +131,13 @@ export type AuditAction =
   | "venue.centralino_chiave_emessa"
   | "venue.centralino_chiave_revocata"
   | "venue.wifi_update"
+  /* Eventi e gruppi: la trattativa dalla richiesta alla prenotazione. Il
+     «persa» porta il motivo, che e l'unico numero di quella pagina che puo
+     far guadagnare qualcosa. */
+  | "evento.richiesta"
+  | "evento.preventivo"
+  | "evento.accettata"
+  | "evento.persa"
   /** Gli SMS di un locale accesi o spenti: sono messaggi che si pagano e che
    * arrivano sul telefono dei clienti. */
   | "venue.sms_update"

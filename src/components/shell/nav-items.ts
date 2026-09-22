@@ -1,4 +1,4 @@
-import { CalendarRange, CreditCard, Gift, LayoutDashboard, LineChart, Megaphone, Phone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
+import { CalendarRange, CreditCard, Gift, PartyPopper, LayoutDashboard, LineChart, Megaphone, Phone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 import { cn } from "@/lib/utils";
 
@@ -259,6 +259,15 @@ export const PROFILE_NAV: NavItem[] = [
     — più la chiave `esperienze` nelle due tabelle dell'assistente
     (`ai/tools/navigation.ts` e `ai/intent-router.ts`).
   */
+  /*
+    «Eventi e gruppi» sta fra le cose di gestione e non in barra, e il criterio
+    e quello di tutto il menu: «lo apro mentre il locale lavora?». No — un
+    preventivo per quaranta persone si scrive la mattina dopo, con calma. Ma
+    **scade**: chi chiede un prezzo lo chiede a tre ristoranti lo stesso
+    pomeriggio, e per questo la richiesta suona anche nella campanella, che e
+    il posto che si guarda durante il servizio.
+  */
+  { href: "/eventi", label: "Eventi e gruppi", icon: PartyPopper, gruppo: "gestione" },
   { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "gestione" },
   { href: "/settings", label: "Impostazioni", icon: Settings, gruppo: "account" },
 ];

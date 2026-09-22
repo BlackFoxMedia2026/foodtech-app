@@ -181,7 +181,11 @@ describe("il menu del profilo", () => {
   it("porta le sezioni amministrative, raggruppate", () => {
     const gruppi = profiloPerGruppo();
     expect(gruppi.map((g) => g.label)).toEqual(["Gestione", "Account"]);
-    expect(gruppi[0].voci.map((v) => v.href)).toEqual(["/payments"]);
+    /* «Eventi e gruppi» e in Gestione e non in barra: un preventivo per
+       quaranta persone si scrive la mattina dopo, non alle nove di sabato. Ma
+       **scade**, e per questo la richiesta suona nella campanella — che e il
+       posto che si guarda durante il servizio. */
+    expect(gruppi[0].voci.map((v) => v.href)).toEqual(["/eventi", "/payments"]);
     expect(gruppi[1].voci.map((v) => v.href)).toEqual(["/settings"]);
   });
 

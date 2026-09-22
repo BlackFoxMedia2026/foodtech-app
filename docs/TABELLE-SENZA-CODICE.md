@@ -135,7 +135,7 @@ funzioni esistenti.
 |---|---|---|
 | `Connector`, `ConnectorEvent` | prenotazioni in ingresso da Google Reserve, Booking.com, OpenTable | molto: un adattatore per canale, e un accordo commerciale per ognuno |
 | `POSConnector`, `POSEvent` | integrazione con la cassa | molto, e dipende da quale cassa usano i clienti |
-| `BookingPreorder`, `BookingPreorderItem` | il cliente scegli i piatti quando prenota | medio: la carta e le prenotazioni ci sono già |
+| `BookingPreorder`, `BookingPreorderItem` | il cliente scegli i piatti quando prenota | medio: la carta e le prenotazioni ci sono già. **Da non confondere con gli eventi**: il menu concordato di un gruppo è un accordo scritto a mano (`EventRequest.menuConcordato`, fatto il 22 settembre), il preordine è il cliente che sceglie i piatti da solo |
 | `PhoneCallRecording`, `PhoneCallTranscript` | registrazione e trascrizione delle chiamate | medio lato Tavolo, **grande** lato centralino (consenso, conservazione, spazio) |
 | `ChatSession`, `ChatMessage` | prenotare chiacchierando, con la bozza salvata | medio; oggi lo fa la voce al telefono, che è la stessa idea su un altro canale |
 | `Ticket` | vendere i biglietti delle esperienze | medio, e serve l'incasso (Stripe) |
