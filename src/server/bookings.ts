@@ -21,6 +21,7 @@ import {
 import { durataConsigliata } from "./durata-consigliata";
 import { createNotification } from "./notifications";
 import { avvisaConfermaWhatsapp } from "@/server/voice/conferma-whatsapp";
+import { avvisaCaparraDaRestituire } from "@/server/caparre";
 import { refreshGuestStats } from "./guest-intelligence";
 
 export const BookingInput = z.object({
@@ -653,6 +654,11 @@ export async function updateBooking(
   }
 
   if (updated.status === "CANCELLED" && existing.status !== "CANCELLED") {
+    /* Una caparra incassata su una prenotazione disdetta e denaro di un
+       cliente che resta in cassa perche nessuno riapre la pagina di una cena
+       annullata. L'avviso dice anche **quale dei due casi** e, secondo le
+       condizioni dichiarate dal locale. */
+    await avvisaCaparraDaRestituire(venueId, updated);
     await annunciaDisdetta(venueId, {
       id: updated.id,
       startsAt: updated.startsAt,
