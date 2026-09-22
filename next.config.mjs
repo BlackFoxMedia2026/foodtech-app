@@ -44,6 +44,17 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
+    /*
+      `tesseract.js` e `sharp` non si lasciano impacchettare.
+
+      Il primo avvia un processo figlio con uno script suo: passato dal
+      bundler, il percorso di quello script non esiste più e la chiamata
+      **resta appesa per sempre** invece di fallire — il sintomo è una
+      richiesta di analisi planimetria che non torna mai, senza una riga nel
+      log. Il secondo è un binario nativo, e un bundler non può farci niente
+      di sensato.
+    */
+    serverComponentsExternalPackages: ["tesseract.js", "sharp"],
   },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],

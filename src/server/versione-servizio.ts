@@ -37,34 +37,41 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
   const inizio = startOfDay(adesso);
   const fine = endOfDay(adesso);
 
-  const [prenotazioni, coda, conti, pagamenti, chiamate, chiamateVive] =
-    await Promise.all([
-      // Indice: [venueId, startsAt]
-      db.booking.aggregate({
-        where: {
-          venueId,
-          startsAt: { gte: inizio, lte: fine },
-          deletedAt: null,
-        },
-        _count: { _all: true },
-        _max: { updatedAt: true },
-      }),
-      // Indice: [venueId, status, createdAt]. La coda chiusa non cambia più.
-      db.waitlistEntry.aggregate({
-        where: {
-          venueId,
-          status: { in: ["WAITING", "NOTIFIED", "CONFIRMED"] },
-        },
-        _count: { _all: true },
-        _max: { updatedAt: true },
-      }),
-      // I conti aperti: quello che si muove durante il servizio.
-      db.order.aggregate({
-        where: { venueId, status: { notIn: ["COMPLETED", "CANCELLED"] } },
-        _count: { _all: true },
-        _max: { updatedAt: true },
-      }),
-      /*
+  const [
+    prenotazioni,
+    coda,
+    conti,
+    pagamenti,
+    chiamate,
+    chiamateVive,
+    comande,
+  ] = await Promise.all([
+    // Indice: [venueId, startsAt]
+    db.booking.aggregate({
+      where: {
+        venueId,
+        startsAt: { gte: inizio, lte: fine },
+        deletedAt: null,
+      },
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
+    // Indice: [venueId, status, createdAt]. La coda chiusa non cambia più.
+    db.waitlistEntry.aggregate({
+      where: {
+        venueId,
+        status: { in: ["WAITING", "NOTIFIED", "CONFIRMED"] },
+      },
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
+    // I conti aperti: quello che si muove durante il servizio.
+    db.order.aggregate({
+      where: { venueId, status: { notIn: ["COMPLETED", "CANCELLED"] } },
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
+    /*
       I pagamenti al tavolo di oggi.
 
       Senza questo pezzo, un cliente che paga col QR non muove niente sullo
@@ -74,16 +81,16 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
 
       Indice: [venueId, createdAt].
     */
-      db.payment.aggregate({
-        where: {
-          venueId,
-          kind: "TABLE_QR",
-          createdAt: { gte: inizio, lte: fine },
-        },
-        _count: { _all: true },
-        _max: { updatedAt: true },
-      }),
-      /*
+    db.payment.aggregate({
+      where: {
+        venueId,
+        kind: "TABLE_QR",
+        createdAt: { gte: inizio, lte: fine },
+      },
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
+    /*
       Il telefono.
 
       È il pezzo con la scadenza più corta di tutti: una chiamata dura venti
@@ -109,15 +116,15 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
       conversazione lunga deve poter finire e farsi vedere: con cinque minuti,
       una telefonata di sei uscirebbe dalla finestra prima di concludersi.
     */
-      db.phoneCall.aggregate({
-        where: {
-          venueId,
-          startedAt: { gte: new Date(adesso.getTime() - 30 * 60_000) },
-        },
-        _count: { _all: true },
-        _max: { updatedAt: true },
-      }),
-      /*
+    db.phoneCall.aggregate({
+      where: {
+        venueId,
+        startedAt: { gte: new Date(adesso.getTime() - 30 * 60_000) },
+      },
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
+    /*
       Quante sono **in corso adesso**, e non è una ripetizione del pezzo qui
       sopra: è la correzione di un punto cieco misurato.
 
@@ -136,20 +143,37 @@ export async function versioneServizio(venueId: string, adesso = new Date()) {
 
       Indice: `[venueId, status, startedAt]`, che c'è già.
     */
-      db.phoneCall.aggregate({
-        where: {
-          venueId,
-          status: { in: ["RINGING", "ANSWERED"] },
-          startedAt: { gte: new Date(adesso.getTime() - 30 * 60_000) },
-        },
-        _count: { _all: true },
-      }),
-    ]);
+    db.phoneCall.aggregate({
+      where: {
+        venueId,
+        status: { in: ["RINGING", "ANSWERED"] },
+        startedAt: { gte: new Date(adesso.getTime() - 30 * 60_000) },
+      },
+      _count: { _all: true },
+    }),
+    /*
+      Le comande di oggi.
+
+      Senza questo pezzo la Staff App non avrebbe il realtime del §21: una
+      comanda che la cucina segna «pronta» non tocca né la prenotazione né il
+      conto — `Order.totalCents` è già quello di quando è stata battuta — e la
+      firma resterebbe identica. Il cameriere vedrebbe «in preparazione»
+      finché non ricarica la pagina a mano, che è esattamente la cosa che
+      questa sonda esiste per non far fare.
+
+      Indice: [venueId, createdAt].
+    */
+    db.comanda.aggregate({
+      where: { venueId, createdAt: { gte: inizio, lte: fine } },
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
+  ]);
 
   const pezzo = (a: {
     _count: { _all: number };
     _max: { updatedAt: Date | null };
   }) => `${a._count._all}.${a._max.updatedAt?.getTime() ?? 0}`;
 
-  return `${pezzo(prenotazioni)}-${pezzo(coda)}-${pezzo(conti)}-${pezzo(pagamenti)}-${pezzo(chiamate)}.${chiamateVive._count._all}`;
+  return `${pezzo(prenotazioni)}-${pezzo(coda)}-${pezzo(conti)}-${pezzo(pagamenti)}-${pezzo(chiamate)}.${chiamateVive._count._all}-${pezzo(comande)}`;
 }

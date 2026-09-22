@@ -1,6 +1,8 @@
 import { CalendarRange, CreditCard, Gift, PartyPopper, LayoutDashboard, LineChart, Megaphone, Phone, QrCode, Radio, Repeat, Settings, Ticket, Users, UtensilsCrossed, Wifi } from "lucide-react";
 import { DiningTableIcon, TuxedoGuestIcon } from "@/components/shell/nav-icons";
 import { cn } from "@/lib/utils";
+import { can, type Ability } from "@/lib/abilities";
+import type { StaffRole } from "@prisma/client";
 
 export type NavItem = {
   href: string;
@@ -45,6 +47,25 @@ export type NavItem = {
    * Impostazioni → Telefono, che è il posto dove si guarda cosa c'è da avere.
    */
   soloConTelefono?: boolean;
+  /**
+   * La capacità richiesta per **vedere** questa voce.
+   *
+   * Nasce da un difetto vero: un account `WAITER` vedeva in barra «Staff» e
+   * nel menu del profilo «Pagamenti», cioè i contratti dei colleghi e gli
+   * incassi del locale. `can()` esisteva da settimane e diceva di no a
+   * entrambe — semplicemente nessuno gliel'aveva chiesto, perché la
+   * navigazione era una lista di costanti senza permessi.
+   *
+   * **Nascondere non è proteggere**, e le pagine dietro queste voci hanno il
+   * loro controllo. Questa è la metà che rende il prodotto onesto: mostrare a
+   * qualcuno una porta che gli si chiuderà in faccia è peggio che non
+   * mostrarla.
+   *
+   * Si somma a `soloConTelefono`, non lo sostituisce: sono due domande
+   * diverse — «questo locale ha comprato la funzione?» e «questa persona può
+   * usarla?» — e una voce deve passarle entrambe.
+   */
+  ability?: Ability;
   /**
    * Le voci che stanno **dentro** questa: la voce diventa un menu, e cliccarla
    * non porta da nessuna parte — apre l'elenco.
@@ -220,10 +241,11 @@ export const PRIMARY_NAV: NavItem[] = [
     Il percorso è `/staff`, con `/waiters` che reindirizza: i link già mandati
     per i contratti in scadenza continuano ad aprirsi.
   */
-  { href: "/staff", label: "Staff", icon: Users },
+  { href: "/staff", label: "Staff", icon: Users, ability: "manage_staff" },
   {
     href: "/marketing",
     label: "Marketing",
+    ability: "edit_marketing",
     icon: Megaphone,
     matchPrefixes: ["/campaigns", "/insights"],
     sottovoci: MARKETING_NAV,
@@ -266,10 +288,32 @@ export const PROFILE_NAV: NavItem[] = [
     **scade**: chi chiede un prezzo lo chiede a tre ristoranti lo stesso
     pomeriggio, e per questo la richiesta suona anche nella campanella, che e
     il posto che si guarda durante il servizio.
+
+    La capacita e `manage_bookings` e non `manage_venue`: scrivere un
+    preventivo e il gesto di chi risponde al telefono, ed e la stessa che
+    protegge la pagina.
   */
-  { href: "/eventi", label: "Eventi e gruppi", icon: PartyPopper, gruppo: "gestione" },
-  { href: "/payments", label: "Pagamenti", icon: CreditCard, gruppo: "gestione" },
-  { href: "/settings", label: "Impostazioni", icon: Settings, gruppo: "account" },
+  {
+    href: "/eventi",
+    label: "Eventi e gruppi",
+    icon: PartyPopper,
+    gruppo: "gestione",
+    ability: "manage_bookings",
+  },
+  {
+    href: "/payments",
+    label: "Pagamenti",
+    icon: CreditCard,
+    gruppo: "gestione",
+    ability: "view_revenue",
+  },
+  {
+    href: "/settings",
+    label: "Impostazioni",
+    icon: Settings,
+    gruppo: "account",
+    ability: "manage_venue",
+  }
 ];
 
 export const ALL_NAV = [...PRIMARY_NAV, ...PROFILE_NAV];
@@ -336,21 +380,40 @@ export function sottovoceAttiva(pathname: string, item: NavItem): NavItem | unde
   return item.sottovoci?.find((v) => sottoA(pathname, v.href));
 }
 
+/**
+ * Le voci che questo ruolo può vedere.
+ *
+ * Senza ruolo non filtra niente, e serve ai punti in cui la navigazione si
+ * disegna prima di conoscerlo (l'assistente, i test). Passarlo è la regola.
+ */
+export function vociPermesse(voci: NavItem[], role?: StaffRole): NavItem[] {
+  if (!role) return voci;
+  return voci.filter((v) => !v.ability || can(role, v.ability));
+}
+
 /** Le voci del menu profilo, raggruppate e nell'ordine dei gruppi. */
-export function profiloPerGruppo(): { label: string; voci: NavItem[] }[] {
+export function profiloPerGruppo(
+  role?: StaffRole,
+): { label: string; voci: NavItem[] }[] {
+  const ammesse = vociPermesse(PROFILE_NAV, role);
   return GRUPPI_PROFILO.map((g) => ({
     label: g.label,
-    voci: PROFILE_NAV.filter((v) => v.gruppo === g.key),
+    voci: ammesse.filter((v) => v.gruppo === g.key),
   })).filter((g) => g.voci.length > 0);
 }
 
 /** Le voci principali che non stanno nella barra in basso del telefono. */
-export function primarieFuoriDallaBarra(telefonoAttivo = false): NavItem[] {
+export function primarieFuoriDallaBarra(
+  telefonoAttivo = false,
+  role?: StaffRole,
+): NavItem[] {
   /* Passa dal **filtro** e non da `PRIMARY_NAV`: una voce che si compra non
      deve comparire nel menu «Altro» del telefono a chi non l'ha comprata. Il
      primo tentativo prendeva l'elenco intero, e la voce era nascosta in barra
      e visibile sul telefono — cioè nascosta per metà, che è peggio di niente. */
-  return vociPrincipali(telefonoAttivo).filter((v) => !MOBILE_NAV.includes(v));
+  return vociPrincipali(telefonoAttivo, role).filter(
+    (v) => !MOBILE_NAV.includes(v),
+  );
 }
 
 /**
@@ -455,6 +518,17 @@ export function classiVoce(active: boolean) {
  * la barra in basso del telefono: due elenchi che si filtrano per conto
  * proprio divergono al primo cambiamento.
  */
-export function vociPrincipali(telefonoAttivo: boolean): NavItem[] {
-  return PRIMARY_NAV.filter((v) => !v.soloConTelefono || telefonoAttivo);
+export function vociPrincipali(
+  telefonoAttivo: boolean,
+  role?: StaffRole,
+): NavItem[] {
+  /* I due filtri si sommano nello stesso posto, ed è il motivo per cui questa
+     funzione esiste: «il locale ce l'ha» e «questa persona può» sono due
+     domande diverse, ma una voce che ne fallisce una sola non deve comparire.
+     Applicarle in due punti diversi vorrebbe dire, prima o poi, applicarne
+     una sola da qualche parte. */
+  return vociPermesse(
+    PRIMARY_NAV.filter((v) => !v.soloConTelefono || telefonoAttivo),
+    role,
+  );
 }

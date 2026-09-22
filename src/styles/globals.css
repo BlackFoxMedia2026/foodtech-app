@@ -419,6 +419,115 @@
     @apply border-dashed;
   }
 
+  /*
+   * ---------------------------------------------------------------------
+   *  La scala della Staff App (`.sa-*`)
+   * ---------------------------------------------------------------------
+   *
+   * Una scala a parte, e non un ritocco di quella sopra, perché le due
+   * servono due distanze diverse.
+   *
+   * | | back office (`.t-*`) | Staff App (`.sa-*`) |
+   * |---|---|---|
+   * | distanza | 60 cm, seduti | un braccio, in piedi |
+   * | luce | ufficio | sala a luci basse |
+   * | mani | due, sul mouse | una, spesso occupata |
+   * | tempo di lettura | il necessario | un secondo |
+   *
+   * A 60 cm un corpo da 14 px si legge; a un braccio di distanza, di sera,
+   * camminando, no — si **riconosce** una forma, e se la forma è troppo
+   * piccola ci si ferma a leggere, che è la cosa che questa app esiste per
+   * non far fare. Da qui il minimo di 13 px anche sulle note, contro i 12 del
+   * back office, e i 16 del corpo contro i 14.
+   *
+   * Non si tocca `.t-*`: quelle classi stanno in quasi trecento file di back
+   * office, dove la densità è una virtù e lo schermo è largo. Ingrandirle lì
+   * per risolvere un problema di qui vorrebbe dire rompere ottanta tabelle.
+   */
+  /*
+    Il titolo si **adatta alla larghezza**, e non è vezzo tipografico.
+
+    «Buonasera, Sara» sta in una riga a 28 px; «Buon pomeriggio, Sara» no —
+    ed era la stringa dello screenshot da cui è partito questo redesign, dove
+    finiva troncata in «Buon pomeriggio, S…». Un saluto personale che taglia
+    il nome della persona è peggio di un saluto più piccolo.
+
+    Il minimo di 24 px è la misura di prima: sotto non si scende, sopra si
+    sale fino a 28 sui telefoni larghi, dove il testo ci sta davvero.
+  */
+  .sa-titolo {
+    @apply text-display leading-[1.15] tracking-[-0.01em];
+    font-size: clamp(1.5rem, 6.4vw, 1.75rem);
+  }
+  .sa-sezione {
+    @apply text-[1.25rem] font-medium leading-tight;
+  }
+  .sa-scheda {
+    @apply text-display text-[1.1875rem] leading-none;
+  }
+  .sa-corpo {
+    @apply text-[1rem] leading-snug;
+  }
+  /* Orari, coperti, minuti, importi: cifre che si incolonnano fra card. */
+  .sa-dato {
+    @apply text-[1rem] font-medium leading-none tabular-nums;
+  }
+  /* Il numero che si legge da lontano: l'orario del turno, e basta. */
+  .sa-numero {
+    @apply text-display text-[2.125rem] leading-none tabular-nums;
+  }
+  .sa-nota {
+    @apply text-[0.8125rem] leading-snug text-tertiary-foreground;
+  }
+  .sa-etichetta {
+    @apply text-[0.75rem] font-medium uppercase tracking-wider text-muted-foreground;
+  }
+
+  /*
+   * I tre piani della Staff App.
+   *
+   * §11 del brief: la schermata era troppo uniforme — fondo, card e
+   * riquadri secondari stavano tutti a un passo l'uno dall'altro, e la
+   * gerarchia si reggeva solo sul bordo. I token per farlo ci sono già e
+   * sono quelli del sistema, non tinte nuove: fondo `--background`
+   * (#0B1511), piano operativo `--card` (#163C2F), piano secondario
+   * `--card-sunken` (#102B22), che sta **sotto** la card e non accanto.
+   *
+   * Il raggio è più morbido di quello del back office (18 px contro 17,6 di
+   * `rounded-xl`, che al netto è la stessa famiglia) perché su un telefono
+   * la card è larga quanto lo schermo e uno spigolo stretto la fa sembrare
+   * un pannello, non un oggetto da premere.
+   */
+  .sa-piano {
+    @apply rounded-[18px] border border-border bg-card;
+  }
+  .sa-piano-basso {
+    @apply rounded-[14px] border border-border/70 bg-card-sunken;
+  }
+
+  /*
+   * Il feedback al tocco, §13.
+   *
+   * 140 ms e 0,98: sotto i 120 ms il rimpicciolimento non si vede, sopra i
+   * 200 sembra che l'app stia pensando. Il `transform` è l'unica proprietà
+   * animata perché è l'unica che il compositore fa senza ridisegnare —
+   * animare `background` su una lista di venti card, su un telefono da
+   * sala, si vede scattare.
+   *
+   * `touch-action: manipulation` toglie i 300 ms di attesa del doppio tap
+   * che alcuni browser mobili conservano: su un bersaglio grande come una
+   * card non c'è nessun doppio tap da aspettare.
+   */
+  .sa-tocco {
+    @apply transition-transform duration-150 ease-out active:scale-[0.98];
+    touch-action: manipulation;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sa-tocco {
+      @apply transition-none active:scale-100;
+    }
+  }
+
   /* "Prenotazioni di oggi" list well — recessed instead of raised, per the
      material brief: content wells sit incised into the page, cards float. */
   .recessed {

@@ -13,6 +13,7 @@ import {
   type NavItem,
 } from "@/components/shell/nav-items";
 import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
+import type { StaffRole } from "@prisma/client";
 
 /**
  * Navigazione da telefono, pensata per il servizio.
@@ -28,9 +29,12 @@ import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
  */
 export function MobileNav({
   canManageBookings,
+  role,
   telefonoAttivo = false,
 }: {
   canManageBookings: boolean;
+  /** Il ruolo: «Altro» porta solo le sezioni che questo ruolo può aprire. */
+  role: StaffRole;
   /** Se questo locale ha il telefono collegato: decide la voce «Telefono». */
   telefonoAttivo?: boolean;
 }) {
@@ -61,7 +65,9 @@ export function MobileNav({
     gli stessi nomi e le stesse descrizioni — la lista vive in un posto solo,
     `MARKETING_NAV`.
   */
-  const altreSezioni = primarieFuoriDallaBarra(telefonoAttivo);
+  /* Le due domande insieme: cosa il locale ha comprato e cosa questa persona
+     può aprire. Il filtro sta in `nav-items.ts`, qui si passano i dati. */
+  const altreSezioni = primarieFuoriDallaBarra(telefonoAttivo, role);
   const altroAttivo = altreSezioni.some((i) => isNavActive(pathname, i));
 
   function vaiA(href: string) {
