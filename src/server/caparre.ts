@@ -582,3 +582,69 @@ export function caparraSiPerde(
   const oreDiAnticipo = (inizio.getTime() - adesso.getTime()) / 3_600_000;
   return oreDiAnticipo < politica.oreAnnulloGratis;
 }
+
+/* -------------------------------------------------------------------------- */
+/*  La caparra di una prenotazione disdetta                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Avvisa che una prenotazione disdetta ha una caparra **già incassata**.
+ *
+ * ## Perché serve un avviso e non basta il pulsante
+ *
+ * Perché il pulsante «Restituisci» sta nella pagina di quella prenotazione, e
+ * una prenotazione disdetta è esattamente la pagina che nessuno riapre. Il
+ * denaro di un cliente resterebbe lì perché nessuno se l'è ricordato — e un
+ * ristoratore che si accorge a fine mese di avere in cassa la caparra di
+ * qualcuno che aveva disdetto in tempo ha un problema con quel cliente, non
+ * con noi.
+ *
+ * ## Perché dice **quale dei due casi** è, e non decide
+ *
+ * Perché la regola del locale (`caparraOreAnnulloGratis`) dice se quella
+ * disdetta era in tempo, e sono due frasi diverse: «va restituita» e «puoi
+ * tenerla». Ma restituire resta un gesto — un rimborso deciso da un orologio
+ * è la cosa che nessun ristoratore vuole scoprire a fine mese, e la simmetria
+ * vale: nemmeno trattenere si decide da soli.
+ */
+export async function avvisaCaparraDaRestituire(
+  venueId: string,
+  booking: { id: string; startsAt: Date; depositCents: number; depositStatus: string },
+  adesso: Date = new Date(),
+): Promise<boolean> {
+  if (booking.depositStatus !== "CAPTURED" || booking.depositCents <= 0) return false;
+
+  const venue = await db.venue.findUnique({
+    where: { id: venueId },
+    select: {
+      currency: true,
+      caparraAttiva: true,
+      caparraDaPersone: true,
+      caparraPerPersonaCents: true,
+      caparraFissaCents: true,
+      caparraOreAnnulloGratis: true,
+    },
+  });
+  if (!venue) return false;
+
+  const inRitardo = caparraSiPerde(politicaDi(venue), booking.startsAt, adesso);
+  const importo = new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: venue.currency,
+  }).format(booking.depositCents / 100);
+
+  const { createNotification } = await import("@/server/notifications");
+  await createNotification(venueId, {
+    kind: "PAYMENT_REFUND",
+    title: inRitardo
+      ? `Caparra di ${importo} su una prenotazione disdetta`
+      : `Caparra di ${importo} da restituire`,
+    body: inRitardo
+      ? "Ha disdetto oltre il tempo dichiarato: secondo le tue condizioni puoi tenerla. Se decidi di restituirla, il pulsante è sulla prenotazione."
+      : "Ha disdetto entro il tempo dichiarato nelle tue condizioni: la caparra va restituita. Il pulsante è sulla prenotazione.",
+    link: `/bookings/${booking.id}`,
+    meta: { bookingId: booking.id, importoCents: booking.depositCents, inRitardo },
+  });
+
+  return true;
+}

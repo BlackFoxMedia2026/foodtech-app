@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import {
   CaparraError,
+  avvisaCaparraDaRestituire,
   testoCaparra,
   caparraDovutaCents,
   caparraSiPerde,
@@ -572,5 +573,93 @@ describe("la caparra chiesta dal sito", () => {
     /* `nessuna_caparra` e il caso normale della maggioranza delle
        prenotazioni: e un esito, non un guasto. */
     await expect(chiediCaparra(venueId, b.id)).rejects.toThrow("nessuna_caparra");
+  });
+});
+
+describe("la caparra di una prenotazione disdetta", () => {
+  /*
+    Il pulsante «Restituisci» sta nella pagina di quella prenotazione — che e
+    esattamente la pagina che nessuno riapre dopo una disdetta. Senza un
+    avviso, il denaro di un cliente resta in cassa perche nessuno se l'e
+    ricordato.
+  */
+  async function conCaparraPagata(quando: Date) {
+    return db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        partySize: 10,
+        startsAt: quando,
+        status: "CANCELLED",
+        depositStatus: "CAPTURED",
+        depositCents: 10_000,
+      },
+      select: { id: true, startsAt: true, depositCents: true, depositStatus: true },
+    });
+  }
+
+  beforeEach(async () => {
+    await salvaPolitica(venueId, {
+      attiva: true,
+      daPersone: 8,
+      perPersonaCents: 1_000,
+      oreAnnulloGratis: 48,
+    });
+  });
+
+  it("disdetta in tempo: dice che **va restituita**", async () => {
+    const fraUnaSettimana = new Date(Date.now() + 7 * 86_400_000);
+    const b = await conCaparraPagata(fraUnaSettimana);
+
+    expect(await avvisaCaparraDaRestituire(venueId, b)).toBe(true);
+    const avviso = await db.notification.findFirstOrThrow({
+      where: { venueId, kind: "PAYMENT_REFUND" },
+    });
+    expect(avviso.title).toContain("da restituire");
+    expect(avviso.body).toContain("va restituita");
+    /* Il link porta alla prenotazione, dove sta il pulsante: un avviso che
+       dice cosa fare e non dove farlo si chiude senza fare niente. */
+    expect(avviso.link).toBe(`/bookings/${b.id}`);
+  });
+
+  it("disdetta in ritardo: dice che **puoi tenerla**, e non decide", async () => {
+    /* La regola dichiarata dice che e fuori tempo. Ma trattenere e restituire
+       sono due gesti, e nessuno dei due si decide da solo: la simmetria conta
+       — un orologio che muove denaro non lo vuole nessuno, in nessuna delle
+       due direzioni. */
+    const fraTreOre = new Date(Date.now() + 3 * 3_600_000);
+    const b = await conCaparraPagata(fraTreOre);
+
+    expect(await avvisaCaparraDaRestituire(venueId, b)).toBe(true);
+    const avviso = await db.notification.findFirstOrThrow({
+      where: { venueId, kind: "PAYMENT_REFUND" },
+    });
+    expect(avviso.body).toContain("puoi tenerla");
+
+    /* E lo stato **non cambia**: la caparra resta pagata finche qualcuno
+       decide. */
+    expect((await db.booking.findUniqueOrThrow({ where: { id: b.id } })).depositStatus).toBe(
+      "CAPTURED",
+    );
+  });
+
+  it("senza caparra pagata non avvisa nessuno", async () => {
+    /* Un avviso per ogni disdetta sarebbe rumore, e tre di quelli insegnano a
+       non aprire la campanella. */
+    const b = await db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        partySize: 10,
+        startsAt: new Date(Date.now() + 7 * 86_400_000),
+        status: "CANCELLED",
+        depositStatus: "REQUESTED",
+        depositCents: 10_000,
+      },
+      select: { id: true, startsAt: true, depositCents: true, depositStatus: true },
+    });
+
+    expect(await avvisaCaparraDaRestituire(venueId, b)).toBe(false);
+    expect(await db.notification.count({ where: { venueId, kind: "PAYMENT_REFUND" } })).toBe(0);
   });
 });
