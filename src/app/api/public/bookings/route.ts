@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createBooking } from "@/server/bookings";
+import { CaparraError, chiediCaparra } from "@/server/caparre";
 import { bookingWriteErrorResponse } from "@/server/booking-errors";
 import { db } from "@/lib/db";
 import {
@@ -105,7 +106,23 @@ export async function POST(req: Request) {
         canale: "pubblico",
         idempotencyKey: chiave,
       });
-      return NextResponse.json(booking, { status: 201 });
+
+      /*
+        La caparra, quando il locale la chiede.
+
+        Si chiede **dopo** aver creato la prenotazione e non prima: il tavolo
+        resta tenuto mentre il cliente paga, e se non paga il locale vede una
+        riga «chiesta, non pagata» — che e un'informazione, mentre un tavolo
+        libero e una prenotazione sparita non lo sono.
+
+        Se qualcosa va storto qui, la prenotazione **resta**: una caparra non
+        richiesta si chiede dopo con un clic, una prenotazione persa perche il
+        pagamento non e partito non si recupera. Per questo l'errore si scrive
+        e non si propaga.
+      */
+      const caparra = await caparraPerIlWidget(venueId, booking.id, req);
+
+      return NextResponse.json({ ...booking, caparra }, { status: 201 });
     } catch (err) {
       /**
        * Due richieste in parallelo con la stessa chiave: fra la lettura e la
@@ -121,5 +138,49 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     return bookingWriteErrorResponse(err);
+  }
+}
+
+/**
+ * Il link della caparra da dare a chi ha appena prenotato dal sito.
+ *
+ * `null` quando non c'e niente da pagare — nessuna regola, sotto la soglia — e
+ * **anche quando non si e potuto chiedere**: i pagamenti non collegati, Stripe
+ * che non risponde. In quel caso resta una prenotazione senza caparra, che il
+ * locale vede e puo chiedere con un clic; il contrario — rifiutare la
+ * prenotazione perche il pagamento non parte — vorrebbe dire perdere un
+ * coperto per un problema nostro.
+ *
+ * Il ritorno e la **pagina di conferma della sua prenotazione**: chi prenota
+ * dal sito sta dentro un percorso, e chiuderlo dove era cominciato e l'unico
+ * modo perche veda che la caparra risulta pagata.
+ */
+async function caparraPerIlWidget(
+  venueId: string,
+  bookingId: string,
+  req: Request,
+): Promise<{ url: string; importoCents: number } | null> {
+  try {
+    const origine = new URL(req.url).origin;
+    const conferma = `${origine}/book/confirmation?bookingId=${bookingId}`;
+    const esito = await chiediCaparra(venueId, bookingId, {
+      origine,
+      ritorno: { successo: conferma, annullato: `${conferma}&caparra=annullata` },
+      /* Nessun messaggio: sta pagando adesso, davanti allo schermo. Un SMS
+         con lo stesso link, nello stesso minuto, e la cosa che fa pensare a
+         una truffa. */
+      senzaMessaggio: true,
+    });
+    return { url: esito.url, importoCents: esito.importoCents };
+  } catch (err) {
+    /* `nessuna_caparra` e il caso normale e non si scrive: sarebbe una riga
+       nei registri per ogni prenotazione di ogni locale che non usa le
+       caparre. Tutto il resto si scrive, perche e una configurazione da
+       sistemare o un guasto. */
+    const codice = err instanceof CaparraError ? err.code : "errore_sconosciuto";
+    if (codice !== "nessuna_caparra") {
+      console.warn(`[caparra] non chiesta sulla prenotazione ${bookingId}: ${codice}`);
+    }
+    return null;
   }
 }

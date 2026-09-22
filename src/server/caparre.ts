@@ -191,7 +191,23 @@ export type EsitoCaparra = {
 export async function chiediCaparra(
   venueId: string,
   bookingId: string,
-  opz: { origine?: string; actor?: AuditActor } = {},
+  opz: {
+    origine?: string;
+    actor?: AuditActor;
+    /**
+     * Dove rimandare il cliente dopo Stripe.
+     *
+     * Chi paga da un link mandato per SMS torna sulle due pagine di
+     * `/caparra` — non ha una pagina di partenza. Chi prenota dal sito invece
+     * sta **dentro** un percorso: rimandarlo alla pagina di conferma della
+     * sua prenotazione chiude il giro, e vede subito che la caparra risulta
+     * pagata. Passarlo da qui evita un secondo posto dove si decide dove si
+     * torna.
+     */
+    ritorno?: { successo: string; annullato: string };
+    /** Non manda il messaggio: lo sta pagando adesso, davanti allo schermo. */
+    senzaMessaggio?: boolean;
+  } = {},
 ): Promise<EsitoCaparra> {
   const booking = await db.booking.findFirst({
     where: { id: bookingId, venueId, deletedAt: null },
@@ -330,8 +346,8 @@ export async function chiediCaparra(
           tavolo_booking_id: bookingId,
         },
       },
-      success_url: `${base}/caparra/fatto`,
-      cancel_url: `${base}/caparra/annullata`,
+      success_url: opz.ritorno?.successo ?? `${base}/caparra/fatto`,
+      cancel_url: opz.ritorno?.annullato ?? `${base}/caparra/annullata`,
     },
     {
       ...perConto(booking.venue.stripeAccountId),
@@ -362,17 +378,19 @@ export async function chiediCaparra(
     scheda, e il testo dice la cifra e la cena — senza quelle due cose un link
     di pagamento arrivato per SMS si legge come una truffa.
   */
-  const mandato = await mandaIlLink({
-    venueId,
-    bookingId,
-    nome: booking.guest?.firstName ?? null,
-    telefono: booking.guest?.phone ?? null,
-    locale: booking.venue.name,
-    smsAttivi: booking.venue.smsAttivi,
-    importoCents,
-    valuta: booking.venue.currency,
-    url: sessione.url,
-  });
+  const mandato = opz.senzaMessaggio
+    ? null
+    : await mandaIlLink({
+        venueId,
+        bookingId,
+        nome: booking.guest?.firstName ?? null,
+        telefono: booking.guest?.phone ?? null,
+        locale: booking.venue.name,
+        smsAttivi: booking.venue.smsAttivi,
+        importoCents,
+        valuta: booking.venue.currency,
+        url: sessione.url,
+      });
 
   await recordAudit(
     opz.actor,

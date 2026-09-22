@@ -138,7 +138,29 @@ export function PublicBookingForm({
         throw new Error(data.error || "Errore durante la prenotazione");
       }
 
-      const booking = await res.json();
+      const booking = (await res.json()) as {
+        id: string;
+        status: string;
+        caparra?: { url: string; importoCents: number } | null;
+      };
+
+      /*
+        Se c'e una caparra da pagare, si va **subito** a pagarla.
+
+        Non una pagina in mezzo che dice «ora paga»: un passaggio in piu fra
+        chi ha appena deciso di prenotare e il pagamento e un passaggio in cui
+        si perde gente. La prenotazione e gia scritta — il tavolo e tenuto
+        mentre paga — e se chiude la pagina di Stripe torna sulla conferma con
+        scritto che la caparra resta da pagare.
+
+        `window.location` e non `router.push`: Stripe e un altro sito, e il
+        router di Next serve per le pagine di questo.
+      */
+      if (booking.caparra?.url) {
+        window.location.href = booking.caparra.url;
+        return;
+      }
+
       router.push(`/book/confirmation?bookingId=${booking.id}&status=${booking.status}${embed ? "&embed=1" : ""}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore sconosciuto");
