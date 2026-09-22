@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Clock, Facebook, Instagram, Mail, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
-import { formatDate, formatTime } from "@/lib/utils";
+import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
 
 /**
  * La pagina che il cliente vede subito dopo aver prenotato.
@@ -65,9 +65,14 @@ function NonTrovata({ isEmbed }: { isEmbed: boolean }) {
   );
 }
 
-export default async function ConfirmationPage(props: { searchParams?: { bookingId?: string; embed?: string } }) {
+export default async function ConfirmationPage(props: {
+  searchParams?: { bookingId?: string; embed?: string; caparra?: string };
+}) {
   const bookingId = props.searchParams?.bookingId;
   const isEmbed = props.searchParams?.embed === "1";
+  /* Chi chiude la pagina di Stripe torna qui con questo segno: la
+     prenotazione c'e, la caparra no. */
+  const caparraAnnullata = props.searchParams?.caparra === "annullata";
 
   if (!bookingId) return <NonTrovata isEmbed={isEmbed} />;
 
@@ -138,7 +143,38 @@ export default async function ConfirmationPage(props: { searchParams?: { booking
                 valore={booking.guest.email}
               />
             )}
+            {/*
+              La caparra, quando c'e.
+
+              Tre stati e tre frasi diverse, perche per chi legge sono tre
+              situazioni diverse: pagata (non deve fare niente), da pagare (deve
+              fare qualcosa, e il ristorante lo aspetta), restituita (i soldi
+              sono tornati). Un unico «caparra: 100 €» non direbbe nessuna delle
+              tre.
+            */}
+            {booking.depositCents > 0 && (
+              <Dato
+                etichetta="Caparra"
+                valore={
+                  booking.depositStatus === "CAPTURED"
+                    ? `${formatCurrency(booking.depositCents, venue.currency)} · pagata`
+                    : booking.depositStatus === "REFUNDED"
+                      ? `${formatCurrency(booking.depositCents, venue.currency)} · restituita`
+                      : `${formatCurrency(booking.depositCents, venue.currency)} · da pagare`
+                }
+              />
+            )}
           </div>
+
+          {/* Chi ha chiuso la pagina di pagamento deve sapere due cose: che
+              non e stato addebitato niente e che la prenotazione c'e. La terza
+              — come pagare adesso — la sa il ristorante, che ha il link. */}
+          {caparraAnnullata && booking.depositStatus !== "CAPTURED" && (
+            <p className="riquadro border border-accent/50 bg-accent/10 p-4 text-left text-sm">
+              Non ti abbiamo addebitato niente e la prenotazione e registrata. La caparra resta da
+              pagare: chiama il locale e ti rimandano il link.
+            </p>
+          )}
 
           {/* Il promemoria e il «ti chiamiamo» sono due cose diverse: la prima
               è informazione quieta, la seconda avvisa che potrebbe squillare

@@ -519,3 +519,58 @@ describe("il messaggio con il link", () => {
     expect(t.startsWith("per confermare")).toBe(true);
   });
 });
+
+describe("la caparra chiesta dal sito", () => {
+  /*
+    Chi prenota online sopra la soglia paga subito: e il modo in cui la caparra
+    ferma davvero i no-show, perche non dipende da nessuno che si ricordi di
+    mandare un link.
+
+    Quello che qui si difende e il **verso**: prima la prenotazione, poi il
+    pagamento. Al contrario, un cliente che non completa il pagamento non
+    lascerebbe traccia di niente — e un tavolo libero e una prenotazione
+    sparita non sono un'informazione, mentre «chiesta, non pagata» lo e.
+  */
+  it("una prenotazione resta anche se la caparra non si e potuta chiedere", async () => {
+    /* In locale Stripe non e configurato: la prenotazione dal sito deve
+       nascere comunque. Rifiutarla per un problema nostro vorrebbe dire
+       perdere un coperto. */
+    await salvaPolitica(venueId, {
+      attiva: true,
+      daPersone: 8,
+      perPersonaCents: 1_000,
+      oreAnnulloGratis: 48,
+    });
+
+    const b = await db.booking.create({
+      data: { venueId, guestId, partySize: 10, startsAt: DOMANI, status: "PENDING" },
+      select: { id: true },
+    });
+
+    await expect(chiediCaparra(venueId, b.id)).rejects.toThrow("stripe_non_pronto");
+
+    const dopo = await db.booking.findUniqueOrThrow({ where: { id: b.id } });
+    expect(dopo.status).toBe("PENDING");
+    /* E senza caparra: il locale la vede e la chiede con un clic. Non «pagata»
+       e non «chiesta» — nessuna delle due sarebbe vera. */
+    expect(dopo.depositStatus).toBe("NONE");
+    expect(dopo.depositCents).toBe(0);
+  });
+
+  it("sotto la soglia il sito non chiede niente, e non e un errore", async () => {
+    await salvaPolitica(venueId, {
+      attiva: true,
+      daPersone: 8,
+      perPersonaCents: 1_000,
+      oreAnnulloGratis: 48,
+    });
+    const b = await db.booking.create({
+      data: { venueId, guestId, partySize: 2, startsAt: DOMANI, status: "CONFIRMED" },
+      select: { id: true },
+    });
+
+    /* `nessuna_caparra` e il caso normale della maggioranza delle
+       prenotazioni: e un esito, non un guasto. */
+    await expect(chiediCaparra(venueId, b.id)).rejects.toThrow("nessuna_caparra");
+  });
+});
