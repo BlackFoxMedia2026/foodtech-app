@@ -89,12 +89,12 @@ model OrgMembership {
 }
 
 model Venue {
-  id                     String    @id @default(cuid())
-  orgId                  String
-  name                   String
-  slug                   String
-  kind                   VenueKind @default(RESTAURANT)
-  timezone               String    @default("Europe/Rome")
+  id       String    @id @default(cuid())
+  orgId    String
+  name     String
+  slug     String
+  kind     VenueKind @default(RESTAURANT)
+  timezone String    @default("Europe/Rome")
 
   /// Se questo locale manda **SMS**.
   ///
@@ -111,7 +111,7 @@ model Venue {
   /// ha prenotato parlando col risponditore, link per riprendere una chiamata
   /// interrotta. Da spento resta la riga `SKIPPED` nel registro dei messaggi
   /// col testo che sarebbe partito.
-  smsAttivi Boolean @default(false)
+  smsAttivi              Boolean   @default(false)
   /// Quanti punti fedeltà per ogni euro speso. Nullo = raccolta punti spenta.
   ///
   /// Sta qui e non in una costante perché è una decisione commerciale del
@@ -373,6 +373,7 @@ model Venue {
   costPeriods        CostPeriod[]
   costOverrides      CostOverride[]
   platformAlerts     PlatformAlert[]
+  EventRequest       EventRequest[]
 
   @@unique([orgId, slug])
 }
@@ -631,6 +632,7 @@ model Guest {
   phoneCalls             PhoneCall[]
   voiceCallbacks         VoiceCallback[]
   voiceInsights          VoiceCRMInsight[]
+  EventRequest           EventRequest[]
 
   @@index([venueId, email])
   @@index([venueId, phone])
@@ -695,6 +697,7 @@ model Booking {
   messages         MessageLog[]
   Survey           Survey?
   phoneCalls       PhoneCall[]
+  EventRequest     EventRequest?
 
   @@index([venueId, startsAt])
   @@index([venueId, status])
@@ -3530,6 +3533,106 @@ enum BookingStatus {
   NO_SHOW
 }
 
+/// Una richiesta per un evento o un gruppo grande.
+///
+/// ## Perche non e una prenotazione
+///
+/// Perche non lo e ancora. «Siamo quaranta per una laurea, un sabato di
+/// dicembre, quanto viene?» non e una riga in agenda: e una trattativa con
+/// dentro una data da trovare, un menu da concordare e un prezzo da dire. Una
+/// prenotazione da quaranta coperti creata subito bloccherebbe mezza sala per
+/// qualcosa che forse non si fara.
+///
+/// E il pezzo con cui i concorrenti fanno margine, e in Tavolo mancava del
+/// tutto: i campi `Booking.isGroup`, `eventType` e `budgetCents` erano nello
+/// schema e non li scriveva nessuno. Li scrive **l'accettazione** di una di
+/// queste richieste.
+///
+/// ## Cosa NON c'e qui, di proposito
+///
+/// L'**acconto**. Serve un incasso vero — e quello arriva con Stripe — e un
+/// campo «acconto» che nessuno puo incassare e una promessa scritta nello
+/// schema e mantenuta da nessuno. Quando ci sara, l'acconto sta sulla
+/// prenotazione (`Booking.depositCents`), che e dove vive il denaro.
+model EventRequest {
+  id      String  @id @default(cuid())
+  venueId String
+  guestId String?
+
+  /// Chi ha chiesto, come l'ha detto. Resta scritto anche se la scheda
+  /// dell'ospite poi cambia o viene unita a un'altra.
+  nome     String  @db.VarChar(120)
+  telefono String? @db.VarChar(40)
+  email    String? @db.VarChar(200)
+
+  persone Int
+
+  /// Quando vorrebbe, quando lo sa.
+  quando      DateTime?
+  /// «un sabato di dicembre», «verso Natale»: quello che ha detto quando una
+  /// data non c'e. Testo e non `null`, perche «non lo sa» e «non l'ha detto»
+  /// sono due cose diverse quando si richiama.
+  quandoTesto String?   @db.VarChar(160)
+
+  /// Che evento e: compleanno, cena aziendale, comunione. Testo libero e non
+  /// un elenco chiuso: ogni locale ha le sue occasioni, e un valore «ALTRO»
+  /// che copre meta delle righe non serve a niente.
+  tipo String? @db.VarChar(60)
+
+  stato EventRequestStatus @default(NUOVA)
+
+  /// Quanto ha detto di voler spendere, se l'ha detto.
+  budgetCents     Int?
+  /// Il preventivo che gli abbiamo fatto: il totale.
+  preventivoCents Int?
+  /// E quanto a testa, che e il numero di cui si parla al telefono.
+  perPersonaCents Int?
+  /// Il menu concordato, come si scrive a una persona.
+  menuConcordato  String? @db.VarChar(2000)
+
+  note String? @db.VarChar(1000)
+
+  /// La telefonata da cui nasce, quando nasce da una.
+  ///
+  /// E anche la chiave di idempotenza: il centralino che ritenta non apre due
+  /// trattative per la stessa chiamata.
+  callId String? @db.VarChar(120)
+
+  /// La prenotazione nata dall'accettazione. Unica: una richiesta accettata
+  /// produce **una** prenotazione, e riaccettarla non ne produce un'altra.
+  bookingId String? @unique
+
+  decisoDa String?
+  decisoIl DateTime?
+  /// Perche e andata persa: «troppo caro», «hanno scelto un altro posto».
+  /// Senza questo, «perse: 12» non insegna niente a nessuno.
+  motivo   String?   @db.VarChar(300)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue   Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest   Guest?   @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@unique([venueId, callId])
+  @@index([venueId, stato, createdAt])
+  @@index([venueId, quando])
+}
+
+/// Dove sta una trattativa. Quattro stati e non sette: ognuno deve
+/// corrispondere a un gesto che qualcuno fa davvero.
+enum EventRequestStatus {
+  /// Arrivata, nessuno l'ha ancora guardata.
+  NUOVA
+  /// Il preventivo e stato fatto: si aspetta la risposta.
+  PREVENTIVO
+  /// Accettata: c'e una prenotazione.
+  ACCETTATA
+  /// Persa, e nel campo `motivo` c'e scritto perche.
+  PERSA
+}
+
 enum BookingSource {
   WIDGET
   /// Presa da una persona dello staff al telefono. Resta per le righe
@@ -3842,6 +3945,12 @@ enum NotificationKind {
   /// Invii fermati per proteggere la reputazione del dominio.
   DEM_SENDING_PAUSED
   DEM_PAYMENT_FAILED
+  /// Una richiesta per un evento o un gruppo grande.
+  ///
+  /// Ha una categoria sua perche **scade**: chi chiede un preventivo per
+  /// quaranta persone lo chiede a tre ristoranti lo stesso pomeriggio, e chi
+  /// risponde domani ha gia perso. Vedi `server/eventi.ts`.
+  EVENT_REQUEST
   /// I piatti di una comanda sono pronti al passe. È **la** notifica del
   /// servizio: arriva al cameriere di quel tavolo, non alla campanella del
   /// locale.

@@ -112,6 +112,7 @@ mancante una cosa che c'è manda a costruirla due volte.
 | **POS** | `POSConnector`, `POSEvent` | tutto, e dipende da quale cassa usano i clienti |
 | **Connettori generici** | `Connector`, `ConnectorEvent` | tutto: un adattatore per canale e un accordo commerciale per ognuno |
 | **Reserve with Google** | `BookingSource.GOOGLE` | tutto: serve un account partner |
+| **Eventi e gruppi** | **fatto** il 22 settembre 2026: `server/eventi.ts`, `/eventi`, `POST /api/v1/telefonia/evento`. Richiesta → preventivo → accettata, e la prenotazione nasce marcata come evento (`isGroup`, `eventType`, `budgetCents`: i tre campi che nessuno scriveva) | l'**acconto**: serve un incasso vero, e quando ci sarà sta sulla prenotazione. Un campo «acconto» che nessuno può incassare è una promessa scritta nello schema e mantenuta da nessuno |
 | **Importazione da un altro gestionale** | **fatta**: `/settings/importa`, `lib/import-csv.ts`, `server/importazione.ts`. CSV con clienti, prenotazioni o entrambi; anteprima che non scrive; ricaricare lo stesso file non duplica | niente. Le colonne non riconosciute si elencano nella schermata: si aggiungono a `ALIAS` quando un file vero ne porta di nuove |
 
 ## Come si aggiunge un'integrazione

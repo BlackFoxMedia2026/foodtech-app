@@ -45,6 +45,8 @@ const SECTION_ROUTES: Record<string, string> = {
   buoni: "/marketing/gift-cards",
   wifi: "/marketing/wifi",
   qr: "/marketing/qr-codes",
+  eventi: "/eventi",
+  gruppi: "/eventi",
   pagamenti: "/payments",
   analytics: "/insights",
 };
