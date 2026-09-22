@@ -17,6 +17,8 @@ import { LoyaltyPill } from "@/components/guests/loyalty-pill";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, SourceBadge } from "@/components/bookings/status-badge";
+import { CaparraPrenotazione } from "@/components/bookings/caparra-prenotazione";
+import { caparraDovutaCents, politicaDi } from "@/server/caparre";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { cosaSapere, etichettaOccasione } from "@/lib/cosa-sapere";
 import { CosaSapere } from "@/components/guests/cosa-sapere";
@@ -127,12 +129,25 @@ export default async function BookingDetail({
                 label="Occasione"
                 value={etichettaOccasione(item.occasion) ?? "—"}
               />
-              {item.depositCents > 0 && (
-                <Info
-                  label="Caparra"
-                  value={formatCurrency(item.depositCents, ctx.venue.currency)}
+              {/*
+                La caparra non e piu un numero scritto a mano.
+
+                Prima qui compariva `depositCents` — un campo che qualcuno
+                digitava e che nessuno incassava. Adesso e un gesto: si chiede,
+                arriva un link da mandare, e lo stato dice se il denaro c'e.
+                Vedi `server/caparre.ts`.
+              */}
+              <div className="col-span-2">
+                <CaparraPrenotazione
+                  bookingId={item.id}
+                  stato={item.depositStatus}
+                  importoCents={item.depositCents}
+                  valuta={ctx.venue.currency}
+                  prevista={caparraDovutaCents(politicaDi(ctx.venue), item.partySize)}
+                  puoChiedere={canManage}
+                  puoRimborsare={can(ctx.role, "view_revenue")}
                 />
-              )}
+              </div>
               {/*
                 Il riferimento **per intero**, e copiabile.
 

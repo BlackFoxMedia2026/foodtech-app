@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { segnaCaparraPagata } from "@/server/caparre";
 import { chiaveIdempotenza, perConto, stripeConfigurato, stripeRichiesto } from "@/lib/stripe";
 import { manciaPercentuale, quotaDivisa } from "@/lib/conto-diviso";
 import {
@@ -605,6 +606,18 @@ export async function registraIncasso(input: {
       where: { paymentId: payment.id, status: "RESERVED" },
       data: { status: "PAID" },
     });
+
+    /*
+      Una **caparra** arrivata: la prenotazione lo dice nello stesso istante.
+
+      Dentro la stessa transazione e non con una seconda scrittura: separate,
+      lascerebbero una finestra in cui il denaro e incassato e l'agenda dice
+      ancora «da pagare» — e in quella finestra qualcuno telefona per chiedere
+      perche. Vedi `server/caparre.ts`.
+    */
+    if (payment.kind === "DEPOSIT" && payment.bookingId) {
+      await segnaCaparraPagata(tx, payment.bookingId, payment.amountCents);
+    }
 
     const billCents = payment.amountCents - payment.tipCents;
     let residuoCents = 0;
