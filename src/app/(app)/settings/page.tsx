@@ -37,6 +37,7 @@ import { Centralino } from "@/components/settings/centralino";
 import { SezioneImpostazioni } from "@/components/settings/sezione-impostazioni";
 import { CalendarioPrenotazioni } from "@/components/settings/calendario-prenotazioni";
 import { SmsPromemoria } from "@/components/settings/sms-promemoria";
+import { CaparraRegola } from "@/components/settings/caparra-regola";
 import { channelAvailable } from "@/server/messaging/send";
 import { AltreSezioniMobile } from "@/components/settings/navigazione-impostazioni";
 import { IndiceImpostazioni } from "@/components/settings/indice-impostazioni";
@@ -459,6 +460,21 @@ export default async function SettingsPage({
               {/* Sta fra le prenotazioni perche il messaggio che manda piu
                 spesso e il promemoria: e quello che porta o non porta la gente
                 al tavolo. */}
+              {/* La caparra sta fra le prenotazioni perche e una regola sulle
+                prenotazioni, non sui pagamenti: in Pagamenti c'e come si
+                incassa, qui c'e **quando** si chiede. */}
+              <CaparraRegola
+                iniziale={{
+                  attiva: ctx.venue.caparraAttiva,
+                  daPersone: ctx.venue.caparraDaPersone,
+                  perPersonaCents: ctx.venue.caparraPerPersonaCents,
+                  fissaCents: ctx.venue.caparraFissaCents,
+                  oreAnnulloGratis: ctx.venue.caparraOreAnnulloGratis,
+                }}
+                pagamentiPronti={!!ctx.venue.stripeAccountId && ctx.venue.stripeChargesEnabled}
+                canManage={can(ctx.role, "manage_venue")}
+              />
+
               <SmsPromemoria
                 attivi={ctx.venue.smsAttivi}
                 canaleDisponibile={channelAvailable("SMS")}

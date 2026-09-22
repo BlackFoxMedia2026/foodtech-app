@@ -147,6 +147,12 @@ export type AuditAction =
   | "venue.centralino_chiave_emessa"
   | "venue.centralino_chiave_revocata"
   | "venue.wifi_update"
+  /* La caparra: la regola del locale, la richiesta al cliente, e il denaro che
+     torna indietro. Tre righe perche sono tre momenti diversi, e davanti a
+     «perche questo cliente ha pagato?» servono tutti e tre. */
+  | "venue.caparra_update"
+  | "booking.caparra_chiesta"
+  | "booking.caparra_rimborsata"
   /* Eventi e gruppi: la trattativa dalla richiesta alla prenotazione. Il
      «persa» porta il motivo, che e l'unico numero di quella pagina che puo
      far guadagnare qualcosa. */

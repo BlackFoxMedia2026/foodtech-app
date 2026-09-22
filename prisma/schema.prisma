@@ -96,6 +96,35 @@ model Venue {
   kind     VenueKind @default(RESTAURANT)
   timezone String    @default("Europe/Rome")
 
+  /// Se questo locale chiede una **caparra** sulle prenotazioni.
+  ///
+  /// Spenta per difetto, come tutto quello che tocca il denaro di qualcuno.
+  /// Da accesa, una prenotazione sopra `caparraDaPersone` coperti nasce con
+  /// una caparra da pagare: il tavolo e tenuto, e la riga in agenda dice che
+  /// il denaro non e ancora arrivato (`DepositStatus.REQUESTED`).
+  ///
+  /// Vedi `server/caparre.ts`. I binari sono quelli del conto al tavolo —
+  /// addebito diretto sull'account Stripe del ristorante — perche un secondo
+  /// modo di incassare sarebbe un secondo posto dove il denaro puo sbagliare.
+  caparraAttiva Boolean @default(false)
+
+  /// Da quanti coperti si chiede. Otto per difetto: sotto, la caparra costa
+  /// piu in attrito di quanto salvi in no-show.
+  caparraDaPersone Int @default(8)
+
+  /// Quanto, a testa. Esclusiva con `caparraFissaCents`: due numeri per lo
+  /// stesso importo sono un'occasione di dirne uno sbagliato.
+  caparraPerPersonaCents Int?
+  /// Oppure quanto in tutto, indipendentemente dai coperti.
+  caparraFissaCents Int?
+
+  /// Entro quante ore prima si annulla senza perdere la caparra.
+  ///
+  /// Non e un automatismo: e la regola che il locale dichiara e che chi
+  /// disdice legge. Rimborsare resta un gesto di chi gestisce la sala —
+  /// un rimborso automatico deciso da un orologio non lo vuole nessuno.
+  caparraOreAnnulloGratis Int @default(48)
+
   /// Se questo locale manda **SMS**.
   ///
   /// Spento per difetto, e si accende un locale per volta. Il canale SMS si
@@ -3667,6 +3696,12 @@ enum Occasion {
 
 enum DepositStatus {
   NONE
+  /// Chiesta e non pagata: il tavolo e tenuto e il denaro non e arrivato.
+  ///
+  /// E uno stato vero e serve in sala — senza, quella riga sarebbe
+  /// indistinguibile da una senza caparra, e chi guarda l'agenda non saprebbe
+  /// quale tavolo sta rischiando.
+  REQUESTED
   HELD
   CAPTURED
   REFUNDED
