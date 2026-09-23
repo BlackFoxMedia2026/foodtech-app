@@ -109,6 +109,7 @@ export function SelettoreStato({
 
   const pillola = cn(
     badgeVariants({ tone: meta.tone }),
+    "pastiglia",
     meta.conclusa ? "badge-dot badge-dot-anello" : "badge-dot",
     // Più grande della pillola di sola lettura: qui è un comando, e un comando
     // di dodici pixel in una riga alta quaranta non si vede e non si prende.
@@ -117,7 +118,11 @@ export function SelettoreStato({
   );
 
   if (!modificabile) {
-    return <span className={pillola}>{meta.label}</span>;
+    return (
+      <span className={pillola} data-stato={mostrato}>
+        {meta.label}
+      </span>
+    );
   }
 
   /* A che punto del servizio siamo: serve al menu per dire quali passi sono
@@ -133,6 +138,7 @@ export function SelettoreStato({
           type="button"
           disabled={inCorso}
           title="Cambia stato"
+          data-stato={mostrato}
           aria-label={`Stato di ${nome}: ${meta.label}. Cambia stato`}
           className={cn(
             pillola,

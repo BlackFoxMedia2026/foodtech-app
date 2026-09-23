@@ -173,6 +173,24 @@ const config: Config = {
           "icon-fill": "var(--kpi-icon-fill)",
           "icon-border": "var(--kpi-icon-border)",
           "icon-ink": "var(--kpi-icon-ink)",
+          "label-muted": "var(--kpi-label-muted)",
+        },
+        /** Gli stati di una prenotazione: il pallino porta il colore, la parola resta inchiostro. */
+        stato: {
+          dot: {
+            positive: "var(--stato-dot-positive)",
+            seated: "var(--stato-dot-seated)",
+            warn: "var(--stato-dot-warn)",
+            negative: "var(--stato-dot-negative)",
+            neutral: "var(--stato-dot-neutral)",
+          },
+          testo: {
+            positive: "var(--stato-testo-positive)",
+            seated: "var(--stato-testo-seated)",
+            warn: "var(--stato-testo-warn)",
+            negative: "var(--stato-testo-negative)",
+            neutral: "var(--stato-testo-neutral)",
+          },
         },
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",

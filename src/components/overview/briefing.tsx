@@ -25,12 +25,12 @@ function TrattiSfumati() {
     <svg width="0" height="0" aria-hidden="true" className="absolute">
       <defs>
         <linearGradient id="trattoVetro" gradientUnits="userSpaceOnUse" x1="12" y1="2" x2="12" y2="22">
-          <stop offset="0" stopColor="#F2E7D0" />
-          <stop offset="1" stopColor="#A89B80" />
+          <stop offset="0" style={{ stopColor: "var(--tratto-vetro-alto)" }} />
+          <stop offset="1" style={{ stopColor: "var(--tratto-vetro-basso)" }} />
         </linearGradient>
         <linearGradient id="trattoTenue" gradientUnits="userSpaceOnUse" x1="12" y1="2" x2="12" y2="22">
-          <stop offset="0" stopColor="#E1CA97" />
-          <stop offset="1" stopColor="#A1906C" />
+          <stop offset="0" style={{ stopColor: "var(--tratto-tenue-alto)" }} />
+          <stop offset="1" style={{ stopColor: "var(--tratto-tenue-basso)" }} />
         </linearGradient>
       </defs>
     </svg>
@@ -213,12 +213,12 @@ export function Briefing({
           >
             {/* Il dischetto solo da `sm`: in una colonna da 114 px, 48 px di
                 tondo non lasciano spazio al numero accanto. */}
-            <span className="vetro hidden h-12 w-12 shrink-0 place-items-center rounded-full sm:grid">
+            <span className="vetro kpi-pastiglia hidden h-12 w-12 shrink-0 place-items-center rounded-full sm:grid">
               <Icona className="h-6 w-6" stroke="url(#trattoVetro)" />
             </span>
 
             <div className="min-w-0 flex-1">
-              <p className="t-etichetta flex items-center gap-1.5 text-[13px] sm:text-sm">
+              <p className="t-etichetta flex items-center gap-1.5 text-[13px] text-kpi-label-muted sm:text-sm">
                 <Icona className="h-[22px] w-[22px] shrink-0 sm:hidden" stroke="url(#trattoTenue)" />
                 <span className="sm:hidden">{corta}</span>
                 <span className="hidden sm:inline">{etichetta}</span>
@@ -230,9 +230,9 @@ export function Briefing({
                 {valore}
               </p>
               {barra != null && (
-                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-border">
+                <div className="barra-binario mt-1.5 h-2 w-full overflow-hidden rounded-full bg-border">
                   <div
-                    className="h-full rounded-full bg-surface-brown-light"
+                    className="barra-pieno h-full rounded-full bg-surface-brown-light"
                     style={{ width: `${Math.min(100, Math.max(0, barra))}%` }}
                   />
                 </div>

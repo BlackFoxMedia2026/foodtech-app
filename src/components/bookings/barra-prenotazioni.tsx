@@ -163,7 +163,7 @@ export function BottoneOggi({ attivo, onClick }: { attivo: boolean; onClick: () 
         ALTEZZA,
         TESTO,
         FUOCO,
-        "shrink-0 rounded-full border px-2.5 font-medium transition-colors min-[1280px]:px-3 min-[1500px]:px-4",
+        "pastiglia shrink-0 rounded-full border px-2.5 font-medium transition-colors min-[1280px]:px-3 min-[1500px]:px-4",
         attivo
           ? "border-accent/40 bg-accent/10 text-foreground"
           : "border-border/60 bg-secondary/30 text-muted-foreground hover:bg-veil-6 hover:text-foreground",
@@ -208,7 +208,7 @@ export function SelettoreVista({ vista, onVista }: { vista: Vista; onVista: (v: 
       aria-label="Come guardare la giornata"
       className={cn(
         ALTEZZA,
-        "flex shrink-0 items-center gap-1 rounded-full border border-border/70 bg-card/50 p-1",
+        "binario flex shrink-0 items-center gap-1 rounded-full border border-border/70 bg-card/50 p-1",
       )}
     >
       {VISTE.map((v) => {
@@ -223,7 +223,7 @@ export function SelettoreVista({ vista, onVista }: { vista: Vista; onVista: (v: 
             className={cn(
               TESTO,
               FUOCO,
-              "flex h-full items-center gap-1.5 rounded-full border px-2 transition-colors min-[1280px]:px-2.5 min-[1440px]:px-3.5 min-[1500px]:gap-2 min-[1500px]:px-4",
+              "segmento flex h-full items-center gap-1.5 rounded-full border px-2 transition-colors min-[1280px]:px-2.5 min-[1440px]:px-3.5 min-[1500px]:gap-2 min-[1500px]:px-4",
               attiva
                 ? "border-accent-strong/55 bg-accent/15 font-semibold text-accent-strong"
                 : "border-transparent font-medium text-muted-foreground hover:bg-veil-6 hover:text-foreground",
@@ -292,7 +292,7 @@ export function FiltroStato({
             ALTEZZA,
             TESTO,
             FUOCO,
-            "flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 font-medium transition-colors min-[1280px]:px-3 min-[1500px]:gap-2 min-[1500px]:px-4",
+            "pastiglia flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 font-medium transition-colors min-[1280px]:px-3 min-[1500px]:gap-2 min-[1500px]:px-4",
             attivi > 0
               ? "border-accent-strong/55 bg-accent/15 text-accent-strong"
               : "border-border/70 bg-card/70 text-foreground hover:border-border-strong/70 hover:bg-veil-6",

@@ -73,7 +73,7 @@ export function ProfileMenu({
               dentroIlMenu && "border-line ring-2 ring-line-40",
             )}
           >
-            <AvatarFallback className="rounded-lg bg-foreground text-background">
+            <AvatarFallback className="avatar-oro rounded-lg bg-foreground text-background">
               {initials(user.name ?? user.email)}
             </AvatarFallback>
           </Avatar>

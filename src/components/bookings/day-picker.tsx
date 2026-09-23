@@ -71,7 +71,7 @@ export function DayPicker({ value }: { value: string }) {
       <div
         className={cn(
           ALTEZZA,
-          "flex items-center gap-1 rounded-full border border-border/70 bg-card/70 px-1",
+          "pastiglia flex items-center gap-1 rounded-full border border-border/70 bg-card/70 px-1",
         )}
       >
         <Freccia verso="indietro" onClick={() => shift(-1)} />
@@ -127,7 +127,7 @@ function Freccia({ verso, onClick }: { verso: "indietro" | "avanti"; onClick: ()
       onClick={onClick}
       aria-label={verso === "indietro" ? "Giorno precedente" : "Giorno successivo"}
       className={cn(
-        "grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border/60 bg-secondary/40 text-muted-foreground transition-colors lg:h-10 lg:w-10",
+        "tondo-strumento grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border/60 bg-secondary/40 text-muted-foreground transition-colors lg:h-10 lg:w-10",
         "hover:border-border-strong/70 hover:bg-secondary/70 hover:text-foreground",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
