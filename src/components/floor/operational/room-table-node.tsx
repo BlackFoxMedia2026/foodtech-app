@@ -194,11 +194,15 @@ export const RoomTableNode = memo(
       status ?? (!t.active ? "BLOCCATO" : mode === "RESERVATIONS" && isBooked ? "PRENOTATO" : null);
     const surfaceClass = effectiveStatus ? STATUS_SURFACE[effectiveStatus] : "table-wood text-clay-ink";
     const edgeClass = effectiveStatus ? STATUS_EDGE[effectiveStatus] : "bg-surface-brown-light";
-    const statusRing = effectiveStatus
-      ? STATUS_RING[effectiveStatus]
-      : mode === "RESERVATIONS"
-        ? STATUS_RING.LIBERO
-        : "ring-1 ring-surface-brown-light/50";
+    // `tessera-tavolo-ring`: in Carta il contorno è uno per tutti i tavoli.
+    const statusRing = cn(
+      "tessera-tavolo-ring",
+      effectiveStatus
+        ? STATUS_RING[effectiveStatus]
+        : mode === "RESERVATIONS"
+          ? STATUS_RING.LIBERO
+          : "ring-1 ring-surface-brown-light/50",
+    );
 
     const ringClass = isSelected
       ? "ring-4 ring-accent/70"

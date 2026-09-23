@@ -156,9 +156,9 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
         {/* Il legno: due gradienti e due righe di fughe. Deterministico, quindi
             identico sul server e nel browser. */}
         <linearGradient id="pav-legno" x1="0" y1="0" x2="0.4" y2="1">
-          <stop offset="0%" stopColor="#DCBB8C" />
-          <stop offset="55%" stopColor="#C79E6C" />
-          <stop offset="100%" stopColor="#B98D58" />
+          <stop offset="0%" style={{ stopColor: "var(--floor-wood-1)" }} />
+          <stop offset="55%" style={{ stopColor: "var(--floor-wood-2)" }} />
+          <stop offset="100%" style={{ stopColor: "var(--floor-wood-3)" }} />
         </linearGradient>
         <linearGradient id="pav-legno-chiaro" x1="0" y1="0" x2="0.4" y2="1">
           <stop offset="0%" stopColor="#E6CCA4" />
@@ -169,7 +169,7 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
           <stop offset="100%" stopColor="#956C3E" />
         </linearGradient>
         <pattern id="doghe" width="1" height="86" patternUnits="userSpaceOnUse">
-          <rect width="1" height="86" fill="rgba(92, 58, 24, 0.10)" />
+          <rect width="1" height="86" style={{ fill: "var(--floor-doghe)" }} />
         </pattern>
         <linearGradient id="bancone-piano" x1="0" y1="0" x2="0.2" y2="1">
           <stop offset="0%" stopColor="#C9B394" />
@@ -200,10 +200,9 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
           <polygon
             points={puntiPoligono}
             fill="none"
-            stroke="rgba(56, 33, 10, 0.5)"
+            style={{ stroke: "var(--floor-ombra-muri)", filter: "blur(10px)", pointerEvents: "none" }}
             strokeWidth={22}
             clipPath="url(#clip-pavimento)"
-            style={{ filter: "blur(10px)", pointerEvents: "none" }}
           />
         </>
       ) : (

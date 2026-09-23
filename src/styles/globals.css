@@ -295,6 +295,13 @@
     --conto-ink: rgb(var(--ink));
     --conto-superficie: hsl(var(--accent) / 0.12);
     --conto-superficie-bordo: hsl(var(--accent) / 0.45);
+    /* La pianta: il pavimento è un fondo, e i fondi seguono il tema. Al buio
+       il legno di prima (tre fermate), le doghe e l'ombra dei muri. */
+    --floor-wood-1: #dcbb8c;
+    --floor-wood-2: #c79e6c;
+    --floor-wood-3: #b98d58;
+    --floor-doghe: rgba(92, 58, 24, 0.1);
+    --floor-ombra-muri: rgba(56, 33, 10, 0.5);
     --border-hairline: rgba(0, 0, 0, 0.35);
 
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
@@ -363,7 +370,7 @@
     --destructive: 12.3 64.2% 37.3%; /* #9c3b22 */
     --destructive-foreground: 41.5 44.8% 94.3%; /* #f7f3ea */
     /* Il rosso da leggere: nel codice è sempre testo (105 usi). */
-    --destructive-soft: 13.2 60% 43.1%; /* #b0492c */
+    --destructive-soft: 13.1 63.3% 38.4%; /* #a03f24: passa anche sull'incavo (4,79) e sulla pagina (5,08) */
     --border: 43 25% 78%; /* #d5cdb9 */
     --border-strong: 42.2 11.4% 46.5%; /* #847c69 */
     --input: 42.2 11.4% 46.5%; /* #847c69 */
@@ -523,6 +530,16 @@
     --conto-ink: var(--text-on-accent);
     --conto-superficie: var(--glow-accent);
     --conto-superficie-bordo: var(--accent-fill);
+    /* Il pavimento un gradino sotto la pagina: la pianta legge come un piano
+       suo. Il contorno è uno per tutti i tavoli, in ogni stato: porta la
+       forma; il riempimento porta lo stato. */
+    --room-floor: #ded7c6;
+    --table-outline: #2c5545;
+    --floor-wood-1: var(--room-floor);
+    --floor-wood-2: var(--room-floor);
+    --floor-wood-3: var(--room-floor);
+    --floor-doghe: transparent;
+    --floor-ombra-muri: var(--edge-shadow);
   }
 
   .dark {
@@ -1696,6 +1713,43 @@
   :root:has([data-tema="carta"]) [data-stato="COMPLETED"],
   :root:has([data-tema="carta"]) [data-stato="CANCELLED"] {
     --badge-dot: var(--text-meta);
+  }
+  /* Le tessere che portano un numero sono lastre, non vetro: il vetro è
+     solo per ciò che galleggia sopra il contenuto. */
+  :root:has([data-tema="carta"]) .kpi-vetro {
+    border-color: var(--border-hairline);
+    background-image: linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: var(--shadow-bevel), var(--shadow-lift);
+  }
+  :root:has([data-tema="carta"]) .kpi-vetro:hover {
+    border-color: var(--border-control);
+  }
+  /* La pianta dal vivo: un contorno solo per tutti i tavoli, in ogni stato.
+     Il tratteggio di chi è libero o da riassettare resta, col colore unico. */
+  :root:has([data-tema="carta"]) .tessera-tavolo {
+    border-width: 1px;
+    border-color: var(--table-outline);
+  }
+  :root:has([data-tema="carta"]) .tessera-tavolo-ring {
+    --tw-ring-color: var(--table-outline);
+  }
+  /* Su un fondo affollato il terzo livello non esiste: «4p» e «Bloccato» sono
+     l'informazione. */
+  :root:has([data-tema="carta"]) .tessera-tavolo .testo-minore {
+    opacity: 1;
+    color: var(--text-secondary);
+  }
+  :root:has([data-tema="carta"]) .tessera-tavolo.text-tertiary-foreground,
+  :root:has([data-tema="carta"]) .tessera-tavolo .text-tertiary-foreground {
+    color: var(--text-secondary);
+  }
+  /* Il pavimento di riserva, quando la sala non ha una piantina disegnata. */
+  :root:has([data-tema="carta"]) .room-floor-surface {
+    background-color: var(--room-floor);
+    background-image: none;
+    box-shadow: inset 0 0 2px var(--edge-shadow);
   }
   :root:has([data-tema="carta"]) .barra-binario {
     background-color: var(--meter-track);

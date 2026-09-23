@@ -443,7 +443,7 @@ function TavoloMappa({
         // riquadro e non in una pillola appesa sotto — era il difetto della
         // pianta precedente, dove le pillole dei tavoli vicini si
         // accavallavano.
-        "absolute flex flex-col items-start justify-center overflow-hidden rounded-md border px-2 py-1.5 text-left transition-transform",
+        "tessera-tavolo absolute flex flex-col items-start justify-center overflow-hidden rounded-md border px-2 py-1.5 text-left transition-transform",
         stile.classe,
         selezionato && "ring-2 ring-line",
       )}
@@ -457,7 +457,7 @@ function TavoloMappa({
       <span className="flex w-full items-center gap-1">
         <Icona className="h-3 w-3 shrink-0" aria-hidden="true" />
         <span className="truncate text-xs font-semibold">{table.label}</span>
-        <span className="ml-auto shrink-0 text-[10px] opacity-70">{table.seats}p</span>
+        <span className="testo-minore ml-auto shrink-0 text-[10px] opacity-70">{table.seats}p</span>
       </span>
 
       {corrente ? (

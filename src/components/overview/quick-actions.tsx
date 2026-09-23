@@ -39,7 +39,7 @@ const COMANDO =
 
 /** Il gesto principale porta il tono delle chiamate all'azione: crema su verde. */
 const TONO_PRIMARIO = "bg-cta text-cta-ink shadow-[shadow:var(--button-accent-shadow)]";
-const TONO = "tondo-strumento finish-sage-tile border border-[#2f5b4a] text-ink";
+const TONO = "pastiglia finish-sage-tile border border-[#2f5b4a] text-ink";
 
 /*
   `max-w-0` + `overflow-hidden` invece di `hidden`: una larghezza si può
