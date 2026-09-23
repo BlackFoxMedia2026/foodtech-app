@@ -289,6 +289,12 @@
        dello stato, e il dipendente a riposo. */
     --dot-fatto: rgb(var(--cream) / 0.45);
     --dot-riposo: rgb(var(--cream) / 0.5);
+    /* Lo stato «al conto» di un tavolo: la tessera e la superficie. */
+    --conto-fondo: hsl(var(--accent) / 0.8);
+    --conto-bordo: hsl(var(--accent));
+    --conto-ink: rgb(var(--ink));
+    --conto-superficie: hsl(var(--accent) / 0.12);
+    --conto-superficie-bordo: hsl(var(--accent) / 0.45);
     --border-hairline: rgba(0, 0, 0, 0.35);
 
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
@@ -512,6 +518,11 @@
     --ink-tertiary: hsl(var(--tertiary));
     --dot-fatto: var(--text-meta);
     --dot-riposo: var(--text-meta);
+    --conto-fondo: var(--accent-fill);
+    --conto-bordo: var(--accent-fill);
+    --conto-ink: var(--text-on-accent);
+    --conto-superficie: var(--glow-accent);
+    --conto-superficie-bordo: var(--accent-fill);
   }
 
   .dark {

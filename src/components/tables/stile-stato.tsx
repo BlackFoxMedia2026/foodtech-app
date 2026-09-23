@@ -35,7 +35,13 @@ export const STILE_STATO: Record<TableLiveStatus, { icona: LucideIcon; classe: s
     classe: "border-surface-brown bg-surface-brown text-ink",
     testo: "text-ink",
   },
-  CONTO: { icona: Receipt, classe: "border-accent bg-accent/80 text-ink", testo: "text-ink" },
+  CONTO: {
+    icona: Receipt,
+    /* L'oro in Carta non riempie mai: il pieno è --accent-fill, con il suo
+       inchiostro. Al buio i token valgono la terracotta all'80% di prima. */
+    classe: "border-[color:var(--conto-bordo)] bg-[color:var(--conto-fondo)] text-[color:var(--conto-ink)]",
+    testo: "text-[color:var(--conto-ink)]",
+  },
   PULIZIA: {
     icona: Timer,
     classe: "border-dashed border-border-strong bg-secondary/60 text-muted-foreground",
@@ -69,7 +75,7 @@ export const SUPERFICIE_STATO: Record<TableLiveStatus, string> = {
   PRENOTATO: "border-border-strong bg-secondary/45",
   IN_ARRIVO: "border-sage/40 bg-sage/10",
   OCCUPATO: "border-surface-brown/50 bg-surface-brown/15",
-  CONTO: "border-accent/45 bg-accent/[0.12]",
+  CONTO: "border-[color:var(--conto-superficie-bordo)] bg-[color:var(--conto-superficie)]",
   PULIZIA: "border-border bg-card-sunken/70",
   BLOCCATO: "border-border bg-muted/30",
 };
