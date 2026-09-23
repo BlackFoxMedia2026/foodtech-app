@@ -66,7 +66,7 @@ export function TestataCalendario({
           type="button"
           onClick={onPrecedente}
           aria-label="Periodo precedente"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-cream/40 hover:text-foreground"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-line-40 hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -75,14 +75,14 @@ export function TestataCalendario({
           type="button"
           onClick={onSuccessivo}
           aria-label="Periodo successivo"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-cream/40 hover:text-foreground"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-line-40 hover:text-foreground"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
         <button
           type="button"
           onClick={onOggi}
-          className="h-8 shrink-0 rounded-full border border-border/70 px-4 text-xs font-medium text-foreground/90 transition-colors hover:border-cream/40 hover:bg-cream/[0.06]"
+          className="h-8 shrink-0 rounded-full border border-border/70 px-4 text-xs font-medium text-foreground/90 transition-colors hover:border-line-40 hover:bg-veil-6"
         >
           Oggi
         </button>
@@ -95,7 +95,7 @@ export function TestataCalendario({
                 "flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors xl:hidden",
                 conFiltriAttivi
                   ? "border-accent text-accent-strong"
-                  : "border-border/70 text-foreground/90 hover:border-cream/40",
+                  : "border-border/70 text-foreground/90 hover:border-line-40",
               )}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
@@ -109,7 +109,7 @@ export function TestataCalendario({
 
         {/* Il selettore di vista. Tre segmenti dentro un solco, non tre
             pulsanti: dicono che sono alternative e che una è già scelta. */}
-        <div className="ml-auto flex shrink-0 items-center gap-0.5 rounded-full border border-border/60 bg-cream/[0.04] p-0.5">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 rounded-full border border-border/60 bg-veil-4 p-0.5">
           {VISTE.map((v) => (
             <button
               key={v.value}
@@ -119,8 +119,8 @@ export function TestataCalendario({
               className={cn(
                 "rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors",
                 vista === v.value
-                  ? "bg-cream text-clay-ink"
-                  : "text-muted-foreground hover:bg-cream/10 hover:text-foreground",
+                  ? "bg-segment text-segment-ink"
+                  : "text-muted-foreground hover:bg-veil-10 hover:text-foreground",
               )}
             >
               <span className="hidden sm:inline">{v.label}</span>

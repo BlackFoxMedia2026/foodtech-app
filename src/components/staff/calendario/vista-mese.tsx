@@ -125,8 +125,8 @@ export function VistaMese({
               className={cn(
                 "flex min-h-[6.5rem] min-w-0 flex-col gap-1 border-b border-r border-border/25 p-1.5",
                 !dentro && "opacity-40",
-                oggiQui && "bg-cream/[0.04]",
-                g === giornoSelezionato && !oggiQui && "bg-cream/[0.018]",
+                oggiQui && "bg-veil-4",
+                g === giornoSelezionato && !oggiQui && "bg-veil-1.8",
               )}
             >
               <div className="flex items-center justify-between gap-1">
@@ -140,7 +140,7 @@ export function VistaMese({
                   })}`}
                   className={cn(
                     "grid h-6 min-w-[1.5rem] place-items-center rounded-full px-1 text-xs font-semibold tabular-nums transition-colors",
-                    oggiQui ? "bg-accent-strong text-accent-strong-foreground" : "text-foreground/80 hover:bg-cream/10",
+                    oggiQui ? "bg-accent-strong text-accent-strong-foreground" : "text-foreground/80 hover:bg-veil-10",
                   )}
                 >
                   {numeroGiorno(g)}
@@ -162,7 +162,7 @@ export function VistaMese({
                         blocco.turni.length
                       } persone: ${blocco.turni.map((t) => nomeCompleto(t.persona)).join(", ")}`}
                       className={cn(
-                        "flex w-full items-center gap-1 overflow-hidden rounded border px-1 py-[2px] text-left transition-colors hover:bg-cream/[0.08]",
+                        "flex w-full items-center gap-1 overflow-hidden rounded border px-1 py-[2px] text-left transition-colors hover:bg-veil-8",
                         famiglia.carta,
                       )}
                     >
@@ -170,7 +170,7 @@ export function VistaMese({
                       <span className={cn("shrink-0 text-[0.62rem] tabular-nums", famiglia.testo)}>
                         {intervalloCompatto(blocco.startMinute, blocco.endMinute)}
                       </span>
-                      <span className="ml-auto shrink-0 text-[0.64rem] tabular-nums text-cream/70">
+                      <span className="ml-auto shrink-0 text-[0.64rem] tabular-nums text-ink/70">
                         {blocco.turni.length}
                       </span>
                     </button>
@@ -189,11 +189,11 @@ export function VistaMese({
                       className={cn(
                         "flex w-full items-center gap-1 overflow-hidden rounded border px-1 py-[2px] text-left transition-colors",
                         famiglia.carta,
-                        canManage ? "hover:bg-cream/[0.08]" : "cursor-default",
+                        canManage ? "hover:bg-veil-8" : "cursor-default",
                       )}
                     >
                       <IconaTipoTurno kind={t.kind} className={cn("h-2.5 w-2.5 shrink-0", famiglia.testo)} />
-                      <span className="min-w-0 flex-1 truncate text-[0.64rem] leading-tight text-cream/85">
+                      <span className="min-w-0 flex-1 truncate text-[0.64rem] leading-tight text-ink/85">
                         {t.persona.lastName}
                       </span>
                     </button>

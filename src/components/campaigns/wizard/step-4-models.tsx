@@ -134,7 +134,7 @@ function CardLibreria({
         <Button
           variant="outline"
           size="sm"
-          className="pointer-events-none w-full max-w-[200px] border-cream/40 bg-background/70 text-cream hover:bg-background/90 group-hover:pointer-events-auto group-[&:has(:focus-visible)]:pointer-events-auto"
+          className="pointer-events-none w-full max-w-[200px] border-line-40 bg-background/70 text-ink hover:bg-background/90 group-hover:pointer-events-auto group-[&:has(:focus-visible)]:pointer-events-auto"
           onClick={onGuarda}
         >
           <Eye className="h-3.5 w-3.5" /> Guarda

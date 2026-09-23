@@ -35,9 +35,9 @@ export function IndicatoreQuota({
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
         esaurita || sospeso
-          ? "border-destructive/50 bg-destructive/20 text-cream hover:bg-destructive/25"
+          ? "border-destructive/50 bg-destructive/20 text-ink hover:bg-destructive/25"
           : agliSgoccioli
-            ? "border-accent/60 bg-accent/30 text-cream hover:bg-accent/40"
+            ? "border-accent/60 bg-accent/30 text-ink hover:bg-accent/40"
             : "border-border text-muted-foreground hover:bg-white/5 hover:text-foreground",
       )}
     >

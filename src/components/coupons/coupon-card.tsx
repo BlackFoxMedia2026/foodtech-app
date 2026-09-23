@@ -184,7 +184,7 @@ export function CouponCard({
             <>
               {/* La barra è muta: il rapporto è già scritto sopra in cifre, e
                   ripeterlo a un lettore di schermo sarebbe rumore. */}
-              <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-cream/10" aria-hidden="true">
+              <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-veil-10" aria-hidden="true">
                 <div
                   className={cn("h-full rounded-full", quota >= 100 ? "bg-accent" : "bg-sage")}
                   style={{ width: `${quota}%` }}
@@ -200,7 +200,7 @@ export function CouponCard({
         <div className="min-w-0 lg:col-start-4 lg:row-span-2 lg:row-start-1 lg:self-center">
           <p className="t-etichetta leading-none">Codice</p>
           <span className="mt-1.5 flex items-center gap-0.5">
-            <code className="min-w-0 break-all rounded-md bg-cream/10 px-2 py-1 font-mono text-xs tracking-wider text-card-foreground">
+            <code className="min-w-0 break-all rounded-md bg-veil-10 px-2 py-1 font-mono text-xs tracking-wider text-card-foreground">
               {c.code}
             </code>
             <CopyButton

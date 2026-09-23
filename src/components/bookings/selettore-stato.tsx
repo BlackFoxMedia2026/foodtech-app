@@ -139,8 +139,8 @@ export function SelettoreStato({
             "tocco-comodo gap-1.5 cursor-pointer select-none",
             // Hover evidente ma senza bagliori: il bordo si accende di crema e
             // il chevron finisce di comparire. Niente ombre, niente scatti.
-            "hover:border-cream/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            "data-[state=open]:border-cream/60",
+            "hover:border-line-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "data-[state=open]:border-line-60",
             inCorso && "opacity-70",
           )}
         >
@@ -227,7 +227,7 @@ function VoceStato({
               ? "bg-cream/45"
               : uscita
                 ? "ring-1 ring-inset ring-destructive/50"
-                : "ring-1 ring-inset ring-cream/30",
+                : "ring-1 ring-inset ring-line-30",
         )}
       />
       <span className={cn("flex-1", corrente && "font-medium")}>{meta.label}</span>

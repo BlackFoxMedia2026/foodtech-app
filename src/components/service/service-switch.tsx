@@ -31,7 +31,7 @@ export function ServiceSwitch() {
             aria-current={attivo ? "page" : undefined}
             className={cn(
               "flex min-h-[40px] items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors",
-              attivo ? "bg-cream text-clay-ink" : "text-muted-foreground hover:text-foreground",
+              attivo ? "bg-segment text-segment-ink" : "text-muted-foreground hover:text-foreground",
             )}
           >
             <Icon className="h-4 w-4" aria-hidden="true" />

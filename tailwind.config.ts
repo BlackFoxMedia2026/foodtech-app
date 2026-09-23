@@ -120,6 +120,60 @@ const config: Config = {
         },
         /** Il rosso da leggere su verde scuro: vedi la nota in `globals.css`. */
         "destructive-soft": "hsl(var(--destructive-soft) / <alpha-value>)",
+        /**
+         * I ruoli del tema, per chi prima scriveva un colore del buio.
+         *
+         * Ognuno ha al buio **esattamente** il valore della classe che ha
+         * sostituito (`text-cream`, `bg-cream text-clay-ink`, `bg-cream/10`,
+         * `border-cream/40`...), e in Carta quello del suo ruolo. È ciò che
+         * tiene identico il back office quando `:has()` non si risolve e si
+         * ricade al buio. Vedi il blocco Carta in `globals.css`.
+         */
+        /** L'inchiostro della superficie: crema al buio, verde-nero sulla carta. */
+        ink: v("ink"),
+        /** Il pulsante primario. */
+        cta: { DEFAULT: "var(--cta-fill)", ink: "var(--cta-ink)" },
+        /** Il segmento scelto di un selettore, la voce attiva di una fila. */
+        segment: { DEFAULT: "var(--segment-fill)", ink: "var(--segment-ink)", "ink-forest": "var(--segment-ink-forest)" },
+        /** La pillola che scorre sotto la voce di menu attiva. */
+        "nav-pill": { DEFAULT: "var(--nav-pill)", ink: "var(--nav-pill-ink)" },
+        /** Il selezionato morbido (`bg-accent/25` al buio). */
+        "pill-selected": "var(--pill-selected)",
+        /** I veli crema, uno per opacità in uso: niente opacità calcolata. */
+        veil: {
+          "1.8": "var(--veil-1-8)",
+          "3": "var(--veil-3)",
+          "3.5": "var(--veil-3-5)",
+          "4": "var(--veil-4)",
+          "5": "var(--veil-5)",
+          "6": "var(--veil-6)",
+          "7": "var(--veil-7)",
+          "8": "var(--veil-8)",
+          "10": "var(--veil-10)",
+          "12": "var(--veil-12)",
+          "15": "var(--veil-15)",
+          "20": "var(--veil-20)",
+        },
+        /** I bordi crema, uno per opacità in uso. */
+        line: {
+          DEFAULT: "var(--line-100)",
+          "10": "var(--line-10)",
+          "15": "var(--line-15)",
+          "20": "var(--line-20)",
+          "25": "var(--line-25)",
+          "30": "var(--line-30)",
+          "40": "var(--line-40)",
+          "50": "var(--line-50)",
+          "60": "var(--line-60)",
+        },
+        /** La tessera dei numeri (`CartaKpi`): etichetta, nota, pastiglia dell'icona. */
+        kpi: {
+          label: "var(--kpi-label)",
+          note: "var(--kpi-note)",
+          "icon-fill": "var(--kpi-icon-fill)",
+          "icon-border": "var(--kpi-icon-border)",
+          "icon-ink": "var(--kpi-icon-ink)",
+        },
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",
           foreground: "hsl(var(--card-foreground) / <alpha-value>)",

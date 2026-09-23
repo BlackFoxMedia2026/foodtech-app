@@ -184,7 +184,7 @@ export function WalkInDialog({
                     className={cn(
                       "min-h-[36px] rounded-full px-3 text-sm transition-colors",
                       partySize === n
-                        ? "bg-cream text-clay-ink"
+                        ? "bg-segment text-segment-ink"
                         : "bg-current/10 text-muted-foreground hover:bg-current/15",
                     )}
                   >
@@ -221,7 +221,7 @@ export function WalkInDialog({
                       className={cn(
                         "flex min-h-[68px] w-full flex-col items-start justify-center rounded-md border px-3 py-2 text-left transition-colors",
                         selected === t.tableId
-                          ? "border-cream bg-current/10"
+                          ? "border-line bg-current/10"
                           : "border-border hover:bg-current/5",
                       )}
                     >

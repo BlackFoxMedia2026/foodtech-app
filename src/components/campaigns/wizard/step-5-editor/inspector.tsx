@@ -222,7 +222,7 @@ export function Inspector({
           <button
             type="button"
             onClick={onRequestMedia}
-            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-cream text-sm font-medium text-clay-ink hover:brightness-105"
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-cta text-sm font-medium text-cta-ink hover:brightness-105"
           >
             <ImageUp className="h-4 w-4" /> {block.imageUrl ? "Cambia immagine" : "Scegli immagine"}
           </button>
@@ -244,7 +244,7 @@ export function Inspector({
           <button
             type="button"
             onClick={onRequestMedia}
-            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-cream text-sm font-medium text-clay-ink hover:brightness-105"
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-cta text-sm font-medium text-cta-ink hover:brightness-105"
           >
             <ImageUp className="h-4 w-4" /> {block.imageUrl ? "Cambia immagine" : "Scegli immagine"}
           </button>

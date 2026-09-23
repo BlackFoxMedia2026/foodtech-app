@@ -73,7 +73,7 @@ export function GrigliaAzioni({ azioni }: { azioni: AzioneCard[] }) {
         const classe = cn(
           "flex min-h-[80px] flex-col items-center justify-center gap-2 rounded-md border px-1 text-center transition-colors",
           a.principale
-            ? "border-transparent bg-cream text-clay-ink"
+            ? "border-transparent bg-cta text-cta-ink"
             : "border-border text-foreground hover:bg-current/10",
           a.disabilitato && "pointer-events-none opacity-50",
         );

@@ -70,7 +70,7 @@ function compactName(fullName: string, max = 10) {
 const STATUS_SURFACE: Record<TableOperationalStatus, string> = {
   LIBERO: "table-wood text-clay-ink",
   PRENOTATO: "bg-surface-brown-light text-clay-ink",
-  OCCUPATO: "bg-surface-brown-dark text-cream",
+  OCCUPATO: "bg-surface-brown-dark text-ink",
   BLOCCATO: "bg-muted text-muted-foreground",
 };
 const STATUS_EDGE: Record<TableOperationalStatus, string> = {

@@ -315,7 +315,7 @@ function Workspace() {
                     onClick={() => editor.setViewport(v)}
                     className={cn(
                       "flex h-7 items-center gap-1.5 rounded px-3 text-[13px] transition-colors",
-                      viewport === v ? "bg-cream text-clay-ink" : "text-muted-foreground hover:text-foreground"
+                      viewport === v ? "bg-segment text-segment-ink" : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" /> {label}

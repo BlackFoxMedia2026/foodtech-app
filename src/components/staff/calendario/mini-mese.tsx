@@ -51,7 +51,7 @@ export function MiniMese({
             type="button"
             onClick={() => onCambiaMese(-1)}
             aria-label="Mese precedente"
-            className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-cream/10 hover:text-foreground"
+            className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-veil-10 hover:text-foreground"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
@@ -59,7 +59,7 @@ export function MiniMese({
             type="button"
             onClick={() => onCambiaMese(1)}
             aria-label="Mese successivo"
-            className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-cream/10 hover:text-foreground"
+            className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-veil-10 hover:text-foreground"
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
@@ -86,7 +86,7 @@ export function MiniMese({
                 // sul bottone: così i sette giorni formano una barra continua
                 // invece di sette pastiglie staccate.
                 "py-[1px]",
-                inSettimana && "bg-cream/[0.07]",
+                inSettimana && "bg-veil-7",
                 inSettimana && i % 7 === 0 && "rounded-l-md",
                 inSettimana && i % 7 === 6 && "rounded-r-md",
               )}
@@ -108,8 +108,8 @@ export function MiniMese({
                      va letto. La gerarchia la fa `muted-foreground` contro
                      `foreground`, non l'opacità. */
                   fuoriMese ? "text-muted-foreground" : "text-foreground/85",
-                  !scelto && "hover:bg-cream/15",
-                  scelto && "bg-cream font-semibold text-clay-ink",
+                  !scelto && "hover:bg-veil-15",
+                  scelto && "bg-segment font-semibold text-segment-ink",
                   oggiQui && !scelto && "font-semibold text-accent-strong",
                 )}
               >

@@ -187,7 +187,7 @@ export function RoomLiveView({
               onClick={() => setRoomId(r.id)}
               className={cn(
                 "min-h-[40px] rounded-full px-3 text-sm transition-colors",
-                roomId === r.id ? "bg-cream text-clay-ink" : "bg-current/10 text-muted-foreground",
+                roomId === r.id ? "bg-segment text-segment-ink" : "bg-current/10 text-muted-foreground",
               )}
             >
               {r.name}
@@ -445,7 +445,7 @@ function TavoloMappa({
         // accavallavano.
         "absolute flex flex-col items-start justify-center overflow-hidden rounded-md border px-2 py-1.5 text-left transition-transform",
         stile.classe,
-        selezionato && "ring-2 ring-cream",
+        selezionato && "ring-2 ring-line",
       )}
       style={{
         left: `${(table.posX / bounds.w) * 100}%`,
@@ -593,8 +593,8 @@ function TavoloRiga({
       }
       className={cn(
         "surface rounded-md border p-3",
-        evidenziato ? "border-cream" : "border-border",
-        onApri && "cursor-pointer transition-colors hover:border-cream/60",
+        evidenziato ? "border-line" : "border-border",
+        onApri && "cursor-pointer transition-colors hover:border-line-60",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">

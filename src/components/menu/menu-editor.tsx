@@ -267,7 +267,7 @@ export function MenuEditor({
                       className={cn(
                         "relative grid h-12 w-12 shrink-0 place-items-center rounded-lg border transition-colors",
                         filtro === "tutti"
-                          ? "border-border text-muted-foreground hover:border-cream/40 hover:text-foreground"
+                          ? "border-border text-muted-foreground hover:border-line-40 hover:text-foreground"
                           : "border-accent text-accent-strong",
                       )}
                     >
@@ -301,7 +301,7 @@ export function MenuEditor({
                     className={cn(
                       "flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors",
                       filtro === f.chiave
-                        ? "bg-cream text-clay-ink"
+                        ? "bg-segment text-segment-ink"
                         : "text-muted-foreground hover:bg-current/10 hover:text-foreground",
                     )}
                   >
@@ -320,7 +320,7 @@ export function MenuEditor({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Vedi il menu pubblico"
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-cream/40 hover:text-foreground"
+                className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-line-40 hover:text-foreground"
               >
                 <ExternalLink className="h-[1.15rem] w-[1.15rem]" aria-hidden="true" />
               </a>
@@ -560,7 +560,7 @@ export function MenuEditor({
                                   {i.dietary.map((d) => (
                                     <span
                                       key={d}
-                                      className="rounded-full border border-sage/40 bg-sage/15 px-2.5 py-0.5 text-xs text-cream"
+                                      className="rounded-full border border-sage/40 bg-sage/15 px-2.5 py-0.5 text-xs text-ink"
                                     >
                                       {nomeRegime(d)}
                                     </span>

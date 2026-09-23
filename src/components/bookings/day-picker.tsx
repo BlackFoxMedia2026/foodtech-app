@@ -82,7 +82,7 @@ export function DayPicker({ value }: { value: string }) {
           Safari 16+, Firefox 101+) apre il calendario anche quando il clic cade
           sul testo invece che sull'icona nativa, che qui è invisibile.
         */}
-        <span className="relative flex h-9 items-center rounded-full px-1.5 transition-colors hover:bg-cream/[0.06] focus-within:ring-2 focus-within:ring-ring lg:h-10 min-[1500px]:px-2.5">
+        <span className="relative flex h-9 items-center rounded-full px-1.5 transition-colors hover:bg-veil-6 focus-within:ring-2 focus-within:ring-ring lg:h-10 min-[1500px]:px-2.5">
           {/*
             La data è il testo più pesante della barra dopo la chiamata
             all'azione: è la domanda a cui questa pagina risponde per prima.

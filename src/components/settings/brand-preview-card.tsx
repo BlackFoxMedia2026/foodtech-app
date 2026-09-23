@@ -82,7 +82,7 @@ export function BrandPreviewCard({
             aria-selected={quale === s.id}
             onClick={() => setQuale(s.id)}
             className={`tocco-comodo rounded-full px-2.5 py-1 text-xs transition-colors ${
-              quale === s.id ? "bg-cream text-clay-ink" : "bg-current/10 text-muted-foreground"
+              quale === s.id ? "bg-segment text-segment-ink" : "bg-current/10 text-muted-foreground"
             }`}
           >
             {s.etichetta}

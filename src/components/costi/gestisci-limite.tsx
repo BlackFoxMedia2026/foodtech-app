@@ -195,7 +195,7 @@ function Scelta({
       className={cn(
         "rounded-full border px-3 py-1.5 text-sm transition-colors",
         attiva
-          ? "border-accent bg-accent/30 text-cream"
+          ? "border-accent bg-accent/30 text-ink"
           : "border-border text-muted-foreground hover:text-foreground",
       )}
     >

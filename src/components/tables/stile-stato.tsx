@@ -28,14 +28,14 @@ export const STILE_STATO: Record<TableLiveStatus, { icona: LucideIcon; classe: s
     classe: "border-dashed border-border/70 bg-transparent text-muted-foreground",
     testo: "text-muted-foreground",
   },
-  PRENOTATO: { icona: Clock, classe: "border-cream/40 bg-cream/[0.12] text-foreground", testo: "text-foreground" },
+  PRENOTATO: { icona: Clock, classe: "border-line-40 bg-veil-12 text-foreground", testo: "text-foreground" },
   IN_ARRIVO: { icona: Sparkles, classe: "border-sage bg-sage/25 text-foreground", testo: "text-foreground" },
   OCCUPATO: {
     icona: UtensilsCrossed,
-    classe: "border-surface-brown bg-surface-brown text-cream",
-    testo: "text-cream",
+    classe: "border-surface-brown bg-surface-brown text-ink",
+    testo: "text-ink",
   },
-  CONTO: { icona: Receipt, classe: "border-accent bg-accent/80 text-cream", testo: "text-cream" },
+  CONTO: { icona: Receipt, classe: "border-accent bg-accent/80 text-ink", testo: "text-ink" },
   PULIZIA: {
     icona: Timer,
     classe: "border-dashed border-border-strong bg-secondary/60 text-muted-foreground",

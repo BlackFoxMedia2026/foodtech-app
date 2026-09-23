@@ -214,6 +214,49 @@
     /* Il corpo della griglia (anche vista mese e scheletro), e la colonna di oggi. */
     --grid-body: #0c1a14;
     --grid-body-today: #132a20;
+
+    /*
+      **I ruoli per chi prima scriveva un colore del buio.** Qui valgono
+      esattamente la classe che hanno sostituito — `--veil-10` è quello che
+      Tailwind generava per `bg-cream/10` — così il back office, se `:has()`
+      non si risolve e ricade al buio, resta identico. Il blocco Carta li
+      ridefinisce uno per uno.
+    */
+    --ink: var(--cream);
+    --cta-fill: rgb(var(--cream));
+    --cta-ink: rgb(var(--clay-ink));
+    --segment-fill: rgb(var(--cream));
+    --segment-ink: rgb(var(--clay-ink));
+    --segment-ink-forest: rgb(var(--forest));
+    --nav-pill: rgb(var(--cream));
+    --nav-pill-ink: rgb(var(--forest));
+    --pill-selected: hsl(var(--accent) / 0.25);
+    --veil-1-8: rgb(var(--cream) / 0.018);
+    --veil-3: rgb(var(--cream) / 0.03);
+    --veil-3-5: rgb(var(--cream) / 0.035);
+    --veil-4: rgb(var(--cream) / 0.04);
+    --veil-5: rgb(var(--cream) / 0.05);
+    --veil-6: rgb(var(--cream) / 0.06);
+    --veil-7: rgb(var(--cream) / 0.07);
+    --veil-8: rgb(var(--cream) / 0.08);
+    --veil-10: rgb(var(--cream) / 0.1);
+    --veil-12: rgb(var(--cream) / 0.12);
+    --veil-15: rgb(var(--cream) / 0.15);
+    --veil-20: rgb(var(--cream) / 0.2);
+    --line-10: rgb(var(--cream) / 0.1);
+    --line-15: rgb(var(--cream) / 0.15);
+    --line-20: rgb(var(--cream) / 0.2);
+    --line-25: rgb(var(--cream) / 0.25);
+    --line-30: rgb(var(--cream) / 0.3);
+    --line-40: rgb(var(--cream) / 0.4);
+    --line-50: rgb(var(--cream) / 0.5);
+    --line-60: rgb(var(--cream) / 0.6);
+    --line-100: rgb(var(--cream));
+    --kpi-label: rgb(var(--cream) / 0.9);
+    --kpi-note: rgb(var(--cream) / 0.65);
+    --kpi-icon-fill: rgb(var(--cream) / 0.07);
+    --kpi-icon-border: rgb(var(--cream) / 0.1);
+    --kpi-icon-ink: rgb(var(--cream) / 0.55);
     --border-hairline: rgba(0, 0, 0, 0.35);
 
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
@@ -238,6 +281,180 @@
       porta nessun elemento, il buio qui è lo stato normale.
     */
     color-scheme: dark;
+  }
+
+  /*
+    **Il tema Carta**, per il back office.
+
+    Si accende quando nella pagina c'è un elemento con `data-tema="carta"`:
+    lo portano i layout del gestionale, dell'amministrazione e dell'accesso
+    (`TemaCarta`). Su `:root` e non sul contenitore perché dialog, menu e
+    tooltip si montano dentro `<body>`, fuori da qualunque contenitore.
+
+    Se `:has()` non si risolve, questo blocco non vale e si resta al buio: è
+    voluto. Una Staff App bianca in una sala a luci basse è il caso peggiore;
+    un back office scuro è solo lo stato di prima.
+
+    I valori sono quelli decisi il 23 settembre 2026. Le terzine HSL hanno i
+    decimali che servono a tornare **esattamente** all'esadecimale indicato
+    accanto; le terzine RGB sono l'esadecimale stesso.
+  */
+  :root:has([data-tema="carta"]) {
+    color-scheme: light;
+
+    /* I token di base. */
+    --background: 42 31.2% 87.5%; /* #e9e3d5 */
+    --foreground: 148 21.7% 13.5%; /* #1b2a22 */
+    --card: 41.5 44.8% 94.3%; /* #f7f3ea */
+    --card-foreground: 148 21.7% 13.5%; /* #1b2a22 */
+    /* Un pannello interno appena più chiaro della scheda, non un incavo:
+       nel back office è il piano delle tabelle e dei riquadri dentro una
+       scheda, e le righe stanno su --surface-row. */
+    --card-sunken: 45 66.7% 97.6%; /* #fdfbf5 */
+    --popover: 41.5 44.8% 94.3%; /* #f7f3ea */
+    --popover-foreground: 148 21.7% 13.5%; /* #1b2a22 */
+    --primary: 148.6 26.6% 15.5%; /* #1d3227 */
+    --primary-foreground: 41.5 44.8% 94.3%; /* #f7f3ea */
+    --secondary: 44.2 38.8% 90.4%; /* #f0ebdd */
+    --secondary-foreground: 148 21.7% 13.5%; /* #1b2a22 */
+    --muted: 44.2 38.8% 90.4%; /* #f0ebdd */
+    --muted-foreground: 146.7 12.9% 27.5%; /* #3d4f45 */
+    --tertiary: 134.1 9.1% 36.7%; /* #556659 */
+    --accent: 39.6 62.7% 29.4%; /* #7a5a1c */
+    --accent-foreground: 41.5 44.8% 94.3%; /* #f7f3ea */
+    --destructive: 12.3 64.2% 37.3%; /* #9c3b22 */
+    --destructive-foreground: 41.5 44.8% 94.3%; /* #f7f3ea */
+    --destructive-soft: 16.6 52.7% 89.2%; /* #f2ddd5 */
+    --border: 43 25% 78%; /* #d5cdb9 */
+    --border-strong: 42.2 11.4% 46.5%; /* #847c69 */
+    --input: 42.2 11.4% 46.5%; /* #847c69 */
+    --focus-ring: 145.1 31.4% 26.9%; /* #2f5a41 */
+
+    /* I reparti, nell'ordine: sala, cucina, bar, direzione, altro, riposo,
+       assenza. Validati insieme (separazione fra adiacenti anche in
+       protanopia): non si cambiano né si riordinano senza rivalidare.
+       Cucina, sala e riposo non arrivano a 4,5 : 1: non fanno da testo. */
+    --turno-sala: 165.3 81.4% 27.5%; /* #0d7f63 */
+    --turno-cucina: 38.2 100% 34.5%; /* #b07000 */
+    --turno-bar: 206.3 76.8% 37.3%; /* #1668a8 */
+    --turno-direzione: 10.4 72.2% 43.7%; /* #c03b1f */
+    --turno-altro: 265.3 46.3% 51.8%; /* #7b4bbd */
+    --turno-riposo: 73.4 100% 28%; /* #6f8f00 */
+    --turno-assenza: 319.4 45.5% 45.3%; /* #a83f86 */
+
+    /* I colori con un nome proprio. `carbon` non si ridefinisce: è un
+       materiale (la tessera nera, l'inchiostro sulla madreperla), non un
+       ruolo del tema. */
+    --cream: 247 243 234; /* #f7f3ea: inchiostro sopra i pieni scuri */
+    --clay-ink: 27 42 34; /* #1b2a22 */
+    --clay-ink-soft: 61 79 69; /* #3d4f45 */
+    --forest: 44 85 69; /* #2c5545: resta scuro */
+    --sage: 223 230 221; /* #dfe6dd: riempimento */
+    --sage-strong: 61 79 69; /* #3d4f45: testo */
+    --sage-deep: 61 107 82; /* #3d6b52: bordi e anelli */
+    --surface-brown: 240 235 221; /* #f0ebdd */
+    --surface-brown-dark: 227 221 205; /* #e3ddcd */
+    --surface-brown-light: 245 241 229; /* #f5f1e5 */
+    --sand: 233 227 213; /* #e9e3d5 */
+    --sand-50: 245 240 230; /* #f5f0e6 */
+    --sand-100: 236 229 214; /* #ece5d6 */
+    --gilt: 201 169 106; /* #c9a96a: solo riempimento */
+    --gilt-light: 221 195 143; /* #ddc38f: solo riempimento */
+    --gilt-dark: 138 106 42; /* #8a6a2a: l'unico che fa bordo */
+    --accent-strong: 122 90 28; /* #7a5a1c */
+    --accent-strong-foreground: 247 243 234; /* #f7f3ea */
+    --accent-strong-ink: 122 90 28; /* #7a5a1c */
+
+    /* La palette Carta. */
+    --surface-base: #e9e3d5;
+    --surface-panel: #f7f3ea;
+    --surface-row: #fdfbf5;
+    --surface-raised: #f0ebdd;
+    --surface-inset: #e3ddcd;
+    --surface-header: #2c5545;
+    --text-primary: #1b2a22;
+    --text-secondary: #3d4f45;
+    --text-meta: #556659;
+    --control-fill: #2c5545;
+    --control-ink: #f7f3ea;
+    --header-ink: #e4d3a8;
+    --border-control: #847c69;
+    --accent-fill: #c9a96a;
+    --text-on-accent: #221a08;
+    --state-confirmed: #1f6b3d;
+    --state-pending: #7d5510;
+    --state-seated: #1d5c76;
+    --state-alert: #9c3b22;
+    --state-allergen: #7d5510;
+    --state-celebration: #7a5a1c;
+    --chart-glow: #2c554524;
+    --chart-grid: #d5cdb9;
+    --meter-track: #ded8c8;
+    --meter-fill: #2c5545;
+    --glass-fill: #f7f3eae6;
+    --glow-accent: #c9a96a2e;
+    --shadow-bevel: inset 0 1px 0 #ffffffcc, inset 0 -1px 0 #b9af9640;
+    --shadow-lift: 0 16px 32px -16px #b3a88c59;
+
+    /* I ruoli estratti. */
+    --base-top: #f2ece0;
+    --base-bottom: #e4ddcd;
+    --panel-top: #fffdf8;
+    --panel-bottom: #f2ece0;
+    --button-brand-shadow: 0 10px 24px #b3a88c59;
+    --button-accent-shadow: 0 10px 24px #b3a88c66;
+    --edge-light: #ffffffcc;
+    --edge-light-soft: #ffffff99;
+    --glow-page: #c9a96a2e;
+    --edge-shadow: #b9af9640;
+    --edge-shadow-soft: #b9af9626;
+    --border-hairline: #d5cdb9;
+    --chart-line: #2c5545;
+    --mark-now: hsl(12.3 64.2% 37.3%); /* #9c3b22 */
+    --mark-selected: hsl(156.6 31.8% 25.3%); /* #2c5545 */
+    --grid-header: #e4ddcd;
+    --grid-header-hover: #e8e1d0;
+    --grid-header-today: #e0ede1;
+    --grid-body: #fdfbf5;
+    --grid-body-today: #eef4ec;
+
+    /* I ruoli per chi prima scriveva un colore del buio. */
+    --ink: 27 42 34; /* #1b2a22 */
+    --cta-fill: #1d3227;
+    --cta-ink: #f7f3ea;
+    /* Il segmento scelto è uno dei cinque verdi pieni. */
+    --segment-fill: var(--control-fill);
+    --segment-ink: var(--control-ink);
+    --segment-ink-forest: var(--control-ink);
+    --nav-pill: var(--control-fill);
+    --nav-pill-ink: var(--control-ink);
+    --pill-selected: hsl(var(--accent) / 0.15);
+    --veil-1-8: var(--edge-light);
+    --veil-3: var(--edge-light);
+    --veil-3-5: var(--edge-light);
+    --veil-4: var(--edge-light);
+    --veil-5: var(--edge-light);
+    --veil-6: var(--edge-light);
+    --veil-7: var(--edge-light);
+    --veil-8: var(--edge-light);
+    --veil-10: var(--edge-light);
+    --veil-12: var(--edge-light);
+    --veil-15: var(--edge-light);
+    --veil-20: var(--edge-light);
+    --line-10: var(--border-hairline);
+    --line-15: var(--border-hairline);
+    --line-20: var(--border-hairline);
+    --line-25: var(--border-hairline);
+    --line-30: var(--border-hairline);
+    --line-40: var(--border-hairline);
+    --line-50: var(--border-hairline);
+    --line-60: var(--border-hairline);
+    --line-100: var(--border-hairline);
+    --kpi-label: rgb(var(--accent-strong));
+    --kpi-note: rgb(var(--sage-strong));
+    --kpi-icon-fill: var(--control-fill);
+    --kpi-icon-border: var(--control-fill);
+    --kpi-icon-ink: var(--control-ink);
   }
 
   .dark {

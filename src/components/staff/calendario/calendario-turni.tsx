@@ -463,7 +463,7 @@ function BottoneNuovo({ onNuovo }: { onNuovo: (kind: WorkShiftKind) => void }) {
         <Plus className="h-4 w-4" aria-hidden="true" />
         Nuovo turno
       </button>
-      <span aria-hidden="true" className="w-px bg-cream/20" />
+      <span aria-hidden="true" className="w-px bg-veil-20" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button type="button" aria-label="Altri tipi di assegnazione" className={cn(base, "px-2")}>

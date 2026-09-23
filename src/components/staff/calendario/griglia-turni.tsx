@@ -358,8 +358,8 @@ function CasellaOra({
       style={{ minHeight: ALTEZZA_ORA_MIN }}
       className={cn(
         "group/cella relative space-y-1.5 border-b border-r border-border/25 p-1.5 transition-colors",
-        oggi && "bg-cream/[0.035]",
-        !oggi && selezionato && "bg-cream/[0.018]",
+        oggi && "bg-veil-3.5",
+        !oggi && selezionato && "bg-veil-1.8",
         isOver && "bg-[hsl(var(--turno-sera)/0.14)] ring-1 ring-inset ring-[hsl(var(--turno-sera)/0.45)]",
         adesso && "shadow-[inset_0_1.5px_0_0_var(--mark-now)]",
         canManage && "cursor-copy",

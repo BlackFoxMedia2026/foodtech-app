@@ -145,7 +145,7 @@ export function CouponPannello({
         <div className="shrink-0 border-b border-border px-5 py-4">
           <div className="flex items-start gap-3">
             <span
-              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cream/10 bg-cream/[0.07] text-accent-strong"
+              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line-10 bg-veil-7 text-accent-strong"
               aria-hidden="true"
             >
               <Icona className="h-5 w-5" />
@@ -204,7 +204,7 @@ export function CouponPannello({
             stava in un riquadro gemello di quello degli utilizzi, tagliato a
             metà da `truncate`, con lo stesso peso di un contatore.
           */}
-          <div className="riquadro comodo bg-cream/[0.03]">
+          <div className="riquadro comodo bg-veil-3">
             <p className="t-etichetta">Cosa dà</p>
             <p className="mt-1.5 text-2xl font-semibold leading-tight text-accent-strong">
               {c.descrizione}
@@ -246,7 +246,7 @@ export function CouponPannello({
               <p className="mt-2 t-etichetta">{accorda(["Utilizzo", "Utilizzi"], c.usi)}</p>
               {conTetto ? (
                 <>
-                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-cream/10" aria-hidden="true">
+                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-veil-10" aria-hidden="true">
                     <div
                       className={cn("h-full rounded-full", quota >= 100 ? "bg-accent" : "bg-sage")}
                       style={{ width: `${quota}%` }}
@@ -348,7 +348,7 @@ export function CouponPannello({
                           CRM fa sulle righe degli ospiti, e basta a rendere
                           scorribile una colonna di nomi. */}
                       <span
-                        className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-cream/10 bg-cream/[0.06] text-[11px] font-medium uppercase text-muted-foreground"
+                        className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-line-10 bg-veil-6 text-[11px] font-medium uppercase text-muted-foreground"
                         aria-hidden="true"
                       >
                         {u.Guest ? u.Guest.firstName.charAt(0) : "—"}

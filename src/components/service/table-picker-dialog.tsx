@@ -223,7 +223,7 @@ export function TablePickerDialog({
                       title={bloccato ? "Una tavolata sta in una sala sola" : undefined}
                       className={cn(
                         "flex min-h-[64px] w-full flex-col items-start justify-center rounded-md border px-3 py-2 text-left transition-colors",
-                        scelto ? "border-cream bg-current/10" : "border-border hover:bg-current/5",
+                        scelto ? "border-line bg-current/10" : "border-border hover:bg-current/5",
                         bloccato && "cursor-not-allowed opacity-40 hover:bg-transparent",
                       )}
                     >

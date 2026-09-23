@@ -197,7 +197,7 @@ export function ProssimePrenotazioni({
           divide sopra e sotto invece di cadere tutto in fondo. */}
       <div className="px-5 pb-4 md:flex md:min-h-0 md:flex-1 md:flex-col md:justify-center">
         {righe.length === 0 ? (
-          <p className="riquadro tratteggiato border-cream/20 bg-white/5 p-8 text-center text-sm text-card-foreground/65">
+          <p className="riquadro tratteggiato border-line-20 bg-white/5 p-8 text-center text-sm text-card-foreground/65">
             Nessuna prenotazione per oggi.
           </p>
         ) : righe.length > VISIBILI ? (

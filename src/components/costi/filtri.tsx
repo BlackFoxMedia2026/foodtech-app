@@ -71,7 +71,7 @@ export function FiltriCosti({
             className={cn(
               "rounded-full border px-3 py-1.5 text-sm transition-colors",
               filtro === v.chiave
-                ? "border-accent bg-accent/25 text-cream"
+                ? "border-accent bg-pill-selected text-ink"
                 : "border-border text-muted-foreground hover:text-foreground",
             )}
           >

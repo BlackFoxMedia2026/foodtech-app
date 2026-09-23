@@ -435,8 +435,8 @@ function EditorFascia({
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors",
                   attivo
-                    ? "border-accent bg-accent/25 text-cream"
-                    : "border-border text-muted-foreground hover:border-cream/30 hover:text-foreground",
+                    ? "border-accent bg-pill-selected text-ink"
+                    : "border-border text-muted-foreground hover:border-line-30 hover:text-foreground",
                 )}
               >
                 {g.breve}

@@ -187,7 +187,7 @@ export function StaffPageClient({
                     "flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
                     conFiltriAttivi
                       ? "border-accent text-accent-strong"
-                      : "border-border/70 text-foreground/90 hover:border-cream/40",
+                      : "border-border/70 text-foreground/90 hover:border-line-40",
                   )}
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
@@ -239,7 +239,7 @@ export function StaffPageClient({
                       persone. Una sola scheda per reparto, con la sua testata, dà
                       all'occhio quattro blocchi invece di trenta righe.
                     */}
-                    <div className="flex items-center gap-2 border-b border-border/60 bg-cream/[0.05] px-3 py-2">
+                    <div className="flex items-center gap-2 border-b border-border/60 bg-veil-5 px-3 py-2">
                       <Icon className="h-3.5 w-3.5 text-accent-strong" />
                       <span className="t-etichetta font-medium">{gruppo.label}</span>
                       <span className="t-etichetta text-muted-foreground">{gruppo.members.length}</span>

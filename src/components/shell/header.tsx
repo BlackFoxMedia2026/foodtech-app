@@ -145,7 +145,7 @@ export function Header({
               {indicator && (
                 <div
                   aria-hidden="true"
-                  className="absolute inset-y-1 z-0 rounded-full bg-cream"
+                  className="absolute inset-y-1 z-0 rounded-full bg-nav-pill"
                   style={{
                     left: indicator.left,
                     width: indicator.width,

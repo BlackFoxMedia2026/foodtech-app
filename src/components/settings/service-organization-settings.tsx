@@ -152,7 +152,7 @@ export function ServiceOrganizationSettings({
                 className={cn(
                   "flex min-h-[36px] items-center gap-2 rounded-full px-3 text-sm transition-colors disabled:opacity-60",
                   attiva
-                    ? "bg-cream font-medium text-clay-ink"
+                    ? "bg-segment font-medium text-segment-ink"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >

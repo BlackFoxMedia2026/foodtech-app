@@ -71,7 +71,7 @@ export function CartaTurno({
         <span className="flex items-start gap-2">
           <Avatar className={cn("h-8 w-8 border bg-transparent", famiglia.pastiglia)}>
             {turno.persona.photoUrl && <AvatarImage src={turno.persona.photoUrl} alt="" />}
-            <AvatarFallback className="text-[0.62rem] font-semibold text-cream">
+            <AvatarFallback className="text-[0.62rem] font-semibold text-ink">
               {iniziali(turno.persona)}
             </AvatarFallback>
           </Avatar>
@@ -79,16 +79,16 @@ export function CartaTurno({
             {/* Il nome va a capo invece di troncarsi: in una colonna da 155 px
                 «Nicola Ferraro» non ci sta su una riga, e «Nicola Fe…» non è
                 una persona. Il ruolo sotto tronca — quello è il dettaglio. */}
-            <span className="block text-[0.8rem] font-semibold leading-[1.2] text-cream">
+            <span className="block text-[0.8rem] font-semibold leading-[1.2] text-ink">
               {nomeCompleto(turno.persona)}
             </span>
-            <span className="mt-0.5 block truncate text-[0.7rem] leading-tight text-cream/55">{ruolo}</span>
+            <span className="mt-0.5 block truncate text-[0.7rem] leading-tight text-ink/55">{ruolo}</span>
           </span>
         </span>
 
         <span className="mt-auto block">
-          <span className="block text-[0.78rem] font-medium tabular-nums leading-tight text-cream/95">{orario}</span>
-          <span className="mt-1 flex items-center gap-1.5 text-[0.7rem] leading-tight text-cream/55">
+          <span className="block text-[0.78rem] font-medium tabular-nums leading-tight text-ink/95">{orario}</span>
+          <span className="mt-1 flex items-center gap-1.5 text-[0.7rem] leading-tight text-ink/55">
             <IconaReparto department={reparto} className="h-3 w-3 shrink-0" />
             <span className="truncate">
               {staffDepartmentLabel(reparto)}
@@ -146,7 +146,7 @@ export function CartaGiornata({
       )}
     >
       <IconaTipoTurno kind={turno.kind} className={cn("h-3 w-3 shrink-0", famiglia.testo)} />
-      <span className="truncate text-[0.72rem] leading-tight text-cream/90">{nome}</span>
+      <span className="truncate text-[0.72rem] leading-tight text-ink/90">{nome}</span>
     </button>
   );
 }

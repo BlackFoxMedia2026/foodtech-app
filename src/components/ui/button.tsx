@@ -12,9 +12,9 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
         gold: "btn-ember text-white",
         brand:
-          "bg-surface-brown text-cream shadow-[shadow:var(--button-brand-shadow)] hover:bg-surface-brown-dark",
+          "bg-surface-brown text-ink shadow-[shadow:var(--button-brand-shadow)] hover:bg-surface-brown-dark",
         accent:
-          "bg-cream rounded-full text-clay-ink shadow-[shadow:var(--button-accent-shadow)] hover:brightness-105",
+          "bg-cta rounded-full text-cta-ink shadow-[shadow:var(--button-accent-shadow)] hover:brightness-105",
         outline:
           "border border-surface-brown/40 bg-transparent hover:bg-surface-brown/15",
         ghost: "hover:bg-current/10",

@@ -163,7 +163,7 @@ export function AddToWaitlistDialog({
                     className={cn(
                       "rounded-full px-3 py-1.5 text-sm transition-colors",
                       expectedWaitMin === min
-                        ? "bg-cream text-clay-ink"
+                        ? "bg-segment text-segment-ink"
                         : "bg-current/10 text-muted-foreground hover:bg-current/15",
                     )}
                   >

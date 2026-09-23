@@ -164,7 +164,7 @@ export function SeatFromWaitlistDialog({
                   className={cn(
                     "flex w-full items-center justify-between rounded-md border px-4 py-3 text-left transition-colors",
                     selected === t.tableId
-                      ? "border-cream bg-current/10"
+                      ? "border-line bg-current/10"
                       : "border-border hover:bg-current/5",
                   )}
                 >
