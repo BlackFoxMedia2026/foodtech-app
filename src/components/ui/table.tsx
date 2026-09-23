@@ -115,7 +115,15 @@ export function Tabella({
       className={cn(
         "rounded-xl border border-border",
         FONDO[piano],
-        fill ? "fill-scroll overflow-x-auto" : "overflow-x-auto",
+        /*
+          Senza la riserva per la barra di scorrimento. `fill-scroll` la tiene
+          sempre (`scrollbar-gutter: stable`), e in una tabella quei 17 px
+          restavano vuoti accanto alla testata: la fascia si interrompeva prima
+          del bordo e lasciava una striscia del colore della scheda. Al buio non
+          si vedeva, sulla carta sì. Qui la barra compare solo quando le righe
+          scorrono davvero, e la testata finisce contro di lei.
+        */
+        fill ? "fill-scroll overflow-x-auto [scrollbar-gutter:auto]" : "overflow-x-auto",
         className,
       )}
     >
