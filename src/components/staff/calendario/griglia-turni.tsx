@@ -216,7 +216,7 @@ export function GrigliaTurni({
         <div className="grid min-w-full" style={{ gridTemplateColumns: colonne }}>
           {/* ── testata ────────────────────────────────────────────── */}
           <div
-            className="sticky left-0 top-0 z-40 flex items-center justify-center border-b border-r border-border/50 bg-[#11241b]"
+            className="sticky left-0 top-0 z-40 flex items-center justify-center border-b border-r border-border/50 bg-[color:var(--grid-header)]"
             style={{ height: ALTEZZA_TESTATA }}
           >
             <span className="t-etichetta text-[0.62rem]">Ore</span>
@@ -417,8 +417,8 @@ function IntestazioneGiorno({
       title={`${lungo} · ${inTurno} in turno`}
       style={{ height: ALTEZZA_TESTATA }}
       className={cn(
-        "sticky top-0 z-30 flex flex-col items-center justify-center gap-0.5 border-b border-r border-border/50 bg-[#11241b] px-2 transition-colors hover:bg-[#193629]",
-        oggi && "bg-[#183324]",
+        "sticky top-0 z-30 flex flex-col items-center justify-center gap-0.5 border-b border-r border-border/50 bg-[color:var(--grid-header)] px-2 transition-colors hover:bg-[color:var(--grid-header-hover)]",
+        oggi && "bg-[color:var(--grid-header-today)]",
         selezionato && "shadow-[inset_0_-2px_0_0_var(--mark-selected)]",
       )}
     >

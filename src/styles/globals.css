@@ -206,6 +206,11 @@
        cose diverse: per questo due token, anche se al buio valgono uguale. */
     --mark-now: hsl(30 44% 48%);
     --mark-selected: hsl(30 44% 48%);
+    /* La testata dei giorni della griglia dei turni: la banda (anche la
+       casella d'angolo), la casella sotto il puntatore, quella di oggi. */
+    --grid-header: #11241b;
+    --grid-header-hover: #193629;
+    --grid-header-today: #183324;
     --border-hairline: rgba(0, 0, 0, 0.35);
 
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
