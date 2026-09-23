@@ -127,7 +127,7 @@ function Freccia({ verso, onClick }: { verso: "indietro" | "avanti"; onClick: ()
       onClick={onClick}
       aria-label={verso === "indietro" ? "Giorno precedente" : "Giorno successivo"}
       className={cn(
-        "tondo-strumento grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border/60 bg-secondary/40 text-muted-foreground transition-colors lg:h-10 lg:w-10",
+        "pastiglia grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border/60 bg-secondary/40 text-muted-foreground transition-colors lg:h-10 lg:w-10",
         "hover:border-border-strong/70 hover:bg-secondary/70 hover:text-foreground",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}

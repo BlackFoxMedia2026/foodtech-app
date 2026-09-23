@@ -230,7 +230,7 @@ function VoceStato({
           corrente
             ? "bg-accent-strong"
             : fatto
-              ? "bg-cream/45"
+              ? "bg-[color:var(--dot-fatto)]"
               : uscita
                 ? "ring-1 ring-inset ring-destructive/50"
                 : "ring-1 ring-inset ring-line-30",
