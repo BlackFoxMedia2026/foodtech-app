@@ -156,4 +156,13 @@ export const RATE_LIMITS = {
    * la pagina di ogni commensale mentre gli altri pagano.
    */
   publicPayStato: { limit: limite("PUBLIC_PAY_STATO", 120), windowMs: 60_000 },
+  /**
+   * I webhook dei fornitori delle integrazioni. Generoso: un fornitore manda
+   * a raffiche (una chiusura di serata sono decine di notifiche) e da pochi
+   * indirizzi condivisi fra tutti i suoi clienti. Il limite qui ferma chi
+   * prova chiavi a caso, non il fornitore — che comunque viene deduplicato.
+   */
+  integrationWebhook: { limit: limite("INTEGRATION_WEBHOOK", 300), windowMs: 60_000 },
+  /** Il ritorno OAuth: porta un codice che vale un accesso, severo come un login. */
+  integrationOauth: { limit: limite("INTEGRATION_OAUTH", 20), windowMs: 10 * 60_000 },
 } as const satisfies Record<string, RateLimitRule>;

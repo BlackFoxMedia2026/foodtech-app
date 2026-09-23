@@ -4,6 +4,9 @@ import { runCampaignSendJob } from "@/server/campaigns";
 import { eseguiInvioDem } from "@/server/dem/invio";
 import { runAutomation } from "@/server/automations/engine";
 import { AUTOMATION_KEYS } from "@/server/automations/catalogue";
+import { lavoroSincronizzazione } from "@/server/integrations/sync";
+import { lavoroWebhook } from "@/server/integrations/webhooks";
+import { lavoroOrdine } from "@/server/integrations/ordini";
 import type { JobHandlers } from "./queue";
 
 const AutomationRunPayload = z.object({
@@ -55,4 +58,21 @@ export const JOB_HANDLERS: JobHandlers = {
     const { venueId, key } = AutomationRunPayload.parse(payload);
     await runAutomation(venueId, key);
   },
+
+  /**
+   * Una sincronizzazione di un'integrazione (cassa, portale, …): manuale,
+   * programmata, dopo l'attivazione, o riprovata. Vedi
+   * `server/integrations/sync.ts`.
+   */
+  "integration.sync": (payload, job) => lavoroSincronizzazione(payload, job),
+
+  /** Un evento di un fornitore che non si è riusciti a lavorare al primo colpo. */
+  "integration.webhook": (payload) => lavoroWebhook(payload),
+
+  /**
+   * Un ordine rimasto in attesa perché la cassa non rispondeva
+   * (`PENDING_SYNC`): si riprova finché non arriva, senza mai crearne due.
+   * Vedi `server/integrations/ordini.ts`.
+   */
+  "integration.order": (payload, job) => lavoroOrdine(payload, job),
 };

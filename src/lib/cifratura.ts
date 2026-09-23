@@ -139,6 +139,70 @@ export function decifra(valore: string | null): string | null {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Segreti legati a un proprietario                                          */
+/* -------------------------------------------------------------------------- */
+
+const PREFISSO_LEGATO = "v1l";
+
+/**
+ * Cifra un segreto **legandolo a chi lo possiede**.
+ *
+ * Nasce per le credenziali delle integrazioni (`server/integrations/`), e
+ * differisce da `cifra` in due punti, entrambi voluti.
+ *
+ * **Il contesto entra nel sigillo.** `contesto` — per esempio
+ * `integrazione:<locale>:<installazione>` — è dato autenticato aggiuntivo di
+ * GCM: non viene cifrato, ma il sigillo lo copre. Una riga copiata sotto
+ * un'altra installazione, o sotto un altro locale, **non si decifra**. Senza,
+ * l'isolamento fra ristoranti dipenderebbe solo da un `where` scritto bene;
+ * con, dipende anche dalla matematica.
+ *
+ * **Senza chiave non si salva.** `cifra` ripiega sul chiaro con l'etichetta,
+ * ed è giusto per la password del Wi-Fi, che si mostra comunque a chiunque
+ * lasci un contatto. Un token di accesso alla cassa di un ristorante no: in
+ * chiaro nel database vale quanto la password del gestionale di cassa. Qui si
+ * solleva `chiave_mancante`, e l'interfaccia dice che l'installazione non è
+ * pronta a custodire credenziali.
+ */
+export function cifraLegato(testo: string, contesto: string): string {
+  const k = chiave();
+  if (!k) throw new ErroreDiCifratura("chiave_mancante");
+
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", k, iv);
+  cipher.setAAD(Buffer.from(contesto, "utf8"));
+  const cifrato = Buffer.concat([cipher.update(testo, "utf8"), cipher.final()]);
+  return [
+    PREFISSO_LEGATO,
+    iv.toString("base64"),
+    cipher.getAuthTag().toString("base64"),
+    cifrato.toString("base64"),
+  ].join(":");
+}
+
+/** Il contrario di `cifraLegato`: con un contesto diverso, fallisce. */
+export function decifraLegato(valore: string, contesto: string): string {
+  if (!valore.startsWith(`${PREFISSO_LEGATO}:`)) throw new ErroreDiCifratura("formato_non_valido");
+  const k = chiave();
+  if (!k) throw new ErroreDiCifratura("chiave_mancante");
+
+  const [, ivB64, sigilloB64, cifratoB64] = valore.split(":");
+  if (!ivB64 || !sigilloB64 || !cifratoB64) throw new ErroreDiCifratura("formato_non_valido");
+
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", k, Buffer.from(ivB64, "base64"));
+    decipher.setAAD(Buffer.from(contesto, "utf8"));
+    decipher.setAuthTag(Buffer.from(sigilloB64, "base64"));
+    return Buffer.concat([
+      decipher.update(Buffer.from(cifratoB64, "base64")),
+      decipher.final(),
+    ]).toString("utf8");
+  } catch {
+    throw new ErroreDiCifratura("sigillo_non_valido");
+  }
+}
+
 export class ErroreDiCifratura extends Error {
   constructor(public code: "chiave_mancante" | "formato_non_valido" | "sigillo_non_valido") {
     super(code);

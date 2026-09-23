@@ -109,16 +109,21 @@ mancante una cosa che c'è manda a costruirla due volte.
 | **WhatsApp** | il posto in `PROVIDERS` con la firma giusta, e `canalePerTelefono()` che lo preferirà da sé appena c'è | un account WhatsApp Business e un **modello approvato da Meta per ogni tipo di messaggio**: fuori dalle 24 ore da un messaggio del cliente un testo libero non si può mandare, ed è una regola del canale. Finché non c'è, quei messaggi partono come SMS |
 | **Centralino / voce** | **fatto**: `server/voice/**`, `api/v1/telefonia/**`, il centralino in `blackfox-voice`. Risponde, riconosce chi chiama, prende e disdice prenotazioni, controlla la disponibilità | la prova con una telefonata vera sulla linea del cliente |
 | **Wi-Fi captive portal** | **fatto**: `server/wifi.ts`, `/wifi/[slug]`, `WifiLead` | `WifiSession` resta vuota di proposito (vedi `ARCHITECTURE.md`) |
-| **POS** | `POSConnector`, `POSEvent` | tutto, e dipende da quale cassa usano i clienti |
-| **Connettori generici** | `Connector`, `ConnectorEvent` | tutto: un adattatore per canale e un accordo commerciale per ognuno |
+| **POS** | dal 23 settembre 2026 la **piattaforma integrazioni** ([INTEGRATION-PLATFORM.md](INTEGRATION-PLATFORM.md)) e l'adattatore **Lightspeed K-Series**, scritto sulla documentazione ufficiale e mai provato con un account vero (anteprima). `POSConnector`/`POSEvent` sono superate | il client OAuth partner di Lightspeed e la prova dal vivo; gli adattatori delle altre casse |
+| **Connettori generici** | la piattaforma integrazioni: catalogo, installazione per locale, credenziali cifrate, sincronizzazione, webhook idempotenti. `Connector`/`ConnectorEvent` sono superate | un adattatore per canale e un accordo commerciale per ognuno |
 | **Reserve with Google** | `BookingSource.GOOGLE` | tutto: serve un account partner |
 | **Eventi e gruppi** | **fatto** il 22 settembre 2026: `server/eventi.ts`, `/eventi`, `POST /api/v1/telefonia/evento`. Richiesta → preventivo → accettata, e la prenotazione nasce marcata come evento (`isGroup`, `eventType`, `budgetCents`: i tre campi che nessuno scriveva) | l'**acconto**: serve un incasso vero, e quando ci sarà sta sulla prenotazione. Un campo «acconto» che nessuno può incassare è una promessa scritta nello schema e mantenuta da nessuno |
 | **Importazione da un altro gestionale** | **fatta**: `/settings/importa`, `lib/import-csv.ts`, `server/importazione.ts`. CSV con clienti, prenotazioni o entrambi; anteprima che non scrive; ricaricare lo stesso file non duplica | niente. Le colonne non riconosciute si elencano nella schermata: si aggiungono a `ALIAS` quando un file vero ne porta di nuove |
 
 ## Come si aggiunge un'integrazione
 
-Il progetto non ha ancora un livello connettori generico, e non conviene inventarlo prima di
-averne due o tre concrete. La forma che funziona oggi, da seguire:
+**Un collegamento che il ristoratore installa sul proprio locale** (la sua cassa, il suo
+account Mailchimp, il suo portale) passa dalla piattaforma integrazioni: vedi
+[INTEGRATION-PLATFORM.md](INTEGRATION-PLATFORM.md), §11. Rotte, interfaccia, cifratura e
+webhook ci sono già; si scrive l'adattatore.
+
+**Un fornitore che Foodtech usa per tutti** (le email che spediamo noi, l'agente, i file)
+resta nella forma di sempre:
 
 1. **Un'interfaccia** in `src/server/<area>/<nome>-provider.ts` che dichiara cosa serve al
    dominio, scritta guardando il dominio e non l'API del fornitore.

@@ -39,7 +39,29 @@ export type Ability =
    * solo il manager, e le credenziali SIP non sono un dettaglio — sono un
    * numero di telefono da cui si possono fare chiamate a spese del locale.
    */
-  | "manage_phone";
+  | "manage_phone"
+  /**
+   * Le integrazioni: collegare Foodtech alla cassa, ai pagamenti, ai portali.
+   *
+   * Cinque capacità e non una, perché sono cinque poteri diversi, e il giorno
+   * in cui qualcuno deve poterne avere uno solo non si tocca il codice:
+   *
+   * - `integration:view` — vedere il catalogo e lo stato;
+   * - `integration:install` — installare e autenticarsi presso un fornitore,
+   *   cioè consegnare a Foodtech le chiavi di un sistema del locale;
+   * - `integration:configure` — sede, capacità, mappature, sincronizzare;
+   * - `integration:disconnect` — disattivare e disinstallare;
+   * - `integration:logs` — leggere il registro delle sincronizzazioni.
+   *
+   * Oggi le ha tutte, e solo, il manager: un collegamento alla cassa scrive
+   * ordini e legge incassi, ed è la stessa ragione per cui i pagamenti
+   * chiedono `manage_venue`.
+   */
+  | "integration:view"
+  | "integration:install"
+  | "integration:configure"
+  | "integration:disconnect"
+  | "integration:logs";
 
 /**
  * `manage_shifts` sta separata da `manage_staff` anche se oggi le ha lo stesso
@@ -60,6 +82,11 @@ const matrix: Record<StaffRole, Ability[]> = {
     "manage_shifts",
     "use_phone",
     "manage_phone",
+    "integration:view",
+    "integration:install",
+    "integration:configure",
+    "integration:disconnect",
+    "integration:logs",
   ],
   /* Reception e camerieri rispondono al telefono: in un locale con quattro
      persone lo fa chi è più vicino all'apparecchio, e togliere la funzione a

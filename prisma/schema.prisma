@@ -116,7 +116,7 @@ model Venue {
   /// stesso importo sono un'occasione di dirne uno sbagliato.
   caparraPerPersonaCents Int?
   /// Oppure quanto in tutto, indipendentemente dai coperti.
-  caparraFissaCents Int?
+  caparraFissaCents      Int?
 
   /// Entro quante ore prima si annulla senza perdere la caparra.
   ///
@@ -373,7 +373,7 @@ model Venue {
   Survey             Survey[]
   tables             Table[]
   blocks             TableBlock[]
-  org                Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org                Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
   WaitlistEntry      WaitlistEntry[]
   WifiLead           WifiLead[]
   WifiSession        WifiSession[]
@@ -403,6 +403,12 @@ model Venue {
   costOverrides      CostOverride[]
   platformAlerts     PlatformAlert[]
   EventRequest       EventRequest[]
+  /// Le integrazioni installate **su questo locale**. Il catalogo sta nel
+  /// codice (`server/integrations/registry.ts`); qui c'è solo ciò che questo
+  /// ristorante ha installato. Vedi `docs/INTEGRATION-PLATFORM.md`.
+  integrations       IntegrationInstallation[]
+  integrationBetaAccess IntegrationBetaAccess[]
+  integrationCertificationRuns IntegrationCertificationRun[]
 
   @@unique([orgId, slug])
 }
@@ -938,14 +944,36 @@ model GuestProviderLink {
 
 model WebhookEvent {
   id              String    @id @default(cuid())
+  /// `stripe`, `brevo`, `ses` per i webhook della piattaforma; per quelli
+  /// delle integrazioni installate `integration:<slug>` (vedi
+  /// `server/integrations/webhooks.ts`).
   provider        String
+  /// La chiave di idempotenza. Per le integrazioni è **prefissata con
+  /// l'installazione** (`<installationId>:<id dell'evento>`): lo stesso
+  /// identificativo mandato da due account diversi dello stesso fornitore
+  /// sono due eventi, non un duplicato.
   providerEventId String
   eventType       String
   payload         Json
   receivedAt      DateTime  @default(now())
   processedAt     DateTime?
 
+  /// Da qui in giù scrive solo la piattaforma integrazioni: i webhook di
+  /// Stripe, Brevo e SES lasciano questi campi vuoti e funzionano come prima.
+  installationId String?
+  venueId        String?
+  /// RECEIVED → PROCESSED | IGNORED | FAILED. Nullo sulle righe dei webhook
+  /// della piattaforma, che usano `processedAt` e basta.
+  status         String? @db.VarChar(20)
+  /// Quante volte si è provato a lavorarlo.
+  attempts       Int     @default(0)
+  /// L'evento tradotto nel formato Foodtech, quando l'adattatore lo riconosce.
+  normalized     Json?
+  /// Perché non è stato lavorato. Tecnico, per noi: al ristoratore non arriva.
+  error          String?
+
   @@unique([provider, providerEventId])
+  @@index([installationId, receivedAt])
 }
 
 model Payment {
@@ -1271,9 +1299,11 @@ model ChatSession {
   @@index([venueId, createdAt])
 }
 
-/// **NON IMPLEMENTATA** (21 set 2026): prenotazioni in ingresso dai portali.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
+/// **SUPERATA** (23 set 2026) da `IntegrationInstallation`: i portali di
+/// prenotazione si collegano dalla piattaforma integrazioni
+/// (`server/integrations/`). Nessun codice la scrive né la legge. Esce dal
+/// database con una migrazione dedicata dopo il deploy (regola di
+/// `prisma/migrations/README.md`). Non costruirci sopra.
 model Connector {
   id             String           @id @default(cuid())
   venueId        String
@@ -1294,9 +1324,8 @@ model Connector {
   @@index([venueId, status])
 }
 
-/// **NON IMPLEMENTATA** (21 set 2026): prenotazioni in ingresso dai portali.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
+/// **SUPERATA** (23 set 2026) insieme a `Connector`: gli eventi in ingresso
+/// delle integrazioni vanno su `WebhookEvent`. Non costruirci sopra.
 model ConnectorEvent {
   id          String               @id @default(cuid())
   connectorId String
@@ -1934,9 +1963,10 @@ enum FornitoreComanda {
   INTERNO
 }
 
-/// **NON IMPLEMENTATA** (21 set 2026): integrazione con la cassa.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
+/// **SUPERATA** (23 set 2026) da `IntegrationInstallation`: la cassa si
+/// collega dalla piattaforma integrazioni (`server/integrations/`). Nessun
+/// codice la scrive né la legge. Esce dal database con una migrazione
+/// dedicata dopo il deploy. Non costruirci sopra.
 model POSConnector {
   id            String             @id @default(cuid())
   venueId       String
@@ -1957,9 +1987,8 @@ model POSConnector {
   @@index([venueId, status])
 }
 
-/// **NON IMPLEMENTATA** (21 set 2026): integrazione con la cassa.
-/// Nessuna riga di codice la scrive. Vedi `docs/TABELLE-SENZA-CODICE.md`
-/// prima di costruirci sopra o di cancellarla.
+/// **SUPERATA** (23 set 2026) insieme a `POSConnector`: gli eventi della cassa
+/// vanno su `WebhookEvent`. Non costruirci sopra.
 model POSEvent {
   id             String         @id @default(cuid())
   posConnectorId String
@@ -4979,4 +5008,330 @@ model CambioValuta {
   fonte   String   @default("MANUALE") @db.VarChar(40)
 
   @@index([da, a, lettoIl])
+}
+
+// ==========================================================================
+//  Piattaforma integrazioni
+//
+//  Il catalogo NON sta qui: è codice (`server/integrations/registry.ts`),
+//  perché dice cosa sa fare un adattatore, e quello cambia con un rilascio,
+//  non con una riga di database. Qui c'è solo ciò che un locale ha
+//  installato. Vedi `docs/INTEGRATION-PLATFORM.md`.
+// ==========================================================================
+
+/// A che punto è un'installazione. Il ciclo e le transizioni ammesse stanno in
+/// `server/integrations/stati.ts`, fissati da un test.
+enum IntegrationInstallationStatus {
+  /// Disinstallata. La riga resta per non perdere registro e storia: si
+  /// reinstalla ripartendo da zero, senza credenziali né mappature.
+  NOT_INSTALLED
+  /// Il ristoratore ha iniziato il percorso e non si è ancora autenticato.
+  INSTALLING
+  /// Autenticato, manca la configurazione (sede, capacità) o la prova.
+  NEEDS_CONFIGURATION
+  /// La prova di connessione è riuscita: si può attivare.
+  CONNECTED
+  /// Una sincronizzazione è in corso. È anche il lucchetto: se ne fa una per volta.
+  SYNCING
+  /// Operativa.
+  ACTIVE
+  /// L'ultima operazione è fallita per un motivo che non è l'accesso.
+  ERROR
+  /// Spenta dal ristoratore. Credenziali e mappature restano.
+  DISABLED
+  /// L'accesso al fornitore è scaduto o revocato: serve ricollegarsi.
+  REAUTH_REQUIRED
+}
+
+/// Lo stato sintetico che si legge in un colpo d'occhio. Derivato, ma
+/// salvato: si calcola dopo ogni operazione, e la lista del catalogo non deve
+/// rifare il conto per ogni scheda.
+enum IntegrationHealth {
+  HEALTHY
+  DEGRADED
+  ERROR
+  AUTH_REQUIRED
+  UNKNOWN
+}
+
+enum IntegrationSyncTrigger {
+  MANUAL
+  WEBHOOK
+  SCHEDULED
+  INITIAL_IMPORT
+  RETRY
+}
+
+enum IntegrationSyncDirection {
+  /// Dal fornitore a Foodtech.
+  INBOUND
+  /// Da Foodtech al fornitore.
+  OUTBOUND
+  BIDIRECTIONAL
+}
+
+enum IntegrationSyncStatus {
+  RUNNING
+  SUCCEEDED
+  /// Finita, con qualche elemento non riuscito.
+  PARTIAL
+  FAILED
+}
+
+/// Un'integrazione del catalogo installata su **un** locale.
+///
+/// Ogni locale ha la sua riga, le sue credenziali, la sua sede esterna, le
+/// sue mappature. Due locali dello stesso gruppo che usano la stessa cassa
+/// hanno due righe: non si condivide niente, nemmeno per comodità. È
+/// l'isolamento fra ristoranti applicato alle integrazioni.
+model IntegrationInstallation {
+  id                   String                        @id @default(cuid())
+  venueId              String
+  /// Il gruppo del locale, copiato per rispondere a «quali sedi del gruppo
+  /// usano Lightspeed» senza passare dal locale. Non serve all'isolamento,
+  /// che resta su `venueId`.
+  orgId                String
+  /// Lo `slug` della voce del catalogo (`lightspeed-k`, `oracle-simphony`, …).
+  integrationSlug      String                        @db.VarChar(60)
+  /// La versione dell'adattatore che ha fatto l'ultima configurazione: il
+  /// giorno in cui cambia il formato della configurazione, si sa chi ha
+  /// quella vecchia.
+  adapterVersion       String                        @db.VarChar(20)
+  status               IntegrationInstallationStatus @default(INSTALLING)
+  healthStatus         IntegrationHealth             @default(UNKNOWN)
+  /// La frase che accompagna lo stato, già scritta per il ristoratore.
+  healthMessage        String?                       @db.VarChar(300)
+  /// La configurazione scelta nel percorso di installazione. **Mai segreti**:
+  /// quelli stanno in `IntegrationCredential`, cifrati.
+  configuration        Json                          @default("{}")
+  /// Le capacità che il ristoratore ha acceso fra quelle che l'adattatore
+  /// dichiara (`tables`, `menu`, `orders.write`, …).
+  enabledCapabilities  String[]                      @default([])
+  /// L'account e la sede presso il fornitore. È così che si riconosce il
+  /// ristorante: mai da una configurazione globale del fornitore.
+  externalAccountId    String?
+  externalAccountName  String?
+  externalLocationId   String?
+  externalLocationName String?
+  metadata             Json?
+  /// La parte segreta dell'indirizzo dei webhook: identifica l'installazione
+  /// senza esporre `id`, e non si indovina.
+  webhookKey           String                        @unique
+  installedAt          DateTime                      @default(now())
+  installedById        String?
+  activatedAt          DateTime?
+  disabledAt           DateTime?
+  updatedAt            DateTime                      @updatedAt
+  lastTestAt           DateTime?
+  lastTestOk           Boolean?
+  lastSyncAt           DateTime?
+  lastSuccessfulSyncAt DateTime?
+  lastErrorAt          DateTime?
+  /// Il codice normalizzato (`AUTH_EXPIRED`, `RATE_LIMITED`, …): da qui
+  /// l'interfaccia scrive la frase. Il dettaglio tecnico sta in `lastError`.
+  lastErrorCode        String?                       @db.VarChar(40)
+  /// Tecnico e già ripulito dai segreti. Non si mostra così com'è.
+  lastError            String?                       @db.VarChar(1000)
+  venue                Venue                         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  credential           IntegrationCredential?
+  mappings             ExternalEntityMapping[]
+  syncLogs             IntegrationSyncLog[]
+
+  @@unique([venueId, integrationSlug])
+  @@index([orgId, integrationSlug])
+  @@index([integrationSlug, externalLocationId])
+  @@index([status])
+}
+
+/// Le credenziali di **una** installazione, cifrate a riposo.
+///
+/// `secretCiphertext` è un JSON cifrato con AES-256-GCM e **legato**
+/// all'installazione e al locale (dato autenticato aggiuntivo): una riga
+/// copiata sotto un'altra installazione non si decifra. Nessuna rotta lo
+/// restituisce, nessun log lo scrive. Vedi `server/integrations/credenziali.ts`.
+model IntegrationCredential {
+  id                    String                  @id @default(cuid())
+  installationId        String                  @unique
+  venueId               String
+  /// OAUTH2, API_KEY, BASIC, TOKEN, CLIENT_CREDENTIALS, MANUAL.
+  kind                  String                  @db.VarChar(30)
+  secretCiphertext      String
+  /// I permessi effettivamente concessi dal fornitore, non quelli chiesti.
+  scopes                String[]                @default([])
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  /// Il lucchetto del rinnovo. Lightspeed (e molti altri) accetta ogni token
+  /// di rinnovo **una volta sola**: due rinnovi in parallelo e il secondo
+  /// brucia l'accesso. Si scrive solo se la versione è quella letta.
+  version               Int                     @default(1)
+  /// Chi sta rinnovando, fino a quando. Il lucchetto di `version` da solo
+  /// non basta: chi perde la corsa riceve `invalid_grant` **prima** che il
+  /// vincitore abbia salvato il token nuovo, e dichiarerebbe scaduto un
+  /// accesso che sta solo cambiando. Con questo campo il rinnovo lo fa uno
+  /// solo, e gli altri aspettano il suo risultato.
+  refreshLockedUntil    DateTime?
+  rotatedAt             DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  installation          IntegrationInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@index([venueId])
+}
+
+/// Che cosa è, nel fornitore, la cosa che da noi si chiama così.
+///
+/// Il tavolo B1 di Foodtech è il tavolo 89372 di Lightspeed. `internalId`
+/// nullo vuol dire «il fornitore ce l'ha, da noi non è ancora abbinato»: è
+/// l'elenco di cose da abbinare nella scheda Mappature.
+model ExternalEntityMapping {
+  id             String                  @id @default(cuid())
+  venueId        String
+  installationId String
+  /// TABLE, FLOOR, PRODUCT, CATEGORY, MODIFIER, CUSTOMER, ORDER, PAYMENT,
+  /// RESERVATION, LOCATION, TAX_RATE, PAYMENT_METHOD, STAFF.
+  entityType     String                  @db.VarChar(30)
+  internalId     String?
+  externalId     String
+  /// Come il fornitore chiama quella cosa: serve a chi abbina a mano.
+  externalLabel  String?                 @db.VarChar(200)
+  /// Vero se l'abbinamento l'ha deciso una persona: una sincronizzazione
+  /// successiva non lo cambia.
+  manual         Boolean                 @default(false)
+  metadata       Json?
+  lastSeenAt     DateTime                @default(now())
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  installation   IntegrationInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@unique([installationId, entityType, externalId])
+  @@unique([installationId, entityType, internalId])
+  @@index([venueId, entityType, internalId])
+}
+
+/// Una sincronizzazione, riuscita o no. È il registro che si legge nella
+/// scheda «Log» dell'integrazione.
+model IntegrationSyncLog {
+  id             String                   @id @default(cuid())
+  venueId        String
+  installationId String
+  provider       String                   @db.VarChar(60)
+  /// `full`, `tables`, `menu`, `tax_rates`, `webhook:<tipo>`, …
+  operation      String                   @db.VarChar(60)
+  direction      IntegrationSyncDirection @default(INBOUND)
+  trigger        IntegrationSyncTrigger
+  status         IntegrationSyncStatus    @default(RUNNING)
+  startedAt      DateTime                 @default(now())
+  finishedAt     DateTime?
+  itemsProcessed Int                      @default(0)
+  itemsSucceeded Int                      @default(0)
+  itemsFailed    Int                      @default(0)
+  errorCode      String?                  @db.VarChar(40)
+  /// Tecnico e ripulito dai segreti.
+  error          String?                  @db.VarChar(1000)
+  /// Il filo che lega questa riga ai log del server e alle chiamate fatte al
+  /// fornitore durante la sincronizzazione.
+  correlationId  String                   @db.VarChar(40)
+  metadata       Json?
+  installation   IntegrationInstallation  @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@index([installationId, startedAt])
+  @@index([venueId, startedAt])
+}
+
+/// L'accesso anticipato di un locale a un'integrazione non ancora aperta a
+/// tutti (rilascio INTERNAL o PRIVATE_BETA). Lo concede solo un Super Admin.
+/// Revocarlo non disinstalla niente: impedisce nuove installazioni.
+model IntegrationBetaAccess {
+  id                    String   @id @default(cuid())
+  venueId               String
+  integrationSlug       String   @db.VarChar(60)
+  enabled               Boolean  @default(true)
+  /// Su questo locale sono ammesse, dalla console di certificazione, le
+  /// operazioni che POTREBBERO avere un effetto fiscale (pagamento, chiusura
+  /// del conto, scontrino). Spento per difetto.
+  fiscalTestsAuthorized Boolean  @default(false)
+  enabledByEmail        String   @db.VarChar(200)
+  enabledAt             DateTime @default(now())
+  updatedByEmail        String   @db.VarChar(200)
+  updatedAt             DateTime @updatedAt
+  note                  String?  @db.VarChar(500)
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, integrationSlug])
+  @@index([integrationSlug])
+}
+
+/// La fase di rilascio di un'integrazione: INTERNAL, PRIVATE_BETA,
+/// PUBLIC_BETA, GENERAL_AVAILABILITY. Senza riga vale il predefinito del
+/// catalogo. Cambiarla è una decisione di Foodtech, non del ristoratore.
+model IntegrationRollout {
+  integrationSlug String   @id @db.VarChar(60)
+  stage           String   @db.VarChar(30)
+  updatedByEmail  String   @db.VarChar(200)
+  updatedAt       DateTime @updatedAt
+  note            String?  @db.VarChar(500)
+}
+
+/// Una prova fatta dalla console di certificazione (connessione, letture,
+/// ordine di prova, seconda comanda, conto, pagamento): chi, quando, contro
+/// quale ambiente, e la traccia delle chiamate **ripulita** da token e segreti.
+model IntegrationCertificationRun {
+  id                 String   @id @default(cuid())
+  integrationSlug    String   @db.VarChar(60)
+  venueId            String
+  installationId     String
+  kind               String   @db.VarChar(40)
+  status             String   @db.VarChar(20)
+  /// Falso quando la chiamata è andata a un server finto (prove, variabili di
+  /// test): una prova così non produce mai evidenze oltre le fixture.
+  realEnvironment    Boolean
+  environment        String?  @db.VarChar(60)
+  externalLocationId String?  @db.VarChar(200)
+  correlationId      String   @db.VarChar(60)
+  externalEntityId   String?  @db.VarChar(200)
+  /// Il riferimento Foodtech dell'ordine di prova (`ft-test-…`).
+  riferimento        String?  @db.VarChar(200)
+  /// L'ordine di prova da cui discende (seconda comanda, conto, pagamento).
+  parentRunId        String?
+  input              Json?
+  trace              Json
+  createdByEmail     String   @db.VarChar(200)
+  createdAt          DateTime @default(now())
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([integrationSlug, createdAt])
+  @@index([venueId, createdAt])
+}
+
+/// Un'evidenza di certificazione: una capacità di un fornitore provata a un
+/// livello (FIXTURE, PROVIDER_API, REAL_POS, REAL_POS_ITALY), con un esito.
+///
+/// **Immutabile**: un trigger del database rifiuta UPDATE e DELETE. Una prova
+/// ripetuta è una riga nuova; la matrice legge la più recente. Nessuna chiave
+/// esterna verso il locale: l'evidenza sopravvive anche se il locale sparisce.
+model IntegrationCertificationEvidence {
+  id                 String   @id @default(cuid())
+  integrationSlug    String   @db.VarChar(60)
+  capability         String   @db.VarChar(40)
+  level              String   @db.VarChar(30)
+  result             String   @db.VarChar(20)
+  venueId            String
+  venueName          String   @db.VarChar(200)
+  externalLocationId String?  @db.VarChar(200)
+  environment        String?  @db.VarChar(60)
+  operatorEmail      String   @db.VarChar(200)
+  correlationId      String?  @db.VarChar(60)
+  externalEntityId   String?  @db.VarChar(200)
+  runId              String?
+  /// Vero quando l'esito l'ha dichiarato una persona guardando il POS.
+  manualConfirmation Boolean  @default(false)
+  /// Dove sta la prova visiva (nome del file, foto, ticket): mai il contenuto.
+  evidenceRef        String?  @db.VarChar(500)
+  notes              String?  @db.VarChar(2000)
+  createdAt          DateTime @default(now())
+
+  @@index([integrationSlug, capability, level, createdAt])
+  @@index([venueId, createdAt])
 }

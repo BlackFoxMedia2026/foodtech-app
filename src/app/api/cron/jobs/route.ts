@@ -4,6 +4,7 @@ import { JOB_HANDLERS } from "@/server/jobs/handlers";
 import { scadiPagamentiVecchi } from "@/server/pagamenti-tavolo";
 import { chiudiChiamateAppese } from "@/server/chiamate";
 import { notificaChiamatePerse } from "@/server/voice/recupero";
+import { spazzataIntegrazioni } from "@/server/integrations/sync";
 
 /**
  * Smaltisce la coda. Chiamata da Vercel Cron ogni minuto (vedi vercel.json).
@@ -60,7 +61,16 @@ export async function GET(req: Request) {
      */
     const chiamatePerse = await notificaChiamatePerse();
 
+    /**
+     * Le integrazioni: i lucchetti di sincronizzazione rimasti chiusi da un
+     * processo morto, e le sincronizzazioni programmate dovute. Solo
+     * **accodate**: il lavoro vero lo fa questa stessa coda al giro dopo,
+     * dentro il suo budget di tempo.
+     */
+    const integrazioni = await spazzataIntegrazioni();
+
     return {
+      integrazioni,
       storiaRipulita,
       pagamentiScaduti,
       chiamateAppese,
