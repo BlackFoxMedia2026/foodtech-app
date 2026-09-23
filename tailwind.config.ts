@@ -34,7 +34,7 @@ const config: Config = {
           strong: "hsl(var(--border-strong) / <alpha-value>)",
         },
         input: "hsl(var(--input) / <alpha-value>)",
-        ring: "hsl(var(--ring) / <alpha-value>)",
+        ring: "hsl(var(--focus-ring) / <alpha-value>)",
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
         tertiary: {

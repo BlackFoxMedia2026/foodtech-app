@@ -78,7 +78,11 @@
     --border: 157 19% 26%;
     --border-strong: 157 19% 34%;
     --input: 157 19% 26%;
-    --ring: 30 44% 48%;
+    /* L'anello del fuoco. Era `--ring`, con lo stesso valore di `--accent`:
+       ora è un token suo, e un tema può separarli. Resta in HSL perché
+       `hsl(30 44% 48%)` non è un RGB intero, e una terzina arrotondata
+       cambierebbe l'anello di un livello. */
+    --focus-ring: 30 44% 48%;
     --radius: 1.2rem;
 
     /*
@@ -184,6 +188,25 @@
     /* Le ombre delle varianti `brand` e `accent` di `Button`. */
     --button-brand-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
     --button-accent-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    /*
+      Luce, ombra e rigatura dei livelli condivisi, per **ruolo**. Un token
+      ha un valore solo, quindi ogni intensità ha il suo: la luce al 5% e
+      al 4% (`-soft`), il chiarore della pagina al 7%, l'ombra lunga al 35%
+      e quella corta al 22% (`-soft`).
+    */
+    --edge-light: rgba(255, 255, 255, 0.05);
+    --edge-light-soft: rgba(255, 255, 255, 0.04);
+    --glow-page: rgba(255, 255, 255, 0.07);
+    --edge-shadow: rgba(0, 0, 0, 0.35);
+    --edge-shadow-soft: rgba(0, 0, 0, 0.22);
+    /* La linea dei grafici. Era `hsl(var(--accent))` scritto nel componente. */
+    --chart-line: hsl(30 44% 48%);
+    /* I due segni della griglia dei turni: la linea dell'ora corrente e
+       quella del giorno selezionato. Sono linee, non ombre, e sono due
+       cose diverse: per questo due token, anche se al buio valgono uguale. */
+    --mark-now: hsl(30 44% 48%);
+    --mark-selected: hsl(30 44% 48%);
+    --border-hairline: rgba(0, 0, 0, 0.35);
 
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
        surfaces below — this is what turns a flat gradient into a "brushed"/
@@ -228,7 +251,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 26%;
     --input: 0 0% 26%;
-    --ring: 50 100% 50%;
+    --focus-ring: 50 100% 50%;
     --radius: 0.85rem;
 
     /* Pre-hydration fallback for the shared ambient variables — useAmbientGlass
@@ -253,12 +276,12 @@
       var(--noise),
       repeating-linear-gradient(
         to bottom,
-        rgba(0, 0, 0, 0.35) 0px,
-        rgba(0, 0, 0, 0.35) 1px,
+        var(--border-hairline) 0px,
+        var(--border-hairline) 1px,
         transparent 1px,
         transparent 10px
       ),
-      radial-gradient(130% 110% at 12% -10%, rgba(255, 255, 255, 0.07), transparent 55%),
+      radial-gradient(130% 110% at 12% -10%, var(--glow-page), transparent 55%),
       linear-gradient(180deg, var(--base-top) 0%, var(--base-bottom) 100%);
     background-blend-mode: overlay, normal, normal, normal;
     background-size: 240px 240px, 100% 10px, auto, auto;
@@ -302,12 +325,12 @@
   .surface {
     @apply rounded-xl border border-border text-card-foreground;
     background-image:
-      radial-gradient(120% 100% at 15% 0%, rgba(255, 255, 255, 0.05), transparent 50%),
+      radial-gradient(120% 100% at 15% 0%, var(--edge-light), transparent 50%),
       linear-gradient(180deg, var(--panel-top) 0%, var(--panel-bottom) 100%);
     box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 10px 18px rgba(0, 0, 0, 0.22),
-      0 24px 48px rgba(0, 0, 0, 0.35);
+      inset 0 0 0 1px var(--edge-light-soft),
+      0 10px 18px var(--edge-shadow-soft),
+      0 24px 48px var(--edge-shadow);
   }
 
   /*

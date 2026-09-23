@@ -361,7 +361,7 @@ function CasellaOra({
         oggi && "bg-cream/[0.035]",
         !oggi && selezionato && "bg-cream/[0.018]",
         isOver && "bg-[hsl(var(--turno-sera)/0.14)] ring-1 ring-inset ring-[hsl(var(--turno-sera)/0.45)]",
-        adesso && "shadow-[inset_0_1.5px_0_0_hsl(var(--accent))]",
+        adesso && "shadow-[inset_0_1.5px_0_0_var(--mark-now)]",
         canManage && "cursor-copy",
       )}
     >
@@ -419,7 +419,7 @@ function IntestazioneGiorno({
       className={cn(
         "sticky top-0 z-30 flex flex-col items-center justify-center gap-0.5 border-b border-r border-border/50 bg-[#11241b] px-2 transition-colors hover:bg-[#193629]",
         oggi && "bg-[#183324]",
-        selezionato && "shadow-[inset_0_-2px_0_0_hsl(var(--accent))]",
+        selezionato && "shadow-[inset_0_-2px_0_0_var(--mark-selected)]",
       )}
     >
       <span className="flex items-baseline gap-1.5">
