@@ -212,7 +212,7 @@ export function GrigliaTurni({
       onDragCancel={() => setInMano(null)}
       onDragEnd={concludi}
     >
-      <div ref={contenitoreRef} className="fill-scroll riquadro relative overflow-auto bg-[#0c1a14]">
+      <div ref={contenitoreRef} className="fill-scroll riquadro relative overflow-auto bg-[color:var(--grid-body)]">
         <div className="grid min-w-full" style={{ gridTemplateColumns: colonne }}>
           {/* ── testata ────────────────────────────────────────────── */}
           <div
@@ -247,7 +247,7 @@ export function GrigliaTurni({
               */}
               <div
                 ref={fasciaGiornataRef}
-                className="sticky left-0 z-40 border-b border-r border-border/40 bg-[#0c1a14] px-2 py-1.5"
+                className="sticky left-0 z-40 border-b border-r border-border/40 bg-[color:var(--grid-body)] px-2 py-1.5"
                 style={{ top: ALTEZZA_TESTATA }}
               >
                 <span className="block text-[0.58rem] uppercase leading-[1.15] tracking-wide text-tertiary-foreground">
@@ -261,8 +261,8 @@ export function GrigliaTurni({
                   key={g}
                   style={{ top: ALTEZZA_TESTATA }}
                   className={cn(
-                    "sticky z-30 space-y-1 border-b border-r border-border/40 bg-[#0c1a14] p-1.5",
-                    g === oggi && "bg-[#132a20]",
+                    "sticky z-30 space-y-1 border-b border-r border-border/40 bg-[color:var(--grid-body)] p-1.5",
+                    g === oggi && "bg-[color:var(--grid-body-today)]",
                   )}
                 >
                   {(giornataPerGiorno.get(g) ?? []).map((t) => (
@@ -278,7 +278,7 @@ export function GrigliaTurni({
             <Fragment key={ora}>
               <div
                 ref={ora === primaOra ? primaRigaRef : undefined}
-                className="sticky left-0 z-20 border-r border-border/40 bg-[#0c1a14] pt-1.5 text-center"
+                className="sticky left-0 z-20 border-r border-border/40 bg-[color:var(--grid-body)] pt-1.5 text-center"
                 style={{ minHeight: ALTEZZA_ORA_MIN }}
               >
                 <span

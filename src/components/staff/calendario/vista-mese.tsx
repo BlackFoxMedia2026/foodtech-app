@@ -100,7 +100,7 @@ export function VistaMese({
   }, [turni]);
 
   return (
-    <div className="fill-scroll riquadro flex flex-col overflow-auto bg-[#0c1a14]">
+    <div className="fill-scroll riquadro flex flex-col overflow-auto bg-[color:var(--grid-body)]">
       <div className="sticky top-0 z-20 grid shrink-0 grid-cols-7 border-b border-border/50 bg-[#11241b]">
         {INIZIALI_GIORNI.map((iniziale, i) => (
           <span key={i} className="t-etichetta px-2 py-1.5 text-center text-[0.62rem]">

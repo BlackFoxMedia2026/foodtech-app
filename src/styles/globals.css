@@ -211,6 +211,9 @@
     --grid-header: #11241b;
     --grid-header-hover: #193629;
     --grid-header-today: #183324;
+    /* Il corpo della griglia (anche vista mese e scheletro), e la colonna di oggi. */
+    --grid-body: #0c1a14;
+    --grid-body-today: #132a20;
     --border-hairline: rgba(0, 0, 0, 0.35);
 
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
