@@ -117,6 +117,74 @@
     --turno-riposo: 150 8% 58%;
     --turno-assenza: 6 46% 63%;
 
+    /*
+      **I token del tema, estratti dai componenti.**
+
+      Questo `:root` è il tema **scuro**, ed è il default di proposito: un
+      ambiente che non dichiara niente — la Staff App, le pagine degli ospiti,
+      la vetrina — resta com'è. Il tema Carta arriverà come
+      `:root:has([data-tema="carta"])`, sul layout di chi lo vuole. Se `:has()`
+      non si risolve (in sala girano tablet datati) si ricade qui, al buio: una
+      Staff App che diventa bianca in una sala a luci basse è il caso peggiore,
+      un back office che resta scuro è solo lo stato di prima.
+
+      Sta su `:root` e non sul contenitore della pagina perché dialog, menu e
+      tooltip si montano dentro `<body>`, fuori da qualunque contenitore.
+
+      I colori con un nome proprio (`cream`, `forest`...) sono terzine RGB lette
+      da `tailwind.config.ts`: i valori sono gli esadecimali di prima, al bit.
+    */
+    --forest: 19 51 44; /* #13332C */
+    --cream: 242 231 208; /* #F2E7D0 */
+    --terracotta: 175 102 72; /* #AF6648 */
+    --surface-brown-dark: 116 67 45; /* #74432D */
+    --surface-brown: 144 91 56; /* #905B38 */
+    --surface-brown-light: 194 155 114; /* #C29B72 */
+    --clay-ink: 47 31 17; /* #2F1F11 */
+    --clay-ink-soft: 79 53 27; /* #4F351B */
+    --sage: 138 159 96; /* #8A9F60 */
+    --sage-deep: 61 92 52; /* #3D5C34 */
+    --sage-strong: 182 198 149; /* #B6C695 */
+    --carbon: 21 22 26; /* #15161a */
+    --carbon-50: 246 246 247; /* #f6f6f7 */
+    --carbon-100: 232 232 234; /* #e8e8ea */
+    --carbon-200: 198 198 203; /* #c6c6cb */
+    --carbon-300: 163 164 171; /* #a3a4ab */
+    --carbon-400: 94 96 104; /* #5e6068 */
+    --carbon-500: 58 59 66; /* #3a3b42 */
+    --carbon-600: 42 43 49; /* #2a2b31 */
+    --carbon-700: 31 32 37; /* #1f2025 */
+    --carbon-800: 21 22 26; /* #15161a */
+    --carbon-900: 12 13 16; /* #0c0d10 */
+    --sand: 243 234 217; /* #f3ead9 */
+    --sand-50: 252 249 241; /* #fcf9f1 */
+    --sand-100: 246 239 224; /* #f6efe0 */
+    --sand-200: 236 223 193; /* #ecdfc1 */
+    --sand-300: 222 197 154; /* #dec59a */
+    --sand-400: 205 170 112; /* #cdaa70 */
+    --sand-500: 184 142 77; /* #b88e4d */
+    --sand-600: 154 115 59; /* #9a733b */
+    --sand-700: 122 90 47; /* #7a5a2f */
+    --sand-800: 84 64 35; /* #544023 */
+    --sand-900: 49 39 24; /* #312718 */
+    --gilt: 201 162 90; /* #c9a25a */
+    --gilt-light: 226 201 138; /* #e2c98a */
+    --gilt-dark: 140 107 46; /* #8c6b2e */
+    --accent-strong: 226 179 131; /* #E2B383 */
+    --accent-strong-hover: 239 199 156; /* #EFC79C */
+    --accent-strong-foreground: 47 31 17; /* #2F1F11 */
+    --accent-strong-ink: 116 67 45; /* #74432D */
+
+    /* Il fondo della pagina (`body`): la sfumatura dall'alto in basso. */
+    --base-top: #0b1511;
+    --base-bottom: #17382c;
+    /* Le schede (`.surface`): la stessa sfumatura, in piccolo. */
+    --panel-top: #163c2f;
+    --panel-bottom: #102c1f;
+    /* Le ombre delle varianti `brand` e `accent` di `Button`. */
+    --button-brand-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+    --button-accent-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
        surfaces below — this is what turns a flat gradient into a "brushed"/
        "paper grain" texture without any image asset or extra DOM node. */
@@ -180,7 +248,7 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    background-color: #0b1511;
+    background-color: var(--base-top);
     background-image:
       var(--noise),
       repeating-linear-gradient(
@@ -191,7 +259,7 @@
         transparent 10px
       ),
       radial-gradient(130% 110% at 12% -10%, rgba(255, 255, 255, 0.07), transparent 55%),
-      linear-gradient(180deg, #0b1511 0%, #17382c 100%);
+      linear-gradient(180deg, var(--base-top) 0%, var(--base-bottom) 100%);
     background-blend-mode: overlay, normal, normal, normal;
     background-size: 240px 240px, 100% 10px, auto, auto;
     background-attachment: fixed;
@@ -235,7 +303,7 @@
     @apply rounded-xl border border-border text-card-foreground;
     background-image:
       radial-gradient(120% 100% at 15% 0%, rgba(255, 255, 255, 0.05), transparent 50%),
-      linear-gradient(180deg, #163c2f 0%, #102c1f 100%);
+      linear-gradient(180deg, var(--panel-top) 0%, var(--panel-bottom) 100%);
     box-shadow:
       inset 0 0 0 1px rgba(255, 255, 255, 0.04),
       0 10px 18px rgba(0, 0, 0, 0.22),

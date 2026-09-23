@@ -1,5 +1,18 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * I colori con un nome proprio (`cream`, `forest`, `clay-ink`...) leggono una
+ * variabile di `globals.css` invece di portare l'esadecimale: è ciò che
+ * permette a un ambiente di cambiare tema con un attributo, senza toccare i
+ * componenti. Terzine RGB e non HSL perché la conversione in HSL arrotonda, e
+ * i valori del tema scuro devono restare quelli di prima al bit.
+ *
+ * TODO(rename-colori): i nomi descrivono il tema scuro (`cream` è il testo
+ * chiaro, `clay-ink` l'inchiostro sopra il crema) e col tema Carta mentono.
+ * Il rename si fa a tema stabile e da solo, non insieme al cambio di valori.
+ */
+const v = (nome: string) => `rgb(var(--${nome}) / <alpha-value>)`;
+
 const config: Config = {
   darkMode: ["class"],
   content: ["./src/**/*.{ts,tsx}"],
@@ -27,9 +40,9 @@ const config: Config = {
         tertiary: {
           foreground: "hsl(var(--tertiary) / <alpha-value>)",
         },
-        forest: "#13332C",
-        cream: "#F2E7D0",
-        terracotta: "#AF6648",
+        forest: v("forest"),
+        cream: v("cream"),
+        terracotta: v("terracotta"),
         /** The brown family — exact user-given bases, not reinterpreted.
          * dark = card scure/tile interne, DEFAULT = card marroni principali,
          * light = CTA/superfici chiare. Any tonal variation (gradient stops)
@@ -37,51 +50,51 @@ const config: Config = {
          * hue — that's what previously drifted toward gold, then toward
          * pink/peach. */
         "surface-brown": {
-          dark: "#74432D",
-          DEFAULT: "#905B38",
-          light: "#C29B72",
+          dark: v("surface-brown-dark"),
+          DEFAULT: v("surface-brown"),
+          light: v("surface-brown-light"),
         },
         "clay-ink": {
-          DEFAULT: "#2F1F11",
-          soft: "#4F351B",
+          DEFAULT: v("clay-ink"),
+          soft: v("clay-ink-soft"),
         },
         sage: {
-          DEFAULT: "#8A9F60",
-          deep: "#3D5C34",
+          DEFAULT: v("sage"),
+          deep: v("sage-deep"),
           /** Il verde salvia che si legge: #8A9F60 fa 2,95-5,14 : 1 sul fondo
            * scuro (sotto soglia nell'angolo chiaro), questo 5,68 : 1. */
-          strong: "#B6C695",
+          strong: v("sage-strong"),
         },
         carbon: {
-          DEFAULT: "#15161a",
-          50: "#f6f6f7",
-          100: "#e8e8ea",
-          200: "#c6c6cb",
-          300: "#a3a4ab",
-          400: "#5e6068",
-          500: "#3a3b42",
-          600: "#2a2b31",
-          700: "#1f2025",
-          800: "#15161a",
-          900: "#0c0d10",
+          DEFAULT: v("carbon"),
+          50: v("carbon-50"),
+          100: v("carbon-100"),
+          200: v("carbon-200"),
+          300: v("carbon-300"),
+          400: v("carbon-400"),
+          500: v("carbon-500"),
+          600: v("carbon-600"),
+          700: v("carbon-700"),
+          800: v("carbon-800"),
+          900: v("carbon-900"),
         },
         sand: {
-          DEFAULT: "#f3ead9",
-          50: "#fcf9f1",
-          100: "#f6efe0",
-          200: "#ecdfc1",
-          300: "#dec59a",
-          400: "#cdaa70",
-          500: "#b88e4d",
-          600: "#9a733b",
-          700: "#7a5a2f",
-          800: "#544023",
-          900: "#312718",
+          DEFAULT: v("sand"),
+          50: v("sand-50"),
+          100: v("sand-100"),
+          200: v("sand-200"),
+          300: v("sand-300"),
+          400: v("sand-400"),
+          500: v("sand-500"),
+          600: v("sand-600"),
+          700: v("sand-700"),
+          800: v("sand-800"),
+          900: v("sand-900"),
         },
         gilt: {
-          DEFAULT: "#c9a25a",
-          light: "#e2c98a",
-          dark: "#8c6b2e",
+          DEFAULT: v("gilt"),
+          light: v("gilt-light"),
+          dark: v("gilt-dark"),
         },
         muted: {
           DEFAULT: "hsl(var(--muted) / <alpha-value>)",
@@ -98,12 +111,12 @@ const config: Config = {
          * peggiore e 4,76 : 1 anche sopra una tinta accento al 15%.
          * Regola: `accent` riempie e borda, `accent-strong` si legge. */
         "accent-strong": {
-          DEFAULT: "#E2B383",
-          hover: "#EFC79C",
-          foreground: "#2F1F11",
+          DEFAULT: v("accent-strong"),
+          hover: v("accent-strong-hover"),
+          foreground: v("accent-strong-foreground"),
           /** Il vecchio valore, per quando serve terracotta su fondo CHIARO:
            * lì la versione chiara non si vede (1,65 : 1 sul crema). */
-          ink: "#74432D",
+          ink: v("accent-strong-ink"),
         },
         /** Il rosso da leggere su verde scuro: vedi la nota in `globals.css`. */
         "destructive-soft": "hsl(var(--destructive-soft) / <alpha-value>)",
