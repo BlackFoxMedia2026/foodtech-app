@@ -1,0 +1,72 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { apiError, apiErrorResponse } from "@/lib/api-auth";
+import { superAdminCorrente } from "@/lib/super-admin";
+import { db } from "@/lib/db";
+import { logEvento } from "@/lib/observability";
+import { impostaAccessoBeta, impostaFase, panoramicaCertificazione } from "@/server/integrations/certificazione/accesso";
+import { FASI_RILASCIO } from "@/server/integrations/certificazione/livelli";
+
+/**
+ * Certificazione e rilascio delle integrazioni, per tutta la piattaforma.
+ *
+ * Come le altre rotte `/api/admin`, non passa da `requireVenueApi`: qui si
+ * decide per locali di cui non si è membri (il cliente che fa da beta). Chi
+ * non è Super Admin riceve 404.
+ */
+
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  const admin = await superAdminCorrente();
+  if (!admin.ok) return apiError(404, "not_found", "Questo indirizzo non esiste.");
+  try {
+    return NextResponse.json({ fornitori: await panoramicaCertificazione() });
+  } catch (err) {
+    return apiErrorResponse(err);
+  }
+}
+
+const Corpo = z.discriminatedUnion("azione", [
+  z.object({ azione: z.literal("fase"), slug: z.string().max(60), fase: z.enum(FASI_RILASCIO), note: z.string().max(500).nullable().optional() }),
+  z.object({
+    azione: z.literal("beta"),
+    slug: z.string().max(60),
+    /** L'id o lo slug del locale. */
+    locale: z.string().min(1).max(200),
+    abilitato: z.boolean(),
+    operazioniFiscali: z.boolean().optional(),
+    note: z.string().max(500).nullable().optional(),
+  }),
+]);
+
+export async function POST(req: Request) {
+  const admin = await superAdminCorrente();
+  if (!admin.ok) return apiError(404, "not_found", "Questo indirizzo non esiste.");
+  try {
+    const corpo = Corpo.parse(await req.json());
+    if (corpo.azione === "fase") {
+      const r = await impostaFase({ slug: corpo.slug, fase: corpo.fase, note: corpo.note, email: admin.email });
+      logEvento("integrazione.rilascio_cambiato", { slug: corpo.slug, fase: corpo.fase, da: admin.email });
+      return NextResponse.json(r);
+    }
+    const venue = await db.venue.findFirst({
+      where: { OR: [{ id: corpo.locale }, { slug: corpo.locale }] },
+      select: { id: true, orgId: true },
+    });
+    if (!venue) return apiError(404, "not_found", "Locale non trovato.");
+    const utente = await db.user.findFirst({ where: { email: { equals: admin.email, mode: "insensitive" } }, select: { id: true } });
+    const r = await impostaAccessoBeta({
+      venueId: venue.id,
+      slug: corpo.slug,
+      abilitato: corpo.abilitato,
+      operazioniFiscali: corpo.operazioniFiscali,
+      note: corpo.note,
+      email: admin.email,
+      audit: utente ? { userId: utente.id, email: admin.email, orgId: venue.orgId, venueId: venue.id } : undefined,
+    });
+    return NextResponse.json(r);
+  } catch (err) {
+    return apiErrorResponse(err);
+  }
+}

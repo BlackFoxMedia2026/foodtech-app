@@ -25,8 +25,9 @@ import type { FornitoreComanda } from "@prisma/client";
  * - nessuna classe `LightspeedProvider` vuota che lancia «non implementato»:
  *   un file che esiste sembra una funzione che esiste, e fra sei mesi
  *   qualcuno prova a collegarlo;
- * - nessuna colonna di configurazione nuova: `POSConnector` esiste già nello
- *   schema, con `kind`, `config`, `webhookSecret` e `status`. Quando servirà,
+ * - nessuna colonna di configurazione nuova: dal 23 settembre 2026 la cassa
+ *   collegata di un locale sta nella piattaforma integrazioni
+ *   (`IntegrationInstallation`, `server/integrations/`). Quando servirà,
  *   `fornitorePerLocale` leggerà lì.
  *
  * ## La forma del contratto
@@ -135,14 +136,18 @@ export const fornitoreInterno: Fornitore = {
  * Chi prende in carico le comande di questo locale.
  *
  * Oggi: sempre la cucina di Tavolo. La firma è già asincrona e già prende il
- * locale perché il giorno in cui si leggerà `POSConnector` non debba
+ * locale perché il giorno in cui si leggerà l'integrazione POS non debba
  * cambiare chi la chiama — che sono otto punti fra rotte e server.
  */
 export async function fornitorePerLocale(venueId: string): Promise<Fornitore> {
-  /* `venueId` non si legge ancora, e sta nella firma apposta: il giorno in
-     cui esisterà un `POSConnector` attivo si legge qui, e nessuno degli otto
-     punti che chiamano questa funzione cambia. Il riferimento vuoto tiene
-     buono il compilatore senza una direttiva da togliere poi. */
+  /* `venueId` non si legge ancora, e sta nella firma apposta. Dal 23
+     settembre 2026 il posto da leggere non è più `POSConnector` (superata) ma
+     la piattaforma integrazioni: un'installazione POS `ACTIVE` con
+     `orders.write` acceso, e l'adattatore che espone `pos.createOrder`
+     (`server/integrations/`). Non si collega finché quell'adattatore non è
+     stato provato con una cassa vera — vedi docs/INTEGRATION-PLATFORM.md.
+     Il riferimento vuoto tiene buono il compilatore senza una direttiva da
+     togliere poi. */
   void venueId;
   return fornitoreInterno;
 }

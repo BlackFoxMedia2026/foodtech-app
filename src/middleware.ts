@@ -72,6 +72,13 @@ function ruleFor(req: NextRequest): Guarded | null {
        token rubato non deve poter scrivere trecento prenotazioni. */
     return { rule: RATE_LIMITS.publicBooking, bucket: "riprendi", methods: ["POST"] };
   }
+  // Le integrazioni: i webhook dei fornitori e il ritorno dall'accesso OAuth.
+  if (pathname.startsWith("/api/integrations/webhooks/")) {
+    return { rule: RATE_LIMITS.integrationWebhook, bucket: "integration-webhook", methods: ["POST"] };
+  }
+  if (pathname.startsWith("/api/integrations/oauth/callback/")) {
+    return { rule: RATE_LIMITS.integrationOauth, bucket: "integration-oauth", methods: ["GET"] };
+  }
   if (pathname === "/api/public/recupero-password") {
     return { rule: RATE_LIMITS.recupero, bucket: "recupero", methods: ["POST"] };
   }

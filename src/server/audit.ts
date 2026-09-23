@@ -204,7 +204,30 @@ export type AuditAction =
   | "dem.sending_resumed"
   | "dem.domain_change"
   | "dem.domain_verified"
-  | "dem.subscription_cancelled";
+  | "dem.subscription_cancelled"
+  /*
+    Le integrazioni. Chi ha collegato la cassa del locale, chi l'ha
+    scollegata, chi ha cambiato un abbinamento: sono le domande che si fanno
+    il giorno in cui un ordine è finito sul tavolo sbagliato. Nella
+    differenza non entra mai un segreto (vedi `server/integrations/`).
+  */
+  | "integration.install"
+  | "integration.authorize"
+  | "integration.configure"
+  | "integration.test"
+  | "integration.activate"
+  | "integration.disable"
+  | "integration.enable"
+  | "integration.uninstall"
+  | "integration.sync_requested"
+  | "integration.mapping_update"
+  | "integration.beta_access"
+  | "integration.rollout"
+  | "integration.certification_run"
+  | "integration.certification_evidence"
+  | "integration.fiscal_operation"
+  | "integration.suspend"
+  | "integration.resume";
 
 export type AuditActor = {
   userId: string;

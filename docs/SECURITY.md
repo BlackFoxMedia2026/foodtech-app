@@ -31,6 +31,7 @@ revisione, non una distrazione. È così perché prima 11 mutazioni non controll
 | `manage_bookings` (prenotazioni, ospiti) | ✅ | ✅ | ✅ | | |
 | `edit_marketing` (campagne, QR) | ✅ | | | ✅ | |
 | `view_revenue` (incassi) | ✅ | | | ✅ | |
+| `integration:view` / `install` / `configure` / `disconnect` / `logs` (integrazioni) | ✅ | | | | |
 
 `manage_org` esiste nel tipo ma nessun ruolo la ha e nessuna route la usa: l'amministrazione
 dell'organizzazione non è ancora un prodotto.
@@ -117,6 +118,8 @@ resta salvata e l'errore finisce nei log.
 | `GET /api/public/availability` | nessuna | limite di frequenza |
 | `GET /api/cron/*` (quattro: `jobs`, `booking-reminders`, `staff-contracts-expiry`, `survey-requests`) | `Authorization: Bearer $CRON_SECRET` | **si rifiutano di partire** se `CRON_SECRET` non è configurato |
 | `POST /api/webhooks/brevo` | token in query | 401 senza token valido |
+| `POST /api/integrations/webhooks/<fornitore>/<chiave>` | la chiave nell'indirizzo trova **un'installazione**; poi la prova del fornitore (per Lightspeed: HTTP Basic con utente e password generati per quell'installazione) | 404 senza chiave valida, 401 senza prova, 300/min per IP; idempotenza su `WebhookEvent`. Vedi `docs/INTEGRATION-PLATFORM.md` §7 |
+| `GET /api/integrations/oauth/callback/<fornitore>` | sessione + `state` firmato, con scadenza e nonce in cookie `httpOnly` | 20 ogni 10 minuti; lo `state` deve parlare della stessa persona e dello stesso locale della sessione |
 | `GET /api/unsubscribe` | token firmato | |
 | `POST /api/public/wifi` | nessuna, per progetto | limite di frequenza (12 in 10 minuti: un tavolo di sei si collega dallo stesso indirizzo); il locale deve avere il portale configurato, altrimenti 409; la password torna **solo** nella risposta a una registrazione riuscita |
 

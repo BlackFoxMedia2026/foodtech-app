@@ -82,6 +82,14 @@ export const PRIORITA_PER_TIPO: Record<string, number> = {
   "automation.run": 50,
   "campaign.send": 100,
   "dem.campaign.send": 100,
+  /* L'esito di un ordine mandato alla cassa: qualcuno in sala lo aspetta,
+     ma non quanto un ospite aspetta la conferma. */
+  "integration.webhook": 50,
+  /* Un ordine per la cassa rimasto in attesa: c'è un tavolo che aspetta i
+     suoi piatti. Dietro solo ai messaggi agli ospiti. */
+  "integration.order": 20,
+  /* Rileggere menu e tavoli dalla cassa: nessuno la sta aspettando. */
+  "integration.sync": 100,
 };
 
 /** La priorità di un lavoro che non è in tabella: in mezzo, mai davanti. */
@@ -112,12 +120,20 @@ export const GRUPPO_PER_TIPO: Record<string, string> = {
   "message.send": "email",
   "campaign.send": "email",
   "dem.campaign.send": "email",
+  /* Le integrazioni: ognuna chiama un fornitore diverso, ma con una quota
+     comune un giro non è mai tutto sincronizzazioni di cassa. Il limite vero
+     di ogni fornitore lo fa rispettare il `Retry-After` (vedi
+     `server/integrations/sync.ts`). */
+  "integration.sync": "integrazioni",
+  "integration.webhook": "integrazioni",
+  "integration.order": "integrazioni",
 };
 
 export const QUOTA_PER_GRUPPO: Record<string, number> = {
   // Venti invii per giro, un giro al minuto: 1.200 all'ora, dentro i limiti
   // di qualunque fornitore, e con spazio per tutto il resto.
   email: 20,
+  integrazioni: 5,
 };
 
 export function gruppoDi(kind: string): string | null {

@@ -96,7 +96,7 @@ export const PARTI = [
     titolo: "Sistema",
     sottotitolo:
       "Il proprio accesso, gli incassi, le integrazioni e i lavori in coda.",
-    dentro: ["Il tuo accesso", "Chi ha accesso", "Pagamenti", "Lavori in coda"],
+    dentro: ["Il tuo accesso", "Chi ha accesso", "Pagamenti", "Integrazioni", "Lavori in coda"],
   },
 ] as const;
 

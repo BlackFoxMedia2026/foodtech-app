@@ -32,6 +32,11 @@ const CAPACITA: Ability[] = [
   "manage_shifts",
   "use_phone",
   "manage_phone",
+  "integration:view",
+  "integration:install",
+  "integration:configure",
+  "integration:disconnect",
+  "integration:logs",
 ];
 
 /** La verità attesa, scritta per esteso: leggibile anche da chi non conosce il codice. */
@@ -46,6 +51,11 @@ const ATTESO: Record<StaffRole, Ability[]> = {
     "manage_shifts",
     "use_phone",
     "manage_phone",
+    "integration:view",
+    "integration:install",
+    "integration:configure",
+    "integration:disconnect",
+    "integration:logs",
   ],
   RECEPTION: ["manage_bookings", "use_phone"],
   WAITER: ["manage_bookings", "use_phone"],

@@ -185,6 +185,22 @@ export function apiErrorResponse(err: unknown) {
     return apiError(422, "validation_failed", messaggioDiValidazione(err), err.flatten());
   }
 
+  /*
+    Errori di dominio che sanno già il proprio status: li sollevano le
+    integrazioni (`server/integrations/`), dove lo status dipende dal
+    fornitore — un accesso scaduto è un 409 («ricollega»), un fornitore giù
+    è un 502 — e una tabella per codice qui dovrebbe conoscere ogni
+    fornitore. Il messaggio è già quello per il ristoratore.
+  */
+  if (
+    err instanceof Error &&
+    typeof (err as { httpStatus?: unknown }).httpStatus === "number" &&
+    typeof (err as { code?: unknown }).code === "string"
+  ) {
+    const e = err as Error & { httpStatus: number; code: string; detail?: unknown };
+    return apiError(e.httpStatus, e.code, e.message, e.detail);
+  }
+
   // Gli errori di dominio portano un codice: qui diventa lo status giusto,
   // senza che questo file debba conoscere i moduli che li sollevano.
   const code = err instanceof Error && "code" in err ? String((err as { code?: unknown }).code) : "";

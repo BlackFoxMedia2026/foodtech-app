@@ -40,6 +40,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/costi" className="transition-colors hover:text-foreground">
                 Costi
               </Link>
+              <Link href="/admin/integrazioni" className="transition-colors hover:text-foreground">
+                Integrazioni
+              </Link>
             </nav>
           </div>
           <Link href="/overview" className="t-nota transition-colors hover:text-foreground">

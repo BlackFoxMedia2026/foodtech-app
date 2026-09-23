@@ -224,6 +224,27 @@ export default async function SettingsPage({
      l'elenco è un'informazione, cambiarlo è un permesso. */
   const puoGestireTeam = can(ctx.role, "manage_venue");
 
+  /* Solo per la sezione Sistema, e solo due numeri: il catalogo intero si
+     legge nella sua pagina. */
+  const integrazioni =
+    attiva === "sistema"
+      ? await db.integrationInstallation
+          .findMany({
+            where: { venueId: ctx.venueId, NOT: { status: "NOT_INSTALLED" } },
+            select: { status: true, healthStatus: true },
+          })
+          .then((righe) => ({
+            installate: righe.length,
+            daGuardare: righe.filter(
+              (r) =>
+                r.status === "ERROR" ||
+                r.status === "REAUTH_REQUIRED" ||
+                r.healthStatus === "DEGRADED" ||
+                r.healthStatus === "ERROR",
+            ).length,
+          }))
+      : { installate: 0, daGuardare: 0 };
+
   // «Collegato» qui significa una cosa sola: che Stripe accetta incassi. Un
   // account creato e non verificato esiste e rifiuta ogni pagamento, quindi
   // dirlo collegato sarebbe una bugia che si scopre al primo cliente.
@@ -867,9 +888,42 @@ export default async function SettingsPage({
                 </RigaImpostazione>
               </GruppoImpostazioni>
 
+              {/* Le integrazioni **del locale**: cassa, portali, marketing,
+                  ciascuna installata qui e con le sue credenziali. Il
+                  catalogo e la gestione stanno nella loro pagina; qui la riga
+                  dice solo se c'è qualcosa da guardare. */}
               <GruppoImpostazioni
                 titolo="Integrazioni"
-                descrizione="I servizi esterni da cui dipende qualcosa che il locale usa."
+                descrizione="Cassa, pagamenti, portali di prenotazione e marketing collegati a questo locale."
+                azione={
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/settings/integrations">Apri</Link>
+                  </Button>
+                }
+              >
+                <RigaImpostazione
+                  nome="Installate"
+                  descrizione="Ogni locale installa le sue: le credenziali di uno non valgono per un altro, nemmeno nello stesso gruppo."
+                >
+                  {integrazioni.installate > 0 ? (
+                    <ValoreImpostazione mono>{integrazioni.installate}</ValoreImpostazione>
+                  ) : (
+                    <ValoreVuoto>nessuna</ValoreVuoto>
+                  )}
+                </RigaImpostazione>
+                {integrazioni.daGuardare > 0 && (
+                  <RigaImpostazione nome="Richiedono attenzione">
+                    <Badge tone="warning">{integrazioni.daGuardare}</Badge>
+                  </RigaImpostazione>
+                )}
+              </GruppoImpostazioni>
+
+              {/* Non sono integrazioni del locale: sono i fornitori con cui
+                  Foodtech stesso lavora, uguali per tutti. Si chiamavano
+                  «Integrazioni» prima che le integrazioni esistessero. */}
+              <GruppoImpostazioni
+                titolo="Servizi della piattaforma"
+                descrizione="I fornitori con cui Foodtech lavora per tutti i locali."
               >
                 <RigaImpostazione
                   nome="Brevo"
