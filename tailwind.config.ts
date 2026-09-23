@@ -130,7 +130,7 @@ const config: Config = {
          * ricade al buio. Vedi il blocco Carta in `globals.css`.
          */
         /** L'inchiostro della superficie: crema al buio, verde-nero sulla carta. */
-        ink: v("ink"),
+        ink: { DEFAULT: v("ink"), tertiary: "var(--ink-tertiary)" },
         /** Il pulsante primario. */
         cta: { DEFAULT: "var(--cta-fill)", ink: "var(--cta-ink)" },
         /** Il segmento scelto di un selettore, la voce attiva di una fila. */

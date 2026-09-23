@@ -283,6 +283,8 @@
     --table-head-ink: hsl(var(--muted-foreground));
     /* Il segno a sinistra della riga da decidere. */
     --riga-decidere-segno: hsl(var(--accent));
+    /* Il marrone chiaro usato come testo (link e valori secondari). */
+    --ink-tertiary: rgb(var(--surface-brown-light));
     --border-hairline: rgba(0, 0, 0, 0.35);
 
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
@@ -502,6 +504,7 @@
     --table-head-ink: var(--header-ink);
     /* Niente bordo colorato a sinistra: sulla carta le righe si separano col filo. */
     --riga-decidere-segno: transparent;
+    --ink-tertiary: hsl(var(--tertiary));
   }
 
   .dark {

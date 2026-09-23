@@ -60,13 +60,13 @@ export function StatCard({
           : brownLightFill
             ? "text-clay-ink"
             : tone === "accent"
-              ? "text-surface-brown-light"
+              ? "text-ink-tertiary"
               : tone === "cream"
                 ? "text-ink"
                 : tone === "sage"
                   ? "text-sage-strong"
                   : emphasize
-                    ? "text-surface-brown-light"
+                    ? "text-ink-tertiary"
                     : "text-card-foreground";
   const labelColor = caramelFill
     ? "text-clay-ink/70"
