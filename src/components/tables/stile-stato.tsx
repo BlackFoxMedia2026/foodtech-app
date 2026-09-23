@@ -28,7 +28,7 @@ export const STILE_STATO: Record<TableLiveStatus, { icona: LucideIcon; classe: s
     classe: "border-dashed border-border/70 bg-transparent text-muted-foreground",
     testo: "text-muted-foreground",
   },
-  PRENOTATO: { icona: Clock, classe: "border-cream/40 bg-cream/12 text-foreground", testo: "text-foreground" },
+  PRENOTATO: { icona: Clock, classe: "border-cream/40 bg-cream/[0.12] text-foreground", testo: "text-foreground" },
   IN_ARRIVO: { icona: Sparkles, classe: "border-sage bg-sage/25 text-foreground", testo: "text-foreground" },
   OCCUPATO: {
     icona: UtensilsCrossed,
@@ -69,7 +69,7 @@ export const SUPERFICIE_STATO: Record<TableLiveStatus, string> = {
   PRENOTATO: "border-border-strong bg-secondary/45",
   IN_ARRIVO: "border-sage/40 bg-sage/10",
   OCCUPATO: "border-surface-brown/50 bg-surface-brown/15",
-  CONTO: "border-accent/45 bg-accent/12",
+  CONTO: "border-accent/45 bg-accent/[0.12]",
   PULIZIA: "border-border bg-card-sunken/70",
   BLOCCATO: "border-border bg-muted/30",
 };
