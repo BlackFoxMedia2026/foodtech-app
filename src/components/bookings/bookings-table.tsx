@@ -154,7 +154,7 @@ export function BookingsTable({
                         <span className="text-xs font-medium tabular-nums md:hidden">
                           {b.partySize} {b.partySize === 1 ? "persona" : "persone"}
                         </span>
-                        <CosaSapere righe={segnali} />
+                        <CosaSapere righe={segnali} contatoreSottoMd />
                         {b.guest?.phone && <span className="t-nota tabular-nums">{b.guest.phone}</span>}
                       </div>
                     </div>
