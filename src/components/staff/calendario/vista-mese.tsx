@@ -101,7 +101,7 @@ export function VistaMese({
 
   return (
     <div className="fill-scroll riquadro flex flex-col overflow-auto bg-[color:var(--grid-body)]">
-      <div className="sticky top-0 z-20 grid shrink-0 grid-cols-7 border-b border-border/50 bg-[#11241b]">
+      <div className="sticky top-0 z-20 grid shrink-0 grid-cols-7 border-b border-border/50 bg-[color:var(--grid-header)]">
         {INIZIALI_GIORNI.map((iniziale, i) => (
           <span key={i} className="t-etichetta px-2 py-1.5 text-center text-[0.62rem]">
             {iniziale}
@@ -140,7 +140,7 @@ export function VistaMese({
                   })}`}
                   className={cn(
                     "grid h-6 min-w-[1.5rem] place-items-center rounded-full px-1 text-xs font-semibold tabular-nums transition-colors",
-                    oggiQui ? "bg-accent-strong text-accent-strong-foreground" : "text-foreground/80 hover:bg-veil-10",
+                    oggiQui ? "bg-[color:var(--oggi-fondo)] text-[color:var(--oggi-ink)]" : "text-foreground/80 hover:bg-veil-10",
                   )}
                 >
                   {numeroGiorno(g)}
@@ -167,7 +167,7 @@ export function VistaMese({
                       )}
                     >
                       <span aria-hidden="true" className={cn("h-2.5 w-[2px] shrink-0 rounded-full", PALLINO_LEGENDA[famigliaDiTurno("WORK", repartoDi(blocco.turni[0]))])} />
-                      <span className={cn("shrink-0 text-[0.62rem] tabular-nums", famiglia.testo)}>
+                      <span className={cn("ora-reparto shrink-0 text-[0.62rem] tabular-nums", famiglia.testo)}>
                         {intervalloCompatto(blocco.startMinute, blocco.endMinute)}
                       </span>
                       <span className="ml-auto shrink-0 text-[0.64rem] tabular-nums text-ink/70">

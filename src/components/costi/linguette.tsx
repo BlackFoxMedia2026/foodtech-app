@@ -18,7 +18,7 @@ export function Linguette({ venueId, attiva }: { venueId: string; attiva: "panor
   return (
     <nav
       aria-label="Vista dei costi del cliente"
-      className="flex items-center gap-0.5 rounded-full border border-border/60 bg-veil-4 p-0.5"
+      className="binario flex items-center gap-0.5 rounded-full border border-border/60 bg-veil-4 p-0.5"
     >
       {voci.map((v) => (
         <Link
@@ -29,7 +29,7 @@ export function Linguette({ venueId, attiva }: { venueId: string; attiva: "panor
           className={cn(
             "rounded-full px-3 py-1.5 text-sm transition-colors",
             v.chiave === attiva
-              ? "bg-veil-10 text-foreground"
+              ? "segmento-scelto bg-veil-10 text-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
         >

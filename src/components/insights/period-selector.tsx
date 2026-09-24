@@ -44,7 +44,8 @@ export function PeriodSelector({ range, from, to }: { range: string; from: strin
           key={p.key}
           size="sm"
           variant={range === p.key ? "default" : "outline"}
-          className="shrink-0"
+          className={range === p.key ? "segmento-scelto shrink-0" : "pastiglia shrink-0"}
+          aria-pressed={range === p.key}
           onClick={() => setRange(p.key)}
         >
           {p.label}
