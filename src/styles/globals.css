@@ -316,6 +316,11 @@
     --room-label-bancone: #3e382f;
     --room-label-dehors: #34402c;
     --pianta-velo: hsl(var(--background) / 0.65);
+    /* Lo stato di un'integrazione nel catalogo: i tre pallini. */
+    --integ-dot-disponibile: rgb(var(--cream));
+    --integ-dot-anteprima: hsl(var(--accent) / 0.4);
+    --integ-dot-anteprima-bordo: hsl(var(--accent));
+    --integ-dot-collegata: rgb(var(--sage-strong));
     /* «Nuovo turno», l'azione primaria del calendario. */
     --nuovo-turno: #3d5c34;
     --nuovo-turno-hover: #496c3e;
@@ -578,6 +583,10 @@
        carta la forma la porta il contorno: il velo sbiadiva pavimento, muri
        ed etichette fino a confonderli con la pagina. */
     --pianta-velo: transparent;
+    --integ-dot-disponibile: var(--text-meta);
+    --integ-dot-anteprima: var(--state-pending);
+    --integ-dot-anteprima-bordo: var(--state-pending);
+    --integ-dot-collegata: var(--state-confirmed);
     --nuovo-turno: var(--cta-fill);
     --nuovo-turno-hover: hsl(var(--primary) / 0.9);
     --oggi-fondo: var(--control-fill);

@@ -17,7 +17,7 @@ export function Monogramma({ testo, grande = false }: { testo: string; grande?: 
     <span
       aria-hidden="true"
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-lg border border-cream/20 bg-cream font-semibold text-clay-ink",
+        "inline-flex shrink-0 items-center justify-center rounded-lg border border-line-20 bg-cream font-semibold text-clay-ink",
         grande ? "h-14 w-14 text-lg" : "h-11 w-11 text-sm",
       )}
     >
@@ -32,9 +32,11 @@ export function Monogramma({ testo, grande = false }: { testo: string; grande?: 
  * ciò che chiede un gesto, contorno per ciò che non c'è ancora.
  */
 const STILE: Record<StatoCliente, { pallino: string; testo: string }> = {
-  DISPONIBILE: { pallino: "bg-cream", testo: "text-cream" },
-  ANTEPRIMA: { pallino: "border border-accent bg-accent/40", testo: "text-cream" },
-  COLLEGATA: { pallino: "bg-sage-strong", testo: "text-cream" },
+  /* Al buio i token valgono i colori di prima; sulla carta la parola è
+     inchiostro e il colore sta nel pallino. */
+  DISPONIBILE: { pallino: "bg-[color:var(--integ-dot-disponibile)]", testo: "text-ink" },
+  ANTEPRIMA: { pallino: "border border-[color:var(--integ-dot-anteprima-bordo)] bg-[color:var(--integ-dot-anteprima)]", testo: "text-ink" },
+  COLLEGATA: { pallino: "bg-[color:var(--integ-dot-collegata)]", testo: "text-ink" },
   ATTENZIONE: { pallino: "bg-accent", testo: "text-accent-strong" },
   PROSSIMAMENTE: { pallino: "border border-muted-foreground", testo: "text-muted-foreground" },
 };

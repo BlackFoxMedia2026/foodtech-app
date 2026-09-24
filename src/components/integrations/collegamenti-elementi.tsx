@@ -109,7 +109,7 @@ export function CollegamentiElementi({
               onClick={() => setTipo(t.tipo)}
               className={cn(
                 "tocco-comodo inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium",
-                tipo === t.tipo ? "border-accent/60 bg-accent/50 text-cream" : "border-border text-muted-foreground hover:text-foreground",
+                tipo === t.tipo ? "segmento-scelto border-accent/60 bg-accent/50 text-cream" : "border-border text-muted-foreground hover:text-foreground",
               )}
             >
               {t.etichetta}
