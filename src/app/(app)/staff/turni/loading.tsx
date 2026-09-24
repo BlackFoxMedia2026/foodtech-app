@@ -30,7 +30,7 @@ export default function Loading() {
             <Skeleton className="h-8 w-56" />
             <Skeleton className="h-8 w-44 rounded-full" />
           </div>
-          <div className="riquadro fill overflow-hidden bg-[#0c1a14]">
+          <div className="riquadro fill overflow-hidden bg-[color:var(--grid-body)]">
             <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))]">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="h-[68px] border-b border-r border-border/40 p-2">

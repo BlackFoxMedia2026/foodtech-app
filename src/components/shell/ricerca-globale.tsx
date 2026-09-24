@@ -159,7 +159,7 @@ export function RicercaGlobale() {
         type="button"
         onClick={() => setAperta(true)}
         aria-label="Cerca un ospite o una prenotazione"
-        className="tocco-comodo flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-cream hover:text-foreground"
+        className="tondo-strumento tocco-comodo flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-line hover:text-foreground"
       >
         <Search className="h-4 w-4" aria-hidden="true" />
       </button>

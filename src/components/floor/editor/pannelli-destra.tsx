@@ -232,7 +232,8 @@ function ProprietaTavolo({
             disabled={!modificabile}
             onChange={(e) => editor.aggiornaTavolo(tavolo.id, { rotation: Number(e.target.value) })}
             onPointerUp={() => editor.aggiornaTavolo(tavolo.id, { rotation: tavolo.rotation }, true)}
-            className="h-1.5 flex-1 accent-[color:var(--accent-strong,#B07A45)]"
+            // TODO(carta) accent-[#B07A45] va tokenizzato, altrimenti lo slider resta marrone sulla carta.
+            className="h-1.5 flex-1 accent-[#B07A45]"
           />
           <span className="w-10 shrink-0 text-right text-xs tabular-nums">{tavolo.rotation}°</span>
         </div>

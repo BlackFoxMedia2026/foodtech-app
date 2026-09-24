@@ -333,7 +333,7 @@ export function EditorSala({
                     onClick={() => setModalita(chiave)}
                     className={cn(
                       "tocco-comodo rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                      attiva ? "bg-cream text-forest shadow-sm" : "text-muted-foreground hover:text-foreground",
+                      attiva ? "bg-segment text-segment-ink-forest shadow-sm" : "text-muted-foreground hover:text-foreground",
                       indisponibile && "cursor-not-allowed opacity-40 hover:text-muted-foreground",
                     )}
                   >

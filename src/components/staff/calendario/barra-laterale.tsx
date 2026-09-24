@@ -6,7 +6,6 @@ import { ArrowRight, Building2, CircleDot, RotateCcw, Users } from "lucide-react
 import type { StaffDepartment, StaffPrimaryRole } from "@prisma/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MiniMese } from "@/components/staff/calendario/mini-mese";
-import { FAMIGLIA_REPARTO, FAMIGLIE, ORDINE_REPARTI, PALLINO_LEGENDA } from "@/components/staff/calendario/famiglie";
 import { STAFF_DEPARTMENTS } from "@/lib/staff-departments";
 import { StaffSwitch } from "@/components/staff/staff-switch";
 import { FILTRI_VUOTI, STATI_FILTRO, filtriAttivi, type FiltriStaff } from "@/components/staff/filtri-staff";
@@ -28,8 +27,8 @@ export type Riepilogo = {
  *
  * Sta a sinistra e resta stretta perché tutto quello che contiene è
  * secondario rispetto alla griglia: il mese per saltare, tre tendine per
- * restringere, la legenda per capire i colori, il riepilogo per il numero.
- * Nessuno dei quattro merita larghezza — il calendario sì.
+ * restringere, il riepilogo per il numero. Nessuno dei tre merita larghezza —
+ * il calendario sì. La legenda dei reparti non sta qui: vedi `LegendaReparti`.
  *
  * Sotto `xl` sparisce e i filtri ricompaiono in un pannello nella testata: a
  * 1200 px togliere 250 px al calendario vuol dire due giorni in meno
@@ -78,7 +77,7 @@ export function BarraLaterale({
   return (
     <div className={cn("flex flex-col gap-4", !compatta && "w-[252px] shrink-0")}>
       {/* L'interruttore in cima alla colonna, non in una testata sopra la
-          pagina: da qui in giù tutto quello che c'è — mese, filtri, legenda —
+          pagina: da qui in giù tutto quello che c'è — mese e filtri —
           vale per tutte e due le viste, e questo dice quale si sta guardando.
           Sotto `xl` la colonna non c'è e l'interruttore ricompare nella
           testata (vedi le due pagine). */}
@@ -171,37 +170,6 @@ export function BarraLaterale({
           </Select>
         </div>
       </section>
-
-      {/*
-        La legenda sta dove i colori si vedono, cioè solo nel calendario.
-
-        Nell'elenco delle persone non c'è niente di colorato da spiegare: una
-        legenda che descrive tinte assenti dallo schermo è la stessa cosa di
-        una voce «Bar» in un locale senza bar — insegna a non leggerla.
-      */}
-      {vista === "turni" && (
-      <section>
-        {/*
-          La legenda elenca **solo i reparti che esistono in questo locale**.
-
-          Con tutti e cinque sempre presenti, in un ristorante senza bar e
-          senza direzione due righe su sei parlavano di colori che nel
-          calendario non compaiono mai — e una legenda che descrive cose
-          assenti insegna a non leggerla. Riposo e assenza invece ci sono
-          sempre: sono stati, non reparti.
-        */}
-        <ul className="space-y-2 px-0.5">
-          {[...ORDINE_REPARTI.filter((d) => repartiDisponibili.includes(d)).map((d) => FAMIGLIA_REPARTO[d]), "riposo" as const, "assenza" as const].map(
-            (f) => (
-              <li key={f} className="flex items-center gap-2.5">
-                <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", PALLINO_LEGENDA[f])} aria-hidden="true" />
-                <span className="text-xs text-foreground/80">{FAMIGLIE[f].label}</span>
-              </li>
-            ),
-          )}
-        </ul>
-      </section>
-      )}
 
       {!compatta && (
         <section className="riquadro bg-card/40 p-3.5">

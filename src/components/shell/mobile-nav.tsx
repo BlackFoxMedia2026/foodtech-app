@@ -223,7 +223,7 @@ export function MobileNav({
                   setAltroOpen(false);
                   setAzioniOpen((v) => !v);
                 }}
-                className="-mt-4 flex h-14 w-14 items-center justify-center rounded-full bg-cream text-clay-ink shadow-lg transition-transform active:scale-95"
+                className="-mt-4 flex h-14 w-14 items-center justify-center rounded-full bg-cta text-cta-ink shadow-lg transition-transform active:scale-95"
               >
                 {azioniOpen ? (
                   <X className="h-6 w-6" aria-hidden="true" />

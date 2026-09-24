@@ -90,7 +90,7 @@ export function SegmentedControl<T extends string>({
           onClick={() => onChange(o.value)}
           className={cn(
             "flex h-7 items-center justify-center rounded px-2.5 text-xs transition-colors",
-            value === o.value ? "bg-cream text-clay-ink" : "text-muted-foreground hover:text-foreground"
+            value === o.value ? "bg-segment text-segment-ink" : "text-muted-foreground hover:text-foreground"
           )}
         >
           {o.label}

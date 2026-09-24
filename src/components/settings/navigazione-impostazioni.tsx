@@ -70,7 +70,7 @@ export function NavigazioneImpostazioni() {
       <Link
         href="/overview"
         title="Torna al gestionale"
-        className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground transition-colors hover:border-cream hover:text-foreground xl:text-sm"
+        className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground transition-colors hover:border-line hover:text-foreground xl:text-sm"
       >
         <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="hidden xl:inline">Gestionale</span>
@@ -81,7 +81,7 @@ export function NavigazioneImpostazioni() {
         {pillola && (
           <div
             aria-hidden="true"
-            className="absolute inset-y-1 z-0 rounded-full bg-cream"
+            className="absolute inset-y-1 z-0 rounded-full bg-nav-pill"
             style={{
               left: pillola.left,
               width: pillola.width,
@@ -148,7 +148,7 @@ export function AltreSezioniMobile({ attiva }: { attiva: string }) {
             href={indirizzoParte(parte.id)}
             className={cn(
               "flex min-h-[44px] items-center justify-between gap-3 rounded-lg border border-border px-3 text-sm transition-colors",
-              "hover:border-cream/40 hover:text-foreground",
+              "hover:border-line-40 hover:text-foreground",
             )}
           >
             <span className="min-w-0 truncate">{parte.titolo}</span>

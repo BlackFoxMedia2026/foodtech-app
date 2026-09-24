@@ -83,7 +83,7 @@ export function AvvisiServizio({ insights }: { insights: ServiceInsight[] }) {
             /* La pillola `warning` del sistema — accento al 50% con il crema
                sopra, 5,12 : 1 — non un pallino rosso fuori tavolozza. */
             <span
-              className="grid h-5 min-w-[1.25rem] place-items-center rounded-full border border-accent/60 bg-accent/50 px-1.5 text-[11px] font-semibold tabular-nums text-cream"
+              className="grid h-5 min-w-[1.25rem] place-items-center rounded-full border border-accent/60 bg-accent/50 px-1.5 text-[11px] font-semibold tabular-nums text-ink"
               aria-hidden="true"
             >
               {daFare}

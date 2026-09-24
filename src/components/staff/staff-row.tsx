@@ -95,7 +95,7 @@ export function StaffRow({
     <div
       className={cn(
         "group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 transition-colors sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,14rem)_auto_auto]",
-        "hover:bg-cream/[0.04]",
+        "hover:bg-veil-4",
         !available && "opacity-70",
       )}
     >
@@ -135,7 +135,7 @@ export function StaffRow({
           brigata farebbe sembrare mezza pagina incompleta.
         */}
         {assignmentSummary ? (
-          <p className="truncate text-xs text-cream/70" title={assignmentSummary}>
+          <p className="truncate text-xs text-ink/70" title={assignmentSummary}>
             {assignmentSummary}
           </p>
         ) : assignable && available ? (

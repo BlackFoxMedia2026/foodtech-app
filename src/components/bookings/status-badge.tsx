@@ -65,7 +65,7 @@ const SOURCE: Record<BookingSource, string> = {
 export function StatusBadge({ status }: { status: BookingStatus }) {
   const s = STATUS[status];
   return (
-    <Badge tone={s.tone} className={s.conclusa ? "badge-dot badge-dot-anello" : "badge-dot"}>
+    <Badge tone={s.tone} data-stato={status} className={s.conclusa ? "pastiglia badge-dot badge-dot-anello" : "pastiglia badge-dot"}>
       {s.label}
     </Badge>
   );

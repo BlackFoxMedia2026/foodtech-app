@@ -318,7 +318,7 @@ function RigaDocumento({
   return (
     <li className="flex flex-col gap-3 px-2 py-4 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-cream/[0.06] text-muted-foreground" aria-hidden="true">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-veil-6 text-muted-foreground" aria-hidden="true">
           {mime === "application/pdf" ? <FileText className="h-5 w-5" /> : <ImageIcon className="h-5 w-5" />}
         </span>
         <div className="min-w-0">

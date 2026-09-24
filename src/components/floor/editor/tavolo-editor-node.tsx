@@ -176,7 +176,7 @@ export const TavoloEditorNode = memo(function TavoloEditorNode({
                 }}
                 onClick={(e) => e.stopPropagation()}
                 className={cn(
-                  "absolute h-2.5 w-2.5 rounded-[2px] border border-cream bg-accent-strong shadow",
+                  "absolute h-2.5 w-2.5 rounded-[2px] border border-line bg-accent-strong shadow",
                   angolo === "nw" && "cursor-nwse-resize",
                   angolo === "ne" && "cursor-nesw-resize",
                   angolo === "sw" && "cursor-nesw-resize",

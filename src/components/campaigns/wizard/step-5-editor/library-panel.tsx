@@ -90,7 +90,7 @@ export function LibraryPanel({
             onClick={() => setTab(t)}
             className={cn(
               "flex-1 rounded-md py-1.5 text-sm capitalize transition-colors",
-              tab === t ? "bg-cream font-medium text-clay-ink" : "text-muted-foreground hover:text-foreground"
+              tab === t ? "bg-segment font-medium text-segment-ink" : "text-muted-foreground hover:text-foreground"
             )}
           >
             {t}

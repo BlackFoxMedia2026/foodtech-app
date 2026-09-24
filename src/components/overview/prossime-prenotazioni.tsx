@@ -10,7 +10,7 @@ import { cn, formatTime } from "@/lib/utils";
 
 type Row = Booking & { guest: Guest | null; table: Table | null };
 
-type Tone = "positive" | "warn" | "negative" | "neutral";
+type Tone = "positive" | "seated" | "warn" | "negative" | "neutral";
 
 /** Le prenotazioni che hanno già un esito: non sono più da gestire. */
 const RISOLTE = new Set(["COMPLETED", "NO_SHOW"]);
@@ -20,7 +20,7 @@ function getStatusDisplay(booking: Row, now: Date): { label: string; tone: Tone 
 
   switch (booking.status) {
     case "SEATED":
-      return { label: "Seduti", tone: "positive" };
+      return { label: "Seduti", tone: "seated" };
     case "COMPLETED":
       return { label: "Completata", tone: "neutral" };
     case "NO_SHOW":
@@ -42,18 +42,22 @@ function getStatusDisplay(booking: Row, now: Date): { label: string; tone: Tone 
   }
 }
 
+/* Al buio `seated` ha gli stessi colori di `positive`; in Carta il pallino
+   dei seduti è blu, come nel resto del prodotto. */
 const DOT_TONE: Record<Tone, string> = {
-  positive: "bg-sage",
-  warn: "bg-card-foreground",
-  negative: "bg-destructive",
-  neutral: "bg-card-foreground/40",
+  positive: "bg-stato-dot-positive",
+  seated: "bg-stato-dot-seated",
+  warn: "bg-stato-dot-warn",
+  negative: "bg-stato-dot-negative",
+  neutral: "bg-stato-dot-neutral",
 };
 
 const TEXT_TONE: Record<Tone, string> = {
-  positive: "text-sage-strong",
-  warn: "text-card-foreground",
-  negative: "text-destructive-soft",
-  neutral: "text-card-foreground/65",
+  positive: "text-stato-testo-positive",
+  seated: "text-stato-testo-seated",
+  warn: "text-stato-testo-warn",
+  negative: "text-stato-testo-negative",
+  neutral: "text-stato-testo-neutral",
 };
 
 /**
@@ -127,7 +131,7 @@ export function ProssimePrenotazioni({
           className={cn("relative z-10 h-2.5 w-2.5 shrink-0 rounded-full", DOT_TONE[stato.tone])}
           aria-hidden="true"
         />
-        <Card className="card-notch h-full min-w-0 flex-1 overflow-hidden">
+        <Card className="riga-piatta card-notch h-full min-w-0 flex-1 overflow-hidden">
           <Link
             href={`/bookings/${b.id}`}
             className="flex h-full items-center gap-3 rounded-[inherit] p-3 transition-colors hover:bg-muted"
@@ -183,7 +187,7 @@ export function ProssimePrenotazioni({
             )}
           </CardDescription>
         </div>
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className="pastiglia">
           <Link href="/bookings">
             <CalendarRange className="h-4 w-4" />
             Calendario
@@ -197,7 +201,7 @@ export function ProssimePrenotazioni({
           divide sopra e sotto invece di cadere tutto in fondo. */}
       <div className="px-5 pb-4 md:flex md:min-h-0 md:flex-1 md:flex-col md:justify-center">
         {righe.length === 0 ? (
-          <p className="riquadro tratteggiato border-cream/20 bg-white/5 p-8 text-center text-sm text-card-foreground/65">
+          <p className="riquadro tratteggiato border-line-20 bg-[color:var(--edge-light)] p-8 text-center text-sm text-card-foreground/65">
             Nessuna prenotazione per oggi.
           </p>
         ) : righe.length > VISIBILI ? (

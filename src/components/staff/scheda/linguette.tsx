@@ -62,7 +62,7 @@ export function Linguette({
                   <span
                     className={cn(
                       "rounded-full px-1.5 py-0.5 text-xs tabular-nums leading-none",
-                      eAttiva ? "bg-accent/50 text-cream" : "bg-cream/10 text-muted-foreground",
+                      eAttiva ? "bg-accent/50 text-ink" : "bg-veil-10 text-muted-foreground",
                     )}
                   >
                     {n}

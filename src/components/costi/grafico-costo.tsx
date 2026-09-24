@@ -112,7 +112,7 @@ export function GraficoCosto({
           <Line
             type="monotone"
             dataKey="previsione"
-            stroke="hsl(var(--accent))"
+            stroke="var(--chart-line)"
             strokeDasharray="4 4"
             strokeWidth={2}
             dot={{ r: 3 }}

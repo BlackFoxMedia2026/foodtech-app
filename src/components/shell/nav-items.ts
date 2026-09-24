@@ -507,7 +507,7 @@ export function titoloPagina(pathname: string): TitoloPagina | null {
 export function classiVoce(active: boolean) {
   return cn(
     "relative z-10 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium leading-tight transition-colors md:min-w-0 xl:flex-row xl:gap-2 xl:px-3 xl:py-2 xl:text-sm 2xl:px-3.5",
-    active ? "text-forest" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+    active ? "text-nav-pill-ink" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
   );
 }
 

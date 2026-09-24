@@ -61,8 +61,9 @@ export function Binario() {
  *   tabulatore sta ferma, altrimenti la riga che si stava leggendo scappa;
  * - **rispetta `prefers-reduced-motion`**: niente scorrimento automatico, e i
  *   pallini in fondo restano per muoversi a mano;
- * - **solo la riga al centro è interattiva**. Le altre sono `inert`: senza, il
- *   tabulatore entrerebbe in collegamenti smorzati o fuori dalla finestra;
+ * - **solo la riga al centro si apre**. Le altre sono `inert`: senza, il
+ *   tabulatore entrerebbe in collegamenti smorzati o fuori dalla finestra; un
+ *   clic su una riga di contorno la porta al centro;
  * - **si muove come ci si aspetta che si muova**: rotella, trackpad, swipe e
  *   frecce, non solo i pallini (`useGestoCarosello`). I pallini erano l'unico
  *   modo di scorrere, e sono bersagli da sei pixel: chi voleva vedere la
@@ -219,18 +220,41 @@ export function Rotazione({ righe, etichetta }: { righe: React.ReactNode[]; etic
           return (
             <div
               key={i}
-              // React 18 non conosce `inert` fra le sue props: va passato come
-              // attributo grezzo.
-              {...(alCentro ? {} : ({ inert: "" } as unknown as React.HTMLAttributes<HTMLDivElement>))}
-              aria-hidden={!alCentro}
               style={{ transform: `translateY(${postoVisuale * 100}%)` }}
               className={cn(
                 "absolute inset-x-0 top-0 h-1/3 transition-[transform,opacity] duration-500 ease-out motion-reduce:transition-none",
-                alCentro ? "z-20 opacity-100" : visibile ? "z-10 opacity-50" : "opacity-0",
-                !alCentro && "pointer-events-none",
+                alCentro ? "z-20 opacity-100" : visibile ? "rotazione-vicina z-10 opacity-50" : "opacity-0",
+                !alCentro && !visibile && "pointer-events-none",
               )}
             >
-              {riga}
+              {/* La riga fuori dal centro resta `inert`: il suo collegamento
+                  non prende né il fuoco né il clic. React 18 non conosce
+                  `inert` fra le sue props: va passato come attributo grezzo. */}
+              <div
+                className="h-full"
+                {...(alCentro ? {} : ({ inert: "" } as unknown as React.HTMLAttributes<HTMLDivElement>))}
+                aria-hidden={!alCentro}
+              >
+                {riga}
+              </div>
+              {/*
+                Una riga di contorno si vede per intero, quindi deve potersi
+                prendere: un clic la porta al centro, e da lì si apre. Prima era
+                smorzata e inerte, e sulla carta — senza lo smorzato — sembrava
+                attiva e non rispondeva. È un bersaglio del puntatore e del
+                dito: da tastiera si scorre con le frecce, e fuori dall'ordine
+                di tabulazione restano righe che il lettore di schermo non
+                annuncia.
+              */}
+              {!alCentro && visibile && (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  onClick={() => vaiA(i)}
+                  className="absolute inset-0 z-30 cursor-pointer rounded-md"
+                />
+              )}
             </div>
           );
         })}

@@ -138,7 +138,7 @@ export function PiedeModifica({
         <button
           type="submit"
           disabled={salvando}
-          className="inline-flex h-10 items-center rounded-full bg-cream px-5 text-sm font-medium text-clay-ink shadow-[0_10px_24px_rgba(0,0,0,0.35)] transition hover:brightness-105 disabled:opacity-50"
+          className="inline-flex h-10 items-center rounded-full bg-cta px-5 text-sm font-medium text-cta-ink shadow-[shadow:var(--button-accent-shadow)] transition hover:brightness-105 disabled:opacity-50"
         >
           {salvando ? "Salvataggio…" : etichettaSalva}
         </button>

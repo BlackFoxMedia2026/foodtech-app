@@ -139,7 +139,7 @@ export function SelettorePassi<T extends string>({
           onClick={() => onCambia(p.chiave)}
           className={cn(
             "flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-medium transition-colors",
-            attivo === p.chiave ? "bg-cream text-clay-ink" : "bg-current/10 text-muted-foreground",
+            attivo === p.chiave ? "bg-segment text-segment-ink" : "bg-current/10 text-muted-foreground",
           )}
         >
           {p.corto}

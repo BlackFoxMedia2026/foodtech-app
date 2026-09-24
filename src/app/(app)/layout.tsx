@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Fraunces, Inter, Space_Mono } from "next/font/google";
 import { Header } from "@/components/shell/header";
+import { TemaCarta } from "@/components/tema-carta";
 import { BrandSetupDialog } from "@/components/settings/brand-setup-dialog";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { VenueTimeProvider } from "@/components/shell/venue-time-provider";
@@ -162,6 +163,7 @@ export default async function AppShell({
         <div
           className={`${sans.variable} ${display.variable} ${mono.variable} relative z-0 flex h-screen flex-col overflow-hidden bg-background text-foreground`}
         >
+          <TemaCarta />
           <Header
             user={{
               name: ctx.session.user?.name,

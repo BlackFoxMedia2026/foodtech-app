@@ -105,7 +105,7 @@ function Chip({ attiva, onClick, children }: { attiva: boolean; onClick: () => v
       aria-pressed={attiva}
       className={cn(
         "tocco-comodo inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-xs font-medium transition-colors",
-        attiva ? "border-accent/60 bg-accent/50 text-cream" : "border-border text-muted-foreground hover:text-foreground",
+        attiva ? "segmento-scelto border-accent/60 bg-accent/50 text-cream" : "border-border text-muted-foreground hover:text-foreground",
       )}
     >
       {children}

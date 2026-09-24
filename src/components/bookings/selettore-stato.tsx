@@ -109,6 +109,7 @@ export function SelettoreStato({
 
   const pillola = cn(
     badgeVariants({ tone: meta.tone }),
+    "pastiglia",
     meta.conclusa ? "badge-dot badge-dot-anello" : "badge-dot",
     // Più grande della pillola di sola lettura: qui è un comando, e un comando
     // di dodici pixel in una riga alta quaranta non si vede e non si prende.
@@ -117,7 +118,11 @@ export function SelettoreStato({
   );
 
   if (!modificabile) {
-    return <span className={pillola}>{meta.label}</span>;
+    return (
+      <span className={pillola} data-stato={mostrato}>
+        {meta.label}
+      </span>
+    );
   }
 
   /* A che punto del servizio siamo: serve al menu per dire quali passi sono
@@ -133,14 +138,15 @@ export function SelettoreStato({
           type="button"
           disabled={inCorso}
           title="Cambia stato"
+          data-stato={mostrato}
           aria-label={`Stato di ${nome}: ${meta.label}. Cambia stato`}
           className={cn(
             pillola,
             "tocco-comodo gap-1.5 cursor-pointer select-none",
             // Hover evidente ma senza bagliori: il bordo si accende di crema e
             // il chevron finisce di comparire. Niente ombre, niente scatti.
-            "hover:border-cream/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            "data-[state=open]:border-cream/60",
+            "hover:border-line-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "data-[state=open]:border-line-60",
             inCorso && "opacity-70",
           )}
         >
@@ -224,10 +230,10 @@ function VoceStato({
           corrente
             ? "bg-accent-strong"
             : fatto
-              ? "bg-cream/45"
+              ? "bg-[color:var(--dot-fatto)]"
               : uscita
                 ? "ring-1 ring-inset ring-destructive/50"
-                : "ring-1 ring-inset ring-cream/30",
+                : "ring-1 ring-inset ring-line-30",
         )}
       />
       <span className={cn("flex-1", corrente && "font-medium")}>{meta.label}</span>

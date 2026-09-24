@@ -81,8 +81,8 @@ const FONDO: Record<Piano, string> = {
   variazioni si costruiscono dalla tinta invece di ripescarle a occhio.
 */
 const TESTATA: Record<Piano, string> = {
-  card: "bg-[#153a2d]",
-  incassato: "bg-[hsl(160_46%_9%)]",
+  card: "bg-[color:var(--table-head-card)]",
+  incassato: "bg-[color:var(--table-head-incassato)]",
 };
 
 export function Tabella({
@@ -115,7 +115,15 @@ export function Tabella({
       className={cn(
         "rounded-xl border border-border",
         FONDO[piano],
-        fill ? "fill-scroll overflow-x-auto" : "overflow-x-auto",
+        /*
+          Senza la riserva per la barra di scorrimento. `fill-scroll` la tiene
+          sempre (`scrollbar-gutter: stable`), e in una tabella quei 17 px
+          restavano vuoti accanto alla testata: la fascia si interrompeva prima
+          del bordo e lasciava una striscia del colore della scheda. Al buio non
+          si vedeva, sulla carta sì. Qui la barra compare solo quando le righe
+          scorrono davvero, e la testata finisce contro di lei.
+        */
+        fill ? "fill-scroll overflow-x-auto [scrollbar-gutter:auto]" : "overflow-x-auto",
         className,
       )}
     >
@@ -143,7 +151,7 @@ export function Testa({
     // scorrere cinquanta righe senza più sapere cosa sia ogni colonna è
     // peggio che scorrere. Il fondo è pieno, non trasparente, altrimenti le
     // righe si leggono attraverso l'intestazione.
-    <thead className={cn("sticky top-0 z-10 border-b border-border t-etichetta", TESTATA[piano])}>
+    <thead className={cn("sticky top-0 z-10 border-b border-border t-etichetta text-[color:var(--table-head-ink)]", TESTATA[piano])}>
       <tr>{children}</tr>
     </thead>
   );
@@ -212,7 +220,7 @@ export function Riga({
       onClick={onClick}
       className={cn(
         "transition-colors hover:bg-secondary/30",
-        daDecidere && "border-l-2 border-l-accent bg-accent/[0.07]",
+        daDecidere && "border-l-2 border-l-[color:var(--riga-decidere-segno)] bg-accent/[0.07]",
         className,
       )}
     >

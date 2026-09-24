@@ -335,7 +335,7 @@ export function ServiceView({
                   className={cn(
                     "min-h-[36px] rounded-full px-2.5 text-xs tabular-nums transition-colors",
                     window_ === m
-                      ? "bg-cream text-clay-ink"
+                      ? "bg-segment text-segment-ink"
                       : "bg-current/10 text-muted-foreground",
                   )}
                 >

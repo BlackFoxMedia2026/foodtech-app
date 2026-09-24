@@ -78,7 +78,11 @@
     --border: 157 19% 26%;
     --border-strong: 157 19% 34%;
     --input: 157 19% 26%;
-    --ring: 30 44% 48%;
+    /* L'anello del fuoco. Era `--ring`, con lo stesso valore di `--accent`:
+       ora è un token suo, e un tema può separarli. Resta in HSL perché
+       `hsl(30 44% 48%)` non è un RGB intero, e una terzina arrotondata
+       cambierebbe l'anello di un livello. */
+    --focus-ring: 30 44% 48%;
     --radius: 1.2rem;
 
     /*
@@ -117,6 +121,214 @@
     --turno-riposo: 150 8% 58%;
     --turno-assenza: 6 46% 63%;
 
+    /*
+      **I token del tema, estratti dai componenti.**
+
+      Questo `:root` è il tema **scuro**, ed è il default di proposito: un
+      ambiente che non dichiara niente — la Staff App, le pagine degli ospiti,
+      la vetrina — resta com'è. Il tema Carta arriverà come
+      `:root:has([data-tema="carta"])`, sul layout di chi lo vuole. Se `:has()`
+      non si risolve (in sala girano tablet datati) si ricade qui, al buio: una
+      Staff App che diventa bianca in una sala a luci basse è il caso peggiore,
+      un back office che resta scuro è solo lo stato di prima.
+
+      Sta su `:root` e non sul contenitore della pagina perché dialog, menu e
+      tooltip si montano dentro `<body>`, fuori da qualunque contenitore.
+
+      I colori con un nome proprio (`cream`, `forest`...) sono terzine RGB lette
+      da `tailwind.config.ts`: i valori sono gli esadecimali di prima, al bit.
+    */
+    --forest: 19 51 44; /* #13332C */
+    --cream: 242 231 208; /* #F2E7D0 */
+    --terracotta: 175 102 72; /* #AF6648 */
+    --surface-brown-dark: 116 67 45; /* #74432D */
+    --surface-brown: 144 91 56; /* #905B38 */
+    --surface-brown-light: 194 155 114; /* #C29B72 */
+    --clay-ink: 47 31 17; /* #2F1F11 */
+    --clay-ink-soft: 79 53 27; /* #4F351B */
+    --sage: 138 159 96; /* #8A9F60 */
+    --sage-deep: 61 92 52; /* #3D5C34 */
+    --sage-strong: 182 198 149; /* #B6C695 */
+    --carbon: 21 22 26; /* #15161a */
+    --carbon-50: 246 246 247; /* #f6f6f7 */
+    --carbon-100: 232 232 234; /* #e8e8ea */
+    --carbon-200: 198 198 203; /* #c6c6cb */
+    --carbon-300: 163 164 171; /* #a3a4ab */
+    --carbon-400: 94 96 104; /* #5e6068 */
+    --carbon-500: 58 59 66; /* #3a3b42 */
+    --carbon-600: 42 43 49; /* #2a2b31 */
+    --carbon-700: 31 32 37; /* #1f2025 */
+    --carbon-800: 21 22 26; /* #15161a */
+    --carbon-900: 12 13 16; /* #0c0d10 */
+    --sand: 243 234 217; /* #f3ead9 */
+    --sand-50: 252 249 241; /* #fcf9f1 */
+    --sand-100: 246 239 224; /* #f6efe0 */
+    --sand-200: 236 223 193; /* #ecdfc1 */
+    --sand-300: 222 197 154; /* #dec59a */
+    --sand-400: 205 170 112; /* #cdaa70 */
+    --sand-500: 184 142 77; /* #b88e4d */
+    --sand-600: 154 115 59; /* #9a733b */
+    --sand-700: 122 90 47; /* #7a5a2f */
+    --sand-800: 84 64 35; /* #544023 */
+    --sand-900: 49 39 24; /* #312718 */
+    --gilt: 201 162 90; /* #c9a25a */
+    --gilt-light: 226 201 138; /* #e2c98a */
+    --gilt-dark: 140 107 46; /* #8c6b2e */
+    --accent-strong: 226 179 131; /* #E2B383 */
+    --accent-strong-hover: 239 199 156; /* #EFC79C */
+    --accent-strong-foreground: 47 31 17; /* #2F1F11 */
+    --accent-strong-ink: 116 67 45; /* #74432D */
+
+    /* Il fondo della pagina (`body`): la sfumatura dall'alto in basso. */
+    --base-top: #0b1511;
+    --base-bottom: #17382c;
+    /* Le schede (`.surface`): la stessa sfumatura, in piccolo. */
+    --panel-top: #163c2f;
+    --panel-bottom: #102c1f;
+    /* Le ombre delle varianti `brand` e `accent` di `Button`. */
+    --button-brand-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+    --button-accent-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    /*
+      Luce, ombra e rigatura dei livelli condivisi, per **ruolo**. Un token
+      ha un valore solo, quindi ogni intensità ha il suo: la luce al 5% e
+      al 4% (`-soft`), il chiarore della pagina al 7%, l'ombra lunga al 35%
+      e quella corta al 22% (`-soft`).
+    */
+    --edge-light: rgba(255, 255, 255, 0.05);
+    --edge-light-soft: rgba(255, 255, 255, 0.04);
+    --glow-page: rgba(255, 255, 255, 0.07);
+    --edge-shadow: rgba(0, 0, 0, 0.35);
+    --edge-shadow-soft: rgba(0, 0, 0, 0.22);
+    /* La linea dei grafici. Era `hsl(var(--accent))` scritto nel componente. */
+    --chart-line: hsl(30 44% 48%);
+    /* I due segni della griglia dei turni: la linea dell'ora corrente e
+       quella del giorno selezionato. Sono linee, non ombre, e sono due
+       cose diverse: per questo due token, anche se al buio valgono uguale. */
+    --mark-now: hsl(30 44% 48%);
+    --mark-selected: hsl(30 44% 48%);
+    /* La testata dei giorni della griglia dei turni: la banda (anche la
+       casella d'angolo), la casella sotto il puntatore, quella di oggi. */
+    --grid-header: #11241b;
+    --grid-header-hover: #193629;
+    --grid-header-today: #183324;
+    /* Il corpo della griglia (anche vista mese e scheletro), e la colonna di oggi. */
+    --grid-body: #0c1a14;
+    --grid-body-today: #132a20;
+
+    /*
+      **I ruoli per chi prima scriveva un colore del buio.** Qui valgono
+      esattamente la classe che hanno sostituito — `--veil-10` è quello che
+      Tailwind generava per `bg-cream/10` — così il back office, se `:has()`
+      non si risolve e ricade al buio, resta identico. Il blocco Carta li
+      ridefinisce uno per uno.
+    */
+    --ink: var(--cream);
+    --cta-fill: rgb(var(--cream));
+    --cta-ink: rgb(var(--clay-ink));
+    --segment-fill: rgb(var(--cream));
+    --segment-ink: rgb(var(--clay-ink));
+    --segment-ink-forest: rgb(var(--forest));
+    --nav-pill: rgb(var(--cream));
+    --nav-pill-ink: rgb(var(--forest));
+    --pill-selected: hsl(var(--accent) / 0.25);
+    --veil-1-8: rgb(var(--cream) / 0.018);
+    --veil-3: rgb(var(--cream) / 0.03);
+    --veil-3-5: rgb(var(--cream) / 0.035);
+    --veil-4: rgb(var(--cream) / 0.04);
+    --veil-5: rgb(var(--cream) / 0.05);
+    --veil-6: rgb(var(--cream) / 0.06);
+    --veil-7: rgb(var(--cream) / 0.07);
+    --veil-8: rgb(var(--cream) / 0.08);
+    --veil-10: rgb(var(--cream) / 0.1);
+    --veil-12: rgb(var(--cream) / 0.12);
+    --veil-15: rgb(var(--cream) / 0.15);
+    --veil-20: rgb(var(--cream) / 0.2);
+    --line-10: rgb(var(--cream) / 0.1);
+    --line-15: rgb(var(--cream) / 0.15);
+    --line-20: rgb(var(--cream) / 0.2);
+    --line-25: rgb(var(--cream) / 0.25);
+    --line-30: rgb(var(--cream) / 0.3);
+    --line-40: rgb(var(--cream) / 0.4);
+    --line-50: rgb(var(--cream) / 0.5);
+    --line-60: rgb(var(--cream) / 0.6);
+    --line-100: rgb(var(--cream));
+    --kpi-label: rgb(var(--cream) / 0.9);
+    --kpi-note: rgb(var(--cream) / 0.65);
+    --kpi-icon-fill: rgb(var(--cream) / 0.07);
+    --kpi-icon-border: rgb(var(--cream) / 0.1);
+    --kpi-icon-ink: rgb(var(--cream) / 0.55);
+    /* Briefing (Panoramica): l'etichetta e le sfumature dei tratti delle icone. */
+    --kpi-label-muted: hsl(var(--muted-foreground));
+    --tratto-vetro-alto: #f2e7d0;
+    --tratto-vetro-basso: #a89b80;
+    --tratto-tenue-alto: #e1ca97;
+    --tratto-tenue-basso: #a1906c;
+    /* Gli stati: il pallino porta il colore, la parola resta inchiostro.
+       Al buio i toni sono quelli di prima (seduto = positivo). */
+    --stato-dot-positive: rgb(var(--sage));
+    --stato-dot-seated: rgb(var(--sage));
+    --stato-dot-warn: hsl(var(--card-foreground));
+    --stato-dot-negative: hsl(var(--destructive));
+    --stato-dot-neutral: hsl(var(--card-foreground) / 0.4);
+    --stato-testo-positive: rgb(var(--sage-strong));
+    --stato-testo-seated: rgb(var(--sage-strong));
+    --stato-testo-warn: hsl(var(--card-foreground));
+    --stato-testo-negative: hsl(var(--destructive-soft));
+    --stato-testo-neutral: hsl(var(--card-foreground) / 0.65);
+    /* La linea dell'andamento settimanale (Panoramica). */
+    --trend-line: #c29b72;
+    /* La testata delle tabelle e il suo inchiostro. */
+    --table-head-card: #153a2d;
+    --table-head-incassato: hsl(160 46% 9%);
+    --table-head-ink: hsl(var(--muted-foreground));
+    /* Il segno a sinistra della riga da decidere. */
+    --riga-decidere-segno: hsl(var(--accent));
+    /* Il marrone chiaro usato come testo (link e valori secondari). */
+    --ink-tertiary: rgb(var(--surface-brown-light));
+    /* Due pallini di stato scritti in crema: un passo già fatto nel menu
+       dello stato, e il dipendente a riposo. */
+    --dot-fatto: rgb(var(--cream) / 0.45);
+    --dot-riposo: rgb(var(--cream) / 0.5);
+    /* Lo stato «al conto» di un tavolo: la tessera e la superficie. */
+    --conto-fondo: hsl(var(--accent) / 0.8);
+    --conto-bordo: hsl(var(--accent));
+    --conto-ink: rgb(var(--ink));
+    --conto-superficie: hsl(var(--accent) / 0.12);
+    --conto-superficie-bordo: hsl(var(--accent) / 0.45);
+    /* La pianta: il pavimento è un fondo, e i fondi seguono il tema. Al buio
+       il legno di prima (tre fermate), le doghe e l'ombra dei muri. */
+    --floor-wood-1: #dcbb8c;
+    --floor-wood-2: #c79e6c;
+    --floor-wood-3: #b98d58;
+    --floor-doghe: rgba(92, 58, 24, 0.1);
+    --floor-ombra-muri: rgba(56, 33, 10, 0.5);
+    /* Muri, aree ed etichette della pianta, e il velo che la vista dal vivo
+       del Servizio stende sopra il disegno. Al buio i valori di prima. */
+    --room-wall-face: #2c302d;
+    --room-wall-top: #3e4541;
+    --room-divider: #4a524c;
+    --room-wall-shadow: rgba(12, 18, 14, 0.45);
+    --room-floor-cucina: #d8d3c7;
+    --room-floor-dehors: #bfc3a8;
+    --room-bancone-1: #c9b394;
+    --room-bancone-2: #a78a64;
+    --room-label-cucina: #4a4238;
+    --room-label-bancone: #3e382f;
+    --room-label-dehors: #34402c;
+    --pianta-velo: hsl(var(--background) / 0.65);
+    /* Lo stato di un'integrazione nel catalogo: i tre pallini. */
+    --integ-dot-disponibile: rgb(var(--cream));
+    --integ-dot-anteprima: hsl(var(--accent) / 0.4);
+    --integ-dot-anteprima-bordo: hsl(var(--accent));
+    --integ-dot-collegata: rgb(var(--sage-strong));
+    /* «Nuovo turno», l'azione primaria del calendario. */
+    --nuovo-turno: #3d5c34;
+    --nuovo-turno-hover: #496c3e;
+    /* Il giorno di oggi nel calendario del mese: è lo stato corrente. */
+    --oggi-fondo: rgb(var(--accent-strong));
+    --oggi-ink: rgb(var(--accent-strong-foreground));
+    --border-hairline: rgba(0, 0, 0, 0.35);
+
     /* Fine fractal-noise grain, tiled and blended (mode: overlay) onto material
        surfaces below — this is what turns a flat gradient into a "brushed"/
        "paper grain" texture without any image asset or extra DOM node. */
@@ -141,6 +353,246 @@
     color-scheme: dark;
   }
 
+  /*
+    **Il tema Carta**, per il back office.
+
+    Si accende quando nella pagina c'è un elemento con `data-tema="carta"`:
+    lo portano i layout del gestionale, dell'amministrazione e dell'accesso
+    (`TemaCarta`). Su `:root` e non sul contenitore perché dialog, menu e
+    tooltip si montano dentro `<body>`, fuori da qualunque contenitore.
+
+    Se `:has()` non si risolve, questo blocco non vale e si resta al buio: è
+    voluto. Una Staff App bianca in una sala a luci basse è il caso peggiore;
+    un back office scuro è solo lo stato di prima.
+
+    I valori sono quelli decisi il 23 settembre 2026. Le terzine HSL hanno i
+    decimali che servono a tornare **esattamente** all'esadecimale indicato
+    accanto; le terzine RGB sono l'esadecimale stesso.
+  */
+  :root:has([data-tema="carta"]) {
+    color-scheme: light;
+
+    /* I token di base. */
+    --background: 42 31.2% 87.5%; /* #e9e3d5 */
+    --foreground: 148 21.7% 13.5%; /* #1b2a22 */
+    --card: 41.5 44.8% 94.3%; /* #f7f3ea */
+    --card-foreground: 148 21.7% 13.5%; /* #1b2a22 */
+    /* Un pannello interno appena più chiaro della scheda, non un incavo:
+       nel back office è il piano delle tabelle e dei riquadri dentro una
+       scheda, e le righe stanno su --surface-row. */
+    --card-sunken: 45 66.7% 97.6%; /* #fdfbf5 */
+    --popover: 41.5 44.8% 94.3%; /* #f7f3ea */
+    --popover-foreground: 148 21.7% 13.5%; /* #1b2a22 */
+    --primary: 148.6 26.6% 15.5%; /* #1d3227 */
+    --primary-foreground: 41.5 44.8% 94.3%; /* #f7f3ea */
+    --secondary: 44.2 38.8% 90.4%; /* #f0ebdd */
+    --secondary-foreground: 148 21.7% 13.5%; /* #1b2a22 */
+    --muted: 44.2 38.8% 90.4%; /* #f0ebdd */
+    --muted-foreground: 146.7 12.9% 27.5%; /* #3d4f45 */
+    --tertiary: 134.1 9.1% 36.7%; /* #556659 */
+    --accent: 39.6 62.7% 29.4%; /* #7a5a1c */
+    --accent-foreground: 41.5 44.8% 94.3%; /* #f7f3ea */
+    --destructive: 12.3 64.2% 37.3%; /* #9c3b22 */
+    --destructive-foreground: 41.5 44.8% 94.3%; /* #f7f3ea */
+    /* Il rosso da leggere: nel codice è sempre testo (105 usi). */
+    --destructive-soft: 13.1 63.3% 38.4%; /* #a03f24: passa anche sull'incavo (4,79) e sulla pagina (5,08) */
+    --border: 43 25% 78%; /* #d5cdb9 */
+    --border-strong: 42.2 11.4% 46.5%; /* #847c69 */
+    --input: 42.2 11.4% 46.5%; /* #847c69 */
+    --focus-ring: 145.1 31.4% 26.9%; /* #2f5a41 */
+
+    /* I reparti, nell'ordine: sala, cucina, bar, direzione, altro, riposo,
+       assenza. Validati insieme (separazione fra adiacenti anche in
+       protanopia): non si cambiano né si riordinano senza rivalidare.
+       Cucina, sala e riposo non arrivano a 4,5 : 1: non fanno da testo. */
+    --turno-sala: 165.3 81.4% 27.5%; /* #0d7f63 */
+    --turno-cucina: 38.2 100% 34.5%; /* #b07000 */
+    --turno-bar: 206.3 76.8% 37.3%; /* #1668a8 */
+    --turno-direzione: 10.4 72.2% 43.7%; /* #c03b1f */
+    --turno-altro: 265.3 46.3% 51.8%; /* #7b4bbd */
+    --turno-riposo: 73.4 100% 28%; /* #6f8f00 */
+    --turno-assenza: 319.4 45.5% 45.3%; /* #a83f86 */
+
+    /* I colori con un nome proprio. `carbon` non si ridefinisce: è un
+       materiale (la tessera nera, l'inchiostro sulla madreperla), non un
+       ruolo del tema. */
+    --cream: 247 243 234; /* #f7f3ea: inchiostro sopra i pieni scuri */
+    --clay-ink: 27 42 34; /* #1b2a22 */
+    --clay-ink-soft: 61 79 69; /* #3d4f45 */
+    --forest: 44 85 69; /* #2c5545: resta scuro */
+    --sage: 223 230 221; /* #dfe6dd: riempimento */
+    --sage-strong: 61 79 69; /* #3d4f45: testo */
+    --sage-deep: 61 107 82; /* #3d6b52: bordi e anelli */
+    --surface-brown: 240 235 221; /* #f0ebdd */
+    --surface-brown-dark: 227 221 205; /* #e3ddcd */
+    --surface-brown-light: 245 241 229; /* #f5f1e5 */
+    --sand: 233 227 213; /* #e9e3d5 */
+    --sand-50: 245 240 230; /* #f5f0e6 */
+    --sand-100: 236 229 214; /* #ece5d6 */
+    --gilt: 201 169 106; /* #c9a96a: solo riempimento */
+    --gilt-light: 221 195 143; /* #ddc38f: solo riempimento */
+    --gilt-dark: 138 106 42; /* #8a6a2a: l'unico che fa bordo */
+    --accent-strong: 122 90 28; /* #7a5a1c */
+    --accent-strong-foreground: 247 243 234; /* #f7f3ea */
+    --accent-strong-ink: 122 90 28; /* #7a5a1c */
+
+    /* La palette Carta. */
+    --surface-base: #e9e3d5;
+    --surface-panel: #f7f3ea;
+    --surface-row: #fdfbf5;
+    --surface-raised: #f0ebdd;
+    --surface-inset: #e3ddcd;
+    --surface-header: #2c5545;
+    --text-primary: #1b2a22;
+    --text-secondary: #3d4f45;
+    --text-meta: #556659;
+    --control-fill: #2c5545;
+    --control-ink: #f7f3ea;
+    --header-ink: #e4d3a8;
+    --border-control: #847c69;
+    --accent-fill: #c9a96a;
+    --text-on-accent: #221a08;
+    --state-confirmed: #1f6b3d;
+    --state-pending: #7d5510;
+    --state-seated: #1d5c76;
+    --state-alert: #9c3b22;
+    --state-allergen: #7d5510;
+    --state-celebration: #7a5a1c;
+    --chart-glow: #2c554524;
+    --chart-grid: #d5cdb9;
+    --meter-track: #ded8c8;
+    --meter-fill: #2c5545;
+    --glass-fill: #f7f3eae6;
+    --glow-accent: #c9a96a2e;
+    --shadow-bevel: inset 0 1px 0 #ffffffcc, inset 0 -1px 0 #b9af9640;
+    --shadow-lift: 0 16px 32px -16px #b3a88c59;
+
+    /* I ruoli estratti. */
+    --base-top: #f2ece0;
+    --base-bottom: #e4ddcd;
+    --panel-top: #fffdf8;
+    --panel-bottom: #f2ece0;
+    --button-brand-shadow: 0 10px 24px #b3a88c59;
+    --button-accent-shadow: 0 10px 24px #b3a88c66;
+    --edge-light: #ffffffcc;
+    --edge-light-soft: #ffffff99;
+    --glow-page: #c9a96a2e;
+    --edge-shadow: #b9af9640;
+    --edge-shadow-soft: #b9af9626;
+    --border-hairline: #d5cdb9;
+    --chart-line: #2c5545;
+    --mark-now: hsl(12.3 64.2% 37.3%); /* #9c3b22 */
+    --mark-selected: hsl(156.6 31.8% 25.3%); /* #2c5545 */
+    --grid-header: #e4ddcd;
+    --grid-header-hover: #e8e1d0;
+    --grid-header-today: #e0ede1;
+    --grid-body: #fdfbf5;
+    --grid-body-today: #eef4ec;
+
+    /* I ruoli per chi prima scriveva un colore del buio. */
+    --ink: 27 42 34; /* #1b2a22 */
+    --cta-fill: #1d3227;
+    --cta-ink: #f7f3ea;
+    /* Il segmento scelto è uno dei cinque verdi pieni. */
+    --segment-fill: var(--control-fill);
+    --segment-ink: var(--control-ink);
+    --segment-ink-forest: var(--control-ink);
+    --nav-pill: var(--control-fill);
+    --nav-pill-ink: var(--control-ink);
+    --pill-selected: hsl(var(--accent) / 0.15);
+    --veil-1-8: var(--edge-light);
+    --veil-3: var(--edge-light);
+    --veil-3-5: var(--edge-light);
+    --veil-4: var(--edge-light);
+    --veil-5: var(--edge-light);
+    --veil-6: var(--edge-light);
+    --veil-7: var(--edge-light);
+    --veil-8: var(--edge-light);
+    --veil-10: var(--edge-light);
+    --veil-12: var(--edge-light);
+    --veil-15: var(--edge-light);
+    --veil-20: var(--edge-light);
+    --line-10: var(--border-hairline);
+    --line-15: var(--border-hairline);
+    --line-20: var(--border-hairline);
+    --line-25: var(--border-hairline);
+    --line-30: var(--border-hairline);
+    --line-40: var(--border-hairline);
+    --line-50: var(--border-hairline);
+    --line-60: var(--border-hairline);
+    --line-100: var(--border-hairline);
+    --kpi-label: rgb(var(--accent-strong));
+    --kpi-note: rgb(var(--sage-strong));
+    --kpi-icon-fill: var(--control-fill);
+    --kpi-icon-border: var(--control-fill);
+    --kpi-icon-ink: var(--control-ink);
+    --kpi-label-muted: rgb(var(--accent-strong));
+    --tratto-vetro-alto: var(--control-ink);
+    --tratto-vetro-basso: var(--control-ink);
+    --tratto-tenue-alto: rgb(var(--accent-strong));
+    --tratto-tenue-basso: rgb(var(--accent-strong));
+    --stato-dot-positive: var(--state-confirmed);
+    --stato-dot-seated: var(--state-seated);
+    --stato-dot-warn: var(--state-pending);
+    --stato-dot-negative: var(--state-alert);
+    --stato-dot-neutral: var(--text-meta);
+    --stato-testo-positive: var(--text-primary);
+    --stato-testo-seated: var(--text-primary);
+    --stato-testo-warn: var(--text-primary);
+    --stato-testo-negative: var(--text-primary);
+    --stato-testo-neutral: var(--text-primary);
+    --trend-line: var(--chart-line);
+    --table-head-card: var(--surface-header);
+    --table-head-incassato: var(--surface-header);
+    --table-head-ink: var(--header-ink);
+    /* Niente bordo colorato a sinistra: sulla carta le righe si separano col filo. */
+    --riga-decidere-segno: transparent;
+    --ink-tertiary: hsl(var(--tertiary));
+    --dot-fatto: var(--text-meta);
+    --dot-riposo: var(--text-meta);
+    --conto-fondo: var(--accent-fill);
+    --conto-bordo: var(--accent-fill);
+    --conto-ink: var(--text-on-accent);
+    --conto-superficie: var(--glow-accent);
+    --conto-superficie-bordo: var(--accent-fill);
+    /* Il pavimento un gradino sotto la pagina: la pianta legge come un piano
+       suo. Il contorno è uno per tutti i tavoli, in ogni stato: porta la
+       forma; il riempimento porta lo stato. */
+    --room-floor: #ded7c6;
+    --table-outline: #2c5545;
+    --floor-wood-1: var(--room-floor);
+    --floor-wood-2: var(--room-floor);
+    --floor-wood-3: var(--room-floor);
+    --floor-doghe: transparent;
+    --floor-ombra-muri: var(--edge-shadow);
+    /* Il muro passa la soglia dei segni sul pavimento (3,11 : 1). */
+    --room-wall: #7d7767;
+    --room-wall-face: var(--room-wall);
+    --room-wall-top: var(--room-wall);
+    --room-divider: var(--room-wall);
+    --room-wall-shadow: var(--edge-shadow);
+    --room-floor-cucina: #e6dfcd;
+    --room-floor-dehors: #dee2d5;
+    --room-bancone-1: #d7d0bf;
+    --room-bancone-2: #d7d0bf;
+    /* Il nome di un'area è informazione: testo secondario, 5,69-6,64 : 1. */
+    --room-label-cucina: var(--text-secondary);
+    --room-label-bancone: var(--text-secondary);
+    --room-label-dehors: var(--text-secondary);
+    /* Il velo al buio serviva a far vincere le schede sul legno caldo. Sulla
+       carta la forma la porta il contorno: il velo sbiadiva pavimento, muri
+       ed etichette fino a confonderli con la pagina. */
+    --pianta-velo: transparent;
+    --integ-dot-disponibile: var(--text-meta);
+    --integ-dot-anteprima: var(--state-pending);
+    --integ-dot-anteprima-bordo: var(--state-pending);
+    --integ-dot-collegata: var(--state-confirmed);
+    --nuovo-turno: var(--cta-fill);
+    --nuovo-turno-hover: hsl(var(--primary) / 0.9);
+    --oggi-fondo: var(--control-fill);
+    --oggi-ink: var(--control-ink);
+  }
+
   .dark {
     --background: 0 0% 10%;
     --foreground: 0 0% 100%;
@@ -160,7 +612,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 26%;
     --input: 0 0% 26%;
-    --ring: 50 100% 50%;
+    --focus-ring: 50 100% 50%;
     --radius: 0.85rem;
 
     /* Pre-hydration fallback for the shared ambient variables — useAmbientGlass
@@ -180,18 +632,18 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    background-color: #0b1511;
+    background-color: var(--base-top);
     background-image:
       var(--noise),
       repeating-linear-gradient(
         to bottom,
-        rgba(0, 0, 0, 0.35) 0px,
-        rgba(0, 0, 0, 0.35) 1px,
+        var(--border-hairline) 0px,
+        var(--border-hairline) 1px,
         transparent 1px,
         transparent 10px
       ),
-      radial-gradient(130% 110% at 12% -10%, rgba(255, 255, 255, 0.07), transparent 55%),
-      linear-gradient(180deg, #0b1511 0%, #17382c 100%);
+      radial-gradient(130% 110% at 12% -10%, var(--glow-page), transparent 55%),
+      linear-gradient(180deg, var(--base-top) 0%, var(--base-bottom) 100%);
     background-blend-mode: overlay, normal, normal, normal;
     background-size: 240px 240px, 100% 10px, auto, auto;
     background-attachment: fixed;
@@ -234,12 +686,12 @@
   .surface {
     @apply rounded-xl border border-border text-card-foreground;
     background-image:
-      radial-gradient(120% 100% at 15% 0%, rgba(255, 255, 255, 0.05), transparent 50%),
-      linear-gradient(180deg, #163c2f 0%, #102c1f 100%);
+      radial-gradient(120% 100% at 15% 0%, var(--edge-light), transparent 50%),
+      linear-gradient(180deg, var(--panel-top) 0%, var(--panel-bottom) 100%);
     box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 10px 18px rgba(0, 0, 0, 0.22),
-      0 24px 48px rgba(0, 0, 0, 0.35);
+      inset 0 0 0 1px var(--edge-light-soft),
+      0 10px 18px var(--edge-shadow-soft),
+      0 24px 48px var(--edge-shadow);
   }
 
   /*
@@ -788,7 +1240,8 @@
   }
   .badge-dot::before {
     content: "";
-    @apply mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current;
+    @apply mr-1.5 inline-block h-1.5 w-1.5 rounded-full;
+    background-color: var(--badge-dot, currentColor);
   }
   /* Con sette tinte del tema il fondo da solo distingue poco: il pallino porta
      il resto dell'informazione. Pieno = la prenotazione è ancora in corso,
@@ -796,7 +1249,7 @@
      `.badge-dot` perché ha la stessa specificità: vince l'ultima. */
   .badge-dot-anello::before {
     background: transparent;
-    box-shadow: inset 0 0 0 1.5px currentColor;
+    box-shadow: inset 0 0 0 1.5px var(--badge-dot, currentColor);
   }
   .dropdown-content {
     transform-origin: var(--radix-dropdown-menu-content-transform-origin);
@@ -1210,3 +1663,189 @@
     animation: none;
   }
 }
+
+  /*
+    **I materiali di Carta.**
+
+    Le classi di materiale qui sopra (`.vetro`, `.recessed`...) sono scritte
+    per il buio. In Carta si ridisegnano qui, e solo qui: ogni regola sta
+    sotto `:root:has([data-tema="carta"])`, quindi al buio non esiste. Per la
+    stessa ragione vince sulle classi di Tailwind del componente — la
+    specificità è più alta — e il componente non deve sapere niente del tema.
+
+    La regola è una: la profondità sta nella **cornice** (gradiente dall'alto,
+    smusso, sollevamento), mai sotto il testo lungo. Gli unici incavi sono il
+    binario di un selettore e la barra della pienezza.
+  */
+  :root:has([data-tema="carta"]) .vetro {
+    background-image: linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
+    box-shadow: var(--shadow-bevel), var(--shadow-lift);
+  }
+  :root:has([data-tema="carta"]) .vetro::before {
+    display: none;
+  }
+  /* Il dischetto dell'icona di una tessera: uno dei cinque verdi pieni. */
+  :root:has([data-tema="carta"]) .kpi-pastiglia {
+    background-color: var(--control-fill);
+    background-image: linear-gradient(180deg, #ffffff26, transparent 60%);
+    box-shadow: var(--shadow-bevel);
+  }
+  /* Un elenco dentro una scheda non è un incavo: è la scheda. */
+  :root:has([data-tema="carta"]) .recessed {
+    box-shadow:
+      inset 0 0 0 1px var(--edge-light-soft),
+      0 10px 18px var(--edge-shadow-soft),
+      0 24px 48px var(--edge-shadow);
+  }
+  /* La barra della pienezza: il binario sprofonda, il pieno è tinta unita
+     con un colpo di luce sopra. Niente gradiente verde → oro. */
+  /* Le pastiglie morbide (Oggi, Pranzo, Filtri, Calendario, lo stato): chiare
+     e smussate. Se fossero verdi sparirebbe la differenza fra attivo e
+     disponibile. */
+  :root:has([data-tema="carta"]) .pastiglia {
+    border-color: var(--border-hairline);
+    background-color: var(--surface-raised);
+    background-image: linear-gradient(180deg, var(--surface-raised), var(--surface-inset));
+    box-shadow: var(--shadow-bevel);
+    color: var(--text-primary);
+  }
+  /* Una riga di elenco: piatta, senza ombra, separata dal filo. */
+  :root:has([data-tema="carta"]) .riga-piatta {
+    border-color: var(--border-hairline);
+    background-color: var(--surface-row);
+    background-image: none;
+    box-shadow: none;
+  }
+  /* Tondi degli strumenti (cerca, notifiche, frecce della data, azioni
+     rapide): uno dei cinque verdi pieni. */
+  :root:has([data-tema="carta"]) .tondo-strumento {
+    border-color: var(--control-fill);
+    background-color: var(--control-fill);
+    background-image: linear-gradient(180deg, #ffffff26, transparent 60%);
+    box-shadow: var(--shadow-bevel), var(--shadow-lift);
+    color: var(--control-ink);
+  }
+  /* L'avatar di chi è entrato: oro pieno, con il suo inchiostro. */
+  :root:has([data-tema="carta"]) .avatar-oro {
+    background-color: var(--accent-fill);
+    color: var(--text-on-accent);
+  }
+  /* Il binario di un selettore: sprofonda invece di sollevarsi. Il segmento
+     scelto è uno dei cinque verdi pieni. */
+  :root:has([data-tema="carta"]) .binario {
+    border-color: transparent;
+    background-color: var(--surface-inset);
+    box-shadow: inset 0 2px 6px var(--edge-shadow);
+  }
+  :root:has([data-tema="carta"]) .binario .segmento[aria-pressed="true"] {
+    border-color: var(--control-fill);
+    background-color: var(--control-fill);
+    box-shadow: var(--shadow-bevel);
+    color: var(--control-ink);
+  }
+  /* «Oggi» quando il giorno mostrato è oggi: l'oro sta solo nel testo. */
+  :root:has([data-tema="carta"]) .pastiglia[aria-current="date"] {
+    color: rgb(var(--accent-strong));
+  }
+  /* Lo stato: la parola resta inchiostro, il colore sta nel pallino. */
+  :root:has([data-tema="carta"]) [data-stato="PENDING"],
+  :root:has([data-tema="carta"]) [data-stato="ARRIVED"] {
+    --badge-dot: var(--state-pending);
+  }
+  :root:has([data-tema="carta"]) [data-stato="CONFIRMED"] {
+    --badge-dot: var(--state-confirmed);
+  }
+  :root:has([data-tema="carta"]) [data-stato="SEATED"] {
+    --badge-dot: var(--state-seated);
+  }
+  :root:has([data-tema="carta"]) [data-stato="NO_SHOW"] {
+    --badge-dot: var(--state-alert);
+  }
+  :root:has([data-tema="carta"]) [data-stato="COMPLETED"],
+  :root:has([data-tema="carta"]) [data-stato="CANCELLED"] {
+    --badge-dot: var(--text-meta);
+  }
+  /* Le tessere che portano un numero sono lastre, non vetro: il vetro è
+     solo per ciò che galleggia sopra il contenuto. */
+  :root:has([data-tema="carta"]) .kpi-vetro {
+    border-color: var(--border-hairline);
+    background-image: linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: var(--shadow-bevel), var(--shadow-lift);
+  }
+  :root:has([data-tema="carta"]) .kpi-vetro:hover {
+    border-color: var(--border-control);
+  }
+  /* La pianta dal vivo: un contorno solo per tutti i tavoli, in ogni stato.
+     Il tratteggio di chi è libero o da riassettare resta, col colore unico. */
+  :root:has([data-tema="carta"]) .tessera-tavolo {
+    border-width: 1px;
+    border-color: var(--table-outline);
+  }
+  :root:has([data-tema="carta"]) .tessera-tavolo-ring {
+    --tw-ring-color: var(--table-outline);
+  }
+  /* Su un fondo affollato il terzo livello non esiste: «4p» e «Bloccato» sono
+     l'informazione. */
+  :root:has([data-tema="carta"]) .tessera-tavolo .testo-minore {
+    opacity: 1;
+    color: var(--text-secondary);
+  }
+  :root:has([data-tema="carta"]) .tessera-tavolo.text-tertiary-foreground,
+  :root:has([data-tema="carta"]) .tessera-tavolo .text-tertiary-foreground {
+    color: var(--text-secondary);
+  }
+  /* Il pavimento di riserva, quando la sala non ha una piantina disegnata. */
+  :root:has([data-tema="carta"]) .room-floor-surface {
+    background-color: var(--room-floor);
+    background-image: none;
+    box-shadow: inset 0 0 2px var(--edge-shadow);
+  }
+  /* Un reparto non fa mai da colore del testo sulla carta: sala, cucina e
+     riposo non arrivano a 4,5 : 1. L'orario torna inchiostro; il reparto lo
+     portano la barretta e la tinta. */
+  :root:has([data-tema="carta"]) .ora-reparto {
+    color: var(--text-primary);
+  }
+  /* Il segmento scelto fuori da un binario (periodi, schede): verde pieno. */
+  :root:has([data-tema="carta"]) .segmento-scelto {
+    border-color: var(--control-fill);
+    background-color: var(--control-fill);
+    background-image: none;
+    box-shadow: var(--shadow-bevel);
+    color: var(--control-ink);
+  }
+  /* L'interruttore: acceso è uno stato attivo; spento è un binario che
+     sprofonda, con un bordo che ne porta la forma sulla carta. */
+  :root:has([data-tema="carta"]) .interruttore[data-state="checked"] {
+    background-color: var(--control-fill);
+  }
+  :root:has([data-tema="carta"]) .interruttore[data-state="unchecked"] {
+    border-color: var(--border-control);
+    background-color: var(--surface-inset);
+    box-shadow: inset 0 2px 6px var(--edge-shadow);
+  }
+  /* `Button variant="brand"` è sempre l'azione primaria di un modulo
+     (accedi, recupera, salva): sulla carta è la CTA. */
+  :root:has([data-tema="carta"]) .pulsante-brand {
+    background-color: var(--cta-fill);
+    color: var(--cta-ink);
+  }
+  :root:has([data-tema="carta"]) .pulsante-brand:hover {
+    background-color: hsl(var(--primary) / 0.9);
+  }
+  /* Le voci ai lati del carosello delle prenotazioni: al buio l'opacità
+     leggeva come profondità, sulla carta come «annullata». La profondità in
+     Carta la danno smusso e ombra, non la trasparenza del contenuto. */
+  :root:has([data-tema="carta"]) .rotazione-vicina {
+    opacity: 1;
+  }
+  :root:has([data-tema="carta"]) .barra-binario {
+    background-color: var(--meter-track);
+    box-shadow: inset 0 2px 6px var(--edge-shadow);
+  }
+  :root:has([data-tema="carta"]) .barra-pieno {
+    background-color: var(--meter-fill);
+    background-image: linear-gradient(180deg, #ffffff40, transparent 60%);
+  }

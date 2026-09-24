@@ -74,8 +74,8 @@ export function SchedeViste() {
             aria-busy={aspetta || undefined}
             className={
               scelta
-                ? "flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border border-cream bg-cream px-3 py-2 text-sm font-medium text-clay-ink"
-                : "flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-cream hover:text-foreground"
+                ? "flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border border-segment bg-segment px-3 py-2 text-sm font-medium text-segment-ink"
+                : "flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-line hover:text-foreground"
             }
           >
             {v.titolo}

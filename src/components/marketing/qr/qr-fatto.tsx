@@ -39,7 +39,7 @@ export function QrFatto({
     <div className="mx-auto max-w-lg space-y-5 animate-slide-up">
       <header className="space-y-1 text-center">
         <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-sage/25">
-          <Check className="h-5 w-5 text-cream" aria-hidden="true" />
+          <Check className="h-5 w-5 text-ink" aria-hidden="true" />
         </span>
         <h2 className="t-titolo-pagina">QR code pronto</h2>
         {altri > 0 && (

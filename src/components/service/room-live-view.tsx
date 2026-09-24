@@ -187,7 +187,7 @@ export function RoomLiveView({
               onClick={() => setRoomId(r.id)}
               className={cn(
                 "min-h-[40px] rounded-full px-3 text-sm transition-colors",
-                roomId === r.id ? "bg-cream text-clay-ink" : "bg-current/10 text-muted-foreground",
+                roomId === r.id ? "bg-segment text-segment-ink" : "bg-current/10 text-muted-foreground",
               )}
             >
               {r.name}
@@ -283,7 +283,7 @@ export function RoomLiveView({
                         layers={{ ...DEFAULT_ROOM_LAYERS, original: false }}
                         className="h-full w-full"
                       />
-                      <div className="pointer-events-none absolute inset-0 bg-background/65" aria-hidden="true" />
+                      <div className="pointer-events-none absolute inset-0 bg-[color:var(--pianta-velo)]" aria-hidden="true" />
                     </>
                   )}
                   {tavoliSala.map((t) => {
@@ -443,9 +443,9 @@ function TavoloMappa({
         // riquadro e non in una pillola appesa sotto — era il difetto della
         // pianta precedente, dove le pillole dei tavoli vicini si
         // accavallavano.
-        "absolute flex flex-col items-start justify-center overflow-hidden rounded-md border px-2 py-1.5 text-left transition-transform",
+        "tessera-tavolo absolute flex flex-col items-start justify-center overflow-hidden rounded-md border px-2 py-1.5 text-left transition-transform",
         stile.classe,
-        selezionato && "ring-2 ring-cream",
+        selezionato && "ring-2 ring-line",
       )}
       style={{
         left: `${(table.posX / bounds.w) * 100}%`,
@@ -457,7 +457,7 @@ function TavoloMappa({
       <span className="flex w-full items-center gap-1">
         <Icona className="h-3 w-3 shrink-0" aria-hidden="true" />
         <span className="truncate text-xs font-semibold">{table.label}</span>
-        <span className="ml-auto shrink-0 text-[10px] opacity-70">{table.seats}p</span>
+        <span className="testo-minore ml-auto shrink-0 text-[10px] opacity-70">{table.seats}p</span>
       </span>
 
       {corrente ? (
@@ -593,8 +593,8 @@ function TavoloRiga({
       }
       className={cn(
         "surface rounded-md border p-3",
-        evidenziato ? "border-cream" : "border-border",
-        onApri && "cursor-pointer transition-colors hover:border-cream/60",
+        evidenziato ? "border-line" : "border-border",
+        onApri && "cursor-pointer transition-colors hover:border-line-60",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">

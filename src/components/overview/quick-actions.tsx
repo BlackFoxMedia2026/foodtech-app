@@ -38,8 +38,8 @@ const COMANDO =
   "group/azione tocco-comodo inline-flex h-10 items-center justify-center rounded-full px-2.5 transition-[filter,box-shadow] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 /** Il gesto principale porta il tono delle chiamate all'azione: crema su verde. */
-const TONO_PRIMARIO = "bg-cream text-clay-ink shadow-[0_10px_24px_rgba(0,0,0,0.35)]";
-const TONO = "finish-sage-tile border border-[#2f5b4a] text-cream";
+const TONO_PRIMARIO = "bg-cta text-cta-ink shadow-[shadow:var(--button-accent-shadow)]";
+const TONO = "pastiglia finish-sage-tile border border-[#2f5b4a] text-ink";
 
 /*
   `max-w-0` + `overflow-hidden` invece di `hidden`: una larghezza si può

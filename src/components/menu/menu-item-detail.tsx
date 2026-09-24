@@ -528,8 +528,8 @@ export function MenuItemDetail(props: {
                     className={cn(
                       "min-h-[2.5rem] rounded-full border px-4 text-sm transition-colors disabled:opacity-60",
                       regimi.includes(k)
-                        ? "border-sage/60 bg-sage/25 text-cream"
-                        : "border-border text-muted-foreground hover:border-cream/40 hover:text-foreground",
+                        ? "border-sage/60 bg-sage/25 text-ink"
+                        : "border-border text-muted-foreground hover:border-line-40 hover:text-foreground",
                     )}
                   >
                     {label}
@@ -559,8 +559,8 @@ export function MenuItemDetail(props: {
                     className={cn(
                       "min-h-[2.5rem] rounded-full border px-4 text-sm transition-colors disabled:opacity-60",
                       allergeni.includes(k)
-                        ? "border-accent bg-accent/25 text-cream"
-                        : "border-border text-muted-foreground hover:border-cream/40 hover:text-foreground",
+                        ? "border-accent bg-pill-selected text-ink"
+                        : "border-border text-muted-foreground hover:border-line-40 hover:text-foreground",
                     )}
                   >
                     {label}

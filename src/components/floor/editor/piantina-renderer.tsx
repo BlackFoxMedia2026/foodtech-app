@@ -61,23 +61,25 @@ export type ElementoInterazione = {
   onInizioEstremo?: (id: string, estremo: "start" | "end", e: React.PointerEvent) => void;
 };
 
-const MURO_FACCIA = "#2C302D";
-const MURO_CIMA = "#3E4541";
-const MURO_OMBRA = "rgba(12, 18, 14, 0.45)";
-const DIVISORIO_FACCIA = "#4A524C";
+/* Muri e divisori leggono token: al buio i grigi di prima, sulla carta
+   --room-wall. Vedi globals.css. */
+const MURO_FACCIA = "var(--room-wall-face)";
+const MURO_CIMA = "var(--room-wall-top)";
+const MURO_OMBRA = "var(--room-wall-shadow)";
+const DIVISORIO_FACCIA = "var(--room-divider)";
 
 /** Il pavimento di ogni ambiente. Non tinte, **legni e cementi**: il locale è
  * un posto fisico, e la cucina ha un pavimento diverso dalla sala perché ce
  * l'ha davvero. */
 const PAVIMENTO_AREA: Record<string, { fill: string; label: string }> = {
   AREA_ZONE: { fill: "url(#pav-legno-chiaro)", label: "#3B2A17" },
-  AREA_KITCHEN: { fill: "#D8D3C7", label: "#4A4238" },
-  AREA_BAR: { fill: "#C9C3B6", label: "#3E382F" },
+  AREA_KITCHEN: { fill: "var(--room-floor-cucina)", label: "var(--room-label-cucina)" },
+  AREA_BAR: { fill: "#C9C3B6", label: "var(--room-label-bancone)" },
   AREA_WC: { fill: "#DCD8CF", label: "#4A4238" },
   AREA_STORAGE: { fill: "#D3CDBF", label: "#4A4238" },
   AREA_PRIVATE: { fill: "url(#pav-legno-scuro)", label: "#3B2A17" },
   AREA_ENTRANCE: { fill: "rgba(210,188,150,0.55)", label: "#3B2A17" },
-  AREA_TERRACE: { fill: "#BFC3A8", label: "#34402C" },
+  AREA_TERRACE: { fill: "var(--room-floor-dehors)", label: "var(--room-label-dehors)" },
   AREA_STAIRS: { fill: "#CFC9BC", label: "#40382D" },
 };
 
@@ -156,9 +158,9 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
         {/* Il legno: due gradienti e due righe di fughe. Deterministico, quindi
             identico sul server e nel browser. */}
         <linearGradient id="pav-legno" x1="0" y1="0" x2="0.4" y2="1">
-          <stop offset="0%" stopColor="#DCBB8C" />
-          <stop offset="55%" stopColor="#C79E6C" />
-          <stop offset="100%" stopColor="#B98D58" />
+          <stop offset="0%" style={{ stopColor: "var(--floor-wood-1)" }} />
+          <stop offset="55%" style={{ stopColor: "var(--floor-wood-2)" }} />
+          <stop offset="100%" style={{ stopColor: "var(--floor-wood-3)" }} />
         </linearGradient>
         <linearGradient id="pav-legno-chiaro" x1="0" y1="0" x2="0.4" y2="1">
           <stop offset="0%" stopColor="#E6CCA4" />
@@ -169,11 +171,11 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
           <stop offset="100%" stopColor="#956C3E" />
         </linearGradient>
         <pattern id="doghe" width="1" height="86" patternUnits="userSpaceOnUse">
-          <rect width="1" height="86" fill="rgba(92, 58, 24, 0.10)" />
+          <rect width="1" height="86" style={{ fill: "var(--floor-doghe)" }} />
         </pattern>
         <linearGradient id="bancone-piano" x1="0" y1="0" x2="0.2" y2="1">
-          <stop offset="0%" stopColor="#C9B394" />
-          <stop offset="100%" stopColor="#A78A64" />
+          <stop offset="0%" style={{ stopColor: "var(--room-bancone-1)" }} />
+          <stop offset="100%" style={{ stopColor: "var(--room-bancone-2)" }} />
         </linearGradient>
         <filter id="ombra-morbida" x="-30%" y="-30%" width="160%" height="160%">
           <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#1A1006" floodOpacity="0.28" />
@@ -200,10 +202,9 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
           <polygon
             points={puntiPoligono}
             fill="none"
-            stroke="rgba(56, 33, 10, 0.5)"
+            style={{ stroke: "var(--floor-ombra-muri)", filter: "blur(10px)", pointerEvents: "none" }}
             strokeWidth={22}
             clipPath="url(#clip-pavimento)"
-            style={{ filter: "blur(10px)", pointerEvents: "none" }}
           />
         </>
       ) : (

@@ -76,7 +76,7 @@ export function Panoramica({
                   <Link
                     href={`${base}?tab=${s.tab}`}
                     scroll={false}
-                    className="group flex items-center gap-4 rounded-md px-2 py-3.5 transition-colors hover:bg-cream/[0.04]"
+                    className="group flex items-center gap-4 rounded-md px-2 py-3.5 transition-colors hover:bg-veil-4"
                   >
                     <span
                       aria-hidden="true"
@@ -174,7 +174,7 @@ function Carta({
 }) {
   return (
     <div className="surface flex items-start gap-3 p-4 md:p-5">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cream/10 bg-cream/[0.06] text-accent-strong" aria-hidden="true">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line-10 bg-veil-6 text-accent-strong" aria-hidden="true">
         <Icona className="h-5 w-5" />
       </span>
       <div className="min-w-0">

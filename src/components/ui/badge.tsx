@@ -26,17 +26,17 @@ export const badgeVariants = cva(
          * da ciò che eredita. Tenue su tenue/5 → 4,71 : 1. */
         neutral: "border-muted-foreground/25 bg-muted-foreground/5 text-muted-foreground",
         /** Il più silenzioso: solo un contorno, nessun fondo. 8,54 : 1 */
-        info: "border-cream/25 text-cream",
+        info: "border-line-25 text-ink",
         /** Terracotta appena accennata: «c'è, ma non chiede niente». 7,80 : 1 */
-        gold: "border-accent/30 bg-accent/10 text-cream",
+        gold: "border-accent/30 bg-accent/10 text-ink",
         /** Terracotta piena: l'unico tono che **avvisa**. 5,12 : 1 */
-        warning: "border-accent/60 bg-accent/50 text-cream",
+        warning: "border-accent/60 bg-accent/50 text-ink",
         /** Verde leggero: sta andando bene, adesso. 6,50 : 1 */
-        "success-soft": "border-sage/40 bg-sage/20 text-cream",
+        "success-soft": "border-sage/40 bg-sage/20 text-ink",
         /** Verde pieno: è andata bene. 4,94 : 1 */
-        success: "border-sage/60 bg-sage/40 text-cream",
+        success: "border-sage/60 bg-sage/40 text-ink",
         /** È andata male. 8,53 : 1 */
-        danger: "border-destructive/50 bg-destructive/25 text-cream",
+        danger: "border-destructive/50 bg-destructive/25 text-ink",
         /* I due toni di **materiale**, non di stato: sono i livelli di fedeltà,
          * la madreperla e la carta nera. Stanno fuori tavolozza per scelta —
          * dicono di che cosa è fatta la tessera, non che cosa sta accadendo. */

@@ -212,11 +212,11 @@ export function GrigliaTurni({
       onDragCancel={() => setInMano(null)}
       onDragEnd={concludi}
     >
-      <div ref={contenitoreRef} className="fill-scroll riquadro relative overflow-auto bg-[#0c1a14]">
+      <div ref={contenitoreRef} className="fill-scroll riquadro relative overflow-auto bg-[color:var(--grid-body)] [scrollbar-gutter:auto]">
         <div className="grid min-w-full" style={{ gridTemplateColumns: colonne }}>
           {/* ── testata ────────────────────────────────────────────── */}
           <div
-            className="sticky left-0 top-0 z-40 flex items-center justify-center border-b border-r border-border/50 bg-[#11241b]"
+            className="sticky left-0 top-0 z-40 flex items-center justify-center border-b border-r border-border/50 bg-[color:var(--grid-header)]"
             style={{ height: ALTEZZA_TESTATA }}
           >
             <span className="t-etichetta text-[0.62rem]">Ore</span>
@@ -247,7 +247,7 @@ export function GrigliaTurni({
               */}
               <div
                 ref={fasciaGiornataRef}
-                className="sticky left-0 z-40 border-b border-r border-border/40 bg-[#0c1a14] px-2 py-1.5"
+                className="sticky left-0 z-40 border-b border-r border-border/40 bg-[color:var(--grid-body)] px-2 py-1.5"
                 style={{ top: ALTEZZA_TESTATA }}
               >
                 <span className="block text-[0.58rem] uppercase leading-[1.15] tracking-wide text-tertiary-foreground">
@@ -261,8 +261,8 @@ export function GrigliaTurni({
                   key={g}
                   style={{ top: ALTEZZA_TESTATA }}
                   className={cn(
-                    "sticky z-30 space-y-1 border-b border-r border-border/40 bg-[#0c1a14] p-1.5",
-                    g === oggi && "bg-[#132a20]",
+                    "sticky z-30 space-y-1 border-b border-r border-border/40 bg-[color:var(--grid-body)] p-1.5",
+                    g === oggi && "bg-[color:var(--grid-body-today)]",
                   )}
                 >
                   {(giornataPerGiorno.get(g) ?? []).map((t) => (
@@ -278,7 +278,7 @@ export function GrigliaTurni({
             <Fragment key={ora}>
               <div
                 ref={ora === primaOra ? primaRigaRef : undefined}
-                className="sticky left-0 z-20 border-r border-border/40 bg-[#0c1a14] pt-1.5 text-center"
+                className="sticky left-0 z-20 border-r border-border/40 bg-[color:var(--grid-body)] pt-1.5 text-center"
                 style={{ minHeight: ALTEZZA_ORA_MIN }}
               >
                 <span
@@ -358,10 +358,10 @@ function CasellaOra({
       style={{ minHeight: ALTEZZA_ORA_MIN }}
       className={cn(
         "group/cella relative space-y-1.5 border-b border-r border-border/25 p-1.5 transition-colors",
-        oggi && "bg-cream/[0.035]",
-        !oggi && selezionato && "bg-cream/[0.018]",
+        oggi && "bg-veil-3.5",
+        !oggi && selezionato && "bg-veil-1.8",
         isOver && "bg-[hsl(var(--turno-sera)/0.14)] ring-1 ring-inset ring-[hsl(var(--turno-sera)/0.45)]",
-        adesso && "shadow-[inset_0_1.5px_0_0_hsl(var(--accent))]",
+        adesso && "shadow-[inset_0_1.5px_0_0_var(--mark-now)]",
         canManage && "cursor-copy",
       )}
     >
@@ -417,9 +417,9 @@ function IntestazioneGiorno({
       title={`${lungo} · ${inTurno} in turno`}
       style={{ height: ALTEZZA_TESTATA }}
       className={cn(
-        "sticky top-0 z-30 flex flex-col items-center justify-center gap-0.5 border-b border-r border-border/50 bg-[#11241b] px-2 transition-colors hover:bg-[#193629]",
-        oggi && "bg-[#183324]",
-        selezionato && "shadow-[inset_0_-2px_0_0_hsl(var(--accent))]",
+        "sticky top-0 z-30 flex flex-col items-center justify-center gap-0.5 border-b border-r border-border/50 bg-[color:var(--grid-header)] px-2 transition-colors hover:bg-[color:var(--grid-header-hover)]",
+        oggi && "bg-[color:var(--grid-header-today)]",
+        selezionato && "shadow-[inset_0_-2px_0_0_var(--mark-selected)]",
       )}
     >
       <span className="flex items-baseline gap-1.5">

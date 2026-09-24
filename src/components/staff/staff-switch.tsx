@@ -40,7 +40,7 @@ export function StaffSwitch({
   return (
     <nav
       aria-label="Vista dello staff"
-      className={cn("flex items-center gap-0.5 rounded-full border border-border/60 bg-cream/[0.04] p-0.5", className)}
+      className={cn("flex items-center gap-0.5 rounded-full border border-border/60 bg-veil-4 p-0.5", className)}
     >
       {voci.map((v) => {
         const attiva = v.chiave === vista;
@@ -52,7 +52,7 @@ export function StaffSwitch({
             aria-current={attiva ? "page" : undefined}
             className={cn(
               "flex-1 rounded-full px-3 py-1.5 text-center text-xs font-medium transition-colors",
-              attiva ? "bg-cream text-clay-ink" : "text-muted-foreground hover:bg-cream/10 hover:text-foreground",
+              attiva ? "bg-segment text-segment-ink" : "text-muted-foreground hover:bg-veil-10 hover:text-foreground",
             )}
           >
             {v.label}

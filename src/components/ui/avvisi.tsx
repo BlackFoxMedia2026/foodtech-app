@@ -127,7 +127,7 @@ export function AvvisiProvider({ children }: { children: React.ReactNode }) {
                   chiudi();
                   await fn?.();
                 }}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium transition-colors hover:bg-white/5"
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium transition-colors hover:bg-[color:var(--edge-light)]"
               >
                 <Undo2 className="h-3.5 w-3.5" aria-hidden="true" /> Annulla
               </button>

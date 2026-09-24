@@ -14,7 +14,7 @@ export function Logo({ className, size = "md" }: { className?: string; size?: "s
   return (
     <span
       className={cn(
-        "grid shrink-0 place-items-center rounded-lg bg-surface-brown-dark text-cream",
+        "grid shrink-0 place-items-center rounded-lg bg-surface-brown-dark text-ink",
         size === "sm" ? "h-8 w-8" : "h-9 w-9",
         className,
       )}

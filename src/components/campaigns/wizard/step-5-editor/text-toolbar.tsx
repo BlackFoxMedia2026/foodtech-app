@@ -62,7 +62,7 @@ function ToolButton({
       onClick={onClick}
       className={cn(
         "flex h-7 w-7 items-center justify-center rounded text-foreground transition-colors hover:bg-secondary",
-        active && "bg-cream text-clay-ink"
+        active && "bg-segment text-segment-ink"
       )}
     >
       {children}

@@ -122,7 +122,7 @@ export function CartaKpi({
       )}
     >
       <span
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-cream/10 bg-cream/[0.07] text-cream/55 md:h-11 md:w-11"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-kpi-icon-border bg-kpi-icon-fill text-kpi-icon-ink md:h-11 md:w-11"
         aria-hidden="true"
       >
         <Icona className="h-4 w-4 md:h-5 md:w-5" />
@@ -139,13 +139,13 @@ export function CartaKpi({
             valoreCompatto
               ? "truncate text-base leading-tight md:text-lg"
               : "text-2xl leading-none tabular-nums xl:text-[1.75rem]",
-            allarme ? "text-accent-strong" : "text-cream",
+            allarme ? "text-accent-strong" : "text-ink",
           )}
           title={valoreCompatto ? String(valore) : undefined}
         >
           {valore}
         </p>
-        <p className="mt-1.5 truncate text-[11px] font-semibold uppercase leading-tight tracking-wider text-cream/90">
+        <p className="mt-1.5 truncate text-[11px] font-semibold uppercase leading-tight tracking-wider text-kpi-label">
           {etichettaResa}
         </p>
         {/* 65% e non 55%: misurato sul **reso**, cioè sulla tinta composita
@@ -153,7 +153,7 @@ export function CartaKpi({
             quasi tutto `--kpi-basso`), il crema al 55% fa 4,24-4,56 : 1 e su
             quattro toni su sei manca la soglia. A 65% fa 5,27-5,77 : 1 e resta
             comunque due gradini sotto l'etichetta. */}
-        <p className="mt-0.5 truncate text-[11px] leading-tight text-cream/65">
+        <p className="mt-0.5 truncate text-[11px] leading-tight text-kpi-note">
           {notaResa || "\u00A0"}
         </p>
       </div>

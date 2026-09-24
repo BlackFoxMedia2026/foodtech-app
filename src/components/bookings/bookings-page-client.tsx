@@ -124,7 +124,7 @@ export function BookingsPageClient({
             serviceOptions={serviceOptions}
             className={cn(
               ALTEZZA,
-              "w-auto shrink-0 gap-1.5 rounded-full border-border/70 bg-card/70 px-2.5 text-[0.9375rem] font-medium shadow-none transition-colors hover:border-border-strong/70 hover:bg-cream/[0.06] min-[1280px]:px-3 min-[1440px]:text-base min-[1500px]:gap-2 min-[1500px]:px-4",
+              "pastiglia w-auto shrink-0 gap-1.5 rounded-full border-border/70 bg-card/70 px-2.5 text-[0.9375rem] font-medium shadow-none transition-colors hover:border-border-strong/70 hover:bg-veil-6 min-[1280px]:px-3 min-[1440px]:text-base min-[1500px]:gap-2 min-[1500px]:px-4",
             )}
           />
         }

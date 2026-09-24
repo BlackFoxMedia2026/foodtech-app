@@ -20,6 +20,7 @@ import { filtriAttivi as haFiltri, useFiltriStaff } from "@/components/staff/fil
 import { TestataCalendario } from "@/components/staff/calendario/testata-calendario";
 import { GrigliaTurni, type SpostamentoTurno } from "@/components/staff/calendario/griglia-turni";
 import { VistaMese } from "@/components/staff/calendario/vista-mese";
+import { LegendaReparti } from "@/components/staff/calendario/legenda-reparti";
 import { nomeCompleto, type PersonaTurni, type Turno, type TurnoConPersona, type TurnoOrario, type Vista } from "@/components/staff/calendario/tipi";
 import { fasciaVisibile } from "@/lib/turni-calendario";
 import { staffDepartmentOf, STAFF_PRIMARY_ROLES } from "@/lib/staff-roles";
@@ -383,6 +384,11 @@ export function CalendarioTurni({
               </p>
             )}
 
+            {/* La chiave delle sigle sta qui e non fra i filtri: vedi `LegendaReparti`. */}
+            {vistaEffettiva === "mese" && (
+              <LegendaReparti repartiDisponibili={repartiDisponibili} className="fissa hidden md:flex" />
+            )}
+
             {vistaEffettiva === "mese" ? (
               <VistaMese
                 giorni={giorniMostrati}
@@ -455,7 +461,7 @@ function BottoneNuovo({ onNuovo }: { onNuovo: (kind: WorkShiftKind) => void }) {
     verticale gli dà la misura giusta quando la riga non li allunga.
   */
   const base =
-    "inline-flex min-h-[2.25rem] items-center justify-center gap-1.5 bg-[#3D5C34] py-2 text-sm font-medium text-cream transition-colors hover:bg-[#496C3E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    "inline-flex min-h-[2.25rem] items-center justify-center gap-1.5 bg-[color:var(--nuovo-turno)] py-2 text-sm font-medium text-cream transition-colors hover:bg-[color:var(--nuovo-turno-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
   return (
     <div className="flex items-stretch overflow-hidden rounded-full">
@@ -463,7 +469,7 @@ function BottoneNuovo({ onNuovo }: { onNuovo: (kind: WorkShiftKind) => void }) {
         <Plus className="h-4 w-4" aria-hidden="true" />
         Nuovo turno
       </button>
-      <span aria-hidden="true" className="w-px bg-cream/20" />
+      <span aria-hidden="true" className="w-px bg-veil-20" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button type="button" aria-label="Altri tipi di assegnazione" className={cn(base, "px-2")}>

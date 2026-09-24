@@ -46,7 +46,7 @@ export function IndiceImpostazioni() {
             /* Tutta la scheda è il bersaglio, non un «apri» in un angolo: su
                un tablet in cucina il pollice non cerca un link di dodici
                pixel. */
-            className="riquadro group flex min-h-[11.5rem] flex-col rounded-xl border-border/80 bg-white/[0.02] p-4 transition-colors hover:border-cream/40 hover:bg-white/[0.04] md:p-5"
+            className="riquadro group flex min-h-[11.5rem] flex-col rounded-xl border-border/80 bg-white/[0.02] p-4 transition-colors hover:border-line-40 hover:bg-white/[0.04] md:p-5"
           >
             <div className="flex items-start justify-between gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted/60">

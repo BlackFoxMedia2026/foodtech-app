@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
  * a niente e tanto valeva scrivere solo la parola. */
 const DOT: Record<WaiterStatus, string> = {
   ACTIVE: "bg-sage",
-  RESTING: "bg-cream/50",
+  RESTING: "bg-[color:var(--dot-riposo)]",
   VACATION: "bg-accent-strong",
   SICK_LEAVE: "bg-destructive",
   UNAVAILABLE: "border border-muted-foreground bg-transparent",

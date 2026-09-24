@@ -70,10 +70,10 @@ export function ProfileMenu({
           <Avatar
             className={cn(
               "h-[46px] w-[46px] rounded-lg border border-border",
-              dentroIlMenu && "border-cream ring-2 ring-cream/40",
+              dentroIlMenu && "border-line ring-2 ring-line-40",
             )}
           >
-            <AvatarFallback className="rounded-lg bg-foreground text-background">
+            <AvatarFallback className="avatar-oro rounded-lg bg-foreground text-background">
               {initials(user.name ?? user.email)}
             </AvatarFallback>
           </Avatar>

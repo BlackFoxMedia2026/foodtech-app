@@ -96,7 +96,7 @@ export function MediaPicker({
               onClick={() => setTab(t)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm capitalize",
-                tab === t ? "bg-cream font-medium text-clay-ink" : "text-muted-foreground hover:text-foreground"
+                tab === t ? "bg-segment font-medium text-segment-ink" : "text-muted-foreground hover:text-foreground"
               )}
             >
               {t === "caricate" ? "Caricate di recente" : "Carica"}
@@ -185,7 +185,7 @@ export function MediaPicker({
                   onPick(url.trim());
                   onOpenChange(false);
                 }}
-                className="h-9 shrink-0 rounded-md bg-cream px-4 text-sm font-medium text-clay-ink disabled:opacity-50"
+                className="h-9 shrink-0 rounded-md bg-cta px-4 text-sm font-medium text-cta-ink disabled:opacity-50"
               >
                 Usa
               </button>

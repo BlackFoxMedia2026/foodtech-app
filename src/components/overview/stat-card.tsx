@@ -56,17 +56,17 @@ export function StatCard({
       : sageFill
         ? "text-forest"
         : brownFill
-          ? "text-cream"
+          ? "text-ink"
           : brownLightFill
             ? "text-clay-ink"
             : tone === "accent"
-              ? "text-surface-brown-light"
+              ? "text-ink-tertiary"
               : tone === "cream"
-                ? "text-cream"
+                ? "text-ink"
                 : tone === "sage"
                   ? "text-sage-strong"
                   : emphasize
-                    ? "text-surface-brown-light"
+                    ? "text-ink-tertiary"
                     : "text-card-foreground";
   const labelColor = caramelFill
     ? "text-clay-ink/70"
@@ -75,7 +75,7 @@ export function StatCard({
       : sageFill
         ? "text-forest/70"
         : brownFill
-          ? "text-cream/65"
+          ? "text-ink/65"
           : brownLightFill
             ? "text-clay-ink-soft"
             : "text-card-foreground/65";
@@ -105,7 +105,7 @@ export function StatCard({
         <div
           className={cn(
             "mt-3 h-1.5 w-full overflow-hidden rounded-full",
-            caramelFill || creamFill || brownLightFill ? "bg-clay-ink/20" : sageFill ? "bg-forest/20" : brownFill ? "bg-cream/20" : "bg-border",
+            caramelFill || creamFill || brownLightFill ? "bg-clay-ink/20" : sageFill ? "bg-forest/20" : brownFill ? "bg-veil-20" : "bg-border",
           )}
         >
           <div
@@ -130,8 +130,8 @@ export function StatCard({
             : sageFill
               ? "bg-forest/10 text-forest"
               : brownFill
-                ? "bg-cream/15 text-cream"
-                : "bg-cream/10 text-cream",
+                ? "bg-veil-15 text-ink"
+                : "bg-veil-10 text-ink",
         )}
       >
         <Icon className="h-5 w-5" />
@@ -146,7 +146,7 @@ export function StatCard({
     <Card
       className={cn(
         caramelFill && "finish-bronze border-[#8a6640] shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-        creamFill && "finish-parchment border-cream shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
+        creamFill && "finish-parchment border-line shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
         sageFill && "border-sage bg-sage shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
         brownFill &&
           tone === "brown-medium" &&

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TemaCarta } from "@/components/tema-carta";
 import { notFound } from "next/navigation";
 import { superAdminCorrente } from "@/lib/super-admin";
 
@@ -21,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-background">
+      <TemaCarta />
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-4">

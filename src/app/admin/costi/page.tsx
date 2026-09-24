@@ -156,7 +156,7 @@ export default async function AdminCostiPage({
               </thead>
               <tbody>
                 {righe.map((r) => (
-                  <tr key={r.venueId} className="border-b border-border/50 hover:bg-cream/5">
+                  <tr key={r.venueId} className="border-b border-border/50 hover:bg-veil-5">
                     <Td>
                       <Link href={`/admin/costi/${r.venueId}`} className="hover:underline">
                         {r.locale}
