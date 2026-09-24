@@ -99,8 +99,10 @@ export function VistaMese({
     return m;
   }, [turni]);
 
+  // Senza la riserva per la barra di scorrimento: accanto alla fascia dei
+  // giorni restavano 17 px vuoti (vedi `Tabella`).
   return (
-    <div className="fill-scroll riquadro flex flex-col overflow-auto bg-[color:var(--grid-body)]">
+    <div className="fill-scroll riquadro flex flex-col overflow-auto bg-[color:var(--grid-body)] [scrollbar-gutter:auto]">
       <div className="sticky top-0 z-20 grid shrink-0 grid-cols-7 border-b border-border/50 bg-[color:var(--grid-header)]">
         {INIZIALI_GIORNI.map((iniziale, i) => (
           <span key={i} className="t-etichetta px-2 py-1.5 text-center text-[0.62rem]">

@@ -212,7 +212,7 @@ export function GrigliaTurni({
       onDragCancel={() => setInMano(null)}
       onDragEnd={concludi}
     >
-      <div ref={contenitoreRef} className="fill-scroll riquadro relative overflow-auto bg-[color:var(--grid-body)]">
+      <div ref={contenitoreRef} className="fill-scroll riquadro relative overflow-auto bg-[color:var(--grid-body)] [scrollbar-gutter:auto]">
         <div className="grid min-w-full" style={{ gridTemplateColumns: colonne }}>
           {/* ── testata ────────────────────────────────────────────── */}
           <div
