@@ -4,6 +4,9 @@ import { richiesteAperte } from "@/server/integrations/richieste";
 import { CATALOGO } from "@/server/integrations/registry";
 import { PannelloIntegrazioniAdmin } from "@/components/integrations/pannello-integrazioni-admin";
 import { RichiesteIntegrazioni } from "@/components/integrations/richieste-integrazioni";
+import { assistenzeAperte } from "@/server/integrations/assistenza";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +25,10 @@ export const dynamic = "force-dynamic";
  * il risultato, in cinque stati.
  */
 export default async function AdminIntegrazioniPage() {
-  const [fornitori, richieste] = await Promise.all([
+  const [fornitori, richieste, assistenze] = await Promise.all([
     panoramicaCertificazione().then((f) => JSON.parse(JSON.stringify(f))),
     richiesteAperte(),
+    assistenzeAperte(),
   ]);
   const senzaAdattatore = CATALOGO.filter((v) => !v.nativa && !fornitori.some((f: { slug: string }) => f.slug === v.slug));
   return (
@@ -36,6 +40,44 @@ export default async function AdminIntegrazioniPage() {
           verificate contro l&apos;API, la disponibilità generale su un POS vero.
         </p>
       </header>
+      <section className="riquadro comodo space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="t-titolo-sezione">Assistenza ai ristoranti</h2>
+            <p className="t-nota mt-0.5">
+              Apri un locale per vedere le sue integrazioni, verificarle e, con la delega del cliente, configurarle.
+            </p>
+          </div>
+          <form className="flex w-full max-w-sm gap-2" action="/admin/integrazioni/locali">
+            <Input name="q" placeholder="Nome, gruppo, slug o id" aria-label="Cerca un locale" />
+            <Button type="submit" variant="outline">
+              Cerca
+            </Button>
+          </form>
+        </div>
+        {assistenze.length === 0 ? (
+          <p className="t-nota">Nessuna richiesta di assistenza aperta.</p>
+        ) : (
+          <ul className="divide-y divide-border/60 rounded-lg border border-border">
+            {assistenze.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/admin/integrazioni/locali/${a.venueId}`}
+                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm transition-colors hover:bg-card"
+                >
+                  <span className="min-w-0">
+                    <span className="font-medium">{a.integrazione}</span> · {a.locale} <span className="t-nota">({a.gruppo})</span>
+                    {a.nota && <span className="t-nota block truncate">«{a.nota}»</span>}
+                  </span>
+                  <span className="t-nota">
+                    {new Date(a.il).toLocaleDateString("it-IT")} · {a.richiestaDa ?? "—"} · {a.delegaFinoAl ? "con delega" : "senza delega"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <section className="riquadro comodo space-y-3">
         <h2 className="t-titolo-sezione">Richieste integrazioni</h2>
         <RichiesteIntegrazioni richieste={richieste} />

@@ -1782,3 +1782,121 @@ fornitore rifiuta.
 | Adattatore Lightspeed contro le risposte della documentazione | `tests/integrazioni-lightspeed.test.ts` |
 | Percorso completo, isolamento, segreti, webhook idempotenti, fornitore giù, rate limit, credenziali scadute, rinnovi concorrenti, disattiva, disinstalla, reinstalla, multi-sede | `tests/integrazioni-piattaforma.test.ts` (database) |
 | Matrice dei permessi | `tests/permessi.test.ts` |
+
+## Assistenza Foodtech, stati della connessione, marketing (settembre 2026)
+
+### Gli stati che vede il cliente
+
+`server/integrations/cliente.ts` (`statoPerIlCliente`) riduce implementazione,
+fase di rilascio, beta, stato dell'installazione e salute a **uno stato della
+connessione**: Non collegato · In anteprima · Configurazione necessaria ·
+Verifica in corso · Collegato · Errore di connessione · Credenziali scadute ·
+In pausa · Prossimamente. «Verifica in corso» nasce da
+`IntegrationInstallation.testStartedAt`, scritto all'inizio di ogni verifica e
+azzerato con l'esito (una verifica ferma da più di 60 s si considera finita).
+Un'integrazione collegata in anteprima resta «Collegato» con il segno
+`anteprima` a parte.
+
+La pagina di un'integrazione collegata mostra: stato, data e ora dell'ultima
+verifica e il suo esito, le funzionalità **realmente** attive (quelle che
+l'adattatore ha ma Foodtech non usa ancora sono «in preparazione», mai
+operative), il problema con la data in cui è stato rilevato, e i pulsanti
+Verifica connessione · Riconfigura · Disconnetti.
+
+### L'assistenza (`assistenza.ts`, `azioni-admin.ts`, `vista-assistenza.ts`)
+
+- **/admin/integrazioni/locali** trova il ristorante (nome, gruppo, slug, id);
+  **/admin/integrazioni/locali/<venueId>** mostra per ogni integrazione lo stato
+  che vede il cliente, lo stato tecnico, l'ultima verifica, l'ultimo errore
+  (codice e riassunto già ripulito), le credenziali **solo come metadati**
+  (tipo, permessi, scadenze, versione) e il registro con le correlazioni.
+- **Senza delega** l'amministratore verifica la connessione (chiamata vera,
+  registrata nell'audit come `integration.admin_action`), abilita la beta,
+  prepara il collegamento di consegna, chiude la richiesta.
+- **Con la delega** del cliente («Chiedi aiuto a Foodtech» → «Autorizzo»,
+  7 giorni, revocabile): installa, legge le opzioni, sceglie la sede, cosa
+  sincronizzare, attiva, sincronizza, pausa/riattiva. **Mai** disconnette,
+  mai inserisce né legge credenziali.
+- **Collegamento di consegna**: `/api/integrations/consegna/<codice>`, 24 byte
+  casuali, nel database solo l'impronta SHA-256, 72 ore, uno valido alla volta
+  per locale e integrazione, apribile solo da un membro del locale con
+  `integration:install`; porta al passo «Accesso» del wizard, dove il cliente
+  scrive lui le credenziali. Si chiude quando le credenziali entrano.
+  Non si crea verso un'anteprima senza beta sul locale (sarebbe un vicolo cieco).
+
+Migrazione `20260926090000_assistenza_integrazioni`: solo aggiunte
+(`IntegrationAssistance`, `IntegrationCredentialHandoff`, `testStartedAt`).
+
+### Marketing e comunicazione
+
+| Voce | Autenticazione | Verifica vera | Variabili della piattaforma |
+|---|---|---|---|
+| Facebook | OAuth 2 (Facebook Login for Business), token lungo ~60 giorni, nessun rinnovo | `GET /v26.0/me/accounts` | `META_APP_ID`, `META_APP_SECRET` |
+| Instagram | OAuth 2 (Instagram API con Facebook Login) | `GET /me/accounts?fields=instagram_business_account`, poi `GET /{ig-user-id}` | stesse di Facebook |
+| WhatsApp Business | token dell'utente di sistema del cliente + ID WABA | `GET /{waba-id}`, `GET /{waba-id}/phone_numbers`, `GET /{phone-number-id}` | nessuna |
+| Google Business Profile | OAuth 2, scope `business.manage`, offline | `GET mybusinessaccountmanagement/v1/accounts`, `GET mybusinessbusinessinformation/v1/{account}/locations` | `GOOGLE_BUSINESS_CLIENT_ID`, `GOOGLE_BUSINESS_CLIENT_SECRET` |
+
+Tutte e quattro dichiarano una sola capacità, `profile`: collegare e
+controllare il profilo. Pubblicare, recensioni, commenti e messaggi sono nella
+matrice delle risorse come «non implementato». Meta risponde 400 anche a un
+token scaduto: `erroreDaHttp` ora legge `error.code` quando `error` è un
+oggetto, e l'adattatore Meta traduce 190 → `AUTH_EXPIRED`, 10/200 →
+`PERMISSION_DENIED`, 4/17/32/613 → `RATE_LIMITED`.
+
+### I loghi
+
+Solo file ufficiali, non modificati, per i marchi che lo concedono (Stripe,
+Facebook, Instagram, WhatsApp), in `public/integrazioni/loghi`, tutti nella
+stessa tessera bianca (`--integ-logo-fondo`). Google, Lightspeed e Oracle
+chiedono un'autorizzazione scritta; TeamSystem, Tilby, Zucchetti e
+Passepartout non pubblicano un kit: per loro il monogramma, e `logo.marchio`
+dice a chi chiedere. Il test del catalogo lo fa rispettare.
+
+| Prova | File |
+|---|---|
+| Adattatori Meta e Google contro fornitori finti | `tests/integrazioni-meta-google.test.ts` |
+| Delega, consegna, isolamento, segreti, stati dal vero | `tests/integrazioni-assistenza.test.ts` (database) |
+
+### Rilascio e ripristino della migrazione `20260926090000_assistenza_integrazioni`
+
+Verificata il 24 settembre 2026 sul solo database di prova
+(`tavolo_test_integrazioni`, con dati) e su un database vuoto (lo shadow di
+`prisma migrate diff`, che applica tutte le migrazioni da zero): lo schema
+coincide con le migrazioni per tutto ciò che riguarda le integrazioni.
+
+- **Solo aggiunte**: `ALTER TABLE "IntegrationInstallation" ADD COLUMN
+  "testStartedAt" TIMESTAMP(3)` (nullabile, senza default: in PostgreSQL non
+  riscrive la tabella e tiene il blocco per un istante), due tabelle nuove con
+  chiave esterna verso `Venue` (`ON DELETE CASCADE`, come le altre tabelle
+  delle integrazioni). Nessuna riga esistente viene toccata.
+- **Il codice di prima funziona con lo schema nuovo**: Prisma elenca le
+  colonne che legge, quindi una colonna e due tabelle in più sono invisibili
+  al codice precedente. Ordine sicuro: prima `prisma migrate deploy`, poi il
+  codice.
+- **Rollback del codice**: non serve toccare il database e non si perde
+  niente. Le richieste di assistenza e i collegamenti di consegna restano nelle
+  loro tabelle, inutilizzati, e tornano visibili rilasciando di nuovo.
+- **Ripristino dello schema** (solo se proprio necessario, e dopo il rollback
+  del codice): perde **soltanto** le richieste di assistenza, le deleghe e i
+  collegamenti di consegna; installazioni e credenziali non sono toccate.
+
+  ```sql
+  DROP TABLE IF EXISTS "IntegrationCredentialHandoff";
+  DROP TABLE IF EXISTS "IntegrationAssistance";
+  ALTER TABLE "IntegrationInstallation" DROP COLUMN IF EXISTS "testStartedAt";
+  DELETE FROM "_prisma_migrations" WHERE migration_name = '20260926090000_assistenza_integrazioni';
+  ```
+
+### Verifiche dal vivo
+
+Si fanno con `scripts/verifica-dal-vivo.ts`, **in sola lettura**, dopo che una
+persona ha inserito le credenziali nel wizard (mai in chat, mai per email). Lo
+script usa la console di certificazione e registra le evidenze PROVIDER_API.
+
+| Data | Fornitore | Che cosa | Esito |
+|---|---|---|---|
+| 24/09/2026 | Cassa in Cloud | `POST https://api.cassanova.com/apikey/token` con una chiave inventata, dall'adattatore e dal wizard nel browser | `400 Invalid apiKey` → `AUTH_INVALID` → «API Key non valida o non autorizzata» (gesto: ricollega). Host e formato della richiesta confermati. |
+
+Nessuna lettura con una chiave vera è ancora stata fatta: Cassa in Cloud non
+offre una sandbox, quindi serve la chiave di un account con licenza Risto o
+Retail Enterprise, meglio se limitata a un punto vendita di prova.

@@ -410,6 +410,8 @@ model Venue {
   integrationBetaAccess IntegrationBetaAccess[]
   integrationCertificationRuns IntegrationCertificationRun[]
   integrationAccessRequests IntegrationAccessRequest[]
+  integrationAssistances    IntegrationAssistance[]
+  integrationHandoffs       IntegrationCredentialHandoff[]
 
   @@unique([orgId, slug])
 }
@@ -5125,6 +5127,10 @@ model IntegrationInstallation {
   updatedAt            DateTime                      @updatedAt
   lastTestAt           DateTime?
   lastTestOk           Boolean?
+  /// Quando è partita la verifica di connessione in corso: la scheda dice
+  /// «Verifica in corso» finché non arriva l'esito (`lastTestAt`). Una
+  /// verifica ferma da più di un minuto si considera finita.
+  testStartedAt        DateTime?
   lastSyncAt           DateTime?
   lastSuccessfulSyncAt DateTime?
   lastErrorAt          DateTime?
@@ -5291,6 +5297,66 @@ model IntegrationAccessRequest {
 
   @@unique([venueId, integrationSlug])
   @@index([status, requestedAt])
+}
+
+/// Un ristorante chiede a Foodtech di aiutarlo a collegare un'integrazione.
+///
+/// Due cose distinte nella stessa riga:
+/// - la **richiesta** (nota del cliente, aperta finché Foodtech non la chiude);
+/// - la **delega**: il cliente autorizza Foodtech a configurare per lui questa
+///   integrazione su questo locale, fino a `delegatedUntil`. Senza delega
+///   attiva un amministratore Foodtech può guardare e verificare, non
+///   configurare. La delega non dà mai accesso ai segreti: nessuna vista li
+///   decifra.
+/// Una riga per locale e integrazione: chiedere di nuovo riapre la stessa.
+model IntegrationAssistance {
+  id              String    @id @default(cuid())
+  venueId         String
+  integrationSlug String    @db.VarChar(60)
+  /// OPEN | CLOSED
+  status          String    @default("OPEN") @db.VarChar(20)
+  note            String?   @db.VarChar(1000)
+  requestedById   String?
+  requestedAt     DateTime  @default(now())
+  delegatedById   String?
+  delegatedAt     DateTime?
+  delegatedUntil  DateTime?
+  revokedAt       DateTime?
+  closedAt        DateTime?
+  closedByEmail   String?   @db.VarChar(200)
+  updatedAt       DateTime  @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, integrationSlug])
+  @@index([status, requestedAt])
+}
+
+/// Un collegamento per inserire le credenziali, preparato da Foodtech e
+/// aperto dal ristoratore: le credenziali le scrive lui, nella sua sessione,
+/// e non passano mai da email o chat.
+///
+/// Il collegamento non contiene segreti e non ne dà: porta al passo «Accesso»
+/// del wizard sul locale giusto, e vale solo per chi è membro di quel locale
+/// con il permesso di collegare. Nel database c'è solo l'impronta SHA-256
+/// del codice; il codice in chiaro si vede una volta, quando si crea.
+model IntegrationCredentialHandoff {
+  id              String    @id @default(cuid())
+  venueId         String
+  integrationSlug String    @db.VarChar(60)
+  tokenHash       String    @unique @db.VarChar(64)
+  createdByEmail  String    @db.VarChar(200)
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime
+  openedAt        DateTime?
+  openedById      String?
+  /// Le credenziali sono state inserite e accettate dal fornitore.
+  completedAt     DateTime?
+  revokedAt       DateTime?
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, integrationSlug])
 }
 
 model IntegrationRollout {

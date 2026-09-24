@@ -321,6 +321,16 @@
     --integ-dot-anteprima: hsl(var(--accent) / 0.4);
     --integ-dot-anteprima-bordo: hsl(var(--accent));
     --integ-dot-collegata: rgb(var(--sage-strong));
+    /* Gli stati della connessione nati dopo: al buio valgono il pallino di
+       «Richiede attenzione» (terracotta) e quelli già in uso. */
+    --integ-dot-configura: hsl(var(--accent));
+    --integ-dot-errore: hsl(var(--accent));
+    --integ-dot-verifica: rgb(var(--cream));
+    --integ-dot-pausa: hsl(var(--muted-foreground));
+    /* La tessera del logo: il marchio sta su un fondo neutro in entrambi i temi. */
+    --integ-logo-fondo: #ffffff;
+    /* La cornice di una scheda collegata: si riconosce senza leggere. */
+    --integ-bordo-collegata: rgb(var(--sage-strong) / 0.45);
     /* «Nuovo turno», l'azione primaria del calendario. */
     --nuovo-turno: #3d5c34;
     --nuovo-turno-hover: #496c3e;
@@ -587,6 +597,11 @@
     --integ-dot-anteprima: var(--state-pending);
     --integ-dot-anteprima-bordo: var(--state-pending);
     --integ-dot-collegata: var(--state-confirmed);
+    --integ-dot-configura: var(--state-pending);
+    --integ-dot-errore: var(--state-alert);
+    --integ-dot-verifica: var(--state-seated);
+    --integ-dot-pausa: var(--text-meta);
+    --integ-bordo-collegata: rgb(31 107 61 / 0.4);
     --nuovo-turno: var(--cta-fill);
     --nuovo-turno-hover: hsl(var(--primary) / 0.9);
     --oggi-fondo: var(--control-fill);

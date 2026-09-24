@@ -230,7 +230,14 @@ export type AuditAction =
   | "integration.resume"
   | "integration.access_request"
   | "integration.access_request_dismissed"
-  | "integration.initial_import";
+  | "integration.initial_import"
+  | "integration.assistance_request"
+  | "integration.assistance_revoked"
+  | "integration.assistance_closed"
+  | "integration.handoff_created"
+  | "integration.handoff_opened"
+  | "integration.handoff_revoked"
+  | "integration.admin_action";
 
 export type AuditActor = {
   userId: string;

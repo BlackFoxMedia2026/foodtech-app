@@ -51,6 +51,8 @@ const LETTURE: [string, string][] = [
   ["products", "Leggi prodotti"],
   ["tax_rates", "Leggi IVA"],
   ["payment_methods", "Leggi metodi di pagamento"],
+  ["orders", "Leggi ordini (48 ore)"],
+  ["payments", "Leggi pagamenti (48 ore)"],
 ];
 const euro = (c: number | null | undefined) => (c === null || c === undefined ? "—" : (c / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" }));
 const data = (s: string) => new Date(s).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, Download, Loader2, RefreshCw, Settings2, TriangleAlert, Unplug } from "lucide-react";
+import { Check, CheckCircle2, Clock, Download, Loader2, RefreshCw, Settings2, ShieldCheck, TriangleAlert, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useAvvisi } from "@/components/ui/avvisi";
@@ -16,23 +16,30 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { STATI_DA_SISTEMARE } from "@/server/integrations/cliente";
 import type { DettaglioCliente } from "@/server/integrations/vista-cliente";
 import { azione, disinstallaIntegrazione, ErroreAzione } from "./azioni";
-import { Monogramma, PillolaStato, quando } from "./segni";
+import { dataOra, Logo, PillolaStato, quando, SegnoAnteprima } from "./segni";
 import { WebhookManuale } from "./webhook-manuale";
 import { CollegamentiElementi } from "./collegamenti-elementi";
+import { AssistenzaCliente } from "./assistenza-cliente";
 
 /**
  * **Un'integrazione collegata, per chi gestisce il ristorante.**
  *
  * In cima la risposta alla domanda per cui si apre la pagina — *sta
- * funzionando?* — e se no, la frase che dice cosa fare con il pulsante che lo
- * fa. Sotto, che cosa si sincronizza e che cosa è arrivato. Tre azioni:
- * sincronizzare, cambiare le impostazioni, scollegare.
+ * funzionando?* — con lo stato della connessione, la data e l'ora
+ * dell'ultima verifica fatta davvero con il fornitore, e se qualcosa non va
+ * la frase che dice cosa fare con il pulsante che lo fa. Tre azioni sempre a
+ * portata: **Verifica connessione**, **Riconfigura**, **Disconnetti**.
+ *
+ * Sotto, **che cosa fa davvero adesso**: gli interruttori accesi, quelli
+ * spenti e ciò che è ancora in preparazione, detto così. Un'anteprima lo
+ * dice in una riga: le funzioni sono in prova.
  *
  * Niente registro tecnico, niente riferimenti di correlazione, niente stato
  * dei webhook: quelli stanno nella vista interna di Foodtech
- * (/admin/integrazioni/<slug>).
+ * (/admin/integrazioni).
  */
 
 type Permessi = { configura: boolean; disconnetti: boolean; installa: boolean };
@@ -45,6 +52,16 @@ export function GestioneIntegrazione({ dettaglio, permessi }: { dettaglio: Detta
   const [impostazioni, setImpostazioni] = useState(false);
   const [scollega, setScollega] = useState(false);
   const pagina = `/settings/integrations/${voce.slug}`;
+
+  /* Una verifica partita da un'altra scheda (o dall'assistenza Foodtech):
+     si ricontrolla fra poco, finché non arriva l'esito. */
+  const inVerifica = !!i?.verificaInCorso;
+  useEffect(() => {
+    if (!inVerifica) return;
+    const t = setTimeout(() => router.refresh(), 4000);
+    return () => clearTimeout(t);
+  }, [inVerifica, router]);
+
   if (!i) return null;
 
   async function esegui(chiave: string, corpo: Record<string, unknown>, riuscita: string) {
@@ -79,37 +96,52 @@ export function GestioneIntegrazione({ dettaglio, permessi }: { dettaglio: Detta
       </Button>
     );
 
-  const puoSincronizzare = permessi.configura && (i.condizione === "attiva" || i.condizione === "da_controllare" || i.condizione === "errore");
+  const sospesa = i.condizione === "sospesa";
+  const puoVerificare = permessi.configura && !sospesa && i.credenzialiPresenti;
+  const puoSincronizzare =
+    voce.portaDati && permessi.configura && (i.condizione === "attiva" || i.condizione === "da_controllare" || i.condizione === "errore");
+  const verifica = inCorso === "prova" || inVerifica;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4">
       {/* ------------------------------------------------------------ */}
       {/*  Sta funzionando?                                            */}
       {/* ------------------------------------------------------------ */}
-      <section className={cn("riquadro comodo space-y-4 p-5 md:p-6", dettaglio.stato === "ATTENZIONE" ? "border-accent/50 bg-accent/[0.06]" : "bg-card/40")}>
+      <section
+        className={cn(
+          "riquadro comodo space-y-4 p-5 md:p-6",
+          STATI_DA_SISTEMARE.has(dettaglio.stato) ? "border-accent/50 bg-accent/[0.06]" : "bg-card/40",
+        )}
+      >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <Monogramma testo={voce.monogramma} grande />
+            <Logo src={voce.logo} testo={voce.monogramma} grande />
             <div className="min-w-0">
               <h1 className="truncate text-display text-xl">{voce.nome}</h1>
-              <PillolaStato stato={dettaglio.stato} etichetta={dettaglio.etichettaStato} className="mt-1" />
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <PillolaStato
+                  stato={verifica ? "VERIFICA_IN_CORSO" : dettaglio.stato}
+                  etichetta={verifica ? "Verifica in corso" : dettaglio.etichettaStato}
+                />
+                {dettaglio.anteprima && <SegnoAnteprima />}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {puoSincronizzare && (
+            {puoVerificare && (
               <Button
-                variant="accent"
+                variant="outline"
                 size="sm"
-                disabled={!!inCorso}
-                onClick={() => esegui("sincronizza", { azione: "sincronizza" }, "Sincronizzazione avviata: i dati arrivano entro un minuto.")}
+                disabled={!!inCorso || inVerifica}
+                onClick={() => esegui("prova", { azione: "prova" }, `Connessione con ${voce.nome} verificata.`)}
               >
-                {inCorso === "sincronizza" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-                Sincronizza ora
+                {verifica ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
+                Verifica connessione
               </Button>
             )}
-            {permessi.configura && i.condizione !== "sospesa" && (
+            {permessi.configura && !sospesa && (
               <Button variant="outline" size="sm" onClick={() => setImpostazioni(true)}>
-                <Settings2 className="h-4 w-4" aria-hidden="true" /> Impostazioni
+                <Settings2 className="h-4 w-4" aria-hidden="true" /> Riconfigura
               </Button>
             )}
             {permessi.disconnetti && (
@@ -120,51 +152,89 @@ export function GestioneIntegrazione({ dettaglio, permessi }: { dettaglio: Detta
           </div>
         </div>
 
-        <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+        <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Dato nome={voce.titoloSede === "Sede e revenue center" ? "Sede" : voce.titoloSede} valore={i.sede ?? i.account ?? "—"} />
-          <Dato nome="Ultima sincronizzazione" valore={testoSincronizzazione(i)} />
-          <Dato nome="Collegata dal" valore={i.collegataIl ? new Date(i.collegataIl).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : "—"} />
+          <Dato nome="Ultima verifica" valore={testoVerifica(i)} />
+          {voce.portaDati && <Dato nome="Ultima sincronizzazione" valore={testoSincronizzazione(i)} />}
+          <Dato
+            nome="Collegata dal"
+            valore={i.collegataIl ? new Date(i.collegataIl).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" }) : "—"}
+          />
         </dl>
 
         <Avviso dettaglio={dettaglio} ricollega={permessi.installa ? ricollega : null} inCorso={inCorso} esegui={esegui} puoConfigurare={permessi.configura} />
+
+        {dettaglio.anteprima && (
+          <p className="t-nota">
+            Anteprima: stiamo provando {voce.nome} con i primi ristoranti. Qui sotto trovi solo ciò che funziona già; il resto è
+            indicato come «in preparazione».
+          </p>
+        )}
       </section>
 
       {dettaglio.importabile && permessi.configura && <ProposteImportazione dettaglio={dettaglio} />}
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="riquadro comodo space-y-3 bg-card/40">
-          <h2 className="t-titolo-scheda">Sincronizza</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="t-titolo-scheda">Funzionalità disponibili</h2>
+            {puoSincronizzare && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!!inCorso}
+                onClick={() => esegui("sincronizza", { azione: "sincronizza" }, "Sincronizzazione avviata: i dati arrivano entro un minuto.")}
+              >
+                {inCorso === "sincronizza" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+                Sincronizza ora
+              </Button>
+            )}
+          </div>
           <ul className="space-y-2 text-sm">
-            {voce.gruppi.map((g) => {
-              const acceso = i.gruppiAccesi.includes(g.chiave);
-              return (
-                <li key={g.chiave} className={cn("flex items-center justify-between gap-2", !acceso && "text-muted-foreground")}>
-                  {g.etichetta}
-                  {acceso ? <Check className="h-4 w-4 text-sage-strong" aria-label="attivo" /> : <span className="t-nota">spento</span>}
-                </li>
-              );
-            })}
+            {i.funzionalita.map((f) => (
+              <li key={f.etichetta} className={cn("flex items-center justify-between gap-2", f.stato !== "attiva" && "text-muted-foreground")}>
+                <span className="min-w-0">{f.etichetta}</span>
+                {f.stato === "attiva" ? (
+                  <Check className="h-4 w-4 shrink-0 text-sage-strong" aria-label="attiva" />
+                ) : f.stato === "spenta" ? (
+                  <span className="t-nota shrink-0">spenta</span>
+                ) : (
+                  <span className="t-nota inline-flex shrink-0 items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" aria-hidden="true" /> in preparazione
+                  </span>
+                )}
+              </li>
+            ))}
           </ul>
         </section>
 
-        <section className="riquadro comodo space-y-3 bg-card/40">
-          <h2 className="t-titolo-scheda">Elementi sincronizzati</h2>
-          {dettaglio.elementi.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ancora niente: i dati arrivano con la prima sincronizzazione.</p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {dettaglio.elementi.map((e) => (
-                <li key={e.tipo} className="flex items-center justify-between gap-2">
-                  {e.etichetta}
-                  <span className="t-dato text-muted-foreground">
-                    {e.totale}
-                    {e.tipo !== "CATEGORY" && e.daCollegare > 0 && <span className="text-accent-strong"> · {e.daCollegare} da collegare</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {voce.portaDati ? (
+          <section className="riquadro comodo space-y-3 bg-card/40">
+            <h2 className="t-titolo-scheda">Elementi sincronizzati</h2>
+            {dettaglio.elementi.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Ancora niente: i dati arrivano con la prima sincronizzazione.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {dettaglio.elementi.map((e) => (
+                  <li key={e.tipo} className="flex items-center justify-between gap-2">
+                    {e.etichetta}
+                    <span className="t-dato text-muted-foreground">
+                      {e.totale}
+                      {e.tipo !== "CATEGORY" && e.daCollegare > 0 && <span className="text-accent-strong"> · {e.daCollegare} da collegare</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        ) : (
+          <section className="riquadro comodo space-y-2 bg-card/40">
+            <h2 className="t-titolo-scheda">Problemi riscontrati</h2>
+            <p className="text-sm text-muted-foreground">
+              {i.problema ? `${i.problema.titolo}${i.problema.il ? ` · ${dataOra(i.problema.il)}` : ""}` : "Nessun problema rilevato."}
+            </p>
+          </section>
+        )}
       </div>
 
       {dettaglio.elementi.some((e) => e.tipo !== "CATEGORY") && (
@@ -175,6 +245,8 @@ export function GestioneIntegrazione({ dettaglio, permessi }: { dettaglio: Detta
           puo={permessi.configura}
         />
       )}
+
+      <AssistenzaCliente dettaglio={dettaglio} puo={permessi.installa} />
 
       <Impostazioni
         aperta={impostazioni}
@@ -190,8 +262,9 @@ export function GestioneIntegrazione({ dettaglio, permessi }: { dettaglio: Detta
           <DialogHeader>
             <DialogTitle>Disconnettere {voce.nome}?</DialogTitle>
             <DialogDescription>
-              Foodtech smette di sincronizzare e dimentica i dati di accesso e i collegamenti di tavoli e prodotti. Tavoli e
-              menu di Foodtech restano come sono. Potrai ricollegarla quando vuoi.
+              {voce.portaDati
+                ? "Foodtech smette di sincronizzare e dimentica i dati di accesso e i collegamenti di tavoli e prodotti. Tavoli e menu di Foodtech restano come sono. Potrai ricollegarla quando vuoi."
+                : `Foodtech dimentica i dati di accesso e smette di controllare ${voce.nome}. Sul tuo account ${voce.nome} non cambia niente. Potrai ricollegarla quando vuoi.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -226,6 +299,14 @@ export function GestioneIntegrazione({ dettaglio, permessi }: { dettaglio: Detta
   );
 }
 
+/** L'ultima verifica con il fornitore: quando, e com'è andata. */
+function testoVerifica(i: NonNullable<DettaglioCliente["installazione"]>): string {
+  if (i.verificaInCorso) return "In corso…";
+  if (!i.ultimaVerificaIl) return "Mai";
+  const q = dataOra(i.ultimaVerificaIl)!;
+  return i.ultimaVerificaOk === false ? `${q} · non riuscita` : `${q} · riuscita`;
+}
+
 /** Lo stato della sincronizzazione, separato da quello della connessione (la pillola in alto). */
 function testoSincronizzazione(i: NonNullable<DettaglioCliente["installazione"]>): string {
   switch (i.sincronizzazione) {
@@ -244,7 +325,7 @@ function Dato({ nome, valore }: { nome: string; valore: string }) {
   return (
     <div className="min-w-0">
       <dt className="t-etichetta">{nome}</dt>
-      <dd className="mt-0.5 truncate">{valore}</dd>
+      <dd className="mt-0.5 break-words">{valore}</dd>
     </div>
   );
 }
@@ -270,13 +351,16 @@ function Avviso({
 
   let testo: React.ReactNode = null;
   let comando: React.ReactNode = null;
+  const rilevato = i.problema?.il ? ` Rilevato il ${dataOra(i.problema.il)}.` : "";
 
   switch (i.condizione) {
     case "sospesa":
       testo = "Foodtech ha messo in pausa questo collegamento. Scrivi all'assistenza per riattivarlo.";
       break;
     case "in_pausa":
-      testo = "La sincronizzazione è in pausa: Foodtech non legge niente dalla cassa.";
+      testo = voce.portaDati
+        ? "La sincronizzazione è in pausa: Foodtech non legge niente dalla cassa."
+        : `Il collegamento è in pausa: Foodtech non controlla ${voce.nome}.`;
       comando = puoConfigurare ? (
         <Button size="sm" variant="accent" disabled={!!inCorso} onClick={() => esegui("riattiva", { azione: "riattiva" }, `${voce.nome} di nuovo attiva.`)}>
           {inCorso === "riattiva" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
@@ -285,13 +369,13 @@ function Avviso({
       ) : null;
       break;
     case "da_ricollegare":
-      testo = i.problema ? `${i.problema.titolo}. ${i.problema.spiegazione}` : `Il collegamento con ${voce.nome} è scaduto.`;
+      testo = i.problema ? `${i.problema.titolo}. ${i.problema.spiegazione}${rilevato}` : `Il collegamento con ${voce.nome} è scaduto.`;
       comando = ricollega;
       break;
     case "errore":
     case "da_controllare":
       testo = i.problema
-        ? `${i.problema.titolo}. ${i.problema.spiegazione}`
+        ? `${i.problema.titolo}. ${i.problema.spiegazione}${rilevato}`
         : "L'ultima sincronizzazione riuscita è di più di un giorno fa.";
       comando =
         i.problema?.azione === "ricollega" ? (
@@ -300,15 +384,10 @@ function Avviso({
           <Button asChild size="sm" variant="accent">
             <Link href={`/settings/integrations/${voce.slug}?collega=1&passo=sede`}>Controlla le impostazioni</Link>
           </Button>
-        ) : puoConfigurare && i.problema?.azione === "riprova" ? (
+        ) : puoConfigurare && i.problema?.azione === "riprova" && voce.portaDati ? (
           <Button size="sm" variant="accent" disabled={!!inCorso} onClick={() => esegui("sincronizza", { azione: "sincronizza" }, "Sincronizzazione avviata: i dati arrivano entro un minuto.")}>
             {inCorso === "sincronizza" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
             Riprova ora
-          </Button>
-        ) : puoConfigurare ? (
-          <Button size="sm" variant="outline" disabled={!!inCorso} onClick={() => esegui("prova", { azione: "prova" }, "Connessione riuscita.")}>
-            {inCorso === "prova" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-            Controlla la connessione
           </Button>
         ) : null;
       break;
@@ -408,47 +487,51 @@ function Impostazioni({
     <Dialog open={aperta} onOpenChange={(v) => !v && onChiudi()}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto overflow-x-hidden [&>*]:min-w-0">
         <DialogHeader>
-          <DialogTitle>Impostazioni di {voce.nome}</DialogTitle>
-          <DialogDescription>Che cosa sincronizzare, da dove, e con quale account.</DialogDescription>
+          <DialogTitle>Riconfigura {voce.nome}</DialogTitle>
+          <DialogDescription>
+            {voce.portaDati ? "Che cosa sincronizzare, da dove, e con quale account." : "Quale profilo collegare, e con quale account."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="space-y-2">
-            <h3 className="t-etichetta">Cosa sincronizzare</h3>
-            <ul className="divide-y divide-border/60 rounded-lg border border-border">
-              {voce.gruppi.map((g) => (
-                <li key={g.chiave}>
-                  <label className="flex cursor-pointer items-center justify-between gap-4 px-3.5 py-3">
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium">{g.etichetta}</span>
-                      <span className="t-nota block">{g.descrizione}</span>
-                    </span>
-                    <Switch
-                      checked={scelti.has(g.chiave)}
-                      aria-label={g.etichetta}
-                      onCheckedChange={(v) => {
-                        const n = new Set(scelti);
-                        if (v) n.add(g.chiave);
-                        else n.delete(g.chiave);
-                        setScelti(n);
-                      }}
-                    />
-                  </label>
-                </li>
-              ))}
-            </ul>
-            {cambiati && (
-              <Button
-                size="sm"
-                variant="accent"
-                disabled={!!inCorso || scelti.size === 0}
-                onClick={() => esegui("gruppi", { azione: "gruppi", gruppi: [...scelti] }, "Impostazioni salvate.")}
-              >
-                {inCorso === "gruppi" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-                Salva
-              </Button>
-            )}
-          </div>
+          {voce.portaDati && (
+            <div className="space-y-2">
+              <h3 className="t-etichetta">Cosa sincronizzare</h3>
+              <ul className="divide-y divide-border/60 rounded-lg border border-border">
+                {voce.gruppi.map((g) => (
+                  <li key={g.chiave}>
+                    <label className="flex cursor-pointer items-center justify-between gap-4 px-3.5 py-3">
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium">{g.etichetta}</span>
+                        <span className="t-nota block">{g.descrizione}</span>
+                      </span>
+                      <Switch
+                        checked={scelti.has(g.chiave)}
+                        aria-label={g.etichetta}
+                        onCheckedChange={(v) => {
+                          const n = new Set(scelti);
+                          if (v) n.add(g.chiave);
+                          else n.delete(g.chiave);
+                          setScelti(n);
+                        }}
+                      />
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              {cambiati && (
+                <Button
+                  size="sm"
+                  variant="accent"
+                  disabled={!!inCorso || scelti.size === 0}
+                  onClick={() => esegui("gruppi", { azione: "gruppi", gruppi: [...scelti] }, "Impostazioni salvate.")}
+                >
+                  {inCorso === "gruppi" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                  Salva
+                </Button>
+              )}
+            </div>
+          )}
 
           <Riga titolo={voce.titoloSede} valore={i.sede ?? "—"}>
             <Button asChild size="sm" variant="outline">
@@ -486,7 +569,7 @@ function Impostazioni({
           )}
 
           {permessi.disconnetti && (i.condizione === "in_pausa" ? null : (
-            <Riga titolo="Pausa" valore="Ferma la sincronizzazione senza scollegare.">
+            <Riga titolo="Pausa" valore={voce.portaDati ? "Ferma la sincronizzazione senza scollegare." : "Ferma i controlli senza scollegare."}>
               <Button size="sm" variant="ghost" disabled={!!inCorso} onClick={() => esegui("disattiva", { azione: "disattiva" }, `${voce.nome} in pausa.`)}>
                 {inCorso === "disattiva" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                 Metti in pausa

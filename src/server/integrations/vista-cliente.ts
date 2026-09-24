@@ -6,16 +6,21 @@ import { motivoNonInstallabile, preferenzeDi, sospensioneDi } from "./installazi
 import { faseDi, fasePredefinita } from "./certificazione/accesso";
 import { FASI_RILASCIO, type FaseRilascio } from "./certificazione/livelli";
 import { richiesteDelLocale } from "./richieste";
+import { assistenzaDelLocale, type AssistenzaCliente } from "./assistenza";
 import { anteprimaImportazione, type AnteprimaImportazione } from "./importazione";
 import {
   condizioneDi,
   ETICHETTA_STATO_CLIENTE,
+  funzionalitaPerIlCliente,
   gruppiAccesi,
   passoDaRiprendere,
   statoPerIlCliente,
+  STATI_DA_SISTEMARE,
+  verificaInCorso,
   vistaVoceCliente,
   type AzioneCliente,
   type Condizione,
+  type Funzionalita,
   type MotivoTecnico,
   type StatoCliente,
   type VoceCliente,
@@ -26,12 +31,13 @@ import type { Salute, StatoInstallazione } from "./tipi";
 /**
  * **Ciò che dell'integrazione arriva al browser di un ristoratore.**
  *
- * La vista interna (`vista.ts`) porta tutto — documentazione, adattatore,
- * matrice delle risorse, permessi, cosa manca per operare — e la legge solo
- * Foodtech (/admin/integrazioni). Questa porta il minimo per decidere e
- * agire: nome, a che cosa serve, uno dei cinque stati, un pulsante, e per
- * un'integrazione collegata l'ultima sincronizzazione e l'ultimo problema
- * detto a parole.
+ * La vista interna (`vista.ts`, `vista-assistenza.ts`) porta tutto —
+ * documentazione, adattatore, matrice delle risorse, permessi, cosa manca per
+ * operare — e la legge solo Foodtech (/admin/integrazioni). Questa porta il
+ * minimo per decidere e agire: nome, a che cosa serve, lo stato della
+ * connessione, un pulsante, e per un'integrazione collegata l'ultima
+ * verifica, l'ultima sincronizzazione, che cosa fa davvero e l'ultimo
+ * problema detto a parole.
  *
  * Come l'altra, si costruisce **per elenco di campi scelti**: niente
  * `lastError`, niente `webhookKey`, niente segreti, niente identificativi
@@ -46,10 +52,13 @@ export type SchedaCliente = {
   categoria: string;
   descrizione: string;
   monogramma: string;
+  logo: string | null;
   stato: StatoCliente;
   etichettaStato: string;
   azione: AzioneCliente;
   inAttivazione: boolean;
+  /** Ancora in prova presso Foodtech: la scheda lo dice anche quando è collegata. */
+  anteprima: boolean;
   hrefNativa: string | null;
   /** Una riga sotto lo stato: la sede collegata, o il problema. */
   riga: string | null;
@@ -61,18 +70,24 @@ export type InstallazioneCliente = {
   credenzialiPresenti: boolean;
   account: string | null;
   sede: string | null;
+  /** L'ultima verifica della connessione con il fornitore, e com'è andata. */
+  ultimaVerificaIl: string | null;
+  ultimaVerificaOk: boolean | null;
+  verificaInCorso: boolean;
   ultimaSyncIl: string | null;
   ultimaSyncRiuscitaIl: string | null;
-  problema: { titolo: string; spiegazione: string; azione: AzioneSuggerita } | null;
+  problema: { titolo: string; spiegazione: string; azione: AzioneSuggerita; il: string | null } | null;
   /**
    * La sincronizzazione, **separata** dalla connessione: un collegamento
-   * riuscito è «Collegata» anche prima che i dati arrivino.
+   * riuscito è «Collegato» anche prima che i dati arrivino.
    * - `in_attesa`: collegata (o ricollegata) e nessuna sincronizzazione dopo;
    * - `in_corso`; `riuscita`: l'ultimo tentativo è andato; `non_riuscita`.
    */
   sincronizzazione: "in_attesa" | "in_corso" | "riuscita" | "non_riuscita" | null;
   /** Gli interruttori accesi adesso. */
   gruppiAccesi: string[];
+  /** Che cosa fa davvero adesso, e che cosa è ancora in preparazione. */
+  funzionalita: Funzionalita[];
   /** Le scelte del cliente da riproporre nel wizard, anche dopo una disconnessione. `null` se non ha mai scelto. */
   gruppiScelti: string[] | null;
   /** I valori scelti (non segreti), per riaprire il wizard con le scelte di prima. */
@@ -88,12 +103,16 @@ export type DettaglioCliente = {
   etichettaStato: string;
   azione: AzioneCliente;
   inAttivazione: boolean;
+  anteprima: boolean;
   richiestaIl: string | null;
   installazione: InstallazioneCliente | null;
   elementi: ElementoSincronizzato[];
   importabile: AnteprimaImportazione | null;
   /** Solo per chi può configurare, e solo per le voci che lo chiedono. */
   aggiornamenti: { indirizzo: string; segretoPresente: boolean } | null;
+  /** «Chiedi aiuto a Foodtech»: la richiesta aperta e la delega, se ci sono. `null` per le voci che non si configurano qui. */
+  assistenza: AssistenzaCliente | null;
+  assistenzaPossibile: boolean;
 };
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
@@ -109,10 +128,14 @@ const SELEZIONE = {
   status: true,
   healthStatus: true,
   lastErrorCode: true,
+  lastErrorAt: true,
   enabledCapabilities: true,
   configuration: true,
   externalAccountName: true,
   externalLocationName: true,
+  lastTestAt: true,
+  lastTestOk: true,
+  testStartedAt: true,
   lastSyncAt: true,
   lastSuccessfulSyncAt: true,
   activatedAt: true,
@@ -128,8 +151,7 @@ type RigaInstallazione = Prisma.IntegrationInstallationGetPayload<{ select: type
  * vuol dire una di due cose: la sincronizzazione è vecchia (e allora va
  * detto), oppure c'è stato un errore **già risolto** — la chiave sostituita,
  * la prova riuscita — e la prima sincronizzazione dopo non è ancora passata.
- * Nel secondo caso dire «richiede attenzione» a chi ha appena ricollegato
- * sarebbe falso.
+ * Nel secondo caso dire «errore» a chi ha appena ricollegato sarebbe falso.
  */
 function saluteCliente(i: RigaInstallazione, adesso = Date.now()): Salute {
   const s = i.healthStatus as Salute;
@@ -138,6 +160,15 @@ function saluteCliente(i: RigaInstallazione, adesso = Date.now()): Salute {
   if (statoSincronizzazione(i) === "in_attesa") return "HEALTHY";
   const vecchia = !!i.lastSuccessfulSyncAt && adesso - i.lastSuccessfulSyncAt.getTime() > ORE_SYNC_VECCHIA * 3_600_000;
   return vecchia ? "DEGRADED" : "HEALTHY";
+}
+
+function ingressoInstallazione(i: RigaInstallazione) {
+  return {
+    status: i.status as StatoInstallazione,
+    salute: saluteCliente(i),
+    sospesa: !!sospensioneDi(i),
+    verificaInCorso: verificaInCorso(i),
+  };
 }
 
 function vistaInstallazioneCliente(i: RigaInstallazione, v: VoceCatalogo): InstallazioneCliente {
@@ -155,11 +186,15 @@ function vistaInstallazioneCliente(i: RigaInstallazione, v: VoceCatalogo): Insta
     credenzialiPresenti: !!i.credential,
     account: i.externalAccountName,
     sede: i.externalLocationName,
+    ultimaVerificaIl: iso(i.lastTestAt),
+    ultimaVerificaOk: i.lastTestOk,
+    verificaInCorso: verificaInCorso(i),
     ultimaSyncIl: iso(i.lastSyncAt),
     ultimaSyncRiuscitaIl: iso(i.lastSuccessfulSyncAt),
-    problema: m ? { titolo: m.titolo, spiegazione: m.spiegazione, azione: m.azione } : null,
+    problema: m ? { titolo: m.titolo, spiegazione: m.spiegazione, azione: m.azione, il: iso(i.lastErrorAt) } : null,
     sincronizzazione: statoSincronizzazione(i),
     gruppiAccesi: gruppiAccesi(v.capacita, i.enabledCapabilities),
+    funzionalita: funzionalitaPerIlCliente(v.capacita, i.enabledCapabilities),
     gruppiScelti: preferenzeDi(i),
     configurazione: Object.fromEntries(
       Object.entries(conf)
@@ -177,8 +212,10 @@ function statoSincronizzazione(i: RigaInstallazione): InstallazioneCliente["sinc
   return i.lastSuccessfulSyncAt && i.lastSuccessfulSyncAt >= i.lastSyncAt ? "riuscita" : "non_riuscita";
 }
 
-function rigaScheda(inst: InstallazioneCliente | null): string | null {
+function rigaScheda(inst: InstallazioneCliente | null, portaDati: boolean): string | null {
   if (!inst) return null;
+  // Un collegamento di solo profilo non sincronizza: niente «prima sincronizzazione in attesa».
+  if (!portaDati) inst = { ...inst, sincronizzazione: null };
   if (inst.condizione === "sospesa") return "In pausa: contatta l'assistenza Foodtech.";
   if (inst.condizione === "in_pausa") return "Sincronizzazione in pausa.";
   if (inst.condizione === "in_configurazione") return "Collegamento da completare.";
@@ -187,7 +224,7 @@ function rigaScheda(inst: InstallazioneCliente | null): string | null {
   return inst.sede;
 }
 
-/** Il catalogo visto da un ristoratore. Collegate e da guardare prima, poi le collegabili, poi le altre. */
+/** Il catalogo visto da un ristoratore. Da sistemare prima, poi le collegate, poi le collegabili, poi le altre. */
 export async function catalogoCliente(venueId: string, statoNativo: { stripe: boolean }): Promise<SchedaCliente[]> {
   const [installazioni, fasi, accessi, richieste] = await Promise.all([
     db.integrationInstallation.findMany({ where: { venueId }, select: SELEZIONE }),
@@ -208,7 +245,7 @@ export async function catalogoCliente(venueId: string, statoNativo: { stripe: bo
       motivoTecnico: motivoTecnico(v),
       fase: scritta && FASI_RILASCIO.includes(scritta) ? scritta : fasePredefinita(v),
       betaAbilitata: beta.has(v.slug),
-      installazione: i ? { status: i.status as StatoInstallazione, salute: saluteCliente(i), sospesa: !!sospensioneDi(i) } : null,
+      installazione: i ? ingressoInstallazione(i) : null,
       richiesta: richieste.get(v.slug) ?? null,
     });
     return {
@@ -217,17 +254,28 @@ export async function catalogoCliente(venueId: string, statoNativo: { stripe: bo
       categoria: vistaVoceCliente(v).categoria,
       descrizione: v.descrizione,
       monogramma: v.logo.monogramma,
+      logo: v.logo.src ?? null,
       stato: e.stato,
       etichettaStato: ETICHETTA_STATO_CLIENTE[e.stato],
       azione: e.azione,
       inAttivazione: e.inAttivazione,
+      anteprima: e.anteprima,
       hrefNativa: v.nativa?.href ?? null,
-      riga: rigaScheda(inst),
+      riga: rigaScheda(inst, vistaVoceCliente(v).portaDati),
     };
   });
 
-  const peso: Record<StatoCliente, number> = { ATTENZIONE: 0, COLLEGATA: 1, DISPONIBILE: 2, ANTEPRIMA: 3, PROSSIMAMENTE: 4 };
-  return schede.sort((a, b) => peso[a.stato] - peso[b.stato] || a.nome.localeCompare(b.nome, "it"));
+  const peso = (s: SchedaCliente) =>
+    STATI_DA_SISTEMARE.has(s.stato)
+      ? 0
+      : s.stato === "COLLEGATO" || s.stato === "VERIFICA_IN_CORSO" || s.stato === "IN_PAUSA"
+        ? 1
+        : s.azione === "COLLEGA"
+          ? 2
+          : s.stato === "PROSSIMAMENTE"
+            ? 4
+            : 3;
+  return schede.sort((a, b) => peso(a) - peso(b) || a.nome.localeCompare(b.nome, "it"));
 }
 
 const ETICHETTA_ELEMENTO: Record<ElementoSincronizzato["tipo"], string> = {
@@ -244,11 +292,12 @@ export async function dettaglioCliente(
 ): Promise<DettaglioCliente | null> {
   const v = voceDi(slug);
   if (!v) return null;
-  const [i, fase, beta, richieste] = await Promise.all([
+  const [i, fase, beta, richieste, assistenza] = await Promise.all([
     db.integrationInstallation.findFirst({ where: { venueId, integrationSlug: slug }, select: SELEZIONE }),
     faseDi(slug),
     db.integrationBetaAccess.findUnique({ where: { venueId_integrationSlug: { venueId, integrationSlug: slug } }, select: { enabled: true } }),
     richiesteDelLocale(venueId),
+    v.nativa ? Promise.resolve(null) : assistenzaDelLocale(venueId, slug),
   ]);
   const richiesta = richieste.get(slug) ?? null;
   const e = statoPerIlCliente({
@@ -256,7 +305,7 @@ export async function dettaglioCliente(
     motivoTecnico: motivoTecnico(v),
     fase,
     betaAbilitata: !!beta?.enabled,
-    installazione: i ? { status: i.status as StatoInstallazione, salute: saluteCliente(i), sospesa: !!sospensioneDi(i) } : null,
+    installazione: i ? ingressoInstallazione(i) : null,
     richiesta,
   });
   const inst = i && i.status !== "NOT_INSTALLED" ? vistaInstallazioneCliente(i, v) : null;
@@ -302,10 +351,14 @@ export async function dettaglioCliente(
     etichettaStato: ETICHETTA_STATO_CLIENTE[e.stato],
     azione: e.azione,
     inAttivazione: e.inAttivazione,
+    anteprima: e.anteprima,
     richiestaIl: richiesta?.status === "PENDING" ? richiesta.il.toISOString() : null,
     installazione: inst,
     elementi,
     importabile,
     aggiornamenti,
+    assistenza,
+    // Si chiede aiuto per ciò che si collega da qui: non per Stripe (ha la sua pagina) né per le voci senza codice.
+    assistenzaPossibile: !v.nativa && e.stato !== "PROSSIMAMENTE",
   };
 }

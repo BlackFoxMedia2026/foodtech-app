@@ -338,21 +338,32 @@ const LETTURE = {
   products: { metodo: "getProducts", capacita: "menu" },
   tax_rates: { metodo: "getTaxRates", capacita: "tax_rates" },
   payment_methods: { metodo: "getPaymentMethods", capacita: "payment_methods" },
+  /* Lo storico: le ultime 48 ore, in sola lettura (Cassa in Cloud accetta finestre di meno di tre giorni). */
+  orders: { metodo: "getOrders", capacita: "read_orders" },
+  payments: { metodo: "getPayments", capacita: "read_payments" },
 } as const;
 export type Lettura = keyof typeof LETTURE;
 export const RISORSE_LETTURA = Object.keys(LETTURE) as Lettura[];
+
+/** Le letture che chiedono un intervallo di tempo. */
+const CON_INTERVALLO = new Set<Lettura>(["orders", "payments"]);
+export const ORE_STORICO_CONSOLE = 48;
 
 /** Legge dal fornitore e mostra risposta grezza (ripulita) e normalizzata. Non scrive niente in Foodtech. */
 export async function leggi(c: Chiamante, slug: string, risorsa: Lettura) {
   const { adattatore, i, ctx, correlationId, finto, ambiente } = await preparaContesto(c, slug);
   const def = LETTURE[risorsa];
-  const metodo = (pos(adattatore) as Record<string, unknown>)[def.metodo] as ((ctx: ContestoAdattatore) => Promise<unknown[]>) | undefined;
+  const metodo = (pos(adattatore) as Record<string, unknown>)[def.metodo] as
+    | ((ctx: ContestoAdattatore, filtro?: { da: Date; a: Date }) => Promise<unknown[]>)
+    | undefined;
+  const a = new Date();
+  const filtro = CON_INTERVALLO.has(risorsa) ? { da: new Date(a.getTime() - ORE_STORICO_CONSOLE * 3_600_000), a } : undefined;
   if (!metodo) throw new ErroreCertificazione("non_supportata", `${ctx.installazione.id ? "Questa cassa" : ""} non offre questa lettura.`, 400);
   let normalizzata: unknown[] | null = null;
   let chiamate: ChiamataRegistrata[] = [];
   let errore: string | null = null;
   try {
-    const r = await conRegistrazione(() => metodo.call(pos(adattatore), ctx));
+    const r = await conRegistrazione(() => metodo.call(pos(adattatore), ctx, filtro));
     normalizzata = r.risultato;
     chiamate = r.chiamate;
   } catch (err) {

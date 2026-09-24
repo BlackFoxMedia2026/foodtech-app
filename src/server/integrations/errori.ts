@@ -130,11 +130,16 @@ export function erroreDaHttp(
   richiesta: { metodo: string; endpoint: string; riprovaTraSecondi?: number },
   correlationId?: string,
 ): ErroreIntegrazione {
-  const codiceFornitore =
-    corpo && typeof corpo === "object"
-      ? String((corpo as Record<string, unknown>).error ?? (corpo as Record<string, unknown>).code ?? "") ||
-        undefined
-      : undefined;
+  const c = corpo && typeof corpo === "object" ? (corpo as Record<string, unknown>) : null;
+  /* `error` può essere una parola (OAuth: `invalid_grant`) o un oggetto con il
+     suo codice (Meta: `{ error: { code: 190 } }`, Google: `{ error: { code:
+     429, status } }`). Nel secondo caso il codice sta dentro: prima si
+     scriveva «[object Object]». */
+  const err = c?.error;
+  const dentro = err && typeof err === "object" ? (err as Record<string, unknown>) : null;
+  const codiceFornitore = c
+    ? String((dentro ? dentro.code ?? dentro.status : err) ?? c.code ?? "") || undefined
+    : undefined;
   return new ErroreIntegrazione(
     codiceDaHttp(status, corpo),
     `Il fornitore ha risposto ${status}`,
