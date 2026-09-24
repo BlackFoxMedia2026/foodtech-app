@@ -1785,6 +1785,15 @@
     background-color: var(--surface-inset);
     box-shadow: inset 0 2px 6px var(--edge-shadow);
   }
+  /* `Button variant="brand"` è sempre l'azione primaria di un modulo
+     (accedi, recupera, salva): sulla carta è la CTA. */
+  :root:has([data-tema="carta"]) .pulsante-brand {
+    background-color: var(--cta-fill);
+    color: var(--cta-ink);
+  }
+  :root:has([data-tema="carta"]) .pulsante-brand:hover {
+    background-color: hsl(var(--primary) / 0.9);
+  }
   :root:has([data-tema="carta"]) .barra-binario {
     background-color: var(--meter-track);
     box-shadow: inset 0 2px 6px var(--edge-shadow);

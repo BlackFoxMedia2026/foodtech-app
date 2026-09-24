@@ -12,7 +12,7 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
         gold: "btn-ember text-white",
         brand:
-          "bg-surface-brown text-ink shadow-[shadow:var(--button-brand-shadow)] hover:bg-surface-brown-dark",
+          "pulsante-brand bg-surface-brown text-ink shadow-[shadow:var(--button-brand-shadow)] hover:bg-surface-brown-dark",
         accent:
           "bg-cta rounded-full text-cta-ink shadow-[shadow:var(--button-accent-shadow)] hover:brightness-105",
         outline:
