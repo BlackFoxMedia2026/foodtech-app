@@ -8,16 +8,24 @@ import type { Capacita, CampoConfigurazione, Categoria, Salute, StatoInstallazio
  *
  * Internamente una voce ha molti stati — implementazione, disponibilità,
  * fase di rilascio, livello di certificazione, accesso beta, stato
- * dell'installazione, salute — e servono tutti a Foodtech. Al cliente ne
- * arrivano cinque, e un pulsante:
+ * dell'installazione, salute — e servono tutti a Foodtech. Al cliente arriva
+ * **uno stato della connessione**, e un pulsante:
  *
- * | stato            | quando                                                      |
- * | ---------------- | ----------------------------------------------------------- |
- * | `DISPONIBILE`    | aperta a tutti (disponibilità generale)                      |
- * | `ANTEPRIMA`      | installabile solo in beta, o nelle beta                      |
- * | `COLLEGATA`      | installata e in salute                                       |
- * | `ATTENZIONE`     | installata, ma qualcosa va fatto (ricollegare, riattivare…)  |
- * | `PROSSIMAMENTE`  | nessun adattatore: solo catalogo                              |
+ * | stato                       | quando                                                        |
+ * | --------------------------- | ------------------------------------------------------------- |
+ * | `NON_COLLEGATO`             | aperta a tutti, non ancora collegata su questo locale          |
+ * | `IN_ANTEPRIMA`              | non collegata, e ancora in prova: su richiesta o solo in beta  |
+ * | `CONFIGURAZIONE_NECESSARIA` | collegamento iniziato e non finito (accesso, sede, attivazione) |
+ * | `VERIFICA_IN_CORSO`         | una verifica con il fornitore sta girando adesso               |
+ * | `COLLEGATO`                 | attiva e in salute                                             |
+ * | `ERRORE_CONNESSIONE`        | il fornitore non risponde, rifiuta un'operazione, o i dati non arrivano |
+ * | `CREDENZIALI_SCADUTE`       | il fornitore non accetta più l'accesso: va rifatto             |
+ * | `IN_PAUSA`                  | spenta dal ristoratore, o sospesa da Foodtech                  |
+ * | `PROSSIMAMENTE`             | nessun adattatore: solo catalogo                               |
+ *
+ * Un'integrazione collegata **in anteprima** resta nel suo stato di
+ * connessione («Collegato») e porta a parte il segno `anteprima`: essere in
+ * prova non è uno stato della connessione, e non deve nasconderlo.
  *
  * Nessuna parola di qui — PREVIEW, PRIVATE_BETA, TESTED_WITH_FIXTURE,
  * adattatore — esce verso il browser del cliente: la vista
@@ -25,15 +33,57 @@ import type { Capacita, CampoConfigurazione, Categoria, Salute, StatoInstallazio
  * (`integrazioni-esperienza-cliente`) lo controlla sul JSON serializzato.
  */
 
-export type StatoCliente = "DISPONIBILE" | "ANTEPRIMA" | "COLLEGATA" | "ATTENZIONE" | "PROSSIMAMENTE";
+export const STATI_CLIENTE = [
+  "NON_COLLEGATO",
+  "IN_ANTEPRIMA",
+  "CONFIGURAZIONE_NECESSARIA",
+  "VERIFICA_IN_CORSO",
+  "COLLEGATO",
+  "ERRORE_CONNESSIONE",
+  "CREDENZIALI_SCADUTE",
+  "IN_PAUSA",
+  "PROSSIMAMENTE",
+] as const;
+
+export type StatoCliente = (typeof STATI_CLIENTE)[number];
 
 export const ETICHETTA_STATO_CLIENTE: Record<StatoCliente, string> = {
-  DISPONIBILE: "Disponibile",
-  ANTEPRIMA: "In anteprima",
-  COLLEGATA: "Collegata",
-  ATTENZIONE: "Richiede attenzione",
+  NON_COLLEGATO: "Non collegato",
+  IN_ANTEPRIMA: "In anteprima",
+  CONFIGURAZIONE_NECESSARIA: "Configurazione necessaria",
+  VERIFICA_IN_CORSO: "Verifica in corso",
+  COLLEGATO: "Collegato",
+  ERRORE_CONNESSIONE: "Errore di connessione",
+  CREDENZIALI_SCADUTE: "Credenziali scadute",
+  IN_PAUSA: "In pausa",
   PROSSIMAMENTE: "Prossimamente",
 };
+
+/** Gli stati di un'integrazione installata su questo locale: «Le tue integrazioni». */
+export const STATI_INSTALLATA = new Set<StatoCliente>([
+  "CONFIGURAZIONE_NECESSARIA",
+  "VERIFICA_IN_CORSO",
+  "COLLEGATO",
+  "ERRORE_CONNESSIONE",
+  "CREDENZIALI_SCADUTE",
+  "IN_PAUSA",
+]);
+
+/** Gli stati che chiedono un gesto del cliente (o di Foodtech). */
+export const STATI_DA_SISTEMARE = new Set<StatoCliente>(["CONFIGURAZIONE_NECESSARIA", "ERRORE_CONNESSIONE", "CREDENZIALI_SCADUTE"]);
+
+/** Dopo quanto una verifica senza esito si considera finita (il processo che la faceva è morto). */
+export const SECONDI_VERIFICA_MASSIMA = 60;
+
+/** Se una verifica partita a `iniziata` è ancora in corso adesso. */
+export function verificaInCorso(
+  i: { testStartedAt?: Date | null; lastTestAt?: Date | null },
+  adesso: Date = new Date(),
+): boolean {
+  if (!i.testStartedAt) return false;
+  if (i.lastTestAt && i.lastTestAt >= i.testStartedAt) return false;
+  return adesso.getTime() - i.testStartedAt.getTime() < SECONDI_VERIFICA_MASSIMA * 1000;
+}
 
 /**
  * Il pulsante della scheda. `RIPRENDI` è un collegamento iniziato e non
@@ -60,13 +110,15 @@ export type IngressoStato = {
   motivoTecnico: MotivoTecnico;
   fase: FaseRilascio;
   betaAbilitata: boolean;
-  installazione: { status: StatoInstallazione; salute: Salute; sospesa: boolean } | null;
+  installazione: { status: StatoInstallazione; salute: Salute; sospesa: boolean; verificaInCorso?: boolean } | null;
   richiesta: { kind: TipoRichiesta; status: StatoRichiesta } | null;
 };
 
 export type EsitoStato = {
   stato: StatoCliente;
   azione: AzioneCliente;
+  /** Ancora in prova (fase di rilascio diversa dalla disponibilità generale), collegata o no. */
+  anteprima: boolean;
   /**
    * Foodtech non ha ancora ciò che serve dalla sua parte (il client OAuth
    * presso il fornitore, la custodia delle credenziali): al cliente non si
@@ -79,40 +131,36 @@ export type EsitoStato = {
 export const NEL_WIZARD = new Set<StatoInstallazione>(["INSTALLING", "NEEDS_CONFIGURATION", "CONNECTED"]);
 
 export function statoPerIlCliente(x: IngressoStato): EsitoStato {
-  const no = { inAttivazione: false };
-
   if (x.nativa) {
-    return x.nativa.collegata ? { stato: "COLLEGATA", azione: "GESTISCI", ...no } : { stato: "DISPONIBILE", azione: "COLLEGA", ...no };
+    const no = { inAttivazione: false, anteprima: false };
+    return x.nativa.collegata ? { stato: "COLLEGATO", azione: "GESTISCI", ...no } : { stato: "NON_COLLEGATO", azione: "COLLEGA", ...no };
   }
 
-  const base: StatoCliente = x.fase === "GENERAL_AVAILABILITY" ? "DISPONIBILE" : "ANTEPRIMA";
+  const anteprima = x.fase !== "GENERAL_AVAILABILITY";
+  const no = { inAttivazione: false, anteprima };
   const i = x.installazione;
   if (i && i.status !== "NOT_INSTALLED") {
-    if (i.sospesa) return { stato: "ATTENZIONE", azione: "GESTISCI", ...no };
-    if (NEL_WIZARD.has(i.status)) return { stato: base, azione: "RIPRENDI", ...no };
-    if (
-      i.status === "REAUTH_REQUIRED" ||
-      i.status === "ERROR" ||
-      i.status === "DISABLED" ||
-      i.salute === "DEGRADED" ||
-      i.salute === "ERROR" ||
-      i.salute === "AUTH_REQUIRED"
-    ) {
-      return { stato: "ATTENZIONE", azione: "GESTISCI", ...no };
-    }
-    return { stato: "COLLEGATA", azione: "GESTISCI", ...no };
+    if (i.sospesa) return { stato: "IN_PAUSA", azione: "GESTISCI", ...no };
+    const azione: AzioneCliente = NEL_WIZARD.has(i.status) ? "RIPRENDI" : "GESTISCI";
+    if (i.verificaInCorso) return { stato: "VERIFICA_IN_CORSO", azione, ...no };
+    if (NEL_WIZARD.has(i.status)) return { stato: "CONFIGURAZIONE_NECESSARIA", azione, ...no };
+    if (i.status === "REAUTH_REQUIRED" || i.salute === "AUTH_REQUIRED") return { stato: "CREDENZIALI_SCADUTE", azione, ...no };
+    if (i.status === "DISABLED") return { stato: "IN_PAUSA", azione, ...no };
+    if (i.status === "ERROR" || i.salute === "ERROR" || i.salute === "DEGRADED") return { stato: "ERRORE_CONNESSIONE", azione, ...no };
+    return { stato: "COLLEGATO", azione, ...no };
   }
 
+  const base: StatoCliente = anteprima ? "IN_ANTEPRIMA" : "NON_COLLEGATO";
   const inviata = (k: TipoRichiesta) => x.richiesta?.kind === k && x.richiesta.status === "PENDING";
 
   if (x.motivoTecnico === "coming_soon") {
     return { stato: "PROSSIMAMENTE", azione: inviata("NOTIFY") ? "AVVISO_ATTIVO" : "AVVISAMI", ...no };
   }
   if (x.motivoTecnico === "platform_not_configured" || x.motivoTecnico === "encryption_unavailable") {
-    return { stato: base, azione: inviata("ACCESS") ? "RICHIESTA_INVIATA" : "RICHIEDI_ATTIVAZIONE", inAttivazione: true };
+    return { stato: base, azione: inviata("ACCESS") ? "RICHIESTA_INVIATA" : "RICHIEDI_ATTIVAZIONE", inAttivazione: true, anteprima };
   }
   if (richiedeAccessoBeta(x.fase) && !x.betaAbilitata) {
-    return { stato: "ANTEPRIMA", azione: inviata("ACCESS") ? "RICHIESTA_INVIATA" : "RICHIEDI_ATTIVAZIONE", ...no };
+    return { stato: "IN_ANTEPRIMA", azione: inviata("ACCESS") ? "RICHIESTA_INVIATA" : "RICHIEDI_ATTIVAZIONE", ...no };
   }
   return { stato: base, azione: "COLLEGA", ...no };
 }
@@ -125,7 +173,7 @@ export const CATEGORIA_CLIENTE: Record<Categoria, string> = {
   POS: "Cassa e POS",
   PAGAMENTI: "Pagamenti",
   PRENOTAZIONI: "Prenotazioni e portali",
-  MARKETING: "Marketing",
+  MARKETING: "Marketing e comunicazione",
   ANALYTICS: "Statistiche",
   CRM: "Clienti",
   PMS: "Hotel",
@@ -194,7 +242,37 @@ export const GRUPPI_SYNC: GruppoSync[] = [
     vantaggio: "Sincronizzare i dati di vendita",
     capacita: ["payments.read", "payment_methods"],
   },
+  {
+    chiave: "profilo",
+    etichetta: "Profilo collegato",
+    descrizione: "Foodtech controlla che la pagina, il profilo o il numero restino collegati e ne legge nome e stato.",
+    vantaggio: "Controllare da Foodtech lo stato del profilo collegato",
+    capacita: ["profile"],
+  },
 ];
+
+/**
+ * **Che cosa fa davvero, adesso**, per la pagina di un'integrazione
+ * collegata: gli interruttori che il fornitore offre, accesi o spenti, e le
+ * capacità che l'adattatore ha ma che Foodtech non usa ancora — dette «in
+ * preparazione», mai presentate come operative.
+ */
+export type Funzionalita = { etichetta: string; stato: "attiva" | "spenta" | "in_preparazione" };
+
+const IN_PREPARAZIONE: Partial<Record<Capacita, string>> = {
+  "orders.write": "Invio degli ordini alla cassa",
+};
+
+export function funzionalitaPerIlCliente(offerte: readonly string[], accese: readonly string[]): Funzionalita[] {
+  const gruppi: Funzionalita[] = gruppiDi(offerte).map((g) => ({
+    etichetta: g.vantaggio,
+    stato: g.capacita.some((c) => offerte.includes(c) && accese.includes(c)) ? "attiva" : "spenta",
+  }));
+  const dopo: Funzionalita[] = Object.entries(IN_PREPARAZIONE)
+    .filter(([c]) => offerte.includes(c))
+    .map(([, etichetta]) => ({ etichetta: etichetta!, stato: "in_preparazione" }));
+  return [...gruppi, ...dopo];
+}
 
 /** Accese sempre, se il fornitore le ha: senza le sedi non si sceglie il punto vendita. */
 const SEMPRE: Capacita[] = ["locations"];
@@ -256,6 +334,8 @@ export type VoceCliente = {
   categoria: string;
   descrizione: string;
   monogramma: string;
+  /** Il logo ufficiale, dove il marchio lo concede; altrimenti il monogramma. */
+  logo: string | null;
   /** Come si entra: la pagina del fornitore (`oauth`), un modulo, o la pagina Foodtech che lo gestisce già. */
   accesso: "oauth" | "modulo" | "nativa";
   hrefNativa: string | null;
@@ -268,6 +348,8 @@ export type VoceCliente = {
   campiSede: CampoCliente[];
   titoloSede: string;
   gruppi: { chiave: string; etichetta: string; descrizione: string }[];
+  /** Porta dati in Foodtech (tavoli, menu, ordini). Falso per i collegamenti di solo profilo (Facebook, WhatsApp…). */
+  portaDati: boolean;
   /** Cassa in Cloud: gli aggiornamenti istantanei si attivano dal pannello del fornitore. */
   aggiornamentiManuali: boolean;
 };
@@ -304,6 +386,7 @@ export function vistaVoceCliente(voce: VoceCatalogo): VoceCliente {
     categoria: CATEGORIA_CLIENTE[voce.categoria],
     descrizione: voce.descrizione,
     monogramma: voce.logo.monogramma,
+    logo: voce.logo.src ?? null,
     accesso: voce.nativa ? "nativa" : voce.autenticazione.modalita === "OAUTH2" ? "oauth" : "modulo",
     hrefNativa: voce.nativa?.href ?? null,
     vantaggi: gruppi.map((g) => g.vantaggio),
@@ -313,6 +396,7 @@ export function vistaVoceCliente(voce: VoceCatalogo): VoceCliente {
     campiSede: voce.configurazione.filter((c) => !eCampoDiAccesso(c, voce)).map((c) => campoCliente(c, voce)),
     titoloSede: voce.cliente?.titoloSede ?? "Sede",
     gruppi: gruppi.map((g) => ({ chiave: g.chiave, etichetta: g.etichetta, descrizione: g.descrizione })),
+    portaDati: gruppi.some((g) => g.chiave !== "profilo"),
     aggiornamentiManuali: !!voce.webhook.configurazioneManuale,
   };
 }

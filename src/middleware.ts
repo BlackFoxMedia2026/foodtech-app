@@ -79,6 +79,10 @@ function ruleFor(req: NextRequest): Guarded | null {
   if (pathname.startsWith("/api/integrations/oauth/callback/")) {
     return { rule: RATE_LIMITS.integrationOauth, bucket: "integration-oauth", methods: ["GET"] };
   }
+  // Il collegamento di consegna delle credenziali: un codice da 24 byte non si indovina, ma non si prova a raffica.
+  if (pathname.startsWith("/api/integrations/consegna/")) {
+    return { rule: RATE_LIMITS.integrationOauth, bucket: "integration-consegna", methods: ["GET"] };
+  }
   if (pathname === "/api/public/recupero-password") {
     return { rule: RATE_LIMITS.recupero, bucket: "recupero", methods: ["POST"] };
   }

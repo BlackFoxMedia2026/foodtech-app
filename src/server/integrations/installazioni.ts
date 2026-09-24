@@ -453,7 +453,20 @@ export async function completaOAuth(
   const dopo = await applicaEvento(i, { tipo: "autenticato" }, { lastErrorCode: null, lastError: null, lastErrorAt: null });
   // Mai i token nel registro: solo che è successo, e con quali permessi.
   await recordAudit(a.audit, "integration.authorize", "integration", i.id, { slug, scopes: nuove.scopes });
+  await chiudiConsegneAperte(a.venueId, slug);
   return dopo;
+}
+
+/**
+ * Le credenziali sono entrate, accettate dal fornitore: i collegamenti di
+ * consegna preparati da Foodtech per questa integrazione hanno fatto il loro
+ * lavoro (`assistenza.ts`), comunque il cliente sia arrivato al wizard.
+ */
+async function chiudiConsegneAperte(venueId: string, slug: string) {
+  await db.integrationCredentialHandoff.updateMany({
+    where: { venueId, integrationSlug: slug, completedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+    data: { completedAt: new Date() },
+  });
 }
 
 /** Chiave API, utente e password, token: dal modulo alle credenziali. */
@@ -472,6 +485,7 @@ export async function connettiConCampi(a: Attore, slug: string, campi: Record<st
   }
   const dopo = await applicaEvento(i, { tipo: "autenticato" });
   await recordAudit(a.audit, "integration.authorize", "integration", i.id, { slug, campi: Object.keys(campi) });
+  await chiudiConsegneAperte(a.venueId, slug);
   return dopo;
 }
 
@@ -641,6 +655,10 @@ export async function provaConnessione(
   bloccaSeSospesa(i);
 
   const correlationId = correlazione ?? nuovoCorrelationId();
+  /* «Verifica in corso» per chi guarda la scheda nel frattempo (un'altra
+     scheda del browser, l'amministratore Foodtech). Non cambia lo stato:
+     finisce con l'esito, qualunque sia. */
+  await db.integrationInstallation.updateMany({ where: { id: i.id, venueId: a.venueId }, data: { testStartedAt: new Date() } });
   try {
     const esito = await adattatore.provaConnessione(await contestoFresco(i, origine, correlationId));
     const sede = esito.sedi.find((s) => s.externalId === i.externalLocationId) ?? null;
@@ -648,6 +666,7 @@ export async function provaConnessione(
     const avvisi = [...esito.avvisi, ...avvisiGruppo];
 
     await applicaEvento(i, { tipo: "prova_riuscita" }, {
+      testStartedAt: null,
       lastTestAt: new Date(),
       lastTestOk: true,
       externalAccountId: esito.account?.externalId ?? i.externalAccountId,
@@ -661,10 +680,17 @@ export async function provaConnessione(
   } catch (err) {
     const e = normalizzaErrore(err, correlationId);
     await applicaEvento(i, { tipo: "prova_fallita", codice: e.codice }, {
+      testStartedAt: null,
       lastTestAt: new Date(),
       lastTestOk: false,
       ...campiErrore(e),
-    }).catch(() => registraErrore(i, e));
+    }).catch(async () => {
+      await registraErrore(i, e);
+      await db.integrationInstallation.updateMany({
+        where: { id: i.id, venueId: a.venueId },
+        data: { testStartedAt: null, lastTestAt: new Date(), lastTestOk: false },
+      });
+    });
     await recordAudit(a.audit, "integration.test", "integration", i.id, { slug, ok: false, codice: e.codice });
     const m = messaggioPerIlRistoratore(e.codice, voce.nome, voce.messaggi);
     return { ok: false, titolo: m.titolo, spiegazione: m.spiegazione, azione: m.azione, correlationId: e.correlationId };

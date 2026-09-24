@@ -15,7 +15,7 @@ import type { CampoCliente } from "@/server/integrations/cliente";
 import type { DettaglioCliente } from "@/server/integrations/vista-cliente";
 import { azione, ErroreAzione } from "./azioni";
 import { AiutoCredenziali } from "./aiuto-credenziali";
-import { Monogramma } from "./segni";
+import { Logo } from "./segni";
 
 /**
  * **Il wizard di collegamento: cinque passi, uno per schermata.**
@@ -129,7 +129,7 @@ export function WizardCollegamento({
   return (
     <div className="mx-auto w-full max-w-2xl space-y-4">
       <div className="flex items-center gap-3">
-        <Monogramma testo={voce.monogramma} />
+        <Logo src={voce.logo} testo={voce.monogramma} />
         <div className="min-w-0 flex-1">
           <p className="t-etichetta">Collega</p>
           <h1 className="truncate text-display text-xl">{voce.nome}</h1>
@@ -245,7 +245,9 @@ export function WizardCollegamento({
               }
               setAvvisi([
                 ...esito.avvisi,
-                ...(esito.daControllare ? [`La connessione funziona, ma ${voce.nome} segnala qualcosa da controllare sulla cassa. Se gli ordini non arrivano, scrivici.`] : []),
+                ...(esito.daControllare ? [voce.portaDati
+                    ? `La connessione funziona, ma ${voce.nome} segnala qualcosa da controllare sulla cassa. Se gli ordini non arrivano, scrivici.`
+                    : `La connessione funziona, ma ${voce.nome} segnala qualcosa da controllare. Se hai dubbi, scrivici.`] : []),
               ]);
               setDaAttivare(true);
               router.refresh();
@@ -280,7 +282,9 @@ export function WizardCollegamento({
             <div>
               <h2 className="t-titolo-sezione">Pronta</h2>
               <p className="mt-1 text-sm text-muted-foreground">{voce.nome} è collegata a Foodtech.</p>
-              <p className="t-nota mt-1">Stiamo leggendo i dati dalla cassa: ci vorrà qualche minuto.</p>
+              <p className="t-nota mt-1">
+                {voce.portaDati ? "Stiamo leggendo i dati dalla cassa: ci vorrà qualche minuto." : "Da qui in poi Foodtech controlla che resti collegata."}
+              </p>
             </div>
             <Button
               variant="accent"

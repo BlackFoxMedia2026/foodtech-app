@@ -32,7 +32,7 @@ export const ETICHETTA_CATEGORIA: Record<Categoria, string> = {
   POS: "Cassa (POS)",
   PAGAMENTI: "Pagamenti",
   PRENOTAZIONI: "Prenotazioni e portali",
-  MARKETING: "Marketing",
+  MARKETING: "Marketing e comunicazione",
   ANALYTICS: "Analytics",
   CRM: "CRM",
   PMS: "Hotel (PMS)",
@@ -129,6 +129,7 @@ export const CAPACITA = {
   events: { label: "Eventi di analytics", descrizione: "Invia gli eventi di conversione." },
   calls: { label: "Chiamate", descrizione: "Riceve le chiamate e il numero di chi chiama." },
   charges: { label: "Incassi", descrizione: "Incassa pagamenti online." },
+  profile: { label: "Profilo collegato", descrizione: "Verifica la pagina, il profilo o il numero collegato e ne legge nome e stato." },
 } as const;
 
 export type Capacita = keyof typeof CAPACITA;

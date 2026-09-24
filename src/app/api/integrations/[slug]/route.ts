@@ -26,6 +26,7 @@ import { origineDellaPiattaforma } from "@/server/integrations/sync";
 import { dettaglioCliente } from "@/server/integrations/vista-cliente";
 import { capacitaDaGruppi, provaPerIlCliente } from "@/server/integrations/cliente";
 import { richiediAttivazione } from "@/server/integrations/richieste";
+import { chiediAssistenza, revocaDelega } from "@/server/integrations/assistenza";
 import { importaIniziale } from "@/server/integrations/importazione";
 import { COOKIE_NONCE, DURATA_STATE_MS } from "@/server/integrations/oauth-state";
 
@@ -90,6 +91,9 @@ const Azione = z.discriminatedUnion("azione", [
   z.object({ azione: z.literal("gruppi"), gruppi: z.array(z.string().max(40)).max(20) }),
   /* L'importazione iniziale: copiare in Foodtech sala e menu della cassa. */
   z.object({ azione: z.literal("importa"), tavoli: z.boolean(), menu: z.boolean() }),
+  /* «Chiedi aiuto a Foodtech», con o senza la delega a configurare (`assistenza.ts`). */
+  z.object({ azione: z.literal("assistenza"), nota: z.string().max(1000).nullable().optional(), delega: z.boolean() }),
+  z.object({ azione: z.literal("revoca_delega") }),
 ]);
 
 const PERMESSO: Record<z.infer<typeof Azione>["azione"], Ability> = {
@@ -108,6 +112,9 @@ const PERMESSO: Record<z.infer<typeof Azione>["azione"], Ability> = {
   richiedi: "integration:install",
   gruppi: "integration:configure",
   importa: "integration:configure",
+  // Autorizzare Foodtech a configurare è un potere di chi può collegare.
+  assistenza: "integration:install",
+  revoca_delega: "integration:install",
 };
 
 export async function POST(req: Request, { params }: { params: { slug: string } }) {
@@ -201,6 +208,14 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
 
       case "importa":
         return NextResponse.json(await importaIniziale(attore, slug, { tavoli: corpo.tavoli, menu: corpo.menu }));
+
+      case "assistenza": {
+        const r = await chiediAssistenza(attore, slug, { nota: corpo.nota, delega: corpo.delega });
+        return NextResponse.json({ ok: true, delegaFinoAl: r.delegatedUntil?.toISOString() ?? null });
+      }
+
+      case "revoca_delega":
+        return NextResponse.json(await revocaDelega(attore, slug));
 
       case "sincronizza": {
         const esito = await chiediSincronizzazione(attore, slug);

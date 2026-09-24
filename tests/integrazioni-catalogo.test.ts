@@ -4,6 +4,10 @@ import { adattatoreDi, slugConAdattatore } from "@/server/integrations/adapters"
 import { eAdattatorePos, METODI_PER_CAPACITA } from "@/server/integrations/adapters/tipi";
 import { CAPACITA, CATEGORIE } from "@/server/integrations/tipi";
 import { SCOPE } from "@/server/integrations/adapters/lightspeed-k/config";
+import { SCOPE_FACEBOOK, SCOPE_INSTAGRAM } from "@/server/integrations/adapters/meta/config";
+import { SCOPE as SCOPE_GOOGLE } from "@/server/integrations/adapters/google-business";
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * **Il catalogo non deve poter mentire.**
@@ -32,18 +36,8 @@ describe("catalogo delle integrazioni", () => {
     const attese: Record<string, string[]> = {
       POS: ["lightspeed-k", "oracle-simphony", "icg", "cassa-in-cloud", "tilby", "passepartout", "zucchetti"],
       PAGAMENTI: ["stripe", "adyen", "google-pay", "apple-pay", "paynopain"],
-      PRENOTAZIONI: [
-        "google",
-        "google-maps",
-        "facebook",
-        "instagram",
-        "opentable",
-        "resy",
-        "amadeus",
-        "simple-night",
-        "petal-maps",
-      ],
-      MARKETING: ["mailchimp", "brevo"],
+      PRENOTAZIONI: ["google", "google-maps", "opentable", "resy", "amadeus", "simple-night", "petal-maps"],
+      MARKETING: ["facebook", "instagram", "whatsapp-business", "google-business-profile", "mailchimp", "brevo"],
       ANALYTICS: ["ga4", "gtm"],
       CRM: ["salesforce"],
       TELEFONIA: ["jusan", "gamma"],
@@ -168,6 +162,55 @@ describe("catalogo delle integrazioni", () => {
     for (const c of ["payments.write", "close_order", "payment_methods", "customers"]) expect(v.capacita).not.toContain(c);
     expect(v.notaInstallazione).toMatch(/piano compatibile con l'accesso API/);
     expect(v.notaInstallazione).not.toMatch(/€|\d+[,.]\d{2}/);
+  });
+
+  it("i loghi: solo file ufficiali presenti e leggeri, solo per i marchi che lo concedono, ognuno con la sua provenienza", () => {
+    /* Chi aggiunge un logo qui deve prima leggere le regole del marchio e
+       scriverle in `logo.marchio`. Google, Lightspeed e Oracle chiedono
+       un'autorizzazione scritta: finché non c'è, niente file. */
+    const CONCESSI = new Set(["stripe", "facebook", "instagram", "whatsapp-business"]);
+    for (const v of CATALOGO) {
+      expect(v.logo.marchio.length, v.slug).toBeGreaterThan(20);
+      if (!v.logo.src) continue;
+      expect(CONCESSI, `${v.slug}: logo senza permesso documentato`).toContain(v.slug);
+      expect(v.logo.src).toMatch(/^\/integrazioni\/loghi\/[a-z0-9-]+\.(svg|png)$/);
+      const file = join(process.cwd(), "public", v.logo.src);
+      expect(existsSync(file), file).toBe(true);
+      expect(statSync(file).size, `${v.slug}: logo troppo pesante`).toBeLessThan(40_000);
+    }
+    for (const s of ["lightspeed-k", "oracle-simphony", "google-business-profile", "cassa-in-cloud", "tilby"]) {
+      expect(voceDi(s)!.logo.src, s).toBeUndefined();
+    }
+  });
+
+  it("marketing: Facebook, Instagram, WhatsApp e Google Business Profile collegano soltanto, e lo dicono", () => {
+    for (const s of ["facebook", "instagram", "whatsapp-business", "google-business-profile"]) {
+      const v = voceDi(s)!;
+      expect(v.categoria, s).toBe("MARKETING");
+      expect(v.implementazione, s).toBe("IN_DEVELOPMENT");
+      expect(v.disponibilita, s).toBe("PREVIEW");
+      // Solo il profilo collegato: pubblicare, recensioni e messaggi non sono dichiarati.
+      expect(v.capacita, s).toEqual(["profile"]);
+      expect(v.mancaPerOperare.some((m) => /il codice no|Il codice non c'è/.test(m)), s).toBe(true);
+    }
+    expect(voceDi("facebook")!.autenticazione.scope).toEqual([...SCOPE_FACEBOOK]);
+    expect(voceDi("instagram")!.autenticazione.scope).toEqual([...SCOPE_INSTAGRAM]);
+    expect(voceDi("google-business-profile")!.autenticazione.scope).toEqual([...SCOPE_GOOGLE]);
+    // WhatsApp con il token dell'utente di sistema: nessuna variabile della piattaforma.
+    expect(voceDi("whatsapp-business")!.autenticazione.modalita).toBe("TOKEN");
+    expect(voceDi("whatsapp-business")!.requisitiPiattaforma).toEqual([]);
+    expect(voceDi("facebook")!.requisitiPiattaforma).toEqual(["META_APP_ID", "META_APP_SECRET"]);
+    expect(voceDi("google-business-profile")!.requisitiPiattaforma).toEqual(["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"]);
+  });
+
+  it("Zucchetti e Passepartout restano da sviluppare, e dicono che cosa manca davvero", () => {
+    for (const s of ["zucchetti", "passepartout"]) {
+      const v = voceDi(s)!;
+      expect(v.implementazione, s).toBe("PLANNED");
+      expect(adattatoreDi(s), s).toBeNull();
+      expect(v.mancaPerOperare.join(" "), s).toMatch(/documentazione|API/i);
+    }
+    expect(voceDi("zucchetti")!.descrizione).toMatch(/Tilby/);
   });
 
   it("i requisiti della piattaforma si leggono per nome, mai per valore", () => {

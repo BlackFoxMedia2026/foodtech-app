@@ -1,8 +1,9 @@
 import { Check } from "lucide-react";
 import type { DettaglioCliente } from "@/server/integrations/vista-cliente";
 import { AiutoCredenziali } from "./aiuto-credenziali";
-import { Monogramma, PillolaStato, giorno } from "./segni";
+import { Logo, PillolaStato, SegnoAnteprima, giorno } from "./segni";
 import { PulsanteAzione } from "./pulsante-azione";
+import { AssistenzaCliente } from "./assistenza-cliente";
 
 /**
  * **La pagina di un'integrazione non ancora collegata.** Poche righe e un
@@ -33,12 +34,13 @@ export function PresentazioneIntegrazione({ dettaglio, puoCollegare }: { dettagl
     <div className="mx-auto w-full max-w-2xl">
       <section className="riquadro comodo space-y-6 bg-card/50 p-6 md:p-8">
         <div className="flex items-center gap-4">
-          <Monogramma testo={voce.monogramma} grande />
+          <Logo src={voce.logo} testo={voce.monogramma} grande />
           <div className="min-w-0">
             <h1 className="text-display text-2xl">{voce.nome}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="t-nota">{voce.categoria}</span>
               <PillolaStato stato={dettaglio.stato} etichetta={dettaglio.etichettaStato} />
+              {dettaglio.anteprima && !prossimamente && dettaglio.stato !== "IN_ANTEPRIMA" && <SegnoAnteprima />}
             </div>
           </div>
         </div>
@@ -56,6 +58,9 @@ export function PresentazioneIntegrazione({ dettaglio, puoCollegare }: { dettagl
                 </li>
               ))}
             </ul>
+            {dettaglio.anteprima && (
+              <p className="t-nota mt-2">In anteprima: la stiamo provando con i primi ristoranti, e alcune funzioni possono cambiare.</p>
+            )}
           </div>
         )}
 
@@ -88,6 +93,11 @@ export function PresentazioneIntegrazione({ dettaglio, puoCollegare }: { dettagl
           )}
         </div>
       </section>
+      {!prossimamente && (
+        <div className="mt-4">
+          <AssistenzaCliente dettaglio={dettaglio} puo={puoCollegare} />
+        </div>
+      )}
     </div>
   );
 }

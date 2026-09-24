@@ -3,6 +3,8 @@ import { lightspeedK } from "./lightspeed-k";
 import { cassaInCloud } from "./cassa-in-cloud";
 import { tilby } from "./tilby";
 import { oracleSimphony } from "./oracle-simphony";
+import { facebook, instagram, whatsappBusiness } from "./meta";
+import { googleBusinessProfile } from "./google-business";
 
 /**
  * Quale codice parla con quale fornitore.
@@ -16,6 +18,10 @@ const ADATTATORI = new Map<string, IntegrationAdapter>([
   [cassaInCloud.slug, cassaInCloud],
   [tilby.slug, tilby],
   [oracleSimphony.slug, oracleSimphony],
+  [facebook.slug, facebook],
+  [instagram.slug, instagram],
+  [whatsappBusiness.slug, whatsappBusiness],
+  [googleBusinessProfile.slug, googleBusinessProfile],
 ]);
 
 export function adattatoreDi(slug: string): IntegrationAdapter | null {

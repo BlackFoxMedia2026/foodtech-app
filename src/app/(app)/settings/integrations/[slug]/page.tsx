@@ -33,7 +33,7 @@ export default async function IntegrazionePage({
   searchParams,
 }: {
   params: { slug: string };
-  searchParams: { collega?: string; installa?: string; esito?: string; passo?: string };
+  searchParams: { collega?: string; installa?: string; esito?: string; passo?: string; consegna?: string };
 }) {
   const ctx = await getActiveVenue();
   const voce = voceDi(params.slug);
@@ -85,6 +85,12 @@ export default async function IntegrazionePage({
       {indietro}
       <div className="fill-scroll pr-0.5">
         <div className="space-y-4 pb-6">
+          {wizard && searchParams.consegna === "1" && (
+            <p role="status" className="riquadro mx-auto max-w-2xl border-accent/40 bg-accent/10 p-3 text-sm">
+              Sei qui dal collegamento dell&apos;assistenza Foodtech. Inserisci tu i dati di accesso di {voce.nome}: restano cifrati e
+              nessuno, nemmeno Foodtech, potrà rileggerli.
+            </p>
+          )}
           {wizard ? (
             <WizardCollegamento dettaglio={d} esitoOAuth={searchParams.esito ?? null} passoRichiesto={passo} />
           ) : inst ? (

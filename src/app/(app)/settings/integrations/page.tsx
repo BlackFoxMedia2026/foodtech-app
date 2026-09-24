@@ -18,8 +18,19 @@ export const dynamic = "force-dynamic";
  * È la vista del cliente (`vista-cliente.ts`): cinque stati e un pulsante.
  * Quella di Foodtech sta in /admin/integrazioni.
  */
-export default async function IntegrazioniPage() {
+/** Perché un collegamento di consegna mandato da Foodtech non si è aperto (`/api/integrations/consegna`). */
+const CONSEGNA: Record<string, string> = {
+  scaduto: "Il collegamento che ti ha mandato Foodtech è scaduto. Chiedine uno nuovo all'assistenza.",
+  revocato: "Il collegamento che ti ha mandato Foodtech non vale più: ne è stato preparato uno più recente.",
+  usato: "I dati di accesso sono già stati inseriti con questo collegamento. Trovi l'integrazione qui sotto.",
+  non_membro:
+    "Questo collegamento è per un locale di cui non sei amministratore. Accedi con l'account di chi gestisce il locale, o chiedi a Foodtech.",
+  sconosciuto: "Il collegamento non è valido. Controlla di averlo copiato per intero.",
+};
+
+export default async function IntegrazioniPage({ searchParams }: { searchParams: { consegna?: string } }) {
   const ctx = await getActiveVenue();
+  const avvisoConsegna = searchParams.consegna ? CONSEGNA[searchParams.consegna] ?? null : null;
 
   if (!can(ctx.role, "integration:view")) {
     return (
@@ -55,7 +66,12 @@ export default async function IntegrazioniPage() {
       </header>
 
       <div className="fill-scroll pr-0.5">
-        <div className="pb-4">
+        <div className="space-y-4 pb-4">
+          {avvisoConsegna && (
+            <p role="status" className="riquadro border-accent/40 bg-accent/10 p-3 text-sm">
+              {avvisoConsegna}
+            </p>
+          )}
           <CatalogoIntegrazioni schede={schede} puoCollegare={can(ctx.role, "integration:install")} />
         </div>
       </div>

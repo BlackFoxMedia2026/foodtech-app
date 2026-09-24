@@ -28,15 +28,19 @@ import {
   provaPerIlCliente,
   statoPerIlCliente,
   vistaVoceCliente,
+  verificaInCorso,
+  STATI_CLIENTE,
+  ETICHETTA_STATO_CLIENTE,
   type IngressoStato,
 } from "@/server/integrations/cliente";
+import { STATI_INSTALLAZIONE } from "@/server/integrations/tipi";
 import { CATALOGO, voceDi } from "@/server/integrations/registry";
 import { FIXTURE } from "./fixture-cassa-in-cloud";
 
 /**
  * **L'esperienza del cliente: semplice davanti, tutto il resto dietro.**
  *
- * Due metà. Le regole pure (`cliente.ts`): i cinque stati, il pulsante, gli
+ * Due metà. Le regole pure (`cliente.ts`): gli stati della connessione, il pulsante, gli
  * interruttori di sincronizzazione, i campi del wizard per ogni fornitore.
  * E contro il database vero, con Cassa in Cloud finto: il catalogo e la
  * pagina del cliente non portano parole tecniche né segreti, l'anteprima
@@ -88,19 +92,19 @@ const base: IngressoStato = {
   richiesta: null,
 };
 
-describe("i cinque stati del cliente", () => {
+describe("gli stati della connessione visti dal cliente", () => {
   it("anteprima senza accesso beta: «In anteprima» e «Richiedi attivazione»", () => {
-    expect(statoPerIlCliente(base)).toEqual({ stato: "ANTEPRIMA", azione: "RICHIEDI_ATTIVAZIONE", inAttivazione: false });
+    expect(statoPerIlCliente(base)).toEqual({ stato: "IN_ANTEPRIMA", azione: "RICHIEDI_ATTIVAZIONE", inAttivazione: false, anteprima: true });
   });
 
   it("anteprima con accesso beta: «In anteprima» e «Collega»", () => {
-    expect(statoPerIlCliente({ ...base, betaAbilitata: true })).toMatchObject({ stato: "ANTEPRIMA", azione: "COLLEGA" });
+    expect(statoPerIlCliente({ ...base, betaAbilitata: true })).toMatchObject({ stato: "IN_ANTEPRIMA", azione: "COLLEGA" });
     // La beta pubblica non chiede l'accesso: si collega, e resta un'anteprima.
-    expect(statoPerIlCliente({ ...base, fase: "PUBLIC_BETA" })).toMatchObject({ stato: "ANTEPRIMA", azione: "COLLEGA" });
+    expect(statoPerIlCliente({ ...base, fase: "PUBLIC_BETA" })).toMatchObject({ stato: "IN_ANTEPRIMA", azione: "COLLEGA" });
   });
 
-  it("disponibilità generale: «Disponibile»", () => {
-    expect(statoPerIlCliente({ ...base, fase: "GENERAL_AVAILABILITY" })).toMatchObject({ stato: "DISPONIBILE", azione: "COLLEGA" });
+  it("disponibilità generale: «Non collegato» e «Collega», senza il segno di anteprima", () => {
+    expect(statoPerIlCliente({ ...base, fase: "GENERAL_AVAILABILITY" })).toMatchObject({ stato: "NON_COLLEGATO", azione: "COLLEGA", anteprima: false });
   });
 
   it("senza adattatore: «Prossimamente» e «Avvisami», poi «Ti avviseremo»", () => {
@@ -112,7 +116,7 @@ describe("i cinque stati del cliente", () => {
 
   it("manca una credenziale globale di Foodtech: niente modulo, «in fase di attivazione», anche con la beta", () => {
     const e = statoPerIlCliente({ ...base, motivoTecnico: "platform_not_configured", betaAbilitata: true });
-    expect(e).toEqual({ stato: "ANTEPRIMA", azione: "RICHIEDI_ATTIVAZIONE", inAttivazione: true });
+    expect(e).toEqual({ stato: "IN_ANTEPRIMA", azione: "RICHIEDI_ATTIVAZIONE", inAttivazione: true, anteprima: true });
   });
 
   it("richiesta inviata: il pulsante si spegne; chiusa, torna", () => {
@@ -120,25 +124,54 @@ describe("i cinque stati del cliente", () => {
     expect(statoPerIlCliente({ ...base, richiesta: { kind: "ACCESS", status: "DISMISSED" } }).azione).toBe("RICHIEDI_ATTIVAZIONE");
   });
 
-  it("installata: «Collegata», o «Richiede attenzione» quando c'è da fare qualcosa", () => {
-    const con = (status: string, salute = "HEALTHY", sospesa = false) =>
-      statoPerIlCliente({ ...base, installazione: { status: status as never, salute: salute as never, sospesa } });
-    expect(con("ACTIVE")).toMatchObject({ stato: "COLLEGATA", azione: "GESTISCI" });
-    expect(con("SYNCING")).toMatchObject({ stato: "COLLEGATA" });
-    expect(con("REAUTH_REQUIRED", "AUTH_REQUIRED")).toMatchObject({ stato: "ATTENZIONE" });
-    expect(con("ERROR", "ERROR")).toMatchObject({ stato: "ATTENZIONE" });
-    expect(con("ACTIVE", "DEGRADED")).toMatchObject({ stato: "ATTENZIONE" });
-    expect(con("DISABLED")).toMatchObject({ stato: "ATTENZIONE" });
-    expect(con("ACTIVE", "HEALTHY", true)).toMatchObject({ stato: "ATTENZIONE" });
-    expect(con("NEEDS_CONFIGURATION")).toMatchObject({ azione: "RIPRENDI" });
+  it("installata: lo stato della connessione, con le parole chieste", () => {
+    const con = (status: string, salute = "HEALTHY", sospesa = false, verificaInCorso = false) =>
+      statoPerIlCliente({ ...base, installazione: { status: status as never, salute: salute as never, sospesa, verificaInCorso } });
+    expect(con("ACTIVE")).toMatchObject({ stato: "COLLEGATO", azione: "GESTISCI" });
+    expect(con("SYNCING")).toMatchObject({ stato: "COLLEGATO" });
+    expect(con("REAUTH_REQUIRED", "AUTH_REQUIRED")).toMatchObject({ stato: "CREDENZIALI_SCADUTE", azione: "GESTISCI" });
+    expect(con("ERROR", "ERROR")).toMatchObject({ stato: "ERRORE_CONNESSIONE" });
+    expect(con("ACTIVE", "DEGRADED")).toMatchObject({ stato: "ERRORE_CONNESSIONE" });
+    expect(con("DISABLED")).toMatchObject({ stato: "IN_PAUSA" });
+    expect(con("ACTIVE", "HEALTHY", true)).toMatchObject({ stato: "IN_PAUSA" });
+    for (const s of ["INSTALLING", "NEEDS_CONFIGURATION", "CONNECTED"]) {
+      expect(con(s)).toMatchObject({ stato: "CONFIGURAZIONE_NECESSARIA", azione: "RIPRENDI" });
+    }
+    expect(con("ACTIVE", "HEALTHY", false, true)).toMatchObject({ stato: "VERIFICA_IN_CORSO", azione: "GESTISCI" });
+    expect(con("NEEDS_CONFIGURATION", "UNKNOWN", false, true)).toMatchObject({ stato: "VERIFICA_IN_CORSO", azione: "RIPRENDI" });
   });
 
-  it("ogni stato tecnico finisce in uno dei cinque", () => {
+  it("un'anteprima collegata è «Collegato», e porta a parte il segno di anteprima", () => {
+    const e = statoPerIlCliente({ ...base, betaAbilitata: true, installazione: { status: "ACTIVE", salute: "HEALTHY", sospesa: false } });
+    expect(e).toMatchObject({ stato: "COLLEGATO", anteprima: true });
+  });
+
+  it("la verifica in corso finisce con l'esito, o dopo un minuto", () => {
+    const t0 = new Date("2026-09-24T10:00:00Z");
+    expect(verificaInCorso({ testStartedAt: t0, lastTestAt: null }, new Date(t0.getTime() + 5_000))).toBe(true);
+    expect(verificaInCorso({ testStartedAt: t0, lastTestAt: new Date(t0.getTime() + 2_000) }, new Date(t0.getTime() + 5_000))).toBe(false);
+    expect(verificaInCorso({ testStartedAt: t0, lastTestAt: null }, new Date(t0.getTime() + 61_000))).toBe(false);
+    expect(verificaInCorso({ testStartedAt: null, lastTestAt: null })).toBe(false);
+  });
+
+  it("ogni stato tecnico finisce in uno degli stati del cliente", () => {
     const stati = new Set<string>();
     for (const fase of ["INTERNAL", "PRIVATE_BETA", "PUBLIC_BETA", "GENERAL_AVAILABILITY"] as const)
       for (const motivoTecnico of [null, "coming_soon", "platform_not_configured", "encryption_unavailable"] as const)
-        for (const betaAbilitata of [true, false]) stati.add(statoPerIlCliente({ ...base, fase, motivoTecnico, betaAbilitata }).stato);
-    expect([...stati].every((s) => ["DISPONIBILE", "ANTEPRIMA", "COLLEGATA", "ATTENZIONE", "PROSSIMAMENTE"].includes(s))).toBe(true);
+        for (const betaAbilitata of [true, false]) {
+          stati.add(statoPerIlCliente({ ...base, fase, motivoTecnico, betaAbilitata }).stato);
+          for (const status of STATI_INSTALLAZIONE)
+            for (const salute of ["HEALTHY", "DEGRADED", "ERROR", "AUTH_REQUIRED", "UNKNOWN"] as const)
+              stati.add(statoPerIlCliente({ ...base, fase, motivoTecnico, betaAbilitata, installazione: { status, salute, sospesa: false } }).stato);
+        }
+    expect([...stati].every((s) => (STATI_CLIENTE as readonly string[]).includes(s))).toBe(true);
+    // I sette stati chiesti ci sono tutti, più «In pausa» e «Prossimamente».
+    for (const s of ["NON_COLLEGATO", "CONFIGURAZIONE_NECESSARIA", "COLLEGATO", "ERRORE_CONNESSIONE", "CREDENZIALI_SCADUTE", "IN_ANTEPRIMA"]) {
+      expect(stati, s).toContain(s);
+    }
+    expect(Object.values(ETICHETTA_STATO_CLIENTE)).toEqual(
+      expect.arrayContaining(["Non collegato", "Configurazione necessaria", "Verifica in corso", "Collegato", "Errore di connessione", "Credenziali scadute", "In anteprima"]),
+    );
   });
 
   it("la condizione e il passo da cui riprende il wizard", () => {
@@ -361,7 +394,7 @@ async function wizard(l: Locale, chiave: string, sede = "101", gruppi: string[] 
 describe("catalogo e pagina del cliente", () => {
   it("senza accesso beta: «In anteprima», «Richiedi attivazione»; Adyen «Prossimamente», «Avvisami»", async () => {
     const schede = await catalogoCliente(B.venueId, { stripe: false });
-    expect(schede.find((s) => s.slug === SLUG)).toMatchObject({ stato: "ANTEPRIMA", etichettaStato: "In anteprima", azione: "RICHIEDI_ATTIVAZIONE" });
+    expect(schede.find((s) => s.slug === SLUG)).toMatchObject({ stato: "IN_ANTEPRIMA", etichettaStato: "In anteprima", azione: "RICHIEDI_ATTIVAZIONE" });
     expect(schede.find((s) => s.slug === "adyen")).toMatchObject({ stato: "PROSSIMAMENTE", etichettaStato: "Prossimamente", azione: "AVVISAMI" });
     senzaParoleTecniche(schede, "catalogo");
     // Il requisito del piano sta nella guida della chiave, non sulle card.
@@ -370,7 +403,7 @@ describe("catalogo e pagina del cliente", () => {
 
   it("con accesso beta: «In anteprima», «Collega»", async () => {
     const schede = await catalogoCliente(A.venueId, { stripe: false });
-    expect(schede.find((s) => s.slug === SLUG)).toMatchObject({ stato: "ANTEPRIMA", azione: "COLLEGA" });
+    expect(schede.find((s) => s.slug === SLUG)).toMatchObject({ stato: "IN_ANTEPRIMA", azione: "COLLEGA" });
   });
 
   it("Lightspeed senza il client OAuth di Foodtech: in fase di attivazione, nessun modulo", async () => {
@@ -448,13 +481,13 @@ describe("il wizard collega davvero", () => {
 
     // Collegata subito, e la sincronizzazione è un'altra cosa: in attesa.
     const prima = (await dettaglioCliente(A.venueId, SLUG))!;
-    expect(prima).toMatchObject({ stato: "COLLEGATA" });
+    expect(prima).toMatchObject({ stato: "COLLEGATO" });
     expect(prima.installazione!.sincronizzazione).toBe("in_attesa");
     expect((await catalogoCliente(A.venueId, { stripe: false })).find((s) => s.slug === SLUG)!.riga).toBe("Torino Centro · Prima sincronizzazione in attesa");
 
     await sync(A);
     const d = (await dettaglioCliente(A.venueId, SLUG))!;
-    expect(d).toMatchObject({ stato: "COLLEGATA", etichettaStato: "Collegata", azione: "GESTISCI" });
+    expect(d).toMatchObject({ stato: "COLLEGATO", etichettaStato: "Collegato", azione: "GESTISCI" });
     expect(d.installazione!.sincronizzazione).toBe("riuscita");
     expect(d.installazione).toMatchObject({ condizione: "attiva", sede: "Torino Centro", gruppiAccesi: ["tavoli", "menu"] });
     expect(d.installazione!.ultimaSyncRiuscitaIl).not.toBeNull();
@@ -475,11 +508,11 @@ describe("il wizard collega davvero", () => {
     senzaParoleTecniche(await dettaglioCliente(A.venueId, SLUG), "dettaglio collegata");
   });
 
-  it("chiave revocata: «Richiede attenzione»; ricollegata con una chiave nuova torna «Collegata»", async () => {
+  it("chiave revocata: «Credenziali scadute»; ricollegata con una chiave nuova torna «Collegato»", async () => {
     cassa.revocata = "chiave-A";
     await sync(A);
     let d = (await dettaglioCliente(A.venueId, SLUG))!;
-    expect(d.stato).toBe("ATTENZIONE");
+    expect(d.stato).toBe("CREDENZIALI_SCADUTE");
     expect(d.installazione).toMatchObject({ condizione: "da_ricollegare", passo: 0 });
     expect(d.installazione!.problema).toMatchObject({ azione: "ricollega" });
     expect(d.installazione!.problema!.titolo).toMatch(/Cassa in Cloud|API Key/);
@@ -493,25 +526,25 @@ describe("il wizard collega davvero", () => {
     await attiva(A.attore, SLUG, ORIGINE);
     // Ricollegata: «Collegata», prima sincronizzazione in attesa — non «richiede attenzione».
     d = (await dettaglioCliente(A.venueId, SLUG))!;
-    expect(d.stato).toBe("COLLEGATA");
+    expect(d.stato).toBe("COLLEGATO");
     expect(d.installazione).toMatchObject({ sincronizzazione: "in_attesa", problema: null });
     await sync(A);
     expect((await dettaglioCliente(A.venueId, SLUG))!.installazione!.sincronizzazione).toBe("riuscita");
   });
 
-  it("la prima sincronizzazione fallisce: «Richiede attenzione», con la frase e il gesto giusti", async () => {
+  it("la prima sincronizzazione fallisce: «Errore di connessione», con la frase e il gesto giusti", async () => {
     await attiva(A.attore, SLUG, ORIGINE).catch(() => undefined);
     // Una sincronizzazione nuova dopo un'attivazione: il fornitore è giù.
     await db.integrationInstallation.update({ where: { id: (await inst(A)).id }, data: { activatedAt: new Date() } });
     cassa.giu = true;
     await sync(A);
     const d = (await dettaglioCliente(A.venueId, SLUG))!;
-    expect(d.stato).toBe("ATTENZIONE");
+    expect(d.stato).toBe("ERRORE_CONNESSIONE");
     expect(d.installazione).toMatchObject({ condizione: "da_controllare", sincronizzazione: "non_riuscita" });
     expect(d.installazione!.problema).toMatchObject({ titolo: "Cassa in Cloud non risponde", azione: "riprova" });
     cassa.giu = false;
     await sync(A);
-    expect((await dettaglioCliente(A.venueId, SLUG))!).toMatchObject({ stato: "COLLEGATA" });
+    expect((await dettaglioCliente(A.venueId, SLUG))!).toMatchObject({ stato: "COLLEGATO" });
   });
 
   it("un interruttore spento non si sincronizza, e resta spento dopo disconnessione e ricollegamento", async () => {

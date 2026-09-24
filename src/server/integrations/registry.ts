@@ -39,9 +39,14 @@ import type {
  *
  * ## I loghi
  *
- * Nessun logo di terzi nel repository (vedi README: il progetto non riusa
- * asset commerciali). Ogni scheda mostra un **monogramma**; il giorno in cui
- * c'è un accordo che permette di usare il marchio, si aggiunge `logo.src`.
+ * Un logo entra solo se il titolare del marchio lo **concede** per un uso
+ * come questo (indicare un'integrazione in un catalogo), e solo il file
+ * ufficiale del suo kit, non modificato: oggi Stripe e i tre marchi Meta
+ * (Facebook, Instagram, WhatsApp). Google, Lightspeed e Oracle chiedono
+ * un'autorizzazione scritta; TeamSystem, Tilby, Zucchetti e Passepartout non
+ * pubblicano un kit. Per loro resta il **monogramma**, e `logo.marchio` dice
+ * a chi chiedere il permesso. Il test del catalogo controlla che ogni `src`
+ * esista e che nessun logo manchi della sua provenienza.
  */
 
 export type VoceCatalogo = {
@@ -55,7 +60,13 @@ export type VoceCatalogo = {
   categoria: Categoria;
   /** Una riga, per la scheda del catalogo. */
   descrizione: string;
-  logo: { monogramma: string; src?: string };
+  logo: {
+    monogramma: string;
+    /** Il file ufficiale, in `public/integrazioni/loghi`. Solo dove il marchio lo concede. */
+    src?: string;
+    /** Da dove viene il file e con quali regole, o perché non c'è e a chi chiederlo. Solo per la vista interna. */
+    marchio: string;
+  };
   implementazione: StatoImplementazione;
   disponibilita: Disponibilita;
   autenticazione: {
@@ -166,12 +177,17 @@ export type RisorsaFornitore = {
 const SERVE_PARTNERSHIP = "Un accordo di partnership con il fornitore e l'accesso alle sue API.";
 const SERVE_ADATTATORE = "L'adattatore: nessun codice parla ancora con questo fornitore.";
 const SERVE_PROVA = "Una prova dal vivo con un account vero del fornitore.";
+const MARCHIO_DA_CHIEDERE = "Nessun kit ufficiale del marchio per terzi: logo e permesso d'uso si chiedono al fornitore, con l'accordo di partnership.";
+const MARCHIO_GOOGLE =
+  "Google non concede i suoi loghi a chi non è partner (about.google/brand-resource-center/guidance): nome in testo, nessuna icona, finché non c'è un'autorizzazione scritta.";
 
 /** Una voce pianificata: solo il catalogo, niente codice, niente pulsante. */
 function pianificata(
   v: Pick<VoceCatalogo, "id" | "slug" | "nome" | "fornitore" | "categoria" | "descrizione"> & {
     monogramma: string;
     modalita: ModalitaAutenticazione;
+    /** Perché non c'è un logo, e a chi chiederlo. */
+    marchio?: string;
     documentazione?: string | null;
     manca?: string[];
     legge?: string[];
@@ -185,7 +201,7 @@ function pianificata(
     fornitore: v.fornitore,
     categoria: v.categoria,
     descrizione: v.descrizione,
-    logo: { monogramma: v.monogramma },
+    logo: { monogramma: v.monogramma, marchio: v.marchio ?? MARCHIO_DA_CHIEDERE },
     implementazione: "PLANNED",
     disponibilita: "COMING_SOON",
     autenticazione: { modalita: v.modalita, verificata: false },
@@ -213,7 +229,11 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     fornitore: "Lightspeed",
     categoria: "POS",
     descrizione: "Sincronizza sale, tavoli, menu e aliquote, e manda gli ordini alla cassa.",
-    logo: { monogramma: "Ls" },
+    logo: {
+      monogramma: "Ls",
+      marchio:
+        "Lightspeed vieta il logo senza licenza (lightspeedhq.com/legal/lightspeed-trademark-and-copyright-guidelines): i partner di integrazione la chiedono con il Toolkit di brand.lightspeedhq.com.",
+    },
     /*
       K-Series è la linea Lightspeed per la ristorazione in Europa (l'ex
       iKentoo). L'adattatore segue la documentazione pubblica ufficiale
@@ -286,7 +306,10 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     fornitore: "Oracle",
     categoria: "POS",
     descrizione: "Collega Foodtech a Oracle Simphony per sincronizzare menu, tavoli, check e operazioni di vendita.",
-    logo: { monogramma: "Os" },
+    logo: {
+      monogramma: "Os",
+      marchio: "Oracle richiede un'autorizzazione scritta per il logo, anche ai membri OPN (oracle.com/legal/logos, trademar_us@oracle.com).",
+    },
     /*
       Adattatore scritto sulla guida ufficiale di Simphony Transaction
       Services Gen2 e sul suo swagger.json (2026.08.15). Mai provato: né su un
@@ -489,7 +512,7 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     fornitore: "TeamSystem",
     categoria: "POS",
     descrizione: "Collega Foodtech alla cassa, agli ordini e ai dati del tuo punto vendita.",
-    logo: { monogramma: "CC" },
+    logo: { monogramma: "CC", marchio: "TeamSystem non pubblica un kit del marchio Cassa in Cloud: logo e permesso da chiedere a TeamSystem." },
     /*
       L'adattatore segue la documentazione ufficiale (api-doc.cassanova.com,
       letta il 23 settembre 2026) e non ha mai parlato con un account vero:
@@ -622,7 +645,7 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     fornitore: "Tilby (Zucchetti)",
     categoria: "POS",
     descrizione: "Collega Foodtech al sistema di cassa Tilby per sincronizzare menu, tavoli e ordini.",
-    logo: { monogramma: "Ti" },
+    logo: { monogramma: "Ti", marchio: "Tilby non pubblica un kit del marchio: logo e permesso da chiedere con il Developer Program." },
     /*
       Adattatore scritto sul reference ufficiale (developer.tilby.com, OpenAPI
       di ogni endpoint) e sulla guida «Stampa automatica comande e scontrini»
@@ -770,7 +793,20 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     categoria: "POS",
     descrizione: "Prodotti e vendite dal gestionale Passepartout.",
     monogramma: "Pp",
-    modalita: "MANUAL",
+    /*
+      Settembre 2026: nessun portale pubblico per sviluppatori. Mexal/Passcom
+      espone una WebAPI REST che si abilita con un gruppo utenti «Servizi
+      WebApi» (credenziali di un utente del gestionale); Welcome (hotel)
+      dichiara API pubbliche documentate solo da integratori terzi. Il modo
+      di autenticarsi non è verificato su una fonte ufficiale.
+    */
+    modalita: "BASIC",
+    documentazione: "https://www.passepartout.net/",
+    manca: [
+      "La documentazione ufficiale della WebAPI (Mexal/Passcom) o delle API di Welcome e Menu: non è pubblica, passa dalla rete dei rivenditori Passepartout.",
+      "Un accordo con Passepartout o un suo rivenditore, e un'installazione di prova.",
+      SERVE_ADATTATORE,
+    ],
   }),
   pianificata({
     id: "int_zucchetti",
@@ -778,9 +814,20 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     nome: "Zucchetti",
     fornitore: "Zucchetti",
     categoria: "POS",
-    descrizione: "Prodotti, tavoli e ordini dalle casse Zucchetti.",
+    descrizione: "Gestionali Zucchetti per la ristorazione. Per la cassa Tilby, di Zucchetti, usa la sua scheda.",
     monogramma: "Zu",
+    /*
+      Settembre 2026: dei prodotti Zucchetti per la ristorazione solo Tilby
+      ha un'API pubblica (developer.tilby.com), ed è già nel catalogo. Per
+      Zmenu e Ristorandro non si è trovata documentazione pubblica: con ogni
+      probabilità passano da partner e rivenditori.
+    */
     modalita: "MANUAL",
+    documentazione: "https://www.zucchetti.it/",
+    manca: [
+      "Per Zmenu e Ristorandro: una documentazione API ufficiale, che oggi non è pubblica, e un accordo con Zucchetti.",
+      SERVE_ADATTATORE,
+    ],
   }),
 
   /* --------------------------- PAGAMENTI -------------------------------- */
@@ -791,7 +838,12 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     fornitore: "Stripe",
     categoria: "PAGAMENTI",
     descrizione: "Caparre e pagamento al tavolo col QR, direttamente sul conto del ristorante.",
-    logo: { monogramma: "St" },
+    logo: {
+      monogramma: "St",
+      src: "/integrazioni/loghi/stripe.svg",
+      marchio:
+        "Wordmark ufficiale «Blurple» dal kit di stripe.com/newsroom/brand-assets, secondo lo Stripe Marks Agreement: non modificato, su fondo chiaro.",
+    },
     /*
       L'unica voce IMPLEMENTED, ed è vera: è Stripe Connect di
       `server/stripe-connect.ts`, in produzione da settembre 2026 con le
@@ -835,6 +887,7 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     categoria: "PAGAMENTI",
     descrizione: "Pagare caparre e conti con Google Pay.",
     monogramma: "GP",
+    marchio: MARCHIO_GOOGLE,
     modalita: "NATIVE",
     manca: [
       "Una verifica: nei pagamenti via Stripe Checkout Google Pay compare secondo le impostazioni dell'account Stripe, ma nessuno l'ha controllato su Foodtech.",
@@ -873,6 +926,7 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     categoria: "PRENOTAZIONI",
     descrizione: "Il pulsante «Prenota» sulla scheda Google del ristorante.",
     monogramma: "G",
+    marchio: MARCHIO_GOOGLE,
     modalita: "MANUAL",
     documentazione: "https://developers.google.com/actions-center",
     manca: ["L'adesione di Foodtech come partner del Google Actions Center.", SERVE_ADATTATORE],
@@ -885,29 +939,12 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     categoria: "PRENOTAZIONI",
     descrizione: "Prenotazioni dalla scheda del locale su Google Maps.",
     monogramma: "GM",
+    marchio: MARCHIO_GOOGLE,
     modalita: "MANUAL",
     manca: ["L'adesione di Foodtech come partner del Google Actions Center.", SERVE_ADATTATORE],
   }),
-  pianificata({
-    id: "int_facebook",
-    slug: "facebook",
-    nome: "Facebook",
-    fornitore: "Meta",
-    categoria: "PRENOTAZIONI",
-    descrizione: "Il pulsante di prenotazione sulla pagina Facebook del locale.",
-    monogramma: "Fb",
-    modalita: "OAUTH2",
-  }),
-  pianificata({
-    id: "int_instagram",
-    slug: "instagram",
-    nome: "Instagram",
-    fornitore: "Meta",
-    categoria: "PRENOTAZIONI",
-    descrizione: "Il pulsante «Prenota» sul profilo Instagram del locale.",
-    monogramma: "Ig",
-    modalita: "OAUTH2",
-  }),
+
+
   pianificata({
     id: "int_opentable",
     slug: "opentable",
@@ -959,7 +996,310 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     modalita: "MANUAL",
   }),
 
-  /* ---------------------------- MARKETING ------------------------------- */
+  /* --------------------- MARKETING E COMUNICAZIONE -------------------- */
+  {
+    id: "int_facebook",
+    slug: "facebook",
+    nome: "Facebook",
+    fornitore: "Meta",
+    categoria: "MARKETING",
+    descrizione: "Collega la pagina Facebook del locale e controllane lo stato da Foodtech.",
+    logo: {
+      monogramma: "Fb",
+      src: "/integrazioni/loghi/facebook.png",
+      marchio:
+        "Logo ufficiale («f» nel cerchio) dal Brand Resource Center di Meta (meta.com/brand/resources/facebook/logo): non modificato né ricolorato, almeno 16 px, spazio libero di un quarto della larghezza.",
+    },
+    /*
+      Adattatore scritto sulla documentazione della Graph API v26.0 (Pages API,
+      Facebook Login for Business). Mai provato con l'app Meta di Foodtech,
+      che non esiste ancora: resta IN_DEVELOPMENT.
+    */
+    implementazione: "IN_DEVELOPMENT",
+    disponibilita: "PREVIEW",
+    autenticazione: { modalita: "OAUTH2", verificata: true, scope: ["pages_show_list", "pages_read_engagement"] },
+    capacita: ["profile"],
+    webhook: { eventi: [], autenticazione: null },
+    configurazione: [
+      {
+        chiave: "pageId",
+        etichetta: "Pagina Facebook",
+        aiuto: "La pagina del locale, fra quelle che l'account gestisce (GET /me/accounts).",
+        tipo: "scelta",
+        obbligatorio: true,
+        opzioniDa: "locations",
+      },
+    ],
+    cliente: {
+      credenziali: "Ti basta accedere con l'account Facebook che gestisce la pagina del locale.",
+      campi: { pageId: { etichetta: "Pagina" } },
+      titoloSede: "Pagina",
+    },
+    messaggi: {
+      AUTH_EXPIRED: {
+        titolo: "Accesso a Facebook scaduto",
+        spiegazione: "Meta concede l'accesso per circa 60 giorni, poi va rinnovato. Accedi di nuovo con il tuo account Facebook.",
+      },
+      PERMISSION_DENIED: {
+        titolo: "Permesso mancante su Facebook",
+        spiegazione: "L'account non ha più il permesso di vedere questa pagina, oppure hai tolto un permesso a Foodtech. Accedi di nuovo e concedi l'accesso alla pagina.",
+      },
+    },
+    dati: {
+      legge: ["Le pagine che l'account gestisce", "Nome e stato della pagina scelta"],
+      scrive: [],
+      permessi: ["pages_show_list", "pages_read_engagement"],
+    },
+    documentazione: "https://developers.facebook.com/documentation/pages-api",
+    versioneAdattatore: "0.1.0",
+    requisitiPiattaforma: ["META_APP_ID", "META_APP_SECRET"],
+    mancaPerOperare: [
+      "L'app Meta di Foodtech (developers.facebook.com) con Facebook Login for Business, e l'indirizzo di ritorno /api/integrations/oauth/callback/facebook registrato in HTTPS.",
+      "Per le pagine dei clienti: accesso avanzato ai permessi, cioè revisione dell'app (App Review) e verifica dell'azienda (Business Verification) presso Meta.",
+      "Una prova con una pagina vera.",
+      "Pubblicazione, commenti e recensioni: l'API li offre, il codice no.",
+    ],
+    risorse: [
+      { risorsa: "Pagine gestite", api: { lettura: true, scrittura: false, webhook: false }, direzione: "FORNITORE_A_FOODTECH", fonteDiVerita: "FORNITORE", usataDa: "profile", verifica: "DOCUMENTATA", note: "GET /me/accounts: id, nome, token e compiti (tasks) per pagina." },
+      { risorsa: "Post della pagina", api: { lettura: true, scrittura: true, webhook: true }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "POST /{page-id}/feed con pages_manage_posts e il compito CREATE_CONTENT. Non implementato." },
+      { risorsa: "Recensioni (raccomandazioni)", api: { lettura: true, scrittura: false, webhook: true }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "GET /{page-id}/ratings con pages_read_user_content: sola lettura, positive/negative invece delle stelle. Non implementato." },
+      { risorsa: "Commenti", api: { lettura: true, scrittura: true, webhook: true }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "pages_manage_engagement. Non implementato." },
+      { risorsa: "Pulsante di prenotazione", api: { lettura: false, scrittura: false, webhook: false }, direzione: "NESSUNA", fonteDiVerita: "NESSUNA", usataDa: null, verifica: "DA_VERIFICARE", note: "Il pulsante d'azione della pagina con un link al widget di Foodtech si imposta dal pannello di Meta; un endpoint documentato per scriverlo da un'app non si è trovato." },
+    ],
+  },
+  {
+    id: "int_instagram",
+    slug: "instagram",
+    nome: "Instagram",
+    fornitore: "Meta",
+    categoria: "MARKETING",
+    descrizione: "Collega il profilo Instagram professionale del locale e controllane lo stato da Foodtech.",
+    logo: {
+      monogramma: "Ig",
+      src: "/integrazioni/loghi/instagram.png",
+      marchio:
+        "Glifo ufficiale a gradiente dal Brand Resource Center di Meta (meta.com/brand/resources/instagram/instagram-brand): non modificato, mai più in evidenza del marchio Foodtech, nessuna frase che suggerisca una partnership.",
+    },
+    /* Instagram API con Facebook Login (graph.facebook.com v26.0): il profilo
+       professionale deve essere collegato a una pagina Facebook. Mai provato. */
+    implementazione: "IN_DEVELOPMENT",
+    disponibilita: "PREVIEW",
+    autenticazione: { modalita: "OAUTH2", verificata: true, scope: ["instagram_basic", "pages_show_list", "pages_read_engagement"] },
+    capacita: ["profile"],
+    webhook: { eventi: [], autenticazione: null },
+    configurazione: [
+      {
+        chiave: "igUserId",
+        etichetta: "Profilo Instagram",
+        aiuto: "Il profilo professionale collegato a una delle pagine dell'account (instagram_business_account).",
+        tipo: "scelta",
+        obbligatorio: true,
+        opzioniDa: "locations",
+      },
+    ],
+    cliente: {
+      credenziali: "Ti basta accedere con l'account Facebook collegato al profilo Instagram del locale.",
+      aiuto: {
+        titolo: "Il mio profilo non compare",
+        paragrafi: [
+          "Il profilo Instagram deve essere professionale (Business o Creator) e collegato a una pagina Facebook che gestisci.",
+          "Puoi collegarlo dall'app Instagram: Impostazioni → Tipo di account e strumenti → Collega pagina Facebook.",
+        ],
+      },
+      campi: { igUserId: { etichetta: "Profilo" } },
+      titoloSede: "Profilo",
+    },
+    messaggi: {
+      AUTH_EXPIRED: {
+        titolo: "Accesso a Instagram scaduto",
+        spiegazione: "Meta concede l'accesso per circa 60 giorni, poi va rinnovato. Accedi di nuovo con l'account Facebook collegato.",
+      },
+    },
+    dati: {
+      legge: ["I profili Instagram professionali collegati alle tue pagine", "Nome utente e stato del profilo scelto"],
+      scrive: [],
+      permessi: ["instagram_basic", "pages_show_list", "pages_read_engagement"],
+    },
+    documentazione: "https://developers.facebook.com/docs/instagram-platform/overview/",
+    versioneAdattatore: "0.1.0",
+    requisitiPiattaforma: ["META_APP_ID", "META_APP_SECRET"],
+    mancaPerOperare: [
+      "La stessa app Meta di Facebook, con il prodotto Instagram e l'indirizzo di ritorno /api/integrations/oauth/callback/instagram.",
+      "Revisione dell'app e verifica dell'azienda presso Meta per i profili dei clienti.",
+      "Una prova con un profilo professionale vero.",
+      "Pubblicazione, commenti, messaggi e statistiche: l'API li offre, il codice no.",
+    ],
+    risorse: [
+      { risorsa: "Profilo professionale", api: { lettura: true, scrittura: false, webhook: false }, direzione: "FORNITORE_A_FOODTECH", fonteDiVerita: "FORNITORE", usataDa: "profile", verifica: "DOCUMENTATA", note: "GET /me/accounts?fields=instagram_business_account e GET /{ig-user-id}?fields=id,username." },
+      { risorsa: "Pubblicazione", api: { lettura: true, scrittura: true, webhook: false }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "instagram_content_publish. Non implementato." },
+      { risorsa: "Commenti e menzioni", api: { lettura: true, scrittura: true, webhook: true }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "instagram_manage_comments. Non implementato." },
+      { risorsa: "Messaggi diretti", api: { lettura: true, scrittura: true, webhook: true }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "instagram_manage_messages. Non implementato." },
+      { risorsa: "Statistiche", api: { lettura: true, scrittura: false, webhook: false }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "instagram_manage_insights. Non implementato." },
+    ],
+  },
+  {
+    id: "int_whatsapp_business",
+    slug: "whatsapp-business",
+    nome: "WhatsApp Business",
+    fornitore: "Meta",
+    categoria: "MARKETING",
+    descrizione: "Collega il numero WhatsApp Business del locale e controllane lo stato da Foodtech.",
+    logo: {
+      monogramma: "Wa",
+      src: "/integrazioni/loghi/whatsapp-business.svg",
+      marchio:
+        "Glifo ufficiale verde 2026 dal Brand Resource Center di Meta (meta.com/brand/resources/whatsapp/whatsapp-brand): non modificato, non combinato con altri marchi, mai il più in evidenza.",
+    },
+    /*
+      WhatsApp Cloud API (Graph v26.0) con il token di un utente di sistema
+      del Business Manager del ristorante: nessuna app di Foodtech da
+      approvare. Mai provato con un account vero: IN_DEVELOPMENT. È il solo
+      servizio di questa categoria che un cliente già attrezzato può
+      collegare senza aspettare un accordo di Foodtech con Meta.
+    */
+    implementazione: "IN_DEVELOPMENT",
+    disponibilita: "PREVIEW",
+    autenticazione: { modalita: "TOKEN", verificata: true },
+    capacita: ["profile"],
+    webhook: { eventi: [], autenticazione: null },
+    configurazione: [
+      {
+        chiave: "tokenSistema",
+        etichetta: "Token di un utente di sistema",
+        aiuto: "Business Manager → Utenti di sistema → Genera token, con whatsapp_business_management e whatsapp_business_messaging sull'account WhatsApp.",
+        tipo: "segreto",
+        obbligatorio: true,
+      },
+      {
+        chiave: "wabaId",
+        etichetta: "ID dell'account WhatsApp Business (WABA)",
+        aiuto: "WhatsApp Manager → Panoramica account: il numero sotto il nome dell'account.",
+        tipo: "testo",
+        obbligatorio: true,
+        fase: "autenticazione",
+      },
+      {
+        chiave: "phoneNumberId",
+        etichetta: "Numero",
+        aiuto: "Il numero dell'account da associare al locale (GET /{waba-id}/phone_numbers).",
+        tipo: "scelta",
+        obbligatorio: true,
+        opzioniDa: "locations",
+      },
+    ],
+    cliente: {
+      credenziali: "Ti serviranno un token di accesso e l'ID del tuo account WhatsApp Business.",
+      aiuto: {
+        titolo: "Dove trovo questi dati?",
+        paragrafi: [
+          "Servono un account WhatsApp Business Platform (non basta l'app WhatsApp Business sul telefono) e l'accesso al Business Manager di Meta del ristorante.",
+          "Il token lo genera chi amministra il Business Manager: Impostazioni → Utenti di sistema → Genera token, con i permessi per WhatsApp.",
+          "L'ID dell'account lo trovi in WhatsApp Manager, sotto il nome dell'account. Se preferisci, chiedi a Foodtech di guidarti.",
+        ],
+      },
+      campi: {
+        tokenSistema: { etichetta: "Token di accesso", segnaposto: "Incolla qui il token" },
+        wabaId: { etichetta: "ID account WhatsApp Business", segnaposto: "Solo numeri" },
+        phoneNumberId: { etichetta: "Numero" },
+      },
+      titoloSede: "Numero",
+    },
+    messaggi: {
+      AUTH_EXPIRED: {
+        titolo: "Token WhatsApp non più valido",
+        spiegazione: "Meta non accetta più il token salvato (scaduto, revocato o rigenerato). Generane uno nuovo nel Business Manager e inseriscilo di nuovo.",
+      },
+      PERMISSION_DENIED: {
+        titolo: "Token senza permesso su questo account",
+        spiegazione: "Il token non ha i permessi WhatsApp su questo account WhatsApp Business. Controlla l'utente di sistema nel Business Manager.",
+      },
+    },
+    dati: {
+      legge: ["L'account WhatsApp Business e i suoi numeri", "Nome verificato, qualità e stato di verifica del numero scelto"],
+      scrive: [],
+      permessi: ["whatsapp_business_management"],
+    },
+    documentazione: "https://developers.facebook.com/documentation/business-messaging/whatsapp/overview",
+    versioneAdattatore: "0.1.0",
+    requisitiPiattaforma: [],
+    mancaPerOperare: [
+      "Una prova con un account WhatsApp Business Platform vero (Meta offre un numero di prova dal pannello dell'app).",
+      "L'invio di messaggi: modelli approvati da Meta fuori dalla finestra di 24 ore, a pagamento per messaggio consegnato secondo il listino di Meta. Il codice non c'è.",
+      "Per la registrazione guidata dei clienti (Embedded Signup): Foodtech Tech Provider presso Meta, con verifica dell'azienda e revisione dell'app.",
+    ],
+    risorse: [
+      { risorsa: "Account e numeri", api: { lettura: true, scrittura: false, webhook: true }, direzione: "FORNITORE_A_FOODTECH", fonteDiVerita: "FORNITORE", usataDa: "profile", verifica: "DOCUMENTATA", note: "GET /{waba-id} e /{waba-id}/phone_numbers; GET /{phone-number-id}: verified_name, quality_rating, code_verification_status." },
+      { risorsa: "Messaggi con modello", api: { lettura: false, scrittura: true, webhook: true }, direzione: "NESSUNA", fonteDiVerita: "NESSUNA", usataDa: null, verifica: "DOCUMENTATA", note: "POST /{phone-number-id}/messages type=template. A pagamento per messaggio. Non implementato." },
+      { risorsa: "Messaggi liberi", api: { lettura: false, scrittura: true, webhook: true }, direzione: "NESSUNA", fonteDiVerita: "NESSUNA", usataDa: null, verifica: "DOCUMENTATA", note: "Solo entro 24 ore dall'ultimo messaggio del cliente. Non implementato." },
+      { risorsa: "Modelli di messaggio", api: { lettura: true, scrittura: true, webhook: true }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "/{waba-id}/message_templates, con approvazione di Meta. Non implementato." },
+    ],
+  },
+  {
+    id: "int_google_business_profile",
+    slug: "google-business-profile",
+    nome: "Google Business Profile",
+    fornitore: "Google",
+    categoria: "MARKETING",
+    descrizione: "Collega la scheda Google del locale e controllane lo stato da Foodtech.",
+    logo: { monogramma: "GB", marchio: MARCHIO_GOOGLE },
+    /*
+      Adattatore scritto sulle API Account Management e Business Information
+      (OAuth 2.0, scope business.manage). Mai provato: Google apre queste API
+      solo dopo aver approvato la richiesta di accesso del progetto, e finché
+      non lo fa la quota è 0. IN_DEVELOPMENT.
+    */
+    implementazione: "IN_DEVELOPMENT",
+    disponibilita: "PREVIEW",
+    autenticazione: { modalita: "OAUTH2", verificata: true, scope: ["https://www.googleapis.com/auth/business.manage"] },
+    capacita: ["profile"],
+    webhook: { eventi: [], autenticazione: null },
+    configurazione: [
+      {
+        chiave: "locationName",
+        etichetta: "Scheda dell'attività",
+        aiuto: "accounts/{id}/locations/{id}: la scheda con il suo account, come la vogliono le API delle recensioni.",
+        tipo: "scelta",
+        obbligatorio: true,
+        opzioniDa: "locations",
+      },
+    ],
+    cliente: {
+      credenziali: "Ti basta accedere con l'account Google che gestisce la scheda del locale.",
+      campi: { locationName: { etichetta: "Scheda" } },
+      titoloSede: "Scheda",
+    },
+    messaggi: {
+      RATE_LIMITED: {
+        titolo: "Google non risponde ancora a Foodtech",
+        spiegazione: "Google sta limitando le richieste di Foodtech. Riproviamo da soli; se continua, scrivi all'assistenza Foodtech.",
+      },
+      PERMISSION_DENIED: {
+        titolo: "Permesso mancante su Google",
+        spiegazione: "L'account Google non gestisce più questa scheda, o non ha concesso l'accesso a Foodtech. Accedi di nuovo con l'account proprietario o gestore.",
+      },
+    },
+    dati: {
+      legge: ["Gli account e le schede che l'utente Google gestisce", "Nome e indirizzo della scheda scelta"],
+      scrive: [],
+      permessi: ["business.manage"],
+    },
+    documentazione: "https://developers.google.com/my-business/content/prereqs",
+    versioneAdattatore: "0.1.0",
+    requisitiPiattaforma: ["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"],
+    mancaPerOperare: [
+      "Un progetto Google Cloud di Foodtech con le API My Business abilitate e un client OAuth web (indirizzo di ritorno /api/integrations/oauth/callback/google-business-profile).",
+      "L'approvazione di Google con il modulo «Application for Basic API Access» (support.google.com/business/contact/api_default): finché non arriva la quota è 0 e ogni chiamata risponde 429. Google chiede un profilo verificato attivo da più di 60 giorni con un sito web.",
+      "La verifica dell'app OAuth presso Google: business.manage è uno scope sensibile.",
+      "Una prova con una scheda vera.",
+      "Recensioni e aggiornamenti: l'API li offre, il codice no.",
+    ],
+    risorse: [
+      { risorsa: "Account", api: { lettura: true, scrittura: false, webhook: false }, direzione: "FORNITORE_A_FOODTECH", fonteDiVerita: "FORNITORE", usataDa: "profile", verifica: "DOCUMENTATA", note: "GET mybusinessaccountmanagement.googleapis.com/v1/accounts: al massimo 20 per pagina." },
+      { risorsa: "Schede (sedi)", api: { lettura: true, scrittura: true, webhook: false }, direzione: "FORNITORE_A_FOODTECH", fonteDiVerita: "FORNITORE", usataDa: "profile", verifica: "DOCUMENTATA", note: "GET mybusinessbusinessinformation.googleapis.com/v1/{account}/locations con readMask. Orari e attributi sono scrivibili; Foodtech non li scrive." },
+      { risorsa: "Recensioni", api: { lettura: true, scrittura: true, webhook: false }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "v4 accounts/*/locations/*/reviews (lettura, media e totale) e updateReply (risposta). Non implementato." },
+      { risorsa: "Aggiornamenti (post)", api: { lettura: true, scrittura: true, webhook: false }, direzione: "NESSUNA", fonteDiVerita: "FORNITORE", usataDa: null, verifica: "DOCUMENTATA", note: "v4 localPosts. Non implementato." },
+    ],
+  },
   pianificata({
     id: "int_mailchimp",
     slug: "mailchimp",
@@ -998,6 +1338,7 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     categoria: "ANALYTICS",
     descrizione: "Le prenotazioni dal sito come conversioni in Analytics.",
     monogramma: "GA",
+    marchio: MARCHIO_GOOGLE,
     modalita: "MANUAL",
     documentazione: "https://developers.google.com/analytics/devguides/collection/protocol/ga4",
     manca: ["L'invio degli eventi dal widget di prenotazione.", SERVE_PROVA],
@@ -1010,6 +1351,7 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     categoria: "ANALYTICS",
     descrizione: "Il contenitore Tag Manager del ristorante dentro il widget.",
     monogramma: "GTM",
+    marchio: MARCHIO_GOOGLE,
     modalita: "MANUAL",
     documentazione: "https://developers.google.com/tag-platform/tag-manager",
     manca: ["Il caricamento del contenitore nel widget di prenotazione, con il consenso ai cookie.", SERVE_PROVA],

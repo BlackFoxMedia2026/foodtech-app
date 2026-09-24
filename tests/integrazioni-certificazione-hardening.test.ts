@@ -202,7 +202,7 @@ const voce: VoceCatalogo = {
   fornitore: "Prova",
   categoria: "POS",
   descrizione: "Solo per le prove.",
-  logo: { monogramma: "Ph" },
+  logo: { monogramma: "Ph", marchio: "voce di prova" },
   implementazione: "IN_DEVELOPMENT",
   disponibilita: "PREVIEW",
   autenticazione: { modalita: "API_KEY", verificata: true },
