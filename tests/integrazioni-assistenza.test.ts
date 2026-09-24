@@ -255,6 +255,43 @@ describe("il collegamento per le credenziali", () => {
   });
 });
 
+describe("durate e controlli lato server", () => {
+  it("la delega dura 7 giorni esatti, il collegamento 72 ore esatte", async () => {
+    const t = new Date("2026-10-01T09:00:00Z");
+    const r = await chiediAssistenza(A.attore, SLUG, { delega: true }, t);
+    expect(r.delegatedUntil!.getTime() - t.getTime()).toBe(7 * 86_400_000);
+    const c = await creaConsegna({ venueId: A.venueId, slug: SLUG, email: EMAIL_ADMIN, origine: ORIGINE }, t);
+    expect(new Date(c.scadeIl).getTime() - t.getTime()).toBe(72 * 3_600_000);
+  });
+
+  it("creazione e apertura del collegamento restano nel registro di audit", async () => {
+    const c = await creaConsegna({ venueId: A.venueId, slug: SLUG, email: EMAIL_ADMIN, origine: ORIGINE, audit: (await admin()).audit });
+    await apriConsegna(c.url.split("/").pop()!, { userId: A.userId });
+    const azioni = (await db.auditLog.findMany({ where: { venueId: A.venueId, action: { in: ["integration.handoff_created", "integration.handoff_opened"] } } })).map((r) => r.action);
+    expect(azioni).toEqual(expect.arrayContaining(["integration.handoff_created", "integration.handoff_opened"]));
+    // Il codice del collegamento non finisce nel registro.
+    const tutto = JSON.stringify(await db.auditLog.findMany({ where: { venueId: A.venueId } }));
+    expect(tutto).not.toContain(c.url.split("/").pop()!);
+  });
+
+  it("B non ha chiesto niente: nessuna azione di configurazione passa, qualunque sia", async () => {
+    const b = await adminSu(B);
+    for (const corpo of [
+      { azione: "installa" as const, slug: SLUG },
+      { azione: "opzioni" as const, slug: SLUG },
+      { azione: "configura" as const, slug: SLUG, configurazione: { phoneNumberId: NUMERO.B } },
+      { azione: "gruppi" as const, slug: SLUG, gruppi: ["profilo"] },
+      { azione: "attiva" as const, slug: SLUG },
+      { azione: "sincronizza" as const, slug: SLUG },
+      { azione: "riattiva" as const, slug: SLUG },
+      { azione: "disattiva" as const, slug: SLUG },
+    ]) {
+      expect(await codice(eseguiAzioneAdmin(b, corpo, ORIGINE)), corpo.azione).toBe("delegation_required");
+    }
+    expect(await trovaInstallazione(B.venueId, SLUG)).toBeNull();
+  });
+});
+
 describe("gli stati che vede il cliente, dal vero", () => {
   it("«Verifica in corso» mentre Meta risponde; poi l'esito, con data e ora", async () => {
     let durante: string | null = null;

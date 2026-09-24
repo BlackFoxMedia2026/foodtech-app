@@ -578,7 +578,7 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     messaggi: {
       AUTH_INVALID: {
         titolo: "API Key non valida o non autorizzata",
-        spiegazione: "Cassa in Cloud non riconosce la chiave salvata, o non la autorizza più. Controllala e inseriscila di nuovo.",
+        spiegazione: "Cassa in Cloud non riconosce questa chiave, o non la autorizza più. Controlla di averla copiata per intero e inseriscila di nuovo.",
       },
       AUTH_EXPIRED: {
         titolo: "Credenziali Cassa in Cloud non valide o scadute",

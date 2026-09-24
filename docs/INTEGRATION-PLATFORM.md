@@ -1856,3 +1856,47 @@ dice a chi chiedere. Il test del catalogo lo fa rispettare.
 |---|---|
 | Adattatori Meta e Google contro fornitori finti | `tests/integrazioni-meta-google.test.ts` |
 | Delega, consegna, isolamento, segreti, stati dal vero | `tests/integrazioni-assistenza.test.ts` (database) |
+
+### Rilascio e ripristino della migrazione `20260926090000_assistenza_integrazioni`
+
+Verificata il 24 settembre 2026 sul solo database di prova
+(`tavolo_test_integrazioni`, con dati) e su un database vuoto (lo shadow di
+`prisma migrate diff`, che applica tutte le migrazioni da zero): lo schema
+coincide con le migrazioni per tutto ciò che riguarda le integrazioni.
+
+- **Solo aggiunte**: `ALTER TABLE "IntegrationInstallation" ADD COLUMN
+  "testStartedAt" TIMESTAMP(3)` (nullabile, senza default: in PostgreSQL non
+  riscrive la tabella e tiene il blocco per un istante), due tabelle nuove con
+  chiave esterna verso `Venue` (`ON DELETE CASCADE`, come le altre tabelle
+  delle integrazioni). Nessuna riga esistente viene toccata.
+- **Il codice di prima funziona con lo schema nuovo**: Prisma elenca le
+  colonne che legge, quindi una colonna e due tabelle in più sono invisibili
+  al codice precedente. Ordine sicuro: prima `prisma migrate deploy`, poi il
+  codice.
+- **Rollback del codice**: non serve toccare il database e non si perde
+  niente. Le richieste di assistenza e i collegamenti di consegna restano nelle
+  loro tabelle, inutilizzati, e tornano visibili rilasciando di nuovo.
+- **Ripristino dello schema** (solo se proprio necessario, e dopo il rollback
+  del codice): perde **soltanto** le richieste di assistenza, le deleghe e i
+  collegamenti di consegna; installazioni e credenziali non sono toccate.
+
+  ```sql
+  DROP TABLE IF EXISTS "IntegrationCredentialHandoff";
+  DROP TABLE IF EXISTS "IntegrationAssistance";
+  ALTER TABLE "IntegrationInstallation" DROP COLUMN IF EXISTS "testStartedAt";
+  DELETE FROM "_prisma_migrations" WHERE migration_name = '20260926090000_assistenza_integrazioni';
+  ```
+
+### Verifiche dal vivo
+
+Si fanno con `scripts/verifica-dal-vivo.ts`, **in sola lettura**, dopo che una
+persona ha inserito le credenziali nel wizard (mai in chat, mai per email). Lo
+script usa la console di certificazione e registra le evidenze PROVIDER_API.
+
+| Data | Fornitore | Che cosa | Esito |
+|---|---|---|---|
+| 24/09/2026 | Cassa in Cloud | `POST https://api.cassanova.com/apikey/token` con una chiave inventata, dall'adattatore e dal wizard nel browser | `400 Invalid apiKey` → `AUTH_INVALID` → «API Key non valida o non autorizzata» (gesto: ricollega). Host e formato della richiesta confermati. |
+
+Nessuna lettura con una chiave vera è ancora stata fatta: Cassa in Cloud non
+offre una sandbox, quindi serve la chiave di un account con licenza Risto o
+Retail Enterprise, meglio se limitata a un punto vendita di prova.
