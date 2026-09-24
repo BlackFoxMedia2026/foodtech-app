@@ -84,6 +84,174 @@ components:
 
 # Design System: Tavolo
 
+## Due temi: Carta e Sera
+
+> **Da leggere prima di tutto il resto (24 settembre 2026).** Tavolo ha due
+> temi. Il **back office** — gestionale, amministrazione, accesso — è in
+> **Carta**, chiaro. La **Staff App**, le **pagine degli ospiti** e la
+> **vetrina** restano in **Sera**, il verde scuro descritto dalla §1 in poi.
+> Le sezioni 1-5 descrivono Sera; questa descrive Carta e il meccanismo che
+> tiene insieme i due. I valori qui sono quelli di `src/styles/globals.css`:
+> se divergono, vale il codice e questo file va corretto.
+
+### Come funziona
+
+- **`:root` è Sera, ed è il default di proposito.** Carta è il blocco
+  `:root:has([data-tema="carta"])`, e lo accende il segnaposto `TemaCarta`
+  (`src/components/tema-carta.tsx`) nei layout di `(app)`, `admin`, `(auth)`,
+  `reimposta-password` e `invito`. Chi non lo porta resta al buio.
+- **Se `:has()` non si risolve** (in sala girano tablet datati) si ricade in
+  Sera: una Staff App bianca in una sala a luci basse è il caso peggiore, un
+  back office scuro è solo lo stato di prima. Per questo **ogni colore nuovo
+  in un componente passa da un token che in Sera vale esattamente la classe
+  che sostituisce**: il ricadere al buio deve restare identico al pixel.
+- **Sta su `:root` e non sul contenitore** perché dialog, menu e tooltip si
+  montano dentro `<body>`, fuori da qualunque contenitore.
+- **I colori con un nome proprio** (`cream`, `forest`, `clay-ink`,
+  `accent-strong`…) in `tailwind.config.ts` leggono terzine RGB, non
+  esadecimali: è ciò che permette a un tema di ridefinirli. I nomi descrivono
+  Sera e in Carta mentono (`TODO(rename-colori)` nel config): il rename si fa
+  da solo, non insieme a un cambio di valori.
+- **I materiali** (`.vetro`, `.pastiglia`, `.tondo-strumento`, `.binario`,
+  `.riga-piatta`, `.kpi-vetro`, `.tessera-tavolo`…) hanno le loro regole
+  Carta in fondo a `globals.css`, tutte sotto `:root:has([data-tema="carta"])`.
+  In Sera quelle regole non esistono; in Carta vincono sulle classi di
+  Tailwind per specificità, quindi il componente non deve sapere niente del
+  tema.
+
+### Le tre regole che tengono insieme i valori
+
+Non si deducono dai numeri, ed è per questo che stanno scritte.
+
+1. **La profondità sta nella cornice, mai sotto il testo lungo.** Schede,
+   barre, pulsanti, pastiglie e tondi hanno il gradiente
+   `--panel-top → --panel-bottom`, lo smusso `--shadow-bevel` e il
+   sollevamento `--shadow-lift`. Righe di tabella ed elenchi restano **piatti**
+   su `--surface-row`, separati da `--border-hairline`: niente zebrato, niente
+   bordo colorato a sinistra. Gli unici incavi sono il binario di un selettore,
+   la barra della pienezza e l'interruttore spento. Una tessera che porta un
+   numero è una **lastra**, mai vetro: il vetro è solo per ciò che galleggia
+   sopra il contenuto. E niente trasparenza sul contenuto per dire
+   "profondità": sulla carta un testo al 50% si legge come annullato.
+2. **Il verde pieno segna ciò che è attivo, non ciò che è cliccabile.**
+   `--control-fill` + `--control-ink` vanno su: voce di menu attiva, segmento
+   scelto (anche un periodo o una scheda scelti), interruttore acceso, oggi
+   nel calendario, pastiglia dell'icona di una tessera, fascia della testata
+   delle tabelle, e la cromatura della barra in alto (cerca, notifiche). Non
+   vanno su ciò che si limita a essere cliccabile: le frecce della data e le
+   azioni rapide sono **pastiglie morbide**, come Oggi, Filtri, Calendario e
+   le pillole di stato. Se diventassero verdi sparirebbe la differenza fra
+   "attivo" e "disponibile". L'azione primaria è la CTA scura `--cta-fill`,
+   non il verde.
+3. **Un materiale non prende il tema, un fondo sì.** Un oggetto ha il colore
+   come identità: la tessera nera Ambassador e la madreperla (`carbon`), i
+   tavoli di legno dell'editor, la tessera fedeltà. Restano uguali nei due
+   temi. Un fondo invece esiste per far leggere quello che ci sta sopra, e
+   segue sempre il tema: il pavimento della pianta, le aree, i muri, la
+   griglia dei turni. Altrimenti ogni segno sopra va ritarato due volte.
+
+E tre regole più piccole, nate lungo la strada:
+
+- **L'oro è solo testo e icone**, mai linea, riempimento o superficie: sulla
+  carta perde il fondo. Per un pieno d'oro si usa `--accent-fill` con
+  `--text-on-accent` sopra (è il tavolo "al conto").
+- **Uno stato è parola + pallino.** La parola resta `--text-primary` in ogni
+  stato; il colore sta solo nel pallino (`--badge-dot`, `data-stato`).
+- **Su un fondo affollato il terzo livello di testo non esiste**: sulla pianta
+  "4p" e "Bloccato" sono informazione, `--text-secondary`. E un reparto non
+  fa mai da colore del testo: sala, cucina e riposo non arrivano a 4,5 : 1.
+
+### La palette Carta
+
+| Ruolo | Token | Valore |
+|---|---|---|
+| Fondo pagina | `--surface-base` / `--background` | `#e9e3d5` |
+| Scheda, pannello | `--surface-panel` / `--card` | `#f7f3ea` |
+| Riga di elenco, piano di tabella | `--surface-row` / `--card-sunken` | `#fdfbf5` |
+| Sollevato (hover, pastiglia) | `--surface-raised` / `--secondary` | `#f0ebdd` |
+| Incavo (binario, campo) | `--surface-inset` | `#e3ddcd` |
+| Fascia della testata di tabella | `--surface-header` | `#2c5545` |
+| Gradiente della pagina | `--base-top` → `--base-bottom` | `#f2ece0` → `#e4ddcd` |
+| Gradiente della cornice | `--panel-top` → `--panel-bottom` | `#fffdf8` → `#f2ece0` |
+| Testo primario | `--text-primary` / `--foreground` / `ink` | `#1b2a22` |
+| Testo secondario | `--text-secondary` / `--muted-foreground` | `#3d4f45` |
+| Testo di nota | `--text-meta` / `--tertiary` | `#556659` |
+| Attivo | `--control-fill` / `--control-ink` | `#2c5545` / `#f7f3ea` |
+| Etichette sulla fascia verde | `--header-ink` | `#e4d3a8` |
+| Azione primaria | `--cta-fill` / `--cta-ink` (`--primary`) | `#1d3227` / `#f7f3ea` |
+| Fuoco | `--focus-ring` | `#2f5a41` |
+| Bordo di un controllo | `--border-control` / `--border-strong` / `--input` | `#847c69` |
+| Filo | `--border-hairline` / `--border` | `#d5cdb9` |
+| Oro da testo | `--accent` / `accent-strong` | `#7a5a1c` |
+| Oro pieno | `--accent-fill` / `--text-on-accent` | `#c9a96a` / `#221a08` |
+| Rosso da leggere | `--destructive-soft` | `#a03f24` |
+| Stati | `--state-confirmed` · `-pending` · `-seated` · `-alert` | `#1f6b3d` · `#7d5510` · `#1d5c76` · `#9c3b22` |
+| Linea di un grafico | `--chart-line` | `#2c5545` |
+| Barra della pienezza | `--meter-fill` su `--meter-track` | `#2c5545` su `#ded8c8` |
+
+I contrasti delle coppie di testo stanno tutti sopra 4,5 : 1 e quelli di bordi,
+anelli e linee sopra 3 : 1, **misurati sul reso** (vedi "Come si misura il
+contrasto qui" nella §2: vale anche per Carta, e un velo sopra un disegno
+cambia il fondo quanto un gradiente).
+
+### I token nati strada facendo
+
+Ognuno ha in Sera il valore esatto di ciò che ha sostituito.
+
+- **Inchiostri e superfici per chi scriveva un colore del buio:** `ink`
+  (l'inchiostro della superficie), `cta`, `segment`, `nav-pill`,
+  `pill-selected`. I **veli** `bg-veil-N` e i **bordi** `border-line-N` sono
+  un token per ogni opacità in uso, non un'opacità calcolata: in Carta i veli
+  valgono tutti `--edge-light` (`#ffffffcc`) e i bordi `--border-hairline`.
+- **Luce, ombra, rigatura:** `--edge-light` / `--edge-light-soft`,
+  `--edge-shadow` / `--edge-shadow-soft` (grigio caldo, mai nero),
+  `--glow-page`, `--button-brand-shadow`, `--button-accent-shadow`.
+- **Calendario dei turni:** `--grid-header` (`#e4ddcd`), `--grid-header-hover`
+  (`#e8e1d0`), `--grid-header-today` (`#e0ede1`: oggi si distingue per tinta,
+  non per tono), `--grid-body` (`#fdfbf5`), `--grid-body-today` (`#eef4ec`),
+  `--mark-now` (`#9c3b22`, la linea dell'ora) e `--mark-selected` (`#2c5545`,
+  il giorno scelto), `--oggi-fondo`, `--nuovo-turno`.
+- **La pianta:** `--room-floor` (`#ded7c6`, un gradino sotto la pagina),
+  `--room-wall` (`#7d7767`), `--room-floor-cucina` (`#e6dfcd`),
+  `--room-floor-dehors` (`#dee2d5`), il piano del bancone (`#d7d0bf`), le
+  etichette delle aree in `--text-secondary`, e **`--table-outline`**
+  (`#2c5545`): un contorno di 1 px su ogni tavolo in ogni stato. Su carta due
+  superfici chiare non si separano per riempimento: la forma la porta il
+  contorno, il riempimento porta lo stato. Il velo che il Servizio stende
+  sulla pianta (`--pianta-velo`) in Carta è trasparente.
+- **I sette reparti** (`--turno-*`), nell'ordine sala, cucina, bar, direzione,
+  altro, riposo, assenza: `#0d7f63`, `#b07000`, `#1668a8`, `#c03b1f`,
+  `#7b4bbd`, `#6f8f00`, `#a83f86`. Validati insieme anche in protanopia: non
+  si cambiano né si riordinano senza rivalidare.
+- **Stati e tessere:** `--stato-dot-*` / `--stato-testo-*`, `--conto-*`,
+  `--kpi-*`, `--integ-dot-*`, `--dot-fatto`, `--dot-riposo`.
+
+Le **due scale tipografiche** non cambiano col tema: `.t-*` per il back office
+(§11) e `.sa-*` per la Staff App (in `globals.css`), che serve un'altra
+distanza di lettura.
+
+### Come si aggiunge una cosa nuova senza rompere un tema
+
+1. Nel componente niente colori del buio scritti a mano: si usa un token di
+   ruolo. Se il ruolo non esiste, si crea il token con **il valore di oggi in
+   Sera** e quello giusto in Carta.
+2. Si verifica **il ricadere al buio**: il confronto al pixel di HEAD e ramo
+   affiancati, togliendo dalla pagina del ramo il segnaposto `data-tema`
+   (è quello che succede se `:has()` non si risolve). Deve dare zero.
+3. Un cambiamento **voluto** al buio va in un commit suo, e lo dice.
+
+Quattro trappole, tutte già costate un giro:
+
+- `shadow-[var(--x)]` Tailwind lo legge come **colore** dell'ombra e l'ombra
+  sparisce: si scrive `shadow-[shadow:var(--x)]`.
+- Un'opacità fuori dalla scala di Tailwind (`/12`, `/22`) **non viene
+  generata**, senza nessun errore: si scrive `/[0.12]`.
+- Nell'SVG le fermate di una sfumatura leggono un token con
+  `style={{ stopColor: "var(--x)" }}`, non con l'attributo.
+- La riserva fissa per la barra di scorrimento (`scrollbar-gutter: stable`,
+  17 px su Windows) accanto a una fascia fissa in cima lascia una striscia
+  del colore sbagliato: le tabelle e il calendario la tolgono.
+
 ## 1. Overview
 
 > **Nota di allineamento (7 settembre 2026).** Fino a oggi questo documento
@@ -388,25 +556,32 @@ mano, invece di contarli come difetti o di assolverli in blocco.
 
 ## 4. Elevation
 
-Il sistema non usa ombre piatte convenzionali come primo linguaggio di profondità: usa vetro smerigliato (`backdrop-filter: blur + saturate`) e bagliori radiali colorati (ember) per separare i piani. Le card di dati (`.surface`) restano quasi piatte in light mode e diventano vetro scuro semitrasparente in dark mode; la sidebar (`.glass-panel-premium`) è il punto di massima elevazione del sistema, con blur pesante, bordi luminosi interni e uno shadow esterno profondo per staccarla dal fondo mesh.
+> Riscritta il 24 settembre 2026. La versione precedente descriveva il vetro
+> smerigliato e il bagliore «ember» della sidebar: nel prodotto non esistono
+> più da settimane.
 
-### Shadow Vocabulary
-- **Card Rest** (`0 1px 0 0 rgb(0 0 0 / 0.02), 0 18px 40px -32px rgb(0 0 0 / 0.18)`): ombra ambientale minima per le card in light mode.
-- **Card Dark** (`0 14px 40px rgba(0,0,0,0.5)`): la stessa card in dark mode, più profonda perché il vetro scuro ha bisogno di più contrasto per staccarsi dal fondo.
-- **Sidebar Glass** (`inset 0 1px 0 rgb(255 255 255 / 0.34), 0 32px 70px rgb(0 0 0 / 0.55)`): l'elevazione massima — luce interna in alto (bordo di vetro) + ombra esterna profonda.
-- **Ember Glow** (`0 10px 22px -8px rgb(244 76 18 / 0.5)`): non un'ombra neutra ma un bagliore colorato ember, riservato allo stato attivo della navigazione.
+**Sera.** Le schede (`.surface`) sono una sfumatura verticale
+`--panel-top → --panel-bottom` con un filo di luce interno
+(`--edge-light-soft`), una luce radiale in alto a sinistra (`--edge-light`) e
+due ombre, corta e lunga (`--edge-shadow-soft`, `--edge-shadow`). La barra
+degli strumenti e le tessere dei numeri sono `.vetro` / `.kpi-vetro`: una
+velatura con un bordo in gradiente, per ciò che sta sopra il fondo scuro.
 
-### Named Rules
-**La Regola del Bagliore, non dell'Ombra.** Dove il sistema convenzionale userebbe un'ombra grigia per segnalare stato attivo/hover, Tavolo usa un bagliore ember colorato. L'ombra neutra resta per la profondità strutturale (card, sidebar); il bagliore è riservato al feedback di interazione.
+**Carta.** La profondità sta nella cornice, mai sotto il testo lungo: vedi la
+prima delle tre regole in «Due temi». Stessi token, valori chiari: lo smusso
+`--shadow-bevel` e il sollevamento `--shadow-lift`, in grigio caldo e mai in
+nero. `.vetro` e `.kpi-vetro` diventano lastre.
 
 ## 5. Components
 
 ### Buttons
-- **Shape:** angoli morbidi, raggio medio (11.6px, `rounded-md`).
-- **Primary (variant `gold`/`btn-ember`):** gradiente ember 135° da `#CFAD03` a `#C9B139`, testo bianco, leggero rilievo interno (`inset 0 1px 0 rgba(255,255,255,0.12)`); è la CTA di punta, da usare una sola volta per schermata.
-- **Default:** inverte i toni neutri primary/foreground — usato per azioni secondarie di forte enfasi ma non di brand.
-- **Outline / Ghost / Subtle:** bordo o sfondo neutro trasparente, per azioni terziarie.
-- **Hover / Focus:** transizione di filtro (`brightness(1.08)`) sul variant ember; ring di focus a 2px nel colore `ring` per tutte le varianti.
+- **Shape:** angoli morbidi, raggio medio (`rounded-md`); la CTA di una pagina è a pillola.
+- **Azione primaria:** variant `accent` (`bg-cta text-cta-ink`): in Sera la pillola crema, in Carta `--cta-fill` scuro. Una sola per schermata.
+- **`brand`:** l'azione primaria di un modulo (accedi, recupera, salva). In Sera marrone, in Carta la CTA (`.pulsante-brand`).
+- **`default`:** `--primary` / `--primary-foreground`, per azioni secondarie di forte enfasi.
+- **`outline` / `ghost` / `subtle`:** azioni terziarie. In Carta le pastiglie morbide aggiungono `.pastiglia`.
+- **`gold` (`btn-ember`):** residuo del giallo di prima, da non usare in codice nuovo.
+- **Focus:** anello di 2 px in `ring`, che legge `--focus-ring`.
 
 ### Badges / Chips
 - **Style:** pillola (`rounded-full`), bordo sottile + sfondo tinto al 10% del colore del tono.
