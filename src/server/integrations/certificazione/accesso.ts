@@ -109,6 +109,13 @@ export async function impostaAccessoBeta(input: {
       ...(input.note !== undefined ? { note: input.note } : {}),
     },
   });
+  // La richiesta del locale («Richiedi attivazione»), se c'era, è esaudita.
+  if (riga.enabled) {
+    await db.integrationAccessRequest.updateMany({
+      where: { venueId: input.venueId, integrationSlug: input.slug, status: "PENDING", kind: "ACCESS" },
+      data: { status: "APPROVED", resolvedAt: new Date(), resolvedByEmail: input.email },
+    });
+  }
   await recordAudit(input.audit, "integration.beta_access", "integration", input.slug, {
     venueId: input.venueId,
     abilitato: riga.enabled,

@@ -1,36 +1,39 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { voceDi } from "@/server/integrations/registry";
-import { dettaglioPerLocale } from "@/server/integrations/vista";
+import { dettaglioCliente } from "@/server/integrations/vista-cliente";
 import { origineDellaPiattaforma } from "@/server/integrations/sync";
-import { PercorsoInstallazione } from "@/components/integrations/percorso-installazione";
-import { DettaglioIntegrazione } from "@/components/integrations/dettaglio-integrazione";
+import { PresentazioneIntegrazione } from "@/components/integrations/presentazione-integrazione";
+import { WizardCollegamento } from "@/components/integrations/wizard-collegamento";
+import { GestioneIntegrazione } from "@/components/integrations/gestione-integrazione";
 import { superAdminCorrente } from "@/lib/super-admin";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Una integrazione: il percorso di installazione finché non è attiva, la
- * pagina di gestione dopo.
+ * Un'integrazione, vista dal ristoratore. Tre schermate, e le decide lo
+ * **stato sul server**:
  *
- * Quale delle due lo decide lo **stato sul server**: un'installazione a metà
- * riapre il percorso dal passo a cui era arrivata; una attiva mostra la
- * gestione, e «Riconfigura» (`?installa=1`) riapre il percorso sopra quella.
+ * - non collegata → la presentazione (`PresentazioneIntegrazione`): che cosa
+ *   fa e un pulsante;
+ * - «Collega» (`?collega=1`), o un collegamento iniziato e non finito → il
+ *   wizard (`WizardCollegamento`), dal passo a cui era arrivato;
+ * - collegata → la gestione (`GestioneIntegrazione`).
+ *
+ * La vista tecnica — adattatore, registro, certificazione — non è qui: sta in
+ * /admin/integrazioni/<slug>, solo per i Super Admin di Foodtech. A loro
+ * questa pagina mostra soltanto un collegamento per andarci.
  */
-
-/** Gli stati in cui l'integrazione è ancora dentro il percorso. */
-const NEL_PERCORSO = new Set(["INSTALLING", "NEEDS_CONFIGURATION", "CONNECTED"]);
-
 export default async function IntegrazionePage({
   params,
   searchParams,
 }: {
   params: { slug: string };
-  searchParams: { installa?: string; esito?: string; passo?: string };
+  searchParams: { collega?: string; installa?: string; esito?: string; passo?: string };
 }) {
   const ctx = await getActiveVenue();
   const voce = voceDi(params.slug);
@@ -56,52 +59,56 @@ export default async function IntegrazionePage({
     );
   }
 
-  const dettaglio = await dettaglioPerLocale(
+  const puoConfigurare = can(ctx.role, "integration:configure");
+  const puoInstallare = can(ctx.role, "integration:install");
+  const d = await dettaglioCliente(
     ctx.venueId,
     params.slug,
-    can(ctx.role, "integration:logs"),
-    // L'indirizzo dei webhook da incollare nel pannello del fornitore: solo a
-    // chi può configurare, e solo per le voci che lo richiedono.
-    can(ctx.role, "integration:configure") ? { origine: origineDellaPiattaforma(headers()) } : undefined,
+    puoConfigurare ? { aggiornamentiDa: { origine: origineDellaPiattaforma(headers()) } } : {},
   );
-  if (!dettaglio) notFound();
+  if (!d) notFound();
 
-  // La console di certificazione: solo per i Super Admin di Foodtech, mai per i ristoratori.
+  const inst = d.installazione;
+  // Il ritorno dall'accesso OAuth arriva con `installa=1`: è lo stesso wizard.
+  const chiesto = searchParams.collega === "1" || searchParams.installa === "1";
+  const passo = searchParams.passo === "accesso" || searchParams.passo === "auth" ? "accesso" : searchParams.passo === "sede" ? "sede" : null;
+  const wizard =
+    puoInstallare &&
+    puoConfigurare &&
+    inst?.condizione !== "sospesa" &&
+    ((chiesto && (d.azione === "COLLEGA" || !!inst)) || inst?.condizione === "in_configurazione");
+
   const superAdmin = (await superAdminCorrente()).ok;
-  const stato = dettaglio.installazione?.status ?? null;
-  const percorso =
-    !dettaglio.installazione ||
-    NEL_PERCORSO.has(stato ?? "") ||
-    searchParams.installa === "1";
 
   return (
     <div className="schermo animate-fade-in gap-3">
       {indietro}
-      <header className="fissa">
-        <p className="t-etichetta">Impostazioni / Integrazioni / {voce.nome}</p>
-      </header>
       <div className="fill-scroll pr-0.5">
-        <div className="pb-4">
-          {percorso ? (
-            <PercorsoInstallazione
-              slug={params.slug}
-              dettaglio={dettaglio}
-              esitoOAuth={searchParams.esito ?? null}
-              passoRichiesto={searchParams.passo === "auth" ? 1 : null}
-              puoInstallare={can(ctx.role, "integration:install")}
-              puoConfigurare={can(ctx.role, "integration:configure")}
+        <div className="space-y-4 pb-6">
+          {wizard ? (
+            <WizardCollegamento dettaglio={d} esitoOAuth={searchParams.esito ?? null} passoRichiesto={passo} />
+          ) : inst ? (
+            <GestioneIntegrazione
+              dettaglio={d}
+              permessi={{
+                configura: puoConfigurare,
+                disconnetti: can(ctx.role, "integration:disconnect"),
+                installa: puoInstallare,
+              }}
             />
           ) : (
-            <DettaglioIntegrazione
-              dettaglio={dettaglio}
-              permessi={{
-                configura: can(ctx.role, "integration:configure"),
-                disconnetti: can(ctx.role, "integration:disconnect"),
-                installa: can(ctx.role, "integration:install"),
-                registro: can(ctx.role, "integration:logs"),
-              }}
-              superAdmin={superAdmin}
-            />
+            <PresentazioneIntegrazione dettaglio={d} puoCollegare={puoInstallare} />
+          )}
+
+          {superAdmin && (
+            <p className="mx-auto max-w-2xl text-center">
+              <Link
+                href={`/admin/integrazioni/${params.slug}`}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                <Wrench className="h-3.5 w-3.5" aria-hidden="true" /> Vista tecnica Foodtech
+              </Link>
+            </p>
           )}
         </div>
       </div>

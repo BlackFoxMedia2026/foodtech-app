@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,7 +68,11 @@ export function PannelloIntegrazioniAdmin({ fornitori }: { fornitori: Fornitore[
         <section key={f.slug} className="riquadro comodo space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="t-titolo-sezione">{f.nome}</h2>
+              <h2 className="t-titolo-sezione">
+                <Link href={`/admin/integrazioni/${f.slug}`} className="underline-offset-4 hover:underline">
+                  {f.nome}
+                </Link>
+              </h2>
               <p className="t-nota">
                 Implementazione: {f.implementazione === "IMPLEMENTED" ? "READY" : "PREVIEW"} · Certificazione: {CERT[f.certificazione] ?? f.certificazione} ·
                 «Invia comanda»: {f.inviaComanda.pronto ? "requisiti POS soddisfatti" : `mancano ${f.inviaComanda.mancano.join(", ")}`}

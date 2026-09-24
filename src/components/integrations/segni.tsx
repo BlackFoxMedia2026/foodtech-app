@@ -1,11 +1,9 @@
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { Salute, StatoInstallazione } from "@/server/integrations/tipi";
-import type { VoceVista } from "@/server/integrations/vista";
+import type { StatoCliente } from "@/server/integrations/cliente";
 
 /**
- * I segni che si ripetono in catalogo, percorso e dettaglio. Un posto solo,
- * così «Connessa» ha lo stesso colore dappertutto.
+ * I segni che si ripetono in catalogo, pagina e wizard. Un posto solo, così
+ * «Collegata» ha lo stesso colore dappertutto.
  */
 
 /**
@@ -19,8 +17,8 @@ export function Monogramma({ testo, grande = false }: { testo: string; grande?: 
     <span
       aria-hidden="true"
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-md border border-cream/20 bg-cream font-semibold text-clay-ink",
-        grande ? "h-14 w-14 text-lg" : "h-10 w-10 text-sm",
+        "inline-flex shrink-0 items-center justify-center rounded-lg border border-cream/20 bg-cream font-semibold text-clay-ink",
+        grande ? "h-14 w-14 text-lg" : "h-11 w-11 text-sm",
       )}
     >
       {testo}
@@ -28,52 +26,27 @@ export function Monogramma({ testo, grande = false }: { testo: string; grande?: 
   );
 }
 
-const STATO: Record<StatoInstallazione, { etichetta: string; tono: Parameters<typeof Badge>[0]["tone"] }> = {
-  NOT_INSTALLED: { etichetta: "Non installata", tono: "neutral" },
-  INSTALLING: { etichetta: "Installazione iniziata", tono: "info" },
-  NEEDS_CONFIGURATION: { etichetta: "Da configurare", tono: "info" },
-  CONNECTED: { etichetta: "Collegata, da attivare", tono: "gold" },
-  SYNCING: { etichetta: "Sincronizzazione in corso", tono: "success-soft" },
-  ACTIVE: { etichetta: "Connessa", tono: "success" },
-  ERROR: { etichetta: "Errore", tono: "danger" },
-  DISABLED: { etichetta: "Disattivata", tono: "neutral" },
-  REAUTH_REQUIRED: { etichetta: "Richiede attenzione", tono: "warning" },
+/**
+ * I cinque stati che vede il cliente (`server/integrations/cliente.ts`), con
+ * un pallino che li dice senza leggere: verde per ciò che va, terracotta per
+ * ciò che chiede un gesto, contorno per ciò che non c'è ancora.
+ */
+const STILE: Record<StatoCliente, { pallino: string; testo: string }> = {
+  DISPONIBILE: { pallino: "bg-cream", testo: "text-cream" },
+  ANTEPRIMA: { pallino: "border border-accent bg-accent/40", testo: "text-cream" },
+  COLLEGATA: { pallino: "bg-sage-strong", testo: "text-cream" },
+  ATTENZIONE: { pallino: "bg-accent", testo: "text-accent-strong" },
+  PROSSIMAMENTE: { pallino: "border border-muted-foreground", testo: "text-muted-foreground" },
 };
 
-export function etichettaStato(s: StatoInstallazione): string {
-  return STATO[s].etichetta;
-}
-
-export function BadgeStato({ stato, salute }: { stato: StatoInstallazione; salute?: Salute }) {
-  // Attiva ma con qualcosa da guardare: lo stato resta «Connessa», la
-  // pillola avvisa.
-  if (stato === "ACTIVE" && salute === "DEGRADED") return <Badge tone="warning">Connessa, da controllare</Badge>;
-  const s = STATO[stato];
-  return <Badge tone={s.tono}>{s.etichetta}</Badge>;
-}
-
-/** Il pallino accanto al nome: dice la salute senza leggere. */
-export function PallinoSalute({ salute }: { salute: Salute }) {
-  const colore =
-    salute === "HEALTHY"
-      ? "bg-sage-strong"
-      : salute === "DEGRADED" || salute === "AUTH_REQUIRED"
-        ? "bg-accent"
-        : salute === "ERROR"
-          ? "bg-destructive"
-          : "border border-muted-foreground";
-  return <span aria-hidden="true" className={cn("inline-block h-2.5 w-2.5 shrink-0 rounded-full", colore)} />;
-}
-
-/**
- * Quanto è vero il connettore, detto sulla scheda. Solo quando non è
- * operativo: una voce `IMPLEMENTED` non porta niente, perché funzionare è il
- * caso normale e non una medaglia.
- */
-export function BadgeImplementazione({ voce }: { voce: Pick<VoceVista, "implementazione" | "disponibilita"> }) {
-  if (voce.implementazione === "IN_DEVELOPMENT") return <Badge tone="gold">Anteprima</Badge>;
-  if (voce.implementazione === "PLANNED") return <Badge tone="neutral">In arrivo</Badge>;
-  return null;
+export function PillolaStato({ stato, etichetta, className }: { stato: StatoCliente; etichetta: string; className?: string }) {
+  const s = STILE[stato];
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", s.testo, className)}>
+      <span aria-hidden="true" className={cn("inline-block h-2 w-2 shrink-0 rounded-full", s.pallino)} />
+      {etichetta}
+    </span>
+  );
 }
 
 export function quando(iso: string | null, adesso = new Date()): string | null {
@@ -86,4 +59,8 @@ export function quando(iso: string | null, adesso = new Date()): string | null {
   const ora = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
   if (oggi) return `oggi alle ${ora}`;
   return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "long" })} alle ${ora}`;
+}
+
+export function giorno(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
 }

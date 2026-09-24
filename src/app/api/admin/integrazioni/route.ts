@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { logEvento } from "@/lib/observability";
 import { impostaAccessoBeta, impostaFase, panoramicaCertificazione } from "@/server/integrations/certificazione/accesso";
 import { FASI_RILASCIO } from "@/server/integrations/certificazione/livelli";
+import { approvaRichiesta, archiviaRichiesta } from "@/server/integrations/richieste";
 
 /**
  * Certificazione e rilascio delle integrazioni, per tutta la piattaforma.
@@ -38,6 +39,9 @@ const Corpo = z.discriminatedUnion("azione", [
     operazioniFiscali: z.boolean().optional(),
     note: z.string().max(500).nullable().optional(),
   }),
+  /* Le richieste dei ristoranti («Richiedi attivazione», «Avvisami»). */
+  z.object({ azione: z.literal("approva_richiesta"), id: z.string().min(1).max(40) }),
+  z.object({ azione: z.literal("archivia_richiesta"), id: z.string().min(1).max(40) }),
 ]);
 
 export async function POST(req: Request) {
@@ -45,6 +49,16 @@ export async function POST(req: Request) {
   if (!admin.ok) return apiError(404, "not_found", "Questo indirizzo non esiste.");
   try {
     const corpo = Corpo.parse(await req.json());
+    if (corpo.azione === "approva_richiesta" || corpo.azione === "archivia_richiesta") {
+      const r = await db.integrationAccessRequest.findUnique({ where: { id: corpo.id }, include: { venue: { select: { orgId: true } } } });
+      if (!r) return apiError(404, "not_found", "Richiesta non trovata.");
+      const utente = await db.user.findFirst({ where: { email: { equals: admin.email, mode: "insensitive" } }, select: { id: true } });
+      const audit = utente ? { userId: utente.id, email: admin.email, orgId: r.venue.orgId, venueId: r.venueId } : undefined;
+      if (corpo.azione === "approva_richiesta") await approvaRichiesta(corpo.id, admin.email, audit);
+      else await archiviaRichiesta(corpo.id, admin.email, audit);
+      logEvento("integrazione.richiesta_chiusa", { id: corpo.id, esito: corpo.azione, da: admin.email });
+      return NextResponse.json({ ok: true });
+    }
     if (corpo.azione === "fase") {
       const r = await impostaFase({ slug: corpo.slug, fase: corpo.fase, note: corpo.note, email: admin.email });
       logEvento("integrazione.rilascio_cambiato", { slug: corpo.slug, fase: corpo.fase, da: admin.email });

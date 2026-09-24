@@ -162,6 +162,50 @@ export type CampoConfigurazione = {
 };
 
 /* -------------------------------------------------------------------------- */
+/*  Come si presenta al ristoratore                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Le parole con cui un campo si mostra **al cliente**. L'etichetta e l'aiuto
+ * di `CampoConfigurazione` restano quelli tecnici (li legge la vista interna
+ * di Foodtech); qui c'è la stessa domanda detta a chi gestisce un ristorante.
+ */
+export type CampoPerIlCliente = {
+  etichetta: string;
+  aiuto?: string;
+  segnaposto?: string;
+  /** Il campo si chiede nel primo passo, insieme alle credenziali (l'ambiente di Tilby). */
+  passo?: "accesso";
+  /** Nascosto sotto «Altre opzioni», con il valore predefinito già scelto. */
+  avanzato?: boolean;
+  predefinito?: string;
+  /** Per `scelta` con opzioni fisse: come si chiamano per il cliente. */
+  opzioni?: Record<string, string>;
+  /**
+   * Una scelta che il fornitore restituisce come «A · B» (Oracle: sede e
+   * revenue center) si presenta come due domande, una dopo l'altra.
+   */
+  dividi?: [string, string];
+  /** Le opzioni valgono solo per il valore scelto in un altro campo (prefisso `valore:`). */
+  filtraPer?: string;
+};
+
+/**
+ * Tutto ciò che la pagina del cliente dice di un'integrazione, oltre a nome e
+ * descrizione. Mai documentazione, endpoint, licenze tecniche o stati di
+ * certificazione: quelli stanno nella vista interna.
+ */
+export type PresentazioneCliente = {
+  /** Sotto il pulsante «Collega»: che cosa gli servirà. */
+  credenziali?: string;
+  /** Il riquadro «Dove trovo…?». */
+  aiuto?: { titolo: string; paragrafi: string[] };
+  campi?: Record<string, CampoPerIlCliente>;
+  /** Il titolo del passo in cui si sceglie la sede («Punto vendita», «Sede»…). */
+  titoloSede?: string;
+};
+
+/* -------------------------------------------------------------------------- */
 /*  Stati                                                                     */
 /* -------------------------------------------------------------------------- */
 

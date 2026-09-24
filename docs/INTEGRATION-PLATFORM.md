@@ -155,8 +155,55 @@ inventato (`null` se il fornitore non lo dà).
 
 Impostazioni → Sistema → **Integrazioni** → `/settings/integrations`.
 
+### Due esperienze separate (dal 24 settembre 2026)
+
+- **Cliente** (`/settings/integrations`, `/settings/integrations/<slug>`,
+  `/api/integrations/*`): legge solo `vista-cliente.ts`, costruita dalle
+  regole pure di `cliente.ts`. Cinque stati — *Disponibile*, *In anteprima*,
+  *Collegata*, *Richiede attenzione*, *Prossimamente* — e un pulsante
+  (*Collega*, *Richiedi attivazione*, *Avvisami*, *Gestisci*). Niente fasi di
+  rilascio, livelli di certificazione, adattatori, documentazione, endpoint,
+  registro o correlation ID. Il test `integrazioni-esperienza-cliente`
+  serializza catalogo e dettaglio e ci cerca le parole della vista interna.
+- **Foodtech** (`/admin/integrazioni`, `/admin/integrazioni/<slug>`, solo
+  Super Admin): tutto il resto — adattatore, scope, webhook, variabili della
+  piattaforma, campi con l'aiuto tecnico, matrice delle risorse, rilascio,
+  accessi beta, richieste dei locali, stato grezzo e registro sul locale
+  attivo, console di certificazione (che non è più una scheda della pagina
+  cliente).
+
+Il pulsante lo decide `statoPerIlCliente`: senza adattatore → *Prossimamente*
+/ *Avvisami*; manca un requisito di Foodtech (client OAuth Lightspeed,
+custodia) → «in fase di attivazione» / *Richiedi accesso*, senza modulo;
+anteprima senza accesso beta → *Richiedi attivazione*; altrimenti *Collega*.
+*Richiedi attivazione* e *Avvisami* scrivono una `IntegrationAccessRequest`
+(interna: niente parte verso il fornitore); il Super Admin la chiude con
+*Abilita beta* (che concede l'accesso) o *Archivia*. Anche un accesso beta
+concesso da altre strade chiude la richiesta aperta.
+
+Il **wizard cliente** ha cinque passi — Accesso, Verifica, Sede,
+Sincronizzazione, Pronta — sopra le stesse azioni del servizio qui sotto. I
+campi vengono dallo schema `configurazione` della voce; le parole con cui si
+mostrano al cliente da `cliente` (`PresentazioneCliente` in `tipi.ts`), che
+può spostare un campo nel primo passo, nasconderlo sotto «Altre opzioni» o
+dividere una scelta in due (Oracle: sede, poi revenue center). Al posto delle
+capacità il cliente sceglie **gruppi** (`GRUPPI_SYNC`: tavoli, menu, ordini,
+vendite); `orders.write`, `payments.write`, `close_order` e `customers`
+restano fuori dalla sua portata e, se accese da Foodtech, non si spengono
+quando salva. La prova risponde al cliente senza gli avvisi dell'adattatore
+né il riferimento di correlazione (`provaPerIlCliente`).
+
+Dopo il collegamento, se Foodtech è vuoto (nessun tavolo attivo, nessun
+piatto) la pagina propone l'**importazione iniziale** (`importazione.ts`):
+copia sale, tavoli, categorie e prodotti trovati dalla sincronizzazione, e li
+lascia abbinati all'originale come un abbinamento fatto a mano. La
+sincronizzazione continua a non toccare mai i dati di Foodtech da sola.
+
+### Le azioni del servizio
+
 1. **Informazioni** — cosa collega, cosa legge, cosa scrive, quali permessi
-   (dal catalogo). «Installa» crea la riga (`INSTALLING`).
+   (dal catalogo). «Installa» crea la riga (`INSTALLING`). Nel wizard cliente
+   la crea il primo «Continua».
 2. **Autenticazione** — OAuth: `POST azione=autorizza` → cookie col nonce →
    pagina del fornitore → `/api/integrations/oauth/callback/<slug>` verifica
    state + browser + persona + locale → scambio del codice → credenziali
@@ -172,10 +219,12 @@ Impostazioni → Sistema → **Integrazioni** → `/settings/integrations`.
    importazione in coda.
 
 Il passo corrente lo decide lo stato sul server: chi chiude a metà riprende da
-lì. Dopo l'attivazione la stessa pagina mostra la gestione: Panoramica,
-Configurazione, Sincronizzazione, Mappatura, Log, Connessione; azioni Testa
-connessione, Sincronizza ora, Riconfigura, Disattiva/Riattiva, Disinstalla,
-Ricollega.
+lì. Dopo l'attivazione la pagina del cliente mostra la gestione: stato,
+sede, ultima sincronizzazione, che cosa si sincronizza, elementi trovati,
+collegamenti di tavoli e prodotti (dal lato Foodtech, senza identificativi
+del fornitore); azioni Sincronizza ora, Impostazioni (gruppi, sede, dati di
+accesso, aggiornamenti istantanei, pausa), Disconnetti, e Ricollega quando
+serve.
 
 Le transizioni ammesse sono una tabella (`stati.ts`), fissata da test:
 attivare senza prova è un 409, non una svista possibile.
