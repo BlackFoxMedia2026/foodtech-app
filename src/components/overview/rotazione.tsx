@@ -226,7 +226,7 @@ export function Rotazione({ righe, etichetta }: { righe: React.ReactNode[]; etic
               style={{ transform: `translateY(${postoVisuale * 100}%)` }}
               className={cn(
                 "absolute inset-x-0 top-0 h-1/3 transition-[transform,opacity] duration-500 ease-out motion-reduce:transition-none",
-                alCentro ? "z-20 opacity-100" : visibile ? "z-10 opacity-50" : "opacity-0",
+                alCentro ? "z-20 opacity-100" : visibile ? "rotazione-vicina z-10 opacity-50" : "opacity-0",
                 !alCentro && "pointer-events-none",
               )}
             >

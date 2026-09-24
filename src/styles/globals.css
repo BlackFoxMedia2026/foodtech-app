@@ -302,6 +302,20 @@
     --floor-wood-3: #b98d58;
     --floor-doghe: rgba(92, 58, 24, 0.1);
     --floor-ombra-muri: rgba(56, 33, 10, 0.5);
+    /* Muri, aree ed etichette della pianta, e il velo che la vista dal vivo
+       del Servizio stende sopra il disegno. Al buio i valori di prima. */
+    --room-wall-face: #2c302d;
+    --room-wall-top: #3e4541;
+    --room-divider: #4a524c;
+    --room-wall-shadow: rgba(12, 18, 14, 0.45);
+    --room-floor-cucina: #d8d3c7;
+    --room-floor-dehors: #bfc3a8;
+    --room-bancone-1: #c9b394;
+    --room-bancone-2: #a78a64;
+    --room-label-cucina: #4a4238;
+    --room-label-bancone: #3e382f;
+    --room-label-dehors: #34402c;
+    --pianta-velo: hsl(var(--background) / 0.65);
     /* «Nuovo turno», l'azione primaria del calendario. */
     --nuovo-turno: #3d5c34;
     --nuovo-turno-hover: #496c3e;
@@ -546,6 +560,24 @@
     --floor-wood-3: var(--room-floor);
     --floor-doghe: transparent;
     --floor-ombra-muri: var(--edge-shadow);
+    /* Il muro passa la soglia dei segni sul pavimento (3,11 : 1). */
+    --room-wall: #7d7767;
+    --room-wall-face: var(--room-wall);
+    --room-wall-top: var(--room-wall);
+    --room-divider: var(--room-wall);
+    --room-wall-shadow: var(--edge-shadow);
+    --room-floor-cucina: #e6dfcd;
+    --room-floor-dehors: #dee2d5;
+    --room-bancone-1: #d7d0bf;
+    --room-bancone-2: #d7d0bf;
+    /* Il nome di un'area è informazione: testo secondario, 5,69-6,64 : 1. */
+    --room-label-cucina: var(--text-secondary);
+    --room-label-bancone: var(--text-secondary);
+    --room-label-dehors: var(--text-secondary);
+    /* Il velo al buio serviva a far vincere le schede sul legno caldo. Sulla
+       carta la forma la porta il contorno: il velo sbiadiva pavimento, muri
+       ed etichette fino a confonderli con la pagina. */
+    --pianta-velo: transparent;
     --nuovo-turno: var(--cta-fill);
     --nuovo-turno-hover: hsl(var(--primary) / 0.9);
     --oggi-fondo: var(--control-fill);
@@ -1793,6 +1825,12 @@
   }
   :root:has([data-tema="carta"]) .pulsante-brand:hover {
     background-color: hsl(var(--primary) / 0.9);
+  }
+  /* Le voci ai lati del carosello delle prenotazioni: al buio l'opacità
+     leggeva come profondità, sulla carta come «annullata». La profondità in
+     Carta la danno smusso e ombra, non la trasparenza del contenuto. */
+  :root:has([data-tema="carta"]) .rotazione-vicina {
+    opacity: 1;
   }
   :root:has([data-tema="carta"]) .barra-binario {
     background-color: var(--meter-track);

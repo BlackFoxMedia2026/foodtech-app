@@ -283,7 +283,7 @@ export function RoomLiveView({
                         layers={{ ...DEFAULT_ROOM_LAYERS, original: false }}
                         className="h-full w-full"
                       />
-                      <div className="pointer-events-none absolute inset-0 bg-background/65" aria-hidden="true" />
+                      <div className="pointer-events-none absolute inset-0 bg-[color:var(--pianta-velo)]" aria-hidden="true" />
                     </>
                   )}
                   {tavoliSala.map((t) => {
