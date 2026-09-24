@@ -37,12 +37,11 @@ export async function GET(req: Request, { params }: { params: { slug: string } }
     righe: righe.map((m) => ({
       id: m.id,
       tipo: m.entityType,
-      esterno: m.externalLabel ?? m.externalId,
-      externalId: m.externalId,
+      // Il nome con cui la cassa chiama l'elemento: l'identificativo del fornitore non esce.
+      esterno: m.externalLabel ?? "Senza nome",
       internalId: m.internalId,
       interno: m.internalId ? nomi.get(m.internalId) ?? null : null,
       manuale: m.manual,
-      vistoIl: m.lastSeenAt.toISOString(),
     })),
     interni,
   });

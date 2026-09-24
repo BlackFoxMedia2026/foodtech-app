@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies, headers } from "next/headers";
 import { z } from "zod";
-import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
+import { apiError, apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { can, type Ability } from "@/lib/abilities";
 import { auditActor } from "@/server/audit";
 import {
@@ -18,10 +18,15 @@ import {
   riattiva,
   salvaCapacita,
   salvaConfigurazione,
+  trovaInstallazione,
+  voceObbligatoria,
   type Attore,
 } from "@/server/integrations/installazioni";
 import { origineDellaPiattaforma } from "@/server/integrations/sync";
-import { dettaglioPerLocale } from "@/server/integrations/vista";
+import { dettaglioCliente } from "@/server/integrations/vista-cliente";
+import { capacitaDaGruppi, provaPerIlCliente } from "@/server/integrations/cliente";
+import { richiediAttivazione } from "@/server/integrations/richieste";
+import { importaIniziale } from "@/server/integrations/importazione";
 import { COOKIE_NONCE, DURATA_STATE_MS } from "@/server/integrations/oauth-state";
 
 /**
@@ -37,14 +42,27 @@ import { COOKIE_NONCE, DURATA_STATE_MS } from "@/server/integrations/oauth-state
  *
  * Le rotte non contengono regole: chiamano `server/integrations/installazioni.ts`.
  * `venueId` viene sempre dal contesto, mai dal corpo.
+ *
+ * ## Solo la vista del cliente
+ *
+ * Questa è la rotta dell'esperienza cliente: legge `dettaglioCliente`, e la
+ * prova risponde senza avvisi tecnici né riferimenti di correlazione. La
+ * vista interna (adattatore, registro, certificazione) sta sotto
+ * /admin/integrazioni e `/api/integrations/<slug>/certificazione`, solo
+ * Super Admin.
  */
+
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { slug: string } }) {
   const ctx = await requireVenueApi("integration:view");
   if (!ctx.ok) return ctx.response;
-  const d = await dettaglioPerLocale(ctx.venueId, params.slug, can(ctx.role, "integration:logs"));
+  const d = await dettaglioCliente(
+    ctx.venueId,
+    params.slug,
+    can(ctx.role, "integration:configure") ? { aggiornamentiDa: { origine: origineDellaPiattaforma(headers()) } } : {},
+  );
   if (!d) return NextResponse.json({ error: "not_found" }, { status: 404 });
   return NextResponse.json(d);
 }
@@ -66,6 +84,12 @@ const Azione = z.discriminatedUnion("azione", [
   z.object({ azione: z.literal("riattiva") }),
   z.object({ azione: z.literal("sincronizza") }),
   z.object({ azione: z.literal("segreto_webhook"), segreto: z.string().max(500) }),
+  /* «Richiedi attivazione» / «Avvisami»: una richiesta interna a Foodtech. */
+  z.object({ azione: z.literal("richiedi") }),
+  /* Gli interruttori del cliente («Tavoli», «Menu e prodotti»…), tradotti in capacità dal server. */
+  z.object({ azione: z.literal("gruppi"), gruppi: z.array(z.string().max(40)).max(20) }),
+  /* L'importazione iniziale: copiare in Foodtech sala e menu della cassa. */
+  z.object({ azione: z.literal("importa"), tavoli: z.boolean(), menu: z.boolean() }),
 ]);
 
 const PERMESSO: Record<z.infer<typeof Azione>["azione"], Ability> = {
@@ -81,6 +105,9 @@ const PERMESSO: Record<z.infer<typeof Azione>["azione"], Ability> = {
   sincronizza: "integration:configure",
   disattiva: "integration:disconnect",
   segreto_webhook: "integration:configure",
+  richiedi: "integration:install",
+  gruppi: "integration:configure",
+  importa: "integration:configure",
 };
 
 export async function POST(req: Request, { params }: { params: { slug: string } }) {
@@ -142,7 +169,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
         return NextResponse.json({ ok: true });
 
       case "prova":
-        return NextResponse.json(await provaConnessione(attore, slug, origine));
+        return NextResponse.json(provaPerIlCliente(await provaConnessione(attore, slug, origine)));
 
       case "attiva":
         await attiva(attore, slug, origine);
@@ -159,6 +186,21 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
       case "segreto_webhook":
         await aggiornaSegretoWebhook(attore, slug, corpo.segreto);
         return NextResponse.json({ ok: true });
+
+      case "richiedi":
+        return NextResponse.json(await richiediAttivazione(attore, slug));
+
+      case "gruppi": {
+        const voce = voceObbligatoria(slug);
+        const attuali = (await trovaInstallazione(ctx.venueId, slug))?.enabledCapabilities ?? [];
+        const capacita = capacitaDaGruppi(voce.capacita, corpo.gruppi, attuali);
+        if (capacita.length === 0) return apiError(422, "validation_failed", "Scegli almeno una cosa da sincronizzare.");
+        await salvaCapacita(attore, slug, capacita, origine);
+        return NextResponse.json({ ok: true });
+      }
+
+      case "importa":
+        return NextResponse.json(await importaIniziale(attore, slug, { tavoli: corpo.tavoli, menu: corpo.menu }));
 
       case "sincronizza": {
         const esito = await chiediSincronizzazione(attore, slug);

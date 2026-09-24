@@ -20,6 +20,7 @@ import {
 import { ErroreIntegrazione, messaggioPerIlRistoratore, normalizzaErrore, nuovoCorrelationId } from "./errori";
 import { saluteDi, transizione, type Evento } from "./stati";
 import { creaState } from "./oauth-state";
+import { gruppiAccesi } from "./cliente";
 import type { Capacita, StatoInstallazione } from "./tipi";
 
 /**
@@ -342,6 +343,7 @@ export async function installa(a: Attore, slug: string): Promise<IntegrationInst
   if (esistente && esistente.status !== "NOT_INSTALLED") return esistente;
 
   const webhookKey = randomBytes(18).toString("base64url");
+  const preferenze = preferenzeDi(esistente);
   const base = {
     adapterVersion: adattatore.versione,
     status: "INSTALLING" as const,
@@ -355,8 +357,10 @@ export async function installa(a: Attore, slug: string): Promise<IntegrationInst
     externalLocationName: null,
     /* Da zero davvero: `undefined` per Prisma vuol dire «non toccare», e i
        metadati della vecchia installazione (webhook registrati, segreto
-       presente) sopravvivrebbero alla disinstallazione. */
-    metadata: PrismaValori.DbNull,
+       presente) sopravvivrebbero alla disinstallazione. Sopravvivono solo le
+       scelte del cliente su che cosa sincronizzare: il wizard le ripropone,
+       e un interruttore spento resta spento. */
+    metadata: preferenze ? ({ gruppiCliente: preferenze } as Prisma.InputJsonValue) : PrismaValori.DbNull,
     webhookKey,
     installedAt: new Date(),
     installedById: a.userId,
@@ -608,7 +612,15 @@ export async function salvaCapacita(a: Attore, slug: string, capacita: string[],
 /* -------------------------------------------------------------------------- */
 
 export type EsitoProvaPerIlRistoratore =
-  | { ok: true; account: string | null; sede: string | null; avvisi: string[] }
+  | {
+      ok: true;
+      account: string | null;
+      sede: string | null;
+      /** Tutti: quelli dell'adattatore (tecnici, per la console) e quelli del gruppo. */
+      avvisi: string[];
+      /** Solo quelli scritti per il ristoratore: la stessa sede collegata a un altro locale del gruppo. */
+      avvisiGruppo: string[];
+    }
   | { ok: false; titolo: string; spiegazione: string; azione: string | null; correlationId: string };
 
 /**
@@ -632,7 +644,8 @@ export async function provaConnessione(
   try {
     const esito = await adattatore.provaConnessione(await contestoFresco(i, origine, correlationId));
     const sede = esito.sedi.find((s) => s.externalId === i.externalLocationId) ?? null;
-    const avvisi = [...esito.avvisi, ...(await avvisiMultiSede(i))];
+    const avvisiGruppo = await avvisiMultiSede(i);
+    const avvisi = [...esito.avvisi, ...avvisiGruppo];
 
     await applicaEvento(i, { tipo: "prova_riuscita" }, {
       lastTestAt: new Date(),
@@ -644,7 +657,7 @@ export async function provaConnessione(
       lastError: null,
     });
     await recordAudit(a.audit, "integration.test", "integration", i.id, { slug, ok: true });
-    return { ok: true, account: esito.account?.nome ?? null, sede: sede?.nome ?? null, avvisi };
+    return { ok: true, account: esito.account?.nome ?? null, sede: sede?.nome ?? null, avvisi, avvisiGruppo };
   } catch (err) {
     const e = normalizzaErrore(err, correlationId);
     await applicaEvento(i, { tipo: "prova_fallita", codice: e.codice }, {
@@ -848,7 +861,8 @@ export async function disinstalla(a: Attore, slug: string, origine: string) {
         // Gli id dei webhook presso il fornitore sono serviti a `disconnetti`:
         // da qui in poi non valgono più niente.
         // La sospensione di Foodtech resta: disinstallare non deve bastare a toglierla.
-        metadata: sospensioneDi(i) ? ({ sospensione: sospensioneDi(i) } as Prisma.InputJsonValue) : PrismaValori.DbNull,
+        // E restano le scelte del cliente su che cosa sincronizzare (`preferenzeDi`).
+        metadata: metadatiDopoDisinstallazione(i),
         // Un indirizzo nuovo e mai consegnato: gli eventi che il fornitore
         // manda ancora al vecchio trovano un 404.
         webhookKey: randomBytes(18).toString("base64url"),
@@ -858,6 +872,26 @@ export async function disinstalla(a: Attore, slug: string, origine: string) {
   // Doppia sicurezza: se la transazione è passata, non restano credenziali.
   await cancellaCredenziali(i);
   await recordAudit(a.audit, "integration.uninstall", "integration", i.id, { slug, revocata });
+}
+
+/**
+ * Che cosa il cliente aveva scelto di sincronizzare, con le parole dei suoi
+ * interruttori (`GRUPPI_SYNC`): dalle capacità accese, o — su una riga
+ * disinstallata — da quelle ricordate. `null` se non ha mai scelto.
+ */
+export function preferenzeDi(i: Pick<IntegrationInstallation, "integrationSlug" | "enabledCapabilities" | "metadata"> | null): string[] | null {
+  if (!i) return null;
+  const voce = voceDi(i.integrationSlug);
+  if (voce && i.enabledCapabilities.length) return gruppiAccesi(voce.capacita, i.enabledCapabilities);
+  const m = i.metadata && typeof i.metadata === "object" ? (i.metadata as Record<string, unknown>) : {};
+  return Array.isArray(m.gruppiCliente) ? m.gruppiCliente.filter((g): g is string => typeof g === "string") : null;
+}
+
+function metadatiDopoDisinstallazione(i: IntegrationInstallation) {
+  const s = sospensioneDi(i);
+  const gruppiCliente = preferenzeDi(i);
+  if (!s && !gruppiCliente) return PrismaValori.DbNull;
+  return { ...(s ? { sospensione: s } : {}), ...(gruppiCliente ? { gruppiCliente } : {}) } as Prisma.InputJsonValue;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -4,6 +4,7 @@ import type {
   Categoria,
   Disponibilita,
   ModalitaAutenticazione,
+  PresentazioneCliente,
   StatoImplementazione,
 } from "./tipi";
 
@@ -104,6 +105,12 @@ export type VoceCatalogo = {
   risorse?: RisorsaFornitore[];
   /** I campi che il percorso di installazione chiede al passo «Configurazione». */
   configurazione: CampoConfigurazione[];
+  /**
+   * Come la voce si presenta al ristoratore (`server/integrations/cliente.ts`):
+   * le stesse domande di `configurazione`, con parole sue, e l'aiuto «Dove
+   * trovo…?». Tutto il resto di questa voce è per la vista interna.
+   */
+  cliente?: PresentazioneCliente;
   /** Per il primo passo del percorso: cosa collega, cosa legge, cosa scrive. */
   dati: { legge: string[]; scrive: string[]; permessi: string[] };
   documentazione: string | null;
@@ -247,6 +254,11 @@ export const CATALOGO: readonly VoceCatalogo[] = [
         opzioniDa: "locations",
       },
     ],
+    cliente: {
+      credenziali: "Ti basta accedere con il tuo account Lightspeed.",
+      campi: { businessLocationId: { etichetta: "Sede" } },
+      titoloSede: "Sede",
+    },
     dati: {
       legge: [
         "L'account e le sedi",
@@ -367,6 +379,32 @@ export const CATALOGO: readonly VoceCatalogo[] = [
         obbligatorio: true,
       },
     ],
+    cliente: {
+      credenziali: "Ti serviranno i dati di accesso di Simphony che ti dà chi gestisce la cassa.",
+      aiuto: {
+        titolo: "Dove trovo questi dati?",
+        paragrafi: [
+          "Te li fornisce chi gestisce Simphony per il tuo ristorante: il reparto IT o il partner Oracle.",
+          "Chiedi un accesso dedicato a Foodtech: riceverai Client ID, utente e password, insieme ai due indirizzi del vostro ambiente e al codice della vostra organizzazione.",
+          "La password serve solo per collegarsi: Foodtech non la conserva.",
+        ],
+      },
+      campi: {
+        sts: { etichetta: "Indirizzo dell'ambiente Simphony", segnaposto: "https://…" },
+        auth: { etichetta: "Indirizzo di accesso", segnaposto: "https://…" },
+        organizzazione: { etichetta: "Codice organizzazione" },
+        clientId: { etichetta: "Client ID" },
+        utente: { etichetta: "Utente API" },
+        password: { etichetta: "Password" },
+        destinazione: { etichetta: "Sede", dividi: ["Sede", "Revenue center"] },
+        tipoOrdine: { etichetta: "Tipo di servizio", aiuto: "Come arrivano in cassa gli ordini di Foodtech (per esempio «Al tavolo»).", filtraPer: "destinazione" },
+        dipendente: {
+          etichetta: "Numero del dipendente per Foodtech",
+          aiuto: "Il dipendente di Simphony a cui intestare gli ordini di Foodtech. Chiedilo a chi gestisce la cassa.",
+        },
+      },
+      titoloSede: "Sede e revenue center",
+    },
     notaInstallazione:
       "Serve un ambiente Simphony Cloud con Transaction Services Gen2 attivo (opzione 74 del revenue center, workstation «POSAPI Client») e un API account dedicato a questo locale. Oracle non offre una sandbox pubblica.",
     messaggi: {
@@ -496,6 +534,22 @@ export const CATALOGO: readonly VoceCatalogo[] = [
         opzioniDa: "locations",
       },
     ],
+    cliente: {
+      credenziali: "Ti servirà la API Key del tuo account Cassa in Cloud.",
+      aiuto: {
+        titolo: "Dove trovo la mia API Key?",
+        paragrafi: [
+          "La API Key la rilascia Cassa in Cloud per il tuo account: chiedila al tuo rivenditore o all'assistenza di Cassa in Cloud.",
+          "È inclusa nei piani Cassa in Cloud che permettono di collegare altri programmi (Risto Enterprise e Retail Enterprise).",
+          "Quando la ricevi, incollala qui. Resta protetta: nessuno potrà rileggerla, nemmeno da Foodtech.",
+        ],
+      },
+      campi: {
+        apiKey: { etichetta: "API Key", segnaposto: "Incolla qui la tua API Key" },
+        idSalesPoint: { etichetta: "Punto vendita" },
+      },
+      titoloSede: "Punto vendita",
+    },
     notaInstallazione:
       "Per collegare Cassa in Cloud è necessario un piano compatibile con l'accesso API (licenze Risto Enterprise o Retail Enterprise). La chiave API la rilascia Cassa in Cloud.",
     messaggi: {
@@ -517,7 +571,7 @@ export const CATALOGO: readonly VoceCatalogo[] = [
       },
       PROVIDER_UNAVAILABLE: {
         titolo: "Cassa in Cloud non risponde",
-        spiegazione: "Cassa in Cloud non è temporaneamente disponibile. Riproviamo da soli; puoi anche riprovare tu.",
+        spiegazione: "Il servizio non è raggiungibile in questo momento. Riproviamo da soli; puoi anche riprovare tu.",
       },
     },
     dati: {
@@ -623,6 +677,28 @@ export const CATALOGO: readonly VoceCatalogo[] = [
         opzioniDa: "locations",
       },
     ],
+    cliente: {
+      credenziali: "Ti servirà il token di accesso del tuo negozio Tilby.",
+      aiuto: {
+        titolo: "Dove trovo il token?",
+        paragrafi: [
+          "Il token lo genera Tilby per il tuo negozio: chiedilo all'assistenza di Tilby o a chi gestisce il vostro account.",
+          "Ogni token vale per un solo negozio. Se hai più negozi, collega ogni locale di Foodtech con il suo.",
+        ],
+      },
+      campi: {
+        token: { etichetta: "Token di accesso", segnaposto: "Incolla qui il token" },
+        ambiente: {
+          etichetta: "Tipo di negozio",
+          passo: "accesso",
+          avanzato: true,
+          predefinito: "production",
+          opzioni: { production: "Il mio negozio", sandbox: "Negozio di prova Tilby" },
+        },
+        shopId: { etichetta: "Negozio" },
+      },
+      titoloSede: "Negozio",
+    },
     notaInstallazione:
       "L'accesso alle API di Tilby passa dal Developer Program: ogni richiesta è valutata da Tilby, l'uso delle API è a pagamento, e l'integrazione va certificata prima della produzione. Il token lo genera Tilby per il negozio.",
     messaggi: {

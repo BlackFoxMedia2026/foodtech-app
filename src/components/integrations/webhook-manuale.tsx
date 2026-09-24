@@ -40,14 +40,14 @@ export function WebhookManuale({
   const [esito, setEsito] = useState<{ ok: boolean; testo: string } | null>(null);
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <p className="text-sm text-muted-foreground">
-        Per ricevere da {fornitore} gli aggiornamenti di ordini, scontrini e catalogo senza aspettare la
-        sincronizzazione, crea un webhook nelle impostazioni del pannello di {fornitore} con questo indirizzo, poi
-        incolla qui il segreto che {fornitore} mostra nel dettaglio del webhook.
+        Per vedere subito ordini, scontrini e modifiche al menu, senza aspettare la sincronizzazione: nel pannello di{" "}
+        {fornitore} aggiungi un webhook con questo indirizzo, poi incolla qui il codice di sicurezza che {fornitore} ti
+        mostra.
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <code className="min-w-0 max-w-full truncate rounded-md border border-border bg-background/40 px-2 py-1.5 text-xs">
+      <div className="flex min-w-0 items-center gap-2">
+        <code className="block min-w-0 flex-1 truncate rounded-md border border-border bg-background/40 px-2 py-1.5 text-xs">
           {indirizzo}
         </code>
         <CopyButton value={indirizzo} variant="outline" size="sm">
@@ -57,10 +57,10 @@ export function WebhookManuale({
       <p className="flex items-center gap-2 text-sm">
         {segretoPresente ? (
           <>
-            <CheckCircle2 className="h-4 w-4 text-sage-strong" aria-hidden="true" /> Segreto del webhook salvato, cifrato.
+            <CheckCircle2 className="h-4 w-4 text-sage-strong" aria-hidden="true" /> Aggiornamenti istantanei attivi.
           </>
         ) : (
-          <span className="text-accent-strong">Nessun segreto salvato: gli eventi di {fornitore} vengono rifiutati.</span>
+          <span className="text-muted-foreground">Non ancora attivi: Foodtech legge i dati con la sincronizzazione.</span>
         )}
       </p>
       {puo && (
@@ -73,7 +73,7 @@ export function WebhookManuale({
             try {
               await azione(slug, { azione: "segreto_webhook", segreto });
               setSegreto("");
-              setEsito({ ok: true, testo: "Segreto salvato." });
+              setEsito({ ok: true, testo: "Codice salvato." });
               router.refresh();
             } catch (err) {
               setEsito({ ok: false, testo: err instanceof ErroreAzione ? err.message : "Non salvato." });
@@ -83,19 +83,19 @@ export function WebhookManuale({
           }}
         >
           <div className="min-w-[16rem] flex-1 space-y-1">
-            <Label htmlFor={`segreto-${slug}`}>Segreto del webhook</Label>
+            <Label htmlFor={`segreto-${slug}`}>Codice di sicurezza</Label>
             <Input
               id={`segreto-${slug}`}
               type="password"
               autoComplete="off"
               value={segreto}
               onChange={(e) => setSegreto(e.target.value)}
-              placeholder={segretoPresente ? "Salvato · scrivi per sostituirlo" : ""}
+              placeholder={segretoPresente ? "Salvato · scrivilo di nuovo per sostituirlo" : ""}
             />
           </div>
           <Button type="submit" variant="outline" size="sm" disabled={inCorso || !segreto.trim()}>
             {inCorso ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Salva segreto
+            Salva codice
           </Button>
         </form>
       )}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { can, getActiveVenue } from "@/lib/tenant";
-import { catalogoPerLocale } from "@/server/integrations/vista";
+import { catalogoCliente } from "@/server/integrations/vista-cliente";
 import { CatalogoIntegrazioni } from "@/components/integrations/catalogo-integrazioni";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,10 @@ export const dynamic = "force-dynamic";
  * Il catalogo è lo stesso per tutti i locali (`server/integrations/registry.ts`);
  * ciò che cambia da un locale all'altro è cosa ha installato, e lo stato di
  * ognuna. Due ristoranti dello stesso gruppo vedono lo stesso elenco e due
- * insiemi diversi di schede «Connessa».
+ * insiemi diversi di schede «Collegata».
+ *
+ * È la vista del cliente (`vista-cliente.ts`): cinque stati e un pulsante.
+ * Quella di Foodtech sta in /admin/integrazioni.
  */
 export default async function IntegrazioniPage() {
   const ctx = await getActiveVenue();
@@ -33,7 +36,7 @@ export default async function IntegrazioniPage() {
     );
   }
 
-  const schede = await catalogoPerLocale(ctx.venueId, { stripe: ctx.venue.stripeChargesEnabled });
+  const schede = await catalogoCliente(ctx.venueId, { stripe: ctx.venue.stripeChargesEnabled });
 
   return (
     <div className="schermo animate-fade-in gap-3">
@@ -53,7 +56,7 @@ export default async function IntegrazioniPage() {
 
       <div className="fill-scroll pr-0.5">
         <div className="pb-4">
-          <CatalogoIntegrazioni schede={schede} />
+          <CatalogoIntegrazioni schede={schede} puoCollegare={can(ctx.role, "integration:install")} />
         </div>
       </div>
     </div>

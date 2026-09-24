@@ -227,7 +227,10 @@ export type AuditAction =
   | "integration.certification_evidence"
   | "integration.fiscal_operation"
   | "integration.suspend"
-  | "integration.resume";
+  | "integration.resume"
+  | "integration.access_request"
+  | "integration.access_request_dismissed"
+  | "integration.initial_import";
 
 export type AuditActor = {
   userId: string;

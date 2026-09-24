@@ -409,6 +409,7 @@ model Venue {
   integrations       IntegrationInstallation[]
   integrationBetaAccess IntegrationBetaAccess[]
   integrationCertificationRuns IntegrationCertificationRun[]
+  integrationAccessRequests IntegrationAccessRequest[]
 
   @@unique([orgId, slug])
 }
@@ -5265,6 +5266,33 @@ model IntegrationBetaAccess {
 /// La fase di rilascio di un'integrazione: INTERNAL, PRIVATE_BETA,
 /// PUBLIC_BETA, GENERAL_AVAILABILITY. Senza riga vale il predefinito del
 /// catalogo. Cambiarla è una decisione di Foodtech, non del ristoratore.
+/// Un ristorante chiede a Foodtech un'integrazione che non può ancora
+/// collegare da solo: «Richiedi attivazione» su un'anteprima (ACCESS) o
+/// «Avvisami» su una voce in arrivo (NOTIFY). È una richiesta **interna**:
+/// non parte niente verso il fornitore. Il Super Admin la vede in
+/// /admin/integrazioni e, per un'anteprima, concede l'accesso beta — che la
+/// chiude come APPROVED. Una riga per locale e integrazione: chiedere di
+/// nuovo riapre la stessa.
+model IntegrationAccessRequest {
+  id              String    @id @default(cuid())
+  venueId         String
+  integrationSlug String    @db.VarChar(60)
+  /// ACCESS | NOTIFY
+  kind            String    @db.VarChar(20)
+  /// PENDING | APPROVED | DISMISSED
+  status          String    @default("PENDING") @db.VarChar(20)
+  requestedById   String?
+  requestedAt     DateTime  @default(now())
+  resolvedAt      DateTime?
+  resolvedByEmail String?   @db.VarChar(200)
+  updatedAt       DateTime  @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, integrationSlug])
+  @@index([status, requestedAt])
+}
+
 model IntegrationRollout {
   integrationSlug String   @id @db.VarChar(60)
   stage           String   @db.VarChar(30)

@@ -2,77 +2,52 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { CATEGORIE, ETICHETTA_CATEGORIA, type Categoria } from "@/server/integrations/tipi";
-import type { SchedaCatalogo } from "@/server/integrations/vista";
-import { BadgeImplementazione, BadgeStato, Monogramma, PallinoSalute, quando } from "./segni";
+import type { SchedaCliente } from "@/server/integrations/vista-cliente";
+import { Monogramma, PillolaStato } from "./segni";
+import { PulsanteAzione } from "./pulsante-azione";
 
 /**
- * **Il catalogo delle integrazioni.**
+ * **Il catalogo delle integrazioni, visto dal ristoratore.**
  *
- * Non è un negozio: niente stelline, niente «più popolari», niente
- * copertine. È un elenco da gestionale, che risponde a due domande —
- * *cosa ho collegato, e sta funzionando?* e *cosa posso collegare?* — in
- * quest'ordine. Per questo le installate vengono per prime (l'ordine lo
- * decide il server, `catalogoPerLocale`), e il filtro «Richiedono attenzione»
- * esiste: è il motivo per cui si torna su questa pagina.
+ * Ogni scheda risponde a due domande con due elementi: *in che stato è* (uno
+ * dei cinque stati del cliente) e *che cosa posso fare* (un pulsante). Tutto
+ * il resto — perché un'anteprima è un'anteprima, che cosa è stato provato,
+ * con quale adattatore — è di Foodtech, e sta in /admin/integrazioni.
  *
- * Una scheda dice sempre la verità sullo stato del connettore: «Anteprima»
- * per un adattatore non ancora provato con il fornitore, «In arrivo» per una
- * voce che è solo catalogo. Nessun pulsante «Installa» su qualcosa che non si
- * può installare.
+ * Le collegate vengono prima, in una sezione loro: sono il motivo per cui si
+ * torna qui. L'ordine lo decide il server (`catalogoCliente`).
  */
-
-type Filtro = "tutte" | "installate" | "disponibili" | "attenzione";
-
-const FILTRI: { id: Filtro; etichetta: string }[] = [
-  { id: "tutte", etichetta: "Tutte" },
-  { id: "installate", etichetta: "Installate" },
-  { id: "disponibili", etichetta: "Disponibili" },
-  { id: "attenzione", etichetta: "Richiedono attenzione" },
-];
 
 function normalizza(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-export function CatalogoIntegrazioni({ schede }: { schede: SchedaCatalogo[] }) {
+const DELLE_MIE = new Set(["COLLEGATA", "ATTENZIONE"]);
+
+export function CatalogoIntegrazioni({ schede, puoCollegare }: { schede: SchedaCliente[]; puoCollegare: boolean }) {
   const [cerca, setCerca] = useState("");
-  const [filtro, setFiltro] = useState<Filtro>("tutte");
-  const [categoria, setCategoria] = useState<Categoria | null>(null);
+  const [categoria, setCategoria] = useState<string | null>(null);
 
-  const conteggi = useMemo(
-    () => ({
-      tutte: schede.length,
-      installate: schede.filter((s) => s.installazione).length,
-      disponibili: schede.filter((s) => !s.installazione && (s.nonInstallabile === null || s.nativa)).length,
-      attenzione: schede.filter((s) => s.richiedeAttenzione).length,
-    }),
-    [schede],
-  );
-
-  const categoriePresenti = CATEGORIE.filter((c) => schede.some((s) => s.categoria === c));
+  const categorie = useMemo(() => [...new Set(schede.map((s) => s.categoria))], [schede]);
 
   const visibili = schede.filter((s) => {
-    if (filtro === "installate" && !s.installazione) return false;
-    if (filtro === "disponibili" && (s.installazione || (s.nonInstallabile !== null && !s.nativa))) return false;
-    if (filtro === "attenzione" && !s.richiedeAttenzione) return false;
     if (categoria && s.categoria !== categoria) return false;
     if (cerca.trim()) {
       const q = normalizza(cerca.trim());
-      const testo = normalizza(`${s.nome} ${s.fornitore} ${s.descrizione} ${ETICHETTA_CATEGORIA[s.categoria]}`);
-      if (!testo.includes(q)) return false;
+      if (!normalizza(`${s.nome} ${s.descrizione} ${s.categoria}`).includes(q)) return false;
     }
     return true;
   });
+  const mie = visibili.filter((s) => DELLE_MIE.has(s.stato) || s.azione === "RIPRENDI");
+  const altre = visibili.filter((s) => !mie.includes(s));
 
   return (
-    <div className="space-y-4">
-      {/* Ricerca e stato */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full lg:max-w-sm">
+    <div className="min-w-0 space-y-5">
+      <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center">
+        <div className="relative w-full md:max-w-xs">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -80,131 +55,112 @@ export function CatalogoIntegrazioni({ schede }: { schede: SchedaCatalogo[] }) {
           <Input
             value={cerca}
             onChange={(e) => setCerca(e.target.value)}
-            placeholder="Cerca un'integrazione o un fornitore"
+            placeholder="Cerca un'integrazione"
             aria-label="Cerca un'integrazione"
             className="pl-9"
           />
         </div>
-        <div role="tablist" aria-label="Filtra per stato" className="flex flex-wrap gap-1.5">
-          {FILTRI.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              role="tab"
-              aria-selected={filtro === f.id}
-              onClick={() => setFiltro(f.id)}
-              className={cn(
-                "tocco-comodo inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
-                filtro === f.id
-                  ? "border-accent/60 bg-accent/50 text-cream"
-                  : "border-border text-muted-foreground hover:text-foreground",
-                f.id === "attenzione" && conteggi.attenzione === 0 && filtro !== f.id && "opacity-60",
-              )}
-            >
-              {f.etichetta}
-              <span className="tabular-nums opacity-80">{conteggi[f.id]}</span>
-            </button>
+        <div className="-mx-1 flex w-full min-w-0 gap-1.5 overflow-x-auto px-1 pb-1 md:w-auto md:flex-wrap md:overflow-visible md:pb-0" aria-label="Categorie">
+          <Chip attiva={categoria === null} onClick={() => setCategoria(null)}>
+            Tutte
+          </Chip>
+          {categorie.map((c) => (
+            <Chip key={c} attiva={categoria === c} onClick={() => setCategoria(categoria === c ? null : c)}>
+              {c}
+            </Chip>
           ))}
         </div>
       </div>
 
-      {/* Categorie */}
-      <div className="flex flex-wrap gap-1.5" aria-label="Categorie">
-        <button
-          type="button"
-          onClick={() => setCategoria(null)}
-          aria-pressed={categoria === null}
-          className={cn(
-            "rounded-full border px-2.5 py-1 text-xs transition-colors",
-            categoria === null ? "border-cream/40 text-cream" : "border-border text-muted-foreground hover:text-foreground",
-          )}
-        >
-          Tutte le categorie
-        </button>
-        {categoriePresenti.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setCategoria(categoria === c ? null : c)}
-            aria-pressed={categoria === c}
-            className={cn(
-              "rounded-full border px-2.5 py-1 text-xs transition-colors",
-              categoria === c ? "border-cream/40 text-cream" : "border-border text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {ETICHETTA_CATEGORIA[c]}
-          </button>
-        ))}
-      </div>
-
-      {visibili.length === 0 ? (
+      {visibili.length === 0 && (
         <p className="riquadro tratteggiato comodo text-center text-sm text-muted-foreground">
-          {filtro === "attenzione"
-            ? "Nessuna integrazione richiede attenzione. Tutto quello che è collegato sta funzionando."
-            : filtro === "installate"
-              ? "Nessuna integrazione installata su questo locale."
-              : "Nessuna integrazione corrisponde alla ricerca."}
+          Nessuna integrazione corrisponde alla ricerca.
         </p>
-      ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visibili.map((s) => (
-            <li key={s.slug}>
-              <Scheda s={s} />
-            </li>
+      )}
+
+      {mie.length > 0 && (
+        <Sezione titolo="Le tue integrazioni">
+          {mie.map((s) => (
+            <Scheda key={s.slug} s={s} puoCollegare={puoCollegare} />
           ))}
-        </ul>
+        </Sezione>
+      )}
+
+      {altre.length > 0 && (
+        <Sezione titolo={mie.length > 0 ? "Altre integrazioni" : null}>
+          {altre.map((s) => (
+            <Scheda key={s.slug} s={s} puoCollegare={puoCollegare} />
+          ))}
+        </Sezione>
       )}
     </div>
   );
 }
 
-function Scheda({ s }: { s: SchedaCatalogo }) {
-  const href = s.nativa ?? `/settings/integrations/${s.slug}`;
-  const i = s.installazione;
-
+function Chip({ attiva, onClick, children }: { attiva: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <Link
-      href={href}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={attiva}
       className={cn(
-        "group flex h-full flex-col gap-3 rounded-lg border bg-card/60 p-4 transition-colors hover:border-border-strong hover:bg-card",
-        s.richiedeAttenzione ? "border-accent/60" : "border-border",
+        "tocco-comodo inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+        attiva ? "border-accent/60 bg-accent/50 text-cream" : "border-border text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Sezione({ titolo, children }: { titolo: string | null; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2.5">
+      {titolo && <h2 className="t-etichetta">{titolo}</h2>}
+      <ul className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{children}</ul>
+    </section>
+  );
+}
+
+function Scheda({ s, puoCollegare }: { s: SchedaCliente; puoCollegare: boolean }) {
+  const href = s.hrefNativa ?? `/settings/integrations/${s.slug}`;
+  return (
+    <li
+      className={cn(
+        "group relative flex h-full min-w-0 flex-col gap-3 rounded-xl border bg-card/60 p-4 transition-colors hover:border-border-strong hover:bg-card",
+        s.stato === "ATTENZIONE" ? "border-accent/60" : "border-border",
+        s.stato === "PROSSIMAMENTE" && "bg-card/30",
       )}
     >
       <div className="flex items-start gap-3">
         <Monogramma testo={s.monogramma} />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2 font-medium">
-            {i && <PallinoSalute salute={i.salute} />}
-            <span className="truncate">{s.nome}</span>
-          </p>
-          <p className="t-etichetta mt-0.5">{ETICHETTA_CATEGORIA[s.categoria]}</p>
+          {/* Il nome è il collegamento, e copre tutta la scheda: il pulsante sta sopra. */}
+          <Link href={href} className="block truncate font-medium after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
+            {s.nome}
+          </Link>
+          <p className="t-nota mt-0.5">{s.categoria}</p>
         </div>
-        <BadgeImplementazione voce={s} />
       </div>
 
-      <p className="text-sm text-muted-foreground">{s.descrizione}</p>
+      <p className="line-clamp-2 text-sm text-muted-foreground">{s.descrizione}</p>
 
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/60 pt-3">
-        {i ? (
-          <div className="min-w-0 space-y-0.5">
-            <BadgeStato stato={i.status} salute={i.salute} />
-            {i.sede && <p className="truncate t-nota">Punto vendita: {i.sede}</p>}
-            {i.problema ? (
-              <p className="truncate text-xs text-accent-strong">{i.problema.titolo}</p>
-            ) : i.ultimaSyncIl ? (
-              <p className="t-nota">Ultima sincronizzazione {quando(i.ultimaSyncIl)}</p>
-            ) : null}
-          </div>
-        ) : s.nonInstallabile && !s.nativa ? (
-          <p className="t-nota">{s.implementazione === "PLANNED" ? "Non ancora disponibile" : s.nonInstallabile}</p>
-        ) : (
-          <span className="text-sm font-medium text-cream">{s.nativa ? "Collega" : "Installa"}</span>
-        )}
-        <ArrowRight
-          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-          aria-hidden="true"
-        />
+      <div className="mt-auto flex min-h-9 items-center justify-between gap-2 border-t border-border/60 pt-3">
+        <div className="min-w-0">
+          <PillolaStato stato={s.stato} etichetta={s.etichettaStato} />
+          {s.riga && <p className="mt-0.5 truncate t-nota">{s.riga}</p>}
+        </div>
+        <div className="relative z-10 shrink-0">
+          <PulsanteAzione
+            slug={s.slug}
+            nome={s.nome}
+            azione={s.azione}
+            hrefNativa={s.hrefNativa}
+            puoRichiedere={puoCollegare}
+            inAttivazione={s.inAttivazione}
+          />
+        </div>
       </div>
-    </Link>
+    </li>
   );
 }
