@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { isNavActive, sottovoceAttiva, type NavItem } from "@/components/shell/nav-items";
 import { cn } from "@/lib/utils";
+import { ContenutoVoce } from "./contenuto-voce";
+import type { Forma } from "./disponi-fila";
 
 /**
  * Marketing, in barra, **è un menu e non una destinazione**.
@@ -39,15 +40,17 @@ export function MarketingMenu({
   item,
   triggerClassName,
   triggerRef,
+  forma,
 }: {
   item: NavItem;
   triggerClassName: string;
+  /** La forma che la fila ha scelto per tutte le voci. */
+  forma: Forma;
   /** Il misuratore della pillola crema in barra: vale per un bottone come per
    *  un link, purché l'elemento sia lo stesso che occupa il posto in fila. */
   triggerRef: (el: HTMLElement | null) => void;
 }) {
   const pathname = usePathname();
-  const Icon = item.icon;
   const active = isNavActive(pathname, item);
   const aperta = sottovoceAttiva(pathname, item);
   const voci = item.sottovoci ?? [];
@@ -60,25 +63,14 @@ export function MarketingMenu({
         aria-current={active ? "page" : undefined}
         className={cn(triggerClassName, "group")}
       >
-        <Icon className="h-4 w-4 shrink-0" />
-        <span className="hidden 2xl:inline">{item.label}</span>
-        <span className="hidden md:inline 2xl:hidden">{item.shortLabel ?? item.label}</span>
-        <span className="sr-only md:hidden">{item.label}</span>
         {/*
-          La freccia compare **solo da 1536 px**, dove il nome è già intero e
-          la fila ha spazio davanti e dietro.
-
-          Non è una scelta estetica, è una misura: fra i 1280 e i 1536 px le
-          otto voci arrivano a sfiorare il marchio a sinistra e la sfera
-          dell'agente a destra, e questi 20 px (l'icona più il suo spazio)
-          bastano a far sovrapporre le due cose a 1366 px. Sotto quella
-          soglia a dire che è un menu ci pensa il pannello che si apre — e
-          togliere un segno costa meno che nascondere mezza barra.
+          La freccia compare solo in riga, dove il nome è intero: lì la fila ha
+          già fatto il conto con lei dentro (la misura passa dallo stesso
+          `ContenutoVoce`), e non può più spingere la pillola sotto l'agente
+          come faceva a 1366 px. Nella pila a dire che è un menu ci pensa il
+          pannello che si apre.
         */}
-        <ChevronDown
-          aria-hidden="true"
-          className="hidden h-3 w-3 shrink-0 opacity-60 transition-transform duration-200 group-data-[state=open]:rotate-180 2xl:block"
-        />
+        <ContenutoVoce item={item} forma={forma} freccia />
       </DropdownMenuTrigger>
 
       {/*

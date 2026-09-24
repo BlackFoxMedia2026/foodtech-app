@@ -33,11 +33,18 @@ export const AgentButton = forwardRef<HTMLButtonElement, { open: boolean; proces
 
           L'altezza resta 46: in verticale l'alone sborda sopra e sotto, dove non
           c'è nient'altro da toccare.
+
+          Sul telefono la sfera scende a 50 px con una scala, non con un'altra
+          misura: l'animazione è disegnata a 62 e rifarla più piccola vorrebbe
+          dire due sfere da tenere uguali. La scatola scende con lei, e sono i
+          12 px che tengono intero il titolo della pagina accanto al marchio.
         */
-        className="h-[46px] w-[62px] shrink-0 overflow-visible text-foreground hover:bg-transparent"
+        className="h-[46px] w-[50px] shrink-0 overflow-visible text-foreground hover:bg-transparent md:w-[62px]"
         {...props}
       >
-        <AgentVisual state={state} size={62} />
+        <span className="grid scale-[0.8] place-items-center md:scale-100">
+          <AgentVisual state={state} size={62} />
+        </span>
       </Button>
     );
   },

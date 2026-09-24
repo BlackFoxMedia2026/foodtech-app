@@ -1,11 +1,14 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PARTI, indirizzoParte, parteDa } from "@/lib/parti-impostazioni";
-import { classiVoce } from "@/components/shell/nav-items";
+import { classiVoceIn, type NavItem } from "@/components/shell/nav-items";
+import { ContenutoVoce } from "@/components/shell/contenuto-voce";
+import { CopiaDaMisurare, IndicatoreFila, MenuAltro } from "@/components/shell/fila-principale";
+import { useFilaAdattiva } from "@/components/shell/use-fila-adattiva";
 import { cn } from "@/lib/utils";
 import { SEGNI } from "./segni-impostazioni";
 
@@ -30,44 +33,55 @@ import { SEGNI } from "./segni-impostazioni";
  *
  * Nessuna voce accesa sull'**indice**: là non si sta in nessuna sezione, e
  * accenderne una direbbe il falso.
+ *
+ * ## Si misura come la fila del gestionale
+ *
+ * Stesse forme e stesso conto (`useFilaAdattiva`): nome intero quando c'è
+ * spazio, nome breve, nome sotto l'icona, e le ultime sezioni in «Altro».
+ * Prima la fila aveva soglie fisse e non si comprimeva mai: a 1280 px
+ * copriva il nome del locale da una parte e la sfera dell'agente dall'altra.
  */
 export function NavigazioneImpostazioni() {
   const pathname = usePathname();
   const parametri = useSearchParams();
   const attiva = parteDa(parametri.get("sez") ?? parametri.get("parte"));
 
-  const riferimenti = useRef(new Map<string, HTMLElement>());
-  const [pillola, setPillola] = useState<{
-    left: number;
-    width: number;
-  } | null>(null);
-  const [motoRidotto, setMotoRidotto] = useState(false);
-
-  useLayoutEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setMotoRidotto(query.matches);
-    const cambia = () => setMotoRidotto(query.matches);
-    query.addEventListener("change", cambia);
-    return () => query.removeEventListener("change", cambia);
-  }, []);
-
   /*
     Dentro una sottopagina — il brand, il Wi-Fi, i pagamenti, il piano DEM —
     nessuna sezione è aperta: le voci restano link e nessuna è accesa.
   */
   const nellaPagina = pathname === "/settings";
+  const accesa = nellaPagina ? attiva : null;
 
-  useLayoutEffect(() => {
-    const el = attiva && nellaPagina ? riferimenti.current.get(attiva) : null;
-    setPillola(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
-  }, [attiva, nellaPagina, pathname]);
+  /* Le sezioni nella forma delle voci di barra, così «Altro» e la misura
+     sono gli stessi del gestionale. */
+  const voci: (NavItem & { id: string })[] = PARTI.map((parte) => ({
+    id: parte.id,
+    href: indirizzoParte(parte.id),
+    label: parte.titolo,
+    shortLabel: SEGNI[parte.id].breve,
+    icon: SEGNI[parte.id].icona,
+  }));
+
+  const ritorno = useRef<HTMLAnchorElement>(null);
+  const fila = useFilaAdattiva({
+    chiavi: voci.map((v) => v.id),
+    attiva: accesa ?? null,
+    riservaRef: ritorno,
+  });
+  const { forma } = fila;
 
   return (
     <nav
+      ref={fila.navRef}
       aria-label="Sezioni delle impostazioni"
-      className="hidden min-w-0 flex-1 items-center justify-center gap-2 md:flex"
+      className={cn(
+        "relative hidden min-w-0 flex-1 items-center justify-center gap-2 md:flex",
+        !fila.misurata && "overflow-hidden",
+      )}
     >
       <Link
+        ref={ritorno}
         href="/overview"
         title="Torna al gestionale"
         className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground transition-colors hover:border-line hover:text-foreground xl:text-sm"
@@ -77,43 +91,43 @@ export function NavigazioneImpostazioni() {
         <span className="sr-only xl:hidden">Torna al gestionale</span>
       </Link>
 
-      <div className="relative flex items-center gap-1 rounded-full border border-border bg-muted/70 p-1">
-        {pillola && (
-          <div
-            aria-hidden="true"
-            className="absolute inset-y-1 z-0 rounded-full bg-nav-pill"
-            style={{
-              left: pillola.left,
-              width: pillola.width,
-              transition: motoRidotto
-                ? "none"
-                : "left 260ms ease-in-out, width 260ms ease-in-out",
-            }}
-          />
-        )}
+      <div
+        ref={fila.pillolaRef}
+        className="relative flex min-w-0 items-center gap-1 rounded-full border border-border bg-muted/70 p-1"
+      >
+        <IndicatoreFila indicator={fila.indicator} reducedMotion={fila.reducedMotion} />
 
-        {PARTI.map((parte) => {
-          const { icona: Icona, breve } = SEGNI[parte.id];
-          const accesa = nellaPagina && parte.id === attiva;
+        {fila.visibili.map((i) => {
+          const voce = voci[i];
+          const questa = voce.id === accesa;
           return (
             <Link
-              key={parte.id}
-              href={indirizzoParte(parte.id)}
-              title={parte.titolo}
-              aria-current={accesa ? "page" : undefined}
-              ref={(el) => {
-                if (el) riferimenti.current.set(parte.id, el);
-                else riferimenti.current.delete(parte.id);
-              }}
-              className={classiVoce(accesa)}
+              key={voce.id}
+              href={voce.href}
+              title={voce.label}
+              aria-current={questa ? "page" : undefined}
+              ref={fila.registra(voce.id)}
+              className={classiVoceIn(questa, forma)}
             >
-              <Icona className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="hidden 2xl:inline">{parte.titolo}</span>
-              <span className="2xl:hidden">{breve}</span>
+              <ContenutoVoce item={voce} forma={forma} breveInRiga />
             </Link>
           );
         })}
+
+        {fila.nascoste.length > 0 && (
+          <MenuAltro voci={fila.nascoste.map((i) => voci[i])} forma={forma} etichetta="Altre impostazioni" />
+        )}
       </div>
+
+      <CopiaDaMisurare misuraRef={fila.misuraRef}>
+        {(f) =>
+          voci.map((voce) => (
+            <span key={voce.id} data-voce className={classiVoceIn(false, f)}>
+              <ContenutoVoce item={voce} forma={f} breveInRiga />
+            </span>
+          ))
+        }
+      </CopiaDaMisurare>
     </nav>
   );
 }

@@ -484,31 +484,40 @@ export function titoloPagina(pathname: string): TitoloPagina | null {
 }
 
 /**
- * Il vestito di una voce in barra, **uno solo per tutte**.
+ * Il vestito di una voce in barra, **uno solo per tutte**, in tre forme:
+ * · **pila** — il nome **sotto** l'icona, come nella barra del telefono (su
+ *   tablet si tocca: 44 px);
+ * · **riga** — il nome accanto all'icona;
+ * · **ampia** — la riga con più respiro, quando c'è spazio per tutto.
  *
- * Tre misure per la stessa voce, e il salto avviene dove la fila smetterebbe
- * di entrare:
- * · fino a 1280 px il nome sta **sotto** l'icona, come nella barra del
- *   telefono (su tablet si tocca: 44 px);
- * · da 1280 px torna accanto all'icona, abbreviato;
- * · da 1536 px il nome è intero.
+ * La forma non la decide una soglia di finestra ma la fila, misurando lo
+ * spazio che ha (`disponi-fila.ts`): la stessa finestra può volere la riga o
+ * la pila a seconda di quanto è lungo il nome del locale, e prima di
+ * stringere una parola la fila sposta una voce in «Altro». Una barra che
+ * scorre di lato è una barra che nasconde metà prodotto.
  *
- * Prima il nome tornava in fila già a 1024 px: con sei voci ci stava, con
- * sette la pillola finiva sotto la sfera dell'agente. Una barra che scorre di
- * lato è una barra che nasconde metà prodotto.
- *
- * Sta qui, e non dentro `header.tsx`, perché la usano **tre** file: la barra
- * del gestionale, il menu Marketing e la barra delle Impostazioni. Le due
+ * Sta qui, e non dentro `header.tsx`, perché la usano la barra del
+ * gestionale, il menu Marketing, «Altro» e la barra delle Impostazioni. Le due
  * barre devono somigliarsi fino all'ultimo pixel — è quello che rende il
  * passaggio fra le due un cambio di area e non un altro prodotto — e due
  * copie di questa stringa smettono di somigliarsi alla prima modifica fatta
  * su una sola.
  */
-export function classiVoce(active: boolean) {
+export function classiVoceIn(active: boolean, forma: "ampia" | "riga" | "pila") {
   return cn(
-    "relative z-10 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full px-2 py-1.5 text-[10px] font-medium leading-tight transition-colors md:min-w-0 xl:flex-row xl:gap-2 xl:px-3 xl:py-2 xl:text-sm 2xl:px-3.5",
-    active ? "text-nav-pill-ink" : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+    VOCE_BASE,
+    forma === "pila" && "min-w-[44px] flex-col gap-0.5 px-2 py-1.5 text-[10px]",
+    forma === "riga" && "flex-row gap-2 px-3 py-2 text-sm",
+    forma === "ampia" && "flex-row gap-2 px-3.5 py-2 text-sm",
+    coloreVoce(active),
   );
+}
+
+const VOCE_BASE =
+  "relative z-10 flex min-h-[44px] items-center justify-center whitespace-nowrap rounded-full font-medium leading-tight transition-colors";
+
+function coloreVoce(active: boolean) {
+  return active ? "text-nav-pill-ink" : "text-muted-foreground hover:bg-white/10 hover:text-foreground";
 }
 
 /**

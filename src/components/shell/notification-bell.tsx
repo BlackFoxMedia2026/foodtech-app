@@ -66,7 +66,7 @@ export function NotificationBell() {
           size="icon"
           variant="ghost"
           aria-label="Notifiche"
-          className="tondo-strumento relative h-[46px] w-[46px] rounded-lg border border-border text-foreground hover:bg-white/10"
+          className="tondo-strumento relative h-10 w-10 rounded-lg md:h-[46px] md:w-[46px] border border-border text-foreground hover:bg-white/10"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent" aria-hidden="true" />}

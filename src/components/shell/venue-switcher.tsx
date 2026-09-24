@@ -195,8 +195,14 @@ export function VenueSwitcher({
             </h1>
             {/* Il nome del locale: la «T» dice il prodotto, non dice quale
                 ristorante si sta guardando. Sparisce dove lo spazio finisce —
-                sotto i 1280 px la fila delle voci ha la precedenza. */}
-            {attivo && <span className="t-etichetta hidden truncate xl:inline">{attivo.name}</span>}
+                sotto i 1280 px la fila delle voci ha la precedenza, e sopra
+                ha un tetto: un nome di locale lungo non deve costare una voce
+                in barra. */}
+            {attivo && (
+              <span className="t-etichetta hidden max-w-[10rem] truncate xl:inline" title={attivo.name}>
+                {attivo.name}
+              </span>
+            )}
           </div>
         </div>
       )}
