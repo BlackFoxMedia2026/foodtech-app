@@ -172,8 +172,12 @@ export function VistaMese({
                       <span className={cn("ora-reparto shrink-0 text-[0.62rem] tabular-nums", famiglia.testo)}>
                         {intervalloCompatto(blocco.startMinute, blocco.endMinute)}
                       </span>
-                      <span className="ml-auto shrink-0 text-[0.64rem] tabular-nums text-ink/70">
-                        {blocco.turni.length}
+                      {/* La sigla del reparto, dove prima c'era il numero di persone:
+                          stessa larghezza, e il reparto smette di essere solo un
+                          colore. Il numero resta nel `title` del blocco. */}
+                      <span className="ml-auto shrink-0 text-[0.64rem] font-medium tracking-wide text-ink/70" title={famiglia.label}>
+                        <span aria-hidden="true">{famiglia.label.slice(0, 2).toUpperCase()}</span>
+                        <span className="sr-only">{famiglia.label}</span>
                       </span>
                     </button>
                   );
