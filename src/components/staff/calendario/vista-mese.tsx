@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { FAMIGLIE, IconaTipoTurno, PALLINO_LEGENDA } from "@/components/staff/calendario/famiglie";
+import { FAMIGLIE, IconaTipoTurno, PALLINO_LEGENDA, siglaReparto } from "@/components/staff/calendario/famiglie";
 import { nomeCompleto, type TurnoConPersona } from "@/components/staff/calendario/tipi";
 import type { StaffDepartment } from "@prisma/client";
 import { famigliaDiTurno, raggruppaPerOrario, type BloccoTurni } from "@/lib/turni-calendario";
@@ -176,7 +176,7 @@ export function VistaMese({
                           stessa larghezza, e il reparto smette di essere solo un
                           colore. Il numero resta nel `title` del blocco. */}
                       <span className="ml-auto shrink-0 text-[0.64rem] font-medium tracking-wide text-ink/70" title={famiglia.label}>
-                        <span aria-hidden="true">{famiglia.label.slice(0, 2).toUpperCase()}</span>
+                        <span aria-hidden="true">{siglaReparto(famigliaDiTurno("WORK", repartoDi(blocco.turni[0])))}</span>
                         <span className="sr-only">{famiglia.label}</span>
                       </span>
                     </button>

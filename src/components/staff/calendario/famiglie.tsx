@@ -108,6 +108,11 @@ export const FAMIGLIA_REPARTO: Record<StaffDepartment, FamigliaTurno> = {
  * prime, che sono il novanta per cento delle card. */
 export const ORDINE_REPARTI: StaffDepartment[] = ["SALA", "CUCINA", "BAR", "DIREZIONE", "ALTRO"];
 
+/** La sigla di un reparto nella vista mese (SA, CU, BA…): le prime due lettere del nome. */
+export function siglaReparto(f: FamigliaTurno): string {
+  return FAMIGLIE[f].label.slice(0, 2).toUpperCase();
+}
+
 /**
  * L'icona di un'assenza.
  *

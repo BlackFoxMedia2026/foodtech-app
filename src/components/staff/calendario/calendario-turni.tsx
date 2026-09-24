@@ -20,6 +20,7 @@ import { filtriAttivi as haFiltri, useFiltriStaff } from "@/components/staff/fil
 import { TestataCalendario } from "@/components/staff/calendario/testata-calendario";
 import { GrigliaTurni, type SpostamentoTurno } from "@/components/staff/calendario/griglia-turni";
 import { VistaMese } from "@/components/staff/calendario/vista-mese";
+import { LegendaReparti } from "@/components/staff/calendario/legenda-reparti";
 import { nomeCompleto, type PersonaTurni, type Turno, type TurnoConPersona, type TurnoOrario, type Vista } from "@/components/staff/calendario/tipi";
 import { fasciaVisibile } from "@/lib/turni-calendario";
 import { staffDepartmentOf, STAFF_PRIMARY_ROLES } from "@/lib/staff-roles";
@@ -381,6 +382,11 @@ export function CalendarioTurni({
                     ? "Niente in programma. Tocca una fascia oraria per assegnare il primo turno."
                     : "Niente in programma in questo periodo."}
               </p>
+            )}
+
+            {/* La chiave delle sigle sta qui e non fra i filtri: vedi `LegendaReparti`. */}
+            {vistaEffettiva === "mese" && (
+              <LegendaReparti repartiDisponibili={repartiDisponibili} className="fissa hidden md:flex" />
             )}
 
             {vistaEffettiva === "mese" ? (
