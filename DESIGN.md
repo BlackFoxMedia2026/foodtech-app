@@ -17,6 +17,29 @@ colors:
   sage: "#8A9F60"
   hairline: "#364F45"
   destructive: "#C32222"
+  # Tema Carta (back office): vedi la sezione «Due temi». Il formato non
+  # conosce i temi, quindi i colori Carta portano il prefisso.
+  carta-surface-base: "#E9E3D5"
+  carta-surface-panel: "#F7F3EA"
+  carta-surface-row: "#FDFBF5"
+  carta-surface-raised: "#F0EBDD"
+  carta-surface-inset: "#E3DDCD"
+  carta-surface-header: "#2C5545"
+  carta-text-primary: "#1B2A22"
+  carta-text-secondary: "#3D4F45"
+  carta-text-meta: "#556659"
+  carta-control-fill: "#2C5545"
+  carta-control-ink: "#F7F3EA"
+  carta-header-ink: "#E4D3A8"
+  carta-cta-fill: "#1D3227"
+  carta-accent: "#7A5A1C"
+  carta-accent-fill: "#C9A96A"
+  carta-text-on-accent: "#221A08"
+  carta-border-hairline: "#D5CDB9"
+  carta-border-control: "#847C69"
+  carta-destructive-soft: "#A03F24"
+  carta-room-floor: "#DED7C6"
+  carta-table-outline: "#2C5545"
 typography:
   display:
     fontFamily: "var(--font-display), Archivo, ui-serif, Georgia"
@@ -51,35 +74,49 @@ spacing:
   lg: "20px"
   xl: "24px"
 components:
+  # Sera: la CTA è la pillola crema, la voce di menu attiva la pillola crema.
   button-primary:
-    backgroundColor: "{colors.ember-core}"
-    textColor: "#FFFFFF"
-    rounded: "{rounded.md}"
+    backgroundColor: "{colors.cream}"
+    textColor: "{colors.clay-ink}"
+    rounded: "{rounded.full}"
     padding: "0 1rem"
     height: "36px"
-  button-primary-hover:
-    backgroundColor: "{colors.ember-bright}"
   button-outline:
     backgroundColor: "transparent"
-    textColor: "{colors.paper}"
+    textColor: "{colors.cream}"
     rounded: "{rounded.md}"
     padding: "0 1rem"
     height: "36px"
-  badge-gold:
-    backgroundColor: "{colors.accent-ember}"
-    textColor: "{colors.accent-ember}"
-    rounded: "{rounded.full}"
-    padding: "2px 10px"
   card:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.paper}"
+    backgroundColor: "{colors.forest-card}"
+    textColor: "{colors.cream}"
     rounded: "{rounded.xl}"
     padding: "20px"
   nav-pill-active:
-    backgroundColor: "{colors.ember-core}"
-    textColor: "#FFFFFF"
+    backgroundColor: "{colors.cream}"
+    textColor: "{colors.forest}"
     rounded: "{rounded.xl}"
     padding: "12px 14px"
+  # Carta: la CTA è scura, ciò che è attivo è verde pieno.
+  carta-button-primary:
+    backgroundColor: "{colors.carta-cta-fill}"
+    textColor: "{colors.carta-control-ink}"
+    rounded: "{rounded.full}"
+    padding: "0 1rem"
+    height: "36px"
+  carta-card:
+    backgroundColor: "{colors.carta-surface-panel}"
+    textColor: "{colors.carta-text-primary}"
+    rounded: "{rounded.xl}"
+    padding: "20px"
+  carta-nav-pill-active:
+    backgroundColor: "{colors.carta-control-fill}"
+    textColor: "{colors.carta-control-ink}"
+    rounded: "{rounded.xl}"
+    padding: "12px 14px"
+  carta-table-header:
+    backgroundColor: "{colors.carta-surface-header}"
+    textColor: "{colors.carta-header-ink}"
 ---
 
 # Design System: Tavolo
