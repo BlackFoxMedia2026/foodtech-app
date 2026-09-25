@@ -160,10 +160,11 @@ components:
 
 Non si deducono dai numeri, ed è per questo che stanno scritte.
 
-1. **La profondità sta nella cornice, mai sotto il testo lungo.** Schede,
-   barre, pulsanti, pastiglie e tondi hanno il gradiente
-   `--panel-top → --panel-bottom`, lo smusso `--shadow-bevel` e il
-   sollevamento `--shadow-lift`. Righe di tabella ed elenchi restano **piatti**
+1. **La profondità sta nella cornice, mai sotto il testo lungo.** Schede e
+   tessere sono **lastre**: tinta piatta `--card-fill`, bordo `--card-edge`,
+   e le ombre `--shadow-bevel`, `--shadow-contact`, `--shadow-lift` (vedi
+   §4). Pastiglie e tondi hanno il loro riempimento e lo stesso smusso.
+   Righe di tabella ed elenchi restano **piatti**
    su `--surface-row`, separati da `--border-hairline`: niente zebrato, niente
    bordo colorato a sinistra. Gli unici incavi sono il binario di un selettore,
    la barra della pienezza e l'interruttore spento. Una tessera che porta un
@@ -209,7 +210,8 @@ E tre regole più piccole, nate lungo la strada:
 | Incavo (binario, campo) | `--surface-inset` | `#e3ddcd` |
 | Fascia della testata di tabella | `--surface-header` | `#2c5545` |
 | Gradiente della pagina | `--base-top` → `--base-bottom` | `#f2ece0` → `#e4ddcd` |
-| Gradiente della cornice | `--panel-top` → `--panel-bottom` | `#fffdf8` → `#f2ece0` |
+| Lastra (scheda, tessera) | `--card-fill` / `--card-edge` | `#fdfbf5` / `#dcd3bf` |
+| Gradiente della barra degli strumenti | `--panel-top` → `--panel-bottom` | `#fffdf8` → `#f2ece0` |
 | Testo primario | `--text-primary` / `--foreground` / `ink` | `#1b2a22` |
 | Testo secondario | `--text-secondary` / `--muted-foreground` | `#3d4f45` |
 | Testo di nota | `--text-meta` / `--tertiary` | `#556659` |
@@ -553,18 +555,29 @@ vede **mentre si scrive**, non dopo aver salvato (`lib/margine.ts`).
 il grano (`--noise`) vanno sulle superfici, mai sotto il testo o dentro un campo:
 servono a dire di che materiale è fatta una superficie, non a decorare.
 
-**Come si misura il contrasto qui (e perché il token non basta).** Nessuna
-superficie di questo sistema è una tinta piatta: le card e la pagina hanno un
-gradiente più una **velatura bianca al 5-7%**, e le card crema sono dipinte
-con `background-image` (gradiente più texture) senza alcun `background-color`.
-Ne seguono due errori opposti, e vanno evitati entrambi.
+**Come si misura il contrasto qui (e perché il token non basta).** Le schede
+sono lastre a tinta piatta (§4), e lì il token **è** il fondo reso:
+
+| Testo | su Carta `#fdfbf5` | su Sera `#133427` |
+|---|---|---|
+| primario (`--text-primary` / `--foreground`) | 14,49 : 1 | 11,04 : 1 |
+| secondario (`--text-secondary` / `--muted-foreground`) | 8,45 : 1 | 6,69 : 1 |
+| di nota (`--text-meta` / `--tertiary`) | 5,91 : 1 | 5,25 : 1 |
+| oro da testo (`accent-strong`) | 6,14 : 1 | 7,11 : 1 |
+
+(`--accent` al buio, `#b07a45`, fa 3,69 : 1: è un riempimento e un bordo, non
+un testo.) Il resto invece non è piatto: la pagina ha un gradiente più una
+**velatura bianca al 5-7%**, le card crema sono dipinte con
+`background-image` (gradiente più texture) senza alcun `background-color`, e
+le tessere al buio sono vetro. Lì ne seguono due errori opposti, e vanno
+evitati entrambi.
 
 1. **Misurare sul token** dà numeri **troppo generosi**: la velatura alza la
    luminanza del fondo e abbassa il contrasto di ogni testo chiaro. Sul token
    `--card` piatto l'oro sembrava 5,11 : 1; sull'angolo chiaro del gradiente
    reso è **4,34** — sotto soglia. Il contrasto va calcolato sul fondo
    **composto**, nel suo punto più chiaro: `#17382C` con il 7% di bianco per
-   la pagina, `#163C2F` con il 5% per le card.
+   la pagina (le card, fino al 25 settembre 2026, `#163C2F` con il 5%).
 2. **Leggere il fondo dal DOM** dà **falsi allarmi**: `backgroundColor` è
    trasparente dove c'è un gradiente, e un fondo dipinto da un *fratello* in
    posizione assoluta (la pillola crema della voce di menu attiva) non è un
@@ -597,17 +610,56 @@ mano, invece di contarli come difetti o di assolverli in blocco.
 > smerigliato e il bagliore «ember» della sidebar: nel prodotto non esistono
 > più da settimane.
 
-**Sera.** Le schede (`.surface`) sono una sfumatura verticale
-`--panel-top → --panel-bottom` con un filo di luce interno
-(`--edge-light-soft`), una luce radiale in alto a sinistra (`--edge-light`) e
-due ombre, corta e lunga (`--edge-shadow-soft`, `--edge-shadow`). La barra
-degli strumenti e le tessere dei numeri sono `.vetro` / `.kpi-vetro`: una
-velatura con un bordo in gradiente, per ciò che sta sopra il fondo scuro.
+> Aggiornata il 25 settembre 2026: le schede non hanno più il gradiente.
 
-**Carta.** La profondità sta nella cornice, mai sotto il testo lungo: vedi la
-prima delle tre regole in «Due temi». Stessi token, valori chiari: lo smusso
-`--shadow-bevel` e il sollevamento `--shadow-lift`, in grigio caldo e mai in
-nero. `.vetro` e `.kpi-vetro` diventano lastre.
+**La lastra.** Ogni superficie che porta contenuto — le schede (`.surface`)
+nei due temi e, in Carta, le tessere dei numeri (`.vetro.card-notch` del
+briefing, `.kpi-vetro`) e `.recessed` — è una tinta piatta con un bordo e tre
+ombre, sempre in quest'ordine:
+
+```css
+background: var(--card-fill);
+border: 1px solid var(--card-edge);
+box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
+```
+
+Smusso interno, contatto stretto, diffusa. È la coppia **contatto + diffusa**
+a dare il rilievo, non il gradiente: con una sfumatura su alcune schede e la
+tinta piatta su altre, nella stessa schermata convivrebbero due materiali.
+
+| Token | Carta | Sera |
+|---|---|---|
+| `--card-fill` | `#fdfbf5` | `#133427` (media dei due stop di prima, `#163c2f` e `#102c1f`) |
+| `--card-edge` | `#dcd3bf` | `#1f4535` |
+| `--shadow-bevel` | `inset 0 1px 0 #ffffff, inset 0 -1px 0 #efe7d6` | `inset 0 1px 0 #ffffff14, inset 0 -1px 0 #00000047` |
+| `--shadow-contact` | `0 1px 1.5px #b9af9640` | `0 1px 2px #00000059` |
+| `--shadow-lift` | `0 10px 20px -8px #b3a88c4d` | `0 10px 20px -8px #00000073` |
+
+Un colore di bordo dato da un'utility (`border-accent/40`,
+`border-destructive/40`) vince sul `--card-edge`: sta in un livello di
+Tailwind successivo. Sulle tessere del briefing il bordo è l'anello `::before`
+di `.vetro` in tinta unita, che non sposta il contenuto come un `border`.
+
+**Cosa non è una lastra.**
+
+- Le **righe** di tabella ed elenco restano piatte, senza bordo né ombra: il
+  testo lungo non va mai sopra un rilievo.
+- Il **vetro** resta vetro: la barra di navigazione e la barra degli
+  strumenti (`.vetro.fissa`), cioè ciò che galleggia sopra il contenuto. In
+  Carta la barra degli strumenti tiene la sfumatura `--panel-top →
+  --panel-bottom`, che per questo resta fra i token.
+- Gli **incavi** restano incavi: il binario di un selettore, la barra della
+  pienezza, l'interruttore spento.
+
+Pastiglie, segmenti scelti e tondi hanno il loro riempimento (la pastiglia
+morbida, uno dei cinque verdi pieni) ma usano lo stesso `--shadow-bevel` e,
+i tondi, lo stesso `--shadow-lift`.
+
+**Sera, il resto.** Le tessere dei numeri al buio sono `.vetro` /
+`.kpi-vetro`: una velatura con un bordo in gradiente. Il valore dei token al
+buio si cambia solo di proposito, in un commit suo: questo è il quarto
+cambiamento voluto, dopo le pillole /12, la fascia della testata e la fascia
+dei giorni.
 
 ## 5. Components
 
@@ -626,9 +678,9 @@ nero. `.vetro` e `.kpi-vetro` diventano lastre.
 
 ### Cards / Containers
 - **Corner Style:** raggio ampio (17.6px, `rounded-xl`).
-- **Background:** superficie chiara piena in light mode; vetro scuro semitrasparente (`bg-black/50` + `backdrop-blur-xl`) in dark mode.
-- **Shadow Strategy:** vedi Elevation — "Card Rest" in light, "Card Dark" in dark.
-- **Border:** 1px, quasi invisibile a riposo (`border-white/10` in dark).
+- **Background:** la lastra, `--card-fill` a tinta piatta nei due temi (vedi Elevation).
+- **Shadow Strategy:** vedi Elevation — smusso, contatto, diffusa.
+- **Border:** 1px, `--card-edge`.
 - **Internal Padding:** 20px (`p-5`), header/footer riducono il padding verticale a 12px.
 
 ### Inputs / Fields
