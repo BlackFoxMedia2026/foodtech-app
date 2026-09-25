@@ -182,9 +182,21 @@
     /* Il fondo della pagina (`body`): la sfumatura dall'alto in basso. */
     --base-top: #0b1511;
     --base-bottom: #17382c;
-    /* Le schede (`.surface`): la stessa sfumatura, in piccolo. */
+    /* La sfumatura che le schede avevano prima. Resta come token: le schede
+       ora sono lastre a tinta piatta (qui sotto). */
     --panel-top: #163c2f;
     --panel-bottom: #102c1f;
+    /*
+      La **lastra** (`.surface`): tinta piatta, bordo, tre ombre. Il
+      riempimento è la media dei due stop della sfumatura che aveva prima
+      (#163c2f e #102c1f): il rilievo lo fanno il contatto stretto e la
+      diffusa, non il gradiente.
+    */
+    --card-fill: #133427;
+    --card-edge: #1f4535;
+    --shadow-bevel: inset 0 1px 0 #ffffff14, inset 0 -1px 0 #00000047;
+    --shadow-contact: 0 1px 2px #00000059;
+    --shadow-lift: 0 10px 20px -8px #00000073;
     /* Le ombre delle varianti `brand` e `accent` di `Button`. */
     --button-brand-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
     --button-accent-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
@@ -474,8 +486,11 @@
     --meter-fill: #2c5545;
     --glass-fill: #f7f3eae6;
     --glow-accent: #c9a96a2e;
-    --shadow-bevel: inset 0 1px 0 #ffffffcc, inset 0 -1px 0 #b9af9640;
-    --shadow-lift: 0 16px 32px -16px #b3a88c59;
+    --card-fill: #fdfbf5;
+    --card-edge: #dcd3bf;
+    --shadow-bevel: inset 0 1px 0 #ffffff, inset 0 -1px 0 #efe7d6;
+    --shadow-contact: 0 1px 1.5px #b9af9640;
+    --shadow-lift: 0 10px 20px -8px #b3a88c4d;
 
     /* I ruoli estratti. */
     --base-top: #f2ece0;
@@ -698,15 +713,15 @@
   .bg-anim > * { position: absolute; inset: -90px; filter: blur(24px); }
   .bg-base { background: radial-gradient(130% 120% at 16% 6%, #131313 0%, #151515 38%, #1b1b1b 100%); }
   .bg-layer { animation: bg-x 27s ease-in-out infinite; }
+  /* La lastra: tinta piatta, bordo, e tre ombre in quest'ordine — smusso
+     interno, contatto stretto, diffusa. È la coppia contatto + diffusa a
+     dare il rilievo, non un gradiente. I colori di bordo delle utility
+     (`border-accent/40`...) vincono, perché stanno in un livello dopo. */
   .surface {
-    @apply rounded-xl border border-border text-card-foreground;
-    background-image:
-      radial-gradient(120% 100% at 15% 0%, var(--edge-light), transparent 50%),
-      linear-gradient(180deg, var(--panel-top) 0%, var(--panel-bottom) 100%);
-    box-shadow:
-      inset 0 0 0 1px var(--edge-light-soft),
-      0 10px 18px var(--edge-shadow-soft),
-      0 24px 48px var(--edge-shadow);
+    @apply rounded-xl border text-card-foreground;
+    border-color: var(--card-edge);
+    background-color: var(--card-fill);
+    box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
   }
 
   /*
@@ -1688,13 +1703,28 @@
     stessa ragione vince sulle classi di Tailwind del componente — la
     specificità è più alta — e il componente non deve sapere niente del tema.
 
-    La regola è una: la profondità sta nella **cornice** (gradiente dall'alto,
-    smusso, sollevamento), mai sotto il testo lungo. Gli unici incavi sono il
-    binario di un selettore e la barra della pienezza.
+    La regola è una: la profondità sta nella **cornice** (la lastra: tinta
+    piatta, bordo, smusso, contatto, diffusa), mai sotto il testo lungo. Gli
+    unici incavi sono il binario di un selettore e la barra della pienezza.
   */
+  /* La barra degli strumenti (`.vetro.fissa`) galleggia sopra il contenuto:
+     resta com'era. */
   :root:has([data-tema="carta"]) .vetro {
     background-image: linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
     box-shadow: var(--shadow-bevel), var(--shadow-lift);
+  }
+  /* Le tessere del briefing stanno nel contenuto: sono lastre. Il bordo è
+     l'anello `::before` di `.vetro` in tinta unita, che non sposta il
+     contenuto come farebbe un `border`. */
+  :root:has([data-tema="carta"]) .vetro.card-notch {
+    background-color: var(--card-fill);
+    background-image: none;
+    box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
+  }
+  :root:has([data-tema="carta"]) .vetro.card-notch::before {
+    display: block;
+    background-image: none;
+    background-color: var(--card-edge);
   }
   :root:has([data-tema="carta"]) .vetro::before {
     display: none;
@@ -1707,10 +1737,7 @@
   }
   /* Un elenco dentro una scheda non è un incavo: è la scheda. */
   :root:has([data-tema="carta"]) .recessed {
-    box-shadow:
-      inset 0 0 0 1px var(--edge-light-soft),
-      0 10px 18px var(--edge-shadow-soft),
-      0 24px 48px var(--edge-shadow);
+    box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
   }
   /* La barra della pienezza: il binario sprofonda, il pieno è tinta unita
      con un colpo di luce sopra. Niente gradiente verde → oro. */
@@ -1783,11 +1810,12 @@
   /* Le tessere che portano un numero sono lastre, non vetro: il vetro è
      solo per ciò che galleggia sopra il contenuto. */
   :root:has([data-tema="carta"]) .kpi-vetro {
-    border-color: var(--border-hairline);
-    background-image: linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
+    border-color: var(--card-edge);
+    background-color: var(--card-fill);
+    background-image: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    box-shadow: var(--shadow-bevel), var(--shadow-lift);
+    box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
   }
   :root:has([data-tema="carta"]) .kpi-vetro:hover {
     border-color: var(--border-control);
