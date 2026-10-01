@@ -369,7 +369,7 @@ function FormaArea({
           style={{ pointerEvents: "none" }}
         />
         {mostraEtichetta && (
-          <EtichettaPiantina x={cx} y={el.y + el.height + 12} testo={etichetta} colore="#F2E7D0" contorno />
+          <EtichettaPiantina x={cx} y={el.y + el.height + 12} testo={etichetta} colore="#F2E7D0" />
         )}
         {modificabile && selezionato && onRidimensiona && (
           <Maniglia x={el.x + el.width} y={el.y + el.height} onPointerDown={(e) => onRidimensiona(el.id, e)} />
@@ -637,7 +637,7 @@ function FormaLibera({
         {...propsCorpo}
       />
       {el.label && el.width > 40 && (
-        <EtichettaPiantina x={cx} y={cy} testo={el.label} colore="#F2E7D0" contorno />
+        <EtichettaPiantina x={cx} y={cy} testo={el.label} colore="#F2E7D0" />
       )}
       {modificabile && selezionato && onRidimensiona && (
         <Maniglia x={el.x + el.width} y={el.y + el.height} onPointerDown={(e) => onRidimensiona(el.id, e)} />
@@ -684,16 +684,18 @@ function EtichettaPiantina({
   y,
   testo,
   colore,
-  dimensione = 11,
-  contorno = false,
+  dimensione = 18,
 }: {
   x: number;
   y: number;
   testo: string;
   colore: string;
   dimensione?: number;
-  contorno?: boolean;
 }) {
+  // Niente stroke/paintOrder: con questo motore di rendering un bordo sul
+  // testo lo rende invisibile del tutto, non solo meno nitido (verificato
+  // togliendolo: il testo torna a vedersi). Non serviva comunque — i colori
+  // delle etichette sono già scelti per contrastare col proprio pavimento.
   return (
     <text
       x={x}
@@ -701,11 +703,8 @@ function EtichettaPiantina({
       textAnchor="middle"
       dominantBaseline="middle"
       fontSize={dimensione}
-      fontWeight={600}
+      fontWeight={700}
       fill={colore}
-      stroke={contorno ? "rgba(0,0,0,0.55)" : undefined}
-      strokeWidth={contorno ? 2.5 : undefined}
-      paintOrder={contorno ? "stroke fill" : undefined}
       className="select-none uppercase"
       style={{ pointerEvents: "none", letterSpacing: "0.06em" }}
     >
