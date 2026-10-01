@@ -73,6 +73,141 @@ export function ingombroTavolo(t: TavoloMisurabile): { w: number; h: number } {
   return { w: piano.w + margine, h: piano.h + margine };
 }
 
+export type Rettangolo = { x: number; y: number; w: number; h: number };
+
+/** Lo spazio minimo di passaggio fra due tavoli, ingombro sedie incluso: sotto
+ * questa soglia un cameriere con un vassoio non ci passa più. A differenza
+ * delle guide di allineamento non è un suggerimento che si disattiva con un
+ * tasto — è un vincolo fisico, come un muro: il tavolo semplicemente non
+ * entra lì sotto. */
+export const SPAZIO_MINIMO_PASSAGGIO_PX = 60; // 60 cm
+
+/** Il rettangolo di collisione di un tavolo posizionato: il suo ingombro
+ * (piano + sedie), non solo il piano. Le sedie sporgono ugualmente su ogni
+ * lato, quindi il centro combacia con quello del piano — solo il rettangolo
+ * si allarga del margine delle sedie. */
+export function rettangoloIngombro(t: TavoloMisurabile & { posX: number; posY: number }): Rettangolo {
+  const piano = dimensioneDisegnata(t);
+  const ingombro = ingombroTavolo(t);
+  const margineX = (ingombro.w - piano.w) / 2;
+  const margineY = (ingombro.h - piano.h) / 2;
+  return { x: t.posX - margineX, y: t.posY - margineY, w: ingombro.w, h: ingombro.h };
+}
+
+/** Gli intervalli `[inizio, fine]` coperti da `altri` lungo un asse — solo
+ * quelli il cui ingombro sull'asse perpendicolare (gonfiato di `gap`) copre
+ * ancora `[secMin, secMax]`: un tavolo due file più in là non blocca niente
+ * su questa riga. Uniti, perché due ostacoli vicini senza spazio franco in
+ * mezzo sono un unico muro, non due separati. */
+function intervalliOccupati(
+  altri: Rettangolo[],
+  gap: number,
+  secMin: number,
+  secMax: number,
+  asse: "x" | "y",
+): Array<[number, number]> {
+  const grezzi: Array<[number, number]> = [];
+  for (const altro of altri) {
+    const altroSecMin = (asse === "x" ? altro.y : altro.x) - gap;
+    const altroSecMax = (asse === "x" ? altro.y + altro.h : altro.x + altro.w) + gap;
+    if (altroSecMax <= secMin || altroSecMin >= secMax) continue;
+    const prinMin = (asse === "x" ? altro.x : altro.y) - gap;
+    const prinMax = (asse === "x" ? altro.x + altro.w : altro.y + altro.h) + gap;
+    grezzi.push([prinMin, prinMax]);
+  }
+  grezzi.sort((a, b) => a[0] - b[0]);
+  const uniti: Array<[number, number]> = [];
+  for (const iv of grezzi) {
+    const ultimo = uniti[uniti.length - 1];
+    if (ultimo && iv[0] <= ultimo[1]) ultimo[1] = Math.max(ultimo[1], iv[1]);
+    else uniti.push([...iv]);
+  }
+  return uniti;
+}
+
+/** Il punto più vicino a `pos` che lascia `[pos, pos+dim]` fuori da ogni
+ * intervallo occupato — a sinistra del più vicino o a destra, quale costa
+ * meno. `null` se `pos` è già libero (niente da correggere). */
+function piuVicinoLibero(pos: number, dim: number, occupati: Array<[number, number]>): number | null {
+  const libero = (p: number) => !occupati.some(([a, b]) => p < b && p + dim > a);
+  if (libero(pos)) return null;
+  let migliore: number | null = null;
+  for (const [a, b] of occupati) {
+    for (const candidato of [a - dim, b]) {
+      if (libero(candidato) && (migliore === null || Math.abs(candidato - pos) < Math.abs(migliore - pos))) {
+        migliore = candidato;
+      }
+    }
+  }
+  return migliore;
+}
+
+/**
+ * Allontana `rect` da ogni rettangolo di `altri` finché non lascia almeno
+ * `gap` di spazio libero fra i due ingombri.
+ *
+ * Non uno a uno (scappare dal primo ostacolo rimbalzando dentro il secondo,
+ * quando sono vicini fra loro, è esattamente il bug che questa versione
+ * sostituisce): per ciascun asse si uniscono gli ingombri di chi occupa
+ * ancora la stessa riga/colonna in un'unica sequenza di tratti occupati, e si
+ * cerca il punto libero più vicino fuori da tutti insieme. Si tiene il
+ * risultato che costa meno spostamento fra i due assi; se nessuno dei due,
+ * da solo, trova un punto libero (il caso raro in cui serve spostarsi in
+ * diagonale), un'ultima ripulitura ostacolo-per-ostacolo chiude quel poco che
+ * resta. */
+export function rispettaSpazioMinimo(
+  rect: Rettangolo,
+  altri: Rettangolo[],
+  gap: number = SPAZIO_MINIMO_PASSAGGIO_PX,
+): Rettangolo {
+  if (altri.length === 0) return rect;
+  const { w, h } = rect;
+
+  const occupatiX = intervalliOccupati(altri, gap, rect.y, rect.y + h, "x");
+  const occupatiY = intervalliOccupati(altri, gap, rect.x, rect.x + w, "y");
+  const candidatoX = piuVicinoLibero(rect.x, w, occupatiX);
+  const candidatoY = piuVicinoLibero(rect.y, h, occupatiY);
+
+  let x = rect.x;
+  let y = rect.y;
+  if (candidatoX !== null && (candidatoY === null || Math.abs(candidatoX - rect.x) <= Math.abs(candidatoY - rect.y))) {
+    x = candidatoX;
+  } else if (candidatoY !== null) {
+    y = candidatoY;
+  }
+
+  // Ripulitura finale ostacolo-per-ostacolo: copre il raro caso diagonale che
+  // un singolo asse non risolve da solo. Poche iterazioni bastano perché si
+  // parte già da una posizione quasi libera, non dal punto originale.
+  const MAX_GIRI = 8;
+  for (let giro = 0; giro < MAX_GIRI; giro++) {
+    let spostato = false;
+    for (const altro of altri) {
+      const minX = altro.x - gap;
+      const maxX = altro.x + altro.w + gap;
+      const minY = altro.y - gap;
+      const maxY = altro.y + altro.h + gap;
+      const invadeX = x < maxX && x + w > minX;
+      const invadeY = y < maxY && y + h > minY;
+      if (!invadeX || !invadeY) continue;
+
+      const spingiSinistra = x + w - minX;
+      const spingiDestra = maxX - x;
+      const spingiSu = y + h - minY;
+      const spingiGiu = maxY - y;
+      const minimo = Math.min(spingiSinistra, spingiDestra, spingiSu, spingiGiu);
+
+      if (minimo === spingiSinistra) x = minX - w;
+      else if (minimo === spingiDestra) x = maxX;
+      else if (minimo === spingiSu) y = minY - h;
+      else y = maxY;
+      spostato = true;
+    }
+    if (!spostato) break;
+  }
+  return { x, y, w, h };
+}
+
 /** Quanto sporge una sedia oltre il bordo del piano. */
 export const SPORGENZA_SEDIA = 13;
 export const LARGHEZZA_SEDIA = 20;
