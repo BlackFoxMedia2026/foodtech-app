@@ -585,21 +585,31 @@
        forma; il riempimento porta lo stato. */
     --room-floor: #ded7c6;
     --table-outline: #2c5545;
-    --floor-wood-1: var(--room-floor);
+    /* Tre fermate strette intorno a --room-floor (non tre legni diversi):
+       la mezzeria resta esattamente il valore misurato, le due estremità si
+       scostano solo di qualche punto di luminosità — basta a dare materia
+       al pavimento senza spostare il contrasto muro/pavimento già verificato. */
+    --floor-wood-1: #e8e1d0;
     --floor-wood-2: var(--room-floor);
-    --floor-wood-3: var(--room-floor);
-    --floor-doghe: transparent;
-    --floor-ombra-muri: var(--edge-shadow);
-    /* Il muro passa la soglia dei segni sul pavimento (3,11 : 1). */
+    --floor-wood-3: #d2cab6;
+    --floor-doghe: rgba(90, 70, 40, 0.08);
+    /* Non --edge-shadow: quel token è un velo chiaro per schede sollevate su
+       fondo chiaro, qui serve l'opposto — una vera ombra scura che il muro
+       proietta sul pavimento, letta dall'alto. */
+    --floor-ombra-muri: rgba(70, 55, 30, 0.22);
+    /* Il muro passa la soglia dei segni sul pavimento (3,11 : 1) — la faccia
+       resta questo identico valore. La cima e l'ombra sono un'aggiunta
+       decorativa sopra una faccia che già passa la soglia da sola, non una
+       sostituzione di quel valore. */
     --room-wall: #7d7767;
     --room-wall-face: var(--room-wall);
-    --room-wall-top: var(--room-wall);
-    --room-divider: var(--room-wall);
-    --room-wall-shadow: var(--edge-shadow);
+    --room-wall-top: #b5ad94;
+    --room-divider: #a39c8a;
+    --room-wall-shadow: rgba(40, 32, 18, 0.32);
     --room-floor-cucina: #e6dfcd;
     --room-floor-dehors: #dee2d5;
-    --room-bancone-1: #d7d0bf;
-    --room-bancone-2: #d7d0bf;
+    --room-bancone-1: #e1dac8;
+    --room-bancone-2: #c2b89e;
     /* Il nome di un'area è informazione: testo secondario, 5,69-6,64 : 1. */
     --room-label-cucina: var(--text-secondary);
     --room-label-bancone: var(--text-secondary);
