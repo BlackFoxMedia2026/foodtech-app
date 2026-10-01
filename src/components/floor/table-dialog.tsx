@@ -104,17 +104,25 @@ export function TableDialog({
     setFieldErrors({});
     setSubmitting(true);
 
-    const res = modifica
-      ? await fetch(`/api/tables/${tavolo.id}`, {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ label: trimmed, seats, shape }),
-        })
-      : await fetch("/api/tables", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ label: trimmed, seats, shape, roomId, posX: 80, posY: 80 }),
-        });
+    let res: Response;
+    try {
+      res = modifica
+        ? await fetch(`/api/tables/${tavolo.id}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ label: trimmed, seats, shape }),
+          })
+        : await fetch("/api/tables", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ label: trimmed, seats, shape, roomId, posX: 80, posY: 80 }),
+          });
+    } catch (err) {
+      console.error("Salvataggio tavolo non riuscito:", err);
+      setSubmitting(false);
+      setFormError("Controlla la connessione e riprova: il tavolo non è stato salvato.");
+      return;
+    }
     setSubmitting(false);
 
     if (!res.ok) {
