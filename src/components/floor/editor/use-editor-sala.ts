@@ -320,11 +320,17 @@ export function useEditorSala({
         if (posizionati >= dichiarati) return "esauriti";
       }
 
-      const res = await fetch("/api/tables", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ label: prossimaEtichetta(), seats: postiPredefiniti(shape), shape, roomId, posX, posY }),
-      });
+      let res: Response;
+      try {
+        res = await fetch("/api/tables", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ label: prossimaEtichetta(), seats: postiPredefiniti(shape), shape, roomId, posX, posY }),
+        });
+      } catch (err) {
+        console.error("Creazione tavolo non riuscita:", err);
+        return "errore";
+      }
       if (!res.ok) return "errore";
       const creato = (await res.json()) as Table;
 
@@ -424,7 +430,11 @@ export function useEditorSala({
         tables: statoRef.current.tables.filter((t) => t.id !== tableId),
       });
       setSelectedIds(new Set());
-      await fetch(`/api/tables/${tableId}`, { method: "DELETE" });
+      try {
+        await fetch(`/api/tables/${tableId}`, { method: "DELETE" });
+      } catch (err) {
+        console.error("Eliminazione tavolo non riuscita:", err);
+      }
     },
     [history],
   );
@@ -714,6 +724,13 @@ export function useEditorSala({
       timerSalvato.current = setTimeout(() => setAppenaSalvato(false), 2400);
       onSalvato?.();
       return "ok";
+    } catch (err) {
+      // Una rete che cade a metà salvataggio (server riavviato, tab offline
+      // un attimo) non deve far sparire la pagina intera dietro una
+      // schermata rossa: il salvataggio fallisce, l'utente riprova — non
+      // perde il lavoro fatto, che resta nella storia dell'editor.
+      console.error("Salvataggio sala non riuscito:", err);
+      return "errore";
     } finally {
       setSalvando(false);
     }
