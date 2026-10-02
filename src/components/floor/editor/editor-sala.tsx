@@ -193,9 +193,10 @@ export function EditorSala({
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       {/* ══════════════════ TESTATA ══════════════════ */}
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="t-etichetta">Sala</p>
+      <header className="flex shrink-0 flex-col gap-0.5">
+        <p className="t-etichetta">Sala</p>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-0.5">
             <Button
               type="button"
@@ -226,30 +227,10 @@ export function EditorSala({
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={() => setGestisciAperto(true)}>
-                  <MapIcon className="h-4 w-4" /> Gestisci piantina
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setNuovoTavoloAperto(true)}>
-                  <Plus className="h-4 w-4" /> Nuovo tavolo
-                </DropdownMenuItem>
-                {vociMenuSala}
-              </DropdownMenuContent>
+              <DropdownMenuContent align="start">{vociMenuSala}</DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <p className="mt-0.5 text-xs text-tertiary-foreground">
-            <span className="tabular-nums">{editor.tavoliSullaPiantina.length}</span> tavoli ·{" "}
-            <span className="tabular-nums">{postiTotali}</span> posti totali
-            {totaleSale > 1 && (
-              <span className="ml-1.5 tabular-nums">
-                · sala {indiceSala + 1} di {totaleSale}
-              </span>
-            )}
-            {editor.sporco && <span className="ml-1.5 text-accent">· non salvata</span>}
-          </p>
-        </div>
 
-        <div className="flex flex-col items-end gap-2">
           <div className="flex flex-wrap items-center justify-end gap-2">
             <FloorServiceFilter date={date} service={service} serviceOptions={serviceOptions} variante="barra" />
             {assegnati && (
@@ -258,8 +239,7 @@ export function EditorSala({
                 <span className="tabular-nums text-card-foreground">{assegnati.totale}</span> tavoli assegnati
               </span>
             )}
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
             <Button type="button" variant="subtle" size="sm" onClick={() => setGestisciAperto(true)}>
               <MapIcon className="h-4 w-4" /> Gestisci piantina
             </Button>
@@ -286,6 +266,17 @@ export function EditorSala({
             </Button>
           </div>
         </div>
+
+        <p className="text-xs text-tertiary-foreground">
+          <span className="tabular-nums">{editor.tavoliSullaPiantina.length}</span> tavoli ·{" "}
+          <span className="tabular-nums">{postiTotali}</span> posti totali
+          {totaleSale > 1 && (
+            <span className="ml-1.5 tabular-nums">
+              · sala {indiceSala + 1} di {totaleSale}
+            </span>
+          )}
+          {editor.sporco && <span className="ml-1.5 text-accent">· non salvata</span>}
+        </p>
       </header>
 
       {/* ══════════════════ TRE COLONNE ══════════════════ */}

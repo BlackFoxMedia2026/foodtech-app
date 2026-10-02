@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { TableStaffMap } from "./table-node";
 import type { TableOperationalStatus } from "@/lib/table-status";
 import { EditorSala, type SalaPerEditor } from "./editor/editor-sala";
@@ -239,7 +239,6 @@ export function FloorRoomsView({
 
   const vociMenuSala = (
     <>
-      <DropdownMenuSeparator />
       <DropdownMenuItem
         onClick={() => {
           setRenameValue(activeRoom.name);
