@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { TableStaffMap } from "./table-node";
 import type { TableOperationalStatus } from "@/lib/table-status";
 import { EditorSala, type SalaPerEditor } from "./editor/editor-sala";
@@ -148,11 +148,18 @@ export function FloorRoomsView({
     }
     setRenameSubmitting(true);
     setRenameError(null);
-    const res = await fetch(`/api/rooms/${activeRoom.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ name }),
-      headers: { "content-type": "application/json" },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`/api/rooms/${activeRoom.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+        headers: { "content-type": "application/json" },
+      });
+    } catch {
+      setRenameSubmitting(false);
+      setRenameError("Controlla la connessione e riprova.");
+      return;
+    }
     setRenameSubmitting(false);
     if (!res.ok) {
       setRenameError(await readApiError(res, "Impossibile rinominare la sala. Riprova."));
@@ -171,11 +178,18 @@ export function FloorRoomsView({
     }
     setNewRoomSubmitting(true);
     setNewRoomError(null);
-    const res = await fetch("/api/rooms", {
-      method: "POST",
-      body: JSON.stringify({ name }),
-      headers: { "content-type": "application/json" },
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/rooms", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+        headers: { "content-type": "application/json" },
+      });
+    } catch {
+      setNewRoomSubmitting(false);
+      setNewRoomError("Controlla la connessione e riprova.");
+      return;
+    }
     setNewRoomSubmitting(false);
     if (!res.ok) {
       setNewRoomError(await readApiError(res, "Impossibile creare la sala. Riprova."));
@@ -192,7 +206,14 @@ export function FloorRoomsView({
   async function handleDelete() {
     setDeleteSubmitting(true);
     setDeleteError(null);
-    const res = await fetch(`/api/rooms/${activeRoom.id}`, { method: "DELETE" });
+    let res: Response;
+    try {
+      res = await fetch(`/api/rooms/${activeRoom.id}`, { method: "DELETE" });
+    } catch {
+      setDeleteSubmitting(false);
+      setDeleteError("Controlla la connessione e riprova.");
+      return;
+    }
     setDeleteSubmitting(false);
     if (!res.ok) {
       const body = await res.json().catch(() => null);
@@ -218,7 +239,6 @@ export function FloorRoomsView({
 
   const vociMenuSala = (
     <>
-      <DropdownMenuSeparator />
       <DropdownMenuItem
         onClick={() => {
           setRenameValue(activeRoom.name);

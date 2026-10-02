@@ -23,6 +23,14 @@ const SOGLIA_PX = 7;
  * che si vuole quasi sempre, e mezzo centimetro di distacco si vede. */
 const SOGLIA_MURO_PX = 10;
 
+/** Le aree (Cucina, Bancone, Bagno…) vogliono l'effetto opposto dei tavoli:
+ * non un aggancio debole che si sfiora appena, ma un vero magnete che le
+ * incolla ad altri blocchi e ai muri — interni o perimetrali — non appena
+ * sono abbastanza vicine. Una cucina a mezzo centimetro da un muro è un
+ * errore di battitura, non una scelta. */
+export const SOGLIA_MAGNETE_PX = 22;
+export const SOGLIA_MAGNETE_MURO_PX = 26;
+
 export type RisultatoGuide = {
   /** Quanto spostare il rettangolo perché l'allineamento sia esatto. */
   dx: number;
@@ -34,7 +42,10 @@ export function calcolaGuide(
   mobile: Rettangolo,
   altri: Rettangolo[],
   elementi: RoomElement[],
+  soglie: { bordo?: number; muro?: number } = {},
 ): RisultatoGuide {
+  const sogliaPx = soglie.bordo ?? SOGLIA_PX;
+  const sogliaMuroPx = soglie.muro ?? SOGLIA_MURO_PX;
   const bordiV = [mobile.x, mobile.x + mobile.w / 2, mobile.x + mobile.w];
   const bordiH = [mobile.y, mobile.y + mobile.h / 2, mobile.y + mobile.h];
 
@@ -46,7 +57,7 @@ export function calcolaGuide(
     for (const bordo of bordiV) {
       for (const cand of candidatiV) {
         const delta = cand - bordo;
-        if (Math.abs(delta) <= SOGLIA_PX && (!miglioreV || Math.abs(delta) < Math.abs(miglioreV.delta))) {
+        if (Math.abs(delta) <= sogliaPx && (!miglioreV || Math.abs(delta) < Math.abs(miglioreV.delta))) {
           miglioreV = { delta, posizione: cand, altro };
         }
       }
@@ -55,7 +66,7 @@ export function calcolaGuide(
     for (const bordo of bordiH) {
       for (const cand of candidatiH) {
         const delta = cand - bordo;
-        if (Math.abs(delta) <= SOGLIA_PX && (!miglioreH || Math.abs(delta) < Math.abs(miglioreH.delta))) {
+        if (Math.abs(delta) <= sogliaPx && (!miglioreH || Math.abs(delta) < Math.abs(miglioreH.delta))) {
           miglioreH = { delta, posizione: cand, altro };
         }
       }
@@ -77,7 +88,7 @@ export function calcolaGuide(
       for (const faccia of facce) {
         for (const bordo of [mobile.x, mobile.x + mobile.w]) {
           const delta = faccia - bordo;
-          if (Math.abs(delta) <= SOGLIA_MURO_PX && (!muroV || Math.abs(delta) < Math.abs(muroV.delta))) {
+          if (Math.abs(delta) <= sogliaMuroPx && (!muroV || Math.abs(delta) < Math.abs(muroV.delta))) {
             muroV = { delta, posizione: faccia, da, a };
           }
         }
@@ -89,7 +100,7 @@ export function calcolaGuide(
       for (const faccia of facce) {
         for (const bordo of [mobile.y, mobile.y + mobile.h]) {
           const delta = faccia - bordo;
-          if (Math.abs(delta) <= SOGLIA_MURO_PX && (!muroH || Math.abs(delta) < Math.abs(muroH.delta))) {
+          if (Math.abs(delta) <= sogliaMuroPx && (!muroH || Math.abs(delta) < Math.abs(muroH.delta))) {
             muroH = { delta, posizione: faccia, da, a };
           }
         }

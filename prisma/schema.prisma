@@ -372,6 +372,7 @@ model Venue {
   shifts             Shift[]
   Survey             Survey[]
   tables             Table[]
+  tablePresets       TablePreset[]
   blocks             TableBlock[]
   org                Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
   WaitlistEntry      WaitlistEntry[]
@@ -567,6 +568,26 @@ model Table {
   payments         Payment[]
   qrCodes          QrCode[]
   comande          Comanda[]
+
+  @@unique([venueId, label])
+}
+
+/// Un «tavolo predefinito»: forma, posti e misura salvati con un nome, per
+/// non riscrivere la misura ogni volta che si aggiunge un tavolo fatto così.
+///
+/// Vale per tutto il locale, non per la singola sala: un ristoratore con tre
+/// sale ha lo stesso quadrato da bar dappertutto, non un modello diverso per
+/// ciascuna.
+model TablePreset {
+  id        String     @id @default(cuid())
+  venueId   String
+  label     String
+  shape     TableShape
+  seats     Int
+  width     Int
+  height    Int
+  createdAt DateTime   @default(now())
+  venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@unique([venueId, label])
 }

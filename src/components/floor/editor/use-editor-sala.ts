@@ -5,8 +5,10 @@ import type { Table, TableShape } from "@prisma/client";
 import {
   DEFAULT_ROOM_LAYERS,
   boundingBox,
+  isArea,
   isTableRef,
   isWall,
+  metersToPx,
   type AreaType,
   type RoomElement,
   type RoomInventory,
@@ -15,11 +17,16 @@ import {
   type RoomMeta,
   type InventoryShape,
 } from "@/lib/room-layout";
-import { DIMENSIONE_TAVOLO, dimensioneDisegnata } from "@/lib/tavolo-geometria";
+import {
+  dimensioneDisegnata,
+  rettangoloIngombro,
+  rispettaSpazioMinimo,
+  SPAZIO_MINIMO_PASSAGGIO_PX,
+} from "@/lib/tavolo-geometria";
 import { useRoomCamera } from "@/components/floor/use-room-camera";
 import { useHistory } from "./use-storia";
 import { snapPointToWalls, type Point } from "./aggancio";
-import { calcolaGuide, type Guida, type Rettangolo } from "./guide";
+import { calcolaGuide, SOGLIA_MAGNETE_MURO_PX, SOGLIA_MAGNETE_PX, type Guida, type Rettangolo } from "./guide";
 
 export type TavoloLocale = Table & { dirty?: boolean };
 export type StatoEditor = { elements: RoomElement[]; tables: TavoloLocale[] };
@@ -77,6 +84,15 @@ export function useEditorSala({
   const [layers, setLayersState] = useState<RoomLayers>(layersIniziali);
   const [inventario, setInventarioState] = useState<RoomInventory>(inventarioIniziale);
   const [meta, setMetaState] = useState<RoomMeta>(metaIniziale);
+  const metaRef = useRef(meta);
+  metaRef.current = meta;
+  // In centimetri è una scelta di chi disegna la sala, in pixel è un numero
+  // che la geometria può sommare: questa è l'unica funzione che fa il salto,
+  // così i quattro punti che applicano il vincolo non lo rifanno ognuno.
+  const spazioMinimoAttuale = useCallback(() => {
+    const cm = metaRef.current.spazioMinimoPassaggioCm;
+    return cm != null ? metersToPx(cm / 100) : SPAZIO_MINIMO_PASSAGGIO_PX;
+  }, []);
   /** Layer, inventario e meta non stanno nella storia: annullare deve
    * riportare indietro la **piantina**, non riaccendere un livello che
    * qualcuno aveva spento per vedere meglio. Restano però modifiche da
@@ -296,14 +312,22 @@ export function useEditorSala({
    */
   const piazzaTavolo = useCallback(
     async (shape: TableShape, punto: Point): Promise<"ok" | "esauriti" | "errore"> => {
-      const misura = DIMENSIONE_TAVOLO[shape];
-      const posX = Math.round(Math.max(0, punto.x - misura.w / 2));
-      const posY = Math.round(Math.max(0, punto.y - misura.h / 2));
+      const misura = dimensioneDisegnata({ shape, seats: postiPredefiniti(shape) });
+      const posXDesiderata = Math.round(Math.max(0, punto.x - misura.w / 2));
+      const posYDesiderata = Math.round(Math.max(0, punto.y - misura.h / 2));
 
       const idGiaSulPiano = new Set(statoRef.current.elements.filter(isTableRef).map((e) => e.tableId));
+      // Lo spazio minimo di passaggio vale anche al primo posizionamento, non
+      // solo quando si sposta un tavolo già sulla piantina — altrimenti
+      // bastava trascinarlo dalla lista «Non posizionati» per aggirarlo.
+      const altriIngombri = statoRef.current.tables.filter((t) => idGiaSulPiano.has(t.id)).map(rettangoloIngombro);
       const riusabile = statoRef.current.tables.find((t) => t.shape === shape && !idGiaSulPiano.has(t.id));
 
       if (riusabile) {
+        const candidato = rettangoloIngombro({ ...riusabile, posX: posXDesiderata, posY: posYDesiderata });
+        const corretto = rispettaSpazioMinimo(candidato, altriIngombri, spazioMinimoAttuale());
+        const posX = Math.round(posXDesiderata + (corretto.x - candidato.x));
+        const posY = Math.round(posYDesiderata + (corretto.y - candidato.y));
         history.commit(statoRef.current, {
           elements: [...statoRef.current.elements, { id: nuovoId("tref"), type: "TABLE", tableId: riusabile.id }],
           tables: statoRef.current.tables.map((t) =>
@@ -320,11 +344,23 @@ export function useEditorSala({
         if (posizionati >= dichiarati) return "esauriti";
       }
 
-      const res = await fetch("/api/tables", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ label: prossimaEtichetta(), seats: postiPredefiniti(shape), shape, roomId, posX, posY }),
-      });
+      const posti = postiPredefiniti(shape);
+      const candidatoNuovo = rettangoloIngombro({ shape, seats: posti, posX: posXDesiderata, posY: posYDesiderata });
+      const correttoNuovo = rispettaSpazioMinimo(candidatoNuovo, altriIngombri, spazioMinimoAttuale());
+      const posX = Math.round(posXDesiderata + (correttoNuovo.x - candidatoNuovo.x));
+      const posY = Math.round(posYDesiderata + (correttoNuovo.y - candidatoNuovo.y));
+
+      let res: Response;
+      try {
+        res = await fetch("/api/tables", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ label: prossimaEtichetta(), seats: posti, shape, roomId, posX, posY }),
+        });
+      } catch (err) {
+        console.error("Creazione tavolo non riuscita:", err);
+        return "errore";
+      }
       if (!res.ok) return "errore";
       const creato = (await res.json()) as Table;
 
@@ -335,7 +371,7 @@ export function useEditorSala({
       setSelectedIds(new Set([creato.id]));
       return "ok";
     },
-    [history, inventario, roomId],
+    [history, inventario, roomId, spazioMinimoAttuale],
   );
 
   /** Un tavolo creato altrove — dal modulo «Nuovo tavolo» in testata —
@@ -343,9 +379,17 @@ export function useEditorSala({
    * i disponibili sarebbe un secondo gesto per finire il primo. */
   const aggiungiTavoloEsistente = useCallback(
     (tavolo: Table, punto: Point) => {
-      const misura = DIMENSIONE_TAVOLO[tavolo.shape];
-      const posX = Math.round(Math.max(0, punto.x - misura.w / 2));
-      const posY = Math.round(Math.max(0, punto.y - misura.h / 2));
+      const misura = dimensioneDisegnata(tavolo);
+      const posXDesiderata = Math.round(Math.max(0, punto.x - misura.w / 2));
+      const posYDesiderata = Math.round(Math.max(0, punto.y - misura.h / 2));
+      const idGiaSulPiano = new Set(statoRef.current.elements.filter(isTableRef).map((e) => e.tableId));
+      const altriIngombri = statoRef.current.tables
+        .filter((t) => t.id !== tavolo.id && idGiaSulPiano.has(t.id))
+        .map(rettangoloIngombro);
+      const candidato = rettangoloIngombro({ ...tavolo, posX: posXDesiderata, posY: posYDesiderata });
+      const corretto = rispettaSpazioMinimo(candidato, altriIngombri, spazioMinimoAttuale());
+      const posX = Math.round(posXDesiderata + (corretto.x - candidato.x));
+      const posY = Math.round(posYDesiderata + (corretto.y - candidato.y));
       const senzaDuplicati = statoRef.current.tables.filter((t) => t.id !== tavolo.id);
       history.commit(statoRef.current, {
         elements: [...statoRef.current.elements, { id: nuovoId("tref"), type: "TABLE", tableId: tavolo.id }],
@@ -353,7 +397,7 @@ export function useEditorSala({
       });
       setSelectedIds(new Set([tavolo.id]));
     },
-    [history],
+    [history, spazioMinimoAttuale],
   );
 
   /**
@@ -424,7 +468,11 @@ export function useEditorSala({
         tables: statoRef.current.tables.filter((t) => t.id !== tableId),
       });
       setSelectedIds(new Set());
-      await fetch(`/api/tables/${tableId}`, { method: "DELETE" });
+      try {
+        await fetch(`/api/tables/${tableId}`, { method: "DELETE" });
+      } catch (err) {
+        console.error("Eliminazione tavolo non riuscita:", err);
+      }
     },
     [history],
   );
@@ -478,7 +526,13 @@ export function useEditorSala({
       const baseX = t.posX;
       const baseY = t.posY;
       const misura = dimensioneDisegnata(t);
-      const altri = statoRef.current.tables.filter((x) => x.id !== id && idPosizionati.has(x.id)).map(rettangoloTavolo);
+      const altriTavoli = statoRef.current.tables.filter((x) => x.id !== id && idPosizionati.has(x.id));
+      const altri = altriTavoli.map(rettangoloTavolo);
+      // Lo spazio di passaggio si misura sugli ingombri (piano + sedie), non
+      // sui soli piani: un cameriere cammina fra le sedie tirate fuori, non
+      // fra i bordi dei tavoli. Gli ingombri altrui non cambiano mentre si
+      // trascina, quindi si calcolano una volta sola qui.
+      const altriIngombri = altriTavoli.map(rettangoloIngombro);
 
       trascina(e, {
         onMuovi: (dx, dy, ev) => {
@@ -495,11 +549,20 @@ export function useEditorSala({
           } else {
             setGuide([]);
           }
+
+          // Lo spazio minimo di passaggio invece non si disattiva mai, nemmeno
+          // con Alt: è un vincolo fisico (come i muri), non un aggancio. Si
+          // applica per ultimo, dopo l'eventuale aggancio: vince sempre lui.
+          const ingombroCandidato = rettangoloIngombro({ ...t, posX: x, posY: y });
+          const corretto = rispettaSpazioMinimo(ingombroCandidato, altriIngombri, spazioMinimoAttuale());
+          x += corretto.x - ingombroCandidato.x;
+          y += corretto.y - ingombroCandidato.y;
+
           aggiornaTavolo(id, { posX: Math.round(x), posY: Math.round(y) });
         },
       });
     },
-    [trascina, aggiornaTavolo, idPosizionati],
+    [trascina, aggiornaTavolo, idPosizionati, spazioMinimoAttuale],
   );
 
   const ruotaTavolo = useCallback(
@@ -529,37 +592,22 @@ export function useEditorSala({
     [camera, trascina, aggiornaTavolo],
   );
 
-  const ridimensionaTavolo = useCallback(
-    (id: string, angolo: "nw" | "ne" | "sw" | "se", e: React.PointerEvent) => {
-      const t = statoRef.current.tables.find((x) => x.id === id);
-      if (!t) return;
-      const base = dimensioneDisegnata(t);
-      const segnoX = angolo === "ne" || angolo === "se" ? 1 : -1;
-      const segnoY = angolo === "sw" || angolo === "se" ? 1 : -1;
-
-      trascina(e, {
-        onMuovi: (dx, dy) => {
-          const w = Math.round(Math.max(30, Math.min(600, base.w + dx * segnoX * 2)));
-          const h = Math.round(Math.max(30, Math.min(600, base.h + dy * segnoY * 2)));
-          // Il tavolo cresce attorno al proprio centro, così ridimensionarlo
-          // non lo fa anche scivolare via da dove era stato messo.
-          aggiornaTavolo(id, {
-            width: w,
-            height: h,
-            posX: Math.round(t.posX - (w - base.w) / 2),
-            posY: Math.round(t.posY - (h - base.h) / 2),
-          });
-        },
-      });
-    },
-    [trascina, aggiornaTavolo],
-  );
-
   const spostaElemento = useCallback(
     (id: string, e: React.PointerEvent) => {
       const el = statoRef.current.elements.find((x) => x.id === id);
       if (!el) return;
       const iniziale = { ...el } as RoomElement;
+      // Le aree (Cucina, Bancone, Bagno…) si agganciano come un magnete ad
+      // altre aree e ai muri — interni ed esterni — con una soglia molto più
+      // larga di quella debole usata per i tavoli: un blocco vicino a un muro
+      // deve incollarcisi, non solo sfiorarlo. Niente tasto per disattivarlo:
+      // a differenza dei tavoli qui l'aggancio è il comportamento voluto.
+      const altreAree = isArea(iniziale)
+        ? statoRef.current.elements
+            .filter(isArea)
+            .filter((a) => a.id !== id)
+            .map((a) => ({ x: a.x, y: a.y, w: a.width, h: a.height }))
+        : [];
 
       trascina(e, {
         onMuovi: (dx, dy) => {
@@ -571,9 +619,22 @@ export function useEditorSala({
               endY: Math.round(iniziale.endY + dy),
             } as Partial<RoomElement>);
           } else if ("x" in iniziale) {
+            let x = iniziale.x + dx;
+            let y = iniziale.y + dy;
+            if (isArea(iniziale)) {
+              const g = calcolaGuide(
+                { x, y, w: iniziale.width, h: iniziale.height },
+                altreAree,
+                statoRef.current.elements,
+                { bordo: SOGLIA_MAGNETE_PX, muro: SOGLIA_MAGNETE_MURO_PX },
+              );
+              x += g.dx;
+              y += g.dy;
+              setGuide(g.guide);
+            }
             aggiornaElemento(id, {
-              x: Math.round(iniziale.x + dx),
-              y: Math.round(iniziale.y + dy),
+              x: Math.round(x),
+              y: Math.round(y),
             } as Partial<RoomElement>);
           }
         },
@@ -714,6 +775,13 @@ export function useEditorSala({
       timerSalvato.current = setTimeout(() => setAppenaSalvato(false), 2400);
       onSalvato?.();
       return "ok";
+    } catch (err) {
+      // Una rete che cade a metà salvataggio (server riavviato, tab offline
+      // un attimo) non deve far sparire la pagina intera dietro una
+      // schermata rossa: il salvataggio fallisce, l'utente riprova — non
+      // perde il lavoro fatto, che resta nella storia dell'editor.
+      console.error("Salvataggio sala non riuscito:", err);
+      return "errore";
     } finally {
       setSalvando(false);
     }
@@ -844,7 +912,6 @@ export function useEditorSala({
     // interazione
     spostaTavolo,
     ruotaTavolo,
-    ridimensionaTavolo,
     spostaElemento,
     ridimensionaElemento,
     spostaEstremo,
