@@ -8,6 +8,7 @@ import {
   isArea,
   isTableRef,
   isWall,
+  metersToPx,
   type AreaType,
   type RoomElement,
   type RoomInventory,
@@ -16,7 +17,12 @@ import {
   type RoomMeta,
   type InventoryShape,
 } from "@/lib/room-layout";
-import { dimensioneDisegnata, rettangoloIngombro, rispettaSpazioMinimo } from "@/lib/tavolo-geometria";
+import {
+  dimensioneDisegnata,
+  rettangoloIngombro,
+  rispettaSpazioMinimo,
+  SPAZIO_MINIMO_PASSAGGIO_PX,
+} from "@/lib/tavolo-geometria";
 import { useRoomCamera } from "@/components/floor/use-room-camera";
 import { useHistory } from "./use-storia";
 import { snapPointToWalls, type Point } from "./aggancio";
@@ -78,6 +84,15 @@ export function useEditorSala({
   const [layers, setLayersState] = useState<RoomLayers>(layersIniziali);
   const [inventario, setInventarioState] = useState<RoomInventory>(inventarioIniziale);
   const [meta, setMetaState] = useState<RoomMeta>(metaIniziale);
+  const metaRef = useRef(meta);
+  metaRef.current = meta;
+  // In centimetri è una scelta di chi disegna la sala, in pixel è un numero
+  // che la geometria può sommare: questa è l'unica funzione che fa il salto,
+  // così i quattro punti che applicano il vincolo non lo rifanno ognuno.
+  const spazioMinimoAttuale = useCallback(() => {
+    const cm = metaRef.current.spazioMinimoPassaggioCm;
+    return cm != null ? metersToPx(cm / 100) : SPAZIO_MINIMO_PASSAGGIO_PX;
+  }, []);
   /** Layer, inventario e meta non stanno nella storia: annullare deve
    * riportare indietro la **piantina**, non riaccendere un livello che
    * qualcuno aveva spento per vedere meglio. Restano però modifiche da
@@ -310,7 +325,7 @@ export function useEditorSala({
 
       if (riusabile) {
         const candidato = rettangoloIngombro({ ...riusabile, posX: posXDesiderata, posY: posYDesiderata });
-        const corretto = rispettaSpazioMinimo(candidato, altriIngombri);
+        const corretto = rispettaSpazioMinimo(candidato, altriIngombri, spazioMinimoAttuale());
         const posX = Math.round(posXDesiderata + (corretto.x - candidato.x));
         const posY = Math.round(posYDesiderata + (corretto.y - candidato.y));
         history.commit(statoRef.current, {
@@ -331,7 +346,7 @@ export function useEditorSala({
 
       const posti = postiPredefiniti(shape);
       const candidatoNuovo = rettangoloIngombro({ shape, seats: posti, posX: posXDesiderata, posY: posYDesiderata });
-      const correttoNuovo = rispettaSpazioMinimo(candidatoNuovo, altriIngombri);
+      const correttoNuovo = rispettaSpazioMinimo(candidatoNuovo, altriIngombri, spazioMinimoAttuale());
       const posX = Math.round(posXDesiderata + (correttoNuovo.x - candidatoNuovo.x));
       const posY = Math.round(posYDesiderata + (correttoNuovo.y - candidatoNuovo.y));
 
@@ -356,7 +371,7 @@ export function useEditorSala({
       setSelectedIds(new Set([creato.id]));
       return "ok";
     },
-    [history, inventario, roomId],
+    [history, inventario, roomId, spazioMinimoAttuale],
   );
 
   /** Un tavolo creato altrove — dal modulo «Nuovo tavolo» in testata —
@@ -372,7 +387,7 @@ export function useEditorSala({
         .filter((t) => t.id !== tavolo.id && idGiaSulPiano.has(t.id))
         .map(rettangoloIngombro);
       const candidato = rettangoloIngombro({ ...tavolo, posX: posXDesiderata, posY: posYDesiderata });
-      const corretto = rispettaSpazioMinimo(candidato, altriIngombri);
+      const corretto = rispettaSpazioMinimo(candidato, altriIngombri, spazioMinimoAttuale());
       const posX = Math.round(posXDesiderata + (corretto.x - candidato.x));
       const posY = Math.round(posYDesiderata + (corretto.y - candidato.y));
       const senzaDuplicati = statoRef.current.tables.filter((t) => t.id !== tavolo.id);
@@ -382,7 +397,7 @@ export function useEditorSala({
       });
       setSelectedIds(new Set([tavolo.id]));
     },
-    [history],
+    [history, spazioMinimoAttuale],
   );
 
   /**
@@ -539,7 +554,7 @@ export function useEditorSala({
           // con Alt: è un vincolo fisico (come i muri), non un aggancio. Si
           // applica per ultimo, dopo l'eventuale aggancio: vince sempre lui.
           const ingombroCandidato = rettangoloIngombro({ ...t, posX: x, posY: y });
-          const corretto = rispettaSpazioMinimo(ingombroCandidato, altriIngombri);
+          const corretto = rispettaSpazioMinimo(ingombroCandidato, altriIngombri, spazioMinimoAttuale());
           x += corretto.x - ingombroCandidato.x;
           y += corretto.y - ingombroCandidato.y;
 
@@ -547,7 +562,7 @@ export function useEditorSala({
         },
       });
     },
-    [trascina, aggiornaTavolo, idPosizionati],
+    [trascina, aggiornaTavolo, idPosizionati, spazioMinimoAttuale],
   );
 
   const ruotaTavolo = useCallback(

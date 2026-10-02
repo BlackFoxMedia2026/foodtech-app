@@ -25,7 +25,7 @@ import {
   type RoomElement,
   type RoomLayerKey,
 } from "@/lib/room-layout";
-import { ETICHETTE_FORMA, dimensioneDisegnata } from "@/lib/tavolo-geometria";
+import { ETICHETTE_FORMA, dimensioneDisegnata, SPAZIO_MINIMO_PASSAGGIO_PX } from "@/lib/tavolo-geometria";
 import { TABLE_ROLE_LABELS } from "@/lib/staff-roles";
 import { TABLE_ROLE_ICONS } from "@/components/floor/staff-role-icons";
 import type { TableStaffMap } from "@/components/floor/table-node";
@@ -90,9 +90,9 @@ export function PannelloProprieta({
       ) : elemento ? (
         <ProprietaElemento editor={editor} elemento={elemento} modificabile={modificabile} />
       ) : (
-        <div className="flex flex-col items-center gap-2 py-6 text-center">
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-secondary/60">
-            <Box className="h-5 w-5 text-tertiary-foreground" />
+        <div className="flex flex-col items-center gap-1 py-2 text-center">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-secondary/60">
+            <Box className="h-3.5 w-3.5 text-tertiary-foreground" />
           </span>
           <p className="text-xs font-medium">Nessun elemento selezionato</p>
           <p className="text-[11px] leading-snug text-tertiary-foreground">
@@ -516,8 +516,23 @@ export function PannelloInformazioni({
                 />
               </Campo>
             </div>
+            <Campo etichetta="Spazio minimo fra tavoli (cm)">
+              <Input
+                type="number"
+                step="5"
+                min={0}
+                max={300}
+                defaultValue={editor.meta.spazioMinimoPassaggioCm ?? ""}
+                placeholder={String(Math.round(pxToMeters(SPAZIO_MINIMO_PASSAGGIO_PX) * 100))}
+                className="h-8 text-xs"
+                onBlur={(e) =>
+                  editor.cambiaMeta({ spazioMinimoPassaggioCm: e.target.value ? Number(e.target.value) : null })
+                }
+              />
+            </Campo>
             <p className="text-[10px] leading-snug text-tertiary-foreground">
-              Lasciando un campo vuoto il valore torna a essere calcolato dalla piantina.
+              Lasciando un campo vuoto il valore torna a essere calcolato dalla piantina (o lo standard, per lo spazio fra i
+              tavoli).
             </p>
           </>
         ) : (
@@ -534,6 +549,13 @@ export function PannelloInformazioni({
                   ? `${larghezzaM.toFixed(1).replace(".", ",")} m × ${profonditaM.toFixed(1).replace(".", ",")} m`
                   : "—"
               }
+            />
+            <Riga
+              etichetta="Spazio minimo fra tavoli"
+              valore={`${
+                editor.meta.spazioMinimoPassaggioCm ?? Math.round(pxToMeters(SPAZIO_MINIMO_PASSAGGIO_PX) * 100)
+              } cm`}
+              nota={editor.meta.spazioMinimoPassaggioCm != null ? "inserita a mano" : "standard"}
             />
           </>
         )}
@@ -634,7 +656,10 @@ export function PannelloOriginale({
 function Campo({ etichetta, children }: { etichetta: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="t-etichetta">{etichetta}</span>
+      {/* truncate invece di lasciarla andare a capo: un'etichetta più lunga
+          delle altre (es. «Profondità» contro «Larghezza») non deve spostare
+          in basso solo il proprio campo rispetto a quelli accanto. */}
+      <span className="t-etichetta truncate">{etichetta}</span>
       {children}
     </label>
   );

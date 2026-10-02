@@ -254,6 +254,13 @@ export const RoomMetaSchema = z
     widthM: z.number().min(0).max(1000).nullable(),
     depthM: z.number().min(0).max(1000).nullable(),
     notes: z.string().max(300).nullable(),
+    /** Centimetri di passaggio minimo che questa sala impone fra un tavolo e
+     * l'altro (ingombro sedie incluso). Nullo: vale lo standard del prodotto
+     * (60cm, `SPAZIO_MINIMO_PASSAGGIO_PX` in `tavolo-geometria.ts`) — lo
+     * decide chi disegna la pianta perché un corridoio per vassoi non è lo
+     * stesso ovunque: una sala stretta può ammettere meno margine di una
+     * grande sala banchetti dove passano carrelli. */
+    spazioMinimoPassaggioCm: z.number().min(0).max(300).nullable(),
   })
   .partial();
 export type RoomMeta = z.infer<typeof RoomMetaSchema>;
