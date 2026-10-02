@@ -6,25 +6,21 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 
 const Body = z.object({
-  label: z.string().min(1),
+  label: z.string().min(1).max(60),
+  shape: z.enum(["ROUND", "SQUARE", "RECT", "BOOTH", "LOUNGE", "OVAL", "CUSTOM"]),
   seats: z.coerce.number().int().min(1).max(40),
-  shape: z.enum(["ROUND", "SQUARE", "RECT", "BOOTH", "LOUNGE", "OVAL", "CUSTOM"]).default("ROUND"),
-  roomId: z.string().optional().nullable(),
-  posX: z.coerce.number().int().default(40),
-  posY: z.coerce.number().int().default(40),
-  // Nullo: usa la misura standard della forma (vedi TABLE_SIZE/dimensioneDisegnata).
-  width: z.coerce.number().int().min(20).max(1200).nullable().optional(),
-  height: z.coerce.number().int().min(20).max(1200).nullable().optional(),
+  width: z.coerce.number().int().min(20).max(1200),
+  height: z.coerce.number().int().min(20).max(1200),
 });
 
 export async function GET() {
   const ctx = await requireVenueApi();
   if (!ctx.ok) return ctx.response;
-  const tables = await db.table.findMany({
+  const presets = await db.tablePreset.findMany({
     where: { venueId: ctx.venueId },
     orderBy: { label: "asc" },
   });
-  return NextResponse.json(tables);
+  return NextResponse.json(presets);
 }
 
 export async function POST(req: Request) {
@@ -32,16 +28,17 @@ export async function POST(req: Request) {
   if (!ctx.ok) return ctx.response;
   try {
     const data = Body.parse(await req.json());
-    const created = await db.table.create({ data: { ...data, venueId: ctx.venueId } });
-    await recordAudit(auditActor(ctx, req), "table.create", "table", created.id, {
-      tavolo: created.label,
+    const created = await db.tablePreset.create({ data: { ...data, venueId: ctx.venueId } });
+    await recordAudit(auditActor(ctx, req), "table_preset.create", "table_preset", created.id, {
+      nome: created.label,
+      forma: created.shape,
       posti: created.seats,
     });
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return NextResponse.json(
-        { error: "Esiste già un tavolo con questo nome.", code: "DUPLICATE_LABEL" },
+        { error: "Esiste già un predefinito con questo nome.", code: "DUPLICATE_LABEL" },
         { status: 409 },
       );
     }
