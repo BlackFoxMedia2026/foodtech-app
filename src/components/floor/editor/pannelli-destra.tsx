@@ -190,37 +190,6 @@ function ProprietaTavolo({
         />
       </Campo>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Campo etichetta="Larghezza (cm)">
-          <Input
-            key={`${tavolo.id}-w-${misura.w}`}
-            type="number"
-            inputMode="numeric"
-            defaultValue={Math.round(pxToMeters(misura.w) * 100)}
-            disabled={!modificabile}
-            className="h-8 text-xs"
-            onBlur={(e) => {
-              const cm = Number(e.target.value);
-              if (cm > 0) editor.aggiornaTavolo(tavolo.id, { width: metersToPx(cm / 100), height: tavolo.height ?? misura.h }, true);
-            }}
-          />
-        </Campo>
-        <Campo etichetta="Altezza (cm)">
-          <Input
-            key={`${tavolo.id}-h-${misura.h}`}
-            type="number"
-            inputMode="numeric"
-            defaultValue={Math.round(pxToMeters(misura.h) * 100)}
-            disabled={!modificabile}
-            className="h-8 text-xs"
-            onBlur={(e) => {
-              const cm = Number(e.target.value);
-              if (cm > 0) editor.aggiornaTavolo(tavolo.id, { height: metersToPx(cm / 100), width: tavolo.width ?? misura.w }, true);
-            }}
-          />
-        </Campo>
-      </div>
-
       <Campo etichetta="Rotazione">
         <div className="flex items-center gap-2">
           <input

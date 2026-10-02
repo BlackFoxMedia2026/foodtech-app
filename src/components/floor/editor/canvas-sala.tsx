@@ -171,7 +171,6 @@ export function CanvasSala({
                     selezionato={editor.selectedIds.has(t.id)}
                     onSelezione={editor.seleziona}
                     onInizioSpostamento={editor.spostaTavolo}
-                    onInizioRidimensiona={editor.ridimensionaTavolo}
                     onInizioRotazione={editor.ruotaTavolo}
                   />
                 ) : (
