@@ -11,38 +11,81 @@ import type { TableShape } from "@prisma/client";
  * erano identici, nell'editor no.
  */
 
-/** L'impronta standard di ogni forma, in pixel del canvas (100 px = 1 m).
- * È anche l'area di trascinamento e di aggancio: cambiarla sposterebbe i
- * tavoli già disposti, quindi non si tocca. */
-export const DIMENSIONE_TAVOLO: Record<TableShape, { w: number; h: number }> = {
-  ROUND: { w: 80, h: 80 },
-  SQUARE: { w: 80, h: 80 },
-  RECT: { w: 120, h: 70 },
-  OVAL: { w: 130, h: 85 },
-  CUSTOM: { w: 100, h: 80 },
-  BOOTH: { w: 160, h: 90 },
-  LOUNGE: { w: 140, h: 100 },
+/**
+ * Le misure reali di un tavolo, per forma e numero di posti — in pixel del
+ * canvas (100 px = 1 m), cioè direttamente in centimetri.
+ *
+ * Non sono una taglia massima rimpicciolita in percentuale secondo i posti:
+ * sono le misure vere di un tavolo da sala di quella forma e capienza, le
+ * stesse di un catalogo di arredi per ristorazione. Rimpicciolire invece una
+ * taglia massima aveva un difetto concreto — un quattro posti finiva a 59 cm
+ * di lato, più piccolo della sedia che gli sta intorno — perché scala con la
+ * forma invece che con la realtà: un tavolo per due non è un tavolo per
+ * quattro ristretto, è un pezzo di arredo diverso.
+ */
+const DIMENSIONE_PER_POSTI: Record<TableShape, readonly { finoA: number; w: number; h: number }[]> = {
+  ROUND: [
+    { finoA: 2, w: 60, h: 60 },
+    { finoA: 4, w: 80, h: 80 },
+    { finoA: 6, w: 110, h: 110 },
+    { finoA: 8, w: 130, h: 130 },
+  ],
+  SQUARE: [
+    { finoA: 2, w: 60, h: 60 },
+    { finoA: 4, w: 80, h: 80 },
+    { finoA: 6, w: 100, h: 100 },
+    { finoA: 8, w: 120, h: 120 },
+  ],
+  RECT: [
+    { finoA: 2, w: 70, h: 60 },
+    { finoA: 4, w: 110, h: 70 },
+    { finoA: 6, w: 150, h: 80 },
+    { finoA: 8, w: 190, h: 90 },
+  ],
+  OVAL: [
+    { finoA: 2, w: 80, h: 65 },
+    { finoA: 4, w: 120, h: 80 },
+    { finoA: 6, w: 160, h: 90 },
+    { finoA: 8, w: 200, h: 100 },
+  ],
+  CUSTOM: [
+    { finoA: 2, w: 65, h: 60 },
+    { finoA: 4, w: 100, h: 80 },
+    { finoA: 6, w: 130, h: 90 },
+    { finoA: 8, w: 160, h: 100 },
+  ],
+  BOOTH: [
+    { finoA: 2, w: 110, h: 80 },
+    { finoA: 4, w: 150, h: 90 },
+    { finoA: 6, w: 190, h: 100 },
+    { finoA: 8, w: 230, h: 110 },
+  ],
+  LOUNGE: [
+    { finoA: 2, w: 110, h: 90 },
+    { finoA: 4, w: 150, h: 110 },
+    { finoA: 6, w: 190, h: 120 },
+    { finoA: 8, w: 230, h: 130 },
+  ],
 };
 
-/**
- * Quanto più piccolo, secondo i posti.
- *
- * Su una piantina un due posti e un dieci posti disegnati identici tolgono
- * alla mappa la sola cosa per cui la si guarda: capire la sala con un colpo
- * d'occhio. La forma dice se è tondo o rettangolare, la dimensione dice
- * quanta gente ci sta.
- */
-const SCALA_PER_POSTI: readonly { finoA: number; scala: number }[] = [
-  { finoA: 2, scala: 0.62 },
-  { finoA: 4, scala: 0.74 },
-  { finoA: 6, scala: 0.86 },
-  { finoA: 8, scala: 0.94 },
-];
-const SCALA_MASSIMA = 1;
+/** Oltre gli otto posti: stessa logica, una fascia aperta più grande. */
+const DIMENSIONE_OLTRE_OTTO: Record<TableShape, { w: number; h: number }> = {
+  ROUND: { w: 150, h: 150 },
+  SQUARE: { w: 140, h: 140 },
+  RECT: { w: 220, h: 100 },
+  OVAL: { w: 230, h: 110 },
+  CUSTOM: { w: 190, h: 110 },
+  BOOTH: { w: 260, h: 120 },
+  LOUNGE: { w: 260, h: 140 },
+};
 
-export function scalaPerPosti(seats: number) {
-  return SCALA_PER_POSTI.find((r) => seats <= r.finoA)?.scala ?? SCALA_MASSIMA;
-}
+/** L'impronta massima di ogni forma: coincide con la fascia più grande (oltre
+ * otto posti). Le viste che non ridisegnano il proprio contenitore secondo i
+ * posti (mappa Prenotazioni, vista operativa) la usano come area fissa di
+ * trascinamento e di clic — deve restare sempre grande almeno quanto il
+ * tavolo più grande di quella forma, altrimenti il disegno esce dalla propria
+ * area cliccabile. */
+export const DIMENSIONE_TAVOLO: Record<TableShape, { w: number; h: number }> = DIMENSIONE_OLTRE_OTTO;
 
 export type TavoloMisurabile = {
   shape: TableShape;
@@ -52,17 +95,19 @@ export type TavoloMisurabile = {
 };
 
 /**
- * La dimensione **disegnata** del piano del tavolo.
+ * La dimensione **disegnata** del piano del tavolo: la misura reale secondo
+ * forma e posti.
  *
- * Se qualcuno l'ha ridimensionato a mano nell'editor, vale la sua misura: un
- * ristoratore che allarga il tavolo della vetrata sa perché lo sta facendo.
- * Altrimenti vale la standard della forma, ristretta secondo i posti.
+ * `width`/`height` restano come ripiego per i tavoli salvati quando il
+ * ridimensionamento a mano esisteva ancora — non è più possibile impostarli
+ * dall'editor, ma un valore già salvato continua a valere, invece di
+ * rimpicciolire di colpo un tavolo che un ristoratore ha misurato apposta.
  */
 export function dimensioneDisegnata(t: TavoloMisurabile): { w: number; h: number } {
   if (t.width && t.height) return { w: t.width, h: t.height };
-  const base = DIMENSIONE_TAVOLO[t.shape];
-  const scala = scalaPerPosti(t.seats);
-  return { w: Math.round(base.w * scala), h: Math.round(base.h * scala) };
+  const fasce = DIMENSIONE_PER_POSTI[t.shape];
+  const trovata = fasce.find((f) => t.seats <= f.finoA);
+  return trovata ? { w: trovata.w, h: trovata.h } : DIMENSIONE_TAVOLO[t.shape];
 }
 
 /** L'ingombro totale — piano più sedie — che serve a chi calcola i bordi

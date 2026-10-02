@@ -16,7 +16,7 @@ import {
   type RoomMeta,
   type InventoryShape,
 } from "@/lib/room-layout";
-import { DIMENSIONE_TAVOLO, dimensioneDisegnata, rettangoloIngombro, rispettaSpazioMinimo } from "@/lib/tavolo-geometria";
+import { dimensioneDisegnata, rettangoloIngombro, rispettaSpazioMinimo } from "@/lib/tavolo-geometria";
 import { useRoomCamera } from "@/components/floor/use-room-camera";
 import { useHistory } from "./use-storia";
 import { snapPointToWalls, type Point } from "./aggancio";
@@ -297,7 +297,7 @@ export function useEditorSala({
    */
   const piazzaTavolo = useCallback(
     async (shape: TableShape, punto: Point): Promise<"ok" | "esauriti" | "errore"> => {
-      const misura = DIMENSIONE_TAVOLO[shape];
+      const misura = dimensioneDisegnata({ shape, seats: postiPredefiniti(shape) });
       const posXDesiderata = Math.round(Math.max(0, punto.x - misura.w / 2));
       const posYDesiderata = Math.round(Math.max(0, punto.y - misura.h / 2));
 
@@ -364,7 +364,7 @@ export function useEditorSala({
    * i disponibili sarebbe un secondo gesto per finire il primo. */
   const aggiungiTavoloEsistente = useCallback(
     (tavolo: Table, punto: Point) => {
-      const misura = DIMENSIONE_TAVOLO[tavolo.shape];
+      const misura = dimensioneDisegnata(tavolo);
       const posXDesiderata = Math.round(Math.max(0, punto.x - misura.w / 2));
       const posYDesiderata = Math.round(Math.max(0, punto.y - misura.h / 2));
       const idGiaSulPiano = new Set(statoRef.current.elements.filter(isTableRef).map((e) => e.tableId));
@@ -575,32 +575,6 @@ export function useEditorSala({
       });
     },
     [camera, trascina, aggiornaTavolo],
-  );
-
-  const ridimensionaTavolo = useCallback(
-    (id: string, angolo: "nw" | "ne" | "sw" | "se", e: React.PointerEvent) => {
-      const t = statoRef.current.tables.find((x) => x.id === id);
-      if (!t) return;
-      const base = dimensioneDisegnata(t);
-      const segnoX = angolo === "ne" || angolo === "se" ? 1 : -1;
-      const segnoY = angolo === "sw" || angolo === "se" ? 1 : -1;
-
-      trascina(e, {
-        onMuovi: (dx, dy) => {
-          const w = Math.round(Math.max(30, Math.min(600, base.w + dx * segnoX * 2)));
-          const h = Math.round(Math.max(30, Math.min(600, base.h + dy * segnoY * 2)));
-          // Il tavolo cresce attorno al proprio centro, così ridimensionarlo
-          // non lo fa anche scivolare via da dove era stato messo.
-          aggiornaTavolo(id, {
-            width: w,
-            height: h,
-            posX: Math.round(t.posX - (w - base.w) / 2),
-            posY: Math.round(t.posY - (h - base.h) / 2),
-          });
-        },
-      });
-    },
-    [trascina, aggiornaTavolo],
   );
 
   const spostaElemento = useCallback(
@@ -923,7 +897,6 @@ export function useEditorSala({
     // interazione
     spostaTavolo,
     ruotaTavolo,
-    ridimensionaTavolo,
     spostaElemento,
     ridimensionaElemento,
     spostaEstremo,
