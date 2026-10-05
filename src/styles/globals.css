@@ -394,16 +394,16 @@
   :root:has([data-tema="carta"]) {
     color-scheme: light;
 
-    /* Il back office si legge a un pixel in più (5 ottobre 2026): 13, 15,
-       17, 19 invece di 12, 14, 16, 18. Le usano `text-xs`...`text-lg` e
+    /* Il back office si legge due pixel più grande (5 ottobre 2026): 14, 16,
+       18, 20 invece di 12, 14, 16, 18. Le usano `text-xs`...`text-lg` e
        quindi anche la scala `.t-*`. */
-    --testo-xs: 0.8125rem;
-    --riga-xs: 1.125rem;
-    --testo-sm: 0.9375rem;
-    --riga-sm: 1.375rem;
-    --testo-base: 1.0625rem;
-    --riga-base: 1.625rem;
-    --testo-lg: 1.1875rem;
+    --testo-xs: 0.875rem;
+    --riga-xs: 1.25rem;
+    --testo-sm: 1rem;
+    --riga-sm: 1.5rem;
+    --testo-base: 1.125rem;
+    --riga-base: 1.75rem;
+    --testo-lg: 1.25rem;
     --riga-lg: 1.75rem;
 
     /* I token di base. */
