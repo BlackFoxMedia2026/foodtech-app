@@ -53,7 +53,7 @@ export function FilaPrincipale({ voci }: { voci: NavItem[] }) {
     >
       <div
         ref={fila.pillolaRef}
-        className="relative flex min-w-0 items-center gap-1 rounded-full border border-border bg-muted/70 p-1"
+        className="capsula-fila relative flex min-w-0 items-center gap-1 rounded-full border border-border bg-muted/70 p-1"
       >
         <IndicatoreFila indicator={fila.indicator} reducedMotion={fila.reducedMotion} />
 
@@ -123,7 +123,7 @@ export function IndicatoreFila({
   return (
     <div
       aria-hidden="true"
-      className="absolute inset-y-1 z-0 rounded-full bg-nav-pill"
+      className="pillola-accesa absolute inset-y-1 z-0 rounded-full bg-nav-pill"
       style={{
         left: indicator.left,
         width: indicator.width,

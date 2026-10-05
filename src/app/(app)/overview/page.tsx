@@ -90,8 +90,12 @@ export default async function OverviewPage() {
         delle prenotazioni veniva tagliato senza modo di raggiungerlo. Una
         barra sola per la fascia tiene anche le due card allineate mentre
         scorre.
+
+        Chi scorre però taglia anche l'ombra delle card, di netto sul suo
+        bordo. `-mx-3 px-3 -mb-6 pb-6` allarga il bordo nel margine di `main`
+        senza spostare le card: l'ombra ha dove cadere.
       */}
-      <section className="fill min-h-0 space-y-4 overflow-y-auto md:grid md:grid-cols-[1.4fr_1fr] md:gap-4 md:space-y-0">
+      <section className="fill -mx-3 -mb-6 min-h-0 space-y-4 overflow-y-auto px-3 pb-6 md:grid md:grid-cols-[1.4fr_1fr] md:gap-4 md:space-y-0">
         {/*
           A sinistra le prenotazioni. Prima qui c'era **tutta** la giornata in
           una lista alta quanto la schermata, e a metà servizio erano quasi

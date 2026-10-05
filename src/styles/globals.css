@@ -487,10 +487,75 @@
     --glass-fill: #f7f3eae6;
     --glow-accent: #c9a96a2e;
     --card-fill: #fdfbf5;
-    --card-edge: #dcd3bf;
+    --card-edge: var(--relief-card-edge);
+    --card-sheen: var(--relief-card-bg);
+    --card-shadow: var(--relief-card-shadow);
     --shadow-bevel: inset 0 1px 0 #ffffff, inset 0 -1px 0 #efe7d6;
     --shadow-contact: 0 1px 1.5px #b9af9640;
     --shadow-lift: 0 10px 20px -8px #b3a88c4d;
+
+    /* Il rilievo (5 ottobre 2026). La luce viene sempre dall'alto: filo
+       chiaro sopra, filo scuro sotto. Tre livelli — la scheda, la riga dentro
+       la scheda, l'incavo che sprofonda — e un'ombra di stacco sola per
+       livello. Sotto il testo il gradiente resta quasi piatto: due stop
+       vicini. I verdi pieni piccoli diventano cupole, con il riflesso in alto
+       a sinistra. Esistono solo qui: al buio nessuno di questi token c'è. */
+    --relief-card-edge: rgba(214, 204, 180, 0.55);
+    --relief-card-border: 1px solid var(--relief-card-edge);
+    --relief-card-bg: linear-gradient(180deg, #fefcf8 0%, #f6f1e6 100%);
+    --relief-card-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(170, 155, 120, 0.22),
+      0 -1px 3px rgba(255, 255, 255, 0.65),
+      0 1px 1px rgba(120, 105, 70, 0.1),
+      0 4px 8px -2px rgba(120, 105, 70, 0.12),
+      0 18px 32px -14px rgba(110, 95, 60, 0.34);
+
+    --relief-row-edge: rgba(214, 204, 180, 0.6);
+    --relief-row-border: 1px solid var(--relief-row-edge);
+    --relief-row-bg: linear-gradient(180deg, #fffefb 0%, #f8f4eb 100%);
+    --relief-row-shadow:
+      inset 0 1px 0 #ffffff,
+      inset 0 -1px 0 rgba(170, 155, 120, 0.2),
+      0 1px 1px rgba(120, 105, 70, 0.08),
+      0 6px 12px -8px rgba(110, 95, 60, 0.3);
+
+    --relief-dome-bg: radial-gradient(circle at 35% 28%, #4c7a67 0%, #2c5545 55%, #1f3f33 100%);
+    --relief-dome-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.22),
+      0 3px 6px -1px rgba(30, 60, 45, 0.32);
+
+    /* L'unico con l'alone dorato. */
+    --relief-cta-bg: radial-gradient(circle at 35% 28%, #3f6b59 0%, #1f3f33 60%, #16302a 100%);
+    --relief-cta-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.25),
+      0 4px 10px -2px rgba(30, 60, 45, 0.4),
+      0 0 16px rgba(201, 160, 90, 0.18);
+
+    --relief-chip-bg: linear-gradient(180deg, #faf7f0 0%, #ece6d7 100%);
+    --relief-chip-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      inset 0 -1px 0 rgba(170, 155, 120, 0.2),
+      0 2px 4px -1px rgba(120, 105, 70, 0.18);
+
+    --relief-nav-bg: linear-gradient(180deg, rgba(253, 251, 246, 0.85) 0%, rgba(243, 238, 227, 0.85) 100%);
+    --relief-nav-solid: #f7f3ea; /* senza trasparenze */
+    --relief-nav-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      inset 0 -1px 0 rgba(170, 155, 120, 0.18),
+      0 8px 18px -10px rgba(110, 95, 60, 0.3);
+
+    --relief-inset-shadow: inset 0 1px 2px rgba(120, 105, 70, 0.35), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+    --relief-fill-bg: linear-gradient(180deg, #46735f 0%, #2c5545 100%);
+    --relief-fill-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
+    /* L'oro in due metà: lo smusso va sulla sigla, il distacco sulla cornice
+       dell'avatar, che taglia ciò che esce dal riquadro. */
+    --relief-gold-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -2px 3px rgba(90, 60, 20, 0.25);
+    --relief-gold-drop: 0 3px 6px -1px rgba(120, 85, 30, 0.35);
+    --relief-gold-shadow: var(--relief-gold-bevel), var(--relief-gold-drop);
 
     /* I ruoli estratti. */
     --base-top: #f2ece0;
@@ -717,11 +782,14 @@
      interno, contatto stretto, diffusa. È la coppia contatto + diffusa a
      dare il rilievo, non un gradiente. I colori di bordo delle utility
      (`border-accent/40`...) vincono, perché stanno in un livello dopo. */
+  /* In Carta la lastra prende il rilievo: `--card-sheen` e `--card-shadow`
+     esistono solo lì. Al buio non sono definiti e valgono i ripieghi. */
   .surface {
     @apply rounded-xl border text-card-foreground;
     border-color: var(--card-edge);
     background-color: var(--card-fill);
-    box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
+    background-image: var(--card-sheen, none);
+    box-shadow: var(--card-shadow, var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift));
   }
 
   /*
@@ -1718,8 +1786,8 @@
      contenuto come farebbe un `border`. */
   :root:has([data-tema="carta"]) .vetro.card-notch {
     background-color: var(--card-fill);
-    background-image: none;
-    box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
+    background-image: var(--card-sheen);
+    box-shadow: var(--card-shadow);
   }
   :root:has([data-tema="carta"]) .vetro.card-notch::before {
     display: block;
@@ -1729,48 +1797,80 @@
   :root:has([data-tema="carta"]) .vetro::before {
     display: none;
   }
-  /* Il dischetto dell'icona di una tessera: uno dei cinque verdi pieni. */
+  /* Il dischetto dell'icona di una tessera: una cupola verde. */
   :root:has([data-tema="carta"]) .kpi-pastiglia {
     background-color: var(--control-fill);
-    background-image: linear-gradient(180deg, #ffffff26, transparent 60%);
-    box-shadow: var(--shadow-bevel);
+    background-image: var(--relief-dome-bg);
+    box-shadow: var(--relief-dome-shadow);
   }
   /* Un elenco dentro una scheda non è un incavo: è la scheda. */
   :root:has([data-tema="carta"]) .recessed {
-    box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
+    box-shadow: var(--card-shadow);
   }
-  /* La barra della pienezza: il binario sprofonda, il pieno è tinta unita
-     con un colpo di luce sopra. Niente gradiente verde → oro. */
   /* Le pastiglie morbide (Oggi, Pranzo, Filtri, Calendario, lo stato): chiare
      e smussate. Se fossero verdi sparirebbe la differenza fra attivo e
      disponibile. */
   :root:has([data-tema="carta"]) .pastiglia {
     border-color: var(--border-hairline);
     background-color: var(--surface-raised);
-    background-image: linear-gradient(180deg, var(--surface-raised), var(--surface-inset));
-    box-shadow: var(--shadow-bevel);
+    background-image: var(--relief-chip-bg);
+    box-shadow: var(--relief-chip-shadow);
     color: var(--text-primary);
   }
-  /* Una riga di elenco: piatta, senza ombra, separata dal filo. */
+  /* La tessera del marchio («T»): una pastiglia chiara. */
+  :root:has([data-tema="carta"]) .tessera-marchio {
+    background-color: var(--surface-raised);
+    background-image: var(--relief-chip-bg);
+    box-shadow: var(--relief-chip-shadow);
+  }
+  /* Una riga dentro una scheda: il secondo livello, un rilievo più leggero
+     della scheda che la contiene. Il passaggio del puntatore resta quello
+     del collegamento dentro la riga. */
   :root:has([data-tema="carta"]) .riga-piatta {
-    border-color: var(--border-hairline);
+    border-color: var(--relief-row-edge);
     background-color: var(--surface-row);
-    background-image: none;
-    box-shadow: none;
+    background-image: var(--relief-row-bg);
+    box-shadow: var(--relief-row-shadow);
   }
   /* Tondi degli strumenti (cerca, notifiche, frecce della data, azioni
-     rapide): uno dei cinque verdi pieni. */
+     rapide) e la voce accesa del menu: cupole verdi. */
   :root:has([data-tema="carta"]) .tondo-strumento {
     border-color: var(--control-fill);
     background-color: var(--control-fill);
-    background-image: linear-gradient(180deg, #ffffff26, transparent 60%);
-    box-shadow: var(--shadow-bevel), var(--shadow-lift);
+    background-image: var(--relief-dome-bg);
+    box-shadow: var(--relief-dome-shadow);
     color: var(--control-ink);
   }
-  /* L'avatar di chi è entrato: oro pieno, con il suo inchiostro. */
+  :root:has([data-tema="carta"]) .pillola-accesa {
+    background-image: var(--relief-dome-bg);
+    box-shadow: var(--relief-dome-shadow);
+  }
+  /* «Nuova prenotazione»: la cupola più scura, l'unica con l'alone d'oro. */
+  :root:has([data-tema="carta"]) .pulsante-cta {
+    background-image: var(--relief-cta-bg);
+    box-shadow: var(--relief-cta-shadow);
+  }
+  /* La capsula del menu principale. */
+  :root:has([data-tema="carta"]) .capsula-fila {
+    background-color: transparent;
+    background-image: var(--relief-nav-bg);
+    box-shadow: var(--relief-nav-shadow);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root:has([data-tema="carta"]) .capsula-fila {
+      background-color: var(--relief-nav-solid);
+      background-image: none;
+    }
+  }
+  /* L'avatar di chi è entrato: oro pieno, con il suo inchiostro. Lo smusso
+     sta sulla sigla, il distacco sulla cornice, che taglia ciò che esce. */
   :root:has([data-tema="carta"]) .avatar-oro {
     background-color: var(--accent-fill);
+    box-shadow: var(--relief-gold-bevel);
     color: var(--text-on-accent);
+  }
+  :root:has([data-tema="carta"]) .avatar-cornice {
+    box-shadow: var(--relief-gold-drop);
   }
   /* Il binario di un selettore: sprofonda invece di sollevarsi. Il segmento
      scelto è uno dei cinque verdi pieni. */
@@ -1812,10 +1912,10 @@
   :root:has([data-tema="carta"]) .kpi-vetro {
     border-color: var(--card-edge);
     background-color: var(--card-fill);
-    background-image: none;
+    background-image: var(--card-sheen);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
+    box-shadow: var(--card-shadow);
   }
   :root:has([data-tema="carta"]) .kpi-vetro:hover {
     border-color: var(--border-control);
@@ -1884,11 +1984,14 @@
   :root:has([data-tema="carta"]) .rotazione-vicina {
     opacity: 1;
   }
+  /* La barra della pienezza è il terzo livello: un incavo che sprofonda, col
+     pieno appena bombato. */
   :root:has([data-tema="carta"]) .barra-binario {
     background-color: var(--meter-track);
-    box-shadow: inset 0 2px 6px var(--edge-shadow);
+    box-shadow: var(--relief-inset-shadow);
   }
   :root:has([data-tema="carta"]) .barra-pieno {
     background-color: var(--meter-fill);
-    background-image: linear-gradient(180deg, #ffffff40, transparent 60%);
+    background-image: var(--relief-fill-bg);
+    box-shadow: var(--relief-fill-shadow);
   }
