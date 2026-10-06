@@ -58,10 +58,23 @@ export function TestataCalendario({
    * testata sopra la pagina, che esisteva solo per contenere lei. */
   azione: ReactNode;
 }) {
+  /*
+    Una riga sola. Prima la barra andava a capo dentro di sé (il selettore di
+    vista scendeva sotto la data), la riga diventava alta il doppio e i
+    riquadri dei numeri e «Nuovo turno», stirati a quell'altezza, sembravano
+    pulsanti giganti. Ora la barra non va a capo, i numeri stanno in un
+    riquadro solo e il pulsante tiene la sua altezza naturale.
+
+    Quando la riga non basta a capo vanno i **riquadri interi**, non il
+    contenuto della barra: da `md` la barra non si stringe sotto la propria
+    misura (`flex-[1_0_auto]`), così i numeri scendono sotto invece di
+    sovrapporsi al selettore di vista. Sul telefono prende tutta la larghezza
+    e a stringersi è solo la data.
+  */
   return (
-    <div className="fissa flex flex-wrap items-stretch gap-2.5">
+    <div className="fissa flex flex-wrap items-center gap-2.5">
       {interruttore}
-      <div className="riquadro flex min-w-0 flex-1 flex-wrap items-center gap-2 bg-card/40 px-2.5 py-2">
+      <div className="riquadro flex w-full min-w-0 items-center gap-2 bg-card/40 px-2 py-1.5 md:w-auto md:flex-[1_0_auto]">
         <button
           type="button"
           onClick={onPrecedente}
@@ -70,7 +83,7 @@ export function TestataCalendario({
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <h2 className="truncate px-1 text-[0.95rem] font-medium capitalize md:text-base">{etichetta}</h2>
+        <h2 className="min-w-0 truncate px-1 text-[0.95rem] font-medium capitalize md:text-base">{etichetta}</h2>
         <button
           type="button"
           onClick={onSuccessivo}
@@ -130,12 +143,16 @@ export function TestataCalendario({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-stretch gap-2.5">
-        <Kpi icona={Users} valore={inTurno} etichetta={eOggi ? "In turno oggi" : "In turno"} />
-        <Kpi icona={ChefHat} valore={assenti} etichetta="Assenti" />
-        <Kpi icona={CalendarDays} valore={liberi} etichetta="Giorni liberi" />
-        {azione}
+      {/* I tre numeri in un riquadro solo, su una riga. Da `xl` in su li
+          ripete già il riepilogo della colonna a sinistra, a un palmo da qui:
+          lì si tolgono e la riga respira. */}
+      <div className="riquadro flex shrink-0 items-center gap-3.5 self-stretch bg-card/40 px-3.5 xl:hidden">
+        <Kpi icona={Users} valore={inTurno} etichetta={eOggi ? "in turno oggi" : "in turno"} />
+        <Kpi icona={ChefHat} valore={assenti} etichetta="assenti" />
+        <Kpi icona={CalendarDays} valore={liberi} etichetta="liberi" />
       </div>
+
+      <div className="ml-auto shrink-0">{azione}</div>
     </div>
   );
 }
@@ -150,12 +167,10 @@ function Kpi({
   etichetta: string;
 }) {
   return (
-    <div className="riquadro flex items-center gap-2.5 bg-card/40 px-3 py-2">
-      <Icona className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <p className="leading-none">
-        <span className="block text-base font-semibold tabular-nums">{valore}</span>
-        <span className="mt-1 block whitespace-nowrap text-[0.68rem] text-muted-foreground">{etichetta}</span>
-      </p>
-    </div>
+    <p className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+      <Icona className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <span className="text-sm font-semibold tabular-nums text-foreground">{valore}</span>
+      {etichetta}
+    </p>
   );
 }
