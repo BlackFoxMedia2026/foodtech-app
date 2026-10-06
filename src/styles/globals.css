@@ -1857,6 +1857,11 @@
     background-image: var(--relief-dome-bg);
     box-shadow: var(--relief-dome-shadow);
   }
+  /* La settimana nel mini-calendario: un incavo leggero, non il bianco
+     della luce (sul fondo crema era un quadrato chiaro dietro i numeri). */
+  :root:has([data-tema="carta"]) .fascia-settimana {
+    background-color: var(--surface-inset);
+  }
   /* «Nuova prenotazione»: la cupola più scura, l'unica con l'alone d'oro. */
   :root:has([data-tema="carta"]) .pulsante-cta {
     background-image: var(--relief-cta-bg);
