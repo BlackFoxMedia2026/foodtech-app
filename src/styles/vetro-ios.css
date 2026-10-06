@@ -248,6 +248,38 @@
   }
 }
 
+/* La barra di scorrimento: quella di Windows, grigia e con le frecce, sul
+   vetro si legge come un pezzo di un altro programma. Qui è una capsula
+   sottile nel verde della casa, senza binario, che si accende al passaggio. */
+.vi-scorre::-webkit-scrollbar {
+  width: 10px;
+}
+.vi-scorre::-webkit-scrollbar-button {
+  display: none;
+}
+.vi-scorre::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 4px;
+}
+.vi-scorre::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgb(44 85 69 / 0.22) padding-box;
+}
+.vi-scorre:hover::-webkit-scrollbar-thumb {
+  background-color: rgb(44 85 69 / 0.4);
+}
+.vi-scorre::-webkit-scrollbar-thumb:active {
+  background-color: rgb(44 85 69 / 0.6);
+}
+/* Firefox non conosce gli pseudo-elementi: si accontenta di sottile e verde. */
+@supports not selector(::-webkit-scrollbar) {
+  .vi-scorre {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(44 85 69 / 0.3) transparent;
+  }
+}
+
 .vi-notifica {
   border-radius: 24px;
   padding: 18px 20px;
