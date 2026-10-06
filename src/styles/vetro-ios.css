@@ -592,6 +592,15 @@
 :root:has([data-tema="carta"]) .guscio-app .surface {
   border-radius: 20px;
 }
+/* E lo dice anche in positivo, con più peso di qualunque regola del vetro: un
+   CSS rimasto in cache con la versione senza `:not()` lo sbiancava. */
+:root:has([data-tema="carta"]) .guscio-app .vetro.kpi-pastiglia {
+  background-color: var(--control-fill);
+  background-image: var(--relief-dome-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: var(--relief-dome-shadow);
+}
 /* L'anello `::before` delle lastre disegnava il bordo: sul vetro lo fa il filo
    bianco dell'ombra. */
 :root:has([data-tema="carta"]) .guscio-app .vetro.card-notch::before {
