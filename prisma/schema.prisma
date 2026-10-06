@@ -698,6 +698,15 @@ model Booking {
   arrivedAt        DateTime?
   seatedAt         DateTime?
   closedAt         DateTime?
+  /// Quando qualcuno dello staff l'ha **gestita** dalla Panoramica: confermata,
+  /// rifiutata o segnata come vista.
+  ///
+  /// Serve al riquadro «Prenotazioni»: una prenotazione confermata da un
+  /// collega altrove (l'elenco, la Staff App) resta fra le «Nuove» con la
+  /// scritta «Già confermata» finché chi guarda la Panoramica non l'ha vista.
+  /// Nasce valorizzata quando a scriverla è lo staff — chi l'ha scritta l'ha
+  /// già vista — e nulla quando arriva da fuori.
+  seenAt           DateTime?
   budgetCents      Int?
   eventType        String?          @db.VarChar(60)
   isGroup          Boolean          @default(false)

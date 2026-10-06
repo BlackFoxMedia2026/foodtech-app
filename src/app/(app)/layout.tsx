@@ -1,3 +1,4 @@
+import "@/styles/vetro-ios.css";
 import { redirect } from "next/navigation";
 import { Fraunces, Inter, Space_Mono } from "next/font/google";
 import { Header } from "@/components/shell/header";
@@ -161,7 +162,7 @@ export default async function AppShell({
         }
       >
         <div
-          className={`${sans.variable} ${display.variable} ${mono.variable} relative z-0 flex h-screen flex-col overflow-hidden bg-background text-foreground`}
+          className={`${sans.variable} ${display.variable} ${mono.variable} guscio-app relative z-0 flex h-screen flex-col overflow-hidden bg-background text-foreground`}
         >
           <TemaCarta />
           <Header

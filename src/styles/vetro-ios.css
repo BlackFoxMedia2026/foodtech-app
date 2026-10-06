@@ -1,0 +1,639 @@
+/*
+  Vetro in stile iOS — nato per il riquadro «Prenotazioni» della Panoramica
+  (6 ottobre 2026), scritto con nomi generici perché gli altri riquadri ne
+  prenderanno dei pezzi.
+
+  È un'eccezione **voluta** alle regole di Carta in DESIGN.md (lastre a tinta
+  piatta, niente vetro sotto il testo, solo token): il vetro qui ha bisogno di
+  qualcosa da sfocare, ed è `.fondo-caldo` sulla pagina. Per questo i colori
+  sono valori fissi raccolti nelle variabili qui sotto, e non i token dei temi:
+  il materiale è lo stesso al chiaro e al buio.
+
+  Sta fuori da `globals.css` di proposito: un file solo, che si legge da solo.
+*/
+
+.vetro-ios,
+.fondo-caldo {
+  --vi-testo: #10201a;
+  --vi-testo-2: #2f3f37;
+  --vi-verde: #2c5545;
+  --vi-verde-chiaro: #3a6b54;
+  --vi-rosso: #9c3b22;
+  --vi-filo: rgba(60, 60, 67, 0.18);
+  --vi-curva: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --vi-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-sans), ui-sans-serif, system-ui,
+    sans-serif;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Il fondo da sfocare                                                       */
+/* -------------------------------------------------------------------------- */
+
+/* Sulla pagina, non dentro il riquadro: lo prende tutto il guscio dell'app,
+   testata compresa. Stava solo su `main`, e sotto la testata a tinta piena si
+   vedeva il gradino fra i due fondi: la testata è trasparente e lascia
+   passare lo stesso fondo.
+
+   Dal 6 ottobre vale per **tutto il back office** in Carta, non solo per la
+   Panoramica: è il fondo che il vetro delle schede sfoca (vedi in fondo).
+   Al buio (Sera) non c'è — `:root:has([data-tema="carta"])` non si risolve —
+   e la Staff App resta com'era. `.fondo-caldo` resta come segnaposto. */
+:root:has([data-tema="carta"]) .guscio-app .testata-app {
+  background: transparent;
+}
+:root:has([data-tema="carta"]) .guscio-app {
+  background-color: #e6dfcf;
+  background-image:
+    radial-gradient(ellipse 65% 60% at 100% 0%, rgba(220, 194, 138, 0.9), rgba(220, 194, 138, 0) 70%),
+    radial-gradient(ellipse 60% 65% at 0% 100%, rgba(207, 195, 166, 0.95), rgba(207, 195, 166, 0) 70%),
+    radial-gradient(ellipse 55% 50% at 0% 0%, #fffaf0, rgba(255, 250, 240, 0) 70%);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  I materiali                                                               */
+/* -------------------------------------------------------------------------- */
+
+.vetro-ios {
+  position: relative;
+  border-radius: 30px;
+  padding: 24px;
+  color: var(--vi-testo);
+  font-family: var(--vi-font);
+  background: rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  backdrop-filter: blur(40px) saturate(1.8);
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 30px 60px -30px rgba(16, 32, 26, 0.4);
+}
+
+.vetro-ios-scheda {
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow:
+    inset 0 0 0 0.5px #fff,
+    0 10px 30px -10px rgba(16, 32, 26, 0.25);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Testata                                                                   */
+/* -------------------------------------------------------------------------- */
+
+.vi-titolo {
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.vi-sottotitolo {
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--vi-testo-2);
+}
+.vi-titolo-sezione {
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.vi-nota {
+  font-size: 13px;
+  color: var(--vi-testo-2);
+}
+.vi-cifre {
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Il selettore a segmenti                                                   */
+/* -------------------------------------------------------------------------- */
+
+.segmenti-ios {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 220px;
+  height: 40px;
+  padding: 2px;
+  border-radius: 12px;
+  background: rgba(118, 118, 128, 0.12);
+}
+.segmenti-ios-cursore {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 3px 8px rgba(16, 32, 26, 0.12),
+    0 1px 1px rgba(16, 32, 26, 0.04);
+  transition: transform 350ms var(--vi-curva);
+}
+.segmenti-ios[data-scelto="1"] .segmenti-ios-cursore {
+  transform: translateX(100%);
+}
+.segmenti-ios-voce {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--vi-testo-2);
+  transition: color 200ms ease;
+}
+.segmenti-ios-voce[aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--vi-testo);
+}
+/* Il binario è alto 40: il bersaglio arriva a 44 senza cambiarne il disegno. */
+.segmenti-ios-voce::after {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+}
+.segmenti-ios-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--vi-verde);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+.segmenti-ios-conta {
+  font-weight: 500;
+  color: var(--vi-testo-2);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Bottoni tondi                                                             */
+/* -------------------------------------------------------------------------- */
+
+.tondo-ios {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+.tondo-ios:active {
+  transform: scale(0.94);
+}
+.tondo-ios-44 {
+  width: 44px;
+  height: 44px;
+}
+.tondo-ios-52 {
+  width: 52px;
+  height: 52px;
+}
+.tondo-ios-vetro {
+  color: var(--vi-testo);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    inset 0 0 0 0.5px #fff,
+    0 6px 16px -6px rgba(16, 32, 26, 0.28);
+}
+.tondo-ios-vetro:hover {
+  background: rgba(255, 255, 255, 0.72);
+}
+.tondo-ios-pieno {
+  color: #fff;
+  background: linear-gradient(180deg, var(--vi-verde-chiaro), var(--vi-verde));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 18px -6px rgba(44, 85, 69, 0.6);
+}
+.tondo-ios-pieno:hover {
+  filter: brightness(1.08);
+}
+.vetro-ios :focus-visible {
+  outline: 2px solid var(--vi-verde);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Le notifiche                                                              */
+/* -------------------------------------------------------------------------- */
+
+.vi-elenco {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* La sfumatura sta sul contenitore che scorre, non sull'elenco: così sfuma il
+   fondo di ciò che si vede, non il fondo del contenuto. Solo dove scorre — sul
+   telefono l'elenco è alto quanto serve, e sfumerebbe l'ultima card. */
+@media (min-width: 768px) {
+  .vi-scorre {
+    padding-bottom: 28px;
+    -webkit-mask-image: linear-gradient(#000 85%, transparent);
+    mask-image: linear-gradient(#000 85%, transparent);
+  }
+}
+
+.vi-notifica {
+  border-radius: 24px;
+  padding: 18px 20px;
+  transition:
+    transform 300ms ease,
+    opacity 300ms ease;
+}
+.vi-notifica[data-uscente="true"] {
+  transform: translateX(60px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vi-icona-app {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #fff;
+  background: linear-gradient(180deg, #3f7a5d, var(--vi-verde));
+}
+.vi-etichetta-app {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--vi-testo-2);
+}
+.vi-quando {
+  font-size: 13px;
+  color: var(--vi-testo-2);
+}
+.vi-nome {
+  font-size: 19px;
+  line-height: 1.25;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vi-dettaglio {
+  margin-top: 2px;
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--vi-testo-2);
+}
+.vi-dettaglio strong {
+  font-weight: 700;
+  color: var(--vi-testo);
+  font-variant-numeric: tabular-nums;
+}
+
+/* La pillola: pallino + parola, il colore non lavora mai da solo. */
+.pillola-ios {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pillola-ios::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.pillola-ios[data-tono="da-confermare"] {
+  color: #7d5510;
+  background: rgba(243, 226, 191, 0.7);
+}
+.pillola-ios[data-tono="gia-confermata"] {
+  color: #1f6b3d;
+  background: rgba(213, 232, 218, 0.7);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  L'elenco a gruppi (Oggi)                                                  */
+/* -------------------------------------------------------------------------- */
+
+.vi-gruppo-testa {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 16px 6px;
+  font-size: 13px;
+  color: var(--vi-testo-2);
+}
+.vi-gruppo-testa h4 {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.vi-pannello {
+  overflow: hidden;
+  border-radius: 20px;
+}
+.vi-riga {
+  position: relative;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  column-gap: 12px;
+  height: 52px;
+  padding: 0 14px 0 16px;
+  font-size: 16px;
+  transition: background-color 150ms ease;
+}
+.vi-riga:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+/* Il separatore parte dopo la colonna dell'orario, come in Impostazioni. */
+.vi-pannello > li + li > .vi-riga::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: calc(16px + 56px + 12px);
+  height: 0.5px;
+  background: var(--vi-filo);
+}
+.vi-riga-ora {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.vi-riga-chi {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vi-riga-chi span {
+  color: var(--vi-testo-2);
+}
+.vi-stato {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.vi-stato::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.vi-stato[data-tono="attesa"] {
+  color: #7d5510;
+}
+.vi-stato[data-tono="confermata"] {
+  color: #1f6b3d;
+}
+.vi-stato[data-tono="arrivati"] {
+  color: #1d5c76;
+}
+.vi-stato[data-tono="chiusa"] {
+  color: var(--vi-testo-2);
+}
+.vi-stato[data-tono="assente"] {
+  color: var(--vi-rosso);
+}
+.vi-chevron {
+  color: rgba(60, 60, 67, 0.5);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  L'avviso con «Annulla»                                                    */
+/* -------------------------------------------------------------------------- */
+
+.capsula-ios {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 32px);
+  padding: 4px 4px 4px 18px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  background: rgba(16, 32, 26, 0.65);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: 0 12px 30px -10px rgba(16, 32, 26, 0.5);
+  animation: capsula-ios-entra 250ms var(--vi-curva);
+}
+.capsula-ios-testo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.capsula-ios-azione {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: #f3d9a4;
+}
+.capsula-ios-azione:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.capsula-ios-azione:focus-visible {
+  outline-color: #f3d9a4;
+}
+@keyframes capsula-ios-entra {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Senza sfocatura, senza movimento                                          */
+/* -------------------------------------------------------------------------- */
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vetro-ios {
+    background: #f7f3ea;
+  }
+  .vetro-ios-scheda {
+    background: #fdfbf5;
+  }
+  .capsula-ios {
+    background: rgba(16, 32, 26, 0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmenti-ios-cursore,
+  .segmenti-ios-voce,
+  .tondo-ios,
+  .vi-notifica,
+  .vi-riga {
+    transition: none;
+  }
+  .tondo-ios:active {
+    transform: none;
+  }
+  .vi-notifica[data-uscente="true"] {
+    transform: none;
+  }
+  .capsula-ios {
+    animation: none;
+  }
+}
+
+/* ========================================================================== */
+/*  Il vetro su tutto il back office (6 ottobre 2026)                         */
+/* ========================================================================== */
+
+/*
+  Il riquadro «Prenotazioni» è piaciuto, e il suo materiale passa a tutte le
+  pagine del gestionale. Non si tocca nessuna pagina: le schede sono tutte
+  `.surface` (la `Card`) e prendono il colore dai token di Carta, quindi basta
+  ridefinire quei token **dentro il guscio dell'app**.
+
+  Perché dentro `.guscio-app` e non su `:root`:
+  - dialog, menu, popover e pannelli laterali si montano in `<body>`, fuori dal
+    guscio: restano lastre opache. Un dialog di vetro sopra un velo scuro si
+    leggerebbe male, e non c'è niente di caldo da sfocare dietro;
+  - le altre aree in Carta (accesso, amministrazione) non hanno il fondo caldo,
+    e il vetro senza fondo è solo un bianco sporco.
+
+  La specificità (`:root:has(...) .guscio-app .x`) supera quella delle regole
+  di Carta in `globals.css`, che non stanno in un `@layer`.
+*/
+:root:has([data-tema="carta"]) .guscio-app {
+  --vi-vetro-scheda: rgba(255, 255, 255, 0.55);
+  --vi-vetro-riga: rgba(255, 255, 255, 0.45);
+  --vi-vetro-chip: rgba(255, 255, 255, 0.5);
+  --vi-filo-bianco: rgba(255, 255, 255, 0.85);
+  --vi-ombra-scheda:
+    inset 0 0 0 0.5px var(--vi-filo-bianco),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 10px 30px -10px rgba(16, 32, 26, 0.25);
+  --vi-ombra-chip:
+    inset 0 0 0 0.5px #fff,
+    0 6px 16px -8px rgba(16, 32, 26, 0.3);
+
+  --card-fill: var(--vi-vetro-scheda);
+  --card-sheen: none;
+  --card-edge: transparent;
+  --card-shadow: var(--vi-ombra-scheda);
+}
+
+/* Le schede: vetro, con gli angoli più morbidi del riquadro Prenotazioni. */
+/* `.vetro` è anche il dischetto dell'icona nelle tessere (`.kpi-pastiglia`):
+   quello resta la sua cupola verde. */
+:root:has([data-tema="carta"]) .guscio-app .surface,
+:root:has([data-tema="carta"]) .guscio-app .vetro:not(.kpi-pastiglia),
+:root:has([data-tema="carta"]) .guscio-app .vetro.card-notch,
+:root:has([data-tema="carta"]) .guscio-app .kpi-vetro {
+  border-color: transparent;
+  background-color: var(--vi-vetro-scheda);
+  background-image: none;
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow: var(--vi-ombra-scheda);
+}
+:root:has([data-tema="carta"]) .guscio-app .surface {
+  border-radius: 20px;
+}
+/* L'anello `::before` delle lastre disegnava il bordo: sul vetro lo fa il filo
+   bianco dell'ombra. */
+:root:has([data-tema="carta"]) .guscio-app .vetro.card-notch::before {
+  display: none;
+}
+:root:has([data-tema="carta"]) .guscio-app .kpi-vetro:hover {
+  background-color: rgba(255, 255, 255, 0.68);
+}
+
+/* La barra degli strumenti di Prenotazioni galleggia come il menu: tiene il
+   suo materiale. */
+:root:has([data-tema="carta"]) .guscio-app .vetro.fissa {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: transparent;
+  background-image: var(--relief-nav-bg);
+  box-shadow: var(--relief-nav-shadow);
+}
+
+/* Una riga dentro una scheda: un vetro più leggero, come le notifiche. */
+:root:has([data-tema="carta"]) .guscio-app .riga-piatta {
+  border-color: transparent;
+  background-color: var(--vi-vetro-riga);
+  background-image: none;
+  box-shadow:
+    inset 0 0 0 0.5px var(--vi-filo-bianco),
+    0 6px 18px -10px rgba(16, 32, 26, 0.22);
+}
+
+/* Le pastiglie morbide (Oggi, Pranzo, Filtri, Calendario) e la «T» del
+   marchio: i tondi di vetro del riquadro, bianchi al 50% col filo bianco. */
+:root:has([data-tema="carta"]) .guscio-app .pastiglia,
+:root:has([data-tema="carta"]) .guscio-app .tessera-marchio {
+  border-color: transparent;
+  background-color: var(--vi-vetro-chip);
+  background-image: none;
+  box-shadow: var(--vi-ombra-chip);
+}
+:root:has([data-tema="carta"]) .guscio-app .pastiglia:hover {
+  background-color: rgba(255, 255, 255, 0.72);
+}
+
+/* I selettori a segmenti: il binario grigio di iOS e il cursore bianco, come
+   Nuove / Oggi. Il segmento scelto lo dicono il bianco e il peso del testo. */
+:root:has([data-tema="carta"]) .guscio-app .binario {
+  border-color: transparent;
+  background-color: rgba(118, 118, 128, 0.12);
+  background-image: none;
+  box-shadow: none;
+}
+:root:has([data-tema="carta"]) .guscio-app .binario .segmento[aria-pressed="true"],
+:root:has([data-tema="carta"]) .guscio-app .segmento-scelto {
+  border-color: transparent;
+  background-color: rgba(255, 255, 255, 0.9);
+  background-image: none;
+  box-shadow:
+    0 3px 8px rgba(16, 32, 26, 0.12),
+    0 1px 1px rgba(16, 32, 26, 0.04);
+  color: #10201a;
+  font-weight: 600;
+}
+
+/* Senza sfocatura il vetro diventa le lastre opache del fallback. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root:has([data-tema="carta"]) .guscio-app {
+    --vi-vetro-scheda: #fdfbf5;
+    --vi-vetro-riga: #fdfbf5;
+    --vi-vetro-chip: #f7f3ea;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root:has([data-tema="carta"]) .guscio-app {
+    --vi-vetro-scheda: #fdfbf5;
+    --vi-vetro-riga: #fdfbf5;
+    --vi-vetro-chip: #f7f3ea;
+  }
+}

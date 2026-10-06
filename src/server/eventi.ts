@@ -401,6 +401,8 @@ export async function accettaRichiesta(
       startsAt: quando,
       status: "CONFIRMED",
       source: "PHONE",
+      /* La scrive chi ha seguito la richiesta: non è una «nuova» da vedere. */
+      seenAt: new Date(),
       /* I tre campi che stavano nello schema e non scriveva nessuno. */
       isGroup: true,
       eventType: richiesta.tipo,

@@ -72,7 +72,7 @@ export function Header({
     pathname === "/settings" || pathname.startsWith("/settings/");
 
   return (
-    <header className="relative z-10 bg-background">
+    <header className="testata-app relative z-10 bg-background">
       <div className="flex h-16 items-center gap-2 px-3 pt-3 md:gap-3 md:px-4 lg:px-6">
         {/*
           A sinistra c'è il marchio del locale e, accanto, il titolo della
