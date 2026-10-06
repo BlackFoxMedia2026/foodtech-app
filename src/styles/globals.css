@@ -804,6 +804,18 @@
     box-shadow: var(--card-shadow, var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift));
   }
 
+  /* La barra di scorrimento dentro una finestra: sottile, senza frecce né
+     binario grigio di sistema, e del colore del testo di nota del tema.
+     Quella di Windows, con le sue frecce, sulla carta si legge come un
+     pezzo di un altro programma. */
+  .scorrimento {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  }
+  .scorrimento:hover {
+    scrollbar-color: hsl(var(--muted-foreground) / 0.55) transparent;
+  }
+
   /*
    * La scacchiera che significa «qui non c'è niente».
    *
