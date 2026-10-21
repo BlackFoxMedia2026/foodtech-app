@@ -142,3 +142,30 @@ export function calcolaGuide(
 
   return { dx, dy, guide };
 }
+
+/**
+ * La calamita di chi si **ridimensiona**: solo il bordo destro e quello in
+ * basso si muovono (la maniglia sta lì), quindi solo loro si agganciano —
+ * ai bordi e ai centri degli altri oggetti e alle facce dei muri dritti.
+ *
+ * Riusa `calcolaGuide` su due rettangoli piatti: uno largo zero sul bordo
+ * destro, che sa allinearsi solo in orizzontale, e uno alto zero sul bordo
+ * in basso, che sa allinearsi solo in verticale.
+ */
+export function calcolaGuideBordi(
+  mobile: Rettangolo,
+  altri: Rettangolo[],
+  elementi: RoomElement[],
+  soglie: { bordo?: number; muro?: number } = {},
+): { dw: number; dh: number; guide: Guida[] } {
+  const destro = calcolaGuide({ x: mobile.x + mobile.w, y: mobile.y, w: 0, h: mobile.h }, altri, elementi, soglie);
+  const basso = calcolaGuide({ x: mobile.x, y: mobile.y + mobile.h, w: mobile.w, h: 0 }, altri, elementi, soglie);
+  return {
+    dw: destro.dx,
+    dh: basso.dy,
+    guide: [
+      ...destro.guide.filter((g) => g.orientamento === "v"),
+      ...basso.guide.filter((g) => g.orientamento === "h"),
+    ],
+  };
+}

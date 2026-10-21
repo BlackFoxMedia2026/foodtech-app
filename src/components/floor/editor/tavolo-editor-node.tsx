@@ -4,8 +4,10 @@ import { memo } from "react";
 import { RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  DIMENSIONE_TAVOLO,
   dimensioneDisegnata,
+  improntaTavolo,
+  sedieCoperte,
+  type PianoNelMondo,
   posizioniSedie,
   LARGHEZZA_SEDIA,
   PROFONDITA_SEDIA,
@@ -24,9 +26,9 @@ import type { LocalTable } from "@/components/floor/table-node";
  * niente prenotazioni. Tenerli separati evita il componente con dodici
  * modalità che nessuno riesce più a cambiare.
  *
- * La dimensione del piano non è ridimensionabile a mano: dipende solo da
- * forma e numero di posti (vedi `dimensioneDisegnata`), perché deve restare
- * compatibile con lo spazio minimo di passaggio calcolato fra i tavoli.
+ * La dimensione del piano non si tira con una maniglia: dipende da forma e
+ * posti (vedi `dimensioneDisegnata`), o dalla misura scritta nel pannello
+ * Proprietà per un tavolo su misura.
  */
 
 export const TavoloEditorNode = memo(function TavoloEditorNode({
@@ -36,24 +38,32 @@ export const TavoloEditorNode = memo(function TavoloEditorNode({
   onSelezione,
   onInizioSpostamento,
   onInizioRotazione,
+  vicini,
+  bloccato = false,
 }: {
+  /** Posizione bloccata: niente maniglia per ruotare. */
+  bloccato?: boolean;
   table: LocalTable;
+  /** I piani dei tavoli accostati (stessa unione): le sedie che ci finirebbero
+   * sotto non si disegnano. */
+  vicini?: PianoNelMondo[];
   selezionato: boolean;
   inTrascinamento?: boolean;
   onSelezione: (id: string, additivo: boolean) => void;
   onInizioSpostamento: (id: string, e: React.PointerEvent) => void;
   onInizioRotazione: (id: string, e: React.PointerEvent) => void;
 }) {
-  const impronta = DIMENSIONE_TAVOLO[t.shape];
+  const impronta = improntaTavolo(t);
   const piano = dimensioneDisegnata(t);
   const raggio = RAGGIO_FORMA[t.shape];
-  const sedie = posizioniSedie(t.shape, piano.w, piano.h, t.seats);
+  const sedie = sedieCoperte(
+    posizioniSedie(t.shape, piano.w, piano.h, t.seats, t.chairSides),
+    { cx: t.posX + impronta.w / 2, cy: t.posY + impronta.h / 2, w: piano.w, h: piano.h, rotazione: t.rotation },
+    vicini ?? [],
+  );
 
-  // L'impronta deve contenere il piano anche quando è stato allargato a mano,
-  // altrimenti la maniglia in basso a destra finisce fuori dall'area che
-  // riceve i clic.
-  const larghezza = Math.max(impronta.w, piano.w);
-  const altezza = Math.max(impronta.h, piano.h);
+  const larghezza = impronta.w;
+  const altezza = impronta.h;
 
   return (
     <div
@@ -133,7 +143,9 @@ export const TavoloEditorNode = memo(function TavoloEditorNode({
           </span>
         </div>
 
-        {selezionato && (
+        {/* Bloccato non si ruota: la maniglia non si mostra, invece di
+            esserci e non fare niente. */}
+        {selezionato && !bloccato && (
           <>
             {/* Ruotare: la maniglia sta sopra, con un filo che la collega al
                 tavolo — è la convenzione di ogni editor grafico, e qui vale

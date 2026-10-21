@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { RoomLayoutMode, Table } from "@prisma/client";
 import { MapIcon } from "lucide-react";
 import { OperationalRoomView } from "@/components/floor/operational/operational-room-view";
-import { TABLE_SIZE } from "@/components/floor/table-node";
+import { improntaTavolo } from "@/lib/tavolo-geometria";
 import { parseRoomLayoutElements, getRoomBounds } from "@/lib/room-layout";
 import { DroppableRoomTable } from "./droppable-room-table";
 import type { FloorBooking } from "@/components/floor/operational/room-table-node";
@@ -53,7 +53,7 @@ export function BookingsFloorCanvas({
       getRoomBounds(
         { width, height, activeLayoutMode },
         parsedLayoutElements,
-        tables.map((t) => ({ x: t.posX, y: t.posY, ...TABLE_SIZE[t.shape] })),
+        tables.map((t) => ({ x: t.posX, y: t.posY, ...improntaTavolo(t) })),
       ),
     [width, height, activeLayoutMode, parsedLayoutElements, tables],
   );

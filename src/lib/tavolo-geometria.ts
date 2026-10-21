@@ -110,6 +110,21 @@ export function dimensioneDisegnata(t: TavoloMisurabile): { w: number; h: number
   return trovata ? { w: trovata.w, h: trovata.h } : DIMENSIONE_TAVOLO[t.shape];
 }
 
+/**
+ * Il riquadro che un tavolo occupa sulla mappa, quello che riceve i clic e
+ * dentro cui il piano sta centrato: l'impronta standard della forma, o il
+ * piano stesso quando è più grande (un tavolo imperiale da sei metri).
+ *
+ * Tutte le viste devono usare questa, non `DIMENSIONE_TAVOLO` da sola: se una
+ * vista centra un piano di 600 in un riquadro di 220, quel tavolo compare
+ * due metri più in là che nell'editor, e mezzo fuori dalla sua area di clic.
+ */
+export function improntaTavolo(t: TavoloMisurabile): { w: number; h: number } {
+  const impronta = DIMENSIONE_TAVOLO[t.shape];
+  const piano = dimensioneDisegnata(t);
+  return { w: Math.max(impronta.w, piano.w), h: Math.max(impronta.h, piano.h) };
+}
+
 /** L'ingombro totale — piano più sedie — che serve a chi calcola i bordi
  * della sala e a chi decide quanto spazio occupa un tavolo sulla mappa. */
 export function ingombroTavolo(t: TavoloMisurabile): { w: number; h: number } {
@@ -258,7 +273,42 @@ export const SPORGENZA_SEDIA = 13;
 export const LARGHEZZA_SEDIA = 20;
 export const PROFONDITA_SEDIA = 13;
 
+/** Quante sedie si disegnano al massimo su un tavolo normale: oltre, si
+ * ammasserebbero sul bordo. Un tavolo lungo ne regge di più — vedi
+ * `sedieCheStanno` — e lì il tetto si alza fin dove ci stanno davvero. */
 export const MAX_SEDIE = 12;
+
+/** Il piano di un tavolo nel mondo: centro, misura e rotazione in gradi. */
+export type PianoNelMondo = { cx: number; cy: number; w: number; h: number; rotazione: number };
+
+/**
+ * Le sedie che restano, tolte quelle che finirebbero sotto un tavolo vicino.
+ *
+ * Serve ai tavoli accostati di un'unione: due tavoli da sei messi testa contro
+ * testa hanno ciascuno una sedia proprio dove comincia l'altro. In sala quella
+ * sedia si toglie; sulla piantina non si disegna. `sedie` sono relative al
+ * centro di `piano` (come le dà `posizioniSedie`).
+ */
+export function sedieCoperte(sedie: Sedia[], piano: PianoNelMondo, vicini: PianoNelMondo[]): Sedia[] {
+  if (vicini.length === 0) return sedie;
+  const rad = (piano.rotazione * Math.PI) / 180;
+  return sedie.filter((s) => {
+    const wx = piano.cx + s.x * Math.cos(rad) - s.y * Math.sin(rad);
+    const wy = piano.cy + s.x * Math.sin(rad) + s.y * Math.cos(rad);
+    return !vicini.some((v) => {
+      const r = (-v.rotazione * Math.PI) / 180;
+      const dx = wx - v.cx;
+      const dy = wy - v.cy;
+      const lx = dx * Math.cos(r) - dy * Math.sin(r);
+      const ly = dx * Math.sin(r) + dy * Math.cos(r);
+      return Math.abs(lx) < v.w / 2 + 2 && Math.abs(ly) < v.h / 2 + 2;
+    });
+  });
+}
+
+/** Lo spazio di un coperto lungo il bordo: la misura con cui si calcola
+ * quante persone stanno davvero su un lato lungo. */
+const LARGHEZZA_COPERTO = 60;
 
 export type Sedia = {
   /** Centro della sedia, relativo al centro del piano. */
@@ -281,8 +331,18 @@ export type Sedia = {
  * disegnare sei sedie attorno a un divano è un errore di lettura, non un
  * dettaglio grafico.
  */
-export function posizioniSedie(shape: TableShape, larghezza: number, altezza: number, posti: number): Sedia[] {
-  const n = Math.max(0, Math.min(posti, MAX_SEDIE));
+/** Dove si apparecchia: `ALL` su tutti i lati, `LONG` solo sui due lunghi
+ * (vedi `ChairSides` nello schema). */
+export type LatiSedie = "ALL" | "LONG";
+
+export function posizioniSedie(
+  shape: TableShape,
+  larghezza: number,
+  altezza: number,
+  posti: number,
+  lati: LatiSedie = "ALL",
+): Sedia[] {
+  const n = Math.max(0, Math.min(posti, Math.max(MAX_SEDIE, sedieCheStanno(larghezza, altezza))));
   if (n === 0) return [];
   if (shape === "BOOTH" || shape === "LOUNGE") return [];
 
@@ -299,7 +359,23 @@ export function posizioniSedie(shape: TableShape, larghezza: number, altezza: nu
     });
   }
 
-  return sedieSuiLati(larghezza, altezza, n);
+  // Un tavolo della misura standard per i suoi posti si apparecchia come
+  // sempre. Uno su misura (un imperiale da sei metri) mette le persone sui
+  // lati lunghi finché ci stanno, e solo il resto in testa.
+  const standard = dimensioneDisegnata({ shape, seats: posti });
+  const suMisura =
+    !(standard.w === larghezza && standard.h === altezza) && !(standard.w === altezza && standard.h === larghezza);
+  return sedieSuiLati(larghezza, altezza, n, suMisura, lati === "LONG");
+}
+
+/** Quante sedie stanno sul bordo di un piano, un coperto ogni
+ * `LARGHEZZA_COPERTO` sui lati lunghi più quelle che entrano in testa. È il
+ * tetto di un imperiale da sei metri, che non si ferma a dodici. */
+function sedieCheStanno(larghezza: number, altezza: number) {
+  const latoLungo = Math.max(larghezza, altezza);
+  const latoCorto = Math.min(larghezza, altezza);
+  const perTesta = Math.max(1, Math.floor(latoCorto / (LARGHEZZA_SEDIA + 4)));
+  return Math.floor(latoLungo / LARGHEZZA_COPERTO) * 2 + perTesta * 2;
 }
 
 /**
@@ -310,7 +386,13 @@ export function posizioniSedie(shape: TableShape, larghezza: number, altezza: nu
  * l'unico modo perché due posti su un tavolo rettangolare risultino uno di
  * fronte all'altro invece che entrambi sullo stesso lato.
  */
-function sedieSuiLati(larghezza: number, altezza: number, n: number): Sedia[] {
+function sedieSuiLati(
+  larghezza: number,
+  altezza: number,
+  n: number,
+  suMisura = false,
+  soloLatiLunghi = false,
+): Sedia[] {
   const orizzontale = larghezza >= altezza;
   const latoLungo = orizzontale ? larghezza : altezza;
   const latoCorto = orizzontale ? altezza : larghezza;
@@ -318,7 +400,14 @@ function sedieSuiLati(larghezza: number, altezza: number, n: number): Sedia[] {
   // Quante ne stanno fisicamente su una testa, senza sovrapporsi.
   const maxTeste = Math.max(1, Math.floor(latoCorto / (LARGHEZZA_SEDIA + 4)));
   let teste = 0;
-  if (n > 4) teste = Math.min(maxTeste * 2, n - 4);
+  // Solo sui lati lunghi: le teste restano libere sempre, anche quando i
+  // posti sui lati diventano fitti — è proprio il tavolo da accostare in fila
+  // o da mettere contro il muro.
+  if (soloLatiLunghi) teste = 0;
+  else if (suMisura) {
+    const perLatoLungo = Math.max(1, Math.floor(latoLungo / LARGHEZZA_COPERTO));
+    teste = Math.min(maxTeste * 2, Math.max(0, n - perLatoLungo * 2));
+  } else if (n > 4) teste = Math.min(maxTeste * 2, n - 4);
   else if (n === 3) teste = 1;
   teste = Math.min(teste, n);
 

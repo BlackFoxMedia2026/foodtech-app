@@ -238,6 +238,8 @@ describe("la sala viva, contro il database", () => {
     expect(live.byTableId[t1].status).toBe("OCCUPATO");
     expect(live.byTableId[t2].status).toBe("OCCUPATO");
     expect(live.byTableId[t1].current?.combinedWith).toEqual([t2]);
+    // E sul secondo tavolo la tavolata si vede dal suo lato: unito al primo.
+    expect(live.byTableId[t2].current?.combinedWith).toEqual([t1]);
     expect(live.byTableId[t2].current?.combinedWith).toEqual([t1]);
   });
 

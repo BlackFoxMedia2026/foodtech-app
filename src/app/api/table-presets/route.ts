@@ -11,6 +11,8 @@ const Body = z.object({
   seats: z.coerce.number().int().min(1).max(40),
   width: z.coerce.number().int().min(20).max(1200),
   height: z.coerce.number().int().min(20).max(1200),
+  /** Dove stanno le sedie: su tutti i lati o solo sui due lunghi. */
+  chairSides: z.enum(["ALL", "LONG"]).optional(),
 });
 
 export async function GET() {

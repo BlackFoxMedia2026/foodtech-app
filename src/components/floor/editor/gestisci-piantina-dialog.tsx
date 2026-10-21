@@ -419,7 +419,8 @@ function FormPerimetro({
       )}
 
       <p className="text-xs text-tertiary-foreground">
-        Il perimetro sostituisce solo la struttura: i tavoli già posizionati restano dove sono.
+        Il perimetro sostituisce solo la struttura: i tavoli già posizionati restano dove sono. Nasce
+        bloccato, per non spostarlo per sbaglio: per modificarlo seleziona un muro e apri il lucchetto.
       </p>
 
       <div className="flex justify-end gap-2 border-t border-border pt-3">
@@ -435,7 +436,14 @@ function FormPerimetro({
               forma === "rettangolo"
                 ? generateRectangle(w, d)
                 : generateLShape(w, d, Number(taglioL) || 1, Number(taglioP) || 1);
-            onGenera(muri, metersToPx(w) + MARGINE_MONDO * 2, metersToPx(d) + MARGINE_MONDO * 2);
+            // Il perimetro nasce bloccato: è la cosa che si sistema una volta
+            // sola, e un clic finito sul muro invece che sul tavolo accanto
+            // non deve spostare la stanza. Si sblocca col lucchetto.
+            onGenera(
+              muri.map((m) => ({ ...m, locked: true })),
+              metersToPx(w) + MARGINE_MONDO * 2,
+              metersToPx(d) + MARGINE_MONDO * 2,
+            );
           }}
         >
           Crea perimetro

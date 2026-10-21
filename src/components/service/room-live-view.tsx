@@ -286,6 +286,7 @@ export function RoomLiveView({
                       <div className="pointer-events-none absolute inset-0 bg-[color:var(--pianta-velo)]" aria-hidden="true" />
                     </>
                   )}
+                  <ContornoTavolate tavoli={tavoliSala} byTableId={live.byTableId} bounds={bounds} />
                   {tavoliSala.map((t) => {
                     const info = live.byTableId[t.id];
                     return (
@@ -364,6 +365,66 @@ export function RoomLiveView({
  */
 function larghezzaTavolo(seats: number): number {
   return Math.min(100 + seats * 7, 170);
+}
+
+/**
+ * Il contorno di una tavolata: un tratteggio attorno ai tavoli che servono la
+ * stessa prenotazione, con il nome sopra. Senza, tre tavoli uniti per un
+ * compleanno sembravano tre compleanni — ogni tavolo diceva lo stesso nome e
+ * un'icona da due pixel spiegava il perché.
+ *
+ * Sta sotto i tavoli e non riceve clic: i tavoli restano quelli da toccare.
+ */
+function ContornoTavolate({
+  tavoli,
+  byTableId,
+  bounds,
+}: {
+  tavoli: RoomTable[];
+  byTableId: Record<string, TableLiveInfo | undefined>;
+  bounds: { w: number; h: number };
+}) {
+  const gruppi = new Map<string, { nome: string; persone: number; tavoli: RoomTable[] }>();
+  for (const t of tavoli) {
+    const corrente = byTableId[t.id]?.current;
+    if (!corrente || corrente.combinedWith.length === 0) continue;
+    const gruppo = gruppi.get(corrente.bookingId) ?? { nome: corrente.guestName, persone: corrente.partySize, tavoli: [] };
+    gruppo.tavoli.push(t);
+    gruppi.set(corrente.bookingId, gruppo);
+  }
+
+  const MARGINE = 8;
+  // L'altezza che il riquadro di un tavolo ha di sicuro (vedi `TavoloMappa`).
+  const ALTEZZA = 58;
+  return (
+    <>
+      {[...gruppi.entries()].map(([id, g]) => {
+        if (g.tavoli.length < 2) return null;
+        const x = Math.min(...g.tavoli.map((t) => t.posX)) - MARGINE;
+        const y = Math.min(...g.tavoli.map((t) => t.posY)) - MARGINE;
+        const destra = Math.max(...g.tavoli.map((t) => t.posX + larghezzaTavolo(t.seats))) + MARGINE;
+        const sotto = Math.max(...g.tavoli.map((t) => t.posY + ALTEZZA)) + MARGINE;
+        return (
+          <div
+            key={id}
+            aria-hidden="true"
+            className="pointer-events-none absolute rounded-xl border-2 border-dashed border-line bg-current/5"
+            style={{
+              left: `${(x / bounds.w) * 100}%`,
+              top: `${(y / bounds.h) * 100}%`,
+              width: `${((destra - x) / bounds.w) * 100}%`,
+              height: `${((sotto - y) / bounds.h) * 100}%`,
+            }}
+          >
+            <span className="absolute -top-2.5 left-2 flex items-center gap-1 rounded-full bg-background px-1.5 text-[10px] font-medium leading-tight">
+              <Link2 className="h-2.5 w-2.5" />
+              {g.nome} · {g.persone}p · {g.tavoli.length} tavoli
+            </span>
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 /** Un tavolo sulla mappa. */

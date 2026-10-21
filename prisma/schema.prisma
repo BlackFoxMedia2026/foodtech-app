@@ -373,6 +373,7 @@ model Venue {
   Survey             Survey[]
   tables             Table[]
   tablePresets       TablePreset[]
+  tableCombinations  TableCombination[]
   blocks             TableBlock[]
   org                Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
   WaitlistEntry      WaitlistEntry[]
@@ -486,6 +487,7 @@ model Room {
   staffAssignments    StaffAssignment[]
   roomLayout          RoomLayout?
   waitlistPreferences WaitlistEntry[]
+  tableCombinations   TableCombination[]
 
   @@index([venueId, ordering])
 }
@@ -535,6 +537,9 @@ model Table {
   active           Boolean           @default(true)
   height           Int?
   width            Int?
+  /// Dove stanno le sedie: su tutti i lati, o solo sui due lati lunghi (un
+  /// tavolo contro il muro, o uno pensato per essere accostato in fila).
+  chairSides       ChairSides        @default(ALL)
   /// Il segreto stampato sull'adesivo del tavolo: chi lo inquadra apre il
   /// proprio conto senza registrarsi.
   ///
@@ -578,14 +583,41 @@ model Table {
 /// Vale per tutto il locale, non per la singola sala: un ristoratore con tre
 /// sale ha lo stesso quadrato da bar dappertutto, non un modello diverso per
 /// ciascuna.
+/// Un'unione prevista: tavoli della stessa sala che il locale accosta quando
+/// arriva un gruppo più grande di ciascuno di loro (tre tavoli da due per sei
+/// persone). Non sposta niente sulla piantina e non occupa i tavoli: dice solo
+/// che **questi** si possono unire, così prenotazioni e Servizio la possono
+/// proporre con un gesto. Chi la usa davvero è la prenotazione, con
+/// `Booking.combinedTableIds`.
+///
+/// `tableIds` è un elenco e non una tabella di collegamento per la stessa
+/// ragione di `combinedTableIds`: si legge sempre per intero e non si
+/// interroga mai per un tavolo solo. Un tavolo eliminato esce dalle unioni
+/// che lo contenevano (vedi la rotta dei tavoli).
+model TableCombination {
+  id        String   @id @default(cuid())
+  venueId   String
+  roomId    String
+  /// Facoltativo: «Tavolata finestra». Senza, si mostra l'elenco dei tavoli.
+  label     String?
+  tableIds  String[]
+  createdAt DateTime @default(now())
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, roomId])
+}
+
 model TablePreset {
   id        String     @id @default(cuid())
   venueId   String
   label     String
   shape     TableShape
   seats     Int
-  width     Int
-  height    Int
+  width      Int
+  height     Int
+  /// Vedi `Table.chairSides`: il predefinito lo ricorda come la misura.
+  chairSides ChairSides @default(ALL)
   createdAt DateTime   @default(now())
   venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
@@ -2801,6 +2833,13 @@ enum TableShape {
   LOUNGE
   OVAL
   CUSTOM
+}
+
+/// Dove si apparecchia un tavolo: `ALL` su tutti i lati, `LONG` solo sui due
+/// lati lunghi (le teste restano libere). Su un tavolo tondo non cambia niente.
+enum ChairSides {
+  ALL
+  LONG
 }
 
 enum RoomLayoutMode {

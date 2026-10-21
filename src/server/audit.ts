@@ -118,6 +118,8 @@ export type AuditAction =
   | "table.delete"
   | "table_preset.create"
   | "table_preset.delete"
+  | "table_combination.create"
+  | "table_combination.delete"
   // Il QR di pagamento del tavolo. La rigenerazione è quella che conta: da
   // quel momento ogni cartoncino già stampato smette di funzionare, e se
   // qualcuno se ne accorge a metà servizio deve poter sapere chi e quando.

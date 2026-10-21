@@ -15,8 +15,8 @@ import { TABLE_ASSIGNABLE_CAPABILITIES, TABLE_ROLE_LABELS } from "@/lib/staff-ro
 import { TABLE_ROLE_ICONS } from "@/components/floor/staff-role-icons";
 import { LARGHEZZA_PER_PAROLA, type LocalTable, type TableStaffMap, type TableLod } from "@/components/floor/table-node";
 import {
-  DIMENSIONE_TAVOLO,
   dimensioneDisegnata,
+  improntaTavolo,
   posizioniSedie,
   LARGHEZZA_SEDIA,
   PROFONDITA_SEDIA,
@@ -156,7 +156,7 @@ export const RoomTableNode = memo(
     },
     ref,
   ) {
-    const size = DIMENSIONE_TAVOLO[t.shape];
+    const size = improntaTavolo(t);
     const visual = dimensioneDisegnata(t);
     const rounding = SHAPE_ROUNDING[t.shape];
     const depth = EDGE_DEPTH[t.shape];
@@ -279,7 +279,7 @@ export const RoomTableNode = memo(
 
           {lod !== "low" && (
             <div aria-hidden="true" className="absolute inset-0">
-              {posizioniSedie(t.shape, visual.w, visual.h, t.seats).map((c, i) => (
+              {posizioniSedie(t.shape, visual.w, visual.h, t.seats, t.chairSides).map((c, i) => (
                 <div
                   key={i}
                   className="absolute rounded-[3px] bg-forest shadow-sm"

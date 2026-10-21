@@ -140,6 +140,9 @@ export type Unione = {
   dettaglio: string;
 };
 
+/** Un'unione decisa dal locale nell'editor della Sala (`TableCombination`). */
+export type UnionePrevistaInput = { tableIds: string[]; label?: string | null };
+
 export type Proposta = {
   /** Il tavolo su cui sta il pulsante grande, se c'è. */
   migliore: TavoloProposto | null;
@@ -275,10 +278,39 @@ function unioniPossibili(
   candidati: TavoloProposto[],
   coperti: number,
   durataMin: number,
+  previste: readonly UnionePrevistaInput[] = [],
 ): Unione[] {
   const utili = candidati.filter(
     (t) => t.libero && t.unibile && (t.minutiAllaProssima ?? Infinity) >= durataMin,
   );
+  const perId = new Map(utili.map((t) => [t.tableId, t]));
+
+  /*
+    Prima le unioni che il locale ha previsto nell'editor: sono quelle che in
+    sala si fanno davvero (i tavoli accostabili senza spostare mezza sala), e
+    possono avere più di due tavoli. Valgono le stesse regole delle coppie:
+    tutti liberi abbastanza a lungo, tutti unibili, posti sufficienti, e
+    nessuno che basti da solo.
+  */
+  const decise: Unione[] = [];
+  for (const u of previste) {
+    const tavoli = u.tableIds.map((id) => perId.get(id));
+    if (tavoli.length < 2 || tavoli.some((t) => t === undefined)) continue;
+    const presenti = tavoli as TavoloProposto[];
+    if (presenti.some((t) => (t.roomId ?? "") !== (presenti[0].roomId ?? ""))) continue;
+    const posti = presenti.reduce((somma, t) => somma + t.posti, 0);
+    if (posti < coperti || presenti.some((t) => t.posti >= coperti)) continue;
+    const nomi = presenti.map((t) => t.label).join(" + ");
+    decise.push({
+      tableIds: presenti.map((t) => t.tableId),
+      label: u.label ? `${u.label} (${nomi})` : nomi,
+      posti,
+      roomName: presenti[0].roomName,
+      dettaglio: `${posti} posti · unione prevista`,
+    });
+  }
+  decise.sort((x, y) => x.posti - y.posti);
+  const giaProposte = new Set(decise.map((u) => [...u.tableIds].sort().join("|")));
 
   const unioni: Unione[] = [];
   for (let i = 0; i < utili.length; i++) {
@@ -292,6 +324,7 @@ function unioniPossibili(
          tavoli offerti singolarmente qualche riga più sopra. */
       if (a.posti >= coperti || b.posti >= coperti) continue;
 
+      if (giaProposte.has([a.tableId, b.tableId].sort().join("|"))) continue;
       unioni.push({
         tableIds: [a.tableId, b.tableId],
         label: `${a.label} + ${b.label}`,
@@ -302,7 +335,10 @@ function unioniPossibili(
     }
   }
 
-  return unioni.sort((x, y) => x.posti - y.posti).slice(0, 3);
+  // Le previste vengono prima e non si tagliano: il locale le ha scelte una
+  // per una. Le coppie trovate al volo riempiono fino a tre.
+  const coppie = unioni.sort((x, y) => x.posti - y.posti).slice(0, Math.max(0, 3 - decise.length));
+  return [...decise, ...coppie];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -319,7 +355,13 @@ function unioniPossibili(
  */
 export function proponiTavoli(
   candidati: readonly TavoloCandidato[],
-  richiesta: { coperti: number; durataMin: number; roomIdAtteso?: string | null },
+  richiesta: {
+    coperti: number;
+    durataMin: number;
+    roomIdAtteso?: string | null;
+    /** Le unioni previste dal locale: si propongono prima delle coppie. */
+    unioniPreviste?: readonly UnionePrevistaInput[];
+  },
 ): Proposta {
   const { coperti, durataMin } = richiesta;
   const roomIdAtteso = richiesta.roomIdAtteso ?? null;
@@ -375,7 +417,7 @@ export function proponiTavoli(
     migliore: primo,
     motivo: primo ? motivazione(primo, ordinati.filter((t) => t !== primo), coperti) : null,
     alternative,
-    unioni: unioniPossibili(ordinati, coperti, durataMin),
+    unioni: unioniPossibili(ordinati, coperti, durataMin, richiesta.unioniPreviste),
     tutti: ordinati,
   };
 }

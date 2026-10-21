@@ -2,10 +2,25 @@
 
 import { useState } from "react";
 import type { TableShape } from "@prisma/client";
-import { Box, Eye, EyeOff, Image as ImageIcon, Layers, Minus, Plus, Ruler, Trash2 } from "lucide-react";
+import {
+  Box,
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  Layers,
+  Link2,
+  Lock,
+  LockOpen,
+  Minus,
+  Plus,
+  Ruler,
+  Trash2,
+  Unlink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useAvvisi } from "@/components/ui/avvisi";
 import {
   AREA_LABELS,
   ROOM_LAYER_KEYS,
@@ -105,6 +120,7 @@ export function PannelloProprieta({
 }
 
 function SelezioneMultipla({ editor, totale, modificabile }: { editor: EditorSala; totale: number; modificabile: boolean }) {
+  const tavoli = editor.tavoliSelezionati;
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs">
@@ -113,12 +129,152 @@ function SelezioneMultipla({ editor, totale, modificabile }: { editor: EditorSal
       <p className="text-[11px] text-tertiary-foreground">
         Le frecce li spostano insieme. Per modificarne le proprietà selezionane uno solo.
       </p>
+      {modificabile && tavoli.length >= 2 && <UnisciTavoli editor={editor} tavoli={tavoli} />}
       {modificabile && (
         <Button type="button" variant="ghost" size="sm" className="justify-start text-destructive hover:text-destructive" onClick={editor.eliminaSelezione}>
           <Trash2 className="h-3.5 w-3.5" /> Rimuovi dalla piantina
         </Button>
       )}
     </div>
+  );
+}
+
+/**
+ * Unire i tavoli selezionati in un'unione prevista.
+ *
+ * Non li sposta e non li fonde: dice che **questi** si accostano per un
+ * gruppo grande, così prenotazioni e Servizio li propongono insieme. I
+ * tavoli restano tavoli da due per il pranzo.
+ */
+function UnisciTavoli({ editor, tavoli }: { editor: EditorSala; tavoli: EditorSala["tables"] }) {
+  const avvisi = useAvvisi();
+  const [nome, setNome] = useState("");
+  const [inCorso, setInCorso] = useState(false);
+  const posti = tavoli.reduce((somma, t) => somma + t.seats, 0);
+  const chiave = tavoli
+    .map((t) => t.id)
+    .sort()
+    .join("|");
+  const giaUnite = editor.unioni.find((u) => [...u.tableIds].sort().join("|") === chiave);
+
+  if (giaUnite) {
+    return (
+      <div className="riquadro flex items-center gap-2 bg-secondary/30 p-2 text-[11px]">
+        <Link2 className="h-3.5 w-3.5 shrink-0 text-accent-strong" />
+        <span className="min-w-0 flex-1">Questi tavoli sono già un&apos;unione da {giaUnite.posti} posti.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border p-2">
+      <p className="text-[11px] leading-snug">
+        <span className="font-medium">{tavoli.map((t) => t.label).join(" + ")}</span>
+        <span className="text-tertiary-foreground"> · {posti} posti insieme</span>
+      </p>
+      <Input
+        value={nome}
+        onChange={(e) => setNome(e.target.value)}
+        placeholder="Nome (facoltativo), es. Tavolata finestra"
+        maxLength={60}
+        className="h-8 text-xs"
+      />
+      <Button
+        type="button"
+        size="sm"
+        disabled={inCorso}
+        onClick={async () => {
+          setInCorso(true);
+          const esito = await editor.creaUnione(
+            tavoli.map((t) => t.id),
+            nome,
+          );
+          setInCorso(false);
+          if (!esito.ok) {
+            avvisi.problema(esito.messaggio);
+            return;
+          }
+          // Uniti vuol dire attaccati: si accostano subito, piano contro
+          // piano. Le nuove posizioni si salvano col resto della piantina.
+          editor.accostaTavoli(tavoli.map((t) => t.id));
+          setNome("");
+        }}
+      >
+        <Link2 className="h-3.5 w-3.5" /> {inCorso ? "Unisco…" : `Unisci ${tavoli.length} tavoli`}
+      </Button>
+      <p className="text-[10px] leading-snug text-tertiary-foreground">
+        Si accostano in fila e si spostano insieme (Alt per spostarne uno solo). L&apos;unione si propone da sola
+        per i gruppi da {posti} persone.
+      </p>
+    </div>
+  );
+}
+
+/** Le unioni di cui fa parte un tavolo, con il gesto per separarle. */
+function UnioniDelTavolo({
+  editor,
+  tavolo,
+  modificabile,
+}: {
+  editor: EditorSala;
+  tavolo: EditorSala["tables"][number];
+  modificabile: boolean;
+}) {
+  const avvisi = useAvvisi();
+  const sue = editor.unioni.filter((u) => u.tableIds.includes(tavolo.id));
+  if (sue.length === 0) {
+    return modificabile ? (
+      <p className="text-[10px] leading-snug text-tertiary-foreground">
+        Per unirlo ad altri tavoli selezionali insieme (Shift + clic).
+      </p>
+    ) : null;
+  }
+  return (
+    <Campo etichetta="Unioni">
+      <ul className="flex flex-col gap-1">
+        {sue.map((u) => (
+          <li key={u.id} className="riquadro flex items-center gap-2 bg-secondary/30 px-2 py-1.5 text-[11px]">
+            <Link2 className="h-3.5 w-3.5 shrink-0 text-accent-strong" />
+            <span className="min-w-0 flex-1 truncate">
+              {u.label ? <span className="font-medium">{u.label} · </span> : null}
+              {u.nomi}
+              <span className="text-tertiary-foreground"> · {u.posti} posti</span>
+            </span>
+            {modificabile && (
+              <button
+                type="button"
+                title="Separa: i tavoli restano, sparisce l'unione"
+                aria-label={`Separa ${u.nomi}`}
+                onClick={async () => {
+                  const ok = await editor.separaUnione(u.id);
+                  if (!ok) avvisi.problema("Unione non separata. Riprova fra un momento.");
+                }}
+                className="grid h-6 w-6 shrink-0 place-items-center rounded text-tertiary-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <Unlink className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Campo>
+  );
+}
+
+/** Lo stesso lucchetto che compare sulla piantina, per chi usa la tastiera. */
+function BloccaPosizione({ editor, id }: { editor: EditorSala; id: string }) {
+  const bloccato = editor.idBloccati.has(id);
+  return (
+    <Button
+      type="button"
+      variant={bloccato ? "default" : "outline"}
+      size="sm"
+      aria-pressed={bloccato}
+      onClick={() => editor.bloccaOggetto(id)}
+    >
+      {bloccato ? <Lock className="h-3.5 w-3.5" /> : <LockOpen className="h-3.5 w-3.5" />}
+      {bloccato ? "Posizione bloccata · sblocca" : "Blocca posizione"}
+    </Button>
   );
 }
 
@@ -136,6 +292,7 @@ function ProprietaTavolo({
   modificabile: boolean;
 }) {
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
+  const avvisi = useAvvisi();
   const misura = dimensioneDisegnata(tavolo);
   const zona = zonaDelTavolo(editor.elements, tavolo.posX + misura.w / 2, tavolo.posY + misura.h / 2);
   const assegnati = staff
@@ -180,6 +337,20 @@ function ProprietaTavolo({
         </select>
       </Campo>
 
+      {tavolo.shape !== "ROUND" && (
+        <Campo etichetta="Sedie">
+          <select
+            value={tavolo.chairSides}
+            disabled={!modificabile}
+            onChange={(e) => editor.aggiornaTavolo(tavolo.id, { chairSides: e.target.value as "ALL" | "LONG" }, true)}
+            className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs disabled:opacity-60"
+          >
+            <option value="ALL">Su tutti i lati</option>
+            <option value="LONG">Solo su due lati</option>
+          </select>
+        </Campo>
+      )}
+
       <Campo etichetta="Posti">
         <Stepper
           valore={tavolo.seats}
@@ -188,6 +359,53 @@ function ProprietaTavolo({
           disabilitato={!modificabile}
           onCambia={(v) => editor.aggiornaTavolo(tavolo.id, { seats: v }, true)}
         />
+      </Campo>
+
+      {/*
+        La misura del piano. Vuota segue i posti (la misura standard); scritta
+        fa un tavolo su misura, come un imperiale da sei metri. Non c'è una
+        maniglia da tirare sulla piantina di proposito: un numero si scrive
+        giusto al primo colpo, una maniglia no.
+      */}
+      <Campo etichetta="Misura (cm)">
+        <div className="grid grid-cols-2 gap-2">
+          {(["width", "height"] as const).map((lato) => {
+            const standard = dimensioneDisegnata({ shape: tavolo.shape, seats: tavolo.seats });
+            const valore = tavolo[lato];
+            return (
+              <Input
+                key={`${tavolo.id}-${lato}-${valore ?? "std"}`}
+                type="number"
+                inputMode="numeric"
+                min={20}
+                max={1200}
+                aria-label={lato === "width" ? "Lunghezza in centimetri" : "Profondità in centimetri"}
+                placeholder={String(Math.round(pxToMeters(lato === "width" ? standard.w : standard.h) * 100))}
+                defaultValue={valore ? Math.round(pxToMeters(valore) * 100) : ""}
+                disabled={!modificabile}
+                className="h-8 text-xs"
+                onBlur={(e) => {
+                  const testo = e.target.value.trim();
+                  const attuale = dimensioneDisegnata(tavolo);
+                  const px = testo ? Math.max(20, Math.min(1200, Math.round(metersToPx(Number(testo) / 100)))) : null;
+                  if (testo && !Number.isFinite(px)) return;
+                  // Una misura sola non basta a disegnare il piano: l'altra si
+                  // prende da quella che si vede adesso. Svuotare un campo
+                  // riporta il tavolo alla misura dei suoi posti.
+                  const altro = lato === "width" ? "height" : "width";
+                  const patch =
+                    px === null
+                      ? { width: null, height: null }
+                      : { [lato]: px, [altro]: tavolo[altro] ?? attuale[altro === "width" ? "w" : "h"] };
+                  editor.aggiornaTavolo(tavolo.id, patch, true);
+                }}
+              />
+            );
+          })}
+        </div>
+        <p className="mt-1 text-[10px] leading-snug text-tertiary-foreground">
+          Lunghezza × profondità. Svuota per tornare alla misura standard per {tavolo.seats} posti.
+        </p>
       </Campo>
 
       <Campo etichetta="Rotazione">
@@ -207,6 +425,8 @@ function ProprietaTavolo({
           <span className="w-10 shrink-0 text-right text-xs tabular-nums">{tavolo.rotation}°</span>
         </div>
       </Campo>
+
+      <UnioniDelTavolo editor={editor} tavolo={tavolo} modificabile={modificabile} />
 
       <Riga etichetta="Zona" valore={zona ?? "Sala"} />
       <Campo etichetta="Stato">
@@ -246,7 +466,14 @@ function ProprietaTavolo({
 
       {modificabile && (
         <div className="flex flex-col gap-1.5 border-t border-border pt-3">
-          <Button type="button" variant="outline" size="sm" onClick={editor.eliminaSelezione}>
+          <BloccaPosizione editor={editor} id={tavolo.id} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={editor.idBloccati.has(tavolo.id)}
+            onClick={editor.eliminaSelezione}
+          >
             Rimuovi dalla piantina
           </Button>
           {!confermaEliminazione ? (
@@ -270,7 +497,10 @@ function ProprietaTavolo({
                   variant="destructive"
                   size="sm"
                   className="h-7 flex-1 text-xs"
-                  onClick={() => editor.eliminaTavoloDavvero(tavolo.id)}
+                  onClick={async () => {
+                    const ok = await editor.eliminaTavoloDavvero(tavolo.id);
+                    if (!ok) avvisi.problema(`${tavolo.label} non è stato eliminato. Riprova fra un momento.`);
+                  }}
                 >
                   Conferma
                 </Button>
@@ -309,7 +539,9 @@ function ProprietaElemento({
               ? "Colonna"
               : elemento.type === "TEXT"
                 ? "Testo"
-                : "Elemento libero";
+                : elemento.type === "CHAIR"
+                  ? "Sedia"
+                  : "Elemento libero";
 
   return (
     <div className="flex flex-col gap-3">
@@ -340,7 +572,7 @@ function ProprietaElemento({
       {(isDoor(elemento) || isWindow(elemento)) && (
         <Campo etichetta="Larghezza (cm)">
           <Input
-            key={`${elemento.id}-w`}
+            key={`${elemento.id}-w-${elemento.width}`}
             type="number"
             defaultValue={Math.round(pxToMeters(elemento.width) * 100)}
             disabled={!modificabile}
@@ -354,7 +586,7 @@ function ProprietaElemento({
         <div className="grid grid-cols-2 gap-2">
           <Campo etichetta="Larghezza (cm)">
             <Input
-              key={`${elemento.id}-w`}
+              key={`${elemento.id}-w-${elemento.width}`}
               type="number"
               defaultValue={Math.round(pxToMeters(elemento.width) * 100)}
               disabled={!modificabile}
@@ -364,7 +596,7 @@ function ProprietaElemento({
           </Campo>
           <Campo etichetta="Profondità (cm)">
             <Input
-              key={`${elemento.id}-h`}
+              key={`${elemento.id}-h-${elemento.height}`}
               type="number"
               defaultValue={Math.round(pxToMeters(elemento.height) * 100)}
               disabled={!modificabile}
@@ -431,15 +663,19 @@ function ProprietaElemento({
       )}
 
       {modificabile && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="mt-1 justify-start text-destructive hover:text-destructive"
-          onClick={editor.eliminaSelezione}
-        >
-          <Trash2 className="h-3.5 w-3.5" /> Elimina elemento
-        </Button>
+        <div className="mt-1 flex flex-col gap-1.5">
+          <BloccaPosizione editor={editor} id={elemento.id} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={editor.idBloccati.has(elemento.id)}
+            className="justify-start text-destructive hover:text-destructive"
+            onClick={editor.eliminaSelezione}
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Elimina elemento
+          </Button>
+        </div>
       )}
     </div>
   );

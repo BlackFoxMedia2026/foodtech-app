@@ -5,7 +5,7 @@ import type { Table } from "@prisma/client";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/utils";
-import { TABLE_SIZE, visualSize } from "@/components/floor/table-node";
+import { dimensioneDisegnata, improntaTavolo } from "@/lib/tavolo-geometria";
 
 // Superseded by RoomTableNode (mode="RESERVATIONS") + DroppableRoomTable —
 // this component is no longer rendered anywhere, kept only until its last
@@ -45,8 +45,8 @@ export function BookingTableNode({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: table.id, data: { type: "table", tableId: table.id, seats: table.seats } });
 
-  const size = TABLE_SIZE[table.shape];
-  const visual = visualSize(table.shape, table.seats);
+  const size = improntaTavolo(table);
+  const visual = dimensioneDisegnata(table);
   const primary = bookings[0] ?? null;
   const extraCount = Math.max(0, bookings.length - 1);
   const isBooked = !!primary;

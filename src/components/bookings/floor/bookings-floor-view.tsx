@@ -42,12 +42,17 @@ export function BookingsFloorView({
   shiftWindow,
   canManage,
   onBookingUpdated,
+  incorporata = false,
 }: {
   rooms: RoomWithTables[];
   rows: Row[];
   shiftWindow: { start: Date; end: Date } | null;
   canManage: boolean;
   onBookingUpdated: (updated: Row) => void;
+  /** Dentro la pagina Sala: la sala la sceglie già la testata di quella
+   * pagina, quindi qui niente selettore, e la mappa riempie lo spazio che le
+   * lasciano invece di calcolarsi un'altezza sua. */
+  incorporata?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -243,10 +248,10 @@ export function BookingsFloorView({
       onDragEnd={onDragEnd}
       onDragCancel={() => setDraggingBooking(null)}
     >
-      <div className="flex h-[calc(100vh-260px)] min-h-[480px] flex-col gap-2">
+      <div className={incorporata ? "flex h-full min-h-[480px] flex-col gap-2" : "flex h-[calc(100vh-260px)] min-h-[480px] flex-col gap-2"}>
         {banner && <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{banner}</p>}
 
-        <div className="flex items-center gap-1">
+        <div className={incorporata ? "hidden" : "flex items-center gap-1"}>
           <Button type="button" size="icon" variant="ghost" onClick={() => goToRoom(-1)} disabled={rooms.length <= 1} aria-label="Sala precedente">
             <ChevronLeft className="h-4 w-4" />
           </Button>

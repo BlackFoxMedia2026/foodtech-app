@@ -343,7 +343,14 @@ export async function getFloorLive(
               loyaltyTier: corrente.guest?.loyaltyTier,
               occasion: corrente.occasion,
             }),
-            combinedWith: corrente.combinedTableIds.filter((id) => id !== table.id),
+            // Gli altri tavoli della tavolata, **principale compreso**: sul
+            // tavolo secondario `combinedTableIds` non contiene il principale
+            // (sta in `tableId`), e una tavolata da due sembrava non unita.
+            // Senza doppioni: le tavolate salvate prima ripetevano il
+            // principale anche dentro `combinedTableIds`.
+            combinedWith: [...new Set([corrente.tableId, ...corrente.combinedTableIds])].filter(
+              (id): id is string => !!id && id !== table.id,
+            ),
           }
         : null,
       next: prossima

@@ -3,6 +3,7 @@ import { auditActor, fieldDiff, recordAudit } from "@/server/audit";
 import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { togliTavoloDalleUnioni } from "@/server/unioni-tavoli";
 
 const Patch = z.object({
   label: z.string().optional(),
@@ -17,6 +18,8 @@ const Patch = z.object({
   // ha mai ridimensionato non porta con sé una misura che sembra scelta.
   width: z.coerce.number().int().min(20).max(1200).nullable().optional(),
   height: z.coerce.number().int().min(20).max(1200).nullable().optional(),
+  /** Dove stanno le sedie: su tutti i lati o solo sui due lunghi. */
+  chairSides: z.enum(["ALL", "LONG"]).optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -41,6 +44,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const existing = await db.table.findFirst({ where: { id: params.id, venueId: ctx.venueId } });
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
   await db.table.delete({ where: { id: params.id } });
+  // Le unioni che lo contenevano perdono un tavolo: con uno solo non sono
+  // più unioni, e un'unione che propone un tavolo inesistente è peggio di
+  // nessuna proposta.
+  await togliTavoloDalleUnioni(ctx.venueId, params.id);
   await recordAudit(auditActor(ctx, req), "table.delete", "table", params.id, {
     tavolo: existing.label,
     posti: existing.seats,

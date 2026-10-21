@@ -60,3 +60,49 @@ export function generateLShape(widthM: number, depthM: number, notchWidthM: numb
     { x: x0, y: y0 + d },
   ]);
 }
+
+/** Due capi a meno di questa distanza sono lo stesso angolo: la calamita li
+ * incolla esatti, ma un muro importato o arrotondato può sbagliare di un pixel. */
+const STESSO_PUNTO_PX = 1.5;
+
+/**
+ * Il tracciato di un muro: lui e tutti i muri collegati capo a capo, anche
+ * attraverso altri muri. Una stanza chiusa è un tracciato solo; un muro
+ * isolato è un tracciato di sé stesso.
+ *
+ * Solo `WALL`: i divisori sono pezzi a sé, si spostano da soli anche quando
+ * toccano una parete.
+ */
+export function tracciatoDi<T extends { id: string; type: string; startX: number; startY: number; endX: number; endY: number }>(
+  muri: readonly T[],
+  id: string,
+): T[] {
+  const pareti = muri.filter((m) => m.type === "WALL");
+  const partenza = pareti.find((m) => m.id === id);
+  if (!partenza) return [];
+  const capi = (m: T) => [
+    { x: m.startX, y: m.startY },
+    { x: m.endX, y: m.endY },
+  ];
+  const vicini = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+    Math.hypot(a.x - b.x, a.y - b.y) <= STESSO_PUNTO_PX;
+
+  const visti = new Set([partenza.id]);
+  const coda = [partenza];
+  while (coda.length > 0) {
+    const m = coda.pop()!;
+    for (const altro of pareti) {
+      if (visti.has(altro.id)) continue;
+      if (capi(m).some((c) => capi(altro).some((d) => vicini(c, d)))) {
+        visti.add(altro.id);
+        coda.push(altro);
+      }
+    }
+  }
+  return pareti.filter((m) => visti.has(m.id));
+}
+
+/** Se un capo sta su questo punto (stesso angolo del tracciato). */
+export function stessoPunto(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.hypot(a.x - b.x, a.y - b.y) <= STESSO_PUNTO_PX;
+}
