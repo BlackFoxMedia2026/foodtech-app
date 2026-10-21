@@ -71,7 +71,7 @@ export function ProfileMenu({
             className={cn(
               // 40 px sul telefono: fra il titolo e i quattro strumenti restano
               // pochi pixel, e sono quelli che tengono intero «Panoramica».
-              "h-10 w-10 rounded-lg border border-border md:h-[46px] md:w-[46px]",
+              "avatar-cornice h-10 w-10 rounded-lg border border-border md:h-[46px] md:w-[46px]",
               dentroIlMenu && "border-line ring-2 ring-line-40",
             )}
           >

@@ -246,9 +246,14 @@ export function ShiftDialog({
       {/* Niente `id` sul titolo né `aria-labelledby` sul contenuto: Radix li
           collega da solo, e passargliene uno nostro sovrascrive quello che il
           suo controllo interno va a cercare — l'etichetta resta corretta ma
-          compare un avviso in console a ogni apertura. */}
-      <DialogContent className="max-h-[85vh] max-w-[480px] overflow-y-auto">
-        <DialogHeader>
+          compare un avviso in console a ogni apertura.
+
+          Larga e non alta: a 480 px i campi andavano uno sotto l'altro e la
+          finestra scorreva già su un portatile. A 760 gli orari stanno in una
+          riga sola, e se lo schermo è basso scorre solo il corpo — titolo e
+          pulsanti restano dove sono. */}
+      <DialogContent className="flex w-[calc(100vw-2rem)] max-w-[760px] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="fissa px-6 pb-4 pr-12 pt-6">
           <DialogTitle>{turno ? "Modifica turno" : "Nuovo turno"}</DialogTitle>
           <DialogDescription>
             {scelta ? `${scelta.firstName} ${scelta.lastName} · ` : ""}
@@ -256,9 +261,9 @@ export function ShiftDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+        <div className="scorrimento min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4">
+            <div className="col-span-2 space-y-1.5">
               <Label htmlFor="persona">Dipendente</Label>
               <Select value={persona} onValueChange={setPersona}>
                 <SelectTrigger id="persona">
@@ -279,59 +284,73 @@ export function ShiftDialog({
               </p>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="col-span-2 space-y-1.5">
               <Label htmlFor="giorno">Giorno</Label>
               <Input id="giorno" type="date" value={giorno} onChange={(e) => setGiorno(e.target.value)} />
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label>Tipo</Label>
-            {/*
-              I sei tipi come pulsanti e non come tendina: sono pochi, si
-              scelgono a ogni turno, e «riposo» deve costare un tocco solo —
-              è la cosa che si mette più spesso dopo il lavoro.
-            */}
-            <div className="flex flex-wrap gap-1.5">
-              {TIPI_TURNO.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setKind(t.value)}
-                  aria-pressed={kind === t.value}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                    kind === t.value
-                      ? "border-accent bg-pill-selected text-ink"
-                      : "border-border text-muted-foreground hover:border-line-30 hover:text-foreground",
-                  )}
-                >
-                  {t.breve}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {conOrario && (
-            <>
-              <div className="flex flex-wrap gap-1.5">
-                {PRESET.map((p) => (
+            <div className="col-span-full space-y-1.5">
+              <Label id="tipo-turno">Tipo</Label>
+              {/*
+                I sei tipi come segmenti e non come tendina: sono pochi, si
+                scelgono a ogni turno, e «riposo» deve costare un tocco solo —
+                è la cosa che si mette più spesso dopo il lavoro. Un binario
+                solo, come gli altri selettori del back office: il tipo scelto
+                è la cupola verde, gli altri sono incisi nel binario.
+              */}
+              <div
+                role="group"
+                aria-labelledby="tipo-turno"
+                className="binario grid grid-cols-3 gap-1 rounded-2xl border border-border/70 bg-card/50 p-1 sm:grid-cols-6 sm:rounded-full"
+              >
+                {TIPI_TURNO.map((t) => (
                   <button
-                    key={p.label}
+                    key={t.value}
                     type="button"
-                    onClick={() => {
-                      setInizio(p.inizio);
-                      setFine(p.fine);
-                      if (serviceOptions.includes(p.servizio)) setServizio(p.servizio);
-                    }}
-                    className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-line-30 hover:text-foreground"
+                    onClick={() => setKind(t.value)}
+                    aria-pressed={kind === t.value}
+                    className={cn(
+                      "segmento h-8 min-w-0 whitespace-nowrap rounded-full border px-1 text-sm sm:px-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      kind === t.value
+                        ? "border-accent-strong/55 bg-accent/15 font-semibold text-accent-strong"
+                        : "border-transparent font-medium text-muted-foreground hover:bg-veil-6 hover:text-foreground",
+                    )}
                   >
-                    {p.label} {p.inizio}–{p.fine}
+                    {t.breve}
                   </button>
                 ))}
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
+            {conOrario && (
+              <>
+                <div className="col-span-full -mb-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+                  <div className="flex items-baseline gap-2">
+                    <span className="t-etichetta font-medium">Orario</span>
+                    {/* Detto qui e non dopo il salvataggio: «00:00» è ambiguo,
+                        e la disambiguazione va vista mentre si sceglie. */}
+                    <span className="text-xs text-muted-foreground" aria-live="polite">
+                      {durata ? `Durata netta ${durata}` : "Se la fine è prima dell'inizio, è il giorno dopo."}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET.map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => {
+                          setInizio(p.inizio);
+                          setFine(p.fine);
+                          if (serviceOptions.includes(p.servizio)) setServizio(p.servizio);
+                        }}
+                        className="pastiglia h-8 rounded-full border border-border/70 bg-card/70 px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-line-30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {p.label} <span className="tabular-nums">{p.inizio}–{p.fine}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="inizio">Inizio</Label>
                   <Input id="inizio" type="time" value={inizio} onChange={(e) => setInizio(e.target.value)} />
@@ -339,14 +358,9 @@ export function ShiftDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="fine">Fine</Label>
                   <Input id="fine" type="time" value={fine} onChange={(e) => setFine(e.target.value)} />
-                  {/* Detto qui e non dopo il salvataggio: «00:00» è ambiguo, e
-                      la disambiguazione va vista mentre si sceglie. */}
-                  <p className="text-xs text-muted-foreground">
-                    {durata ? `Durata netta ${durata}` : "Se è prima dell'inizio, è il giorno dopo."}
-                  </p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="pausa">Pausa (minuti)</Label>
+                  <Label htmlFor="pausa">Pausa (min)</Label>
                   <Input
                     id="pausa"
                     type="number"
@@ -374,7 +388,8 @@ export function ShiftDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5 col-span-2">
+
+                <div className="col-span-2 space-y-1.5">
                   <Label htmlFor="reparto">Reparto</Label>
                   <Select value={reparto} onValueChange={(v) => setReparto(v as StaffDepartment)}>
                     <SelectTrigger id="reparto">
@@ -389,42 +404,51 @@ export function ShiftDialog({
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Serve solo quando questa sera copre un reparto diverso dal suo.
+                    Da cambiare solo se quel giorno copre un reparto diverso dal suo.
                   </p>
                 </div>
-              </div>
-            </>
-          )}
-
-          <div className="space-y-1.5">
-            <Label htmlFor="note">Nota</Label>
-            <Input
-              id="note"
-              value={note}
-              maxLength={500}
-              placeholder="Facoltativa"
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-
-          {errore && <p className="text-sm text-destructive-soft">{errore}</p>}
-
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-            {turno ? (
-              <Button type="button" variant="ghost" size="sm" onClick={elimina} disabled={eliminando || salvando}>
-                <Trash2 className="h-4 w-4" /> {eliminando ? "Elimino…" : "Elimina"}
-              </Button>
-            ) : (
-              <span />
+              </>
             )}
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={salvando}>
-                Annulla
-              </Button>
-              <Button type="button" variant="accent" onClick={salva} disabled={salvando || eliminando}>
-                {salvando ? "Salvataggio…" : turno ? "Salva" : "Crea turno"}
-              </Button>
+
+            <div className={cn("space-y-1.5", conOrario ? "col-span-2" : "col-span-full")}>
+              <Label htmlFor="note">Nota</Label>
+              <Input
+                id="note"
+                value={note}
+                maxLength={500}
+                placeholder="Facoltativa"
+                onChange={(e) => setNote(e.target.value)}
+              />
             </div>
+          </div>
+        </div>
+
+        <div className="fissa flex flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-4">
+          {errore ? (
+            <p className="basis-full text-sm text-destructive-soft" role="alert">
+              {errore}
+            </p>
+          ) : null}
+          {turno ? (
+            <Button type="button" variant="ghost" size="sm" onClick={elimina} disabled={eliminando || salvando}>
+              <Trash2 className="h-4 w-4" /> {eliminando ? "Elimino…" : "Elimina"}
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="pastiglia rounded-full"
+              onClick={() => onOpenChange(false)}
+              disabled={salvando}
+            >
+              Annulla
+            </Button>
+            <Button type="button" variant="accent" onClick={salva} disabled={salvando || eliminando}>
+              {salvando ? "Salvataggio…" : turno ? "Salva" : "Crea turno"}
+            </Button>
           </div>
         </div>
       </DialogContent>

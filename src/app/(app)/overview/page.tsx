@@ -1,17 +1,22 @@
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefing } from "@/components/overview/briefing";
-import { ProssimePrenotazioni } from "@/components/overview/prossime-prenotazioni";
 import { QuickActions } from "@/components/overview/quick-actions";
 import { WeekTrend } from "@/components/overview/week-trend";
+import { WidgetPrenotazioni } from "@/components/overview/widget-prenotazioni";
 import { can, getActiveVenue } from "@/lib/tenant";
+import { DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
 import { getOverview } from "@/server/insights";
+import { perIlRiquadro, prenotazioniNuove } from "@/server/prenotazioni-nuove";
 
 export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
   const ctx = await getActiveVenue();
-  const data = await getOverview(ctx.venueId);
+  const [data, nuove] = await Promise.all([
+    getOverview(ctx.venueId),
+    prenotazioniNuove(ctx.venueId, new Date(), ctx.venue.timezone ?? DEFAULT_VENUE_TIMEZONE),
+  ]);
 
   const today = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
 
@@ -20,7 +25,11 @@ export default async function OverviewPage() {
     // in una regione sola che prende l'altezza che avanza. La Panoramica è
     // una schermata che si **legge**, quindi il saluto in serif resta — su
     // una riga sola, con la data accanto invece che sotto.
-    <div className="schermo animate-fade-in gap-4">
+    //
+    // `fondo-caldo`: il riquadro «Prenotazioni» è di vetro, e il vetro ha
+    // bisogno di qualcosa da sfocare. Il fondo lo dipinge il guscio dell'app,
+    // su tutte le pagine (vetro-ios.css).
+    <div className="schermo fondo-caldo animate-fade-in gap-4">
       <header className="fissa flex items-center justify-between gap-3">
         <div className="min-w-0">
           {/* Il nome del locale sta nella testata, accanto al titolo: qui
@@ -90,17 +99,26 @@ export default async function OverviewPage() {
         delle prenotazioni veniva tagliato senza modo di raggiungerlo. Una
         barra sola per la fascia tiene anche le due card allineate mentre
         scorre.
+
+        Chi scorre però taglia anche l'ombra delle card, di netto sul suo
+        bordo. `-mx-3 px-3 -mb-6 pb-6` allarga il bordo nel margine di `main`
+        senza spostare le card: l'ombra ha dove cadere.
       */}
-      <section className="fill min-h-0 space-y-4 overflow-y-auto md:grid md:grid-cols-[1.4fr_1fr] md:gap-4 md:space-y-0">
+      <section className="fill -mx-3 -mb-6 min-h-0 space-y-4 overflow-y-auto px-3 pb-6 md:grid md:grid-cols-[1.4fr_1fr] md:gap-4 md:space-y-0">
         {/*
           A sinistra le prenotazioni. Prima qui c'era **tutta** la giornata in
           una lista alta quanto la schermata, e a metà servizio erano quasi
           tutte «Completata»: il posto migliore della pagina raccontava cose
-          già finite. Ora il mazzo tiene le tre che riguardano i prossimi
-          minuti e «Calendario» porta a tutte — quindi la colonna è alta quanto
-          basta, e l'andamento può starle **accanto** invece che sotto.
+          già finite. Poi un carosello delle prossime tre. Ora (6 ottobre
+          2026) due schede: le **nuove** da gestire, tutte, e la giornata a
+          gruppi; l'elenco scorre dentro il riquadro, così l'andamento può
+          restargli **accanto** invece che sotto.
         */}
-        <ProssimePrenotazioni bookings={data.todayBookings} picco={data.picco} />
+        <WidgetPrenotazioni
+          nuove={nuove}
+          oggi={data.todayBookings.map(perIlRiquadro)}
+          puoGestire={can(ctx.role, "manage_bookings")}
+        />
 
         {/*
           A destra l'andamento, alto quanto le prenotazioni. Il grafico stava

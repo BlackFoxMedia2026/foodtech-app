@@ -28,6 +28,15 @@ const config: Config = {
         display: ["var(--font-display)", "ui-serif", "Georgia"],
         mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
+      // Le quattro misure piccole passano da una variabile: il back office
+      // (Carta) le alza di un pixel, al buio valgono i ripieghi, che sono le
+      // misure di Tailwind.
+      fontSize: {
+        xs: ["var(--testo-xs, 0.75rem)", { lineHeight: "var(--riga-xs, 1rem)" }],
+        sm: ["var(--testo-sm, 0.875rem)", { lineHeight: "var(--riga-sm, 1.25rem)" }],
+        base: ["var(--testo-base, 1rem)", { lineHeight: "var(--riga-base, 1.5rem)" }],
+        lg: ["var(--testo-lg, 1.125rem)", { lineHeight: "var(--riga-lg, 1.75rem)" }],
+      },
       colors: {
         border: {
           DEFAULT: "hsl(var(--border) / <alpha-value>)",

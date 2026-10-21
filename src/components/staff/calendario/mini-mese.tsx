@@ -37,7 +37,12 @@ export function MiniMese({
   onCambiaMese: (delta: number) => void;
 }) {
   const giorni = useMemo(() => grigliaMese(mese), [mese]);
-  const nellaSettimana = useMemo(() => new Set(settimana), [settimana]);
+  // Con la vista su un giorno solo la fascia coinciderebbe con la pastiglia
+  // del giorno scelto: un quadrato dietro un tondo, nient'altro.
+  const nellaSettimana = useMemo(
+    () => new Set(settimana.length > 1 ? settimana : []),
+    [settimana],
+  );
 
   return (
     <section className="riquadro bg-card/40 p-3">
@@ -86,7 +91,7 @@ export function MiniMese({
                 // sul bottone: così i sette giorni formano una barra continua
                 // invece di sette pastiglie staccate.
                 "py-[1px]",
-                inSettimana && "bg-veil-7",
+                inSettimana && "fascia-settimana bg-veil-7",
                 inSettimana && i % 7 === 0 && "rounded-l-md",
                 inSettimana && i % 7 === 6 && "rounded-r-md",
               )}
@@ -109,7 +114,7 @@ export function MiniMese({
                      `foreground`, non l'opacità. */
                   fuoriMese ? "text-muted-foreground" : "text-foreground/85",
                   !scelto && "hover:bg-veil-15",
-                  scelto && "bg-segment font-semibold text-segment-ink",
+                  scelto && "pillola-accesa bg-segment font-semibold text-segment-ink",
                   oggiQui && !scelto && "font-semibold text-accent-strong",
                 )}
               >
@@ -119,7 +124,7 @@ export function MiniMese({
                     aria-hidden="true"
                     className={cn(
                       "absolute bottom-[3px] h-[3px] w-[3px] rounded-full",
-                      scelto ? "bg-clay-ink" : "bg-accent-strong",
+                      scelto ? "bg-segment-ink" : "bg-accent-strong",
                     )}
                   />
                 )}

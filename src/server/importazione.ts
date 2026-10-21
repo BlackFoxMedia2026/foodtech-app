@@ -306,6 +306,8 @@ export async function eseguiImportazione(
              l'agenda di stasera con dieci anni di storia. */
           status: passata ? "COMPLETED" : "CONFIRMED",
           source: "IMPORT",
+          /* Importate da chi gestisce il locale: non sono «nuove». */
+          seenAt: new Date(),
           notes: riga.note,
           idempotencyKey: p.chiave,
           ...(passata ? { closedAt: p.istante } : {}),

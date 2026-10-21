@@ -246,6 +246,12 @@ export type BookingWriteOptions = {
    * può scrivere, e questa è la porta che si raggiunge solo da dentro.
    */
   source?: BookingSource;
+  /**
+   * La scrittura è un gesto dello staff sulla Panoramica — confermare o
+   * rifiutare una nuova — e quindi la prenotazione è anche **vista**.
+   * Vedi `Booking.seenAt` e `server/prenotazioni-nuove.ts`.
+   */
+  segnaVista?: boolean;
 };
 
 export async function createBooking(
@@ -324,6 +330,10 @@ export async function createBooking(
       internalNotes: data.internalNotes ?? null,
       depositCents: data.depositCents,
       idempotencyKey: opts.idempotencyKey ?? null,
+      // Una prenotazione che non aspetta una decisione l'ha scritta lo staff
+      // (telefono, walk-in, lista d'attesa): chi l'ha scritta l'ha vista, e
+      // non deve ricomparire fra le «Nuove» della Panoramica.
+      seenAt: status === "PENDING" ? null : new Date(),
       // Se nasce già arrivata o seduta, l'orologio parte adesso: senza questi
       // istanti la Sala non saprebbe da quanto quel tavolo è occupato.
       arrivedAt:
@@ -564,6 +574,7 @@ export async function updateBooking(
         ? { combinedTableIds: [] }
         : {}),
       status: data.status ?? undefined,
+      ...(opts.segnaVista ? { seenAt: new Date() } : {}),
       source: data.source ?? undefined,
       occasion: data.occasion ?? undefined,
       notes: data.notes ?? undefined,
