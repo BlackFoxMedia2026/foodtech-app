@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/shell/logo";
+import { TemaCarta } from "@/components/tema-carta";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const display = Fraunces({
@@ -36,39 +37,18 @@ const FEATURES = [
     icon: CalendarRange,
     title: "Prenotazioni unificate",
     body: "Sito, telefono, social, walk-in: un'unica timeline con stati chiari e note operative.",
-    finish: "cream" as const,
   },
   {
     icon: Users,
     title: "CRM degli ospiti",
     body: "Storico visite, preferenze, allergie e fedeltà per accogliere ogni cliente come un habitué.",
-    finish: "brown" as const,
   },
   {
     icon: Sparkles,
     title: "Esperienze e ticket",
     body: "Eventi, degustazioni e serate speciali con limiti di capienza e pagamenti integrati.",
-    finish: "sage" as const,
   },
 ];
-
-const FEATURE_STYLES = {
-  cream: {
-    card: "finish-parchment border-cream text-clay-ink shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-    chip: "bg-clay-ink/15 text-clay-ink",
-    body: "text-clay-ink-soft",
-  },
-  brown: {
-    card: "finish-brown-medium border-[#7b4e30] text-cream shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-    chip: "bg-cream/15 text-cream",
-    body: "text-cream/70",
-  },
-  sage: {
-    card: "finish-sage-tile border-[#2f5b4a] text-cream shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-    chip: "bg-cream/15 text-cream",
-    body: "text-cream/70",
-  },
-};
 
 export default function Landing() {
   return (
@@ -80,6 +60,7 @@ export default function Landing() {
         "relative z-0 min-h-screen bg-background text-foreground",
       )}
     >
+      <TemaCarta />
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background">
         <div className="container flex h-16 items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2">
@@ -95,7 +76,7 @@ export default function Landing() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+                className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
                 {link.label}
               </Link>
@@ -127,7 +108,7 @@ export default function Landing() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
+            <Button asChild size="lg" variant="outline" className="border-input hover:bg-secondary">
               <Link href="#features">Scopri di più</Link>
             </Button>
           </div>
@@ -138,11 +119,11 @@ export default function Landing() {
             <Badge tone="gold">Aurora Bistrot · Stasera</Badge>
           </div>
           <p className="mt-4 font-mono text-3xl font-semibold">142 coperti</p>
-          <p className="text-sm text-card-foreground/65">98% occupazione · 4 turni · 6 VIP attesi</p>
+          <p className="text-sm text-muted-foreground">98% occupazione · 4 turni · 6 VIP attesi</p>
           <div className="mt-6 grid grid-cols-3 gap-3 text-xs">
             {SLOTS.map((slot) => (
               <div key={slot.time} className="riquadro p-3">
-                <p className="text-card-foreground/65">{slot.time}</p>
+                <p className="text-muted-foreground">{slot.time}</p>
                 <p className="mt-1 font-mono font-medium">{slot.covers} cop.</p>
               </div>
             ))}
@@ -151,24 +132,21 @@ export default function Landing() {
       </section>
 
       <section id="features" className="container grid gap-6 py-12 md:grid-cols-3">
-        {FEATURES.map(({ icon: Icon, title, body, finish }) => {
-          const style = FEATURE_STYLES[finish];
-          return (
-            <Card key={title} className={cn("card-notch p-6", style.card)}>
-              <span className={cn("finish-metal-chip grid h-10 w-10 place-items-center rounded-full shadow-[0_8px_18px_rgba(0,0,0,0.3)]", style.chip)}>
-                <Icon className="h-5 w-5" />
-              </span>
-              <h3 className="mt-4 text-display text-xl">{title}</h3>
-              <p className={cn("mt-2 text-sm", style.body)}>{body}</p>
-            </Card>
-          );
-        })}
+        {FEATURES.map(({ icon: Icon, title, body }) => (
+          <Card key={title} className="card-notch p-6">
+            <span className="grid h-10 w-10 place-items-center rounded-full border border-kpi-icon-border bg-kpi-icon-fill text-kpi-icon-ink">
+              <Icon className="h-5 w-5" />
+            </span>
+            <h3 className="mt-4 text-display text-xl">{title}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+          </Card>
+        ))}
       </section>
 
       <section className="border-y border-border bg-card">
         <div className="container flex flex-col items-center gap-4 py-16 text-center">
           <h2 className="text-display text-balance text-3xl">Pronto a mettere ordine nella sala?</h2>
-          <p className="max-w-md text-pretty text-card-foreground/65">
+          <p className="max-w-md text-pretty text-muted-foreground">
             Prova Tavolo con i tuoi dati, in pochi minuti, senza impegno.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
@@ -178,7 +156,7 @@ export default function Landing() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
+            <Button asChild size="lg" variant="outline" className="border-input hover:bg-secondary">
               <Link href="/sign-in">Accedi</Link>
             </Button>
           </div>
