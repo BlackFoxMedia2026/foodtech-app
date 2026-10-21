@@ -55,6 +55,10 @@ const idSchema = z.string().min(1);
 
 export const WallElementSchema = z.object({
   id: idSchema,
+  /** Posizione bloccata: non si sposta, non si ridimensiona, non si ruota
+   * e non si toglie finché non si sblocca. Per un tavolo sta sul suo
+   * segnaposto (`TABLE`): è una scelta sulla piantina, non sul tavolo. */
+  locked: z.boolean().optional(),
   type: z.literal("WALL"),
   startX: z.number(),
   startY: z.number(),
@@ -66,6 +70,7 @@ export type WallElement = z.infer<typeof WallElementSchema>;
 
 export const DoorElementSchema = z.object({
   id: idSchema,
+  locked: z.boolean().optional(),
   type: z.literal("DOOR"),
   wallId: idSchema.nullable().default(null),
   x: z.number(),
@@ -77,6 +82,7 @@ export type DoorElement = z.infer<typeof DoorElementSchema>;
 
 export const WindowElementSchema = z.object({
   id: idSchema,
+  locked: z.boolean().optional(),
   type: z.literal("WINDOW"),
   wallId: idSchema.nullable().default(null),
   x: z.number(),
@@ -99,6 +105,7 @@ export type WindowElement = z.infer<typeof WindowElementSchema>;
  */
 export const DividerElementSchema = z.object({
   id: idSchema,
+  locked: z.boolean().optional(),
   type: z.literal("DIVIDER"),
   startX: z.number(),
   startY: z.number(),
@@ -110,6 +117,7 @@ export type DividerElement = z.infer<typeof DividerElementSchema>;
 
 export const ColumnElementSchema = z.object({
   id: idSchema,
+  locked: z.boolean().optional(),
   type: z.literal("COLUMN"),
   x: z.number(),
   y: z.number(),
@@ -121,6 +129,7 @@ export type ColumnElement = z.infer<typeof ColumnElementSchema>;
 
 export const AreaElementSchema = z.object({
   id: idSchema,
+  locked: z.boolean().optional(),
   type: z.enum(AREA_TYPES),
   x: z.number(),
   y: z.number(),
@@ -137,6 +146,7 @@ export type AreaElement = z.infer<typeof AreaElementSchema>;
 // the "tavoli non posizionati" list without ever duplicating table data.
 export const TableRefElementSchema = z.object({
   id: idSchema,
+  locked: z.boolean().optional(),
   type: z.literal("TABLE"),
   tableId: idSchema,
 });
@@ -146,6 +156,7 @@ export type TableRefElement = z.infer<typeof TableRefElementSchema>;
  * numero di un ambiente. Vive nel livello «Testi», che si spegne per intero. */
 export const TextElementSchema = z.object({
   id: idSchema,
+  locked: z.boolean().optional(),
   type: z.literal("TEXT"),
   x: z.number(),
   y: z.number(),
@@ -160,6 +171,7 @@ export type TextElement = z.infer<typeof TextElementSchema>;
  * non l'ha riconosciuto» e «nella sala c'è davvero». */
 export const FreeElementSchema = z.object({
   id: idSchema,
+  locked: z.boolean().optional(),
   type: z.literal("FREE"),
   x: z.number(),
   y: z.number(),
@@ -169,6 +181,24 @@ export const FreeElementSchema = z.object({
   label: z.string().max(40).nullable().default(null),
 });
 export type FreeElement = z.infer<typeof FreeElementSchema>;
+
+/**
+ * Una sedia sola, fuori da un tavolo: lo sgabello del bancone, la poltrona
+ * dell'ingresso, la sedia in più accanto a un tavolo da due. Non è un posto
+ * prenotabile — i posti stanno sui tavoli — ma occupa spazio, e una sala dove
+ * non si vede non è la sala vera.
+ */
+export const ChairElementSchema = z.object({
+  id: idSchema,
+  locked: z.boolean().optional(),
+  type: z.literal("CHAIR"),
+  x: z.number(),
+  y: z.number(),
+  width: z.number().min(8).max(200).default(22),
+  height: z.number().min(8).max(200).default(16),
+  rotation: z.number().default(0),
+});
+export type ChairElement = z.infer<typeof ChairElementSchema>;
 
 export const RoomElementSchema = z.discriminatedUnion("type", [
   WallElementSchema,
@@ -180,6 +210,7 @@ export const RoomElementSchema = z.discriminatedUnion("type", [
   TableRefElementSchema,
   TextElementSchema,
   FreeElementSchema,
+  ChairElementSchema,
 ]);
 export type RoomElement = z.infer<typeof RoomElementSchema>;
 
@@ -254,6 +285,13 @@ export const RoomMetaSchema = z
     widthM: z.number().min(0).max(1000).nullable(),
     depthM: z.number().min(0).max(1000).nullable(),
     notes: z.string().max(300).nullable(),
+    /** Centimetri di passaggio minimo che questa sala impone fra un tavolo e
+     * l'altro (ingombro sedie incluso). Nullo: vale lo standard del prodotto
+     * (60cm, `SPAZIO_MINIMO_PASSAGGIO_PX` in `tavolo-geometria.ts`) — lo
+     * decide chi disegna la pianta perché un corridoio per vassoi non è lo
+     * stesso ovunque: una sala stretta può ammettere meno margine di una
+     * grande sala banchetti dove passano carrelli. */
+    spazioMinimoPassaggioCm: z.number().min(0).max(300).nullable(),
   })
   .partial();
 export type RoomMeta = z.infer<typeof RoomMetaSchema>;
@@ -303,6 +341,10 @@ export function isColumn(el: RoomElement): el is ColumnElement {
 export function isArea(el: RoomElement): el is AreaElement {
   return (AREA_TYPES as readonly string[]).includes(el.type);
 }
+export function isChair(el: RoomElement): el is ChairElement {
+  return el.type === "CHAIR";
+}
+
 export function isTableRef(el: RoomElement): el is TableRefElement {
   return el.type === "TABLE";
 }
@@ -346,7 +388,7 @@ export function boundingBox(elements: RoomElement[]) {
       minY = Math.min(minY, el.startY, el.endY);
       maxX = Math.max(maxX, el.startX, el.endX);
       maxY = Math.max(maxY, el.startY, el.endY);
-    } else if (isColumn(el) || isArea(el) || isFree(el)) {
+    } else if (isColumn(el) || isArea(el) || isFree(el) || isChair(el)) {
       minX = Math.min(minX, el.x);
       minY = Math.min(minY, el.y);
       maxX = Math.max(maxX, el.x + el.width);

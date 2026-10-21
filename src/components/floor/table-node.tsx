@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TABLE_ASSIGNABLE_CAPABILITIES, TABLE_ROLE_LABELS } from "@/lib/staff-roles";
-import { DIMENSIONE_TAVOLO, dimensioneDisegnata } from "@/lib/tavolo-geometria";
+import { DIMENSIONE_TAVOLO, dimensioneDisegnata, improntaTavolo } from "@/lib/tavolo-geometria";
 import { TABLE_ROLE_ICONS } from "./staff-role-icons";
 
 export type LocalTable = Table & { dirty?: boolean };
@@ -89,8 +89,8 @@ export const TableNode = memo(function TableNode({
   onStartRotate?: (id: string, e: React.PointerEvent) => void;
   menu?: MenuProps;
 }) {
-  const size = DIMENSIONE_TAVOLO[t.shape];
-  const visual = visualSize(t.shape, t.seats);
+  const size = improntaTavolo(t);
+  const visual = dimensioneDisegnata(t);
 
   // TABLE_ASSIGNABLE_CAPABILITIES is already in priority order (Responsabile
   // tavolo first) — the primary name shown on the node follows that same

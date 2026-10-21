@@ -124,9 +124,10 @@ components:
 ## Due temi: Carta e Sera
 
 > **Da leggere prima di tutto il resto (24 settembre 2026).** Tavolo ha due
-> temi. Il **back office** — gestionale, amministrazione, accesso — è in
-> **Carta**, chiaro. La **Staff App**, le **pagine degli ospiti** e la
-> **vetrina** restano in **Sera**, il verde scuro descritto dalla §1 in poi.
+> temi. Il **back office** — gestionale, amministrazione, accesso — e la
+> **landing** (`/`, dal 20 ottobre 2026) sono in **Carta**, chiaro. La
+> **Staff App** e le **pagine degli ospiti** restano in **Sera**, il verde
+> scuro descritto dalla §1 in poi.
 > Le sezioni 1-5 descrivono Sera; questa descrive Carta e il meccanismo che
 > tiene insieme i due. I valori qui sono quelli di `src/styles/globals.css`:
 > se divergono, vale il codice e questo file va corretto.
@@ -136,7 +137,7 @@ components:
 - **`:root` è Sera, ed è il default di proposito.** Carta è il blocco
   `:root:has([data-tema="carta"])`, e lo accende il segnaposto `TemaCarta`
   (`src/components/tema-carta.tsx`) nei layout di `(app)`, `admin`, `(auth)`,
-  `reimposta-password` e `invito`. Chi non lo porta resta al buio.
+  `reimposta-password` e `invito`, e nella landing (`src/app/page.tsx`). Chi non lo porta resta al buio.
 - **Se `:has()` non si risolve** (in sala girano tablet datati) si ricade in
   Sera: una Staff App bianca in una sala a luci basse è il caso peggiore, un
   back office scuro è solo lo stato di prima. Per questo **ogni colore nuovo

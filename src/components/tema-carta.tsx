@@ -7,8 +7,8 @@
  * devono cambiare colore anche loro. Dove sta il segnaposto non conta; conta
  * che ci sia.
  *
- * Lo portano il gestionale, l'amministrazione e l'accesso. La Staff App, le
- * pagine degli ospiti e la vetrina no: restano al buio.
+ * Lo portano il gestionale, l'amministrazione, l'accesso e la landing. La
+ * Staff App e le pagine degli ospiti no: restano al buio.
  */
 export function TemaCarta() {
   return <span data-tema="carta" hidden aria-hidden="true" />;

@@ -49,7 +49,14 @@ export function FloorPlanDialog({
     setError(null);
     const fd = new FormData();
     fd.set("file", pendingFile);
-    const res = await fetch(`/api/rooms/${roomId}/floor-plan`, { method: "POST", body: fd });
+    let res: Response;
+    try {
+      res = await fetch(`/api/rooms/${roomId}/floor-plan`, { method: "POST", body: fd });
+    } catch {
+      setUploading(false);
+      setError("Controlla la connessione e riprova.");
+      return;
+    }
     setUploading(false);
     if (!res.ok) {
       setError(await readApiError(res, "Caricamento piantina non riuscito. Riprova."));
@@ -63,7 +70,14 @@ export function FloorPlanDialog({
   async function handleRemove() {
     setRemoving(true);
     setError(null);
-    const res = await fetch(`/api/rooms/${roomId}/floor-plan`, { method: "DELETE" });
+    let res: Response;
+    try {
+      res = await fetch(`/api/rooms/${roomId}/floor-plan`, { method: "DELETE" });
+    } catch {
+      setRemoving(false);
+      setError("Controlla la connessione e riprova.");
+      return;
+    }
     setRemoving(false);
     if (!res.ok) {
       setError(await readApiError(res, "Impossibile rimuovere la piantina. Riprova."));

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Table } from "@prisma/client";
+import type { RoomLayoutMode, Table } from "@prisma/client";
 import {
   Check,
   ChevronLeft,
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAvvisi } from "@/components/ui/avvisi";
 import { cn } from "@/lib/utils";
-import type { RoomElement, RoomInventory, RoomLayers, RoomMeta } from "@/lib/room-layout";
+import { isTableRef, type RoomElement, type RoomInventory, type RoomLayers, type RoomMeta } from "@/lib/room-layout";
 import type { TableOperationalStatus } from "@/lib/table-status";
 import type { TableStaffMap } from "@/components/floor/table-node";
 import { TableDialog } from "@/components/floor/table-dialog";
@@ -34,6 +34,8 @@ import { GestisciPiantinaDialog } from "./gestisci-piantina-dialog";
 import { LibreriaElementi } from "./libreria-elementi";
 import { PannelloInformazioni, PannelloLivelli, PannelloOriginale, PannelloProprieta } from "./pannelli-destra";
 import { useEditorSala, type EsitoSalvataggio, type TipoTrascinabile } from "./use-editor-sala";
+import { BookingsFloorView } from "@/components/bookings/floor/bookings-floor-view";
+import type { Row } from "@/components/bookings/bookings-page-client";
 
 export type SalaPerEditor = {
   id: string;
@@ -46,12 +48,23 @@ export type SalaPerEditor = {
   inventory: RoomInventory;
   meta: RoomMeta;
   riassuntoAnalisi: string | null;
+  /** Per la mappa delle prenotazioni: la modalità attiva della sala e la
+   * piantina com'è salvata. */
+  activeLayoutMode: RoomLayoutMode | null;
+  roomLayoutElements: unknown;
 };
 
-const LINGUETTE: { chiave: ModalitaCanvas; etichetta: string }[] = [
+/**
+ * Le due cose che si fanno in questa pagina, e sono due lavori diversi:
+ * **disegnare** la sala (una volta, con calma) e **riempirla** di prenotazioni
+ * (ogni giorno, di corsa). Per questo sono due linguette e non tre livelli
+ * dello stesso disegno: chi assegna i tavoli non deve vedere la colonna degli
+ * elementi, e chi disegna non ha bisogno dell'elenco degli ospiti.
+ */
+type Vista = "modifica" | "prenotazioni";
+const VISTE: { chiave: Vista; etichetta: string }[] = [
   { chiave: "modifica", etichetta: "Modifica" },
-  { chiave: "anteprima", etichetta: "Anteprima" },
-  { chiave: "originale", etichetta: "Vedi originale" },
+  { chiave: "prenotazioni", etichetta: "Gestisci prenotazioni" },
 ];
 
 /**
@@ -83,6 +96,8 @@ export function EditorSala({
   permessi,
   onSporcoChange,
   salvaRef,
+  prenotazioni,
+  finestraServizio,
 }: {
   sala: SalaPerEditor;
   tavoli: Table[];
@@ -102,10 +117,28 @@ export function EditorSala({
    * sta lo stato che deve salvare; di la' passa solo il permesso di
    * chiamarlo. */
   salvaRef?: React.MutableRefObject<(() => Promise<EsitoSalvataggio>) | null>;
+  prenotazioni: Row[];
+  finestraServizio: { start: Date; end: Date } | null;
 }) {
   const router = useRouter();
   const avvisi = useAvvisi();
+  const [vista, setVista] = useState<Vista>("modifica");
+  // Dentro «Modifica» resta la possibilità di guardare la scansione
+  // originale (dal pannello «Immagine originale»): non è una vista a sé.
   const [modalita, setModalita] = useState<ModalitaCanvas>("modifica");
+  // Le prenotazioni cambiano mentre le si assegna: la mappa le aggiorna qui,
+  // e alla prossima navigazione la pagina le rilegge dal server.
+  const [righe, setRighe] = useState(prenotazioni);
+  useEffect(() => setRighe(prenotazioni), [prenotazioni]);
+  // Nella mappa delle prenotazioni vanno solo i tavoli **sulla piantina
+  // salvata**: quelli della colonna «Non posizionati» esistono, ma non hanno
+  // un posto nella sala, e comparivano tutti ammucchiati nelle loro vecchie
+  // coordinate. Una piantina senza segnaposti (fatta prima dell'editor)
+  // mostra tutti i tavoli della sala, come la mappa ha sempre fatto.
+  const tavoliSalvatiSullaPiantina = useMemo(() => {
+    const segnaposti = new Set(sala.elements.filter(isTableRef).map((e) => e.tableId));
+    return segnaposti.size > 0 ? tavoli.filter((t) => segnaposti.has(t.id)) : tavoli;
+  }, [sala.elements, tavoli]);
   const [gestisciAperto, setGestisciAperto] = useState(false);
   const [nuovoTavoloAperto, setNuovoTavoloAperto] = useState(false);
   const [profiloTableId, setProfiloTableId] = useState<string | null>(null);
@@ -121,8 +154,9 @@ export function EditorSala({
     layersIniziali: sala.layers,
     inventarioIniziale: sala.inventory,
     metaIniziale: sala.meta,
-    abilitato: modalita === "modifica",
+    abilitato: vista === "modifica" && modalita === "modifica",
     onSalvato: () => router.refresh(),
+    onAvviso: (testo, tono) => (tono === "fatto" ? avvisi.mostra(testo) : avvisi.problema(testo)),
   });
 
   useEffect(() => {
@@ -162,7 +196,7 @@ export function EditorSala({
         editor.creaElementoA(tipo, punto);
         return;
       }
-      const esito = await editor.piazzaTavolo(tipo.shape, punto);
+      const esito = await editor.piazzaTavolo(tipo.shape, punto, tipo.modello, tipo.tavoloId);
       if (esito === "esauriti") {
         avvisi.problema(
           "Hai già posizionato tutti i tavoli di questo tipo che hai dichiarato. Cambia la quantità dichiarata per aggiungerne altri.",
@@ -193,9 +227,10 @@ export function EditorSala({
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       {/* ══════════════════ TESTATA ══════════════════ */}
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="t-etichetta">Sala</p>
+      <header className="flex shrink-0 flex-col gap-0.5">
+        <p className="t-etichetta">Sala</p>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-0.5">
             <Button
               type="button"
@@ -226,30 +261,10 @@ export function EditorSala({
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={() => setGestisciAperto(true)}>
-                  <MapIcon className="h-4 w-4" /> Gestisci piantina
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setNuovoTavoloAperto(true)}>
-                  <Plus className="h-4 w-4" /> Nuovo tavolo
-                </DropdownMenuItem>
-                {vociMenuSala}
-              </DropdownMenuContent>
+              <DropdownMenuContent align="start">{vociMenuSala}</DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <p className="mt-0.5 text-xs text-tertiary-foreground">
-            <span className="tabular-nums">{editor.tavoliSullaPiantina.length}</span> tavoli ·{" "}
-            <span className="tabular-nums">{postiTotali}</span> posti totali
-            {totaleSale > 1 && (
-              <span className="ml-1.5 tabular-nums">
-                · sala {indiceSala + 1} di {totaleSale}
-              </span>
-            )}
-            {editor.sporco && <span className="ml-1.5 text-accent">· non salvata</span>}
-          </p>
-        </div>
 
-        <div className="flex flex-col items-end gap-2">
           <div className="flex flex-wrap items-center justify-end gap-2">
             <FloorServiceFilter date={date} service={service} serviceOptions={serviceOptions} variante="barra" />
             {assegnati && (
@@ -258,8 +273,7 @@ export function EditorSala({
                 <span className="tabular-nums text-card-foreground">{assegnati.totale}</span> tavoli assegnati
               </span>
             )}
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
             <Button type="button" variant="subtle" size="sm" onClick={() => setGestisciAperto(true)}>
               <MapIcon className="h-4 w-4" /> Gestisci piantina
             </Button>
@@ -286,9 +300,91 @@ export function EditorSala({
             </Button>
           </div>
         </div>
+
+        <p className="text-xs text-tertiary-foreground">
+          <span className="tabular-nums">{editor.tavoliSullaPiantina.length}</span> tavoli ·{" "}
+          <span className="tabular-nums">{postiTotali}</span> posti totali
+          {totaleSale > 1 && (
+            <span className="ml-1.5 tabular-nums">
+              · sala {indiceSala + 1} di {totaleSale}
+            </span>
+          )}
+          {editor.sporco && <span className="ml-1.5 text-accent">· non salvata</span>}
+        </p>
       </header>
 
-      {/* ══════════════════ TRE COLONNE ══════════════════ */}
+      {/* ══════════════════ LE DUE VISTE ══════════════════ */}
+      {/* Le due viste stanno al centro: sono la scelta principale della
+          pagina, non uno strumento della tela. Gli avvisi accanto stanno a
+          destra e non la spostano. */}
+      <div className="relative flex shrink-0 items-center justify-center">
+        <div role="tablist" aria-label="Cosa fare nella sala" className="flex items-center gap-0.5 rounded-lg bg-secondary/50 p-0.5">
+          {VISTE.map(({ chiave, etichetta }) => {
+            const attiva = vista === chiave;
+            return (
+              <button
+                key={chiave}
+                type="button"
+                role="tab"
+                aria-selected={attiva}
+                onClick={() => {
+                  setVista(chiave);
+                  setModalita("modifica");
+                }}
+                className={cn(
+                  "tocco-comodo rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  attiva ? "bg-segment text-segment-ink-forest shadow-sm" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {etichetta}
+              </button>
+            );
+          })}
+        </div>
+        {vista === "modifica" && modalita === "originale" && (
+          <button
+            type="button"
+            onClick={() => setModalita("modifica")}
+            className="absolute right-0 hidden text-xs font-medium text-accent-strong hover:underline lg:block"
+          >
+            Stai guardando la piantina originale · torna alla modifica
+          </button>
+        )}
+        {/* La mappa delle prenotazioni legge la sala salvata: se ci sono
+            modifiche in sospeso, meglio dirlo che mostrarla diversa. */}
+        {vista === "prenotazioni" && editor.sporco && (
+          <span className="absolute right-0 hidden max-w-[34%] text-right text-xs text-accent-strong lg:block">
+            La sala ha modifiche non salvate: qui vedi l&apos;ultima versione salvata.
+          </span>
+        )}
+      </div>
+
+      {vista === "prenotazioni" ? (
+        <div className="min-h-0 flex-1">
+          <BookingsFloorView
+            rooms={[
+              {
+                id: sala.id,
+                name: sala.name,
+                width: sala.width,
+                height: sala.height,
+                floorPlanUrl: sala.floorPlanUrl,
+                activeLayoutMode: sala.activeLayoutMode,
+                roomLayoutElements: sala.roomLayoutElements,
+                tables: tavoliSalvatiSullaPiantina,
+              },
+            ]}
+            incorporata
+            rows={righe}
+            shiftWindow={finestraServizio}
+            canManage={permessi.prenotazioni}
+            onBookingUpdated={(aggiornata) =>
+              setRighe((prima) => prima.map((r) => (r.id === aggiornata.id ? aggiornata : r)))
+            }
+          />
+        </div>
+      ) : (
+      /* ══════════════════ TRE COLONNE ══════════════════ */
       <div className="flex min-h-0 flex-1 gap-3">
         {/*
           Su desktop le colonne stanno: sono strumenti, e uno strumento che si
@@ -317,31 +413,6 @@ export function EditorSala({
             >
               <PanelLeftClose className="h-4 w-4" />
             </Button>
-
-            <div role="tablist" aria-label="Modalità della piantina" className="flex items-center gap-0.5 rounded-lg bg-secondary/50 p-0.5">
-              {LINGUETTE.map(({ chiave, etichetta }) => {
-                const attiva = modalita === chiave;
-                const indisponibile = chiave === "originale" && !sala.floorPlanUrl;
-                return (
-                  <button
-                    key={chiave}
-                    type="button"
-                    role="tab"
-                    aria-selected={attiva}
-                    disabled={indisponibile}
-                    title={indisponibile ? "Nessuna piantina caricata per questa sala" : undefined}
-                    onClick={() => setModalita(chiave)}
-                    className={cn(
-                      "tocco-comodo rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                      attiva ? "bg-segment text-segment-ink-forest shadow-sm" : "text-muted-foreground hover:text-foreground",
-                      indisponibile && "cursor-not-allowed opacity-40 hover:text-muted-foreground",
-                    )}
-                  >
-                    {etichetta}
-                  </button>
-                );
-              })}
-            </div>
 
             <Button
               type="button"
@@ -385,6 +456,7 @@ export function EditorSala({
           />
         </aside>
       </div>
+      )}
 
       {/* ══════════════════ FINESTRE ══════════════════ */}
       <GestisciPiantinaDialog
@@ -408,6 +480,9 @@ export function EditorSala({
           editor.aggiungiTavoloEsistente(t, centroVista());
           setNuovoTavoloAperto(false);
         }}
+        // Dal modulo si salvano e si cancellano predefiniti: la colonna
+        // degli elementi li deve mostrare subito.
+        onPredefinitiCambiati={editor.ricaricaPredefiniti}
       />
 
       {/*

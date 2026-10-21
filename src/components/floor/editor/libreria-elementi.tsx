@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { TableShape } from "@prisma/client";
 import {
+  Armchair,
   ArrowLeftRight,
   ChefHat,
   Columns2,
@@ -14,12 +15,14 @@ import {
   Minus,
   Square as SquareIcon,
   StretchHorizontal,
+  Trash2,
   Type as TypeIcon,
   Warehouse,
   Wine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AREA_LABELS } from "@/lib/room-layout";
+import { useAvvisi } from "@/components/ui/avvisi";
+import { AREA_LABELS, pxToMeters } from "@/lib/room-layout";
 import type { AreaType, InventoryShape } from "@/lib/room-layout";
 import type { EditorSala, TipoTrascinabile } from "./use-editor-sala";
 
@@ -158,6 +161,41 @@ export function LibreriaElementi({
         </Gruppo>
 
         {/*
+          I tavoli predefiniti: le misure che il locale usa davvero, salvate
+          dal modulo «Nuovo tavolo». Trascinarne uno crea subito un tavolo
+          con quella forma, quei posti e quella misura, e il nome lo sceglie
+          il server: è il gesto che si ripete dieci volte allestendo una sala,
+          e non deve passare ogni volta da un modulo.
+        */}
+        {editor.predefiniti.length > 0 && (
+          <Gruppo titolo="Predefiniti">
+            {editor.predefiniti.map((p) => {
+              const disp = editor.disponibilita[p.shape as InventoryShape];
+              const esaurito = disp?.disponibili === 0;
+              return (
+                <Riga
+                  key={p.id}
+                  label={p.label}
+                  icona={<GlifoTavolo shape={p.shape} />}
+                  disabilitato={esaurito}
+                  coda={
+                    <span className="tabular-nums text-tertiary-foreground">
+                      {p.seats} p · {Math.round(pxToMeters(p.width) * 100)}×{Math.round(pxToMeters(p.height) * 100)}
+                    </span>
+                  }
+                  tipo={{
+                    genere: "tavolo",
+                    shape: p.shape,
+                    modello: { seats: p.seats, width: p.width, height: p.height, chairSides: p.chairSides },
+                  }}
+                  onPosiziona={onPosiziona}
+                />
+              );
+            })}
+          </Gruppo>
+        )}
+
+        {/*
           I tavoli che esistono nel gestionale ma non sono sulla piantina.
 
           Senza questa sezione sono invisibili: hanno prenotazioni, turni e un
@@ -168,14 +206,7 @@ export function LibreriaElementi({
         {editor.tavoliFuoriPiantina.length > 0 && (
           <Gruppo titolo={`Non posizionati (${editor.tavoliFuoriPiantina.length})`}>
             {editor.tavoliFuoriPiantina.slice(0, 40).map((t) => (
-              <Riga
-                key={t.id}
-                label={t.label}
-                icona={<GlifoTavolo shape={t.shape} />}
-                coda={<span className="text-tertiary-foreground">{t.seats} posti</span>}
-                tipo={{ genere: "tavolo", shape: t.shape }}
-                onPosiziona={onPosiziona}
-              />
+              <RigaNonPosizionato key={t.id} editor={editor} tavolo={t} onPosiziona={onPosiziona} />
             ))}
           </Gruppo>
         )}
@@ -212,6 +243,12 @@ export function LibreriaElementi({
             onPosiziona={onPosiziona}
           />
           <Riga
+            label="Sedia"
+            icona={<Armchair className="h-4 w-4" />}
+            tipo={{ genere: "sedia" }}
+            onPosiziona={onPosiziona}
+          />
+          <Riga
             label="Elemento libero"
             icona={<RectangleHorizontal className="h-4 w-4" />}
             tipo={{ genere: "libero" }}
@@ -235,6 +272,86 @@ export function LibreriaElementi({
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Un tavolo che esiste ma non è sulla piantina: si trascina per metterlo
+ * giù, o si elimina se è stato creato per sbaglio.
+ *
+ * L'eliminazione chiede conferma sul posto, come nel pannello Proprietà:
+ * il tavolo esce dal gestionale, non solo da questa sala.
+ */
+function RigaNonPosizionato({
+  editor,
+  tavolo,
+  onPosiziona,
+}: {
+  editor: EditorSala;
+  tavolo: EditorSala["tables"][number];
+  onPosiziona: (tipo: TipoTrascinabile) => void;
+}) {
+  const avvisi = useAvvisi();
+  const [conferma, setConferma] = useState(false);
+  const [inCorso, setInCorso] = useState(false);
+
+  if (conferma) {
+    return (
+      <div className="flex flex-col gap-1.5 rounded-lg border border-destructive/40 bg-destructive/5 p-2">
+        <p className="text-[11px] leading-snug text-destructive">
+          Eliminare {tavolo.label}? Esce dal gestionale, con le prenotazioni collegate.
+        </p>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            disabled={inCorso}
+            onClick={async () => {
+              setInCorso(true);
+              const ok = await editor.eliminaTavoloDavvero(tavolo.id);
+              setInCorso(false);
+              if (!ok) {
+                avvisi.problema(`${tavolo.label} non è stato eliminato. Riprova fra un momento.`);
+                return;
+              }
+              setConferma(false);
+            }}
+            className="h-7 flex-1 rounded-md bg-destructive px-2 text-[11px] font-medium text-destructive-foreground disabled:opacity-60"
+          >
+            {inCorso ? "Elimino…" : "Elimina"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConferma(false)}
+            className="h-7 rounded-md px-2 text-[11px] hover:bg-secondary"
+          >
+            Annulla
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="min-w-0 flex-1">
+        <Riga
+          label={tavolo.label}
+          icona={<GlifoTavolo shape={tavolo.shape} />}
+          coda={<span className="text-tertiary-foreground">{tavolo.seats} posti</span>}
+          tipo={{ genere: "tavolo", shape: tavolo.shape, tavoloId: tavolo.id }}
+          onPosiziona={onPosiziona}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => setConferma(true)}
+        aria-label={`Elimina ${tavolo.label}`}
+        title={`Elimina ${tavolo.label}`}
+        className="grid h-9 w-8 shrink-0 place-items-center rounded-lg text-tertiary-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }

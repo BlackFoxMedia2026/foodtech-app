@@ -22,51 +22,72 @@ const HISTORY_LIMIT = 100;
  */
 export function useHistory<T>(initial: T) {
   const [state, setState] = useState(initial);
+  /*
+    Lo stato corrente anche fuori da React. Annulla e Ripeti spostano voci fra
+    le due pile, e farlo **dentro** un `setState((prev) => …)` era il difetto:
+    React in sviluppo (Strict Mode) esegue quella funzione due volte, quindi
+    ogni clic toglieva due voci — e con una modifica sola la seconda non
+    trovava niente e lasciava tutto com'era. Le pile si toccano qui fuori, una
+    volta per clic, e a React si passa solo il valore finale.
+  */
+  const corrente = useRef(initial);
   const undoStack = useRef<T[]>([]);
   const redoStack = useRef<T[]>([]);
   const [, forceRender] = useState(0);
 
-  const setLive = useCallback((next: T) => setState(next), []);
-
-  const commit = useCallback((before: T, after: T) => {
-    undoStack.current.push(before);
-    if (undoStack.current.length > HISTORY_LIMIT) undoStack.current.shift();
-    redoStack.current = [];
-    setState(after);
-    forceRender((n) => n + 1);
+  const imposta = useCallback((next: T) => {
+    corrente.current = next;
+    setState(next);
   }, []);
+
+  const setLive = useCallback((next: T) => imposta(next), [imposta]);
+
+  const commit = useCallback(
+    (before: T, after: T) => {
+      undoStack.current.push(before);
+      if (undoStack.current.length > HISTORY_LIMIT) undoStack.current.shift();
+      redoStack.current = [];
+      imposta(after);
+      forceRender((n) => n + 1);
+    },
+    [imposta],
+  );
 
   const undo = useCallback(() => {
-    setState((prev) => {
-      const previous = undoStack.current.pop();
-      if (previous === undefined) return prev;
-      redoStack.current.push(prev);
-      forceRender((n) => n + 1);
-      return previous;
-    });
-  }, []);
+    const previous = undoStack.current.pop();
+    if (previous === undefined) return;
+    redoStack.current.push(corrente.current);
+    imposta(previous);
+    forceRender((n) => n + 1);
+  }, [imposta]);
 
   const redo = useCallback(() => {
-    setState((prev) => {
-      const next = redoStack.current.pop();
-      if (next === undefined) return prev;
-      undoStack.current.push(prev);
-      forceRender((n) => n + 1);
-      return next;
-    });
-  }, []);
-
-  const reset = useCallback((next: T) => {
-    undoStack.current = [];
-    redoStack.current = [];
-    setState(next);
+    const next = redoStack.current.pop();
+    if (next === undefined) return;
+    undoStack.current.push(corrente.current);
+    imposta(next);
     forceRender((n) => n + 1);
-  }, []);
+  }, [imposta]);
+
+  const reset = useCallback(
+    (next: T) => {
+      undoStack.current = [];
+      redoStack.current = [];
+      imposta(next);
+      forceRender((n) => n + 1);
+    },
+    [imposta],
+  );
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
+      // Dentro un campo Cmd+Z annulla il testo scritto, non la piantina.
+      const bersaglio = e.target as HTMLElement | null;
+      if (bersaglio && (bersaglio.tagName === "INPUT" || bersaglio.tagName === "TEXTAREA" || bersaglio.isContentEditable)) {
+        return;
+      }
       if (e.key.toLowerCase() === "z" && e.shiftKey) {
         e.preventDefault();
         redo();

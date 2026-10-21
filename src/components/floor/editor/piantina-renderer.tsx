@@ -6,10 +6,12 @@ import {
   AREA_LABELS,
   boundingBox,
   isArea,
+  isSegment,
   isColumn,
   isDivider,
   isDoor,
   isFree,
+  isChair,
   isText,
   isWall,
   isWindow,
@@ -59,6 +61,11 @@ export type ElementoInterazione = {
   onInizioSpostamento: (id: string, e: React.PointerEvent) => void;
   onInizioRidimensiona?: (id: string, e: React.PointerEvent) => void;
   onInizioEstremo?: (id: string, estremo: "start" | "end", e: React.PointerEvent) => void;
+  /** Gli oggetti bloccati (per un muro, tutto il suo tracciato). */
+  bloccati?: ReadonlySet<string>;
+  /** Allungare una porta o una finestra tirandone un capo: l'altro capo
+   * resta fermo. */
+  onInizioAllunga?: (id: string, lato: -1 | 1, e: React.PointerEvent) => void;
 };
 
 /* Muri e divisori leggono token: al buio i grigi di prima, sulla carta
@@ -123,20 +130,57 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
   const finestre = useMemo(() => elements.filter(isWindow), [elements]);
   const testi = useMemo(() => elements.filter(isText), [elements]);
   const liberi = useMemo(() => elements.filter(isFree), [elements]);
+  const sedie = useMemo(() => elements.filter(isChair), [elements]);
 
   const poligono = useMemo(() => wallPolygon(elements), [elements]);
   const puntiPoligono = useMemo(() => (poligono ?? []).map((p) => `${p.x},${p.y}`).join(" "), [poligono]);
   const ingombroMuri = useMemo(() => (muri.length > 0 ? boundingBox(muri) : null), [muri]);
 
   const selezionato = (id: string) => interazione?.selectedIds.has(id) ?? false;
+  // Un elemento bloccato si seleziona (per sbloccarlo serve) ma non riceve le
+  // funzioni delle maniglie, e una maniglia senza funzione non si disegna:
+  // ci sarebbe e non farebbe niente.
+  const seLibero = <F,>(el: RoomElement, f: F | undefined) =>
+    el.locked || interazione?.bloccati?.has(el.id) ? undefined : f;
+  /** Stesso elenco, con i selezionati in fondo (cioè disegnati sopra). */
+  const primaISelezionati = <T extends RoomElement>(lista: T[]) =>
+    [...lista].sort((a, b) => Number(selezionato(a.id)) - Number(selezionato(b.id)));
+
+  /**
+   * Chi prende il clic quando un muro e un oggetto si sovrappongono.
+   *
+   * I muri sono disegnati sopra aree, sedie ed elementi liberi, quindi dove
+   * si toccano il clic finiva sul muro: si voleva spostare la sedia e si
+   * spostava la stanza. Qui, premendo su un muro, si guarda cosa c'è sotto il
+   * puntatore: un oggetto (sedia, colonna, elemento libero, testo) vince
+   * sempre; un'area vince solo se il muro è bloccato — un muro che attraversa
+   * una zona deve restare selezionabile, ma uno bloccato non ha niente da
+   * fare con un clic, e quel clic era per l'area.
+   */
+  function bersaglioSotto(id: string, e: React.PointerEvent): string {
+    const el = elements.find((x) => x.id === id);
+    if (!el || !isSegment(el)) return id;
+    const muroBloccato = interazione?.bloccati?.has(id) ?? false;
+    for (const nodo of document.elementsFromPoint(e.clientX, e.clientY)) {
+      const altroId = (nodo as HTMLElement).dataset?.elementoId;
+      if (!altroId || altroId === id) continue;
+      const altro = elements.find((x) => x.id === altroId);
+      if (!altro || isSegment(altro)) continue;
+      if (isArea(altro) && !muroBloccato) continue;
+      return altroId;
+    }
+    return id;
+  }
 
   function propsCorpo(id: string) {
     if (!interazione) return {};
     return {
+      "data-elemento-id": id,
       onPointerDown: (e: React.PointerEvent) => {
         e.stopPropagation();
-        interazione.onSelezione(id, e.shiftKey);
-        interazione.onInizioSpostamento(id, e);
+        const scelto = bersaglioSotto(id, e);
+        interazione.onSelezione(scelto, e.shiftKey);
+        interazione.onInizioSpostamento(scelto, e);
       },
       className: "cursor-move",
     };
@@ -229,9 +273,17 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
             selezionato={selezionato(el.id)}
             modificabile={modificabile}
             propsCorpo={propsCorpo(el.id)}
-            onRidimensiona={interazione?.onInizioRidimensiona}
+            onRidimensiona={seLibero(el, interazione?.onInizioRidimensiona)}
             mostraEtichetta={layers.texts}
           />
+        ))}
+
+      {/* ── SEDIE SINGOLE ────────────────────────────────────────────── */}
+      {/* Stanno col livello dei tavoli: sono arredo da sedersi, e chi spegne
+          i tavoli per guardare i muri non le vuole sparse sulla pianta. */}
+      {layers.tables &&
+        sedie.map((el) => (
+          <FormaSedia key={el.id} el={el} selezionato={selezionato(el.id)} propsCorpo={propsCorpo(el.id)} />
         ))}
 
       {/* ── ELEMENTI LIBERI ──────────────────────────────────────────── */}
@@ -243,14 +295,17 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
             selezionato={selezionato(el.id)}
             modificabile={modificabile}
             propsCorpo={propsCorpo(el.id)}
-            onRidimensiona={interazione?.onInizioRidimensiona}
+            onRidimensiona={seLibero(el, interazione?.onInizioRidimensiona)}
           />
         ))}
 
       {/* ── STRUTTURA ────────────────────────────────────────────────── */}
       {layers.structure && (
         <>
-          {divisori.map((el) => (
+          {/* Il selezionato si disegna per ultimo: le maniglie dei suoi capi
+              stanno sopra i muri vicini, altrimenti chi preme sull'angolo
+              prende il corpo del muro accanto e sposta tutta la stanza. */}
+          {primaISelezionati(divisori).map((el) => (
             <FormaSegmento
               key={el.id}
               el={el}
@@ -258,10 +313,10 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
               selezionato={selezionato(el.id)}
               modificabile={modificabile}
               propsCorpo={propsCorpo(el.id)}
-              onEstremo={interazione?.onInizioEstremo}
+              onEstremo={seLibero(el, interazione?.onInizioEstremo)}
             />
           ))}
-          {muri.map((el) => (
+          {primaISelezionati(muri).map((el) => (
             <FormaSegmento
               key={el.id}
               el={el}
@@ -269,7 +324,7 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
               selezionato={selezionato(el.id)}
               modificabile={modificabile}
               propsCorpo={propsCorpo(el.id)}
-              onEstremo={interazione?.onInizioEstremo}
+              onEstremo={seLibero(el, interazione?.onInizioEstremo)}
             />
           ))}
           {colonne.map((el) => (
@@ -279,7 +334,7 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
               selezionato={selezionato(el.id)}
               modificabile={modificabile}
               propsCorpo={propsCorpo(el.id)}
-              onRidimensiona={interazione?.onInizioRidimensiona}
+              onRidimensiona={seLibero(el, interazione?.onInizioRidimensiona)}
             />
           ))}
           {finestre.map((el) => (
@@ -290,6 +345,7 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
               selezionato={selezionato(el.id)}
               modificabile={modificabile}
               propsCorpo={propsCorpo(el.id)}
+              onAllunga={seLibero(el, interazione?.onInizioAllunga)}
             />
           ))}
           {porte.map((el) => (
@@ -300,6 +356,7 @@ export const PiantinaRenderer = memo(function PiantinaRenderer({
               selezionato={selezionato(el.id)}
               modificabile={modificabile}
               propsCorpo={propsCorpo(el.id)}
+              onAllunga={seLibero(el, interazione?.onInizioAllunga)}
             />
           ))}
         </>
@@ -369,7 +426,7 @@ function FormaArea({
           style={{ pointerEvents: "none" }}
         />
         {mostraEtichetta && (
-          <EtichettaPiantina x={cx} y={el.y + el.height + 12} testo={etichetta} colore="#F2E7D0" contorno />
+          <EtichettaPiantina x={cx} y={el.y + el.height + 12} testo={etichetta} colore="#F2E7D0" />
         )}
         {modificabile && selezionato && onRidimensiona && (
           <Maniglia x={el.x + el.width} y={el.y + el.height} onPointerDown={(e) => onRidimensiona(el.id, e)} />
@@ -417,6 +474,43 @@ function FormaArea({
 
 /* ─────────────────────────── STRUTTURA ─────────────────────────── */
 
+/** Il passo dello zig-zag del divisorio, in pixel del mondo: fitto, perché
+ * deve leggersi come una trama (un separè, un graticcio) e non come un'onda. */
+const DIVISORIO_PASSO = 7;
+
+/**
+ * Il divisorio è uno zig-zag fitto e basso fra i due capi, non una retta.
+ *
+ * Dritto e un po' più sottile era un muro sbiadito: sulla piantina non si
+ * capiva quale dei due si attraversa con un vassoio. La trama dice «separè,
+ * paravento, graticcio» senza bisogno di legenda. L'oscillazione sta dentro lo
+ * spessore, così l'ingombro sulla pianta resta quello di prima.
+ *
+ * Le punte sono a metà di ogni passo e i passi sono un numero intero: lo
+ * zig-zag parte e arriva **sui capi**, dove stanno le maniglie e dove si
+ * aggancia un altro muro.
+ */
+function percorsoZigZag(x1: number, y1: number, x2: number, y2: number, ampiezza: number) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lunghezza = Math.hypot(dx, dy);
+  if (lunghezza < 1) return `M ${x1} ${y1} L ${x2} ${y2}`;
+  const passi = Math.max(2, Math.round(lunghezza / DIVISORIO_PASSO));
+  const ux = dx / lunghezza;
+  const uy = dy / lunghezza;
+  // La normale: di quanto spostarsi per uscire dall'asse.
+  const nx = -uy;
+  const ny = ux;
+  const passo = lunghezza / passi;
+  let d = `M ${x1} ${y1}`;
+  for (let i = 0; i < passi; i++) {
+    const verso = i % 2 === 0 ? 1 : -1;
+    const meta = passo * (i + 0.5);
+    d += ` L ${(x1 + ux * meta + nx * ampiezza * verso).toFixed(1)} ${(y1 + uy * meta + ny * ampiezza * verso).toFixed(1)}`;
+  }
+  return `${d} L ${x2} ${y2}`;
+}
+
 function FormaSegmento({
   el,
   tipo,
@@ -434,6 +528,55 @@ function FormaSegmento({
 }) {
   const isMuro = tipo === "muro";
   const spessore = el.thickness;
+
+  if (!isMuro) {
+    // Punte e tratto insieme occupano lo spessore dichiarato, non di più.
+    const ampiezza = Math.max(1.5, spessore * 0.3);
+    const tratto = Math.max(2, spessore - ampiezza * 2);
+    const d = percorsoZigZag(el.startX, el.startY, el.endX, el.endY, ampiezza);
+    return (
+      <g>
+        <path
+          d={d}
+          transform="translate(0 2)"
+          fill="none"
+          stroke={MURO_OMBRA}
+          strokeWidth={tratto}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ pointerEvents: "none" }}
+        />
+        {/* Un bersaglio dritto e trasparente sotto lo zig-zag: afferrare un
+            tratto sottile e spezzato sarebbe una caccia al pixel. */}
+        <line
+          x1={el.startX}
+          y1={el.startY}
+          x2={el.endX}
+          y2={el.endY}
+          stroke="transparent"
+          strokeWidth={Math.max(14, spessore + 8)}
+          strokeLinecap="round"
+          style={modificabile ? undefined : { pointerEvents: "none" }}
+          {...propsCorpo}
+        />
+        <path
+          d={d}
+          fill="none"
+          stroke={selezionato ? "#B07A45" : DIVISORIO_FACCIA}
+          strokeWidth={tratto}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ pointerEvents: "none" }}
+        />
+        {modificabile && selezionato && onEstremo && (
+          <>
+            <Maniglia x={el.startX} y={el.startY} tonda onPointerDown={(e) => onEstremo(el.id, "start", e)} />
+            <Maniglia x={el.endX} y={el.endY} tonda onPointerDown={(e) => onEstremo(el.id, "end", e)} />
+          </>
+        )}
+      </g>
+    );
+  }
 
   return (
     <g>
@@ -537,12 +680,14 @@ function FormaApertura({
   selezionato,
   modificabile,
   propsCorpo,
+  onAllunga,
 }: {
   el: DoorElement | WindowElement;
   tipo: "porta" | "finestra";
   selezionato: boolean;
   modificabile: boolean;
   propsCorpo: PropsCorpo;
+  onAllunga?: (id: string, lato: -1 | 1, e: React.PointerEvent) => void;
 }) {
   const mezza = el.width / 2;
   const isPorta = tipo === "porta";
@@ -603,6 +748,14 @@ function FormaApertura({
         strokeWidth={selezionato ? 2 : 0}
         {...propsCorpo}
       />
+      {/* Le maniglie stanno dentro il gruppo ruotato: seguono il muro, e
+          stanno sempre sui due capi dell'apertura. */}
+      {modificabile && selezionato && onAllunga && (
+        <>
+          <Maniglia x={el.x - mezza} y={el.y} tonda onPointerDown={(e) => onAllunga(el.id, -1, e)} />
+          <Maniglia x={el.x + mezza} y={el.y} tonda onPointerDown={(e) => onAllunga(el.id, 1, e)} />
+        </>
+      )}
     </g>
   );
 }
@@ -637,11 +790,66 @@ function FormaLibera({
         {...propsCorpo}
       />
       {el.label && el.width > 40 && (
-        <EtichettaPiantina x={cx} y={cy} testo={el.label} colore="#F2E7D0" contorno />
+        <EtichettaPiantina x={cx} y={cy} testo={el.label} colore="#F2E7D0" />
       )}
       {modificabile && selezionato && onRidimensiona && (
         <Maniglia x={el.x + el.width} y={el.y + el.height} onPointerDown={(e) => onRidimensiona(el.id, e)} />
       )}
+    </g>
+  );
+}
+
+/**
+ * Una sedia sola: lo stesso segno delle sedie dei tavoli — un rettangolino
+ * verde scuro, smussato — così sulla pianta si legge come «una sedia» senza
+ * legenda. Lo schienale è il lato lungo in alto, come per le sedie dei tavoli
+ * a rotazione zero: girandola si sceglie da che parte guarda.
+ *
+ * Il bersaglio per afferrarla è più grande del disegno: un rettangolo di due
+ * centimetri per uno e mezzo, allo zoom normale, non si prende al primo colpo.
+ */
+function FormaSedia({
+  el,
+  selezionato,
+  propsCorpo,
+}: {
+  el: Extract<RoomElement, { type: "CHAIR" }>;
+  selezionato: boolean;
+  propsCorpo: PropsCorpo;
+}) {
+  const cx = el.x + el.width / 2;
+  const cy = el.y + el.height / 2;
+  return (
+    <g transform={`rotate(${el.rotation} ${cx} ${cy})`}>
+      <rect
+        x={el.x - 6}
+        y={el.y - 6}
+        width={el.width + 12}
+        height={el.height + 12}
+        fill="transparent"
+        {...propsCorpo}
+      />
+      <rect
+        x={el.x}
+        y={el.y}
+        width={el.width}
+        height={el.height}
+        rx={3}
+        fill="rgb(var(--forest) / 0.9)"
+        stroke={selezionato ? "#B07A45" : "none"}
+        strokeWidth={selezionato ? 2 : 0}
+        style={{ pointerEvents: "none" }}
+      />
+      {/* Lo schienale: una riga più scura sul lato di dietro. */}
+      <rect
+        x={el.x + 2}
+        y={el.y}
+        width={Math.max(0, el.width - 4)}
+        height={3}
+        rx={1.5}
+        fill="rgb(0 0 0 / 0.25)"
+        style={{ pointerEvents: "none" }}
+      />
     </g>
   );
 }
@@ -684,16 +892,18 @@ function EtichettaPiantina({
   y,
   testo,
   colore,
-  dimensione = 11,
-  contorno = false,
+  dimensione = 18,
 }: {
   x: number;
   y: number;
   testo: string;
   colore: string;
   dimensione?: number;
-  contorno?: boolean;
 }) {
+  // Niente stroke/paintOrder: con questo motore di rendering un bordo sul
+  // testo lo rende invisibile del tutto, non solo meno nitido (verificato
+  // togliendolo: il testo torna a vedersi). Non serviva comunque — i colori
+  // delle etichette sono già scelti per contrastare col proprio pavimento.
   return (
     <text
       x={x}
@@ -701,11 +911,8 @@ function EtichettaPiantina({
       textAnchor="middle"
       dominantBaseline="middle"
       fontSize={dimensione}
-      fontWeight={600}
+      fontWeight={700}
       fill={colore}
-      stroke={contorno ? "rgba(0,0,0,0.55)" : undefined}
-      strokeWidth={contorno ? 2.5 : undefined}
-      paintOrder={contorno ? "stroke fill" : undefined}
       className="select-none uppercase"
       style={{ pointerEvents: "none", letterSpacing: "0.06em" }}
     >

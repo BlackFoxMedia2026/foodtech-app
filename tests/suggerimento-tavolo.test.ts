@@ -220,3 +220,33 @@ describe("le unioni", () => {
     expect(p.unioni).toHaveLength(0);
   });
 });
+
+describe("le unioni previste nell'editor della Sala", () => {
+  const tre = [
+    tavolo({ label: "T4", posti: 2 }),
+    tavolo({ label: "T5", posti: 2 }),
+    tavolo({ label: "T6", posti: 2 }),
+  ];
+  const prevista = { tableIds: ["id-T4", "id-T5", "id-T6"], label: "Tavolata finestra" };
+
+  it("un'unione di tre tavoli da due si propone per sei persone, prima delle coppie", () => {
+    const p = proponiTavoli(tre, { ...per(6), unioniPreviste: [prevista] });
+    expect(p.unioni[0].tableIds).toEqual(["id-T4", "id-T5", "id-T6"]);
+    expect(p.unioni[0].posti).toBe(6);
+    expect(p.unioni[0].label).toBe("Tavolata finestra (T4 + T5 + T6)");
+    expect(p.unioni[0].dettaglio).toContain("unione prevista");
+  });
+
+  it("se uno dei suoi tavoli è occupato, l'unione non si propone", () => {
+    const occupati = [tre[0], tre[1], { ...tre[2], libero: false }];
+    const p = proponiTavoli(occupati, { ...per(6), unioniPreviste: [prevista] });
+    expect(p.unioni.some((u) => u.tableIds.length === 3)).toBe(false);
+  });
+
+  it("una coppia identica a un'unione prevista non si ripete", () => {
+    const due = [tavolo({ label: "T4", posti: 2 }), tavolo({ label: "T5", posti: 2 })];
+    const p = proponiTavoli(due, { ...per(4), unioniPreviste: [{ tableIds: ["id-T4", "id-T5"] }] });
+    expect(p.unioni).toHaveLength(1);
+    expect(p.unioni[0].dettaglio).toContain("unione prevista");
+  });
+});

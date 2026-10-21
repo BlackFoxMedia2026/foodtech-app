@@ -4,8 +4,10 @@ import { memo } from "react";
 import { RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  DIMENSIONE_TAVOLO,
   dimensioneDisegnata,
+  improntaTavolo,
+  sedieCoperte,
+  type PianoNelMondo,
   posizioniSedie,
   LARGHEZZA_SEDIA,
   PROFONDITA_SEDIA,
@@ -18,14 +20,16 @@ import type { LocalTable } from "@/components/floor/table-node";
  *
  * Il fratello operativo (`RoomTableNode`) disegna lo stesso oggetto per chi
  * guarda la sala durante il servizio: stessa geometria, stesse sedie, stesso
- * legno. Qui in più ci sono le tre cose che servono solo a chi sta
- * disegnando — il contorno di selezione, i quattro angoli per ridimensionare,
- * la maniglia per ruotare — e in meno tutto quello che riguarda il servizio:
- * niente stato, niente personale, niente prenotazioni. Tenerli separati
- * evita il componente con dodici modalità che nessuno riesce più a cambiare.
+ * legno. Qui in più ci sono le due cose che servono solo a chi sta
+ * disegnando — il contorno di selezione, la maniglia per ruotare — e in meno
+ * tutto quello che riguarda il servizio: niente stato, niente personale,
+ * niente prenotazioni. Tenerli separati evita il componente con dodici
+ * modalità che nessuno riesce più a cambiare.
+ *
+ * La dimensione del piano non si tira con una maniglia: dipende da forma e
+ * posti (vedi `dimensioneDisegnata`), o dalla misura scritta nel pannello
+ * Proprietà per un tavolo su misura.
  */
-
-export type ManiglieRidimensiona = "nw" | "ne" | "sw" | "se";
 
 export const TavoloEditorNode = memo(function TavoloEditorNode({
   table: t,
@@ -33,27 +37,33 @@ export const TavoloEditorNode = memo(function TavoloEditorNode({
   inTrascinamento,
   onSelezione,
   onInizioSpostamento,
-  onInizioRidimensiona,
   onInizioRotazione,
+  vicini,
+  bloccato = false,
 }: {
+  /** Posizione bloccata: niente maniglia per ruotare. */
+  bloccato?: boolean;
   table: LocalTable;
+  /** I piani dei tavoli accostati (stessa unione): le sedie che ci finirebbero
+   * sotto non si disegnano. */
+  vicini?: PianoNelMondo[];
   selezionato: boolean;
   inTrascinamento?: boolean;
   onSelezione: (id: string, additivo: boolean) => void;
   onInizioSpostamento: (id: string, e: React.PointerEvent) => void;
-  onInizioRidimensiona: (id: string, angolo: ManiglieRidimensiona, e: React.PointerEvent) => void;
   onInizioRotazione: (id: string, e: React.PointerEvent) => void;
 }) {
-  const impronta = DIMENSIONE_TAVOLO[t.shape];
+  const impronta = improntaTavolo(t);
   const piano = dimensioneDisegnata(t);
   const raggio = RAGGIO_FORMA[t.shape];
-  const sedie = posizioniSedie(t.shape, piano.w, piano.h, t.seats);
+  const sedie = sedieCoperte(
+    posizioniSedie(t.shape, piano.w, piano.h, t.seats, t.chairSides),
+    { cx: t.posX + impronta.w / 2, cy: t.posY + impronta.h / 2, w: piano.w, h: piano.h, rotazione: t.rotation },
+    vicini ?? [],
+  );
 
-  // L'impronta deve contenere il piano anche quando è stato allargato a mano,
-  // altrimenti la maniglia in basso a destra finisce fuori dall'area che
-  // riceve i clic.
-  const larghezza = Math.max(impronta.w, piano.w);
-  const altezza = Math.max(impronta.h, piano.h);
+  const larghezza = impronta.w;
+  const altezza = impronta.h;
 
   return (
     <div
@@ -133,7 +143,9 @@ export const TavoloEditorNode = memo(function TavoloEditorNode({
           </span>
         </div>
 
-        {selezionato && (
+        {/* Bloccato non si ruota: la maniglia non si mostra, invece di
+            esserci e non fare niente. */}
+        {selezionato && !bloccato && (
           <>
             {/* Ruotare: la maniglia sta sopra, con un filo che la collega al
                 tavolo — è la convenzione di ogni editor grafico, e qui vale
@@ -164,31 +176,6 @@ export const TavoloEditorNode = memo(function TavoloEditorNode({
             >
               <RotateCw className="h-3 w-3" />
             </button>
-
-            {(["nw", "ne", "sw", "se"] as const).map((angolo) => (
-              <button
-                key={angolo}
-                type="button"
-                aria-label={`Ridimensiona tavolo ${t.label}`}
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  onInizioRidimensiona(t.id, angolo, e);
-                }}
-                onClick={(e) => e.stopPropagation()}
-                className={cn(
-                  "absolute h-2.5 w-2.5 rounded-[2px] border border-line bg-accent-strong shadow",
-                  angolo === "nw" && "cursor-nwse-resize",
-                  angolo === "ne" && "cursor-nesw-resize",
-                  angolo === "sw" && "cursor-nesw-resize",
-                  angolo === "se" && "cursor-nwse-resize",
-                )}
-                style={{
-                  left: angolo === "nw" || angolo === "sw" ? `calc(50% - ${piano.w / 2}px)` : `calc(50% + ${piano.w / 2}px)`,
-                  top: angolo === "nw" || angolo === "ne" ? `calc(50% - ${piano.h / 2}px)` : `calc(50% + ${piano.h / 2}px)`,
-                  transform: "translate(-50%, -50%)",
-                }}
-              />
-            ))}
           </>
         )}
       </div>

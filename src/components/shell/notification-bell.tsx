@@ -26,13 +26,22 @@ export function NotificationBell() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/notifications");
-    if (res.ok) {
-      const data = await res.json();
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
+    // A transient network blip (dev server restarting, tab briefly offline)
+    // must not crash the whole page — this polls every 60s in the
+    // background, so an unhandled rejection here previously surfaced as an
+    // "Unhandled Runtime Error" with no connection to anything the user did.
+    try {
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications);
+        setUnreadCount(data.unreadCount);
+      }
+    } catch (err) {
+      console.error("Impossibile caricare le notifiche:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -42,13 +51,23 @@ export function NotificationBell() {
   }, []);
 
   async function markRead(id: string) {
-    await fetch(`/api/notifications/${id}`, { method: "PATCH" });
+    try {
+      await fetch(`/api/notifications/${id}`, { method: "PATCH" });
+    } catch (err) {
+      console.error("Impossibile segnare la notifica come letta:", err);
+      return;
+    }
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, readAt: new Date().toISOString() } : n)));
     setUnreadCount((c) => Math.max(0, c - 1));
   }
 
   async function markAllRead() {
-    await fetch("/api/notifications/mark-all-read", { method: "POST" });
+    try {
+      await fetch("/api/notifications/mark-all-read", { method: "POST" });
+    } catch (err) {
+      console.error("Impossibile segnare le notifiche come lette:", err);
+      return;
+    }
     setNotifications((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })));
     setUnreadCount(0);
   }

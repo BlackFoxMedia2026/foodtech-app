@@ -18,6 +18,7 @@ import {
   type OspiteDaAccomodare,
 } from "./da-accomodare";
 import { servizioCorrente, tavoliAssegnatiA } from "./sala";
+import { elencaUnioni } from "@/server/unioni-tavoli";
 
 /**
  * **Accomodare qualcuno, dal telefono.**
@@ -283,6 +284,7 @@ export async function propostePerOspite(
       coperti: ospite.coperti,
       durataMin: ospite.durataMin,
       roomIdAtteso: ospite.roomIdAtteso,
+      unioniPreviste: await elencaUnioni(ctx.venueId),
     }),
   };
 }
@@ -449,7 +451,7 @@ export async function tavoliPerWalkIn(
 ): Promise<Proposta> {
   const lista = await candidati(ctx, { adesso });
   const durataMin = await durataDelWalkIn(ctx.venueId, coperti, adesso);
-  return proponiTavoli(lista, { coperti, durataMin });
+  return proponiTavoli(lista, { coperti, durataMin, unioniPreviste: await elencaUnioni(ctx.venueId) });
 }
 
 /**

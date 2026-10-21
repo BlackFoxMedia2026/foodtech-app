@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, MapPin, Users } from "lucide-react";
+import { Link2, Loader2, MapPin, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -18,6 +18,8 @@ import { readApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 type FreeTable = { tableId: string; label: string; seats: number; roomId: string | null; roomName: string | null };
+/** Un'unione prevista, come la restituisce `/api/table-combinations`. */
+type UnionePrevista = { id: string; label: string | null; tableIds: string[]; posti: number; nomi: string };
 type Ricerca = {
   tables: FreeTable[];
   reason: "venue_closed" | "shift_full" | "all_busy" | "no_table_that_big" | null;
@@ -76,6 +78,7 @@ export function TablePickerDialog({
 }) {
   const [ricerca, setRicerca] = useState<Ricerca | null>(null);
   const [scelti, setScelti] = useState<string[]>([]);
+  const [unioni, setUnioni] = useState<UnionePrevista[]>([]);
   const [motivo, setMotivo] = useState("");
   const [inCorso, setInCorso] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +91,13 @@ export function TablePickerDialog({
     setMotivo("");
     setError(null);
 
+    // Le unioni previste si leggono insieme ai tavoli liberi: senza, la
+    // proposta per un gruppo grande arriverebbe dopo, e il tocco dell'utente
+    // nel frattempo verrebbe sovrascritto.
+    const unioniPromessa = fetch("/api/table-combinations")
+      .then(async (r) => (r.ok ? ((await r.json()) as UnionePrevista[]) : []))
+      .catch(() => [] as UnionePrevista[]);
+
     fetch(`/api/tables/free?partySize=${partySize}&includeSmaller=1&at=${encodeURIComponent(startsAt)}`)
       .then(async (res) => {
         if (annullato) return;
@@ -97,11 +107,17 @@ export function TablePickerDialog({
           return;
         }
         const data: Ricerca = await res.json();
+        const tutteLeUnioni = await unioniPromessa;
+        if (annullato) return;
         setRicerca(data);
+        setUnioni(tutteLeUnioni);
         // Si propone il primo tavolo che basta da solo, se esiste: è il caso
-        // normale, e un tocco in meno durante il servizio conta.
+        // normale, e un tocco in meno durante il servizio conta. Se nessuno
+        // basta da solo, la più piccola unione prevista che basta.
         const daSolo = data.tables.find((t) => t.seats >= partySize);
+        const unioneMigliore = unioniUtili(tutteLeUnioni, data.tables, partySize)[0];
         if (daSolo) setScelti([daSolo.tableId]);
+        else if (unioneMigliore) setScelti(unioneMigliore.tableIds);
       })
       .catch(() => {
         if (!annullato) {
@@ -116,6 +132,7 @@ export function TablePickerDialog({
   }, [open, partySize, startsAt]);
 
   const tavoli = ricerca?.tables ?? [];
+  const unioniLibere = unioniUtili(unioni, tavoli, partySize);
   const selezionati = tavoli.filter((t) => scelti.includes(t.tableId));
   const posti = selezionati.reduce((s, t) => s + t.seats, 0);
   const bastano = posti >= partySize;
@@ -209,6 +226,39 @@ export function TablePickerDialog({
           </EmptyState>
         ) : (
           <>
+            {/* Le unioni previste nell'editor della Sala: un tocco sceglie
+                tutti i loro tavoli, e la conferma è quella di sempre. */}
+            {unioniLibere.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="t-etichetta">Unioni previste</p>
+                <div className="flex flex-wrap gap-2">
+                  {unioniLibere.map((u) => {
+                    const scelta =
+                      scelti.length === u.tableIds.length && u.tableIds.every((id) => scelti.includes(id));
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        aria-pressed={scelta}
+                        onClick={() => {
+                          setError(null);
+                          setScelti(u.tableIds);
+                        }}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                          scelta ? "border-line bg-current/10" : "border-border hover:bg-current/5",
+                        )}
+                      >
+                        <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span className="font-medium">{u.label ?? u.nomi}</span>
+                        <span className="text-muted-foreground">{u.posti} posti</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <ul className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
               {tavoli.map((t) => {
                 const scelto = scelti.includes(t.tableId);
@@ -289,4 +339,16 @@ export function TablePickerDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * Le unioni previste che servono adesso: tutti i loro tavoli sono liberi a
+ * quell'ora e insieme bastano per il gruppo. Dalla più piccola, perché
+ * un'unione da dieci per sei persone toglie quattro posti alla serata.
+ */
+function unioniUtili(unioni: UnionePrevista[], liberi: FreeTable[], persone: number) {
+  const idLiberi = new Set(liberi.map((t) => t.tableId));
+  return unioni
+    .filter((u) => u.posti >= persone && u.tableIds.every((id) => idLiberi.has(id)))
+    .sort((a, b) => a.posti - b.posti);
 }
