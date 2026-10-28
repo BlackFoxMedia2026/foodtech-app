@@ -5,7 +5,10 @@ import type { TableShape } from "@prisma/client";
 import {
   Armchair,
   ArrowLeftRight,
+  BrickWall,
   ChefHat,
+  ChevronLeft,
+  ChevronRight,
   Columns2,
   DoorOpen,
   Droplet,
@@ -29,11 +32,12 @@ import type { EditorSala, TipoTrascinabile } from "./use-editor-sala";
 /**
  * La colonna degli elementi.
  *
- * Quattro gruppi, in ordine di frequenza d'uso: i tavoli si mettono ogni
- * settimana, la struttura si corregge il primo giorno, le aree quasi mai, il
- * testo una volta sola. È la stessa ragione per cui il riquadro col
- * suggerimento sta in fondo e non in cima: serve la prima volta, e la prima
- * volta si legge tutta la colonna.
+ * Una colonna di sezioni, in ordine di frequenza d'uso: i tavoli si mettono
+ * ogni settimana, la struttura (con le aree) si corregge il primo giorno, il
+ * testo una volta sola. Si entra in una sezione per vederne l'elenco, così la
+ * colonna resta corta invece di essere un catalogo da scorrere. È la stessa
+ * ragione per cui il riquadro col suggerimento sta in fondo e non in cima:
+ * serve la prima volta, e la prima volta si legge tutta la colonna.
  *
  * Ogni riga si può **trascinare** o **cliccare**: trascinare è il gesto
  * naturale col mouse, cliccare è l'unico che funziona da tastiera e su un
@@ -68,6 +72,12 @@ const AREE: { tipo: AreaType; icona: IconaComponente }[] = [
 
 type IconaComponente = React.ComponentType<{ className?: string }>;
 
+/** Le due sezioni che hanno un elenco dentro. Testo, sedia ed elemento
+ * libero sono un elemento solo: si trascinano dalla colonna principale. */
+type Sezione = "tavoli" | "struttura";
+
+const SEZIONI: Record<Sezione, string> = { tavoli: "Tavoli", struttura: "Struttura" };
+
 export function LibreriaElementi({
   editor,
   onPosiziona,
@@ -77,184 +87,232 @@ export function LibreriaElementi({
    * funziona anche senza trascinare. */
   onPosiziona: (tipo: TipoTrascinabile) => void;
 }) {
+  const [sezione, setSezione] = useState<Sezione | null>(null);
   const [dichiarazioneAperta, setDichiarazioneAperta] = useState(false);
+  const nonPosizionati = editor.tavoliFuoriPiantina.length;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-border px-4 py-3">
-        <h2 className="t-titolo-scheda">Elementi</h2>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        <Gruppo
-          titolo="Tavoli"
-          azione={
+      <div className="flex shrink-0 items-center gap-1 border-b border-border px-4 py-3">
+        {sezione ? (
+          <>
             <button
               type="button"
-              onClick={() => setDichiarazioneAperta((v) => !v)}
-              aria-expanded={dichiarazioneAperta}
-              className="text-[10px] font-medium normal-case tracking-normal text-accent-strong hover:underline"
+              onClick={() => setSezione(null)}
+              aria-label="Torna agli elementi"
+              className="-ml-2 grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
-              {dichiarazioneAperta ? "Fatto" : "Dichiara"}
+              <ChevronLeft className="h-4 w-4" />
             </button>
-          }
-        >
-          {/*
-            Quanti tavoli possiede il locale.
+            <h2 className="t-titolo-scheda">{SEZIONI[sezione]}</h2>
+          </>
+        ) : (
+          <h2 className="t-titolo-scheda">Elementi</h2>
+        )}
+      </div>
 
-            È l'unica informazione di questa colonna che non si può ricavare
-            guardando la piantina, ed è quella che rende la libreria una
-            libreria invece di un catalogo infinito: senza, «Tavolo quadrato»
-            è un bottone che ne crea uno nuovo per sempre, e nessuno si accorge
-            di averne messi nove quando ne ha otto.
-          */}
-          {dichiarazioneAperta && (
-            <div className="mb-1 flex flex-col gap-1.5 rounded-lg bg-secondary/40 p-2">
-              <p className="text-[10px] leading-snug text-tertiary-foreground">
-                Quanti ne possiedi, per forma. Lascia vuoto se non vuoi un limite.
-              </p>
+      <div className="vi-scorre min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        {/*
+          La colonna principale: un bottone per sezione. Tavoli e struttura
+          hanno un elenco e ci si entra; gli altri tre sono un elemento solo,
+          e il bottone è già l'elemento da trascinare — entrare in una sezione
+          per trovarci una riga sola sarebbe un clic regalato.
+        */}
+        {sezione === null && (
+          <div className="flex h-full flex-col gap-2 motion-safe:duration-300 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1">
+            <VoceSezione
+              label="Tavoli"
+              dettaglio={nonPosizionati > 0 ? `${nonPosizionati} da posizionare` : "Forme e predefiniti"}
+              evidenzia={nonPosizionati > 0}
+              icona={<GlifoTavolo shape="ROUND" grande />}
+              onApri={() => setSezione("tavoli")}
+            />
+            <VoceSezione
+              label="Struttura"
+              dettaglio="Pareti, porte, aree"
+              icona={<BrickWall className="h-6 w-6" />}
+              onApri={() => setSezione("struttura")}
+            />
+            <Riga
+              grande
+              label="Testo"
+              icona={<TypeIcon className="h-6 w-6" />}
+              tipo={{ genere: "testo" }}
+              onPosiziona={onPosiziona}
+            />
+            <Riga
+              grande
+              label="Sedia"
+              icona={<Armchair className="h-6 w-6" />}
+              tipo={{ genere: "sedia" }}
+              onPosiziona={onPosiziona}
+            />
+            <Riga
+              grande
+              label="Elemento libero"
+              icona={<RectangleHorizontal className="h-6 w-6" />}
+              tipo={{ genere: "libero" }}
+              onPosiziona={onPosiziona}
+            />
+          </div>
+        )}
+
+        {sezione === "tavoli" && (
+          <>
+            <Gruppo
+              titolo="Forme"
+              azione={
+                <button
+                  type="button"
+                  onClick={() => setDichiarazioneAperta((v) => !v)}
+                  aria-expanded={dichiarazioneAperta}
+                  className="text-[10px] font-medium normal-case tracking-normal text-accent-strong hover:underline"
+                >
+                  {dichiarazioneAperta ? "Fatto" : "Dichiara"}
+                </button>
+              }
+            >
+              {/*
+                Quanti tavoli possiede il locale.
+
+                È l'unica informazione di questa colonna che non si può ricavare
+                guardando la piantina, ed è quella che rende la libreria una
+                libreria invece di un catalogo infinito: senza, «Tavolo quadrato»
+                è un bottone che ne crea uno nuovo per sempre, e nessuno si accorge
+                di averne messi nove quando ne ha otto.
+              */}
+              {dichiarazioneAperta && (
+                <div className="mb-1 flex flex-col gap-1.5 rounded-lg bg-secondary/40 p-2">
+                  <p className="text-[10px] leading-snug text-tertiary-foreground">
+                    Quanti ne possiedi, per forma. Lascia vuoto se non vuoi un limite.
+                  </p>
+                  {TAVOLI.map(({ shape, label }) => {
+                    const disp = editor.disponibilita[shape as InventoryShape];
+                    return (
+                      <label key={shape} className="flex items-center gap-2 text-[11px]">
+                        <span className="min-w-0 flex-1 truncate">{label.replace("Tavolo ", "")}</span>
+                        <span className="shrink-0 tabular-nums text-tertiary-foreground">{disp.posizionati} in sala</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={999}
+                          inputMode="numeric"
+                          value={disp.dichiarati ?? ""}
+                          placeholder="—"
+                          onChange={(e) =>
+                            editor.cambiaInventario(shape as InventoryShape, e.target.value === "" ? null : Number(e.target.value))
+                          }
+                          className="h-7 w-14 shrink-0 rounded-md border border-input bg-background px-1.5 text-center text-[11px] tabular-nums"
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
               {TAVOLI.map(({ shape, label }) => {
                 const disp = editor.disponibilita[shape as InventoryShape];
+                const esaurito = disp?.disponibili === 0;
                 return (
-                  <label key={shape} className="flex items-center gap-2 text-[11px]">
-                    <span className="min-w-0 flex-1 truncate">{label.replace("Tavolo ", "")}</span>
-                    <span className="shrink-0 tabular-nums text-tertiary-foreground">{disp.posizionati} in sala</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={999}
-                      inputMode="numeric"
-                      value={disp.dichiarati ?? ""}
-                      placeholder="—"
-                      onChange={(e) =>
-                        editor.cambiaInventario(shape as InventoryShape, e.target.value === "" ? null : Number(e.target.value))
-                      }
-                      className="h-7 w-14 shrink-0 rounded-md border border-input bg-background px-1.5 text-center text-[11px] tabular-nums"
-                    />
-                  </label>
+                  <Riga
+                    key={shape}
+                    label={label}
+                    icona={<GlifoTavolo shape={shape} />}
+                    disabilitato={esaurito}
+                    coda={
+                      disp?.dichiarati === null ? null : (
+                        <span className={cn("tabular-nums", esaurito ? "text-destructive" : "text-tertiary-foreground")}>
+                          {disp.disponibili} disponibil{disp.disponibili === 1 ? "e" : "i"}
+                        </span>
+                      )
+                    }
+                    tipo={{ genere: "tavolo", shape }}
+                    onPosiziona={onPosiziona}
+                  />
                 );
               })}
-            </div>
-          )}
+            </Gruppo>
 
-          {TAVOLI.map(({ shape, label }) => {
-            const disp = editor.disponibilita[shape as InventoryShape];
-            const esaurito = disp?.disponibili === 0;
-            return (
-              <Riga
-                key={shape}
-                label={label}
-                icona={<GlifoTavolo shape={shape} />}
-                disabilitato={esaurito}
-                coda={
-                  disp?.dichiarati === null ? null : (
-                    <span className={cn("tabular-nums", esaurito ? "text-destructive" : "text-tertiary-foreground")}>
-                      {disp.disponibili} disponibil{disp.disponibili === 1 ? "e" : "i"}
-                    </span>
-                  )
-                }
-                tipo={{ genere: "tavolo", shape }}
-                onPosiziona={onPosiziona}
-              />
-            );
-          })}
-        </Gruppo>
+            {/*
+              I tavoli predefiniti: le misure che il locale usa davvero, salvate
+              dal modulo «Nuovo tavolo». Trascinarne uno crea subito un tavolo
+              con quella forma, quei posti e quella misura, e il nome lo sceglie
+              il server: è il gesto che si ripete dieci volte allestendo una sala,
+              e non deve passare ogni volta da un modulo.
+            */}
+            {editor.predefiniti.length > 0 && (
+              <Gruppo titolo="Predefiniti">
+                {editor.predefiniti.map((p) => {
+                  const disp = editor.disponibilita[p.shape as InventoryShape];
+                  const esaurito = disp?.disponibili === 0;
+                  return (
+                    <Riga
+                      key={p.id}
+                      label={p.label}
+                      icona={<GlifoTavolo shape={p.shape} />}
+                      disabilitato={esaurito}
+                      coda={
+                        <span className="tabular-nums text-tertiary-foreground">
+                          {p.seats} p · {Math.round(pxToMeters(p.width) * 100)}×{Math.round(pxToMeters(p.height) * 100)}
+                        </span>
+                      }
+                      tipo={{
+                        genere: "tavolo",
+                        shape: p.shape,
+                        modello: { seats: p.seats, width: p.width, height: p.height, chairSides: p.chairSides },
+                      }}
+                      onPosiziona={onPosiziona}
+                    />
+                  );
+                })}
+              </Gruppo>
+            )}
 
-        {/*
-          I tavoli predefiniti: le misure che il locale usa davvero, salvate
-          dal modulo «Nuovo tavolo». Trascinarne uno crea subito un tavolo
-          con quella forma, quei posti e quella misura, e il nome lo sceglie
-          il server: è il gesto che si ripete dieci volte allestendo una sala,
-          e non deve passare ogni volta da un modulo.
-        */}
-        {editor.predefiniti.length > 0 && (
-          <Gruppo titolo="Predefiniti">
-            {editor.predefiniti.map((p) => {
-              const disp = editor.disponibilita[p.shape as InventoryShape];
-              const esaurito = disp?.disponibili === 0;
-              return (
+            {/*
+              I tavoli che esistono nel gestionale ma non sono sulla piantina.
+
+              Senza questa sezione sono invisibili: hanno prenotazioni, turni e un
+              nome, ma nessun posto dove vederli. Trascinandone uno si posiziona
+              **quello**, non una copia — è la differenza fra rimettere a posto un
+              tavolo e crearne un altro con lo stesso nome.
+            */}
+            {nonPosizionati > 0 && (
+              <Gruppo titolo={`Non posizionati (${nonPosizionati})`}>
+                {editor.tavoliFuoriPiantina.slice(0, 40).map((t) => (
+                  <RigaNonPosizionato key={t.id} editor={editor} tavolo={t} onPosiziona={onPosiziona} />
+                ))}
+              </Gruppo>
+            )}
+          </>
+        )}
+
+        {sezione === "struttura" && (
+          <>
+            <Gruppo titolo="Struttura">
+              {STRUTTURA.map(({ tipo, label, icona: Icona }) => (
                 <Riga
-                  key={p.id}
-                  label={p.label}
-                  icona={<GlifoTavolo shape={p.shape} />}
-                  disabilitato={esaurito}
-                  coda={
-                    <span className="tabular-nums text-tertiary-foreground">
-                      {p.seats} p · {Math.round(pxToMeters(p.width) * 100)}×{Math.round(pxToMeters(p.height) * 100)}
-                    </span>
-                  }
-                  tipo={{
-                    genere: "tavolo",
-                    shape: p.shape,
-                    modello: { seats: p.seats, width: p.width, height: p.height, chairSides: p.chairSides },
-                  }}
+                  key={tipo}
+                  label={label}
+                  icona={<Icona className="h-4 w-4" />}
+                  tipo={{ genere: "struttura", tipo }}
                   onPosiziona={onPosiziona}
                 />
-              );
-            })}
-          </Gruppo>
+              ))}
+            </Gruppo>
+
+            <Gruppo titolo="Aree">
+              {AREE.map(({ tipo, icona: Icona }) => (
+                <Riga
+                  key={tipo}
+                  label={AREA_LABELS[tipo]}
+                  icona={<Icona className="h-4 w-4" />}
+                  tipo={{ genere: "area", tipo }}
+                  onPosiziona={onPosiziona}
+                />
+              ))}
+            </Gruppo>
+          </>
         )}
-
-        {/*
-          I tavoli che esistono nel gestionale ma non sono sulla piantina.
-
-          Senza questa sezione sono invisibili: hanno prenotazioni, turni e un
-          nome, ma nessun posto dove vederli. Trascinandone uno si posiziona
-          **quello**, non una copia — è la differenza fra rimettere a posto un
-          tavolo e crearne un altro con lo stesso nome.
-        */}
-        {editor.tavoliFuoriPiantina.length > 0 && (
-          <Gruppo titolo={`Non posizionati (${editor.tavoliFuoriPiantina.length})`}>
-            {editor.tavoliFuoriPiantina.slice(0, 40).map((t) => (
-              <RigaNonPosizionato key={t.id} editor={editor} tavolo={t} onPosiziona={onPosiziona} />
-            ))}
-          </Gruppo>
-        )}
-
-        <Gruppo titolo="Struttura">
-          {STRUTTURA.map(({ tipo, label, icona: Icona }) => (
-            <Riga
-              key={tipo}
-              label={label}
-              icona={<Icona className="h-4 w-4" />}
-              tipo={{ genere: "struttura", tipo }}
-              onPosiziona={onPosiziona}
-            />
-          ))}
-        </Gruppo>
-
-        <Gruppo titolo="Aree">
-          {AREE.map(({ tipo, icona: Icona }) => (
-            <Riga
-              key={tipo}
-              label={AREA_LABELS[tipo]}
-              icona={<Icona className="h-4 w-4" />}
-              tipo={{ genere: "area", tipo }}
-              onPosiziona={onPosiziona}
-            />
-          ))}
-        </Gruppo>
-
-        <Gruppo titolo="Altro">
-          <Riga
-            label="Testo"
-            icona={<TypeIcon className="h-4 w-4" />}
-            tipo={{ genere: "testo" }}
-            onPosiziona={onPosiziona}
-          />
-          <Riga
-            label="Sedia"
-            icona={<Armchair className="h-4 w-4" />}
-            tipo={{ genere: "sedia" }}
-            onPosiziona={onPosiziona}
-          />
-          <Riga
-            label="Elemento libero"
-            icona={<RectangleHorizontal className="h-4 w-4" />}
-            tipo={{ genere: "libero" }}
-            onPosiziona={onPosiziona}
-          />
-        </Gruppo>
       </div>
 
       {/*
@@ -273,6 +331,57 @@ export function LibreriaElementi({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Le tessere della colonna principale: icona sopra, nome sotto, centrati.
+ *
+ * L'icona si solleva e si inclina appena quando ci passa sopra il puntatore:
+ * è il segno che la tessera si può prendere, lo stesso che fa una carta
+ * quando la si sfiora. Con «riduci movimento» resta ferma.
+ *
+ * Le cinque tessere si dividono l'altezza della colonna in parti uguali:
+ * sono tutto quello che c'è, e una colonna che scorre per mostrarne
+ * l'ultima nasconderebbe proprio l'elemento libero.
+ */
+const TESSERA =
+  "group relative flex min-h-0 w-full flex-1 basis-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-border px-3 py-2 text-center transition-[border-color,background-color,box-shadow] duration-200 hover:border-accent-strong/60 hover:bg-secondary hover:shadow-sm";
+
+function IconaTessera({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl [@media(max-height:820px)]:h-9 [@media(max-height:820px)]:w-9 bg-secondary/70 text-accent-strong transition-[transform,background-color] duration-300 ease-out group-hover:bg-accent-strong/15 motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:-rotate-6 motion-safe:group-hover:scale-110 motion-safe:group-active:scale-95">
+      {children}
+    </span>
+  );
+}
+
+/** Una tessera che apre una sezione: come quella trascinabile, ma con la
+ * freccia nell'angolo — ci si entra, non la si trascina. */
+function VoceSezione({
+  label,
+  dettaglio,
+  evidenzia,
+  icona,
+  onApri,
+}: {
+  label: string;
+  dettaglio: string;
+  evidenzia?: boolean;
+  icona: React.ReactNode;
+  onApri: () => void;
+}) {
+  return (
+    <button type="button" onClick={onApri} className={TESSERA}>
+      <ChevronRight className="absolute right-2.5 top-2.5 h-4 w-4 text-tertiary-foreground transition-transform duration-200 motion-safe:group-hover:translate-x-0.5" />
+      <IconaTessera>{icona}</IconaTessera>
+      <span className="flex min-w-0 max-w-full flex-col">
+        <span className="truncate text-sm font-medium">{label}</span>
+        <span className={cn("truncate text-[10px]", evidenzia ? "text-accent-strong" : "text-tertiary-foreground")}>
+          {dettaglio}
+        </span>
+      </span>
+    </button>
   );
 }
 
@@ -374,6 +483,7 @@ function Riga({
   coda,
   tipo,
   disabilitato,
+  grande,
   onPosiziona,
 }: {
   label: string;
@@ -381,6 +491,8 @@ function Riga({
   coda?: React.ReactNode;
   tipo: TipoTrascinabile;
   disabilitato?: boolean;
+  /** Nella colonna principale, accanto alle voci delle sezioni. */
+  grande?: boolean;
   onPosiziona: (tipo: TipoTrascinabile) => void;
 }) {
   return (
@@ -395,17 +507,26 @@ function Riga({
       }}
       onClick={() => !disabilitato && onPosiziona(tipo)}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-lg border border-border px-2.5 py-2 text-left text-xs transition-colors",
+        grande ? TESSERA : "flex w-full items-center gap-2.5 rounded-lg border border-border px-2.5 py-2 text-left text-xs transition-colors",
         disabilitato
           ? "cursor-not-allowed opacity-45"
           : "cursor-grab hover:border-accent-strong/60 hover:bg-secondary active:cursor-grabbing",
       )}
     >
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-secondary/70 text-accent-strong">
-        {icona}
-      </span>
-      <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
-      {coda && <span className="shrink-0 text-[10px]">{coda}</span>}
+      {grande ? (
+        <>
+          <IconaTessera>{icona}</IconaTessera>
+          <span className="max-w-full truncate text-sm font-medium">{label}</span>
+        </>
+      ) : (
+        <>
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-secondary/70 text-accent-strong">
+            {icona}
+          </span>
+          <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
+          {coda && <span className="shrink-0 text-[10px]">{coda}</span>}
+        </>
+      )}
     </button>
   );
 }
@@ -413,10 +534,11 @@ function Riga({
 /** Il glifo del tavolo: la forma che si sta per mettere giù, disegnata. Una
  * icona generica costringerebbe a leggere il nome per capire cosa si sta
  * trascinando, che è esattamente il lavoro che l'icona dovrebbe togliere. */
-function GlifoTavolo({ shape }: { shape: TableShape }) {
+function GlifoTavolo({ shape, grande }: { shape: TableShape; grande?: boolean }) {
   const comune = { fill: "currentColor", fillOpacity: 0.22, stroke: "currentColor", strokeWidth: 1.4 };
+  const lato = grande ? 26 : 18;
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <svg width={lato} height={lato} viewBox="0 0 18 18" aria-hidden="true">
       {shape === "SQUARE" && <rect x="3.5" y="3.5" width="11" height="11" rx="1.5" {...comune} />}
       {shape === "ROUND" && <circle cx="9" cy="9" r="5.5" {...comune} />}
       {shape === "RECT" && <rect x="1.5" y="5" width="15" height="8" rx="1.5" {...comune} />}

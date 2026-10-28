@@ -186,10 +186,15 @@ export function VenueSwitcher({
               open ? "-translate-x-2" : "translate-x-0",
             )}
           >
+            {/* Il posto di un titolo su misura: una pagina che ne ha uno più
+                utile del nome della sezione (la Sala mette qui il nome della
+                sala, con le frecce) ce lo porta con un portale, e finché c'è
+                il titolo di sempre si nasconde. */}
+            <div id="titolo-su-misura" className="flex min-w-0 self-center empty:hidden" />
             {/* Un gradino più piccolo sul telefono: «Prenotazioni» a 18 px
                 finisce nei puntini fra il marchio e le quattro icone a
                 destra, e un titolo troncato è peggio di un titolo piccolo. */}
-            <h1 className="truncate text-base font-semibold leading-none sm:text-lg">
+            <h1 className="truncate text-base font-semibold leading-none sm:text-lg [#titolo-su-misura:not(:empty)~&]:hidden">
               <span className="sm:hidden">{titolo.breve}</span>
               <span className="hidden sm:inline">{titolo.lungo}</span>
             </h1>
@@ -199,7 +204,10 @@ export function VenueSwitcher({
                 ha un tetto: un nome di locale lungo non deve costare una voce
                 in barra. */}
             {attivo && (
-              <span className="t-etichetta hidden max-w-[10rem] truncate xl:inline" title={attivo.name}>
+              <span
+                className="t-etichetta hidden max-w-[10rem] truncate xl:inline [#titolo-su-misura:not(:empty)~&]:!hidden"
+                title={attivo.name}
+              >
                 {attivo.name}
               </span>
             )}

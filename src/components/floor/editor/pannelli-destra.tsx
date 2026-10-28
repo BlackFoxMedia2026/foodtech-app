@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { TableShape } from "@prisma/client";
 import {
   Box,
+  Check,
   Eye,
   EyeOff,
   Image as ImageIcon,
@@ -12,6 +13,7 @@ import {
   Lock,
   LockOpen,
   Minus,
+  Pencil,
   Plus,
   Ruler,
   Trash2,
@@ -67,14 +69,24 @@ export function SchedaPannello({
   azione?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  // Una scheda da sito, non da gestionale: niente fascia né filo sotto la
+  // testata, il titolo nel serif e l'icona nella cupola verde delle tessere
+  // della Panoramica. Una velatura d'oro scende dall'alto e si spegne a metà:
+  // è quello che separa la colonna di chi regola da quella degli elementi,
+  // che resta crema piena. `shrink-0`: con `overflow-hidden` la scheda, in
+  // una colonna che scorre, si lascerebbe schiacciare e taglierebbe le ultime
+  // righe invece di far scorrere la colonna.
   return (
-    <section className="riquadro bg-card text-card-foreground">
-      <header className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <Icona className="h-4 w-4 shrink-0 text-accent-strong" />
-        <h3 className="min-w-0 flex-1 truncate text-xs font-semibold">{titolo}</h3>
+    <section className="riquadro shrink-0 overflow-hidden bg-card bg-gradient-to-b from-accent/[0.07] via-transparent to-transparent text-card-foreground">
+      <header className="flex items-center gap-2.5 px-3.5 pb-1 pt-3">
+        <span className="vetro kpi-pastiglia grid h-7 w-7 shrink-0 place-items-center rounded-full text-[var(--control-ink)]">
+          <Icona className="h-3.5 w-3.5" />
+        </span>
+        <h3 className="min-w-0 flex-1 truncate text-display text-[15px] leading-tight tracking-[-0.01em]">{titolo}</h3>
         {azione}
       </header>
-      <div className="p-3">{children}</div>
+      <div className="mx-3.5 h-px bg-gradient-to-r from-accent/30 via-accent/10 to-transparent" aria-hidden="true" />
+      <div className="px-3.5 pb-3.5 pt-3">{children}</div>
     </section>
   );
 }
@@ -710,15 +722,20 @@ export function PannelloInformazioni({
           <button
             type="button"
             onClick={() => setApertaModifica((v) => !v)}
-            className="shrink-0 text-[10px] font-medium text-accent-strong hover:underline"
+            // Una matita e non la parola: accanto al titolo nel serif, la
+            // parola gli rubava metà della riga.
+            aria-label={apertaModifica ? "Fatto" : "Modifica informazioni sala"}
+            title={apertaModifica ? "Fatto" : "Modifica"}
+            aria-pressed={apertaModifica}
+            className="pastiglia grid h-7 w-7 shrink-0 place-items-center rounded-full border border-border text-accent-strong transition-colors hover:border-accent/50"
           >
-            {apertaModifica ? "Fatto" : "Modifica"}
+            {apertaModifica ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
           </button>
         ) : undefined
       }
     >
-      <div className="flex flex-col gap-2">
-        <Riga etichetta="Nome" valore={nomeSala} />
+      <div className={cn("flex flex-col", apertaModifica && "gap-2")}>
+        <Riga fila etichetta="Nome" valore={nomeSala} />
 
         {apertaModifica ? (
           <>
@@ -774,11 +791,13 @@ export function PannelloInformazioni({
         ) : (
           <>
             <Riga
+              fila
               etichetta="Superficie stimata"
               valore={superficie ? `~ ${Math.round(superficie)} m²` : "—"}
               nota={editor.meta.areaSqm != null ? "inserita a mano" : undefined}
             />
             <Riga
+              fila
               etichetta="Dimensioni"
               valore={
                 larghezzaM && profonditaM
@@ -787,6 +806,7 @@ export function PannelloInformazioni({
               }
             />
             <Riga
+              fila
               etichetta="Spazio minimo fra tavoli"
               valore={`${
                 editor.meta.spazioMinimoPassaggioCm ?? Math.round(pxToMeters(SPAZIO_MINIMO_PASSAGGIO_PX) * 100)
@@ -797,6 +817,7 @@ export function PannelloInformazioni({
         )}
 
         <Riga
+          fila
           etichetta="Tavoli"
           valore={`${editor.tavoliSullaPiantina.length} · ${editor.tavoliSullaPiantina.reduce((s, t) => s + t.seats, 0)} posti`}
         />
@@ -901,13 +922,22 @@ function Campo({ etichetta, children }: { etichetta: string; children: React.Rea
   );
 }
 
-function Riga({ etichetta, valore, nota }: { etichetta: string; valore: string; nota?: string }) {
+/** Etichetta a sinistra, valore a destra. La nota («standard», «inserita a
+ * mano») va sotto il valore e non accanto: accanto lo troncava a metà.
+ * `fila` è la riga di un elenco: più aria, e nessun filo fra una riga e
+ * l'altra — in una scheda così piccola i fili diventavano una griglia. */
+function Riga({ etichetta, valore, nota, fila }: { etichetta: string; valore: string; nota?: string; fila?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 text-xs">
-      <span className="shrink-0 text-tertiary-foreground">{etichetta}</span>
-      <span className="min-w-0 truncate text-right font-medium">
-        {valore}
-        {nota && <span className="ml-1 text-[10px] font-normal text-tertiary-foreground">({nota})</span>}
+    <div
+      className={cn(
+        "flex justify-between gap-3 text-xs",
+        fila ? "items-start py-1.5 first:pt-0 last:pb-0" : "items-baseline",
+      )}
+    >
+      <span className="min-w-0 leading-snug text-tertiary-foreground">{etichetta}</span>
+      <span className="flex max-w-[60%] shrink-0 flex-col items-end text-right leading-snug">
+        <span className="break-words font-medium tabular-nums">{valore}</span>
+        {nota && <span className="text-[10px] text-tertiary-foreground">{nota}</span>}
       </span>
     </div>
   );
