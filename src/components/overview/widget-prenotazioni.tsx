@@ -7,6 +7,15 @@ import { CalendarDays } from "lucide-react";
 import { NotificaPrenotazione } from "@/components/overview/notifica-prenotazione";
 import { OggiAGruppi } from "@/components/overview/oggi-a-gruppi";
 import { useVenueTimezone } from "@/components/shell/venue-time-provider";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   annullaAzione,
@@ -14,6 +23,8 @@ import {
   azioneScaduta,
   contaPrenotazioni,
   dataEstesa,
+  persone,
+  quandoArriva,
   testoAvviso,
   type AzioneInSospeso,
   type AzioneNuova,
@@ -55,6 +66,10 @@ export function WidgetPrenotazioni({
   const [uscenti, setUscenti] = useState<Set<string>>(() => new Set());
   const [nascoste, setNascoste] = useState<Set<string>>(() => new Set());
   const [avviso, setAvviso] = useState<Avviso | null>(null);
+  /* Prima di confermare si chiede. Rifiutare e «l'ho vista» restano un gesto
+     solo, con il loro «Annulla». */
+  const [daConfermare, setDaConfermare] = useState<PrenotazioneRiquadro | null>(null);
+  const confermata = useRef(false);
 
   /* L'azione in sospeso sta in un riferimento: la leggono il timer e
      `pagehide`, che non devono vedere uno stato di qualche giro fa. */
@@ -259,7 +274,9 @@ export function WidgetPrenotazioni({
                       fuso={fuso}
                       uscente={uscenti.has(p.id)}
                       puoGestire={puoGestire}
-                      onAzione={(azione) => agisci(p, azione)}
+                      onAzione={(azione) =>
+                        azione === "conferma" ? setDaConfermare(p) : agisci(p, azione)
+                      }
                     />
                   ))}
                 </ul>
@@ -296,6 +313,51 @@ export function WidgetPrenotazioni({
             </div>
           )}
         </div>
+
+        <Dialog open={daConfermare != null} onOpenChange={(v) => !v && setDaConfermare(null)}>
+          <DialogContent
+            className="sm:max-w-md"
+            onCloseAutoFocus={(e) => {
+              // Confermata, la card esce: il fuoco va sul titolo dell'elenco,
+              // come dopo gli altri gesti. Annullata, torna al bottone.
+              if (!confermata.current) return;
+              confermata.current = false;
+              e.preventDefault();
+              titoloElenco.current?.focus();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Confermare la prenotazione di {daConfermare?.nome}?</DialogTitle>
+              <DialogDescription>
+                {daConfermare &&
+                  (() => {
+                    const q = quandoArriva(new Date(daConfermare.startsAt), adesso, fuso);
+                    return (
+                      <>
+                        {q.prefisso} <strong>{q.ora}</strong> · {persone(daConfermare.partySize)}
+                      </>
+                    );
+                  })()}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setDaConfermare(null)}>
+                Annulla
+              </Button>
+              <Button
+                variant="accent"
+                onClick={() => {
+                  const p = daConfermare;
+                  confermata.current = true;
+                  setDaConfermare(null);
+                  if (p) agisci(p, "conferma");
+                }}
+              >
+                Conferma
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </section>
     </TooltipProvider>
   );
