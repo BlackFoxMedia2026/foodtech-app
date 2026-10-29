@@ -113,6 +113,37 @@ export function ServiceView({
     (b) => !snapshot.freeingSoon.some((f) => f.id === b.id),
   );
 
+  /*
+    Il filtro della finestra (30/60/90). Sta sulla riga del primo gruppo di
+    «In arrivo», accanto a «In ritardo» o «Attesi»: in una riga sua sopra le
+    schede lasciava una fascia vuota larga quanto la colonna.
+  */
+  const filtroFinestra = (
+    <div className="flex items-center gap-1">
+      {[30, 60, 90].map((m) => (
+        <button
+          key={m}
+          type="button"
+          aria-pressed={window_ === m}
+          aria-label={`Guarda i prossimi ${m} minuti`}
+          onClick={() => {
+            setWindow(m);
+            aggiorna(m);
+          }}
+          className={cn(
+            "min-h-[36px] rounded-full px-2.5 text-xs tabular-nums transition-colors",
+            window_ === m
+              ? "bg-segment text-segment-ink"
+              : "bg-current/10 text-muted-foreground",
+          )}
+        >
+          {m}
+        </button>
+      ))}
+      <span className="text-[11px] text-tertiary-foreground">min</span>
+    </div>
+  );
+
   return (
     /*
       Questa schermata non era mai stata convertita: la radice era un
@@ -253,31 +284,9 @@ export function ServiceView({
               ? `nessuno atteso entro ${window_} min`
               : `${personeInArrivo} ${personeInArrivo === 1 ? "persona" : "persone"} · entro ${window_} min`
           }
-          comandi={
-            <div className="flex items-center gap-1">
-              {[30, 60, 90].map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  aria-pressed={window_ === m}
-                  aria-label={`Guarda i prossimi ${m} minuti`}
-                  onClick={() => {
-                    setWindow(m);
-                    aggiorna(m);
-                  }}
-                  className={cn(
-                    "min-h-[36px] rounded-full px-2.5 text-xs tabular-nums transition-colors",
-                    window_ === m
-                      ? "bg-segment text-segment-ink"
-                      : "bg-current/10 text-muted-foreground",
-                  )}
-                >
-                  {m}
-                </button>
-              ))}
-              <span className="text-[11px] text-tertiary-foreground">min</span>
-            </div>
-          }
+          // A colonna vuota il filtro resta da solo in cima: è proprio lì che
+          // serve allargare la finestra.
+          comandi={inArrivo.length === 0 ? filtroFinestra : undefined}
         >
           {/*
             «In ritardo» ha cambiato colonna, ed è la correzione che vale di
@@ -286,7 +295,7 @@ export function ServiceView({
             È una telefonata da fare, e sta in cima a chi deve arrivare.
           */}
           {snapshot.late.length > 0 && (
-            <Gruppo titolo="In ritardo" conteggio={snapshot.late.length} allarme>
+            <Gruppo titolo="In ritardo" conteggio={snapshot.late.length} allarme comandi={filtroFinestra}>
               {snapshot.late.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
@@ -312,6 +321,7 @@ export function ServiceView({
               titolo="Attesi"
               conteggio={snapshot.next.length}
               muto={snapshot.late.length === 0}
+              comandi={snapshot.late.length === 0 ? filtroFinestra : undefined}
             >
               {snapshot.next.map((b) => (
                 <ServiceBookingCard
@@ -506,32 +516,41 @@ export function ServiceView({
  *
  * Maiuscoletto a 13 px, senza tondino del conteggio: il numero del passo sta
  * già nella testata, e qui il titolo fa solo da segnalibro fra due gruppi.
+ *
+ * `comandi` va sulla stessa riga, a destra (il filtro 30/60/90 di «In
+ * arrivo»). Con i comandi il titolo si vede anche se il gruppo è muto: un
+ * filtro da solo, senza dire su cosa agisce, non si legge.
  */
 function Gruppo({
   titolo,
   conteggio,
   allarme = false,
   muto = false,
+  comandi,
   children,
 }: {
   titolo: string;
   conteggio: number;
   allarme?: boolean;
   muto?: boolean;
+  comandi?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-2.5">
-      {!muto && (
-        <p
-          className={cn(
-            "px-1.5 pt-0.5 text-[13px] font-bold uppercase tracking-[0.07em]",
-            allarme ? "text-accent-strong" : "text-foreground/75",
-          )}
-        >
-          {titolo}
-          <span className="sr-only">: {conteggio}</span>
-        </p>
+      {(!muto || comandi) && (
+        <div className="flex items-center justify-between gap-3">
+          <p
+            className={cn(
+              "px-1.5 pt-0.5 text-[13px] font-bold uppercase tracking-[0.07em]",
+              allarme ? "text-accent-strong" : "text-foreground/75",
+            )}
+          >
+            {titolo}
+            <span className="sr-only">: {conteggio}</span>
+          </p>
+          {comandi}
+        </div>
       )}
       {children}
     </div>
