@@ -293,6 +293,17 @@
     --table-head-card: #153a2d;
     --table-head-incassato: hsl(160 46% 9%);
     --table-head-ink: hsl(var(--muted-foreground));
+    /* La capsula della testata, il binario e la capsula che scorre. */
+    --table-head-luce: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0) 70%);
+    --testa-capsula-ombra:
+      inset 0 1px 0 rgb(255 255 255 / 0.06),
+      inset 0 -2px 3px rgb(0 0 0 / 0.3),
+      0 10px 18px -10px rgb(0 0 0 / 0.6);
+    --scorre-binario: rgb(0 0 0 / 0.2);
+    --scorre-binario-ombra: inset 0 1px 2px rgb(0 0 0 / 0.35);
+    --scorre-pollice: hsl(var(--muted-foreground) / 0.45);
+    --scorre-pollice-attivo: hsl(var(--muted-foreground) / 0.7);
+    --scorre-tinta: hsl(var(--muted-foreground) / 0.5);
     /* Il segno a sinistra della riga da decidere. */
     --riga-decidere-segno: hsl(var(--accent));
     /* Il marrone chiaro usato come testo (link e valori secondari). */
@@ -647,6 +658,20 @@
     --table-head-card: var(--surface-header);
     --table-head-incassato: var(--surface-header);
     --table-head-ink: var(--header-ink);
+    /* La capsula della testata ha la materia della cupola verde, stesa in
+       orizzontale: luce in alto, il verde della casa al centro, un'ombra sul
+       fondo, e sotto un'ombra morbida che la stacca dalle righe. */
+    --table-head-luce: linear-gradient(180deg, #3d6957 0%, #2c5545 55%, #244a3b 100%);
+    --testa-capsula-ombra:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      inset 0 -2px 3px rgb(0 0 0 / 0.2),
+      0 10px 18px -10px rgb(31 63 51 / 0.65);
+    /* La barra di scorrimento: capsula verde in un binario incassato. */
+    --scorre-binario: var(--surface-inset);
+    --scorre-binario-ombra: inset 0 1px 2px rgb(185 175 150 / 0.4);
+    --scorre-pollice: linear-gradient(90deg, #4c7a67, #2c5545);
+    --scorre-pollice-attivo: linear-gradient(90deg, #3d6957, #1f3f33);
+    --scorre-tinta: #2c5545;
     /* Niente bordo colorato a sinistra: sulla carta le righe si separano col filo. */
     --riga-decidere-segno: transparent;
     --ink-tertiary: hsl(var(--tertiary));
@@ -784,6 +809,51 @@
   ::selection {
     background: hsl(var(--accent) / 0.35);
   }
+
+  /*
+   * Ogni barra di scorrimento del prodotto.
+   *
+   * Quella di sistema — grigia, con le frecce e il binario bianco — si
+   * vedeva ovunque una regione scorreva (le colonne del Servizio, i
+   * pannelli, le liste), e su carta si legge come un pezzo di un altro
+   * programma. Qui è una regola sola: una capsula sottile nel colore del
+   * tema (`--scorre-pollice`: verde in Carta, il grigio di nota al buio),
+   * senza frecce né binario, che si scurisce al passaggio. Le regioni con
+   * una barra loro (`.tabella-scorre`, `.vi-scorre`) vincono per
+   * specificità; quelle che la nascondono continuano a nasconderla.
+   *
+   * Niente `scrollbar-color` qui: in Chrome, dove c'è, gli pseudo-elementi
+   * vengono ignorati e torna la barra di sistema. Solo Firefox, che gli
+   * pseudo-elementi non li conosce, la riceve.
+   */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+    background: transparent;
+  }
+  ::-webkit-scrollbar-button,
+  ::-webkit-scrollbar-corner {
+    display: none;
+    background: transparent;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: var(--scorre-pollice) padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover,
+  ::-webkit-scrollbar-thumb:active {
+    background: var(--scorre-pollice-attivo) padding-box;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scorre-tinta) transparent;
+    }
+  }
 }
 
 @keyframes bg-x {
@@ -814,16 +884,128 @@
     box-shadow: var(--card-shadow, var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift));
   }
 
-  /* La barra di scorrimento dentro una finestra: sottile, senza frecce né
-     binario grigio di sistema, e del colore del testo di nota del tema.
-     Quella di Windows, con le sue frecce, sulla carta si legge come un
-     pezzo di un altro programma. */
-  .scorrimento {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  /*
+   * Le pastiglie della scheda del Servizio.
+   *
+   * I segnali dell'ospite (occasione, visite, allergie) erano testo a 12 px
+   * con un ✧ davanti: sotto il minimo per una riga che si legge di sfuggita.
+   * Ora sono pastiglie morbide, chiare e smussate, che non si toccano — per
+   * questo non sono `.pastiglia`, che nel guscio diventa un tondo di vetro
+   * con lo stato al passaggio. Il tavolo è la capsula verde piena: è il dato
+   * con cui si accomoda. VIP è l'unico oro pieno della scheda.
+   */
+  .segnale-pastiglia {
+    background-color: hsl(var(--foreground) / 0.06);
+    box-shadow: inset 0 0 0 1px hsl(var(--border));
   }
-  .scorrimento:hover {
-    scrollbar-color: hsl(var(--muted-foreground) / 0.55) transparent;
+  :root:has([data-tema="carta"]) .segnale-pastiglia {
+    background-color: var(--surface-raised);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.8),
+      0 0 0 1px var(--surface-inset);
+  }
+  .capsula-tavolo {
+    background-color: hsl(var(--foreground) / 0.12);
+    color: hsl(var(--foreground));
+  }
+  :root:has([data-tema="carta"]) .capsula-tavolo {
+    background-color: var(--control-fill);
+    background-image: var(--relief-dome-bg);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+    color: var(--control-ink);
+  }
+  .capsula-vip {
+    background-color: hsl(var(--accent) / 0.22);
+    color: hsl(var(--foreground));
+  }
+  :root:has([data-tema="carta"]) .capsula-vip {
+    background-color: var(--accent-fill);
+    color: var(--text-on-accent);
+  }
+
+  /*
+   * La testata di tabella: una capsula sospesa.
+   *
+   * Non è più una fascia che va da bordo a bordo: è una capsula verde con la
+   * materia della cupola (luce in alto, ombra sul fondo) staccata dai bordi
+   * della scheda, che le righe scorrono sotto. Niente filo d'oro: l'ottone è
+   * una luce, non un bordo.
+   *
+   * La capsula è disegnata dal `::before` di ogni cella, non dal `thead`: un
+   * `tr` non prende né raggio né ombra. Il gradiente è verticale, quindi le
+   * celle accostate si leggono come un pezzo solo; la prima e l'ultima
+   * arrotondano i capi. La cella vera ha il fondo della scheda, così le righe
+   * che passano sotto non si vedono negli angoli tondi né nei 6 px d'aria
+   * sotto la capsula. L'altezza è fissata (`--testa-h`, scelta dalla densità
+   * in `Tabella`) perché il binario della barra accanto parte lì sotto.
+   */
+  .testa-tabella > tr {
+    height: var(--testa-h, 3.25rem);
+  }
+  .testa-tabella th {
+    position: relative;
+    isolation: isolate;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+  }
+  .testa-tabella th::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 6px 0;
+    z-index: -1;
+    background-color: var(--testa-fondo);
+    background-image: var(--table-head-luce);
+    box-shadow: var(--testa-capsula-ombra);
+  }
+  .testa-tabella th:first-child::before {
+    border-radius: 12px 0 0 12px;
+  }
+  .testa-tabella th:last-child::before {
+    border-radius: 0 12px 12px 0;
+  }
+
+  /*
+   * La barra di scorrimento di una tabella che scorre.
+   *
+   * Quella di sistema, grigia e con le frecce, sulla carta si leggeva come un
+   * pezzo di un altro programma. Qui è una capsula verde sottile in un
+   * binario incassato — l'unico elemento della tabella che sprofonda invece
+   * di sollevarsi — che parte sotto la testata.
+   */
+  .tabella-scorre::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    background: transparent;
+  }
+  .tabella-scorre::-webkit-scrollbar-button,
+  .tabella-scorre::-webkit-scrollbar-corner {
+    display: none;
+    background: transparent;
+  }
+  .tabella-scorre::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: var(--scorre-binario);
+    box-shadow: var(--scorre-binario-ombra);
+  }
+  .tabella-scorre::-webkit-scrollbar-track:vertical {
+    margin-top: calc(var(--testa-h, 3.25rem) + 4px);
+    margin-bottom: 10px;
+  }
+  .tabella-scorre::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: var(--scorre-pollice);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2);
+  }
+  .tabella-scorre::-webkit-scrollbar-thumb:hover,
+  .tabella-scorre::-webkit-scrollbar-thumb:active {
+    background: var(--scorre-pollice-attivo);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    .tabella-scorre {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scorre-tinta) transparent;
+    }
   }
 
   /*
@@ -1809,11 +1991,22 @@
     piatta, bordo, smusso, contatto, diffusa), mai sotto il testo lungo. Gli
     unici incavi sono il binario di un selettore e la barra della pienezza.
   */
-  /* La barra degli strumenti (`.vetro.fissa`) galleggia sopra il contenuto:
-     resta com'era. */
   :root:has([data-tema="carta"]) .vetro {
     background-image: linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
     box-shadow: var(--shadow-bevel), var(--shadow-lift);
+  }
+  /* La barra degli strumenti di Prenotazioni galleggia sopra il contenuto
+     come la capsula del menu, e ne prende il materiale. */
+  :root:has([data-tema="carta"]) .vetro.fissa {
+    background-color: transparent;
+    background-image: var(--relief-nav-bg);
+    box-shadow: var(--relief-nav-shadow);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root:has([data-tema="carta"]) .vetro.fissa {
+      background-color: var(--relief-nav-solid);
+      background-image: none;
+    }
   }
   /* Le tessere del briefing stanno nel contenuto: sono lastre. Il bordo è
      l'anello `::before` di `.vetro` in tinta unita, che non sposta il
@@ -1916,12 +2109,13 @@
   :root:has([data-tema="carta"]) .binario {
     border-color: transparent;
     background-color: var(--surface-inset);
-    box-shadow: inset 0 2px 6px var(--edge-shadow);
+    box-shadow: var(--relief-inset-shadow);
   }
   :root:has([data-tema="carta"]) .binario .segmento[aria-pressed="true"] {
     border-color: var(--control-fill);
     background-color: var(--control-fill);
-    box-shadow: var(--shadow-bevel);
+    background-image: var(--relief-dome-bg);
+    box-shadow: var(--relief-dome-shadow);
     color: var(--control-ink);
   }
   /* «Oggi» quando il giorno mostrato è oggi: l'oro sta solo nel testo. */
@@ -1990,12 +2184,13 @@
   :root:has([data-tema="carta"]) .ora-reparto {
     color: var(--text-primary);
   }
-  /* Il segmento scelto fuori da un binario (periodi, schede): verde pieno. */
+  /* Il segmento scelto fuori da un binario (periodi, schede): una cupola
+     verde, come quello dentro il binario. */
   :root:has([data-tema="carta"]) .segmento-scelto {
     border-color: var(--control-fill);
     background-color: var(--control-fill);
-    background-image: none;
-    box-shadow: var(--shadow-bevel);
+    background-image: var(--relief-dome-bg);
+    box-shadow: var(--relief-dome-shadow);
     color: var(--control-ink);
   }
   /* L'interruttore: acceso è uno stato attivo; spento è un binario che
@@ -2006,7 +2201,7 @@
   :root:has([data-tema="carta"]) .interruttore[data-state="unchecked"] {
     border-color: var(--border-control);
     background-color: var(--surface-inset);
-    box-shadow: inset 0 2px 6px var(--edge-shadow);
+    box-shadow: var(--relief-inset-shadow);
   }
   /* `Button variant="brand"` è sempre l'azione primaria di un modulo
      (accedi, recupera, salva): sulla carta è la CTA. */

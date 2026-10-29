@@ -26,6 +26,7 @@ export function MiniMese({
   settimana,
   onSeleziona,
   onCambiaMese,
+  className,
 }: {
   /** Un giorno qualsiasi del mese da mostrare. */
   mese: string;
@@ -35,6 +36,7 @@ export function MiniMese({
   settimana: string[];
   onSeleziona: (dateKey: string) => void;
   onCambiaMese: (delta: number) => void;
+  className?: string;
 }) {
   const giorni = useMemo(() => grigliaMese(mese), [mese]);
   // Con la vista su un giorno solo la fascia coinciderebbe con la pastiglia
@@ -45,7 +47,7 @@ export function MiniMese({
   );
 
   return (
-    <section className="riquadro bg-card/40 p-3">
+    <section className={cn("riquadro bg-card/40 p-3", className)}>
       {/* Titolo a sinistra e frecce insieme a destra: sono due comandi dello
           stesso tipo, e separati ai due lati del titolo si premono uno per
           volta guardando ogni volta dove sono. */}

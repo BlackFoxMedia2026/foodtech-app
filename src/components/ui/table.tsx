@@ -72,17 +72,25 @@ const FONDO: Record<Piano, string> = {
 };
 
 /*
-  L'intestazione è sempre **un gradino sotto** il corpo della tabella.
-
-  Deve essere piena e non trasparente — è appiccicata in alto mentre le righe
-  le scorrono sotto — e deve distinguersi dalla prima riga senza diventare un
-  secondo colore. Per il piano incassato è la stessa tinta di `--card-sunken`
-  abbassata di due punti di luminosità: la regola dei `finish-*`, dove le
-  variazioni si costruiscono dalla tinta invece di ripescarle a occhio.
+  L'altezza della testata, fissata: 46 px di capsula più 6 d'aria sotto
+  (`.testa-tabella`). Il binario della barra di scorrimento parte da qui,
+  quindi le due misure devono essere la stessa.
 */
-const TESTATA: Record<Piano, string> = {
-  card: "bg-[color:var(--table-head-card)]",
-  incassato: "bg-[color:var(--table-head-incassato)]",
+const ALTEZZA_TESTA: Record<Densita, string> = {
+  comoda: "[--testa-h:3.25rem]",
+  densa: "[--testa-h:3.25rem]",
+  ariosa: "[--testa-h:3.5rem]",
+};
+
+/*
+  Il colore della capsula. Per il piano incassato è la stessa tinta di
+  `--card-sunken` abbassata di due punti di luminosità: la regola dei
+  `finish-*`, dove le variazioni si costruiscono dalla tinta invece di
+  ripescarle a occhio. In Carta i due piani hanno la stessa capsula.
+*/
+const FONDO_TESTA: Record<Piano, string> = {
+  card: "[--testa-fondo:var(--table-head-card)]",
+  incassato: "[--testa-fondo:var(--table-head-incassato)]",
 };
 
 export function Tabella({
@@ -111,29 +119,41 @@ export function Tabella({
   className?: string;
 }) {
   return (
+    /*
+      Due scatole: la scheda, che non scorre e tiene un margine d'aria attorno
+      alla testata, e dentro di lei la regione che scorre. Se scorresse la
+      scheda stessa, la capsula appiccicata in alto toccherebbe il bordo e le
+      righe passerebbero nell'aria sopra di lei.
+    */
     <div
       className={cn(
-        "rounded-xl border border-border",
+        "overflow-hidden rounded-[20px] border border-border pl-2.5 pr-1.5 pt-2.5",
         FONDO[piano],
-        /*
-          Senza la riserva per la barra di scorrimento. `fill-scroll` la tiene
-          sempre (`scrollbar-gutter: stable`), e in una tabella quei 17 px
-          restavano vuoti accanto alla testata: la fascia si interrompeva prima
-          del bordo e lasciava una striscia del colore della scheda. Al buio non
-          si vedeva, sulla carta sì. Qui la barra compare solo quando le righe
-          scorrono davvero, e la testata finisce contro di lei.
-        */
-        fill ? "fill-scroll overflow-x-auto [scrollbar-gutter:auto]" : "overflow-x-auto",
+        fill && "fill flex flex-col",
+        ALTEZZA_TESTA[densita],
+        FONDO_TESTA[piano],
         className,
       )}
     >
-      <table
-        className={cn("w-full text-sm", minWidth)}
-        data-densita={densita}
-        data-fill={fill ? "" : undefined}
+      <div
+        className={cn(
+          /*
+            Senza la riserva per la barra di scorrimento. `fill-scroll` la
+            tiene sempre (`scrollbar-gutter: stable`): qui la barra compare
+            solo quando le righe scorrono davvero.
+          */
+          fill ? "fill-scroll overflow-x-auto [scrollbar-gutter:auto]" : "overflow-x-auto",
+          "tabella-scorre",
+        )}
       >
-        {children}
-      </table>
+        <table
+          className={cn("w-full text-sm", minWidth)}
+          data-densita={densita}
+          data-fill={fill ? "" : undefined}
+        >
+          {children}
+        </table>
+      </div>
     </div>
   );
 }
@@ -149,9 +169,9 @@ export function Testa({
   return (
     // `sticky` vale solo dentro una tabella che scorre (`fill`), e lì serve:
     // scorrere cinquanta righe senza più sapere cosa sia ogni colonna è
-    // peggio che scorrere. Il fondo è pieno, non trasparente, altrimenti le
-    // righe si leggono attraverso l'intestazione.
-    <thead className={cn("sticky top-0 z-10 border-b border-border t-etichetta text-[color:var(--table-head-ink)]", TESTATA[piano])}>
+    // peggio che scorrere. Il fondo è quello della scheda, pieno: copre le
+    // righe attorno alla capsula, che è disegnata in `.testa-tabella`.
+    <thead className={cn("testa-tabella sticky top-0 z-10 t-etichetta text-[color:var(--table-head-ink)]", FONDO[piano])}>
       <tr>{children}</tr>
     </thead>
   );
@@ -173,7 +193,9 @@ export function Th({
       className={cn(
         CELLA[densita],
         allineamento === "right" ? "text-right" : "text-left",
-        "font-medium",
+        // L'altezza la dà la riga; i 6 px sotto sono l'aria fra capsula e
+        // righe, e il testo si centra nella capsula, non nella cella.
+        "pb-1.5 pt-0 font-semibold",
         className,
       )}
       scope="col"

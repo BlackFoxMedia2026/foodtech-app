@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  CalendarClock,
   Clock,
   ListOrdered,
   Timer,
@@ -21,6 +22,7 @@ import { ServiceWaitlistCard } from "@/components/service/service-waitlist-card"
 import { ServiceSwitch } from "@/components/service/service-switch";
 import { AvvisiServizio } from "@/components/service/avvisi-servizio";
 import {
+  CifraPasso,
   PassoServizio,
   SelettorePassi,
 } from "@/components/service/flusso-servizio";
@@ -31,9 +33,6 @@ import { CambiamentiRecenti } from "@/components/service/cambiamenti-recenti";
 
 /** I tre momenti, nell'ordine in cui li vive chi entra. */
 type Passo = "arrivo" | "attesa" | "accomodati";
-
-const plurale = (n: number, uno: string, molti: string) =>
-  `${n} ${n === 1 ? uno : molti}`;
 
 /**
  * La schermata del servizio.
@@ -316,9 +315,22 @@ export function ServiceView({
           titolo="In arrivo"
           visibile={passo === "arrivo"}
           riassunto={
-            inArrivo.length === 0
-              ? "nessuno atteso"
-              : `${plurale(personeInArrivo, "persona", "persone")} · ${plurale(inArrivo.length, "prenotazione", "prenotazioni")}`
+            inArrivo.length === 0 ? (
+              "nessuno atteso"
+            ) : (
+              <>
+                <CifraPasso
+                  icona={Users}
+                  valore={personeInArrivo}
+                  parola={personeInArrivo === 1 ? "persona" : "persone"}
+                />
+                <CifraPasso
+                  icona={CalendarClock}
+                  valore={inArrivo.length}
+                  parola={inArrivo.length === 1 ? "prenotazione" : "prenotazioni"}
+                />
+              </>
+            )
           }
           comandi={
             <div className="flex items-center gap-1">
@@ -353,7 +365,7 @@ export function ServiceView({
             È una telefonata da fare, e sta in cima a chi deve arrivare.
           */}
           {snapshot.late.length > 0 && (
-            <Gruppo titolo={`In ritardo · ${snapshot.late.length}`} allarme>
+            <Gruppo titolo="In ritardo" conteggio={snapshot.late.length} allarme>
               {snapshot.late.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
@@ -376,7 +388,8 @@ export function ServiceView({
             )
           ) : (
             <Gruppo
-              titolo={`Attesi · ${snapshot.next.length}`}
+              titolo="Attesi"
+              conteggio={snapshot.next.length}
               muto={snapshot.late.length === 0}
             >
               {snapshot.next.map((b) => (
@@ -406,14 +419,18 @@ export function ServiceView({
               "nessuno aspetta"
             ) : (
               <>
-                {plurale(personeInAttesa, "persona", "persone")}
+                <CifraPasso
+                  icona={Users}
+                  valore={personeInAttesa}
+                  parola={personeInAttesa === 1 ? "persona" : "persone"}
+                />
                 {attesaPiuLunga > 0 && (
-                  <>
-                    {" · attesa più lunga "}
-                    <span className="font-medium text-accent-strong">
-                      {durataUmana(attesaPiuLunga)}
-                    </span>
-                  </>
+                  <CifraPasso
+                    icona={Timer}
+                    valore={durataUmana(attesaPiuLunga)}
+                    titolo="L'attesa più lunga in lista"
+                    allerta
+                  />
                 )}
               </>
             )
@@ -421,7 +438,8 @@ export function ServiceView({
         >
           {snapshot.arrived.length > 0 && (
             <Gruppo
-              titolo={`Arrivati, da accomodare · ${snapshot.arrived.length}`}
+              titolo="Arrivati, da accomodare"
+              conteggio={snapshot.arrived.length}
             >
               {snapshot.arrived.map((b) => (
                 <ServiceBookingCard
@@ -438,7 +456,8 @@ export function ServiceView({
 
           {snapshot.waitlist.length > 0 && (
             <Gruppo
-              titolo={`In lista · ${snapshot.waitlist.length}`}
+              titolo="In lista"
+              conteggio={snapshot.waitlist.length}
               muto={snapshot.arrived.length === 0}
             >
               {snapshot.waitlist.map((e, i) => (
@@ -470,13 +489,26 @@ export function ServiceView({
           visibile={passo === "accomodati"}
           className="md:col-span-2 md:border-t md:border-border md:pt-4 xl:col-span-1 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0"
           riassunto={
-            snapshot.seated.length === 0
-              ? "sala vuota"
-              : `${plurale(c.copertiPresenti, "coperto", "coperti")} · ${plurale(c.tavoliOccupati, "tavolo", "tavoli")}`
+            snapshot.seated.length === 0 ? (
+              "sala vuota"
+            ) : (
+              <>
+                <CifraPasso
+                  icona={Users}
+                  valore={c.copertiPresenti}
+                  parola={c.copertiPresenti === 1 ? "coperto" : "coperti"}
+                />
+                <CifraPasso
+                  icona={UtensilsCrossed}
+                  valore={c.tavoliOccupati}
+                  parola={c.tavoliOccupati === 1 ? "tavolo" : "tavoli"}
+                />
+              </>
+            )
           }
         >
           {snapshot.freeingSoon.length > 0 && (
-            <Gruppo titolo={`In chiusura · ${snapshot.freeingSoon.length}`}>
+            <Gruppo titolo="In chiusura" conteggio={snapshot.freeingSoon.length}>
               {snapshot.freeingSoon.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
@@ -492,7 +524,8 @@ export function ServiceView({
 
           {seduti.length > 0 && (
             <Gruppo
-              titolo={`Seduti · ${seduti.length}`}
+              titolo="Seduti"
+              conteggio={seduti.length}
               muto={snapshot.freeingSoon.length === 0}
             >
               {seduti.map((b) => (
@@ -566,11 +599,13 @@ export function ServiceView({
  */
 function Gruppo({
   titolo,
+  conteggio,
   allarme = false,
   muto = false,
   children,
 }: {
   titolo: string;
+  conteggio: number;
   allarme?: boolean;
   muto?: boolean;
   children: React.ReactNode;
@@ -578,13 +613,18 @@ function Gruppo({
   return (
     <div className="space-y-2">
       {!muto && (
+        /* Il numero in un tondino a parte, non in coda al titolo dopo un
+           punto: si conta a colpo d'occhio, come le cifre della testata. */
         <p
           className={cn(
-            "text-xs font-medium",
-            allarme ? "text-accent-strong" : "text-tertiary-foreground",
+            "flex items-center gap-2 pt-1 text-[13px] font-semibold",
+            allarme ? "text-accent-strong" : "text-muted-foreground",
           )}
         >
           {titolo}
+          <span className="segnale-pastiglia inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] tabular-nums">
+            {conteggio}
+          </span>
         </p>
       )}
       {children}

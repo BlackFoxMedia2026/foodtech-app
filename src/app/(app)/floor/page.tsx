@@ -6,8 +6,7 @@ import { readRoomLayout } from "@/server/room-layout";
 import { summarizeAnalysis } from "@/lib/floorplan-analysis";
 import { listServiceOptions } from "@/server/waiter-assignments";
 import { listStaffAssignmentsForService } from "@/server/staff-assignments";
-import { getTableStatusesForDay, listBookingsForDay } from "@/server/bookings";
-import { getShiftWindowForDate } from "@/server/booking-floor";
+import { getTableStatusesForDay } from "@/server/bookings";
 import { startOfDay } from "@/lib/utils";
 import { FloorRoomsView } from "@/components/floor/floor-rooms-view";
 import type { TableStaffMap } from "@/components/floor/table-node";
@@ -63,10 +62,6 @@ export default async function FloorPage({
       // mostrare sotto la miniatura, non trecento coordinate normalizzate che
       // ha già usato il giorno in cui la piantina è stata generata.
       riassuntoAnalisi: layout.analysis ? summarizeAnalysis(layout.analysis) : null,
-      // Per «Gestisci prenotazioni»: la mappa delle Prenotazioni legge la
-      // piantina grezza e la modalità attiva, come nella pagina Prenotazioni.
-      activeLayoutMode: r.activeLayoutMode,
-      roomLayoutElements: r.roomLayout?.elements ?? [],
       tables: tables.filter((t) => t.roomId === r.id),
     };
   });
@@ -83,24 +78,8 @@ export default async function FloorPage({
     isToday ? new Date() : startOfDay(requestedDay),
   );
 
-  // Le prenotazioni del giorno, per la vista «Gestisci prenotazioni»: le
-  // stesse della mappa in Prenotazioni, filtrate dalla fascia del servizio
-  // scelto in testata.
-  const [righe, finestraServizio] = await Promise.all([
-    listBookingsForDay(ctx.venueId, requestedDay),
-    service ? getShiftWindowForDate(ctx.venueId, requestedDay, service) : Promise.resolve(null),
-  ]);
-  // La spesa dell'ospite è un `Decimal`: non attraversa il confine col client
-  // e nessuna vista della sala la legge (vedi la pagina Prenotazioni).
-  const prenotazioni = righe.map(({ guest, ...resto }) => ({
-    ...resto,
-    guest: guest ? (({ totalSpend: _spesa, ...g }) => g)(guest) : null,
-  }));
-
   return (
     <FloorRoomsView
-      prenotazioni={prenotazioni}
-      finestraServizio={finestraServizio}
       rooms={roomsWithTables}
       date={date}
       service={service}

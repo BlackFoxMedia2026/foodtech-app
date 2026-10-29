@@ -17,7 +17,6 @@ import type { EsitoSalvataggio } from "./editor/use-editor-sala";
 import type { PermessiTavolo } from "@/components/tables/table-profile-drawer";
 
 type RoomWithTables = SalaPerEditor & { tables: Table[] };
-type RigaPrenotazione = import("@/components/bookings/bookings-page-client").Row;
 
 function RoomTransition({ roomKey, children }: { roomKey: string; children: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
@@ -41,8 +40,6 @@ function RoomTransition({ roomKey, children }: { roomKey: string; children: Reac
 }
 
 export function FloorRoomsView({
-  prenotazioni,
-  finestraServizio,
   rooms,
   date,
   service,
@@ -51,9 +48,6 @@ export function FloorRoomsView({
   statusByTableId,
   permessi,
 }: {
-  /** Le prenotazioni del giorno, per «Gestisci prenotazioni». */
-  prenotazioni: RigaPrenotazione[];
-  finestraServizio: { start: Date; end: Date } | null;
   rooms: RoomWithTables[];
   date: string;
   service: string;
@@ -302,8 +296,6 @@ export function FloorRoomsView({
             permessi={permessi}
             onSporcoChange={setDirty}
             salvaRef={salvaRef}
-            prenotazioni={prenotazioni}
-            finestraServizio={finestraServizio}
           />
         </RoomTransition>
       </div>

@@ -20,6 +20,17 @@ const STILE = {
   neutro: { icona: Info, classe: "text-muted-foreground" },
 } as const;
 
+/*
+  Nelle pastiglie l'icona porta il tono anche quando il testo non lo porta:
+  un'occasione o una visita si leggono in inchiostro pieno, con l'icona in
+  ottone; l'attenzione resta tutta in accento.
+*/
+const PASTIGLIA = {
+  attenzione: { icona: "text-accent-strong", testo: "text-accent-strong" },
+  bello: { icona: "text-accent-strong", testo: "text-foreground" },
+  neutro: { icona: "text-muted-foreground", testo: "text-foreground" },
+} as const;
+
 /** Quale segnale parla per tutti, quando al posto dei tag c'è un contatore. */
 const PRIORITA: RigaDaSapere["tono"][] = ["attenzione", "bello", "neutro"];
 
@@ -29,10 +40,17 @@ export function CosaSapere({
   /** In riga (Servizio, mappa) o una sotto l'altra (dettaglio). */
   disposizione = "riga",
   contatoreSottoMd = false,
+  aspetto = "testo",
 }: {
   righe: RigaDaSapere[];
   className?: string;
   disposizione?: "riga" | "colonna";
+  /**
+   * `pastiglie`: ogni segnale in una pastiglia morbida a 14 px. Per la
+   * scheda del Servizio, dove i segnali si leggono a un passo dal tablet;
+   * le tabelle restano in testo, dove le pastiglie farebbero una griglia.
+   */
+  aspetto?: "testo" | "pastiglie";
   /**
    * Sotto `md` i segnali diventano un contatore.
    *
@@ -54,6 +72,30 @@ export function CosaSapere({
     PRIORITA.map((t) => righe.find((r) => r.tono === t)).find(Boolean) ??
     righe[0];
   const StileCapo = STILE[capofila.tono];
+
+  if (aspetto === "pastiglie") {
+    return (
+      <div className={cn("flex flex-wrap gap-2 text-sm", className)}>
+        {righe.map((r) => {
+          const Icona = STILE[r.tono].icona;
+          const tinta = PASTIGLIA[r.tono];
+          return (
+            <span
+              key={`${r.tono}-${r.testo}`}
+              className={cn(
+                "segnale-pastiglia inline-flex min-h-[30px] max-w-full items-center gap-1.5 rounded-full px-3 py-1 font-medium",
+                tinta.testo,
+              )}
+              title={r.fonte}
+            >
+              <Icona className={cn("h-[15px] w-[15px] shrink-0", tinta.icona)} aria-hidden="true" />
+              {r.testo}
+            </span>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <>

@@ -78,7 +78,7 @@ export function SchedaPannello({
   // righe invece di far scorrere la colonna.
   return (
     <section className="riquadro shrink-0 overflow-hidden bg-card bg-gradient-to-b from-accent/[0.07] via-transparent to-transparent text-card-foreground">
-      <header className="flex items-center gap-2.5 px-3.5 pb-1 pt-3">
+      <header className="flex items-center gap-2.5 px-3.5 pb-1 pt-2.5">
         <span className="vetro kpi-pastiglia grid h-7 w-7 shrink-0 place-items-center rounded-full text-[var(--control-ink)]">
           <Icona className="h-3.5 w-3.5" />
         </span>
@@ -86,7 +86,7 @@ export function SchedaPannello({
         {azione}
       </header>
       <div className="mx-3.5 h-px bg-gradient-to-r from-accent/30 via-accent/10 to-transparent" aria-hidden="true" />
-      <div className="px-3.5 pb-3.5 pt-3">{children}</div>
+      <div className="px-3.5 pb-3 pt-2.5">{children}</div>
     </section>
   );
 }
@@ -117,15 +117,12 @@ export function PannelloProprieta({
       ) : elemento ? (
         <ProprietaElemento editor={editor} elemento={elemento} modificabile={modificabile} />
       ) : (
-        <div className="flex flex-col items-center gap-1 py-2 text-center">
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-secondary/60">
-            <Box className="h-3.5 w-3.5 text-tertiary-foreground" />
-          </span>
-          <p className="text-xs font-medium">Nessun elemento selezionato</p>
-          <p className="text-[11px] leading-snug text-tertiary-foreground">
-            Seleziona un elemento sulla piantina per modificarne le proprietà.
-          </p>
-        </div>
+        // Una riga e non un riquadro centrato: è lo stato di riposo della
+        // scheda, e la colonna deve starci tutta senza scorrere.
+        <p className="text-[11px] leading-snug text-tertiary-foreground">
+          <span className="font-medium text-foreground">Nessun elemento selezionato.</span> Clicca un elemento sulla
+          piantina per modificarlo.
+        </p>
       )}
     </SchedaPannello>
   );
@@ -831,22 +828,24 @@ export function PannelloInformazioni({
 export function PannelloLivelli({ editor, haOriginale }: { editor: EditorSala; haOriginale: boolean }) {
   return (
     <SchedaPannello icona={Layers} titolo="Livelli">
-      <ul className="flex flex-col">
-        {ROOM_LAYER_KEYS.map((chiave) => {
+      {/* Pastiglie su due colonne e non un elenco: cinque righe costavano
+          metà della colonna per cinque interruttori. L'immagine originale
+          compare solo quando c'è una piantina caricata. */}
+      <ul className="grid grid-cols-2 gap-1.5">
+        {ROOM_LAYER_KEYS.filter((chiave) => chiave !== "original" || haOriginale).map((chiave) => {
           const acceso = editor.layers[chiave];
-          const indisponibile = chiave === "original" && !haOriginale;
           return (
             <li key={chiave}>
               <button
                 type="button"
-                disabled={indisponibile}
                 onClick={() => editor.cambiaLayer(chiave, !acceso)}
                 aria-pressed={acceso}
-                title={indisponibile ? "Nessuna piantina caricata per questa sala" : undefined}
+                title={ETICHETTE_LAYER[chiave]}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left text-xs transition-colors",
-                  indisponibile ? "cursor-not-allowed opacity-40" : "hover:bg-secondary",
-                  !acceso && !indisponibile && "text-tertiary-foreground",
+                  "flex w-full items-center gap-1.5 rounded-full border px-2 py-1 text-left text-[11px] transition-colors",
+                  acceso
+                    ? "border-accent/30 bg-accent/[0.08] hover:bg-accent/15"
+                    : "border-border text-tertiary-foreground hover:bg-secondary",
                 )}
               >
                 {acceso ? (
@@ -878,6 +877,11 @@ export function PannelloOriginale({
   onMostra: () => void;
 }) {
   const isPdf = url?.split("?")[0].toLowerCase().endsWith(".pdf") ?? false;
+
+  // Senza piantina caricata la scheda diceva solo «usa Gestisci piantina»:
+  // quel bottone è già nella barra degli strumenti, e la colonna ha bisogno
+  // dello spazio.
+  if (!url) return null;
 
   return (
     <SchedaPannello icona={ImageIcon} titolo="Immagine originale">

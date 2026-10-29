@@ -7,12 +7,14 @@ import {
   Check,
   CircleUser,
   CreditCard,
+  MessageSquare,
   MoreHorizontal,
   Phone,
   Receipt,
   Ticket,
   Timer,
   UserX,
+  Users,
   UtensilsCrossed,
   Unlink,
   X,
@@ -307,7 +309,7 @@ export function ServiceBookingCard({
         setAzioniAperte((v) => !v);
       }}
       className={cn(
-        "surface rounded-md border p-3",
+        "surface rounded-2xl border p-4",
         secondarie.length > 0 && "cursor-pointer",
         booking.lateBy > 0
           ? "border-accent/60"
@@ -318,24 +320,11 @@ export function ServiceBookingCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             {/* Sans e tabellare: l'ora è il dato che si confronta con
                 l'orologio, non un titolo. */}
-            <span className="text-base font-semibold tabular-nums">{ora}</span>
-            <span className="truncate font-medium">{booking.guestName}</span>
-            {booking.isVip && (
-              <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[11px]">VIP</span>
-            )}
-            {booking.tableLabel ? (
-              <span className="rounded-full bg-current/10 px-2 py-0.5 text-[11px]">
-                {/* Una tavolata si legge per intero: «4 + 5», non «4». */}
-                {[booking.tableLabel, ...booking.tavoliUniti].join(" + ")}
-              </span>
-            ) : (
-              <span className="rounded-full border border-dashed border-border px-2 py-0.5 text-[11px] text-tertiary-foreground">
-                senza tavolo
-              </span>
-            )}
+            <span className="text-lg font-semibold tabular-nums">{ora}</span>
+            <span className="truncate text-[17px] font-semibold tracking-[-0.01em]">{booking.guestName}</span>
           </div>
 
           {/* Aperte le azioni, i dettagli si tacciono: restano l'ora e il nome
@@ -344,48 +333,60 @@ export function ServiceBookingCard({
               chi ha appena toccato la card sta guardando i pulsanti. */}
           {!azioniAperte && (
             <>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {booking.partySize} {booking.partySize === 1 ? "persona" : "persone"}
-                {booking.liberoVerso && (
-                  <>
-                    {" · "}
+              {/*
+                Quanti sono e dove vanno: i due dati con cui si accomoda.
+                Prima il tavolo era una pastiglia a 11 px quasi trasparente,
+                accanto al nome, e pesava quanto un'etichetta; ora è la
+                capsula verde piena, e VIP l'unico oro pieno della scheda.
+              */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[15px] font-medium text-foreground/80">
+                  <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  {booking.partySize} {booking.partySize === 1 ? "persona" : "persone"}
+                </span>
+                {booking.tableLabel ? (
+                  <span className="capsula-tavolo inline-flex h-6 items-center rounded-full px-2.5 text-xs font-semibold">
+                    {/* Una tavolata si legge per intero: «4 + 5», non «4». */}
+                    Tavolo {[booking.tableLabel, ...booking.tavoliUniti].join(" + ")}
+                  </span>
+                ) : (
+                  <span className="inline-flex h-6 items-center rounded-full border border-dashed border-border px-2.5 text-xs text-muted-foreground">
+                    senza tavolo
+                  </span>
+                )}
+                {booking.isVip && (
+                  <span className="capsula-vip inline-flex h-6 items-center rounded-full px-2.5 text-xs font-semibold tracking-[0.06em]">
+                    VIP
+                  </span>
+                )}
+              </div>
+
+              {/* Il tempo: quando si libera, il ritardo, fra quanto arriva. */}
+              {(booking.liberoVerso ||
+                booking.lateBy > 0 ||
+                (booking.status !== "SEATED" && booking.minutesToArrival > 0)) && (
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  {booking.liberoVerso && (
                     <span
                       className={cn(booking.liberoVerso.minuti <= 0 && "text-accent-strong")}
                       title={frasePrevisione(booking.liberoVerso, timezone).dettaglio}
                     >
                       {frasePrevisione(booking.liberoVerso, timezone).testo}
                     </span>
-                  </>
-                )}
-                {booking.lateBy > 0 && (
-                  <>
-                    {" · "}
-                    <span className="text-accent-strong">in ritardo di {durataUmana(booking.lateBy)}</span>
-                  </>
-                )}
-                {booking.status !== "SEATED" &&
-                  booking.lateBy === 0 &&
-                  booking.minutesToArrival > 0 && <> · fra {booking.minutesToArrival} min</>}
-              </p>
-
-              {/*
-                Allergie e occasione stavano qui come due pillole fra le altre.
-                Adesso sono le prime due righe di «cosa sapere», che è lo stesso
-                elenco che si legge in Sala: una persona deve leggersi uguale in
-                tutte le schermate, o la seconda volta non la si guarda.
-              */}
-              <CosaSapere righe={booking.daSapere} className="mt-1.5" />
-
-              {(booking.notes || booking.depositCents > 0) && (
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                  {booking.depositCents > 0 && (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <CreditCard className="h-3 w-3" aria-hidden="true" />
-                      caparra {(booking.depositCents / 100).toFixed(0)} €
-                    </span>
                   )}
-                  {booking.notes && <span className="text-tertiary-foreground">{booking.notes}</span>}
-                </div>
+                  {booking.lateBy > 0 && (
+                    <>
+                      {booking.liberoVerso && " · "}
+                      <span className="text-accent-strong">in ritardo di {durataUmana(booking.lateBy)}</span>
+                    </>
+                  )}
+                  {booking.status !== "SEATED" && booking.lateBy === 0 && booking.minutesToArrival > 0 && (
+                    <>
+                      {booking.liberoVerso && " · "}
+                      fra {booking.minutesToArrival} min
+                    </>
+                  )}
+                </p>
               )}
             </>
           )}
@@ -398,7 +399,9 @@ export function ServiceBookingCard({
             {!azioniAperte && principale && (
               <Button
                 size="sm"
-                className="tocco-comodo"
+                // In Carta l'azione di stasera è una cupola verde, come i
+                // tondi degli strumenti.
+                className={cn("tocco-comodo", principale.chiave !== "done" && "pillola-accesa")}
                 variant={principale.chiave === "done" ? "outline" : "accent"}
                 disabled={principale.disabilitato}
                 onClick={principale.onClick}
@@ -426,6 +429,42 @@ export function ServiceBookingCard({
           </div>
         )}
       </div>
+
+      {/* Segnali e nota stanno fuori dalla riga del pulsante: lì dentro
+          avevano solo la colonna a sinistra di «Accomoda», e in una scheda
+          stretta una pastiglia andava a capo in tre righe lasciando vuoto
+          tutto il lato destro. Qui prendono la larghezza della scheda. */}
+      {!azioniAperte && (
+        <>
+          {/*
+            Allergie e occasione stavano qui come due pillole fra le altre.
+            Adesso sono le prime due righe di «cosa sapere», che è lo stesso
+            elenco che si legge in Sala: una persona deve leggersi uguale in
+            tutte le schermate, o la seconda volta non la si guarda. Qui in
+            pastiglie, perché la scheda si legge a un passo dal tablet.
+          */}
+          <CosaSapere righe={booking.daSapere} aspetto="pastiglie" className="mt-3" />
+
+          {/* La nota va passata in cucina: non è il grigio più tenue della
+              scheda, è una riga a sé, sotto un filo. */}
+          {(booking.notes || booking.depositCents > 0) && (
+            <div className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3 text-sm text-foreground/80">
+              {booking.notes && (
+                <span className="flex items-start gap-2">
+                  <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  {booking.notes}
+                </span>
+              )}
+              {booking.depositCents > 0 && (
+                <span className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  caparra {(booking.depositCents / 100).toFixed(0)} €
+                </span>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
       {azioniAperte && <GrigliaAzioni azioni={azioni} />}
 

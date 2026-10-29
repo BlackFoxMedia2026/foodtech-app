@@ -238,6 +238,17 @@ export function useRoomCamera({
     [zoomAt],
   );
 
+  /** Porta un punto del mondo al centro della vista, senza cambiare zoom. */
+  const centerOn = useCallback(
+    (point: Point) => {
+      const { width: vw, height: vh } = viewportSizeRef.current;
+      if (!vw || !vh) return;
+      const cur = cameraRef.current;
+      animateTo({ x: vw / 2 - point.x * cur.zoom, y: vh / 2 - point.y * cur.zoom, zoom: cur.zoom });
+    },
+    [animateTo],
+  );
+
   const getZoom = useCallback(() => cameraRef.current.zoom, []);
 
   // Measure the viewport synchronously before first paint so the initial Fit
@@ -275,6 +286,7 @@ export function useRoomCamera({
     fitRoom,
     reset100,
     stepZoom,
+    centerOn,
     minZoom,
   };
 }

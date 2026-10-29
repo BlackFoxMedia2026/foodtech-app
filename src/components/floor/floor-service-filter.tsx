@@ -1,10 +1,14 @@
 "use client";
 
-import { useRef } from "react";
+import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays } from "lucide-react";
 import { NomeEspandibile } from "@/components/floor/nome-espandibile";
+import { useVenueToday } from "@/components/shell/venue-time-provider";
+import { MiniMese } from "@/components/staff/calendario/mini-mese";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { spostaMese } from "@/lib/turni";
 import { cn } from "@/lib/utils";
 
 export function FloorServiceFilter({
@@ -19,7 +23,9 @@ export function FloorServiceFilter({
   /** `barra`: il filtro è già dentro un riquadro — non ne serve un secondo attorno. */
   variante?: "riquadro" | "barra" | "compatta";
 }) {
-  const campoData = useRef<HTMLInputElement>(null);
+  const oggi = useVenueToday();
+  const [calendarioAperto, setCalendarioAperto] = useState(false);
+  const [meseMostrato, setMeseMostrato] = useState(date || oggi);
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -34,10 +40,10 @@ export function FloorServiceFilter({
   const inBarra = variante === "barra";
 
   /*
-    `compatta`: il calendario è un'icona, e la data si legge passandoci
-    sopra; il servizio resta scritto, perché è la cosa che cambia più spesso.
-    Il campo data vero sta sotto l'icona, invisibile: il clic apre il suo
-    selettore, che così compare dove ci si aspetta.
+    `compatta`: il giorno e il servizio, scritti, dentro la barra della sala.
+    Il calendario è quello del prodotto (lo stesso del calendario turni), in
+    un popover sopra la barra: il selettore nativo del browser ha i colori del
+    sistema operativo e non quelli della pagina.
   */
   if (variante === "compatta") {
     const giorno = date
@@ -45,37 +51,40 @@ export function FloorServiceFilter({
       : "Scegli il giorno";
     return (
       <div className="flex items-center gap-0.5 rounded-full bg-secondary/60 p-0.5">
-        <span className="relative">
-          <button
-            type="button"
-            onClick={() => {
-              const campo = campoData.current;
-              if (!campo) return;
-              try {
-                campo.showPicker();
-              } catch {
-                campo.focus();
-              }
-            }}
-            aria-label={`Giorno: ${giorno}`}
-            title={giorno}
-            className="group flex h-8 items-center rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
-          >
-            <CalendarDays className="h-4 w-4 shrink-0" />
-            <NomeEspandibile>{giorno}</NomeEspandibile>
-          </button>
-          <input
-            ref={campoData}
-            type="date"
-            value={date}
-            tabIndex={-1}
-            aria-hidden="true"
-            onChange={(e) => update({ date: e.target.value })}
-            className="pointer-events-none absolute inset-0 opacity-0"
-          />
-        </span>
+        <Popover
+          open={calendarioAperto}
+          onOpenChange={(v) => {
+            if (v) setMeseMostrato(date || oggi);
+            setCalendarioAperto(v);
+          }}
+        >
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Giorno: ${giorno}`}
+              className="group flex h-10 items-center rounded-full px-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground data-[state=open]:bg-card data-[state=open]:text-foreground"
+            >
+              <CalendarDays className="h-[18px] w-[18px] shrink-0" />
+              <NomeEspandibile apertoDa="largo">{giorno}</NomeEspandibile>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="center" className="w-[248px] p-0">
+            <MiniMese
+              className="border-0 bg-transparent"
+              mese={meseMostrato}
+              selezionato={date}
+              oggi={oggi}
+              settimana={[]}
+              onSeleziona={(g) => {
+                setCalendarioAperto(false);
+                if (g !== date) update({ date: g });
+              }}
+              onCambiaMese={(d) => setMeseMostrato((m) => spostaMese(m, d))}
+            />
+          </PopoverContent>
+        </Popover>
         <Select value={service} onValueChange={(v) => update({ service: v })}>
-          <SelectTrigger className="h-8 w-auto gap-1 whitespace-nowrap rounded-full border-0 bg-transparent px-2.5 text-xs font-medium [&>span]:max-w-[7rem] [&>span]:truncate">
+          <SelectTrigger className="h-10 w-auto gap-1 whitespace-nowrap rounded-full border-0 bg-transparent px-2.5 text-[13px] font-medium [&>span]:max-w-[7rem] [&>span]:truncate">
             <SelectValue placeholder="Servizio" />
           </SelectTrigger>
           <SelectContent>

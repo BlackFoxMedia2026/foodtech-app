@@ -70,6 +70,16 @@ export type TipoTrascinabile =
 
 export type EsitoSalvataggio = "ok" | "errore" | "niente";
 
+/** Dove è finito il tavolo messo giù: può non essere il punto chiesto, se
+ * lo spazio minimo fra tavoli lo ha spinto fuori dall'ingombro di un altro,
+ * e chi lo ha chiesto con un clic deve poterlo inseguire con la vista. */
+export type EsitoPiazzamento = { centro: Point } | "esauriti" | "errore";
+
+function centroDi(tavolo: Parameters<typeof improntaTavolo>[0], posX: number, posY: number): Point {
+  const imp = improntaTavolo(tavolo);
+  return { x: posX + imp.w / 2, y: posY + imp.h / 2 };
+}
+
 const PASSO_TASTIERA = 4;
 const PASSO_TASTIERA_FINE = 1;
 
@@ -611,7 +621,7 @@ export function useEditorSala({
       punto: Point,
       modello?: ModelloTavolo,
       tavoloId?: string,
-    ): Promise<"ok" | "esauriti" | "errore"> => {
+    ): Promise<EsitoPiazzamento> => {
       const misura = modello
         ? { w: modello.width, h: modello.height }
         : dimensioneDisegnata({ shape, seats: postiPredefiniti(shape) });
@@ -646,7 +656,7 @@ export function useEditorSala({
           ),
         });
         setSelectedIds(new Set([riusabile.id]));
-        return "ok";
+        return { centro: centroDi(riusabile, posX, posY) };
       }
 
       const dichiarati = inventario[shape as InventoryShape];
@@ -699,7 +709,7 @@ export function useEditorSala({
         tables: [...statoRef.current.tables, { ...creato, posX, posY, dirty: true }],
       });
       setSelectedIds(new Set([creato.id]));
-      return "ok";
+      return { centro: centroDi(creato, posX, posY) };
     },
     [history, inventario, roomId, spazioMinimoAttuale],
   );
