@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowLeftRight,
   Check,
   CircleUser,
@@ -11,6 +12,7 @@ import {
   MoreHorizontal,
   Phone,
   Receipt,
+  Sparkles,
   Ticket,
   Timer,
   UserX,
@@ -21,7 +23,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
-import { CosaSapere } from "@/components/guests/cosa-sapere";
 import { durataUmana } from "@/lib/durata";
 import { frasePrevisione } from "@/lib/liberazione";
 import { cn } from "@/lib/utils";
@@ -47,12 +48,15 @@ export function ServiceBookingCard({
   currency,
   canManage,
   onChanged,
+  compatta = false,
 }: {
   booking: ServiceBooking;
   timezone: string;
   currency: string;
   canManage: boolean;
   onChanged: () => void;
+  /** Una riga sola: per chi è seduto e non chiede niente. */
+  compatta?: boolean;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -302,6 +306,128 @@ export function ServiceBookingCard({
   const principale = azioni.find((a) => a.principale);
   const secondarie = azioni.filter((a) => !a.principale);
 
+  const seduto = booking.status === "SEATED";
+  const inChiusura = seduto && (booking.minutesToFree ?? 1) <= 0;
+  // Una tavolata si legge per intero: «4 + 5», non «4».
+  const tavolo = booking.tableLabel
+    ? [booking.tableLabel, ...booking.tavoliUniti].join(" + ")
+    : null;
+  const previsione = booking.liberoVerso
+    ? frasePrevisione(booking.liberoVerso, timezone)
+    : null;
+
+  /*
+    Il tavolo è una pastiglia neutra con l'etichetta e basta («T12», non
+    «Tavolo T12»): accanto alle persone si capisce da sé. Diventa oro pieno
+    solo quando il tavolo è oltre l'ora di fine: è l'unico momento in cui il
+    tavolo, e non la persona, è la notizia.
+  */
+  const capsulaTavolo = tavolo && (
+    <span
+      className={cn(
+        "inline-flex h-[26px] shrink-0 items-center rounded-lg px-2 text-sm font-bold tabular-nums",
+        inChiusura ? "tavolo-in-chiusura" : "segnale-pastiglia",
+      )}
+    >
+      {tavolo}
+    </span>
+  );
+
+  /*
+    Il piede della scheda: le cose da sapere, la nota, la caparra, in una
+    fascia color carta sotto un filo. Prima erano pastiglie grandi, poi un
+    filo, poi la nota per esteso: tre grammatiche in fondo a ogni scheda, ed
+    era quella la confusione. Adesso è una riga di testo a 14 px separata da
+    puntini; l'icona resta solo dove porta un tono (l'attenzione, la cosa
+    bella), perché colore **e** icona è la regola di `CosaSapere`.
+  */
+  const voci: { chiave: string; contenuto: React.ReactNode; titolo?: string }[] = [
+    ...booking.daSapere.map((r) => ({
+      chiave: `${r.tono}-${r.testo}`,
+      titolo: r.fonte,
+      contenuto:
+        r.tono === "attenzione" ? (
+          <span className="inline-flex items-center gap-1.5 text-accent-strong">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {r.testo}
+          </span>
+        ) : r.tono === "bello" ? (
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent-strong" aria-hidden="true" />
+            {r.testo}
+          </span>
+        ) : (
+          r.testo
+        ),
+    })),
+    ...(booking.notes
+      ? [
+          {
+            chiave: "nota",
+            titolo: booking.notes,
+            contenuto: (
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
+                <MessageSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="truncate">{booking.notes}</span>
+              </span>
+            ),
+          },
+        ]
+      : []),
+    ...(booking.depositCents > 0
+      ? [
+          {
+            chiave: "caparra",
+            contenuto: (
+              <span className="inline-flex items-center gap-1.5">
+                <CreditCard className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                Caparra {(booking.depositCents / 100).toFixed(0)} €
+              </span>
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  /** Il tempo: il ritardo, quando si libera, fra quanto arriva. */
+  const tempo =
+    booking.lateBy > 0 ? (
+      <span className="font-semibold text-accent-strong">
+        {durataUmana(booking.lateBy)} di ritardo
+      </span>
+    ) : previsione && booking.liberoVerso ? (
+      <span
+        className={cn(booking.liberoVerso.minuti <= 0 && "font-semibold text-accent-strong")}
+        title={previsione.dettaglio}
+      >
+        {previsione.testo}
+      </span>
+    ) : !seduto && booking.minutesToArrival > 0 ? (
+      <span>fra {booking.minutesToArrival} min</span>
+    ) : null;
+
+  const altre = secondarie.length > 0 && (
+    <button
+      type="button"
+      onClick={() => setAzioniAperte((v) => !v)}
+      aria-expanded={azioniAperte}
+      aria-label={azioniAperte ? "Chiudi le azioni" : `Altre azioni per ${booking.guestName}`}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-current/10 hover:text-foreground"
+    >
+      {azioniAperte ? (
+        <X className="h-4 w-4" aria-hidden="true" />
+      ) : (
+        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+      )}
+    </button>
+  );
+
+  /*
+    La riga compatta: chi è seduto e non chiede niente. Tavolo, nome, quanti
+    e quando si libera, su una riga sola. Toccata, si apre come le altre.
+  */
+  const rigaCompatta = compatta && !azioniAperte;
+
   return (
     <article
       onClick={(e) => {
@@ -309,166 +435,107 @@ export function ServiceBookingCard({
         setAzioniAperte((v) => !v);
       }}
       className={cn(
-        "surface rounded-2xl border p-4",
+        "surface overflow-hidden border",
+        rigaCompatta ? "rounded-xl" : "rounded-2xl",
         secondarie.length > 0 && "cursor-pointer",
-        booking.lateBy > 0
-          ? "border-accent/60"
-          : booking.status === "SEATED" && (booking.minutesToFree ?? 1) <= 0
-            ? "border-border-strong"
-            : "border-border",
+        booking.lateBy > 0 ? "border-accent/60" : inChiusura ? "border-border-strong" : "border-border",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            {/* Sans e tabellare: l'ora è il dato che si confronta con
-                l'orologio, non un titolo. */}
-            <span className="text-lg font-semibold tabular-nums">{ora}</span>
-            <span className="truncate text-[17px] font-semibold tracking-[-0.01em]">{booking.guestName}</span>
+      {rigaCompatta ? (
+        <div className="flex min-h-12 items-center gap-3 py-1.5 pl-3.5 pr-1.5 text-[15px]">
+          {capsulaTavolo || <span className="font-semibold tabular-nums">{ora}</span>}
+          <span className="min-w-0 flex-1 truncate font-semibold">{booking.guestName}</span>
+          <span className="shrink-0 tabular-nums text-foreground/75">
+            {booking.partySize}
+            {previsione && <> · {previsione.testo}</>}
+          </span>
+          {canManage && altre}
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2.5 pl-4 pr-2 pt-3.5">
+            {/* Chi è seduto si cerca per tavolo, chi deve arrivare per ora. */}
+            {seduto && capsulaTavolo ? (
+              capsulaTavolo
+            ) : (
+              <span className={cn("text-lg font-bold tabular-nums", booking.lateBy > 0 && "text-accent-strong")}>
+                {ora}
+              </span>
+            )}
+            <span className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-[-0.01em]">
+              {booking.guestName}
+              {booking.isVip && (
+                <span className="ml-2 align-[2px] text-[11px] font-bold tracking-[0.1em] text-accent-strong">VIP</span>
+              )}
+            </span>
+
+            {canManage && (
+              <div className="flex shrink-0 items-center gap-1">
+                {/* Chiusa: l'azione di stasera per esteso. Aperta: solo la via
+                    d'uscita, perché l'azione di stasera è la prima piastrella. */}
+                {!azioniAperte && principale && (
+                  <Button
+                    size="sm"
+                    // Un verde più chiaro della testata del passo: la capsula
+                    // dice dove sei, il pulsante cosa fare.
+                    className={cn("tocco-comodo", principale.chiave !== "done" && "azione-servizio")}
+                    variant={principale.chiave === "done" ? "outline" : "accent"}
+                    disabled={principale.disabilitato}
+                    onClick={principale.onClick}
+                  >
+                    {busy !== null && busy === principale.chiave ? "…" : principale.corta}
+                  </Button>
+                )}
+                {altre}
+              </div>
+            )}
           </div>
 
           {/* Aperte le azioni, i dettagli si tacciono: restano l'ora e il nome
-              — che dicono *su chi* si sta per agire — e sotto ci sono i
-              bersagli. Tenere tutto vorrebbe dire una card alta il doppio, e
-              chi ha appena toccato la card sta guardando i pulsanti. */}
+              — che dicono *su chi* si sta per agire — e sotto i bersagli. */}
           {!azioniAperte && (
             <>
-              {/*
-                Quanti sono e dove vanno: i due dati con cui si accomoda.
-                Prima il tavolo era una pastiglia a 11 px quasi trasparente,
-                accanto al nome, e pesava quanto un'etichetta; ora è la
-                capsula verde piena, e VIP l'unico oro pieno della scheda.
-              */}
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 text-[15px] font-medium text-foreground/80">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 px-4 pb-3.5 pt-2 text-[15px] text-foreground/80">
+                <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
                   <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  {booking.partySize} {booking.partySize === 1 ? "persona" : "persone"}
+                  {booking.partySize}
+                  <span className="sr-only">{booking.partySize === 1 ? "persona" : "persone"}</span>
                 </span>
-                {booking.tableLabel ? (
-                  <span className="capsula-tavolo inline-flex h-6 items-center rounded-full px-2.5 text-xs font-semibold">
-                    {/* Una tavolata si legge per intero: «4 + 5», non «4». */}
-                    Tavolo {[booking.tableLabel, ...booking.tavoliUniti].join(" + ")}
-                  </span>
-                ) : (
-                  <span className="inline-flex h-6 items-center rounded-full border border-dashed border-border px-2.5 text-xs text-muted-foreground">
-                    senza tavolo
-                  </span>
-                )}
-                {booking.isVip && (
-                  <span className="capsula-vip inline-flex h-6 items-center rounded-full px-2.5 text-xs font-semibold tracking-[0.06em]">
-                    VIP
-                  </span>
-                )}
+                {!seduto &&
+                  (capsulaTavolo || (
+                    <span className="inline-flex h-[26px] items-center rounded-lg border border-dashed border-border px-2 text-sm text-muted-foreground">
+                      senza tavolo
+                    </span>
+                  ))}
+                {tempo}
               </div>
 
-              {/* Il tempo: quando si libera, il ritardo, fra quanto arriva. */}
-              {(booking.liberoVerso ||
-                booking.lateBy > 0 ||
-                (booking.status !== "SEATED" && booking.minutesToArrival > 0)) && (
-                <p className="mt-1.5 text-sm text-muted-foreground">
-                  {booking.liberoVerso && (
-                    <span
-                      className={cn(booking.liberoVerso.minuti <= 0 && "text-accent-strong")}
-                      title={frasePrevisione(booking.liberoVerso, timezone).dettaglio}
-                    >
-                      {frasePrevisione(booking.liberoVerso, timezone).testo}
-                    </span>
-                  )}
-                  {booking.lateBy > 0 && (
-                    <>
-                      {booking.liberoVerso && " · "}
-                      <span className="text-accent-strong">in ritardo di {durataUmana(booking.lateBy)}</span>
-                    </>
-                  )}
-                  {booking.status !== "SEATED" && booking.lateBy === 0 && booking.minutesToArrival > 0 && (
-                    <>
-                      {booking.liberoVerso && " · "}
-                      fra {booking.minutesToArrival} min
-                    </>
-                  )}
-                </p>
+              {voci.length > 0 && (
+                <div className="piede-scheda flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 text-sm font-medium">
+                  {voci.map((v, i) => (
+                    <Fragment key={v.chiave}>
+                      {i > 0 && (
+                        <span className="h-1 w-1 shrink-0 rounded-full bg-current opacity-30" aria-hidden="true" />
+                      )}
+                      <span className="min-w-0 max-w-full" title={v.titolo}>
+                        {v.contenuto}
+                      </span>
+                    </Fragment>
+                  ))}
+                </div>
               )}
             </>
-          )}
-        </div>
-
-        {canManage && (
-          <div className="flex shrink-0 items-center gap-1.5">
-            {/* Chiusa: l'azione di stasera per esteso. Aperta: solo la via
-                d'uscita, perché l'azione di stasera è la prima piastrella. */}
-            {!azioniAperte && principale && (
-              <Button
-                size="sm"
-                // In Carta l'azione di stasera è una cupola verde, come i
-                // tondi degli strumenti.
-                className={cn("tocco-comodo", principale.chiave !== "done" && "pillola-accesa")}
-                variant={principale.chiave === "done" ? "outline" : "accent"}
-                disabled={principale.disabilitato}
-                onClick={principale.onClick}
-              >
-                <principale.icona className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                {busy !== null && busy === principale.chiave ? "…" : principale.corta}
-              </Button>
-            )}
-
-            {secondarie.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setAzioniAperte((v) => !v)}
-                aria-expanded={azioniAperte}
-                aria-label={azioniAperte ? "Chiudi le azioni" : `Altre azioni per ${booking.guestName}`}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-current/10 hover:text-foreground"
-              >
-                {azioniAperte ? (
-                  <X className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Segnali e nota stanno fuori dalla riga del pulsante: lì dentro
-          avevano solo la colonna a sinistra di «Accomoda», e in una scheda
-          stretta una pastiglia andava a capo in tre righe lasciando vuoto
-          tutto il lato destro. Qui prendono la larghezza della scheda. */}
-      {!azioniAperte && (
-        <>
-          {/*
-            Allergie e occasione stavano qui come due pillole fra le altre.
-            Adesso sono le prime due righe di «cosa sapere», che è lo stesso
-            elenco che si legge in Sala: una persona deve leggersi uguale in
-            tutte le schermate, o la seconda volta non la si guarda. Qui in
-            pastiglie, perché la scheda si legge a un passo dal tablet.
-          */}
-          <CosaSapere righe={booking.daSapere} aspetto="pastiglie" className="mt-3" />
-
-          {/* La nota va passata in cucina: non è il grigio più tenue della
-              scheda, è una riga a sé, sotto un filo. */}
-          {(booking.notes || booking.depositCents > 0) && (
-            <div className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3 text-sm text-foreground/80">
-              {booking.notes && (
-                <span className="flex items-start gap-2">
-                  <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  {booking.notes}
-                </span>
-              )}
-              {booking.depositCents > 0 && (
-                <span className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  caparra {(booking.depositCents / 100).toFixed(0)} €
-                </span>
-              )}
-            </div>
           )}
         </>
       )}
 
-      {azioniAperte && <GrigliaAzioni azioni={azioni} />}
+      {azioniAperte && (
+        <div className="px-4 pb-4">
+          <GrigliaAzioni azioni={azioni} />
+        </div>
+      )}
 
-      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+      {error && <p className="px-4 pb-3 text-sm text-destructive">{error}</p>}
 
       {contoAperto && (
         <BillDialog

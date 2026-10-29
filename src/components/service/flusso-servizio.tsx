@@ -1,6 +1,5 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,17 +52,27 @@ import { cn } from "@/lib/utils";
  */
 
 /**
- * Un passo del flusso.
+ * Un passo del flusso: una testata sospesa e, sotto, la sua corsia.
  *
- * `riassunto` è **il dato, non un sottotitolo**: «18 persone · 5
- * prenotazioni». Le persone prima dei gruppi, perché i coperti sono l'unità
- * con cui si ragiona in sala — quanti ne entrano in quel tavolo, non quanti
- * nomi ci sono in lista.
+ * La testata è la **capsula verde delle tabelle** (`.testa-passo`, stessa
+ * materia di `--table-head-luce`) staccata dalla corsia color carta che porta
+ * le schede. Prima titolo, cifre e schede stavano sullo stesso fondo, e la
+ * parte alta non si separava dalla bassa: si leggeva tutto come un elenco
+ * solo. Adesso sono due livelli — *cosa sto guardando* e *il lavoro*.
+ *
+ * L'altezza della capsula è fissa e il riassunto non va mai a capo: le tre
+ * testate restano alla stessa quota anche quando un riassunto è più lungo
+ * degli altri. Se non ci sta, si taglia con i puntini.
+ *
+ * `riassunto` è **il dato, non un sottotitolo**: «13 persone · entro 60 min».
+ * Le persone prima dei gruppi, perché i coperti sono l'unità con cui si
+ * ragiona in sala. Il numero grande a destra è quanti nomi ci sono nel passo.
  */
 export function PassoServizio({
   numero,
   titolo,
   riassunto,
+  conteggio,
   comandi,
   visibile,
   className,
@@ -73,7 +82,8 @@ export function PassoServizio({
   numero: 1 | 2 | 3;
   titolo: string;
   riassunto: React.ReactNode;
-  /** Il filtro della finestra: sta nella testata, non sopra le card. */
+  conteggio: number;
+  /** Il filtro della finestra: in cima alla corsia, non nella capsula. */
   comandi?: React.ReactNode;
   /** Sul telefono si vede un passo per volta. */
   visibile: boolean;
@@ -82,67 +92,25 @@ export function PassoServizio({
 }) {
   return (
     <section
-      className={cn("flex min-w-0 flex-col gap-2.5", !visibile && "hidden md:flex", className)}
+      className={cn("flex min-h-0 min-w-0 flex-col gap-3", !visibile && "hidden md:flex", className)}
       aria-label={`Passo ${numero} di 3: ${titolo}`}
     >
-      {/*
-        Titolo, cifre e filtro su **una** riga alta almeno 36 px in tutti e
-        tre i passi. È quello che tiene le tre testate alla stessa quota: se
-        il filtro 30/60/90 allungasse la sola prima colonna, le tre testate
-        resterebbero sfalsate e si leggerebbero come tre widget. Le cifre
-        stavano in una seconda riga di testo grigio a 13 px, sotto il titolo,
-        e si leggevano come una didascalia; adesso sono pastiglie accanto al
-        nome del passo, e sono la prima cosa che si vede dopo il nome.
-      */}
-      <div className="flex min-h-[36px] flex-wrap items-center gap-x-3 gap-y-2">
-        <h3 className="shrink-0 text-sm font-semibold uppercase tracking-wider">{titolo}</h3>
-        <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
-          {riassunto}
-        </div>
-        {comandi && <div className="ml-auto">{comandi}</div>}
+      <div className="testa-passo flex h-[68px] shrink-0 items-center gap-3 rounded-[14px] pl-5 pr-3">
+        <h3 className="shrink-0 whitespace-nowrap text-xl font-bold tracking-[-0.01em]">{titolo}</h3>
+        <p className="min-w-0 flex-1 truncate text-sm opacity-85">{riassunto}</p>
+        <span
+          className="testa-passo-conto flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl font-bold tabular-nums"
+          aria-label={`${conteggio} in questo passo`}
+        >
+          {conteggio}
+        </span>
       </div>
 
-      {children}
+      <div className="corsia-passo flex min-h-0 flex-1 flex-col gap-3 rounded-3xl p-3.5 xl:overflow-y-auto">
+        {comandi && <div className="flex justify-end">{comandi}</div>}
+        {children}
+      </div>
     </section>
-  );
-}
-
-/**
- * Una cifra della testata di un passo: «14 persone», «8 ore e 39».
- *
- * La stessa pastiglia morbida dei segnali sulle schede, con il numero in
- * grassetto e la parola che lo spiega più leggera. `allerta` è l'attesa più
- * lunga: l'unica cifra della banda che si accende.
- */
-export function CifraPasso({
-  icona: Icona,
-  valore,
-  parola,
-  titolo,
-  allerta = false,
-}: {
-  icona: LucideIcon;
-  valore: React.ReactNode;
-  parola?: string;
-  /** Il nome per esteso, per chi passa sopra col puntatore. */
-  titolo?: string;
-  allerta?: boolean;
-}) {
-  return (
-    <span
-      title={titolo}
-      className={cn(
-        "segnale-pastiglia inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[13px] tabular-nums",
-        allerta ? "text-accent-strong" : "text-foreground",
-      )}
-    >
-      <Icona
-        className={cn("h-3.5 w-3.5 shrink-0", allerta ? "text-accent-strong" : "text-muted-foreground")}
-        aria-hidden="true"
-      />
-      <span className="font-semibold">{valore}</span>
-      {parola && <span className={cn(!allerta && "text-muted-foreground")}>{parola}</span>}
-    </span>
   );
 }
 

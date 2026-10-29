@@ -2,30 +2,17 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  CalendarClock,
-  Clock,
-  ListOrdered,
-  Timer,
-  UserCheck,
-  Users,
-  UtensilsCrossed,
-} from "lucide-react";
+import { Clock, ListOrdered, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { durataUmana } from "@/lib/durata";
-import { CartaKpi, FasciaKpi } from "@/components/ui/carta-kpi";
 import type { ServiceSnapshot } from "@/server/service";
 import { ServiceBookingCard } from "@/components/service/service-booking-card";
 import { ServiceWaitlistCard } from "@/components/service/service-waitlist-card";
 import { ServiceSwitch } from "@/components/service/service-switch";
 import { AvvisiServizio } from "@/components/service/avvisi-servizio";
-import {
-  CifraPasso,
-  PassoServizio,
-  SelettorePassi,
-} from "@/components/service/flusso-servizio";
+import { PassoServizio, SelettorePassi } from "@/components/service/flusso-servizio";
 import type { ServiceInsight } from "@/server/service-intelligence";
 import { useServizioVivo } from "@/lib/use-servizio-vivo";
 import { RiepilogoTelefono } from "@/components/telefono/riepilogo-servizio";
@@ -207,67 +194,13 @@ export function ServiceView({
       <RiepilogoTelefono />
 
       {/*
-        Su tablet ci stanno tutti e sei, e ci devono stare: a 820 px la fascia
-        ne mostrava tre come su un telefono da 390, sprecando metà larghezza.
-        Il tablet non è un telefono grande.
-
-        Non è più una striscia divisa da righe verticali ma sei carte di vetro,
-        una per tono. Il perché sta in `CartaKpi`; qui cambia solo che ognuna
-        porta il proprio colore, e che il colore dice *quale* dato è — non che
-        è importante.
+        Qui c'era la fascia dei sei numeri (in sala, tavoli, in arrivo, in
+        ritardo, in attesa, walk-in). Tolta il 29 ottobre: ripeteva quello che
+        le tre testate dicono già, a due centimetri, e faceva della parte alta
+        un secondo cruscotto sopra il lavoro. Adesso ogni numero sta nella
+        testata del passo a cui appartiene.
       */}
-      <FasciaKpi className="fissa">
-        <CartaKpi
-          icona={Users}
-          tono="bosco"
-          etichetta="In sala"
-          valore={c.copertiPresenti}
-          nota={["coperto", "coperti"]}
-          className="hidden md:flex"
-        />
-        <CartaKpi
-          icona={UtensilsCrossed}
-          tono="bronzo"
-          etichetta="Tavoli"
-          valore={`${c.tavoliOccupati}/${c.tavoliTotali}`}
-          nota="occupati"
-          className="hidden md:flex"
-        />
-        <CartaKpi
-          icona={Clock}
-          tono="petrolio"
-          etichetta="In arrivo"
-          valore={c.inArrivo}
-          nota={`entro ${window_} min`}
-        />
-        <CartaKpi
-          icona={Timer}
-          tono="oliva"
-          etichetta="In ritardo"
-          valore={c.inRitardo}
-          allarme={c.inRitardo > 0}
-          nota={
-            c.nonArrivate > 0
-              ? `+${c.nonArrivate} mai ${c.nonArrivate === 1 ? "arrivata" : "arrivate"}`
-              : undefined
-          }
-        />
-        <CartaKpi
-          icona={ListOrdered}
-          tono="salvia"
-          etichetta="In attesa"
-          valore={c.personeInAttesa}
-          nota={["persona", "persone"]}
-        />
-        <CartaKpi
-          icona={UserCheck}
-          tono="alloro"
-          etichetta="Walk-in"
-          valore={c.walkInOggi}
-          nota="oggi"
-          className="hidden md:flex"
-        />
-      </FasciaKpi>
+
 
       {/* Le linguette servono dove c'è un passo per volta: sul telefono. */}
       <SelettorePassi
@@ -308,29 +241,17 @@ export function ServiceView({
       */}
       {/* La regione elastica: i passi prendono l'altezza che avanza e scorrono
           al loro interno. */}
-      <div className="fill-scroll grid gap-4 pr-0.5 md:grid-cols-2 xl:grid-cols-3">
+      <div className="fill-scroll grid gap-4 pr-0.5 md:grid-cols-2 xl:grid-cols-3 xl:grid-rows-[minmax(0,1fr)] xl:overflow-hidden">
         {/* Fuori: chi deve ancora entrare, compreso chi è in ritardo. */}
         <PassoServizio
           numero={1}
           titolo="In arrivo"
           visibile={passo === "arrivo"}
+          conteggio={inArrivo.length}
           riassunto={
-            inArrivo.length === 0 ? (
-              "nessuno atteso"
-            ) : (
-              <>
-                <CifraPasso
-                  icona={Users}
-                  valore={personeInArrivo}
-                  parola={personeInArrivo === 1 ? "persona" : "persone"}
-                />
-                <CifraPasso
-                  icona={CalendarClock}
-                  valore={inArrivo.length}
-                  parola={inArrivo.length === 1 ? "prenotazione" : "prenotazioni"}
-                />
-              </>
-            )
+            inArrivo.length === 0
+              ? `nessuno atteso entro ${window_} min`
+              : `${personeInArrivo} ${personeInArrivo === 1 ? "persona" : "persone"} · entro ${window_} min`
           }
           comandi={
             <div className="flex items-center gap-1">
@@ -413,24 +334,20 @@ export function ServiceView({
           numero={2}
           titolo="In attesa"
           visibile={passo === "attesa"}
-          className="md:border-l md:border-border md:pl-4"
+          conteggio={gruppiInAttesa}
           riassunto={
             gruppiInAttesa === 0 ? (
               "nessuno aspetta"
             ) : (
               <>
-                <CifraPasso
-                  icona={Users}
-                  valore={personeInAttesa}
-                  parola={personeInAttesa === 1 ? "persona" : "persone"}
-                />
+                {personeInAttesa} {personeInAttesa === 1 ? "persona" : "persone"}
                 {attesaPiuLunga > 0 && (
-                  <CifraPasso
-                    icona={Timer}
-                    valore={durataUmana(attesaPiuLunga)}
-                    titolo="L'attesa più lunga in lista"
-                    allerta
-                  />
+                  <>
+                    {" · max "}
+                    <b className="font-semibold text-[color:var(--header-ink)]">
+                      {durataUmana(attesaPiuLunga)}
+                    </b>
+                  </>
                 )}
               </>
             )
@@ -487,24 +404,12 @@ export function ServiceView({
           numero={3}
           titolo="Accomodati"
           visibile={passo === "accomodati"}
-          className="md:col-span-2 md:border-t md:border-border md:pt-4 xl:col-span-1 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0"
+          className="md:col-span-2 xl:col-span-1"
+          conteggio={snapshot.seated.length}
           riassunto={
-            snapshot.seated.length === 0 ? (
-              "sala vuota"
-            ) : (
-              <>
-                <CifraPasso
-                  icona={Users}
-                  valore={c.copertiPresenti}
-                  parola={c.copertiPresenti === 1 ? "coperto" : "coperti"}
-                />
-                <CifraPasso
-                  icona={UtensilsCrossed}
-                  valore={c.tavoliOccupati}
-                  parola={c.tavoliOccupati === 1 ? "tavolo" : "tavoli"}
-                />
-              </>
-            )
+            snapshot.seated.length === 0
+              ? "sala vuota"
+              : `${c.copertiPresenti} ${c.copertiPresenti === 1 ? "coperto" : "coperti"} · ${c.tavoliOccupati}/${c.tavoliTotali} tavoli`
           }
         >
           {snapshot.freeingSoon.length > 0 && (
@@ -528,6 +433,8 @@ export function ServiceView({
               conteggio={seduti.length}
               muto={snapshot.freeingSoon.length === 0}
             >
+              {/* Chi è seduto e non chiede niente è una riga sola: la scheda
+                  intera serve a chi sta per liberarsi, non a chi è al primo. */}
               {seduti.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
@@ -536,6 +443,7 @@ export function ServiceView({
                   currency={snapshot.currency}
                   canManage={canManage}
                   onChanged={dopoAzione}
+                  compatta
                 />
               ))}
             </Gruppo>
@@ -592,10 +500,12 @@ export function ServiceView({
  * Un gruppo dentro un passo: «in ritardo», «in lista», «in chiusura».
  *
  * `muto` toglie il titolo quando il gruppo è **l'unico** del passo: ripetere
- * «Attesi · 5» sotto una testata che dice già «01 In arrivo · 18 persone · 5
- * prenotazioni» è la stessa cosa detta due volte a due centimetri di
- * distanza. Il titolo torna appena c'è un secondo gruppo, cioè appena serve a
- * distinguere.
+ * «Attesi» sotto una testata che dice già «In arrivo · 13 persone» è la
+ * stessa cosa detta due volte. Il titolo torna appena c'è un secondo gruppo,
+ * cioè appena serve a distinguere.
+ *
+ * Maiuscoletto a 13 px, senza tondino del conteggio: il numero del passo sta
+ * già nella testata, e qui il titolo fa solo da segnalibro fra due gruppi.
  */
 function Gruppo({
   titolo,
@@ -611,20 +521,16 @@ function Gruppo({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {!muto && (
-        /* Il numero in un tondino a parte, non in coda al titolo dopo un
-           punto: si conta a colpo d'occhio, come le cifre della testata. */
         <p
           className={cn(
-            "flex items-center gap-2 pt-1 text-[13px] font-semibold",
-            allarme ? "text-accent-strong" : "text-muted-foreground",
+            "px-1.5 pt-0.5 text-[13px] font-bold uppercase tracking-[0.07em]",
+            allarme ? "text-accent-strong" : "text-foreground/75",
           )}
         >
           {titolo}
-          <span className="segnale-pastiglia inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] tabular-nums">
-            {conteggio}
-          </span>
+          <span className="sr-only">: {conteggio}</span>
         </p>
       )}
       {children}

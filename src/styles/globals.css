@@ -904,6 +904,77 @@
       inset 0 1px 0 rgb(255 255 255 / 0.8),
       0 0 0 1px var(--surface-inset);
   }
+  /*
+   * Il Servizio: testata del passo, corsia, piede della scheda.
+   *
+   * La testata del passo è la **stessa capsula** della testata di tabella
+   * (`--table-head-luce`, `--testa-capsula-ombra`): la materia della cupola
+   * verde stesa in orizzontale. Il numero a destra è una pastiglia chiara col
+   * rilievo delle pastiglie morbide. Sotto, la corsia: un incavo color carta
+   * che porta le schede, così la parte alta si stacca dalla bassa.
+   */
+  .testa-passo {
+    background-color: var(--table-head-card);
+    background-image: var(--table-head-luce);
+    box-shadow: var(--testa-capsula-ombra);
+    color: hsl(var(--foreground));
+  }
+  :root:has([data-tema="carta"]) .testa-passo {
+    background-color: var(--control-fill);
+    color: var(--control-ink);
+  }
+  .testa-passo-conto {
+    background-color: hsl(var(--foreground) / 0.12);
+    color: hsl(var(--foreground));
+  }
+  :root:has([data-tema="carta"]) .testa-passo-conto {
+    background-color: var(--surface-raised);
+    background-image: var(--relief-chip-bg);
+    box-shadow: var(--relief-chip-shadow);
+    color: var(--text-primary);
+  }
+  .corsia-passo {
+    background-color: hsl(var(--foreground) / 0.04);
+    box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.6);
+  }
+  :root:has([data-tema="carta"]) .corsia-passo {
+    background-color: rgb(227 221 205 / 0.55);
+    box-shadow: inset 0 0 0 1px rgb(207 198 177 / 0.6);
+  }
+  /* Il piede della scheda: una fascia un tono sotto, dietro un filo. */
+  .piede-scheda {
+    background-color: hsl(var(--foreground) / 0.05);
+    border-top: 1px solid hsl(var(--border));
+  }
+  :root:has([data-tema="carta"]) .piede-scheda {
+    background-color: #f4efe3;
+    border-top-color: #e9e2d2;
+    color: var(--text-primary);
+  }
+  /* Il tavolo oltre l'ora di fine: l'unico oro pieno sul tavolo. */
+  .tavolo-in-chiusura {
+    background-color: hsl(var(--accent) / 0.35);
+    color: hsl(var(--foreground));
+  }
+  :root:has([data-tema="carta"]) .tavolo-in-chiusura {
+    background-color: var(--accent-fill);
+    color: var(--text-on-accent);
+  }
+  /*
+   * L'azione di stasera sulla scheda: verde, ma un verde salvia più chiaro
+   * della testata, con la luce che scende dall'alto al centro come nei tondi
+   * degli strumenti. La capsula dice dove sei, il pulsante cosa fare: se
+   * fossero dello stesso verde si confonderebbero.
+   */
+  :root:has([data-tema="carta"]) .azione-servizio {
+    background-color: #4f826d;
+    background-image: radial-gradient(130% 110% at 50% -10%, #79a893 0%, #4f826d 48%, #43735f 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      0 4px 10px -6px rgb(30 65 50 / 0.45);
+    color: #fbf8f1;
+  }
+
   .capsula-tavolo {
     background-color: hsl(var(--foreground) / 0.12);
     color: hsl(var(--foreground));

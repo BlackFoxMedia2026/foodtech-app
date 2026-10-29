@@ -104,73 +104,38 @@ export function ServiceWaitlistCard({
         setAzioniAperte((v) => !v);
       }}
       className={cn(
-        "surface rounded-2xl border p-4",
+        "surface overflow-hidden rounded-2xl border",
         secondarie.length > 0 && "cursor-pointer",
         entry.overdue ? "border-accent/60" : "border-border",
       )}
     >
-      {/* La stessa struttura della scheda di prenotazione, riga per riga: chi
-          scorre la colonna «In attesa» passa da una all'altra senza dover
+      {/* La stessa struttura della scheda di prenotazione, fascia per fascia:
+          chi scorre la colonna «In attesa» passa da una all'altra senza dover
           rileggere dove sta il nome. Al posto dell'ora c'è il posto in coda. */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <span
-              className="segnale-pastiglia flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums"
-              aria-label={`${posizione}° in lista`}
-            >
-              {posizione}
-            </span>
-            <span className="truncate text-[17px] font-semibold tracking-[-0.01em]">{entry.guestName}</span>
-          </div>
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-[15px] font-medium text-foreground/80">
-              <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              {entry.partySize} {entry.partySize === 1 ? "persona" : "persone"}
-            </span>
-            {entry.isVip && (
-              <span className="capsula-vip inline-flex h-6 items-center rounded-full px-2.5 text-xs font-semibold tracking-[0.06em]">
-                VIP
-              </span>
-            )}
-            {entry.status === "NOTIFIED" && (
-              <span className="inline-flex h-6 items-center rounded-full bg-accent/20 px-2.5 text-xs font-medium">
-                avvisato
-              </span>
-            )}
-            {entry.status === "CONFIRMED" && (
-              <span className="inline-flex h-6 items-center rounded-full bg-sage/25 px-2.5 text-xs font-medium">
-                sta arrivando
-              </span>
-            )}
-          </div>
-
-          {/* L'attesa non si tace nemmeno con le azioni aperte: è il dato con
-              cui si decide chi accomodare, e la decisione si prende proprio
-              mentre si guarda il pulsante. */}
-          <p
-            className={cn(
-              "mt-1.5 flex items-center gap-1.5 text-sm",
-              entry.overdue ? "text-accent-strong" : "text-muted-foreground",
-            )}
-          >
-            <Timer className="h-4 w-4 shrink-0" aria-hidden="true" />
-            {entry.waitingMin === 0 ? "appena entrato" : `in attesa da ${durataUmana(entry.waitingMin)}`}
-          </p>
-        </div>
+      <div className="flex items-center gap-2.5 pl-4 pr-2 pt-3.5">
+        <span
+          className="segnale-pastiglia flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums"
+          aria-label={`${posizione}° in lista`}
+        >
+          {posizione}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-[-0.01em]">
+          {entry.guestName}
+          {entry.isVip && (
+            <span className="ml-2 align-[2px] text-[11px] font-bold tracking-[0.1em] text-accent-strong">VIP</span>
+          )}
+        </span>
 
         {canManage && (
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1">
             {!azioniAperte && principale && (
               <Button
                 size="sm"
                 variant="accent"
-                className="tocco-comodo pillola-accesa"
+                className="tocco-comodo azione-servizio"
                 disabled={busy}
                 onClick={principale.onClick}
               >
-                <UtensilsCrossed className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                 Accomoda
               </Button>
             )}
@@ -194,9 +159,36 @@ export function ServiceWaitlistCard({
         )}
       </div>
 
-      {azioniAperte && <GrigliaAzioni azioni={azioni} />}
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 px-4 pb-3.5 pt-2 text-[15px] text-foreground/80">
+        <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+          <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          {entry.partySize}
+          <span className="sr-only">{entry.partySize === 1 ? "persona" : "persone"}</span>
+        </span>
+        {entry.status === "NOTIFIED" && <span className="font-medium text-accent-strong">avvisato</span>}
+        {entry.status === "CONFIRMED" && <span className="font-semibold text-sage-strong">sta arrivando</span>}
+      </div>
 
-      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+      {/* L'attesa sta nel piede e non si tace nemmeno con le azioni aperte: è
+          il dato con cui si decide chi accomodare, e la decisione si prende
+          proprio mentre si guarda il pulsante. */}
+      <p
+        className={cn(
+          "piede-scheda flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold",
+          entry.overdue && "text-accent-strong",
+        )}
+      >
+        <Timer className="h-4 w-4 shrink-0" aria-hidden="true" />
+        {entry.waitingMin === 0 ? "appena entrato" : `in attesa da ${durataUmana(entry.waitingMin)}`}
+      </p>
+
+      {azioniAperte && (
+        <div className="px-4 pb-4">
+          <GrigliaAzioni azioni={azioni} />
+        </div>
+      )}
+
+      {error && <p className="px-4 pb-3 text-sm text-destructive">{error}</p>}
 
       {seatOpen && (
         <SeatFromWaitlistDialog
