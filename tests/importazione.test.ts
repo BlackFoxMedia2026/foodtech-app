@@ -84,6 +84,7 @@ describe("l'anteprima", () => {
       soloClienti: 1,
       prenotazioniPassate: 1,
       prenotazioniFuture: 1,
+      annullateONoShow: 0,
       ospitiNuovi: 3,
       ospitiGiaVisti: 0,
       giaImportate: 0,
@@ -219,6 +220,53 @@ describe("l'importazione", () => {
     /* Il giorno in cui qualcuno chiede «e le allergie?», la risposta e gia
        scritta. */
     expect(diff.colonneIgnorate).toEqual(["Tavolo"]);
+  });
+
+  it("un'annullata resta annullata, e un no-show non diventa una visita", async () => {
+    /* Senza leggere la colonna «stato», l'annullata futura diventava
+       confermata — e riceveva il promemoria — e il no-show passato una cena
+       avvenuta, che gonfiava le visite del cliente. */
+    const file = [
+      "Nome;Telefono;Data;Ora;Stato",
+      "Anna;3330000001;25/12/2026;20:00;Annullata",
+      "Bruno;3330000002;10/01/2020;20:00;No-show",
+      "Carla;3330000003;10/01/2020;20:00;Confermata",
+      "Dario;3330000004;25/12/2026;20:00;chissà",
+    ].join("\n");
+
+    const anteprima = await anteprimaImportazione(venueId, file);
+    expect(anteprima.conteggi.annullateONoShow).toBe(2);
+
+    await eseguiImportazione(venueId, file);
+    const per = async (nome: string) =>
+      (await db.booking.findFirstOrThrow({ where: { venueId, guest: { firstName: nome } } })).status;
+    expect(await per("Anna")).toBe("CANCELLED");
+    expect(await per("Bruno")).toBe("NO_SHOW");
+    /* «Confermata» di sei anni fa è una cena avvenuta; una parola sconosciuta
+       lascia decidere la data. */
+    expect(await per("Carla")).toBe("COMPLETED");
+    expect(await per("Dario")).toBe("CONFIRMED");
+
+    const bruno = await db.guest.findFirstOrThrow({ where: { venueId, firstName: "Bruno" } });
+    expect(bruno.totalVisits).toBe(0);
+  });
+
+  it("le righe con solo il nome non si duplicano a ogni importazione", async () => {
+    const file = ["Nome;Cognome", "Nicolò;Bassi", "Pia;", "Pia;"].join("\n");
+    const primo = await eseguiImportazione(venueId, file);
+    /* Due righe «Pia» senza contatti nello stesso file: una scheda sola. */
+    expect(primo.creati.ospiti).toBe(2);
+
+    const secondo = await eseguiImportazione(venueId, file);
+    expect(secondo.creati.ospiti).toBe(0);
+    expect(await db.guest.count({ where: { venueId } })).toBe(2);
+  });
+
+  it("un nome senza contatti non si attacca a chi un contatto ce l'ha", async () => {
+    await db.guest.create({ data: { venueId, firstName: "Pia", phone: "+393330000009" } });
+    const esito = await eseguiImportazione(venueId, "Nome\nPia");
+    expect(esito.creati.ospiti).toBe(1);
+    expect(await db.guest.count({ where: { venueId, firstName: "Pia" } })).toBe(2);
   });
 
   it("un file illeggibile non scrive niente e lo dice", async () => {

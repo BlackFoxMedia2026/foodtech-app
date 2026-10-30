@@ -77,6 +77,11 @@ async function pulisci() {
 }
 
 beforeEach(async () => {
+  /* L'orologio si ferma su ADESSO: la chiusura legge anche l'ora vera (le
+     soglie di consumo), e con il calendario reale l'abbonamento finto
+     scivolava nel ciclo successivo, dove gli invii consumati non si vedono. */
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(ADESSO);
   await pulisci();
   await assicuraPiani();
   const unico = `${PREFISSO}${Date.now()}-${Math.random()}`;
@@ -89,6 +94,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  vi.useRealTimers();
   await pulisci();
   await db.$disconnect();
 });

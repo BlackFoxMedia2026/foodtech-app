@@ -326,3 +326,54 @@ describe("in ritardo e mai arrivato sono due cose diverse", () => {
     expect(snap.late).toHaveLength(2);
   });
 });
+
+describe("la serata dopo mezzanotte", () => {
+  /*
+    Il difetto: la fotografia leggeva «oggi» con `startOfDay` del processo.
+    Su Vercel (UTC) la giornata girava alle 02:00 italiane d'estate, e i
+    tavoli ancora seduti della cena sparivano dal Servizio. Gli istanti qui
+    sono assoluti: il test vale con qualunque `TZ`.
+  */
+  const CENA = new Date("2026-07-10T19:00:00.000Z"); // 21:00 del 10 a Roma
+
+  it("alle tre di notte il tavolo seduto alle 21 è ancora in sala", async () => {
+    await svuota();
+    await db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        partySize: 4,
+        startsAt: CENA,
+        durationMin: 120,
+        status: "SEATED",
+        seatedAt: CENA,
+        arrivedAt: CENA,
+        source: "PHONE",
+        tableId: tavolo4,
+      },
+    });
+
+    // 03:00 dell'11 a Roma = 01:00 UTC dell'11: per il processo è già domani.
+    const s = await getServiceSnapshot(venueId, { now: new Date("2026-07-11T01:00:00.000Z") });
+    expect(s.seated).toHaveLength(1);
+  });
+
+  it("la mattina dopo la serata è chiusa: non resta in sala", async () => {
+    await svuota();
+    await db.booking.create({
+      data: {
+        venueId,
+        guestId,
+        partySize: 4,
+        startsAt: CENA,
+        durationMin: 120,
+        status: "SEATED",
+        seatedAt: CENA,
+        source: "PHONE",
+        tableId: tavolo4,
+      },
+    });
+    const s = await getServiceSnapshot(venueId, { now: new Date("2026-07-11T09:00:00.000Z") });
+    expect(s.seated).toHaveLength(0);
+  });
+});

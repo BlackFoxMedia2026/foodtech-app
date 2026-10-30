@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { NON_PIU_RITARDO_MIN, durataUmana } from "@/lib/durata";
-import { endOfDay, startOfDay } from "@/lib/utils";
+import { DEFAULT_VENUE_TIMEZONE, giornataDiServizio } from "@/lib/venue-time";
 import { checkAvailability, findShiftFor, zonedDayAndMinute } from "./availability";
 import { getFloorLive } from "./floor-live";
 import { frasePrevisione } from "@/lib/liberazione";
@@ -204,12 +204,19 @@ export async function getServiceInsights(
   const now = opts.now ?? new Date();
   const orizzonte = new Date(now.getTime() + HORIZON_MIN * 60_000);
 
-  const [venue, bookings, live, coda, shifts, disdette, tables, chiuseStasera] = await Promise.all([
-    db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }),
+  /* La giornata di servizio del locale, non quella del processo (UTC su
+     Vercel): vedi `giornataDiServizio`. */
+  const venue = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
+  const { inizio: inizioGiornata, fine: fineGiornata } = giornataDiServizio(
+    now,
+    venue?.timezone ?? DEFAULT_VENUE_TIMEZONE,
+  );
+
+  const [bookings, live, coda, shifts, disdette, tables, chiuseStasera] = await Promise.all([
     db.booking.findMany({
       where: {
         venueId,
-        startsAt: { gte: startOfDay(now), lte: endOfDay(now) },
+        startsAt: { gte: inizioGiornata, lte: fineGiornata },
         deletedAt: null,
         status: { notIn: ["CANCELLED", "COMPLETED"] },
       },
@@ -230,8 +237,8 @@ export async function getServiceInsights(
         venueId,
         deletedAt: null,
         status: "CANCELLED",
-        startsAt: { gt: now, lte: endOfDay(now) },
-        closedAt: { gte: startOfDay(now) },
+        startsAt: { gt: now, lte: fineGiornata },
+        closedAt: { gte: inizioGiornata },
       },
       include: { guest: { select: { firstName: true, lastName: true } } },
       orderBy: { startsAt: "asc" },
@@ -248,7 +255,7 @@ export async function getServiceInsights(
       where: {
         venueId,
         deletedAt: null,
-        startsAt: { gte: startOfDay(now), lte: endOfDay(now) },
+        startsAt: { gte: inizioGiornata, lte: fineGiornata },
         seatedAt: { not: null },
         closedAt: { not: null },
       },

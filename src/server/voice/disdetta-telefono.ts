@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { riconosciChiamante } from "@/server/telefonia";
 import { recordAudit, type AuditActor } from "@/server/audit";
-import { annunciaDisdetta } from "@/server/bookings";
+import { DISDICIBILI_DA_FUORI, disdiciDaFuori } from "@/server/bookings";
 
 /**
  * Disdire al telefono, parlando con la voce.
@@ -31,8 +31,9 @@ import { annunciaDisdetta } from "@/server/bookings";
  * dire che un tavolo può tornare occupato senza che nessuno in sala lo sappia.
  */
 
-/** Gli stati da cui si può disdire: una già disdetta o già seduta no. */
-const DISDICIBILI = ["PENDING", "CONFIRMED"] as const;
+/** Gli stati da cui si può disdire: una già disdetta o già seduta no. Gli
+ *  stessi del link nel promemoria, scritti una volta in `bookings.ts`. */
+const DISDICIBILI = DISDICIBILI_DA_FUORI;
 
 export type PrenotazioneDaDisdire = {
   id: string;
@@ -172,8 +173,6 @@ export async function disdiciDalTelefono(
       partySize: true,
       guestId: true,
       venue: { select: { orgId: true } },
-      guest: { select: { firstName: true, lastName: true } },
-      table: { select: { label: true } },
     },
   });
   if (!riga) return { ok: false, perche: "non_trovata" };
@@ -188,16 +187,18 @@ export async function disdiciDalTelefono(
   if (riga.status === "CANCELLED") return { ok: false, perche: "gia_disdetta" };
   if (riga.startsAt.getTime() < adesso.getTime()) return { ok: false, perche: "gia_passata" };
 
-  const disdetta = await db.booking.updateMany({
-    where: { id: riga.id, venueId, deletedAt: null, status: { in: [...DISDICIBILI] } },
-    data: { status: "CANCELLED" },
-  });
-  if (disdetta.count === 0) {
-    const ora = await db.booking.findUnique({
-      where: { id: riga.id },
-      select: { status: true },
-    });
-    return { ok: false, perche: ora ? perchePerStato(ora.status) : "non_trovata" };
+  /*
+    La scrittura condizionata, gli orari coerenti con lo stato, la caparra da
+    restituire, l'annuncio alla sala e i contatori dell'ospite: tutto da
+    `disdiciDaFuori`, la stessa strada del link nel promemoria. Prima qui
+    c'era un `updateMany` suo, e una disdetta al telefono lasciava la caparra
+    in cassa senza avviso e la scheda dell'ospite senza la disdetta.
+  */
+  const disdetta = await disdiciDaFuori(venueId, riga.id, adesso);
+  if (!disdetta.ok) {
+    if (disdetta.perche === "non_trovata") return { ok: false, perche: "non_trovata" };
+    if (disdetta.perche === "gia_passata") return { ok: false, perche: "gia_passata" };
+    return { ok: false, perche: perchePerStato(disdetta.stato) };
   }
 
   /*
@@ -224,26 +225,7 @@ export async function disdiciDalTelefono(
     coperti: riga.partySize,
   });
 
-  /*
-    E la sala lo deve **sapere**: un tavolo disdetto che nessuno annuncia resta
-    apparecchiato tutta la sera, cioè il danno che disdire al telefono doveva
-    evitare. L'annuncio è la stessa funzione che usa la disdetta fatta dal
-    gestionale: due formule per lo stesso avviso divergerebbero al primo
-    ritocco, e quella che non emette lascerebbe la schermata incantata.
-  */
-  await annunciaDisdetta(
-    venueId,
-    {
-      id: riga.id,
-      startsAt: riga.startsAt,
-      partySize: riga.partySize,
-      nome: riga.guest
-        ? `${riga.guest.firstName}${riga.guest.lastName ? ` ${riga.guest.lastName}` : ""}`
-        : null,
-      tavolo: riga.table?.label ?? null,
-    },
-    adesso,
-  );
-
+  /* La sala lo sa già: l'annuncio è partito da `disdiciDaFuori`, la stessa
+     funzione che usa la disdetta fatta dal gestionale. */
   return { ok: true, quando: riga.startsAt, persone: riga.partySize };
 }

@@ -1,4 +1,4 @@
-import { auth } from "./auth";
+import { utenteDiSessione } from "./sessione";
 
 /**
  * Chi può vedere il pannello di piattaforma.
@@ -41,9 +41,15 @@ export type EsitoSuperAdmin = { ok: true; email: string } | { ok: false };
  * Non redirige e non solleva: chi chiama decide cosa fare. Le pagine mostrano
  * «non esiste» — non «non hai i permessi» — perché l'esistenza di questo
  * pannello non è un'informazione da dare a chi non ci entra.
+ *
+ * La sessione deve essere **ancora valida**: una revoca («esci da tutti», una
+ * password reimpostata) chiude fuori anche da qui, e l'email che conta è
+ * quella dell'account adesso, non quella congelata nel token all'accesso.
+ * Prima si leggeva solo il token: il pannello che vede tutti i clienti era
+ * l'unica porta che una revoca non chiudeva.
  */
 export async function superAdminCorrente(): Promise<EsitoSuperAdmin> {
-  const session = await auth();
-  const email = (session?.user as { email?: string } | undefined)?.email;
-  return eSuperAdmin(email) ? { ok: true, email: email! } : { ok: false };
+  const utente = await utenteDiSessione();
+  if (!utente) return { ok: false };
+  return eSuperAdmin(utente.email) ? { ok: true, email: utente.email } : { ok: false };
 }

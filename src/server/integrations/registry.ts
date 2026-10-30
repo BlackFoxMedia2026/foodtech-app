@@ -855,7 +855,17 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     disponibilita: "AVAILABLE",
     autenticazione: { modalita: "NATIVE", verificata: true },
     capacita: ["charges"],
-    webhook: { eventi: ["checkout.session.completed", "account.updated"], autenticazione: "Firma Stripe" },
+    webhook: {
+      eventi: [
+        "checkout.session.completed",
+        "checkout.session.expired",
+        "payment_intent.succeeded",
+        "payment_intent.payment_failed",
+        "charge.refunded",
+        "account.updated",
+      ],
+      autenticazione: "Firma Stripe (endpoint Connect)",
+    },
     configurazione: [],
     dati: {
       legge: ["Lo stato dell'account (se accetta incassi)"],
@@ -864,6 +874,13 @@ export const CATALOGO: readonly VoceCatalogo[] = [
     },
     documentazione: "https://docs.stripe.com/connect",
     versioneAdattatore: null,
+    /*
+      Gli eventi di caparre e conti arrivano dall'endpoint **Connect**, firmati
+      con `STRIPE_CONNECT_WEBHOOK_SECRET` (vedi `api/webhooks/stripe`). Qui non
+      compare fra i requisiti di proposito: chi ha un endpoint solo e ci ha
+      messo il segreto di quello Connect in `STRIPE_WEBHOOK_SECRET` funziona
+      già, e un requisito in più lo segnerebbe «mancante» bloccandolo.
+    */
     requisitiPiattaforma: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
     mancaPerOperare: [],
     nativa: { href: "/settings/pagamenti" },

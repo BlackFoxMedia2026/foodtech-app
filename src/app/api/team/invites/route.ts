@@ -1,15 +1,14 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { apiError, apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
+import { origineFidata } from "@/lib/origine";
 import { auditActor } from "@/server/audit";
 import { TeamError, invitaAlTeam, listInviti } from "@/server/team";
 
-/** L'indirizzo pubblico di questa installazione, come lo vede chi la usa. */
+/** L'indirizzo pubblico di questa installazione. Il link porta un segreto:
+ * vedi `origineFidata`. */
 function baseUrl(): string {
-  const h = headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
+  return origineFidata(headers());
 }
 
 export async function GET() {
@@ -33,6 +32,9 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof TeamError && err.code === "gia_nel_team") {
       return apiError(409, err.code, "Questa persona ha già accesso a questo locale.");
+    }
+    if (err instanceof TeamError && err.code === "indirizzo_riservato") {
+      return apiError(422, err.code, "Questo indirizzo non può ricevere un invito a un locale.");
     }
     return apiErrorResponse(err);
   }

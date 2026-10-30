@@ -42,7 +42,8 @@ import { getActiveVenue } from "@/lib/tenant";
 import { getAnalytics, getPreviousPeriodMetrics } from "@/server/analytics";
 import { computeDelta } from "@/lib/period-delta";
 import { generateInsights, SOURCE_LABELS } from "@/lib/insight-rules";
-import { formatCurrency, startOfDay, endOfDay, cn } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
+import { giornataInVenue, mezzanotteInVenue, shiftDateKey, todayInVenue } from "@/lib/venue-time";
 import { perchePercentualeAssente, quotaAffidabile } from "@/lib/quota";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { numeriTelefono } from "@/server/voice/numeri";
@@ -58,19 +59,40 @@ const PRESET_RANGE_KEYS = new Set([
   "currentYear",
 ]);
 
-function computeRange(searchParams: {
-  range?: string;
-  from?: string;
-  to?: string;
-}) {
-  const now = new Date();
+/**
+ * Il periodo, in giorni **del locale**.
+ *
+ * Si ragiona su date `AAAA-MM-GG` e si trasformano in istanti solo alla fine,
+ * con il fuso del locale: `startOfDay`/`endOfDay` e `new Date(anno, mese, 1)`
+ * rispondevano nel fuso del processo — UTC su Vercel — e «oggi» cominciava
+ * alle 02:00 italiane, lasciando la cena dell'una di notte nel giorno prima.
+ */
+function computeRange(
+  searchParams: {
+    range?: string;
+    from?: string;
+    to?: string;
+  },
+  fuso: string,
+) {
+  const oggi = todayInVenue(fuso);
+  const DATA = /^\d{4}-\d{2}-\d{2}$/;
+  const periodo = (range: string, dal: string, al: string) => ({
+    range,
+    from: mezzanotteInVenue(dal, fuso),
+    to: giornataInVenue(mezzanotteInVenue(al, fuso), fuso).fine,
+    fromKey: dal,
+    toKey: al,
+  });
 
-  if (searchParams.range === "custom" && searchParams.from && searchParams.to) {
-    return {
-      range: "custom",
-      from: startOfDay(new Date(searchParams.from)),
-      to: endOfDay(new Date(searchParams.to)),
-    };
+  if (
+    searchParams.range === "custom" &&
+    searchParams.from &&
+    searchParams.to &&
+    DATA.test(searchParams.from) &&
+    DATA.test(searchParams.to)
+  ) {
+    return periodo("custom", searchParams.from, searchParams.to);
   }
 
   const key =
@@ -78,30 +100,16 @@ function computeRange(searchParams: {
       ? searchParams.range
       : "last7";
 
-  if (key === "currentMonth") {
-    return {
-      range: key,
-      from: startOfDay(new Date(now.getFullYear(), now.getMonth(), 1)),
-      to: endOfDay(now),
-    };
-  }
-  if (key === "currentYear") {
-    return {
-      range: key,
-      from: startOfDay(new Date(now.getFullYear(), 0, 1)),
-      to: endOfDay(now),
-    };
-  }
+  if (key === "currentMonth") return periodo(key, `${oggi.slice(0, 8)}01`, oggi);
+  if (key === "currentYear") return periodo(key, `${oggi.slice(0, 5)}01-01`, oggi);
   const days = key === "last30" ? 30 : key === "last90" ? 90 : 7;
-  const from = startOfDay(now);
   /*
     `- (days - 1)`, non `- days`. Oggi conta come uno dei giorni del periodo:
     sottraendone sette da mezzanotte di oggi la finestra copriva **otto**
     giorni di calendario, e la sintesi scriveva «gli ultimi 8 giorni» sotto una
     pillola che dice «Ultimi 7 giorni». Lo stesso valeva per 30 e 90.
   */
-  from.setDate(from.getDate() - (days - 1));
-  return { range: key, from, to: endOfDay(now) };
+  return periodo(key, shiftDateKey(oggi, -(days - 1)), oggi);
 }
 
 function trendFor(
@@ -160,7 +168,7 @@ export default async function InsightsPage({
   searchParams: { range?: string; from?: string; to?: string; vista?: string };
 }) {
   const ctx = await getActiveVenue();
-  const { range, from, to } = computeRange(searchParams);
+  const { range, from, to, fromKey, toKey } = computeRange(searchParams, ctx.venue.timezone);
   const giorni = Math.max(
     1,
     Math.round((to.getTime() - from.getTime()) / 86_400_000),
@@ -298,8 +306,8 @@ export default async function InsightsPage({
         </p>
         <PeriodSelector
           range={range}
-          from={from.toISOString().slice(0, 10)}
-          to={to.toISOString().slice(0, 10)}
+          from={fromKey}
+          to={toKey}
         />
       </header>
 

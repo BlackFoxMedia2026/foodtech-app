@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { dateKeyInVenue } from "@/lib/venue-time";
+import { RIGHE_NEL_CONTO } from "@/server/conto-residuo";
+import { dateKeyInVenue, giornataDiServizio } from "@/lib/venue-time";
 import { deriveTableLiveStatus } from "@/lib/table-status";
 import {
   riassumiComande,
@@ -171,10 +172,9 @@ export async function apriTavolo(
   });
   if (!tavolo) throw new TavoloError("not_found");
 
-  const inizio = new Date(adesso);
-  inizio.setHours(0, 0, 0, 0);
-  const fine = new Date(adesso);
-  fine.setHours(23, 59, 59, 999);
+  /* La giornata di servizio del locale, non quella del processo (UTC su
+     Vercel): vedi `giornataDiServizio`. */
+  const { inizio, fine } = giornataDiServizio(adesso, ctx.timezone);
 
   /* Il servizio si risolve prima e una volta sola: serve sia come etichetta
      sia come chiave per leggere le assegnazioni, e chiederlo due volte
@@ -236,7 +236,7 @@ export async function apriTavolo(
         id: true,
         totalCents: true,
         contoRichiestoAt: true,
-        _count: { select: { OrderItem: true } },
+        _count: { select: { OrderItem: { where: RIGHE_NEL_CONTO } } },
       },
     });
 
@@ -483,7 +483,7 @@ export async function richiediConto(
       id: true,
       totalCents: true,
       contoRichiestoAt: true,
-      _count: { select: { OrderItem: true } },
+      _count: { select: { OrderItem: { where: RIGHE_NEL_CONTO } } },
     },
   });
   const somme = await sommeDelConto(db, orderId);

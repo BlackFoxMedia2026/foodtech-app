@@ -1,4 +1,6 @@
 import { db } from "@/lib/db";
+import { dateKeyInVenue, DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
+import { zonedDayAndMinute } from "./availability";
 import type { Prisma } from "@prisma/client";
 import { contatoriDaPrenotazioni, eUnaVisita } from "@/lib/visite";
 
@@ -132,9 +134,11 @@ type BookingRow = {
  * errore. Una persona conta i giorni sul calendario, e la scheda deve dire
  * quello che direbbe lei.
  */
-function giorniDiCalendario(da: Date, a: Date): number {
-  const inizio = Date.UTC(da.getFullYear(), da.getMonth(), da.getDate());
-  const fine = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+function giorniDiCalendario(da: Date, a: Date, fuso: string): number {
+  /* Il calendario è quello del locale: `getDate()` del processo, su Vercel,
+     è il giorno UTC, e la cena dell'una di notte risultava del giorno prima. */
+  const inizio = Date.parse(`${dateKeyInVenue(da, fuso)}T00:00:00Z`);
+  const fine = Date.parse(`${dateKeyInVenue(a, fuso)}T00:00:00Z`);
   return Math.max(0, Math.round((fine - inizio) / 86_400_000));
 }
 
@@ -171,9 +175,12 @@ export function computeGuestProfile(
     preferences: Prisma.JsonValue | null;
   },
   bookings: BookingRow[],
-  opts: { now?: Date; avgSpendCents?: number | null } = {},
+  opts: { now?: Date; avgSpendCents?: number | null; timeZone?: string } = {},
 ): GuestProfile {
   const now = opts.now ?? new Date();
+  /* Giorni e ore si leggono nel fuso del locale: `getDay()`/`getHours()` del
+     processo — UTC su Vercel — mettevano la cena delle 18:30 a «pranzo». */
+  const fuso = opts.timeZone ?? DEFAULT_VENUE_TIMEZONE;
 
   const visite = bookings
     .filter((b) => eUnaVisita(b.status))
@@ -193,7 +200,7 @@ export function computeGuestProfile(
   const prima = visite[0]?.startsAt ?? null;
   const ultima = visite.at(-1)?.startsAt ?? null;
 
-  const giorniDaUltima = ultima ? giorniDiCalendario(ultima, now) : null;
+  const giorniDaUltima = ultima ? giorniDiCalendario(ultima, now, fuso) : null;
 
   let mediaFra: number | null = null;
   if (visite.length >= 2) {
@@ -222,8 +229,9 @@ export function computeGuestProfile(
      che non si può verificare. */
   const anticipoMisuratoSu = anticipi.length;
 
-  const giornoPreferito = moda(visite.map((b) => b.startsAt.getDay()));
-  const fasciaPreferita = moda(visite.map((b) => (b.startsAt.getHours() < 17 ? "pranzo" : "cena")));
+  const orari = visite.map((b) => zonedDayAndMinute(b.startsAt, fuso));
+  const giornoPreferito = moda(orari.map((o) => o.weekday));
+  const fasciaPreferita = moda(orari.map((o) => (o.minuteOfDay < 17 * 60 ? "pranzo" : "cena")));
   const salaPreferita = moda(
     visite.map((b) => b.table?.room).filter((r): r is { id: string; name: string } => !!r),
     (r) => r.id,
@@ -453,7 +461,7 @@ export async function getGuestProfile(
       where: { id: guestId, venueId },
       select: { id: true, birthday: true, loyaltyTier: true, allergies: true, preferences: true },
     }),
-    db.venue.findUnique({ where: { id: venueId }, select: { avgSpendCents: true } }),
+    db.venue.findUnique({ where: { id: venueId }, select: { avgSpendCents: true, timezone: true } }),
   ]);
   if (!guest) return null;
 
@@ -474,6 +482,7 @@ export async function getGuestProfile(
   return computeGuestProfile(guest, bookings, {
     now: opts.now,
     avgSpendCents: venue?.avgSpendCents ?? null,
+    timeZone: venue?.timezone,
   });
 }
 

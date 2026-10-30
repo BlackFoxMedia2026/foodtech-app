@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { todayInVenue } from "@/lib/venue-time";
+import { mezzanotteInVenue, todayInVenue } from "@/lib/venue-time";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { listRooms } from "@/server/rooms";
 import { readRoomLayout } from "@/server/room-layout";
@@ -7,7 +7,6 @@ import { summarizeAnalysis } from "@/lib/floorplan-analysis";
 import { listServiceOptions } from "@/server/waiter-assignments";
 import { listStaffAssignmentsForService } from "@/server/staff-assignments";
 import { getTableStatusesForDay } from "@/server/bookings";
-import { startOfDay } from "@/lib/utils";
 import { FloorRoomsView } from "@/components/floor/floor-rooms-view";
 import type { TableStaffMap } from "@/components/floor/table-node";
 
@@ -66,16 +65,20 @@ export default async function FloorPage({
     };
   });
 
-  const requestedDay = new Date(date);
-  const isToday = date === new Date().toISOString().slice(0, 10);
+  /* «Oggi» è il giorno del locale, come `date` qui sopra: confrontarlo col
+     giorno UTC faceva sembrare «un altro giorno» la serata in corso fra
+     mezzanotte e le due, e ogni tavolo si leggeva dalla mezzanotte invece
+     che dall'orologio. */
+  const isToday = date === todayInVenue(ctx.venue.timezone);
   // Viewing a day other than today shouldn't compare bookings against the
   // real clock — every active booking that day should still read as
   // PRENOTATO/OCCUPATO instead of collapsing to LIBERO (see table-status.ts).
   const statusByTableId = await getTableStatusesForDay(
     ctx.venueId,
-    requestedDay,
+    date,
     tables,
-    isToday ? new Date() : startOfDay(requestedDay),
+    isToday ? new Date() : mezzanotteInVenue(date, ctx.venue.timezone),
+    ctx.venue.timezone,
   );
 
   return (

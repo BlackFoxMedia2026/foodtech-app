@@ -27,6 +27,31 @@ import type { Prisma } from "@prisma/client";
  * divergerebbero al primo sconto.
  */
 
+/**
+ * Le righe che stanno nel conto: tutte, tranne quelle annullate.
+ *
+ * Una riga `ANNULLATA` resta in tabella perché la cucina e la storia della
+ * comanda devono poterla raccontare («il risotto è stato tolto alle 21:40»),
+ * ma è un piatto che non è uscito e che **nessuno paga**. Finché il filtro
+ * stava solo in `ricalcolaConto`, il totale in colonna la escludeva e tutte le
+ * altre somme — il QR del tavolo, il residuo, la cassa — la facevano pagare
+ * lo stesso. Un posto solo, così le somme non possono più divergere.
+ *
+ * Da usare nei `where` di Prisma; `rigaNelConto` è la stessa regola per le
+ * righe già lette.
+ */
+export const RIGHE_NEL_CONTO = { NOT: { status: "ANNULLATA" } } satisfies Prisma.OrderItemWhereInput;
+
+/** La stessa regola di `RIGHE_NEL_CONTO`, su una riga già in memoria. */
+export function rigaNelConto(r: { status: string }): boolean {
+  return r.status !== "ANNULLATA";
+}
+
+/** Il totale delle righe in centesimi. Le righe devono essere già filtrate. */
+export function totaleRighe(righe: { priceCents: number; quantity: number }[]): number {
+  return righe.reduce((s, r) => s + r.priceCents * r.quantity, 0);
+}
+
 export type ResiduoConto = {
   /** Il totale delle righe, in centesimi. */
   totaleCents: number;
@@ -49,11 +74,11 @@ export async function residuoDelConto(
 ): Promise<ResiduoConto | null> {
   const conto = await tx.order.findUnique({
     where: { id: orderId },
-    select: { id: true, OrderItem: { select: { priceCents: true, quantity: true } } },
+    select: { id: true, OrderItem: { where: RIGHE_NEL_CONTO, select: { priceCents: true, quantity: true } } },
   });
   if (!conto) return null;
 
-  const totaleCents = conto.OrderItem.reduce((s, r) => s + r.priceCents * r.quantity, 0);
+  const totaleCents = totaleRighe(conto.OrderItem);
 
   const [gift, punti] = await Promise.all([
     tx.giftCardRedemption.aggregate({

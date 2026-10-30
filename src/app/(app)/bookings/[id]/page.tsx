@@ -71,7 +71,8 @@ export default async function BookingDetail({
           <p className="t-etichetta">Prenotazione</p>
           <h1 className="text-display text-3xl">{guestName}</h1>
           <p className="text-sm text-muted-foreground">
-            {formatDateTime(item.startsAt)}
+            {/* Nel fuso del locale: la pagina si disegna sul server, in UTC. */}
+            {formatDateTime(item.startsAt, "it-IT", ctx.venue.timezone)}
           </p>
         </div>
         {/* Da un link condiviso questa pagina si poteva leggere e non fare:

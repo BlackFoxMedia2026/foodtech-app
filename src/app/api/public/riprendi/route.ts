@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, apiErrorResponse } from "@/lib/api-auth";
 import { createBooking } from "@/server/bookings";
+import { AvailabilityError } from "@/server/availability";
+import { bookingWriteErrorResponse } from "@/server/booking-errors";
+import {
+  eScontroDiChiave,
+  giaFattaConQuestaChiave,
+} from "@/server/widget-defenses";
 import { consumaRipresa, leggiRipresa } from "@/server/voice/recupero-link";
 
 /**
@@ -49,35 +55,53 @@ export async function POST(req: Request) {
       );
     }
 
-    const booking = await createBooking(
-      ripresa.venueId,
-      {
-        guest: {
-          firstName: corpo.nome,
-          lastName: corpo.cognome || null,
-          /* Il numero viene dal token, non dal corpo: è quello da cui la
+    const chiave = `riprendi-${corpo.token}`;
+    let booking: {
+      id: string;
+      reference: string | null;
+      startsAt: Date;
+      partySize: number;
+    };
+    try {
+      booking = await createBooking(
+        ripresa.venueId,
+        {
+          guest: {
+            firstName: corpo.nome,
+            lastName: corpo.cognome || null,
+            /* Il numero viene dal token, non dal corpo: è quello da cui la
              telefonata è arrivata, ed è anche il modo in cui questa persona
              si ritrova nel CRM senza diventare un doppione. */
-          phone: ripresa.numero,
+            phone: ripresa.numero,
+          },
+          partySize: corpo.persone,
+          startsAt: corpo.startsAt,
+          notes: corpo.note || null,
         },
-        partySize: corpo.persone,
-        startsAt: corpo.startsAt,
-        notes: corpo.note || null,
-      },
-      {
-        /* `VOICE`, imposta da qui: la prenotazione **nasce da una
+        {
+          /* `VOICE`, imposta da qui: la prenotazione **nasce da una
            telefonata**, e resta da confermare come quelle del risponditore.
            Chi l'ha completata da sé sul modulo non cambia da dove viene. */
-        source: "VOICE",
-        /* Il canale pubblico: chi prenota è il cliente, e valgono le regole
+          source: "VOICE",
+          /* Il canale pubblico: chi prenota è il cliente, e valgono le regole
            che il locale ha dichiarato per il pubblico. */
-        canale: "pubblico",
-        /* La chiave del tentativo è il token: due invii dello stesso modulo —
+          canale: "pubblico",
+          /* La chiave del tentativo è il token: due invii dello stesso modulo —
            un doppio tocco, una rete lenta — non possono diventare due
            prenotazioni. */
-        idempotencyKey: `riprendi-${corpo.token}`,
-      },
-    );
+          idempotencyKey: chiave,
+        },
+      );
+    } catch (err) {
+      /* Due invii insieme dello stesso modulo: fra la lettura del token e la
+         scrittura non si vedono, e l'unicità la garantisce l'indice sulla
+         chiave. Il secondo perde, e perdere qui vuol dire «la prenotazione
+         c'è già» — la stessa lettura del modulo pubblico, non un 500. */
+      if (!eScontroDiChiave(err)) throw err;
+      const esistente = await giaFattaConQuestaChiave(ripresa.venueId, chiave);
+      if (!esistente) throw err;
+      booking = esistente;
+    }
 
     /* Si consuma **dopo** che la prenotazione esiste: se si consumasse prima e
        la scrittura fallisse, il link sarebbe bruciato e la persona resterebbe
@@ -91,6 +115,10 @@ export async function POST(req: Request) {
       persone: booking.partySize,
     });
   } catch (err) {
+    /* Orario pieno, locale chiuso, fuori dalla finestra: è un conflitto con
+       l'agenda, e risponde come il modulo pubblico (409 con i motivi), non
+       come un guasto. */
+    if (err instanceof AvailabilityError) return bookingWriteErrorResponse(err);
     return apiErrorResponse(err);
   }
 }

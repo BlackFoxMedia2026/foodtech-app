@@ -4,6 +4,7 @@ import { Check, Clock } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 import { tavoloDaToken } from "@/server/conto-tavolo";
+import { RIGHE_NEL_CONTO, totaleRighe } from "@/server/conto-residuo";
 import { SchermoMessaggio } from "@/components/pay/schermo-messaggio";
 import { AttesaConferma } from "@/components/pay/attesa-conferma";
 
@@ -185,7 +186,7 @@ export default async function PagamentoFattoPage({
  */
 async function residuoDi(orderId: string): Promise<number> {
   const [righe, giftCard, punti, pagamenti] = await Promise.all([
-    db.orderItem.findMany({ where: { orderId }, select: { priceCents: true, quantity: true } }),
+    db.orderItem.findMany({ where: { orderId, ...RIGHE_NEL_CONTO }, select: { priceCents: true, quantity: true } }),
     db.giftCardRedemption.aggregate({ where: { orderId }, _sum: { amountCents: true } }),
     db.loyaltyTransaction.aggregate({ where: { orderId, kind: "REDEEMED" }, _sum: { amountCents: true } }),
     db.payment.findMany({
@@ -194,7 +195,7 @@ async function residuoDi(orderId: string): Promise<number> {
     }),
   ]);
 
-  const totale = righe.reduce((s, r) => s + r.priceCents * r.quantity, 0);
+  const totale = totaleRighe(righe);
   const sconti = (giftCard._sum.amountCents ?? 0) + (punti._sum.amountCents ?? 0);
   const pagato = pagamenti.reduce(
     (s, p) => s + Math.max(0, p.amountCents - p.tipCents - p.refundedCents),

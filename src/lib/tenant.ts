@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "./auth";
 import { db } from "./db";
+import { sessioneRevocata } from "./sessione";
 import type { Prisma, StaffRole } from "@prisma/client";
 import type { Session } from "next-auth";
 
@@ -80,11 +81,10 @@ export const resolveActiveVenue = cache(async function resolveActiveVenue(): Pro
         (await db.user.findUnique({ where: { id: userId }, select: { sessionsRevokedAt: true } }))
           ?.sessionsRevokedAt ?? null;
 
-  if (revocaDa) {
-    const sessioneDa = (session as { sessioneDa?: number }).sessioneDa;
-    if (sessioneDa === undefined || sessioneDa < revocaDa.getTime()) {
-      return { state: "unauthenticated" };
-    }
+  // La regola sta in `lib/sessione.ts`: la usano anche le porte che non
+  // passano da un locale (pannello di piattaforma, account personale).
+  if (sessioneRevocata((session as { sessioneDa?: number }).sessioneDa, revocaDa)) {
+    return { state: "unauthenticated" };
   }
 
   if (memberships.length === 0) return { state: "no_venue", userId };

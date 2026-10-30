@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { versioneServizio } from "@/server/versione-servizio";
 import { NON_PIU_RITARDO_MIN } from "./service-intelligence";
-import { endOfDay, startOfDay } from "@/lib/utils";
+import { DEFAULT_VENUE_TIMEZONE, giornataDiServizio } from "@/lib/venue-time";
 import { listWaitlist, expireStaleOffers, type WaitlistView } from "./waitlist";
 import { ultimiCambiamenti, type Cambiamento } from "./cambiamenti";
 import {
@@ -262,8 +262,16 @@ export async function getServiceSnapshot(
   // la colonna delle attese mostra come "avvisate" persone andate altrove.
   await expireStaleOffers(venueId, now);
 
+  /* La giornata di servizio del locale: vedi `giornataDiServizio`. Con
+     `startOfDay` del processo — UTC su Vercel — all'una o alle due di notte
+     italiane i tavoli ancora seduti sparivano dal Servizio. */
+  const venue = await db.venue.findUnique({
+    where: { id: venueId },
+    select: { timezone: true, currency: true },
+  });
+  const { inizio, fine } = giornataDiServizio(now, venue?.timezone ?? DEFAULT_VENUE_TIMEZONE);
+
   const [
-    venue,
     bookings,
     tables,
     waitlist,
@@ -272,11 +280,7 @@ export async function getServiceSnapshot(
     cambiamenti,
     versione,
   ] = await Promise.all([
-    db.venue.findUnique({
-      where: { id: venueId },
-      select: { timezone: true, currency: true },
-    }),
-    loadBookings(venueId, startOfDay(now), endOfDay(now)),
+    loadBookings(venueId, inizio, fine),
     db.table.findMany({
       where: { venueId },
       select: { id: true, active: true },
@@ -286,14 +290,14 @@ export async function getServiceSnapshot(
       where: {
         venueId,
         source: "WALK_IN",
-        startsAt: { gte: startOfDay(now), lte: endOfDay(now) },
+        startsAt: { gte: inizio, lte: fine },
         status: { notIn: ["CANCELLED", "NO_SHOW"] },
         deletedAt: null,
       },
     }),
     durataTipicaSeduta(venueId, { now }),
     ultimiCambiamenti(venueId, { now, escludiUtente: opts.utente }),
-    versioneServizio(venueId, now),
+    versioneServizio(venueId, now, venue?.timezone ?? DEFAULT_VENUE_TIMEZONE),
   ]);
 
   // Le etichette dei tavoli accostati: una lettura sola per tutta la

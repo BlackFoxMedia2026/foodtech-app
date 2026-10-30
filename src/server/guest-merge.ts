@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { recordAudit, type AuditActor } from "./audit";
+import type { AuditActor } from "./audit";
 import { normalizzaEmail, normalizzaTelefono } from "./guest-match";
 import { puntiDi } from "./loyalty";
 import { refreshGuestStats } from "./guest-intelligence";
@@ -35,7 +35,8 @@ import { refreshGuestStats } from "./guest-intelligence";
  *   visite, assenze e saldo punti tornano a essere la somma dei fatti;
  * - **una revoca di consenso vince su un consenso più vecchio.** Se la
  *   scheda A ha detto sì a gennaio e la B ha detto no a marzo, la persona ha
- *   detto no: si resta fuori dal marketing;
+ *   detto no: si resta fuori dal marketing. E una disiscrizione o un
+ *   indirizzo soppresso, su una qualunque delle due, vincono su tutto;
  * - **una scheda anonimizzata non si unisce.** I suoi dati sono stati
  *   cancellati su richiesta: rimetterli in circolo attaccandoli a un'altra
  *   riga sarebbe disfare una cancellazione.
@@ -337,6 +338,41 @@ export async function unisciOspiti(
       "pagamenti",
       (await tx.payment.updateMany({ where: { guestId: duplicatoId }, data: { guestId: principaleId } })).count,
     );
+    /*
+      Le righe che la cancellazione della scheda staccherebbe da sole
+      (`onDelete: SetNull`): restavano orfane, e la storia della persona —
+      la richiesta per la comunione, le telefonate, le campagne ricevute —
+      spariva dalla scheda che resta. Nessuna ha un vincolo unico che
+      coinvolga l'ospite, quindi si spostano tutte.
+    */
+    conta(
+      "richieste eventi",
+      (await tx.eventRequest.updateMany({ where: { guestId: duplicatoId }, data: { guestId: principaleId } }))
+        .count,
+    );
+    conta(
+      "telefonate",
+      (await tx.phoneCall.updateMany({ where: { guestId: duplicatoId }, data: { guestId: principaleId } })).count,
+    );
+    conta(
+      "richiamate",
+      (await tx.voiceCallback.updateMany({ where: { guestId: duplicatoId }, data: { guestId: principaleId } }))
+        .count,
+    );
+    conta(
+      "proposte dal telefono",
+      (await tx.voiceCRMInsight.updateMany({ where: { guestId: duplicatoId }, data: { guestId: principaleId } }))
+        .count,
+    );
+    conta(
+      "campagne ricevute",
+      (await tx.campaignRecipient.updateMany({ where: { guestId: duplicatoId }, data: { guestId: principaleId } }))
+        .count,
+    );
+    conta(
+      "conversazioni",
+      (await tx.chatSession.updateMany({ where: { guestId: duplicatoId }, data: { guestId: principaleId } })).count,
+    );
 
     /**
      * I collegamenti ai fornitori esterni hanno un vincolo di unicità per
@@ -376,9 +412,24 @@ export async function unisciOspiti(
       orderBy: { createdAt: "desc" },
       select: { granted: true },
     });
-    const consensoMarketing = ultimoConsenso
-      ? ultimoConsenso.granted
-      : principale.marketingOptIn || duplicato.marketingOptIn;
+    /*
+      E sopra l'ultima parola, due fatti che nessun registro può smentire: una
+      disiscrizione (`unsubscribedAt`) su una delle due schede, o uno dei due
+      indirizzi in lista di soppressione. Alcune revoche, in passato, non
+      scrivevano il registro: senza questo controllo l'unione poteva
+      riattivare chi aveva detto no dal programma di posta.
+    */
+    const indirizzi = [principale.email, duplicato.email]
+      .map((e) => normalizzaEmail(e))
+      .filter((e): e is string => !!e);
+    const soppresso =
+      indirizzi.length > 0 &&
+      (await tx.demSuppression.count({ where: { venueId, email: { in: indirizzi } } })) > 0;
+    const unsubscribedAt = principale.unsubscribedAt ?? duplicato.unsubscribedAt;
+    const consensoMarketing =
+      !unsubscribedAt &&
+      !soppresso &&
+      (ultimoConsenso ? ultimoConsenso.granted : principale.marketingOptIn || duplicato.marketingOptIn);
 
     await tx.guest.update({
       where: { id: principaleId },
@@ -399,6 +450,7 @@ export async function unisciOspiti(
           : {}),
         tags: [...new Set([...principale.tags, ...duplicato.tags])],
         marketingOptIn: consensoMarketing,
+        unsubscribedAt,
         // Se una delle due era bloccata, resta bloccata: sbloccare per errore
         // è più grave che tenere un blocco di troppo.
         blocked: principale.blocked || duplicato.blocked,
@@ -412,6 +464,33 @@ export async function unisciOspiti(
     // La scheda vuota si cancella: niente più punta a lei.
     await tx.guest.delete({ where: { id: duplicatoId } });
 
+    /*
+      La traccia duplicato → principale, scritta **sempre** e nella stessa
+      transazione, anche quando non c'è un utente da registrare.
+
+      Non è solo un registro: i link di disiscrizione già partiti portano
+      l'identificativo del duplicato, e `dem/disiscrizione.ts` la segue per
+      arrivare alla scheda che resta. Senza, chi si disiscrive da un'email
+      ricevuta prima dell'unione leggeva «fatto» e continuava a ricevere.
+    */
+    const organizzazione =
+      opts.actor?.orgId ??
+      (await tx.venue.findUniqueOrThrow({ where: { id: venueId }, select: { orgId: true } })).orgId;
+    await tx.auditLog.create({
+      data: {
+        orgId: organizzazione,
+        venueId,
+        actorId: opts.actor?.userId ?? null,
+        actorEmail: opts.actor?.email ?? null,
+        action: "guest.merge",
+        entityType: "guest",
+        entityId: principaleId,
+        diff: { duplicato: duplicatoId, spostate, consensoMarketing } as Prisma.InputJsonValue,
+        ip: opts.actor?.ip ?? null,
+        userAgent: opts.actor?.userAgent ?? null,
+      },
+    });
+
     // I contatori tornano a essere la somma delle righe, non la somma dei
     // contatori: sommarli avrebbe contato due volte tutto ciò che era già
     // sbagliato.
@@ -424,12 +503,6 @@ export async function unisciOspiti(
   // Visite, assenze e ultima visita: fuori dalla transazione, perché
   // `refreshGuestStats` ha il suo client e legge le righe già spostate.
   await refreshGuestStats(principaleId);
-
-  await recordAudit(opts.actor, "guest.merge", "guest", principaleId, {
-    duplicato: duplicatoId,
-    spostate: esito.spostate,
-    consensoMarketing: esito.consensoMarketing,
-  });
 
   return esito;
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,14 +30,30 @@ const NOME_RUOLO: Record<string, string> = {
  * Chi non ce l'ha la scegli qui, e il link è la prova che quell'indirizzo è
  * suo: è lo stesso ragionamento di ogni invito via email, con la differenza
  * che qui il messaggio l'ha consegnato una persona.
+ *
+ * Chi ce l'ha, invece, deve **essere entrato** con quell'accesso: il link l'ha
+ * in mano anche il manager che l'ha creato, e da solo non dimostra niente.
+ * Se non è entrato lo si manda alla pagina d'accesso, che lo riporta qui.
  */
-export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
+export function AcceptInviteForm({
+  invito,
+  entratoCome,
+}: {
+  invito: InvitoPubblico;
+  /** L'email dell'accesso con cui è aperta la pagina, se c'è. */
+  entratoCome: string | null;
+}) {
   const router = useRouter();
   const [nome, setNome] = useState("");
   const [password, setPassword] = useState("");
   const [inCorso, setInCorso] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fatto, setFatto] = useState(false);
+
+  const qui = `/invito/${invito.token}`;
+  const paginaAccesso = `/sign-in?callbackUrl=${encodeURIComponent(qui)}`;
+  const eLui = !!entratoCome && entratoCome.toLowerCase() === invito.email.toLowerCase();
+  const deveEntrare = invito.haGiaUnAccount && !eLui;
 
   async function accetta(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -64,13 +81,21 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
         <CheckCircle2 className="mx-auto h-8 w-8 text-sage-strong" aria-hidden="true" />
         <h1 className="mt-3 text-display text-2xl">Ci sei</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Il tuo accesso a {invito.venueName} è attivo. Entra con <strong>{invito.email}</strong>
-          {invito.haGiaUnAccount ? " e la password che usi già." : " e la password che hai appena scelto."}
+          {invito.haGiaUnAccount ? (
+            <>Il tuo accesso a {invito.venueName} è attivo: lo trovi fra i locali che vedi già.</>
+          ) : (
+            <>
+              Il tuo accesso a {invito.venueName} è attivo. Entra con <strong>{invito.email}</strong> e
+              la password che hai appena scelto.
+            </>
+          )}
         </p>
         <Button
           variant="accent"
           className="mt-4 w-full"
-          onClick={() => router.push("/sign-in")}
+          // Chi aveva già un accesso è già dentro: rimandarlo alla pagina
+          // d'accesso gli farebbe rifare un passo inutile.
+          onClick={() => router.push(invito.haGiaUnAccount ? "/overview" : "/sign-in")}
         >
           Entra in Tavolo
         </Button>
@@ -89,9 +114,22 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
         </p>
       </div>
 
-      {invito.haGiaUnAccount ? (
+      {deveEntrare ? (
+        <div className="riquadro space-y-2 p-3 text-sm text-muted-foreground">
+          <p>
+            Questo indirizzo ha già un accesso a Tavolo. Per accettare, entra con il tuo account: poi
+            torni qui.
+          </p>
+          {entratoCome && (
+            <p>
+              Adesso sei dentro come <strong>{entratoCome}</strong>: esci ed entra come{" "}
+              <strong>{invito.email}</strong>.
+            </p>
+          )}
+        </div>
+      ) : invito.haGiaUnAccount ? (
         <p className="riquadro p-3 text-sm text-muted-foreground">
-          Questo indirizzo ha già un accesso a Tavolo: non serve una password nuova. Accettando, il
+          Sei dentro come <strong>{entratoCome}</strong>: non serve una password nuova. Accettando, il
           locale si aggiunge a quelli che vedi già.
         </p>
       ) : (
@@ -124,9 +162,22 @@ export function AcceptInviteForm({ invito }: { invito: InvitoPubblico }) {
         </>
       )}
 
-      <Button type="submit" variant="accent" className="w-full" disabled={inCorso}>
-        {inCorso ? "Un istante…" : "Accetta l'invito"}
-      </Button>
+      {deveEntrare ? (
+        <Button
+          type="button"
+          variant="accent"
+          className="w-full"
+          onClick={() =>
+            entratoCome ? signOut({ callbackUrl: paginaAccesso }) : router.push(paginaAccesso)
+          }
+        >
+          {entratoCome ? "Esci ed entra con l'altro account" : "Accedi con il tuo account per accettare"}
+        </Button>
+      ) : (
+        <Button type="submit" variant="accent" className="w-full" disabled={inCorso}>
+          {inCorso ? "Un istante…" : "Accetta l'invito"}
+        </Button>
+      )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

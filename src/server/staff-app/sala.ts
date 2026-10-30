@@ -1,7 +1,8 @@
 import type { TableShape } from "@prisma/client";
 import { db } from "@/lib/db";
-import { dateKeyInVenue } from "@/lib/venue-time";
+import { dateKeyInVenue, giornataDiServizio } from "@/lib/venue-time";
 import { getFloorLive, type TableLiveInfo } from "@/server/floor-live";
+import { SEDUTE_ATTIVE } from "@/server/conto-tavolo";
 import { ospitiDaAccomodare, type OspiteDaAccomodare } from "./da-accomodare";
 import {
   chiedeUnGesto,
@@ -580,10 +581,10 @@ export async function salaDelCameriere(
   const giorno = dateKeyInVenue(adesso, ctx.timezone);
   const servizio = await servizioCorrente(ctx.venueId, ctx.timezone, adesso);
 
-  const inizioGiorno = new Date(adesso);
-  inizioGiorno.setHours(0, 0, 0, 0);
-  const fineGiorno = new Date(adesso);
-  fineGiorno.setHours(23, 59, 59, 999);
+  /* La giornata di servizio del locale. `setHours` lavorava nel fuso del
+     processo — UTC su Vercel — e dopo l'una di notte italiana la sala del
+     cameriere perdeva i tavoli ancora seduti. */
+  const { inizio: inizioGiorno, fine: fineGiorno } = giornataDiServizio(adesso, ctx.timezone);
 
   const [live, tavoli, coperture, comande, conti, daAccomodare] = await Promise.all([
     getFloorLive(ctx.venueId, { now: adesso, roomId: opts.roomId ?? null }),
@@ -603,8 +604,18 @@ export async function salaDelCameriere(
     }),
     copertureDelServizio(ctx.venueId, giorno, servizio),
     comandePerTavolo(ctx.venueId, inizioGiorno, fineGiorno),
+    /* Solo i conti delle sedute **attive**: il conto di chi è già andato via
+       resta aperto finché la cassa non lo chiude, e il suo «conto richiesto»
+       finirebbe addosso al gruppo seduto dopo. Stessa regola del QR, vedi
+       `SEDUTE_ATTIVE`. L'ordine per seduta fa vincere, sulla mappa, la più
+       recente. */
     db.order.findMany({
-      where: { venueId: ctx.venueId, status: { in: ["RECEIVED", "PREPARING", "READY"] } },
+      where: {
+        venueId: ctx.venueId,
+        status: { in: ["RECEIVED", "PREPARING", "READY"] },
+        booking: { deletedAt: null, status: { in: [...SEDUTE_ATTIVE] } },
+      },
+      orderBy: [{ booking: { seatedAt: { sort: "asc", nulls: "first" } } }, { createdAt: "asc" }],
       select: { id: true, contoRichiestoAt: true, booking: { select: { tableId: true } } },
     }),
     ospitiDaAccomodare(ctx.venueId, ctx.timezone, adesso),

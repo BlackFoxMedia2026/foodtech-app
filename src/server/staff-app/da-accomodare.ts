@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
-import { endOfDay, startOfDay } from "@/lib/utils";
-import { oraInVenue } from "@/lib/venue-time";
+import { giornataDiServizio, oraInVenue } from "@/lib/venue-time";
 
 /**
  * **Chi è dentro il locale e non è ancora seduto.**
@@ -155,12 +154,15 @@ export async function ospitiDaAccomodare(
   timezone: string,
   adesso = new Date(),
 ): Promise<OspiteDaAccomodare[]> {
+  /* La giornata di servizio del locale: con quella del processo (UTC su
+     Vercel) chi aspetta all'ingresso dopo l'una spariva dalla coda. */
+  const { inizio, fine } = giornataDiServizio(adesso, timezone);
   const righe = await db.booking.findMany({
     where: {
       venueId,
       status: "ARRIVED",
       deletedAt: null,
-      startsAt: { gte: startOfDay(adesso), lte: endOfDay(adesso) },
+      startsAt: { gte: inizio, lte: fine },
     },
     select: SELEZIONE,
   });

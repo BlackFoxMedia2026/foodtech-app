@@ -94,6 +94,55 @@ export function giornataInVenue(
 }
 
 /**
+ * A che ora del mattino, nel fuso del locale, finisce la serata di ieri.
+ *
+ * Vedi `giornataDiServizio`. Le cinque e non le quattro: un locale che tira
+ * tardi chiude i conti alle tre e mezza, e la giornata non deve girare mentre
+ * qualcuno sta ancora incassando.
+ */
+export const ORA_CAMBIO_GIORNATA = 5;
+
+/**
+ * La **giornata di servizio** in corso: dalla mezzanotte del locale fino alle
+ * 05:00 del giorno dopo; fra mezzanotte e le cinque, è ancora quella di ieri.
+ *
+ * Serve alle viste dal vivo — Sala, Servizio, app di sala — che chiedono
+ * «cosa succede adesso». Con `startOfDay` del processo (UTC su Vercel) la
+ * giornata girava alle 01:00 o alle 02:00 italiane, e i tavoli ancora seduti
+ * della cena sparivano dalla Sala: «Libera» rispondeva che sul tavolo non
+ * c'era nessuna prenotazione. Con la mezzanotte del locale sarebbe stato
+ * peggio, non meglio: sparivano a mezzanotte.
+ *
+ * Quindi la giornata gira al mattino, come in sala. Una cena delle 21:00
+ * resta della sua serata fino alle 05:00, e chi arriva dopo mezzanotte
+ * appartiene alla serata in cui la sala era aperta — la regola di
+ * `rotazione.ts` («una cena che finisce dopo mezzanotte appartiene alla
+ * serata in cui è cominciata»), estesa a chi arriva dopo mezzanotte.
+ *
+ * L'inizio resta la mezzanotte, come il giorno di calendario che le viste
+ * usavano: di giorno si vede quello che si vedeva prima, più la coda della
+ * notte che viene. Le prime ore di oggi compaiono quindi in due giornate —
+ * stanotte come serata in corso, di giorno come passato — ed è voluto:
+ * nessuna delle due le perde.
+ *
+ * Le viste di un **giorno scelto** (agenda, calendario, «il 12 ottobre»)
+ * restano sul giorno di calendario: `giornataInVenue`.
+ *
+ * Le cinque ore si sommano come durata: nella notte del cambio d'ora il
+ * confine cade alle 04:00 o alle 06:00. È un'ora in cui nessuno prenota.
+ */
+export function giornataDiServizio(
+  adesso: Date,
+  timeZone: string = DEFAULT_VENUE_TIMEZONE,
+): { giorno: string; inizio: Date; fine: Date } {
+  const scarto = ORA_CAMBIO_GIORNATA * 3_600_000;
+  const giorno = dateKeyInVenue(new Date(adesso.getTime() - scarto), timeZone);
+  const inizio = mezzanotteInVenue(giorno, timeZone);
+  const fine = new Date(mezzanotteInVenue(shiftDateKey(giorno, 1), timeZone).getTime() + scarto - 1);
+  return { giorno, inizio, fine };
+}
+
+/**
  * L'inizio di una data `AAAA-MM-GG` nel fuso del locale.
  *
  * Si ipotizza che sia mezzanotte UTC, si guarda che ora sarebbe in quel fuso e

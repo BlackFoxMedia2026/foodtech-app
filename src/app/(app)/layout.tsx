@@ -89,7 +89,7 @@ export default async function AppShell({
   */
   const telefonoPerMe = telefono.attivo && can(ctx.role, "use_phone");
   const versione = telefonoPerMe
-    ? await versioneServizio(ctx.venueId)
+    ? await versioneServizio(ctx.venueId, new Date(), ctx.venue.timezone)
     : undefined;
 
   /*

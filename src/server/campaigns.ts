@@ -19,7 +19,8 @@ import {
 } from "@/lib/campaign-blocks-compiler";
 import { PREVIEW_UNSUBSCRIBE_ID, signUnsubscribeToken } from "@/lib/unsubscribe-token";
 import { enqueueJob, type JobOutcome, type JobRef } from "@/server/jobs/queue";
-import { eleggibili, scattaSnapshot } from "@/server/dem/destinatari";
+import { eleggibili, scattaSnapshot, sopprimi } from "@/server/dem/destinatari";
+import { revocaConsensoEmail } from "@/server/dem/disiscrizione";
 import { abbonamentoDi } from "@/server/dem/abbonamento";
 import {
   consumaQuota,
@@ -1337,9 +1338,26 @@ export async function recordWebhookEvent(rawPayload: unknown) {
       },
     });
 
-    const messageLog = evt.providerCampaignId
+    /*
+      Brevo manda il **suo** identificativo di campagna (un numero), non il
+      nostro: è quello che salviamo in `Campaign.providerId` quando gliela
+      consegniamo. La riga di registro, invece, porta il nostro. Cercare la
+      riga con l'identificativo di Brevo non trovava mai niente, e nessun
+      evento — consegna, apertura, disiscrizione — arrivava a destinazione.
+    */
+    const campagna = evt.providerCampaignId
+      ? await db.campaign.findFirst({
+          where: { providerId: evt.providerCampaignId },
+          select: { id: true, venueId: true },
+        })
+      : null;
+
+    const messageLog = campagna
       ? await db.messageLog.findFirst({
-          where: { campaignId: evt.providerCampaignId, toAddress: evt.toAddress },
+          where: {
+            campaignId: campagna.id,
+            toAddress: { equals: evt.toAddress, mode: "insensitive" },
+          },
         })
       : null;
 
@@ -1362,24 +1380,21 @@ export async function recordWebhookEvent(rawPayload: unknown) {
       });
     }
 
-    if (
-      messageLog &&
-      (evt.eventType === "hard_bounce" || evt.eventType === "unsubscribed" || evt.eventType === "complaint")
-    ) {
-      const guest = await db.guest.findFirst({
-        where: { venueId: messageLog.venueId, email: evt.toAddress },
-      });
-      if (guest) {
-        await db.guest.update({ where: { id: guest.id }, data: { marketingOptIn: false } });
-        await db.consentLog.create({
-          data: {
-            id: crypto.randomUUID(),
-            venueId: guest.venueId,
-            guestId: guest.id,
-            channel: "EMAIL",
-            granted: false,
-            source: `brevo_${evt.eventType}`,
-          },
+    /*
+      Le stesse conseguenze della strada SES (`dem/eventi.ts`), per tutte le
+      schede del locale con quell'indirizzo e non solo la prima: un rimbalzo
+      definitivo sopprime l'indirizzo e basta — non è una revoca di consenso,
+      è un indirizzo che non esiste — mentre disiscrizione e segnalazione di
+      spam sono un «no» della persona, e lasciano la riga nel registro.
+    */
+    if (campagna) {
+      if (evt.eventType === "hard_bounce") {
+        await sopprimi(campagna.venueId, evt.toAddress, "HARD_BOUNCE", { source: "brevo_rimbalzo" });
+      } else if (evt.eventType === "unsubscribed" || evt.eventType === "complaint") {
+        await revocaConsensoEmail(campagna.venueId, evt.toAddress, {
+          source: `brevo_${evt.eventType}`,
+          reason: evt.eventType === "complaint" ? "COMPLAINT" : "UNSUBSCRIBE",
+          quando: evt.occurredAt,
         });
       }
     }

@@ -52,6 +52,12 @@ export type OutboundMessage = {
   kind: string;
   /** Nome del locale, usato come mittente visibile. */
   venueName?: string;
+  /**
+   * Intestazioni aggiuntive dell'email: oggi `List-Unsubscribe` per i
+   * messaggi di marketing (le automazioni), che i programmi di posta mostrano
+   * come «Annulla iscrizione». Ignorate dagli altri canali.
+   */
+  headers?: Record<string, string>;
 };
 
 export type SendOutcome =
@@ -115,6 +121,7 @@ const PROVIDERS: Record<MessageChannel, Provider> = {
         to: message.to,
         subject: message.subject ?? "",
         html: message.body,
+        ...(message.headers && { headers: message.headers }),
       });
       return esitoResend(res);
     },
@@ -285,6 +292,7 @@ export const QueuedMessagePayload = z.object({
   body: z.string(),
   venueName: z.string().optional(),
   kind: z.string(),
+  headers: z.record(z.string(), z.string()).optional(),
 });
 export type QueuedMessagePayloadType = z.infer<typeof QueuedMessagePayload>;
 
@@ -316,6 +324,7 @@ export async function enqueueMessage(message: OutboundMessage): Promise<QueueOut
     kind: message.kind,
     ...(message.subject !== undefined && { subject: message.subject }),
     ...(message.venueName !== undefined && { venueName: message.venueName }),
+    ...(message.headers !== undefined && { headers: message.headers }),
   };
 
   const { jobId } = await enqueueJob({
@@ -364,6 +373,7 @@ export async function deliverQueuedMessage(
       kind: payload.kind,
       ...(payload.subject !== undefined && { subject: payload.subject }),
       ...(payload.venueName !== undefined && { venueName: payload.venueName }),
+      ...(payload.headers !== undefined && { headers: payload.headers }),
     });
     await db.messageLog.update({
       where: { id: log.id },

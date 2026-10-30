@@ -13,7 +13,8 @@ import { anteprimaImportazione, eseguiImportazione } from "@/server/importazione
  * succederebbe, non scrive niente. Con `esegui: true` scrive.
  *
  * Il file arriva come testo nel corpo e non come `multipart`: un CSV è testo,
- * e leggerlo nel browser costa una riga (`file.text()`). Il caricamento
+ * e leggerlo nel browser costa una riga (`decodificaFile`, che riconosce anche
+ * i file di Excel in Windows-1252). Il caricamento
  * multipart servirebbe per un allegato binario — qui aggiungerebbe un pezzo
  * di codice per niente.
  *
@@ -63,11 +64,24 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof z.ZodError) {
       /* Il messaggio dice **quale** limite, perché «file non valido» su un
-         file da tre megabyte manda a cercare un problema di formato. */
+         file da tre megabyte manda a cercare un problema di formato. E al
+         contrario: «troppo grande» su un file vuoto, o su una richiesta
+         scritta male, manda a dividere un file che non ha niente di grosso. */
+      const sulTesto = err.issues.filter((i) => i.path[0] === "testo");
+      if (sulTesto.some((i) => i.code === "too_big")) {
+        return apiError(
+          413,
+          "file_troppo_grande",
+          "Il file è troppo grande: dividilo in due e caricali uno per volta.",
+        );
+      }
+      if (sulTesto.some((i) => i.code === "too_small")) {
+        return apiError(400, "file_vuoto", "Il file è vuoto: controlla di aver scelto quello giusto.");
+      }
       return apiError(
-        413,
-        "file_troppo_grande",
-        "Il file è troppo grande: dividilo in due e caricali uno per volta.",
+        400,
+        "richiesta_non_valida",
+        "La richiesta non è valida: ricarica la pagina e scegli di nuovo il file.",
       );
     }
     return apiErrorResponse(err);

@@ -3,7 +3,14 @@ import type { BookingStatus } from "@prisma/client";
 import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import type { BookingSource } from "@prisma/client";
 import { db } from "@/lib/db";
-import { startOfDay, endOfDay, formatTime } from "@/lib/utils";
+import { formatTime } from "@/lib/utils";
+import {
+  dateKeyInVenue,
+  DEFAULT_VENUE_TIMEZONE,
+  giornataInVenue,
+  mezzanotteInVenue,
+  oraInVenue,
+} from "@/lib/venue-time";
 import {
   sendBookingConfirmationEmail,
   sendPendingBookingNotificationEmail,
@@ -128,24 +135,57 @@ export async function listBookings(
  * darebbe un tavolo per libero mentre è prenotato. Il tetto qui lo mette la
  * capienza del locale.
  */
-export async function listBookingsForDay(venueId: string, day: Date) {
-  return listBookings(venueId, { from: startOfDay(day), to: endOfDay(day) });
+export async function listBookingsForDay(
+  venueId: string,
+  giorno: string | Date,
+  timeZone?: string,
+) {
+  return listBookings(venueId, await giornoDelLocale(venueId, giorno, timeZone));
+}
+
+/**
+ * Inizio e fine di un giorno **del locale**, per le viste di un giorno scelto.
+ *
+ * Il giorno si passa come `AAAA-MM-GG` — è quello che arriva dall'indirizzo
+ * della pagina — oppure come istante, che si legge nel fuso del locale. Prima
+ * era `startOfDay`/`endOfDay` del processo: su Vercel, UTC, l'agenda del 12
+ * ottobre andava dalle 02:00 del 12 alle 01:59 del 13, e una prenotazione
+ * dell'01:30 del 12 compariva nel giorno prima.
+ *
+ * Il fuso si passa quando chi chiama ce l'ha già; altrimenti si legge.
+ */
+async function giornoDelLocale(
+  venueId: string,
+  giorno: string | Date,
+  timeZone?: string,
+): Promise<{ from: Date; to: Date }> {
+  const fuso =
+    timeZone ??
+    (await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }))?.timezone ??
+    DEFAULT_VENUE_TIMEZONE;
+  const chiave =
+    typeof giorno === "string" && /^\d{4}-\d{2}-\d{2}$/.test(giorno)
+      ? giorno
+      : dateKeyInVenue(typeof giorno === "string" ? new Date(giorno) : giorno, fuso);
+  const { inizio, fine } = giornataInVenue(mezzanotteInVenue(chiave, fuso), fuso);
+  return { from: inizio, to: fine };
 }
 
 /**
  * Read-only status derivation for the operational room view — reuses
  * listBookingsForDay as-is, no new booking business logic. `now` defaults to
  * the real clock, but callers viewing a day other than today should pass
- * startOfDay(day) instead so past/future bookings still read as
+ * the venue's midnight of that day (`mezzanotteInVenue`) instead so past/future bookings still read as
  * PRENOTATO/OCCUPATO rather than everything collapsing to LIBERO.
  */
 export async function getTableStatusesForDay(
   venueId: string,
-  day: Date,
+  day: string | Date,
   tables: Array<{ id: string; active: boolean }>,
   now: Date = new Date(),
+  timeZone?: string,
 ) {
-  const bookings = await listBookingsForDay(venueId, day);
+  const bookings = await listBookingsForDay(venueId, day, timeZone);
   const byTable = new Map<string, typeof bookings>();
   for (const b of bookings) {
     if (!b.tableId) continue;
@@ -358,7 +398,10 @@ export async function createBooking(
     },
   );
 
-  const bookingTime = formatTime(booking.startsAt);
+  /* Nel fuso del locale: il server gira in UTC, e senza fuso una cena delle
+     20:30 a Roma arrivava nell'email come «18:30». */
+  const fuso = booking.venue.timezone;
+  const bookingTime = formatTime(booking.startsAt, "it-IT", fuso);
 
   if (status === "CONFIRMED" && guestEmail) {
     await sendBookingConfirmationEmail(
@@ -369,6 +412,7 @@ export async function createBooking(
       bookingTime,
       booking.partySize,
       booking.reference,
+      fuso,
     );
   } else if (status === "PENDING") {
     const ownerMembership = await db.orgMembership.findFirst({
@@ -390,6 +434,7 @@ export async function createBooking(
         booking.partySize,
         booking.reference,
         guestPhone || "Non disponibile",
+        fuso,
       );
     }
   }
@@ -409,7 +454,7 @@ export async function createBooking(
     await createNotification(venueId, {
       kind: "BOOKING_CREATED",
       title: `${guestName || "Qualcuno"} ha prenotato per ${booking.partySize}`,
-      body: `${formatDayAndTime(booking.startsAt)} · arrivata da ${fonteUmana(booking.source)}. Aspetta la tua conferma.`,
+      body: `${formatDayAndTime(booking.startsAt, fuso)} · arrivata da ${fonteUmana(booking.source)}. Aspetta la tua conferma.`,
       link: "/bookings?status=pending",
       meta: { bookingId: booking.id },
     });
@@ -424,15 +469,15 @@ export async function createBooking(
  * Un solo formattatore con giorno e ora insieme scrive «giovedì 11, 20:30»,
  * che in italiano non lo dice nessuno. Due formattatori e la parola in mezzo.
  */
-function formatDayAndTime(quando: Date): string {
+function formatDayAndTime(quando: Date, timeZone: string = DEFAULT_VENUE_TIMEZONE): string {
+  /* Nel fuso del locale e non del processo: la campanella la legge chi è in
+     sala, e su Vercel il processo è in UTC. */
   const giorno = new Intl.DateTimeFormat("it-IT", {
+    timeZone,
     weekday: "long",
     day: "numeric",
   }).format(quando);
-  const ora = new Intl.DateTimeFormat("it-IT", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(quando);
+  const ora = oraInVenue(quando, timeZone);
   return `${giorno} alle ${ora}`;
 }
 
@@ -623,11 +668,13 @@ export async function updateBooking(
   // I contatori sulla scheda ospite (visite, assenze, ultima visita) esistevano
   // e nessuno li scriveva. Questi tre stati sono i momenti in cui la storia di
   // un cliente cambia davvero, quindi è qui che vanno riallineati.
+  //
+  // La disdetta li riallinea da sé, in `effettiDellaDisdetta` qui sotto.
   if (
     updated.guestId &&
     data.status &&
     data.status !== existing.status &&
-    ["COMPLETED", "NO_SHOW", "CANCELLED", "SEATED"].includes(data.status)
+    ["COMPLETED", "NO_SHOW", "SEATED"].includes(data.status)
   ) {
     await refreshGuestStats(updated.guestId);
   }
@@ -665,23 +712,133 @@ export async function updateBooking(
   }
 
   if (updated.status === "CANCELLED" && existing.status !== "CANCELLED") {
-    /* Una caparra incassata su una prenotazione disdetta e denaro di un
-       cliente che resta in cassa perche nessuno riapre la pagina di una cena
-       annullata. L'avviso dice anche **quale dei due casi** e, secondo le
-       condizioni dichiarate dal locale. */
-    await avvisaCaparraDaRestituire(venueId, updated);
-    await annunciaDisdetta(venueId, {
-      id: updated.id,
-      startsAt: updated.startsAt,
-      partySize: updated.partySize,
-      nome: updated.guest
-        ? `${updated.guest.firstName}${updated.guest.lastName ? ` ${updated.guest.lastName}` : ""}`
-        : null,
-      tavolo: updated.table?.label ?? null,
-    });
+    await effettiDellaDisdetta(venueId, updated);
   }
 
   return updated;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  La disdetta che arriva da fuori                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Gli stati da cui chi **non è in sala** può disdire: l'ospite dal link del
+ * promemoria, chi chiama al telefono. Una già seduta no — liberarla da fuori
+ * vorrebbe dire un tavolo libero in Tavolo con la gente seduta.
+ */
+export const DISDICIBILI_DA_FUORI = ["PENDING", "CONFIRMED"] as const satisfies readonly BookingStatus[];
+
+/**
+ * Quello che succede **dopo** che una prenotazione è diventata disdetta,
+ * qualunque sia la strada da cui è arrivata la disdetta.
+ *
+ * Stava dentro `updateBooking`, e le altre due strade — il link del
+ * promemoria e il telefono — scrivevano lo stato da sé: la caparra incassata
+ * restava in cassa senza che nessuno lo sapesse, la sala non sapeva del
+ * tavolo libero (il link), e i contatori dell'ospite non si muovevano. Una
+ * funzione sola, e nessuna strada che se ne dimentica.
+ */
+export async function effettiDellaDisdetta(
+  venueId: string,
+  disdetta: {
+    id: string;
+    guestId: string | null;
+    startsAt: Date;
+    partySize: number;
+    depositCents: number;
+    depositStatus: string;
+    guest: { firstName: string; lastName: string | null } | null;
+    table: { label: string } | null;
+  },
+  adesso: Date = new Date(),
+): Promise<void> {
+  if (disdetta.guestId) await refreshGuestStats(disdetta.guestId);
+  /* Una caparra incassata su una prenotazione disdetta e denaro di un
+     cliente che resta in cassa perche nessuno riapre la pagina di una cena
+     annullata. L'avviso dice anche **quale dei due casi** e, secondo le
+     condizioni dichiarate dal locale. */
+  await avvisaCaparraDaRestituire(venueId, disdetta, adesso);
+  await annunciaDisdetta(
+    venueId,
+    {
+      id: disdetta.id,
+      startsAt: disdetta.startsAt,
+      partySize: disdetta.partySize,
+      nome: disdetta.guest
+        ? `${disdetta.guest.firstName}${disdetta.guest.lastName ? ` ${disdetta.guest.lastName}` : ""}`
+        : null,
+      tavolo: disdetta.table?.label ?? null,
+    },
+    adesso,
+  );
+}
+
+export type EsitoDisdettaDaFuori =
+  | { ok: true; booking: { id: string; startsAt: Date; partySize: number; status: BookingStatus } }
+  | { ok: false; perche: "non_trovata" }
+  | { ok: false; perche: "gia_passata" }
+  | { ok: false; perche: "stato"; stato: BookingStatus };
+
+/**
+ * Disdice da fuori — link dell'ospite, telefono — con la condizione **dentro**
+ * la scrittura.
+ *
+ * Due richieste insieme non disdicono due volte, e una prenotazione che in
+ * sala è appena diventata «arrivato» non si disdice da fuori: la scrittura non
+ * la trova più fra gli stati disdicibili. Un `if (si può)` seguito da `update`
+ * lo permetterebbe.
+ *
+ * La regola del «troppo tardi» è quella che il telefono aveva già: una cena
+ * il cui orario è passato non si disdice — è un'assenza o una cena in corso,
+ * e lo decide la sala. Anche questa sta nella scrittura.
+ *
+ * Gli orari seguono lo stato come in `updateBooking`: niente arrivo né
+ * accomodamento, chiusura adesso. Il registro lo scrive chi chiama, perché
+ * l'attore e la provenienza li sa solo lui.
+ */
+export async function disdiciDaFuori(
+  venueId: string,
+  id: string,
+  adesso: Date = new Date(),
+): Promise<EsitoDisdettaDaFuori> {
+  const scritta = await db.booking.updateMany({
+    where: {
+      id,
+      venueId,
+      deletedAt: null,
+      status: { in: [...DISDICIBILI_DA_FUORI] },
+      startsAt: { gte: adesso },
+    },
+    data: { status: "CANCELLED", arrivedAt: null, seatedAt: null, closedAt: adesso },
+  });
+
+  const riga = await db.booking.findFirst({
+    where: { id, venueId, deletedAt: null },
+    include: {
+      guest: { select: { firstName: true, lastName: true } },
+      table: { select: { label: true } },
+    },
+  });
+  if (!riga) return { ok: false, perche: "non_trovata" };
+
+  if (scritta.count === 0) {
+    /* Il motivo va detto giusto: «è già in sala» e «è passata» portano a due
+       frasi diverse, e lo stato vince sull'orario — una cena di ieri disdetta
+       è «già disdetta», non «troppo tardi». */
+    if (
+      DISDICIBILI_DA_FUORI.includes(riga.status as (typeof DISDICIBILI_DA_FUORI)[number])
+    ) {
+      return { ok: false, perche: "gia_passata" };
+    }
+    return { ok: false, perche: "stato", stato: riga.status };
+  }
+
+  await effettiDellaDisdetta(venueId, riga, adesso);
+  return {
+    ok: true,
+    booking: { id: riga.id, startsAt: riga.startsAt, partySize: riga.partySize, status: riga.status },
+  };
 }
 
 /**
@@ -787,10 +944,14 @@ export async function annunciaDisdetta(
   if (fra <= 0 || fra >= 48 * 3_600_000) return;
 
   const chi = p.nome?.trim() || "Una prenotazione";
+  /* «Erano attesi venerdì alle 20:30» nel giorno e nell'ora del locale: il
+     processo è in UTC. Si legge qui, dopo il filtro delle quarantott'ore, così
+     la disdetta per il mese prossimo non costa una lettura. */
+  const venue = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
   await createNotification(venueId, {
     kind: "BOOKING_CANCELLED",
     title: `${chi} ha disdetto: ${p.partySize} coperti liberi`,
-    body: `Erano attesi ${formatDayAndTime(p.startsAt)}${p.tavolo ? ` al ${p.tavolo}` : ""}.`,
+    body: `Erano attesi ${formatDayAndTime(p.startsAt, venue?.timezone)}${p.tavolo ? ` al ${p.tavolo}` : ""}.`,
     link: "/service",
     meta: { bookingId: p.id },
   });

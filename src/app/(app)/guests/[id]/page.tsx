@@ -191,7 +191,7 @@ export default async function GuestDetail({ params }: { params: { id: string } }
         />
         <Dato
           etichetta="Ultima visita"
-          valore={crm.visite.date.length ? formatDate(new Date(crm.visite.date.at(-1)!)) : null}
+          valore={crm.visite.date.length ? formatDate(new Date(crm.visite.date.at(-1)!), "it-IT", ctx.venue.timezone) : null}
           vuoto="—"
           nota={
             crm.visite.giorniDaUltima != null
@@ -291,7 +291,7 @@ export default async function GuestDetail({ params }: { params: { id: string } }
                   <li key={p.id} className="flex items-center justify-between gap-4 py-3 text-sm">
                     <div>
                       <p className="font-medium">{PAYMENT_KIND_LABEL[p.kind]}</p>
-                      <p className="text-xs text-muted-foreground">{formatDateTime(p.createdAt)}</p>
+                      <p className="text-xs text-muted-foreground">{formatDateTime(p.createdAt, "it-IT", ctx.venue.timezone)}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-medium">{formatCurrency(p.amountCents, p.currency)}</span>

@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { STATI_IMPEGNATIVI, STATI_INCASSATI } from "@/lib/pagamento-vista";
 import { tokenPlausibile } from "@/lib/pay-token";
+import { RIGHE_NEL_CONTO, totaleRighe } from "./conto-residuo";
 
 /**
  * Il conto di un tavolo, visto da chi ci è seduto.
@@ -169,13 +170,31 @@ export async function segnaScansione(tableId: string, ultima: Date | null): Prom
 }
 
 /**
+ * Gli stati di una prenotazione che ha ancora qualcuno seduto al tavolo.
+ *
+ * `COMPLETED` è un tavolo liberato, `CANCELLED` e `NO_SHOW` uno mai occupato;
+ * `CONFIRMED` e `PENDING` sono persone che devono ancora arrivare. La stessa
+ * regola la usa l'app di sala per «conto richiesto».
+ */
+export const SEDUTE_ATTIVE = ["ARRIVED", "SEATED"] as const;
+
+/**
  * Il conto aperto di un tavolo.
  *
  * Passa dalla prenotazione seduta, che è il legame vero fra un tavolo e una
- * serata. Se ce ne fosse più d'una — un tavolo liberato e riassegnato senza
- * chiudere la prima — si prende **la più recente per orario di seduta**: è
- * quella delle persone che sono lì adesso, e sono loro che hanno in mano il
- * telefono.
+ * serata. Se ce ne fosse più d'una — due sedute aperte sullo stesso tavolo —
+ * si prende **la più recente per orario di seduta**: è quella delle persone
+ * che sono lì adesso, e sono loro che hanno in mano il telefono.
+ *
+ * ## Solo la seduta di adesso
+ *
+ * Contano soltanto le prenotazioni **attive** — arrivate o sedute — e non
+ * quelle già concluse. Il conto di un gruppo resta aperto anche dopo che ha
+ * saldato col QR (cambia solo `paymentStatus`) e dopo che il cameriere ha
+ * premuto «Libera» (la prenotazione va `COMPLETED`, l'ordine no): se la
+ * ricerca guardasse anche quelle, il gruppo successivo inquadrerebbe il QR e
+ * si troverebbe davanti il conto di chi se n'è appena andato. Vedi
+ * `SEDUTE_ATTIVE`.
  */
 export async function trovaOrderIdDelTavolo(
   tx: Prisma.TransactionClient | typeof db,
@@ -189,10 +208,13 @@ export async function trovaOrderIdDelTavolo(
       booking: {
         tableId,
         deletedAt: null,
-        status: { notIn: ["CANCELLED", "NO_SHOW"] },
+        status: { in: [...SEDUTE_ATTIVE] },
       },
     },
-    orderBy: [{ booking: { seatedAt: "desc" } }, { createdAt: "desc" }],
+    // `nulls: "last"`: in Postgres un ordine discendente mette i vuoti in
+    // testa, e chi è appena arrivato e non ancora seduto passerebbe davanti a
+    // chi è seduto.
+    orderBy: [{ booking: { seatedAt: { sort: "desc", nulls: "last" } } }, { createdAt: "desc" }],
     select: { id: true },
   });
   return conto?.id ?? null;
@@ -309,7 +331,9 @@ export async function leggiContoPerOrder(
 ): Promise<ContoTavolo> {
   const conto = await tx.order.findUniqueOrThrow({
     where: { id: orderId },
-    include: { OrderItem: { orderBy: { id: "asc" } } },
+    // Le righe annullate non si pagano e non si mostrano come pagabili: vedi
+    // `RIGHE_NEL_CONTO`.
+    include: { OrderItem: { where: RIGHE_NEL_CONTO, orderBy: { id: "asc" } } },
   });
 
   if (!(APERTI as readonly string[]).includes(conto.status)) throw new ContoTavoloError("conto_chiuso");
@@ -324,7 +348,7 @@ export async function leggiContoPerOrder(
     unitaOccupate(tx, orderId, adesso),
   ]);
 
-  const totaleCents = conto.OrderItem.reduce((s, r) => s + r.priceCents * r.quantity, 0);
+  const totaleCents = totaleRighe(conto.OrderItem);
   const scontiCents = (giftCard._sum.amountCents ?? 0) + (punti._sum.amountCents ?? 0);
   const daPagareCents = Math.max(0, totaleCents - scontiCents);
   const residuoCents = Math.max(0, daPagareCents - somme.pagatoCents - somme.inCorsoCents);

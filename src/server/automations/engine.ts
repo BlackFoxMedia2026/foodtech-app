@@ -8,6 +8,8 @@ import {
   sendMessage,
 } from "@/server/messaging/send";
 import { enqueueJob } from "@/server/jobs/queue";
+import { normalizzaEmail } from "@/server/dem/destinatari";
+import { PREVIEW_UNSUBSCRIBE_ID, signUnsubscribeToken } from "@/lib/unsubscribe-token";
 import { createCoupon, descriviCoupon } from "@/server/coupons";
 import {
   AUTOMATIONS,
@@ -167,7 +169,29 @@ export async function resolveDestinatari(
   now: Date
 ): Promise<Destinatari> {
   const def = AUTOMATIONS[key];
-  const candidati = await def.audience(venueId, giorni, now);
+  const tutti = await def.audience(venueId, giorni, now);
+
+  /*
+    La lista di soppressione delle campagne vale anche qui.
+
+    Vale per l'**indirizzo**, non per la scheda: chi ha segnalato spam o ha un
+    indirizzo che rimbalza non deve ricevere gli auguri di compleanno solo
+    perché a scrivergli è un'automazione e non una campagna. Non si conta fra
+    gli scartati, come chi non ha il consenso: non è mai stato un candidato.
+  */
+  const indirizzi = Array.from(new Set(tutti.map((c) => normalizzaEmail(c.email))));
+  const soppressi =
+    indirizzi.length === 0
+      ? new Set<string>()
+      : new Set(
+          (
+            await db.demSuppression.findMany({
+              where: { venueId, email: { in: indirizzi } },
+              select: { email: true },
+            })
+          ).map((r) => r.email),
+        );
+  const candidati = tutti.filter((c) => !soppressi.has(normalizzaEmail(c.email)));
   const kind = automationKind(key);
   const scartati: Scarti = { silenzio: 0, giaRicevuto: 0 };
   const pronti: AutomationRecipient[] = [];
@@ -202,6 +226,10 @@ export async function resolveDestinatari(
 /*  Il messaggio                                                              */
 /* -------------------------------------------------------------------------- */
 
+function linkDisiscrizione(base: string, guestId: string): string {
+  return `${base}/api/unsubscribe?token=${signUnsubscribeToken(guestId)}`;
+}
+
 function corpo(opts: {
   guestName: string;
   venueName: string;
@@ -209,6 +237,8 @@ function corpo(opts: {
   url: string;
   venuePhone: string | null;
   coupon?: { code: string; descrizione: string; validUntil: Date } | null;
+  /** Il link di disiscrizione: lo stesso token e la stessa rotta delle campagne. */
+  unsubscribeUrl: string;
 }) {
   const scadenza = opts.coupon
     ? new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long" }).format(opts.coupon.validUntil)
@@ -238,6 +268,10 @@ function corpo(opts: {
           : ""
       }
       <p style="font-size:13px;color:#6b5a45;">A presto!<br/><strong>${opts.venueName}</strong></p>
+      <p style="font-size:11px;color:#8a7a65;margin-top:24px;">
+        Ricevi questa email perché hai acconsentito a ricevere comunicazioni da ${opts.venueName}.
+        <a href="${opts.unsubscribeUrl}" style="color:#8a7a65;">Non voglio più ricevere queste email</a>.
+      </p>
     </div>
   `;
 }
@@ -339,11 +373,19 @@ export async function runAutomation(
       }
     }
 
+    // Un'email di marketing senza il modo di uscirne è fuori legge, e chi
+    // non lo trova preme «spam». Il link e l'intestazione per il clic nel
+    // programma di posta sono quelli delle campagne (`/api/unsubscribe`).
+    const disiscrizione = linkDisiscrizione(base, destinatario.guestId);
     const esito = await enqueueMessage({
       venueId,
       venueName: venue.name,
       channel: "EMAIL",
       to: destinatario.email,
+      headers: {
+        "List-Unsubscribe": `<${disiscrizione}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
       guestId: destinatario.guestId,
       workflowRunId: run.id,
       kind: automationKind(key),
@@ -355,6 +397,7 @@ export async function runAutomation(
         url,
         venuePhone: venue.phone,
         coupon,
+        unsubscribeUrl: disiscrizione,
       }),
       preview: `${def.name} — ${destinatario.reason}`,
     });
@@ -512,6 +555,9 @@ export async function sendAutomationTest(venueId: string, key: AutomationKey, to
       intro: testo.intro,
       url: `${base}/book?venue=${venueId}`,
       venuePhone: venue.phone,
+      // Nella prova il link porta alla pagina d'anteprima: non disiscrive
+      // nessuno, perché la prova non è andata a un ospite.
+      unsubscribeUrl: linkDisiscrizione(base, PREVIEW_UNSUBSCRIBE_ID),
       // Nella prova il codice non esiste, e si vede: creare un coupon vero
       // per un invio di prova vorrebbe dire regalare qualcosa a nessuno.
       coupon: testo.coupon

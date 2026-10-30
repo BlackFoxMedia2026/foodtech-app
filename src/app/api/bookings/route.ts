@@ -10,8 +10,8 @@ export async function GET(req: Request) {
   if (!ctx.ok) return ctx.response;
   const url = new URL(req.url);
   const day = url.searchParams.get("day");
-  const target = day ? new Date(day) : new Date();
-  const data = await listBookingsForDay(ctx.venueId, target);
+  // Il giorno si legge nel fuso del locale, non in quello del processo.
+  const data = await listBookingsForDay(ctx.venueId, day ?? new Date(), ctx.venue.timezone);
   return NextResponse.json(data);
 }
 

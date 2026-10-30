@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_VENUE_TIMEZONE,
   dateKeyInVenue,
+  giornataDiServizio,
   giornataInVenue,
   mezzanotteInVenue,
   shiftDateKey,
   todayInVenue,
 } from "@/lib/venue-time";
+import { formatDate, formatDateTime, formatTime } from "@/lib/utils";
 
 /**
  * Il bug che questi test impediscono di tornare: «oggi» era calcolato in UTC
@@ -169,5 +171,79 @@ describe("l'inizio e la fine della giornata del locale", () => {
     expect(mezzanotteInVenue("2026-01-15", "Europe/Rome").toISOString()).toBe(
       "2026-01-14T23:00:00.000Z",
     );
+  });
+});
+
+describe("la giornata di servizio: dalle cinque alle cinque del locale", () => {
+  /*
+    Il difetto: Sala, Servizio e app di sala leggevano «oggi» con
+    `startOfDay` del processo. Su Vercel (UTC) la giornata girava alle 02:00
+    italiane d'estate, e i tavoli ancora seduti della cena sparivano —
+    «Libera» rispondeva «nessuna prenotazione». La mezzanotte del locale
+    sarebbe stata peggio: sparivano a mezzanotte.
+  */
+  it("all'una e mezza di notte la cena delle 21 è ancora della serata", () => {
+    // 01:30 del 9 settembre a Roma = 23:30 UTC dell'8
+    const adesso = new Date("2026-09-08T23:30:00.000Z");
+    const cena = new Date("2026-09-08T19:00:00.000Z"); // 21:00 dell'8 a Roma
+    const g = giornataDiServizio(adesso, "Europe/Rome");
+    expect(g.giorno).toBe("2026-09-08");
+    expect(cena >= g.inizio && cena <= g.fine).toBe(true);
+  });
+
+  it("alle tre di notte (UTC già al giorno dopo) il tavolo seduto non sparisce", () => {
+    // 03:00 del 9 a Roma = 01:00 UTC del 9: il vecchio `startOfDay` UTC
+    // cominciava alle 02:00 italiane del 9 e perdeva la cena dell'8.
+    const adesso = new Date("2026-09-09T01:00:00.000Z");
+    const cena = new Date("2026-09-08T19:00:00.000Z");
+    const g = giornataDiServizio(adesso, "Europe/Rome");
+    expect(cena >= g.inizio && cena <= g.fine).toBe(true);
+  });
+
+  it("chi arriva dopo mezzanotte appartiene alla serata in cui la sala era aperta", () => {
+    const adesso = new Date("2026-09-08T23:00:00.000Z"); // 01:00 del 9
+    const tardi = new Date("2026-09-08T22:30:00.000Z"); // 00:30 del 9
+    const g = giornataDiServizio(adesso, "Europe/Rome");
+    expect(tardi >= g.inizio && tardi <= g.fine).toBe(true);
+  });
+
+  it("alle cinque del mattino gira: da mezzanotte alle cinque di domani", () => {
+    const adesso = new Date("2026-09-09T03:30:00.000Z"); // 05:30 del 9 a Roma
+    const g = giornataDiServizio(adesso, "Europe/Rome");
+    expect(g.giorno).toBe("2026-09-09");
+    expect(g.inizio.toISOString()).toBe("2026-09-08T22:00:00.000Z"); // 00:00 del 9
+    expect(g.fine.toISOString()).toBe("2026-09-10T02:59:59.999Z"); // 04:59:59 del 10
+  });
+
+  it("di giorno vede tutto il giorno di calendario, come prima", () => {
+    const adesso = new Date("2026-09-09T12:00:00.000Z");
+    const g = giornataDiServizio(adesso, "Europe/Rome");
+    const calendario = giornataInVenue(adesso, "Europe/Rome");
+    expect(g.inizio.getTime()).toBe(calendario.inizio.getTime());
+    expect(g.fine.getTime()).toBeGreaterThan(calendario.fine.getTime());
+  });
+});
+
+describe("orari e date formattati sul server", () => {
+  it("senza fuso usano quello del processo (UTC qui): è il difetto", () => {
+    const cena = new Date("2026-09-08T18:30:00.000Z"); // 20:30 a Roma
+    expect(formatTime(cena)).toBe("18:30");
+  });
+
+  it("con il fuso del locale dicono l'ora della sala", () => {
+    const cena = new Date("2026-09-08T18:30:00.000Z");
+    expect(formatTime(cena, "it-IT", "Europe/Rome")).toBe("20:30");
+    expect(formatDateTime(cena, "it-IT", "Europe/Rome")).toContain("20:30");
+  });
+
+  it("la data di una cena dopo mezzanotte è quella del locale", () => {
+    const tardi = new Date("2026-09-08T22:30:00.000Z"); // 00:30 del 9 a Roma
+    expect(formatDate(tardi, "it-IT", "Europe/Rome")).toContain("09");
+    expect(formatDate(tardi)).toContain("08");
+  });
+
+  it("un fuso scritto male non fa cadere la pagina", () => {
+    const cena = new Date("2026-09-08T18:30:00.000Z");
+    expect(formatTime(cena, "it-IT", "Europa/Nessuna")).toBe("20:30");
   });
 });

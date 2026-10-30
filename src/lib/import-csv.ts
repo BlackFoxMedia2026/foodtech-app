@@ -36,6 +36,28 @@
  * dare qui. Vedi `docs/GDPR.md` se un giorno esisterà.
  */
 
+/**
+ * I byte del file → testo.
+ *
+ * `file.text()` legge sempre in UTF-8, ed **Excel in italiano su Windows
+ * salva il CSV in Windows-1252**: ogni lettera accentata diventava «�», e
+ * «Nicolò» entrava in rubrica come «Nicol�» — duemila volte, e senza che
+ * nessuno lo vedesse prima dell'importazione.
+ *
+ * Si prova UTF-8 in modalità `fatal`, che si arrende al primo byte non
+ * valido invece di sostituirlo: un file Windows-1252 con un accento non è mai
+ * UTF-8 valido, quindi l'errore è la prova. Allora si rilegge in
+ * Windows-1252, che accetta qualunque byte. Un file tutto ASCII si legge
+ * uguale in entrambi, e va bene così.
+ */
+export function decodificaFile(byte: ArrayBuffer | Uint8Array): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(byte);
+  } catch {
+    return new TextDecoder("windows-1252").decode(byte);
+  }
+}
+
 /** Il tetto di righe per file. Oltre, si chiede di dividerlo. */
 export const RIGHE_MASSIME = 5_000;
 
@@ -86,6 +108,9 @@ const ALIAS: Record<string, string[]> = {
     "data",
     "date",
     "datapren",
+    "dataprenotazione",
+    /* Il refuso di una versione precedente: non combacia con niente di
+       sensato, e toglierlo non serve a nessuno. */
     "datapenotazione",
     "data prenotazione",
     "bookingdate",
@@ -361,6 +386,95 @@ export function leggiOra(valore: string): string | null {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Lo stato                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Com'era finita la prenotazione, secondo il gestionale di prima.
+ *
+ * Sono i nomi degli stati di `Booking`, ma qui non si importa Prisma: questo
+ * file resta puro. Solo quelli che un'esportazione dice davvero.
+ */
+export type StatoLetto = "CONFIRMED" | "PENDING" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+
+/**
+ * Le parole che i gestionali usano per gli stati, già ridotte con
+ * `chiaveIntestazione` (senza accenti, minuscole, spazi semplici).
+ *
+ * Contano soprattutto le prime due: senza leggerle, una cena **annullata**
+ * di un'esportazione diventava `CONFIRMED` se futura — e riceveva il
+ * promemoria — o `COMPLETED` se passata, e gonfiava le visite del cliente.
+ * Un no-show contato come visita è il contrario di quello che il locale sa.
+ */
+const STATI: Record<StatoLetto, string[]> = {
+  CANCELLED: [
+    "annullata",
+    "annullato",
+    "annullate",
+    "annullamento",
+    "cancellata",
+    "cancellato",
+    "disdetta",
+    "disdetto",
+    "rifiutata",
+    "cancelled",
+    "canceled",
+    "cancellation",
+    "declined",
+    "rejected",
+  ],
+  NO_SHOW: [
+    "no show",
+    "noshow",
+    "non presentato",
+    "non presentata",
+    "non presentati",
+    "non si e presentato",
+    "non si e presentata",
+    "assente",
+    "mancata presentazione",
+    "did not show",
+  ],
+  CONFIRMED: ["confermata", "confermato", "confirmed", "accettata", "accepted", "prenotata", "booked"],
+  PENDING: ["in attesa", "da confermare", "richiesta", "pending", "waiting", "requested"],
+  COMPLETED: [
+    "completata",
+    "completato",
+    "conclusa",
+    "chiusa",
+    "arrivato",
+    "arrivata",
+    "arrivati",
+    "presentato",
+    "presentata",
+    "seduto",
+    "seduti",
+    "completed",
+    "arrived",
+    "seated",
+    "finished",
+    "done",
+    "checked out",
+  ],
+};
+
+/**
+ * Uno stato scritto da un gestionale → uno stato nostro, o `null`.
+ *
+ * `null` quando la parola non si riconosce, o la cella è vuota: allora decide
+ * la data, come prima (passata → conclusa, futura → confermata). Indovinare
+ * uno stato da una parola sconosciuta sarebbe peggio di non leggerlo.
+ */
+export function leggiStato(valore: string): StatoLetto | null {
+  const t = chiaveIntestazione(valore);
+  if (!t) return null;
+  for (const stato of Object.keys(STATI) as StatoLetto[]) {
+    if (STATI[stato].includes(t)) return stato;
+  }
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Le righe                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -376,6 +490,8 @@ export type RigaLetta = {
   ora: string | null;
   persone: number | null;
   note: string | null;
+  /** Lo stato secondo il file, se lo dice in un modo che riconosciamo. */
+  stato: StatoLetto | null;
 };
 
 export type Scarto = {
@@ -472,6 +588,7 @@ export function leggiFile(testo: string): EsitoLettura {
       ora,
       persone: persone && persone > 0 && persone < 500 ? persone : null,
       note: prendi("note") || null,
+      stato: leggiStato(prendi("stato")),
     });
   });
 

@@ -208,10 +208,49 @@ export async function createGuest(venueId: string, raw: unknown) {
 }
 
 export async function updateGuest(venueId: string, id: string, raw: unknown, actor?: AuditActor) {
-  const data = GuestInput.partial().parse(raw);
+  const { email, ...resto } = GuestInput.partial().parse(raw);
   const existing = await db.guest.findFirst({ where: { id, venueId } });
   if (!existing) throw new Error("not_found");
+
+  /*
+    Il consenso cambiato a mano è un consenso come gli altri.
+
+    Prima la casella cambiava e basta: nessuna riga nel registro, nessuna data.
+    Un'unione di schede, che decide il consenso dall'ultima riga registrata,
+    poteva così riattivare chi aveva chiesto allo staff di non scrivergli più.
+    Una revoca segna anche la disiscrizione; un nuovo sì la toglie, perché
+    altrimenti la casella direbbe «sì» e le campagne continuerebbero a
+    escluderlo senza che nessuno capisca perché.
+  */
+  const consensoCambiato =
+    resto.marketingOptIn !== undefined && resto.marketingOptIn !== existing.marketingOptIn;
+  const adesso = new Date();
+  const data: Prisma.GuestUpdateInput = {
+    ...resto,
+    // Una casella svuotata è «nessuna email», non un indirizzo vuoto: "" in
+    // tabella passerebbe i controlli `not: null` e finirebbe fra i destinatari.
+    ...(email !== undefined && { email: email || null }),
+    ...(consensoCambiato &&
+      (resto.marketingOptIn
+        ? { unsubscribedAt: null, marketingConsentAt: adesso, marketingConsentSource: "manuale" }
+        : { unsubscribedAt: existing.unsubscribedAt ?? adesso })),
+  };
+
   const updated = await db.guest.update({ where: { id }, data });
+  if (consensoCambiato) {
+    await db.consentLog.create({
+      data: {
+        id: crypto.randomUUID(),
+        venueId,
+        guestId: id,
+        channel: "EMAIL",
+        granted: !!resto.marketingOptIn,
+        // Chi l'ha cambiato sta nel registro delle azioni: l'IP qui sarebbe
+        // quello dello staff, non della persona che ha scelto.
+        source: "manuale",
+      },
+    });
+  }
   const diff = fieldDiff(existing, updated);
   if (diff) await recordAudit(actor, "guest.update", "guest", id, diff);
   return updated;

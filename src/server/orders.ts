@@ -5,6 +5,7 @@ import { recordAudit, type AuditActor } from "./audit";
 import { dateKeyInVenue } from "@/lib/venue-time";
 import { finestraGiorno } from "./forecast";
 import { accreditaPuntiConto, regoleFedelta } from "./loyalty";
+import { RIGHE_NEL_CONTO, rigaNelConto, totaleRighe } from "./conto-residuo";
 
 /**
  * Il conto del tavolo.
@@ -143,7 +144,9 @@ async function pagamentiDi(orderIds: string[]): Promise<Map<string, OrderPagamen
 }
 
 function toView(order: Order & { OrderItem: OrderItem[] }, pagamenti?: OrderPagamenti): OrderView {
-  const righe = order.OrderItem.map((i) => ({
+  // Le righe annullate dalla cucina non sono nel conto: non si mostrano e non
+  // si sommano (vedi `RIGHE_NEL_CONTO`). La loro storia resta nelle comande.
+  const righe = order.OrderItem.filter(rigaNelConto).map((i) => ({
     id: i.id,
     menuItemId: i.menuItemId,
     name: i.name,
@@ -343,8 +346,11 @@ export const AddLineInput = z.object({
  * indietro.
  */
 async function ricalcola(tx: Prisma.TransactionClient, orderId: string): Promise<number> {
-  const righe = await tx.orderItem.findMany({ where: { orderId }, select: { priceCents: true, quantity: true } });
-  const totale = righe.reduce((s, r) => s + r.priceCents * r.quantity, 0);
+  const righe = await tx.orderItem.findMany({
+    where: { orderId, ...RIGHE_NEL_CONTO },
+    select: { priceCents: true, quantity: true },
+  });
+  const totale = totaleRighe(righe);
   await tx.order.update({ where: { id: orderId }, data: { totalCents: totale } });
   return totale;
 }
@@ -462,7 +468,8 @@ export async function closeOrder(
 ): Promise<ContoChiuso> {
   const esito = await db.$transaction(async (tx) => {
     const conto = await contoApertoOEccezione(tx, venueId, orderId);
-    const righe = await tx.orderItem.count({ where: { orderId } });
+    // Un conto fatto solo di righe annullate è vuoto quanto uno senza righe.
+    const righe = await tx.orderItem.count({ where: { orderId, ...RIGHE_NEL_CONTO } });
     if (righe === 0) throw new OrderError("empty_order");
 
     const totale = await ricalcola(tx, orderId);
@@ -574,7 +581,9 @@ export async function incassoDelGiorno(
 
   const conti = await db.order.findMany({
     where: { venueId, status: "COMPLETED", completedAt: { gte: start, lt: end } },
-    include: { OrderItem: { select: { menuItemId: true, priceCents: true, quantity: true } } },
+    include: {
+      OrderItem: { where: RIGHE_NEL_CONTO, select: { menuItemId: true, priceCents: true, quantity: true } },
+    },
   });
 
   const menuItemIds = [

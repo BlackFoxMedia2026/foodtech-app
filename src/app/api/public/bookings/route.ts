@@ -62,7 +62,17 @@ export async function POST(req: Request) {
       guest: body?.guest,
       partySize: body?.partySize,
       startsAt: body?.startsAt,
-      durationMin: body?.durationMin,
+      /*
+        La durata **non** si prende dal corpo della richiesta.
+
+        Il modulo non la manda — non c'è un campo per sceglierla — ma la
+        rotta la accettava: chiunque scrivesse la richiesta a mano poteva
+        tenere un tavolo per otto persone per quindici minuti, e il controllo
+        di disponibilità la prendeva per buona. Così si infilano prenotazioni
+        in buchi che non esistono. La decide il locale: `createBooking` usa la
+        durata misurata per quel gruppo e quella fascia (`durataConsigliata`),
+        la stessa con cui il widget ha calcolato gli orari liberi.
+      */
       occasion: body?.occasion,
       notes: body?.notes,
       source: "WIDGET" as const,

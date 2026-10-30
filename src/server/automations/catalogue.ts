@@ -138,8 +138,21 @@ const FINESTRA_GIORNI = 7;
 
 const SELEZIONE_OSPITE = { id: true, firstName: true, email: true } as const;
 
-/** I vincoli che non si negoziano: un contatto valido e il consenso. */
-const RAGGIUNGIBILE = { marketingOptIn: true, email: { not: null } } as const;
+/**
+ * I vincoli che non si negoziano: un contatto valido e il consenso.
+ *
+ * Il consenso è la casella **e** l'assenza di una disiscrizione: sono le
+ * stesse regole delle campagne (`dem/destinatari.ts`). Una scheda anonimizzata
+ * non ha più un indirizzo, ma si esclude per nome: non deve dipendere da un
+ * dettaglio di come si cancella. La lista di soppressione, che vale per
+ * l'indirizzo, la applica `resolveDestinatari`.
+ */
+const RAGGIUNGIBILE = {
+  marketingOptIn: true,
+  unsubscribedAt: null,
+  anonymizedAt: null,
+  email: { not: null },
+} as const;
 
 function giorniFa(riferimento: Date, quanti: number): string {
   if (quanti <= 0) return "oggi";

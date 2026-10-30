@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { RIGHE_NEL_CONTO } from "@/server/conto-residuo";
 import { recordAudit, type AuditActor } from "./audit";
 
 /**
@@ -84,7 +85,7 @@ export async function esportaOspite(
     db.order.findMany({
       where: { venueId, guestId },
       orderBy: { createdAt: "desc" },
-      include: { OrderItem: { select: { name: true, priceCents: true, quantity: true } } },
+      include: { OrderItem: { where: RIGHE_NEL_CONTO, select: { name: true, priceCents: true, quantity: true } } },
     }),
     db.loyaltyTransaction.findMany({ where: { venueId, guestId }, orderBy: { createdAt: "desc" } }),
     db.coupon.findMany({ where: { venueId, guestId }, orderBy: { createdAt: "desc" } }),

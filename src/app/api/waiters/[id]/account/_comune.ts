@@ -1,13 +1,12 @@
 import { headers } from "next/headers";
 import { apiError, apiErrorResponse } from "@/lib/api-auth";
+import { origineFidata } from "@/lib/origine";
 import { AccountError, MESSAGGIO_ACCOUNT } from "@/server/staff-account";
 
-/** L'indirizzo pubblico di questa installazione, per i link da consegnare. */
+/** L'indirizzo pubblico di questa installazione, per i link da consegnare.
+ * I link portano un segreto (invito, reimpostazione): vedi `origineFidata`. */
 export function baseUrl(): string {
-  const h = headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
+  return origineFidata(headers());
 }
 
 const STATUS: Partial<Record<AccountError["code"], number>> = {
@@ -19,6 +18,8 @@ const STATUS: Partial<Record<AccountError["code"], number>> = {
   non_su_di_te: 409,
   ultimo_manager: 409,
   link_non_valido: 410,
+  indirizzo_riservato: 422,
+  gestito_altrove: 409,
 };
 
 export function erroreAccount(err: unknown) {

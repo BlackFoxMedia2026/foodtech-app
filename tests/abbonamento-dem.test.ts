@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import type Stripe from "stripe";
 import { sincronizzaAbbonamentoStripe } from "@/server/dem/stripe-dem";
@@ -62,6 +62,10 @@ async function prezzoDi(slug: string): Promise<string> {
 }
 
 beforeAll(async () => {
+  /* Le date dei casi sono di settembre: con l'orologio vero, passato il 3
+     ottobre, il ciclo di Stripe risultava già scaduto e veniva rinnovato. */
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-15T12:00:00Z"));
   await assicuraPiani();
   const org = await db.organization.create({
     data: { name: `${PREFISSO}org`, slug: `${PREFISSO}${Date.now()}` },
@@ -76,6 +80,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  vi.useRealTimers();
   await db.demSubscription.deleteMany({ where: { venueId } });
   await db.demPlan.updateMany({ where: { stripePriceId: { startsWith: "price_" } }, data: { stripePriceId: null } });
   await db.venue.deleteMany({ where: { name: { startsWith: PREFISSO } } });

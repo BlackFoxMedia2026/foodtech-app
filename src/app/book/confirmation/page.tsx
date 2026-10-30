@@ -130,8 +130,8 @@ export default async function ConfirmationPage(props: {
 
           <div className="riquadro space-y-4 p-5 text-left">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Dato etichetta={isConfirmed ? "Data" : "Data richiesta"} valore={formatDate(booking.startsAt)} />
-              <Dato etichetta={isConfirmed ? "Ora" : "Ora richiesta"} valore={formatTime(booking.startsAt)} />
+              <Dato etichetta={isConfirmed ? "Data" : "Data richiesta"} valore={formatDate(booking.startsAt, "it-IT", venue.timezone)} />
+              <Dato etichetta={isConfirmed ? "Ora" : "Ora richiesta"} valore={formatTime(booking.startsAt, "it-IT", venue.timezone)} />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Dato etichetta="Persone" valore={String(booking.partySize)} />

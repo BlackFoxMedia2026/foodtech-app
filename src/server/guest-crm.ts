@@ -1,4 +1,7 @@
 import { db } from "@/lib/db";
+import { dateKeyInVenue, DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
+import { zonedDayAndMinute } from "./availability";
+import { RIGHE_NEL_CONTO } from "@/server/conto-residuo";
 import { eUnaVisita } from "@/lib/visite";
 
 /**
@@ -146,9 +149,11 @@ const GIORNI = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "ve
  * le ore dà «2 giorni fa» per una cena del 4 guardata il 7, e accanto alla
  * data scritta sembra un errore. Una persona conta i giorni sul calendario.
  */
-function giorniDiCalendario(da: Date, a: Date): number {
-  const inizio = Date.UTC(da.getFullYear(), da.getMonth(), da.getDate());
-  const fine = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+function giorniDiCalendario(da: Date, a: Date, fuso: string): number {
+  /* Il calendario è quello del locale: `getDate()` del processo, su Vercel,
+     è il giorno UTC, e la cena dell'una di notte risultava del giorno prima. */
+  const inizio = Date.parse(`${dateKeyInVenue(da, fuso)}T00:00:00Z`);
+  const fine = Date.parse(`${dateKeyInVenue(a, fuso)}T00:00:00Z`);
   return Math.max(0, Math.round((fine - inizio) / 86_400_000));
 }
 
@@ -260,6 +265,11 @@ export async function getCrmOspite(
   opts: { now?: Date } = {},
 ): Promise<CrmOspite> {
   const now = opts.now ?? new Date();
+  /* Giorni e ore nel fuso del locale, non del processo (UTC su Vercel): vedi
+     `giorniDiCalendario` e le abitudini qui sotto. */
+  const fuso =
+    (await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }))?.timezone ??
+    DEFAULT_VENUE_TIMEZONE;
 
   const [prenotazioni, conti] = await Promise.all([
     db.booking.findMany({
@@ -291,6 +301,7 @@ export async function getCrmOspite(
         completedAt: true,
         scheduledAt: true,
         OrderItem: {
+          where: RIGHE_NEL_CONTO,
           select: {
             name: true,
             quantity: true,
@@ -311,7 +322,7 @@ export async function getCrmOspite(
   const visite = prenotazioni.filter((b) => eUnaVisita(b.status));
   const dateVisite = visite.map((b) => b.startsAt);
   const ultima = dateVisite.at(-1) ?? null;
-  const giorniDaUltima = ultima ? giorniDiCalendario(ultima, now) : null;
+  const giorniDaUltima = ultima ? giorniDiCalendario(ultima, now, fuso) : null;
 
   let cadenza: number | null = null;
   if (dateVisite.length >= 2) {
@@ -436,7 +447,7 @@ export async function getCrmOspite(
   /* ------------------------------------------------------------- abitudini */
 
   const giornoModa = moda(
-    visite.map((b) => b.startsAt.getDay()),
+    visite.map((b) => zonedDayAndMinute(b.startsAt, fuso).weekday),
     (g) => String(g),
   );
 
@@ -450,7 +461,7 @@ export async function getCrmOspite(
     successiva, cioè «arriva fra le 20:30 e le 21:30», che è il modo in cui la
     direbbe una persona.
   */
-  const mezzOra = (d: Date) => Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) * 30;
+  const mezzOra = (d: Date) => Math.floor(zonedDayAndMinute(d, fuso).minuteOfDay / 30) * 30;
   const fasciaModa = moda(visite.map((b) => mezzOra(b.startsAt)), (m) => String(m));
 
   const conTempi = visite.filter((b) => b.seatedAt && b.closedAt);

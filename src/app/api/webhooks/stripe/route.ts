@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { metodoLeggibile, stripeOpzionale } from "@/lib/stripe";
-import { logErrore } from "@/lib/observability";
+import { logErrore, logEvento } from "@/lib/observability";
 import { registraIncasso, registraRimborso, liberaPagamento } from "@/server/pagamenti-tavolo";
 import { avvisaPagamentoAlTavolo } from "@/server/avvisi-pagamento";
 import { sincronizzaAbbonamentoStripe, venueDelClienteStripe } from "@/server/dem/stripe-dem";
@@ -22,10 +23,11 @@ import { avvisa, avvisoPagamentoFallito } from "@/server/dem/avvisi";
  *   `req.json()`: la firma copre i byte esatti, e riserializzare un JSON
  *   cambia gli spazi e la rende invalida. Da qui `req.text()`.
  * - **Scrive l'evento prima di lavorarlo.** `WebhookEvent` ha un vincolo unico
- *   su `(provider, providerEventId)`: se l'inserimento fallisce, quell'evento
- *   era già stato visto e si esce. È l'idempotenza garantita dal database, non
- *   da un controllo che due richieste in parallelo si scambierebbero senza
- *   vedersi.
+ *   su `(provider, providerEventId)`: se l'inserimento viola quel vincolo,
+ *   l'evento era già stato visto e si esce — a meno che il tentativo di
+ *   prima sia morto a metà, e allora lo si riprende. È l'idempotenza
+ *   garantita dal database, non da un controllo che due richieste in
+ *   parallelo si scambierebbero senza vedersi.
  * - **Risponde 200 anche quando non riconosce l'evento.** Un 500 fa ritentare
  *   Stripe per giorni; e un evento che non ci riguarda non è un guasto.
  *   L'unico 500 legittimo è «ho ricevuto un incasso e non sono riuscito a
@@ -43,21 +45,56 @@ import { avvisa, avvisoPagamentoFallito } from "@/server/dem/avvisi";
  * ## Gli eventi Connect
  *
  * Gli addebiti nascono sull'account del ristorante, quindi gli eventi
- * arrivano con `account` valorizzato. È lo stesso indirizzo: Stripe manda qui
- * sia gli eventi della piattaforma sia quelli degli account collegati, e
- * `account.updated` è come si scopre che un locale ha finito l'onboarding.
+ * arrivano con `account` valorizzato, e `account.updated` è come si scopre
+ * che un locale ha finito l'onboarding.
+ *
+ * Sullo stesso indirizzo, ma **non** dallo stesso endpoint Stripe: un endpoint
+ * ascolta o l'account della piattaforma o gli account collegati, e ognuno ha
+ * il suo segreto di firma. Per questo i segreti sono due — vedi
+ * `segretiDiFirma` — e un evento è autentico se lo firma uno qualsiasi.
  */
 
 /** Il corpo va letto grezzo: vedi sopra. */
 export const dynamic = "force-dynamic";
 
+/**
+ * I segreti con cui un evento può essere firmato, nell'ordine in cui provarli.
+ *
+ * - `STRIPE_WEBHOOK_SECRET`: l'endpoint della piattaforma (abbonamenti DEM,
+ *   `customer.subscription.*`, `invoice.*`). Fino al 30 ottobre 2026 era
+ *   l'unico, e per questo si prova per primo: un'installazione che ha un
+ *   endpoint solo continua a funzionare come prima.
+ * - `STRIPE_CONNECT_WEBHOOK_SECRET`: l'endpoint degli **account collegati**,
+ *   da cui arrivano caparre e pagamenti al tavolo (addebiti diretti, vedi
+ *   `perConto`). Senza, quegli eventi fallivano la firma con un 400: Stripe
+ *   ritentava per tre giorni, il denaro era sul conto del ristorante e da noi
+ *   il pagamento restava «in corso» per sempre.
+ */
+function segretiDiFirma(): string[] {
+  return [process.env.STRIPE_WEBHOOK_SECRET, process.env.STRIPE_CONNECT_WEBHOOK_SECRET]
+    .map((s) => s?.trim() ?? "")
+    .filter((s, i, tutti) => s && tutti.indexOf(s) === i);
+}
+
+/**
+ * Per quanto un tentativo in corso tiene un evento per sé.
+ *
+ * Un evento registrato e mai segnato lavorato è di due tipi: o un altro
+ * processo ci sta lavorando adesso, o quel processo è morto a metà (tempo
+ * scaduto, istanza spenta) e non lo finirà mai. Si distinguono solo
+ * dall'età: oltre questa soglia la presa in carico è considerata
+ * abbandonata e il ritentativo di Stripe la riprende. Due minuti stanno ben
+ * oltre la durata di un'esecuzione su Vercel.
+ */
+const PRESA_IN_CARICO_MS = 2 * 60_000;
+
 export async function POST(req: Request) {
   const stripe = stripeOpzionale();
-  const segreto = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+  const segreti = segretiDiFirma();
 
   // Non configurato: si risponde 503 e non 200. Un 200 direbbe a Stripe «tutto
   // a posto» e gli farebbe buttare via un incasso vero.
-  if (!stripe || !segreto) {
+  if (!stripe || segreti.length === 0) {
     return NextResponse.json({ error: "stripe_non_configurato" }, { status: 503 });
   }
 
@@ -66,12 +103,20 @@ export async function POST(req: Request) {
 
   const corpo = await req.text();
 
-  let evento: Stripe.Event;
-  try {
-    evento = stripe.webhooks.constructEvent(corpo, firma, segreto);
-  } catch (err) {
-    // Firma non valida: qualcuno sta provando a inventarsi un incasso.
-    logErrore("stripe.webhook.firma", err);
+  let evento: Stripe.Event | null = null;
+  let errFirma: unknown = null;
+  for (const segreto of segreti) {
+    try {
+      evento = stripe.webhooks.constructEvent(corpo, firma, segreto);
+      break;
+    } catch (err) {
+      errFirma = err;
+    }
+  }
+  if (!evento) {
+    // Firma non valida con tutti i segreti: qualcuno sta provando a
+    // inventarsi un incasso, o manca il segreto di un endpoint.
+    logErrore("stripe.webhook.firma", errFirma);
     return NextResponse.json({ error: "firma_non_valida" }, { status: 400 });
   }
 
@@ -85,9 +130,53 @@ export async function POST(req: Request) {
         payload: evento as unknown as object,
       },
     });
-  } catch {
-    // Vincolo unico violato: già visto, già lavorato. Non è un errore.
-    return NextResponse.json({ ok: true, ripetuto: true });
+  } catch (err) {
+    /*
+      Solo il vincolo unico violato vuol dire «già visto». Qualunque altro
+      errore — il database che non risponde, una connessione caduta — è un
+      guasto nostro: rispondere 200 direbbe a Stripe di buttare via l'evento,
+      e un incasso vero non verrebbe mai registrato. Con un 500 ritenta.
+    */
+    if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) {
+      logErrore("stripe.webhook.registrazione", err, { evento: evento.type, id: evento.id });
+      return NextResponse.json({ error: "registrazione_fallita" }, { status: 500 });
+    }
+
+    /*
+      Già visto. Se è anche già lavorato, è un doppione: 200 e basta.
+
+      Se invece `processedAt` è vuoto, il tentativo di prima non è arrivato in
+      fondo. Lo si riprende **solo** se nessuno lo sta lavorando adesso: la
+      presa in carico è un `UPDATE` condizionato sull'età di `receivedAt`, che
+      fa da orologio della presa — fra due ritentativi simultanei uno solo
+      trova la riga ancora «vecchia» e la rinnova. Chi resta fuori risponde
+      409: Stripe riproverà, e a quel punto troverà l'evento lavorato oppure
+      di nuovo abbandonato.
+
+      Rilavorarlo è sicuro perché ogni ramo di `smista` è idempotente: incasso
+      e rimborso rileggono lo stato del pagamento sotto serratura, la
+      liberazione non tocca un pagamento riuscito, gli abbonamenti si
+      riallineano a quello che dice Stripe.
+    */
+    const ripresa = await db.webhookEvent.updateMany({
+      where: {
+        provider: "stripe",
+        providerEventId: evento.id,
+        processedAt: null,
+        receivedAt: { lt: new Date(Date.now() - PRESA_IN_CARICO_MS) },
+      },
+      data: { receivedAt: new Date(), attempts: { increment: 1 } },
+    });
+    if (ripresa.count === 0) {
+      const gia = await db.webhookEvent.findUnique({
+        where: { provider_providerEventId: { provider: "stripe", providerEventId: evento.id } },
+        select: { processedAt: true },
+      });
+      if (gia?.processedAt) return NextResponse.json({ ok: true, ripetuto: true });
+      // Senza riga: il tentativo di prima è fallito e l'ha tolta un istante
+      // fa (vedi sotto). Anche qui si chiede a Stripe di riprovare.
+      return NextResponse.json({ error: "in_lavorazione" }, { status: 409 });
+    }
   }
 
   try {
@@ -159,11 +248,29 @@ async function smista(evento: Stripe.Event): Promise<void> {
       return;
     }
 
-    /* --- Il cliente non ce l'ha fatta: si libera quello che aveva impegnato. --- */
+    /*
+      --- Un tentativo di addebito non è andato: **non** si libera niente. ---
+
+      Sulla pagina di Checkout una carta rifiutata non chiude la sessione: il
+      cliente può riprovare con un'altra carta, sullo stesso pagamento e
+      fino alla stessa scadenza. Liberare qui le sue portate le rendeva
+      pagabili da altri mentre lui stava ancora pagando — e quando poi la
+      seconda carta passava, l'incasso arrivava su allocazioni già rilasciate.
+
+      Il pagamento resta `PROCESSING` con la sua scadenza, che è la stessa
+      della sessione: se il cliente rinuncia, lo chiude
+      `checkout.session.expired` qui sotto (o il lavoro periodico,
+      `scadiPagamentiVecchi`). Si lascia solo una traccia nel registro.
+    */
     case "payment_intent.payment_failed": {
       const pi = evento.data.object as Stripe.PaymentIntent;
       const paymentId = pi.metadata?.tavolo_payment_id;
-      if (paymentId) await liberaPagamento(paymentId, "FAILED");
+      if (paymentId) {
+        logEvento("stripe.pagamento.tentativo_rifiutato", {
+          paymentId,
+          motivo: pi.last_payment_error?.code ?? null,
+        });
+      }
       return;
     }
 

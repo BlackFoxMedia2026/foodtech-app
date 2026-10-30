@@ -273,3 +273,102 @@ describe("disiscrizione con un clic", () => {
     expect(campagna.unsubscribedCount).toBe(1);
   });
 });
+
+describe("la disiscrizione con un clic vale per la persona, non per una scheda", () => {
+  it("scrive il registro dei consensi e tocca anche la scheda doppione", async () => {
+    const indirizzo = `${PREFISSO}doppia@test.local`;
+    const prima = await db.guest.create({
+      data: { venueId: venueA, firstName: "Lucia", email: indirizzo, marketingOptIn: true },
+    });
+    // La stessa persona su una seconda scheda, con l'indirizzo in maiuscolo.
+    const seconda = await db.guest.create({
+      data: { venueId: venueA, firstName: "Lucia B.", email: indirizzo.toUpperCase(), marketingOptIn: true },
+    });
+    campagnaA = await creaCampagna(venueA);
+    await creaDestinatario({ venueId: venueA, campaignId: campagnaA, email: indirizzo, messageId: "msg-doppia", guestId: prima.id });
+
+    await ricevi([eventoSes("Subscription", "msg-doppia")]);
+
+    for (const id of [prima.id, seconda.id]) {
+      const g = await db.guest.findUniqueOrThrow({ where: { id } });
+      expect(g.marketingOptIn).toBe(false);
+      expect(g.unsubscribedAt).not.toBeNull();
+    }
+    // Senza questa riga un'unione delle due schede poteva riattivare il consenso.
+    expect(await db.consentLog.count({ where: { guestId: prima.id, granted: false } })).toBe(1);
+  });
+});
+
+describe("gli eventi di Brevo", () => {
+  it("trovano la campagna dal suo identificativo e disiscrivono tutte le schede", async () => {
+    const { recordWebhookEvent } = await import("@/server/campaigns");
+    const indirizzo = `${PREFISSO}brevo@test.local`;
+    const idBrevo = String(Math.floor(Math.random() * 1e9));
+    const c = await db.campaign.create({
+      data: { venueId: venueA, name: `${PREFISSO}brevo`, status: "SENT", providerId: idBrevo },
+    });
+    const uno = await db.guest.create({ data: { venueId: venueA, firstName: "Uno", email: indirizzo, marketingOptIn: true } });
+    const due = await db.guest.create({ data: { venueId: venueA, firstName: "Due", email: indirizzo, marketingOptIn: true } });
+    const log = await db.messageLog.create({
+      data: { venueId: venueA, campaignId: c.id, guestId: uno.id, channel: "EMAIL", toAddress: indirizzo, status: "SENT" },
+    });
+    const ts = Math.floor(Date.now() / 1000);
+
+    await recordWebhookEvent([
+      { event: "delivered", email: indirizzo, campaign_id: Number(idBrevo), ts_event: ts },
+      { event: "unsubscribed", email: indirizzo, campaign_id: Number(idBrevo), ts_event: ts + 1 },
+    ]);
+
+    // Prima il messaggio non si trovava mai: la consegna ora arriva.
+    expect((await db.messageLog.findUniqueOrThrow({ where: { id: log.id } })).status).toBe("DELIVERED");
+    for (const id of [uno.id, due.id]) {
+      const g = await db.guest.findUniqueOrThrow({ where: { id } });
+      expect(g.marketingOptIn).toBe(false);
+      expect(g.unsubscribedAt).not.toBeNull();
+      expect(await db.consentLog.count({ where: { guestId: id, granted: false, source: "brevo_unsubscribed" } })).toBe(1);
+    }
+    expect(await soppresso(venueA, indirizzo)).toBe(true);
+
+    await db.messageLog.deleteMany({ where: { venueId: venueA } });
+    await db.webhookEvent.deleteMany({ where: { provider: "brevo", providerEventId: { contains: indirizzo } } });
+  });
+
+  it("un rimbalzo definitivo sopprime l'indirizzo senza scrivere una revoca", async () => {
+    const { recordWebhookEvent } = await import("@/server/campaigns");
+    const indirizzo = `${PREFISSO}rimbalzo-brevo@test.local`;
+    const idBrevo = String(Math.floor(Math.random() * 1e9));
+    await db.campaign.create({ data: { venueId: venueA, name: `${PREFISSO}brevo2`, status: "SENT", providerId: idBrevo } });
+    const g = await db.guest.create({ data: { venueId: venueA, firstName: "Tre", email: indirizzo, marketingOptIn: true } });
+
+    await recordWebhookEvent({ event: "hard_bounce", email: indirizzo, campaign_id: [Number(idBrevo)], ts_event: Math.floor(Date.now() / 1000) });
+
+    expect(await soppresso(venueA, indirizzo)).toBe(true);
+    expect(await db.consentLog.count({ where: { guestId: g.id } })).toBe(0);
+    await db.webhookEvent.deleteMany({ where: { provider: "brevo", providerEventId: { contains: indirizzo } } });
+  });
+});
+
+describe("la disiscrizione con un clic dal programma di posta (RFC 8058)", () => {
+  it("la POST disiscrive e risponde 200 senza pagina; un token falso risponde 400", async () => {
+    const { signUnsubscribeToken } = await import("@/lib/unsubscribe-token");
+    const { POST } = await import("@/app/api/unsubscribe/route");
+    const indirizzo = `${PREFISSO}post@test.local`;
+    const g = await db.guest.create({ data: { venueId: venueA, firstName: "Post", email: indirizzo, marketingOptIn: true } });
+
+    const richiesta = (token: string) =>
+      new Request(`http://localhost/api/unsubscribe?token=${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "List-Unsubscribe=One-Click",
+      });
+
+    const res = await POST(richiesta(signUnsubscribeToken(g.id)));
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("");
+    const dopo = await db.guest.findUniqueOrThrow({ where: { id: g.id } });
+    expect(dopo.marketingOptIn).toBe(false);
+    expect(await soppresso(venueA, indirizzo)).toBe(true);
+
+    expect((await POST(richiesta("falso.0000"))).status).toBe(400);
+  });
+});

@@ -1,7 +1,13 @@
 import type { BookingStatus, StaffCapability, WaiterStatus } from "@prisma/client";
 import { db } from "@/lib/db";
-import { endOfDay, startOfDay } from "@/lib/utils";
-import { dateKeyInVenue, DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
+import { RIGHE_NEL_CONTO } from "@/server/conto-residuo";
+import {
+  dateKeyInVenue,
+  DEFAULT_VENUE_TIMEZONE,
+  giornataDiServizio,
+  giornataInVenue,
+  mezzanotteInVenue,
+} from "@/lib/venue-time";
 import { deriveTableLiveStatus, type TableLiveStatus } from "@/lib/table-status";
 import { comeLiberoVerso, previsioneLiberazione, type LiberoVerso } from "@/lib/liberazione";
 import { cosaSapere, type RigaDaSapere } from "@/lib/cosa-sapere";
@@ -340,7 +346,12 @@ export async function getProfiloTavolo(
   */
   const oggi = dateKeyInVenue(adesso, timezone);
   const giorno = opts.giorno ?? oggi;
-  const now = giorno === oggi ? adesso : startOfDay(new Date(`${giorno}T12:00:00.000Z`));
+  const now = giorno === oggi ? adesso : mezzanotteInVenue(giorno, timezone);
+  /* Mezzanotte e giornata **del locale**: `startOfDay` del processo, su
+     Vercel, è la mezzanotte UTC. Oggi è la giornata di servizio — una cena
+     delle 21:00 resta del suo tavolo anche all'una di notte — un altro giorno
+     è il giorno di calendario. */
+  const finestra = giorno === oggi ? giornataDiServizio(adesso, timezone) : giornataInVenue(now, timezone);
 
   const [fasce, prenotazioni, blocco, tipica] = await Promise.all([
     db.shift.findMany({
@@ -354,7 +365,7 @@ export async function getProfiloTavolo(
         venueId,
         deletedAt: null,
         status: { notIn: ["CANCELLED"] },
-        startsAt: { gte: startOfDay(now), lte: endOfDay(now) },
+        startsAt: { gte: finestra.inizio, lte: finestra.fine },
         OR: [{ tableId }, { combinedTableIds: { has: tableId } }],
       },
       include: { guest: { select: SELECT_OSPITE } },
@@ -582,7 +593,7 @@ async function contoAperto(
   const ordine = await db.order.findFirst({
     where: { venueId, bookingId, status: { in: [...CONTI_APERTI] } },
     orderBy: { createdAt: "desc" },
-    include: { OrderItem: { select: { priceCents: true, quantity: true } } },
+    include: { OrderItem: { where: RIGHE_NEL_CONTO, select: { priceCents: true, quantity: true } } },
   });
   if (!ordine) return null;
 
@@ -734,7 +745,7 @@ async function listaStorico(
       select: {
         id: true,
         bookingId: true,
-        OrderItem: { select: { priceCents: true, quantity: true } },
+        OrderItem: { where: RIGHE_NEL_CONTO, select: { priceCents: true, quantity: true } },
         payments: {
           where: { deletedAt: null, status: { in: [...STATI_INCASSATI] } },
           select: { amountCents: true, tipCents: true, refundedCents: true },

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { createBooking } from "@/server/bookings";
 import {
@@ -245,12 +245,17 @@ describe("la durata misurata arriva sulla prenotazione nuova", () => {
   });
 
   it("una prenotazione senza durata la prende dalla misura, non dai 105 fissi", async () => {
+    /* `createBooking` misura dalle cene recenti rispetto a oggi: l'orologio va
+       portato a quel sabato, o con il calendario vero le misure invecchiano. */
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(SABATO_SERA);
     const b = await createBooking(venueId, {
       guest: { firstName: "Senza", lastName: "Durata" },
       partySize: 4,
       startsAt: new Date(SABATO_SERA.getTime() + 7 * 24 * 3_600_000),
       source: "PHONE",
     });
+    vi.useRealTimers();
     expect(b.durationMin).toBe(145);
   });
 

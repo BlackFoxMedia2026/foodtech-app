@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { RIGHE_NEL_CONTO } from "@/server/conto-residuo";
 
 /**
  * Il costo del cibo — terzo anello di menu → ordini → costo del cibo.
@@ -68,7 +69,9 @@ export type FoodCostReport = {
 export async function getFoodCost(venueId: string, from: Date, to: Date): Promise<FoodCostReport> {
   const conti = await db.order.findMany({
     where: { venueId, status: "COMPLETED", completedAt: { gte: from, lte: to } },
-    include: { OrderItem: { select: { menuItemId: true, name: true, priceCents: true, quantity: true } } },
+    include: {
+      OrderItem: { where: RIGHE_NEL_CONTO, select: { menuItemId: true, name: true, priceCents: true, quantity: true } },
+    },
   });
 
   const menuItemIds = [

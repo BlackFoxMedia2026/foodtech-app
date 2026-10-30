@@ -138,7 +138,7 @@ export default async function WifiLeadsPage({
                         {[l.email, l.phone].filter(Boolean).join(" · ") || "nessun contatto"}
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(l.createdAt)}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(l.createdAt, "it-IT", ctx.venue.timezone)}</span>
                   </li>
                 ))}
               </ul>

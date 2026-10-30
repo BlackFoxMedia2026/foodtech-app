@@ -3,6 +3,7 @@ import type { StaffRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { eSuperAdmin } from "@/lib/super-admin";
 import { recordAudit, type AuditActor } from "./audit";
 
 /**
@@ -39,7 +40,9 @@ export class TeamError extends Error {
       | "email_di_un_altro"
       | "ultimo_manager"
       | "non_su_di_te"
-      | "password_richiesta",
+      | "password_richiesta"
+      | "serve_accesso"
+      | "indirizzo_riservato",
   ) {
     super(code);
     this.name = "TeamError";
@@ -108,6 +111,12 @@ export async function invitaAlTeam(
   actor?: AuditActor,
 ): Promise<InvitoView> {
   const data = InvitoInput.parse(raw);
+
+  // L'indirizzo di un amministratore di piattaforma non si invita. Se non ha
+  // ancora una riga `User`, chi accetta il link la crea con la password che
+  // sceglie lui — e si ritrova amministratore di tutti i locali, perché il
+  // pannello riconosce l'indirizzo e non la persona. Vedi `lib/super-admin.ts`.
+  if (eSuperAdmin(data.email)) throw new TeamError("indirizzo_riservato");
 
   // Chi c'è già non si invita: l'invito creerebbe un secondo accesso allo
   // stesso locale per la stessa persona, e il secondo vincerebbe in silenzio.
@@ -208,8 +217,11 @@ export const AccettaInput = z.object({
  *
  * - **ha già un accesso a Tavolo** (lavora in un altro locale del gruppo, o
  *   c'è già stato): non gli si chiede una password nuova, gli si aggiunge il
- *   locale. Chiedergliela vorrebbe dire farne una seconda per la stessa
- *   persona;
+ *   locale — ma **solo se è entrato con quell'accesso** (`chi`). Il link da
+ *   solo non basta: lo consegna a mano il manager, quindi il manager può
+ *   aprirlo lui. Fino al 30 ottobre 2026 bastava, e un manager poteva
+ *   invitare il titolare di un altro locale, accettare al posto suo, collegarlo
+ *   a una scheda dell'organico e sceglierne la password (`staff-account.ts`);
  * - **non ce l'ha**: la crea adesso, e il link è la prova che quell'indirizzo
  *   è suo — è lo stesso ragionamento di ogni invito via email, con la
  *   differenza che qui il messaggio l'ha consegnato una persona.
@@ -219,6 +231,9 @@ export const AccettaInput = z.object({
  */
 export async function accettaInvito(
   raw: unknown,
+  /** Chi ha fatto l'accesso, se qualcuno: la sessione **valida** (revoca
+   * compresa) di chi apre il link. Vedi `lib/sessione.ts`. */
+  chi?: { userId: string } | null,
 ): Promise<{ email: string; venueId: string; nuovoAccesso: boolean }> {
   const data = AccettaInput.parse(raw);
 
@@ -226,8 +241,14 @@ export async function accettaInvito(
   if (!invito) throw new TeamError("invito_non_valido");
   if (invito.acceptedAt) throw new TeamError("invito_usato");
   if (invito.expiresAt.getTime() < Date.now()) throw new TeamError("invito_scaduto");
+  // Un invito creato prima che `invitaAlTeam` li rifiutasse.
+  if (eSuperAdmin(invito.email)) throw new TeamError("indirizzo_riservato");
 
   const esistente = await db.user.findUnique({ where: { email: invito.email } });
+
+  // Chi ha già un accesso dimostra di essere lui entrando: è l'unica prova
+  // che il manager, che ha in mano il link, non può dare al suo posto.
+  if (esistente && chi?.userId !== esistente.id) throw new TeamError("serve_accesso");
 
   // La **lunghezza** la controlla lo schema, con il suo messaggio in italiano.
   // Qui resta il caso che lo schema non può conoscere: chi non ha ancora un

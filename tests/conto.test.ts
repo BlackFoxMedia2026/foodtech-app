@@ -224,6 +224,37 @@ describe("chiudere", () => {
     expect(await getOrderForBooking(venueId, bookingId)).toBeNull();
   });
 
+  /**
+   * Una riga annullata dalla cucina resta in tabella per la storia della
+   * comanda, ma non è nel conto: né nel totale che la cassa chiude, né nella
+   * vista, né nell'incasso della giornata.
+   */
+  it("le righe annullate non entrano nel conto né nell'incasso", async () => {
+    const p = await piatto({ name: `Annullabile-${Math.random()}`, priceCents: 1500 });
+    const q = await piatto({ name: `Servito-${Math.random()}`, priceCents: 700 });
+    const b = await prenotazione();
+    const c = await openOrderForBooking(venueId, b.id);
+    await addLine(venueId, c.id, { menuItemId: p.id });
+    const conRighe = await addLine(venueId, c.id, { menuItemId: q.id, quantity: 2 });
+    const annullata = conRighe.righe.find((r) => r.menuItemId === p.id)!;
+    await db.orderItem.update({ where: { id: annullata.id }, data: { status: "ANNULLATA" } });
+
+    const chiuso = await closeOrder(venueId, c.id);
+    expect(chiuso.totalCents).toBe(1400);
+    expect(chiuso.righe.map((r) => r.menuItemId)).toEqual([q.id]);
+    expect((await db.order.findUniqueOrThrow({ where: { id: c.id } })).totalCents).toBe(1400);
+    expect((await incassoDelGiorno(venueId, oggiInSala(), TZ)).totalCents).toBe(1400);
+  });
+
+  it("un conto fatto solo di righe annullate è vuoto", async () => {
+    const p = await piatto({ name: `Solo-${Math.random()}`, priceCents: 1500 });
+    const b = await prenotazione();
+    const c = await openOrderForBooking(venueId, b.id);
+    await addLine(venueId, c.id, { menuItemId: p.id });
+    await db.orderItem.updateMany({ where: { orderId: c.id }, data: { status: "ANNULLATA" } });
+    await expect(closeOrder(venueId, c.id)).rejects.toThrow("empty_order");
+  });
+
   it("annullare lascia la traccia e non fa incasso", async () => {
     const p = await piatto();
     const c = await openOrderForBooking(venueId, bookingId);

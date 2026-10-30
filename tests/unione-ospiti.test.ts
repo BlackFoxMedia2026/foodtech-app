@@ -370,3 +370,119 @@ describe("il livello di fedeltà più alto vince", () => {
     expect(livelloPiuAlto("QUALCOSA", "REGULAR")).toBe("REGULAR");
   });
 });
+
+describe("una disiscrizione non si disfa con un'unione", () => {
+  it("una scheda disiscritta tiene fuori anche con un consenso registrato più recente", async () => {
+    await svuota();
+    const a = await ospite({ email: "dis@esempio.it", marketingOptIn: true });
+    const quando = new Date("2026-05-01T10:00:00Z");
+    // La disiscrizione arrivata dal programma di posta, prima che scrivesse
+    // il registro dei consensi: sulla scheda c'è solo la data.
+    const b = await ospite({ email: "dis@esempio.it", firstName: "Bis", marketingOptIn: false, unsubscribedAt: quando });
+    await db.consentLog.create({
+      data: { venueId, guestId: a.id, channel: "EMAIL", granted: true, createdAt: new Date("2026-06-01T10:00:00Z") },
+    });
+
+    expect((await unisciOspiti(venueId, a.id, b.id)).consensoMarketing).toBe(false);
+    const unita = await db.guest.findUniqueOrThrow({ where: { id: a.id } });
+    expect(unita.marketingOptIn).toBe(false);
+    expect(unita.unsubscribedAt?.toISOString()).toBe(quando.toISOString());
+  });
+
+  it("un indirizzo soppresso tiene fuori", async () => {
+    await svuota();
+    const a = await ospite({ email: "sop@esempio.it", phone: "3335550001", marketingOptIn: true });
+    const b = await ospite({ email: "altro-sop@esempio.it", phone: "333 555 0001", firstName: "Bis", marketingOptIn: true });
+    await db.demSuppression.create({ data: { venueId, email: "altro-sop@esempio.it", reason: "COMPLAINT" } });
+    expect((await unisciOspiti(venueId, a.id, b.id)).consensoMarketing).toBe(false);
+  });
+});
+
+describe("le righe che restavano orfane", () => {
+  it("richieste di eventi, telefonate, richiamate, proposte, campagne e chat passano alla principale", async () => {
+    await svuota();
+    const a = await ospite({ email: "orf@esempio.it" });
+    const b = await ospite({ email: "orf@esempio.it", firstName: "Bis" });
+    const campagna = await db.campaign.create({ data: { venueId, name: `${PREFISSO}campagna` } });
+    await db.campaignRecipient.create({ data: { campaignId: campagna.id, venueId, guestId: b.id, email: "orf@esempio.it" } });
+    await db.eventRequest.create({ data: { venueId, guestId: b.id, nome: "Bis", persone: 20 } });
+    const chiamata = await db.phoneCall.create({ data: { venueId, guestId: b.id, externalId: `${PREFISSO}${Date.now()}` } });
+    await db.voiceCallback.create({ data: { venueId, guestId: b.id, numero: "3330000000", stato: "DONE" } });
+    await db.voiceCRMInsight.create({ data: { venueId, callId: chiamata.id, guestId: b.id, tipo: "nota", valore: "ama il rosso" } });
+    await db.chatSession.create({ data: { venueId, guestId: b.id } });
+
+    const { spostate } = await unisciOspiti(venueId, a.id, b.id);
+
+    expect(await db.campaignRecipient.count({ where: { guestId: a.id } })).toBe(1);
+    expect(await db.eventRequest.count({ where: { guestId: a.id } })).toBe(1);
+    expect(await db.phoneCall.count({ where: { guestId: a.id } })).toBe(1);
+    expect(await db.voiceCallback.count({ where: { guestId: a.id } })).toBe(1);
+    expect(await db.voiceCRMInsight.count({ where: { guestId: a.id } })).toBe(1);
+    expect(await db.chatSession.count({ where: { guestId: a.id } })).toBe(1);
+    expect(spostate["telefonate"]).toBe(1);
+
+    await db.chatSession.deleteMany({ where: { venueId } });
+    await db.phoneCall.deleteMany({ where: { venueId } });
+    await db.voiceCallback.deleteMany({ where: { venueId } });
+    await db.eventRequest.deleteMany({ where: { venueId } });
+    await db.campaign.deleteMany({ where: { venueId } });
+  });
+});
+
+describe("il link di disiscrizione di una scheda unita", () => {
+  it("segue l'unione fino alla scheda che resta, anche senza un utente registrato", async () => {
+    await svuota();
+    const { signUnsubscribeToken } = await import("@/lib/unsubscribe-token");
+    const { GET } = await import("@/app/api/unsubscribe/route");
+    // Unite per telefono: la principale ha un altro indirizzo.
+    const a = await ospite({ email: "principale@esempio.it", phone: "3471112222", marketingOptIn: true });
+    const b = await ospite({ email: "vecchia@esempio.it", phone: "347 111 2222", firstName: "Bis", marketingOptIn: true });
+    const campagna = await db.campaign.create({ data: { venueId, name: `${PREFISSO}campagna-link` } });
+    await db.campaignRecipient.create({ data: { campaignId: campagna.id, venueId, guestId: b.id, email: "vecchia@esempio.it" } });
+    const token = signUnsubscribeToken(b.id);
+
+    await unisciOspiti(venueId, a.id, b.id);
+    const res = await GET(new Request(`http://localhost/api/unsubscribe?token=${encodeURIComponent(token)}`));
+    expect(await res.text()).toContain("Disiscrizione confermata");
+
+    const unita = await db.guest.findUniqueOrThrow({ where: { id: a.id } });
+    expect(unita.marketingOptIn).toBe(false);
+    expect(unita.unsubscribedAt).not.toBeNull();
+    const soppressi = await db.demSuppression.findMany({ where: { venueId }, select: { email: true } });
+    expect(soppressi.map((s) => s.email).sort()).toEqual(
+      expect.arrayContaining(["principale@esempio.it", "vecchia@esempio.it"]),
+    );
+    expect(await db.consentLog.count({ where: { guestId: a.id, granted: false } })).toBeGreaterThan(0);
+    await db.campaign.deleteMany({ where: { venueId } });
+  });
+});
+
+describe("il consenso cambiato dallo staff", () => {
+  it("scrive il registro, e un'unione dopo la revoca non riattiva", async () => {
+    await svuota();
+    const { updateGuest } = await import("@/server/guests");
+    const a = await ospite({ email: "staff@esempio.it", marketingOptIn: true });
+    const b = await ospite({ email: "staff@esempio.it", firstName: "Bis", marketingOptIn: true });
+    await db.consentLog.create({
+      data: { venueId, guestId: b.id, channel: "EMAIL", granted: true, createdAt: new Date("2026-01-01T10:00:00Z") },
+    });
+
+    await updateGuest(venueId, a.id, { marketingOptIn: false });
+    const revoca = await db.consentLog.findFirstOrThrow({ where: { guestId: a.id } });
+    expect(revoca.granted).toBe(false);
+    expect(revoca.source).toBe("manuale");
+    expect((await db.guest.findUniqueOrThrow({ where: { id: a.id } })).unsubscribedAt).not.toBeNull();
+
+    expect((await unisciOspiti(venueId, a.id, b.id)).consensoMarketing).toBe(false);
+  });
+
+  it("un'email svuotata diventa nessuna email, non una stringa vuota", async () => {
+    await svuota();
+    const { updateGuest } = await import("@/server/guests");
+    const a = await ospite({ email: "vuota@esempio.it" });
+    await updateGuest(venueId, a.id, { email: "" });
+    expect((await db.guest.findUniqueOrThrow({ where: { id: a.id } })).email).toBeNull();
+    // Senza toccare il consenso, nessuna riga nel registro.
+    expect(await db.consentLog.count({ where: { guestId: a.id } })).toBe(0);
+  });
+});

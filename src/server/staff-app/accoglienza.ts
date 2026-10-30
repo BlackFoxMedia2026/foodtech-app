@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
-import { endOfDay, startOfDay } from "@/lib/utils";
 import { deriveTableLiveStatus } from "@/lib/table-status";
-import { dateKeyInVenue, oraInVenue } from "@/lib/venue-time";
+import { dateKeyInVenue, giornataDiServizio, oraInVenue } from "@/lib/venue-time";
 import { proponiTavoli, type Proposta, type TavoloCandidato } from "@/lib/suggerimento-tavolo";
 import type { AuditActor } from "@/server/audit";
 import {
@@ -140,6 +139,9 @@ async function candidati(
   const { adesso } = opts;
   const servizio = await servizioCorrente(ctx.venueId, ctx.timezone, adesso);
   const giorno = dateKeyInVenue(adesso, ctx.timezone);
+  /* La giornata di servizio del locale, non quella del processo (UTC su
+     Vercel): vedi `giornataDiServizio`. */
+  const servizioDiOggi = giornataDiServizio(adesso, ctx.timezone);
 
   const [tavoli, miei, prenotazioni, blocchi] = await Promise.all([
     db.table.findMany({
@@ -170,7 +172,7 @@ async function candidati(
         venueId: ctx.venueId,
         deletedAt: null,
         status: { notIn: ["CANCELLED"] },
-        startsAt: { gte: startOfDay(adesso), lte: endOfDay(adesso) },
+        startsAt: { gte: servizioDiOggi.inizio, lte: servizioDiOggi.fine },
         ...(opts.escludiBookingId ? { id: { not: opts.escludiBookingId } } : {}),
       },
       orderBy: { startsAt: "asc" },

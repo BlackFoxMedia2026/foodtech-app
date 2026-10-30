@@ -2,6 +2,7 @@ import type { DemEventType, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { logAttenzione, logEvento } from "@/lib/observability";
 import { sopprimi } from "./destinatari";
+import { revocaConsensoEmail } from "./disiscrizione";
 
 /**
  * Cosa è successo a un messaggio dopo che è partito.
@@ -179,27 +180,15 @@ async function applica(evento: EventoNormalizzato, dest: Riferimento): Promise<v
       await incrementa(dest.campaignId, { complainedCount: 1 });
 
       // Una segnalazione di spam è la cosa più grave che possa arrivare: si
-      // smette subito, e per sempre. Chi ha segnalato non va convinto.
-      await sopprimi(dest.venueId, dest.email, "COMPLAINT", {
+      // smette subito, e per sempre. Chi ha segnalato non va convinto. Tutte
+      // le schede con quell'indirizzo, non solo quella del destinatario.
+      await revocaConsensoEmail(dest.venueId, dest.email, {
+        source: "segnalazione_spam",
+        reason: "COMPLAINT",
+        quando: evento.occorsoIl,
         detail: evento.dettaglio,
-        source: "segnalazione",
+        guestIds: dest.guestId ? [dest.guestId] : [],
       });
-      if (dest.guestId) {
-        await db.guest.updateMany({
-          where: { id: dest.guestId, marketingOptIn: true },
-          data: { marketingOptIn: false, unsubscribedAt: evento.occorsoIl },
-        });
-        await db.consentLog.create({
-          data: {
-            id: crypto.randomUUID(),
-            venueId: dest.venueId,
-            guestId: dest.guestId,
-            channel: "EMAIL",
-            granted: false,
-            source: "segnalazione_spam",
-          },
-        });
-      }
       return;
     }
 
@@ -210,13 +199,14 @@ async function applica(evento: EventoNormalizzato, dest: Riferimento): Promise<v
         data: { unsubscribedAt: evento.occorsoIl },
       });
       await incrementa(dest.campaignId, { unsubscribedCount: 1 });
-      await sopprimi(dest.venueId, dest.email, "UNSUBSCRIBE", { source: "un_clic" });
-      if (dest.guestId) {
-        await db.guest.updateMany({
-          where: { id: dest.guestId, marketingOptIn: true },
-          data: { marketingOptIn: false, unsubscribedAt: evento.occorsoIl },
-        });
-      }
+      // La stessa revoca del link in fondo all'email, registro dei consensi
+      // compreso: senza quella riga un'unione di schede, leggendo l'ultimo
+      // consenso registrato, poteva riportare dentro chi aveva detto no.
+      await revocaConsensoEmail(dest.venueId, dest.email, {
+        source: "un_clic",
+        quando: evento.occorsoIl,
+        guestIds: dest.guestId ? [dest.guestId] : [],
+      });
       return;
     }
 

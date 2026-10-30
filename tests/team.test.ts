@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import {
   INVITO_GIORNI,
@@ -208,7 +208,8 @@ describe("accettare", () => {
     await db.venueMembership.create({ data: { userId: gia.id, venueId: altroVenueId, role: "MANAGER" } });
 
     const invito = await invitaAlTeam(venueId, { email: email("gruppo"), role: "WAITER" }, BASE);
-    const esito = await accettaInvito({ token: invito.link.split("/invito/")[1] });
+    // Accetta da dentro il suo accesso: vedi «chi ha già un accesso deve essere lui».
+    const esito = await accettaInvito({ token: invito.link.split("/invito/")[1] }, { userId: gia.id });
 
     expect(esito.nuovoAccesso).toBe(false);
     // La password di prima resta la sua: l'invito non la cambia.
@@ -226,6 +227,74 @@ describe("accettare", () => {
     // di avere.
     await expect(accettaInvito({ token })).rejects.toThrow(TeamError);
     expect(await leggiInvito(token)).toBeNull();
+  });
+});
+
+describe("chi ha già un accesso deve essere lui", () => {
+  /*
+    Il link lo consegna a mano il manager: quindi il manager ce l'ha. Fino al
+    30 ottobre 2026 per chi aveva già un account bastava il link, e un manager
+    poteva invitare il titolare di un altro locale, accettare al posto suo e
+    poi — dalla scheda dell'organico — sceglierne la password.
+  */
+  async function titolareAltrove() {
+    const u = await db.user.create({
+      data: { email: email("titolare"), name: "Titolare Altrove", passwordHash: "hash-suo" },
+    });
+    await db.venueMembership.create({ data: { userId: u.id, venueId: altroVenueId, role: "MANAGER" } });
+    const invito = await invitaAlTeam(venueId, { email: email("titolare"), role: "WAITER" }, BASE);
+    return { utente: u, token: invito.link.split("/invito/")[1] };
+  }
+
+  it("senza essere entrato, il link non basta", async () => {
+    const { utente, token } = await titolareAltrove();
+    await expect(accettaInvito({ token })).rejects.toMatchObject({ code: "serve_accesso" });
+    // Una password nel corpo non cambia niente: per chi ha un accesso non si usa.
+    await expect(
+      accettaInvito({ token, nome: "Finto", password: "unapasswordlunga" }),
+    ).rejects.toMatchObject({ code: "serve_accesso" });
+
+    expect(await db.venueMembership.count({ where: { userId: utente.id, venueId } })).toBe(0);
+    // L'invito resta aperto: la persona vera può ancora accettarlo.
+    expect(await leggiInvito(token)).not.toBeNull();
+  });
+
+  it("entrato con un altro accesso — quello del manager — non basta", async () => {
+    const { utente, token } = await titolareAltrove();
+    await expect(accettaInvito({ token }, { userId: managerId })).rejects.toMatchObject({
+      code: "serve_accesso",
+    });
+    expect(await db.venueMembership.count({ where: { userId: utente.id, venueId } })).toBe(0);
+  });
+
+  it("entrato con il suo accesso, accetta", async () => {
+    const { utente, token } = await titolareAltrove();
+    const esito = await accettaInvito({ token }, { userId: utente.id });
+    expect(esito.nuovoAccesso).toBe(false);
+    expect(await db.venueMembership.count({ where: { userId: utente.id, venueId } })).toBe(1);
+  });
+});
+
+describe("gli indirizzi degli amministratori di piattaforma", () => {
+  const originale = process.env.SUPER_ADMIN_EMAILS;
+  afterEach(() => {
+    process.env.SUPER_ADMIN_EMAILS = originale;
+  });
+
+  it("non si invitano: chi accetta diventerebbe amministratore di tutto", async () => {
+    process.env.SUPER_ADMIN_EMAILS = email("capo");
+    await expect(
+      invitaAlTeam(venueId, { email: email("capo"), role: "WAITER" }, BASE),
+    ).rejects.toMatchObject({ code: "indirizzo_riservato" });
+  });
+
+  it("un invito nato prima della regola non si accetta", async () => {
+    const invito = await invitaAlTeam(venueId, { email: email("capo"), role: "WAITER" }, BASE);
+    process.env.SUPER_ADMIN_EMAILS = email("capo");
+    await expect(
+      accettaInvito({ token: invito.link.split("/invito/")[1], nome: "Capo", password: "unapasswordlunga" }),
+    ).rejects.toMatchObject({ code: "indirizzo_riservato" });
+    expect(await db.user.count({ where: { email: email("capo") } })).toBe(0);
   });
 });
 

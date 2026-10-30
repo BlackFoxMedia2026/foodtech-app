@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { endOfDay, startOfDay } from "@/lib/utils";
+import { DEFAULT_VENUE_TIMEZONE, giornataDiServizio } from "@/lib/venue-time";
 
 /**
  * Un segnale corto che dice **se** qualcosa è cambiato nel servizio.
@@ -33,9 +33,15 @@ import { endOfDay, startOfDay } from "@/lib/utils";
  * di **oggi** (o la coda aperta, che è corta per natura): nessuna scansione di
  * tabella, nessuna migrazione.
  */
-export async function versioneServizio(venueId: string, adesso = new Date()) {
-  const inizio = startOfDay(adesso);
-  const fine = endOfDay(adesso);
+export async function versioneServizio(
+  venueId: string,
+  adesso = new Date(),
+  /** Il fuso del locale: la giornata è quella di servizio, la stessa della
+   *  fotografia che questo segnale protegge (`giornataDiServizio`). Chi chiama
+   *  lo ha già in mano, e questa domanda arriva ogni cinque secondi. */
+  fuso: string = DEFAULT_VENUE_TIMEZONE,
+) {
+  const { inizio, fine } = giornataDiServizio(adesso, fuso);
 
   const [
     prenotazioni,

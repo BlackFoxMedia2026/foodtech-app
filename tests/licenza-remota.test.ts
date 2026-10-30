@@ -68,6 +68,10 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   process.env.CENTRALINO_CHIAVE_PUBBLICA = PUBBLICA;
+  /* Le revoche restano nel registro: fra un test e l'altro si tolgono, o la
+     revoca di un test spegnerebbe per sempre la chiave del successivo (la
+     firma Ed25519 è deterministica: stesso contenuto, stessa chiave). */
+  await db.auditLog.deleteMany({ where: { venueId: { in: [venueId, altroId] } } });
   for (const id of [venueId, altroId]) {
     await db.venue.update({
       where: { id },
@@ -87,6 +91,7 @@ afterEach(() => {
 });
 
 afterAll(async () => {
+  await db.auditLog.deleteMany({ where: { orgId } });
   await db.venue.deleteMany({ where: { orgId } });
   await db.organization.delete({ where: { id: orgId } }).catch(() => {});
   await db.$disconnect();
@@ -170,6 +175,72 @@ describe("la revoca", () => {
   it("una revoca di un altro locale non tocca questo", async () => {
     await accendi();
     await applicaRevoca(firma({ v: 1, l: altroId, r: true, d: giorno(OGGI) }));
+    expect((await statoCentralino(venueId)).attivo).toBe(true);
+  });
+});
+
+describe("una chiave revocata resta spenta", () => {
+  /*
+    Il difetto: `verificaLicenza` guarda firma, locale e scadenza, e una
+    chiave revocata le ha ancora tutte in regola. Il ristoratore reincollava
+    la chiave vecchia, il telefono si riaccendeva, e la revoca rimandata
+    veniva rifiutata come «vecchia» perché la riattivazione era più recente.
+  */
+  const ieri = new Date(OGGI.getTime() - 86_400_000);
+  const settimanaScorsa = new Date(OGGI.getTime() - 7 * 86_400_000);
+
+  it("reincollare la chiave revocata non riaccende il telefono", async () => {
+    const chiave = firma({ v: 1, l: venueId, n: "Locale A", d: giorno(settimanaScorsa) });
+    await attivaCentralino(venueId, chiave);
+    expect(await applicaRevoca(firma({ v: 1, l: venueId, r: true, d: giorno(OGGI) }))).toEqual({
+      ok: true,
+      spento: true,
+    });
+
+    await expect(attivaCentralino(venueId, chiave)).rejects.toMatchObject({ motivo: "revocata" });
+    expect((await statoCentralino(venueId)).attivo).toBe(false);
+  });
+
+  it("anche la chiave revocata emessa lo stesso giorno, o senza data, resta spenta", async () => {
+    // Qui la data non basta: la riconosce l'impronta.
+    const senzaData = firma({ v: 1, l: venueId, n: "Senza data" });
+    await attivaCentralino(venueId, senzaData);
+    await applicaRevoca(firma({ v: 1, l: venueId, r: true, d: giorno(OGGI) }));
+    await expect(attivaCentralino(venueId, senzaData)).rejects.toMatchObject({ motivo: "revocata" });
+
+    const diOggi = firma({ v: 1, l: venueId, n: "Di oggi", d: giorno(OGGI) });
+    await attivaCentralino(venueId, diOggi);
+    await applicaRevoca(firma({ v: 1, l: venueId, r: true, d: giorno(OGGI), n: "bis" }));
+    await expect(attivaCentralino(venueId, diOggi)).rejects.toMatchObject({ motivo: "revocata" });
+  });
+
+  it("una chiave più vecchia della revoca non accende, anche se non era quella in uso", async () => {
+    const vecchia = firma({ v: 1, l: venueId, n: "Vecchia", d: giorno(settimanaScorsa) });
+    await attivaCentralino(venueId, firma({ v: 1, l: venueId, n: "In uso", d: giorno(ieri) }));
+    await applicaRevoca(firma({ v: 1, l: venueId, r: true, d: giorno(OGGI) }));
+    await expect(attivaCentralino(venueId, vecchia)).rejects.toThrow(LicenzaError);
+  });
+
+  it("una revoca su un locale già spento vale lo stesso", async () => {
+    const vecchia = firma({ v: 1, l: venueId, n: "Vecchia", d: giorno(ieri) });
+    expect(await applicaRevoca(firma({ v: 1, l: venueId, r: true, d: giorno(OGGI) }))).toEqual({
+      ok: true,
+      spento: false,
+    });
+    await expect(attivaCentralino(venueId, vecchia)).rejects.toMatchObject({ motivo: "revocata" });
+  });
+
+  it("una chiave nuova, emessa dopo la revoca, riaccende", async () => {
+    await attivaCentralino(venueId, firma({ v: 1, l: venueId, d: giorno(settimanaScorsa) }));
+    await applicaRevoca(firma({ v: 1, l: venueId, r: true, d: giorno(ieri) }));
+
+    await attivaCentralino(venueId, firma({ v: 1, l: venueId, n: "Riattivata", d: giorno(OGGI) }));
+    expect((await statoCentralino(venueId)).attivo).toBe(true);
+  });
+
+  it("la revoca di un altro locale non blocca le chiavi di questo", async () => {
+    await applicaRevoca(firma({ v: 1, l: altroId, r: true, d: giorno(OGGI) }));
+    await attivaCentralino(venueId, firma({ v: 1, l: venueId, d: giorno(settimanaScorsa) }));
     expect((await statoCentralino(venueId)).attivo).toBe(true);
   });
 });

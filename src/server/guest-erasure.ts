@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { recordAudit, type AuditActor } from "./audit";
+import { normalizzaTelefono } from "./guest-match";
 
 /**
  * Cancellare i dati di una persona, quando lo chiede.
@@ -220,6 +221,37 @@ export async function anonimizzaOspite(
       data: { name: SEGNAPOSTO, email: null, phone: null, ipAddress: null, userAgent: null },
     });
 
+    // 4a. I messaggi ancora in coda non partono più. Il lavoro porta con sé
+    //     indirizzo e testo: lasciarlo lì vorrebbe dire scrivere alla persona
+    //     *dopo* averle confermato la cancellazione. Si chiude come concluso,
+    //     non come fallito — non è un guasto da riprovare — e il carico si
+    //     svuota. Uno già partito (`RUNNING`) non si può fermare a metà.
+    const inCoda = await tx.messageLog.findMany({
+      where: { venueId, guestId, status: "QUEUED" },
+      select: { id: true },
+    });
+    const lavori = await tx.backgroundJob.updateMany({
+      where: {
+        kind: "message.send",
+        status: "PENDING",
+        OR: [
+          { dedupeKey: { in: inCoda.map((m) => `message.send:${m.id}`) } },
+          ...(ospite.email ? [{ venueId, payload: { path: ["to"], equals: ospite.email } }] : []),
+          ...(ospite.phone ? [{ venueId, payload: { path: ["to"], equals: ospite.phone } }] : []),
+        ],
+      },
+      data: {
+        status: "DONE",
+        finishedAt: quando,
+        lastError: "annullato: dati dell'ospite cancellati",
+        payload: { annullato: true },
+      },
+    });
+    await tx.messageLog.updateMany({
+      where: { id: { in: inCoda.map((m) => m.id) } },
+      data: { status: "SKIPPED", error: "annullato: dati dell'ospite cancellati" },
+    });
+
     // 4. I messaggi inviati: resta che sono stati inviati e quando — serve a
     //    non rimandare due volte lo stesso promemoria — spariscono
     //    destinatario, oggetto e anteprima del testo.
@@ -250,7 +282,109 @@ export async function anonimizzaOspite(
       data: { customerName: null, phone: null, email: null, notes: null },
     });
 
+    /*
+      Da qui in giù, le righe che portano i contatti della persona **copiati**
+      al momento: chi ha scritto la richiesta di un evento, chi era in lista
+      d'attesa, chi ha telefonato. Si cercano per scheda e anche per
+      indirizzo e numero, perché molte nascono prima che la scheda esista o
+      restano senza scheda dopo un'unione.
+    */
+    const telefoni = Array.from(
+      new Set([ospite.phone, normalizzaTelefono(ospite.phone)].filter((t): t is string => !!t)),
+    );
+    const perEmail = (campo: string) =>
+      ospite.email ? [{ [campo]: { equals: ospite.email.trim(), mode: "insensitive" as const } }] : [];
+    const perTelefono = (campo: string) => (telefoni.length ? [{ [campo]: { in: telefoni } }] : []);
+
+    // 8. I destinatari delle campagne: la riga resta — è il conto di chi l'ha
+    //    ricevuta e com'è andata — ma nome e indirizzo no. L'indirizzo non
+    //    può essere vuoto (è unico per campagna): diventa un segnaposto che
+    //    non è di nessuno.
+    const destinatari = await tx.campaignRecipient.findMany({
+      where: { venueId, OR: [{ guestId }, ...perEmail("email")] },
+      select: { id: true },
+    });
+    for (const d of destinatari) {
+      await tx.campaignRecipient.update({
+        where: { id: d.id },
+        data: {
+          email: `anonimizzato-${d.id}@invalid.invalid`,
+          firstName: null,
+          lastName: null,
+          vars: Prisma.DbNull,
+        },
+      });
+    }
+
+    // 9. Le richieste di eventi: la trattativa resta (coperti, preventivo,
+    //    esito), il nome e i contatti di chi l'ha chiesta no.
+    const eventi = await tx.eventRequest.updateMany({
+      where: { venueId, OR: [{ guestId }, ...perEmail("email"), ...perTelefono("telefono")] },
+      data: { nome: SEGNAPOSTO, telefono: null, email: null, note: null },
+    });
+
+    // 10. La lista d'attesa.
+    const attese = await tx.waitlistEntry.updateMany({
+      where: { venueId, OR: [{ guestId }, ...perEmail("email"), ...perTelefono("phone")] },
+      data: { guestName: SEGNAPOSTO, phone: null, email: null, notes: null },
+    });
+
+    // 11. Le telefonate: restano che c'è stata una chiamata e com'è finita;
+    //     spariscono il numero, il riassunto, la nota, e la trascrizione e il
+    //     riferimento alla registrazione, che sono la sua voce.
+    const chiamate = await tx.phoneCall.findMany({
+      where: { venueId, OR: [{ guestId }, ...perTelefono("fromNumber")] },
+      select: { id: true },
+    });
+    const idChiamate = chiamate.map((c) => c.id);
+    if (idChiamate.length > 0) {
+      await tx.phoneCall.updateMany({
+        where: { id: { in: idChiamate } },
+        data: { fromNumber: null, summary: null, notes: null },
+      });
+      await tx.phoneCallTranscript.deleteMany({ where: { callId: { in: idChiamate } } });
+      await tx.phoneCallRecording.deleteMany({ where: { callId: { in: idChiamate } } });
+    }
+    // Le informazioni proposte dal risponditore per la scheda («allergico
+    // alle noci»): sono dati su di lei, come le note.
+    const proposte = await tx.voiceCRMInsight.updateMany({
+      where: { venueId, guestId },
+      data: { valore: "—" },
+    });
+
+    // 12. Le conversazioni della chat di prenotazione: i dati raccolti a metà.
+    const chat = await tx.chatSession.updateMany({
+      where: { venueId, OR: [{ guestId }, ...perEmail("draftEmail"), ...perTelefono("draftPhone")] },
+      data: {
+        draftFirstName: null,
+        draftLastName: null,
+        draftEmail: null,
+        draftPhone: null,
+        draftNotes: null,
+      },
+    });
+
+    // 13. I pagamenti restano (sono incasso); l'indirizzo per la ricevuta no.
+    const pagamenti = await tx.payment.updateMany({
+      where: { venueId, OR: [{ guestId }, ...perEmail("customerEmail")], customerEmail: { not: null } },
+      data: { customerEmail: null },
+    });
+
+    // 14. Il collegamento al contatto presso il fornitore email (Brevo). Il
+    //     contatto là non si cancella da qui: l'adattatore non ha ancora una
+    //     funzione per farlo, e va tolto dal pannello del fornitore.
+    const collegamenti = await tx.guestProviderLink.deleteMany({ where: { guestId } });
+
     return {
+      messaggiAnnullati: lavori.count,
+      destinatariCampagne: destinatari.length,
+      richiesteEventi: eventi.count,
+      attese: attese.count,
+      chiamate: idChiamate.length,
+      proposteDalTelefono: proposte.count,
+      chat: chat.count,
+      pagamenti: pagamenti.count,
+      collegamentiFornitori: collegamenti.count,
       prenotazioni: prenotazioni.count,
       contattiWifi: wifi.count,
       messaggi: messaggi.count,

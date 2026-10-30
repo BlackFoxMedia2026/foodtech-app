@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { endOfDay, startOfDay } from "@/lib/utils";
+import { RIGHE_NEL_CONTO } from "@/server/conto-residuo";
+import { DEFAULT_VENUE_TIMEZONE, giornataDiServizio } from "@/lib/venue-time";
 import { deriveTableLiveStatus, type TableLiveStatus } from "@/lib/table-status";
 import {
   comeLiberoVerso,
@@ -136,8 +137,12 @@ export async function getFloorLive(
   opts: { now?: Date; roomId?: string | null; durataTipica?: DurataTipica | null } = {},
 ): Promise<FloorLive> {
   const now = opts.now ?? new Date();
-  const from = startOfDay(now);
-  const to = endOfDay(now);
+
+  /* La giornata di servizio del locale, non il giorno del processo: su Vercel
+     il processo è in UTC, e all'una o alle due di notte italiane i tavoli
+     ancora seduti sparivano dalla Sala. Vedi `giornataDiServizio`. */
+  const venue = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
+  const { inizio: from, fine: to } = giornataDiServizio(now, venue?.timezone ?? DEFAULT_VENUE_TIMEZONE);
 
   // Chi ci chiama può passarcela già letta (la fotografia del servizio la
   // legge per sé): così una pagina che mostra sala e servizio insieme non
@@ -145,8 +150,7 @@ export async function getFloorLive(
   const tipica =
     opts.durataTipica !== undefined ? opts.durataTipica : await durataTipicaSeduta(venueId, { now });
 
-  const [venue, tables, bookings, blocks] = await Promise.all([
-    db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }),
+  const [tables, bookings, blocks] = await Promise.all([
     db.table.findMany({
       where: { venueId, ...(opts.roomId ? { roomId: opts.roomId } : {}) },
       select: { id: true, active: true },
@@ -202,7 +206,7 @@ export async function getFloorLive(
       id: true,
       bookingId: true,
       totalCents: true,
-      _count: { select: { OrderItem: true } },
+      _count: { select: { OrderItem: { where: RIGHE_NEL_CONTO } } },
     },
   });
   /*

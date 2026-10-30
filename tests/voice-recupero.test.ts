@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { createBooking } from "@/server/bookings";
@@ -29,6 +29,14 @@ import {
  * - il locale o il numero presi dal corpo della richiesta invece che dal
  *   token.
  */
+
+/* La rotta pubblica passa da `lib/api-auth`, che tira dentro la sessione
+   (`react.cache`, fuori da Next non c'è): qui non serve, la rotta è senza
+   accesso. */
+vi.mock("@/lib/tenant", () => ({
+  resolveActiveVenue: async () => ({ state: "unauthenticated" }),
+  setActiveVenueCookie: () => undefined,
+}));
 
 const db = new PrismaClient();
 const PREFISSO = "test-recupero-";
@@ -241,5 +249,39 @@ describe("il legame con la chiamata", () => {
       where: { venueId, numero: "+393330000092" },
     });
     expect(riga.phoneCallId).toBeNull();
+  });
+});
+
+describe("la rotta che completa la prenotazione", () => {
+  it("un orario che il locale non offre è un 409 con i motivi, non un 500", async () => {
+    /* Il difetto: la rotta rispondeva con `apiErrorResponse`, che non conosce
+       gli errori di disponibilità — «locale chiuso» diventava «errore
+       interno», e la persona non sapeva che bastava scegliere un altro
+       orario. Qui il locale accetta prenotazioni dal pubblico solo per
+       domani, e la richiesta è per fra tre giorni. */
+    await db.venue.update({ where: { id: venueId }, data: { bookingWindowDays: 1 } });
+    const { POST } = await import("@/app/api/public/riprendi/route");
+    const esito = await apriRecupero(venueId, { chiamata: ESTERNO, numero: "3330000091" }, ORIGINE);
+    const token = esito.link.split("/").pop()!;
+
+    const risposta = await POST(
+      new Request(`${ORIGINE}/api/public/riprendi`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          token,
+          nome: "Prova",
+          startsAt: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+          persone: 2,
+        }),
+      }),
+    );
+
+    expect(risposta.status).toBe(409);
+    const corpo = await risposta.json();
+    expect(corpo.code).toBe("unavailable");
+    // E il link non si è bruciato: la persona può riprovare con un altro orario.
+    expect(await leggiRipresa(token)).not.toBeNull();
+    await db.venue.update({ where: { id: venueId }, data: { bookingWindowDays: null } });
   });
 });

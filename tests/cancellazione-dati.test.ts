@@ -377,3 +377,86 @@ describe("l'esportazione", () => {
     await db.venue.delete({ where: { id: altro.id } });
   });
 });
+
+describe("i posti dove i contatti sono copiati", () => {
+  it("richieste di eventi, attese, telefonate, chat, campagne, pagamenti e collegamenti", async () => {
+    const campagna = await db.campaign.create({ data: { venueId, name: `${PREFISSO}campagna` } });
+    const destinatario = await db.campaignRecipient.create({
+      data: { campaignId: campagna.id, venueId, guestId, email: "marco@test.local", firstName: "Marco", lastName: "Bianchi" },
+    });
+    // Senza scheda, ma con il suo indirizzo: nato prima che la scheda esistesse.
+    const evento = await db.eventRequest.create({
+      data: { venueId, nome: "Marco Bianchi", email: "Marco@Test.local", telefono: "340 123 4567", persone: 30, note: "comunione del figlio" },
+    });
+    const attesa = await db.waitlistEntry.create({
+      data: { venueId, guestId, guestName: "Marco", phone: "3401234567", email: "marco@test.local", partySize: 2, notes: "seggiolone" },
+    });
+    const chiamata = await db.phoneCall.create({
+      data: { venueId, externalId: `${PREFISSO}${Date.now()}`, fromNumber: "3401234567", summary: "Vuole un tavolo per il compleanno", notes: "parla piano" },
+    });
+    await db.phoneCallTranscript.create({ data: { callId: chiamata.id, testo: "Buonasera, sono Marco Bianchi" } });
+    await db.phoneCallRecording.create({ data: { callId: chiamata.id, url: "https://esempio.invalid/rec.mp3" } });
+    const chat = await db.chatSession.create({
+      data: { venueId, guestId, draftFirstName: "Marco", draftEmail: "marco@test.local", draftPhone: "3401234567", draftNotes: "allergia" },
+    });
+    const pagamento = await db.payment.create({
+      data: { venueId, guestId, amountCents: 1000, customerEmail: "marco@test.local" },
+    });
+    await db.guestProviderLink.create({ data: { venueId, guestId, provider: "brevo", providerContactId: "42" } });
+
+    // Un messaggio ancora in coda: dopo la conferma della cancellazione non
+    // deve partire. Programmato lontano, così nessun'altra prova lo esegue.
+    const log = await db.messageLog.create({
+      data: { venueId, guestId, channel: "EMAIL", toAddress: "marco@test.local", status: "QUEUED", kind: "automation.compleanno" },
+    });
+    const lavoro = await db.backgroundJob.create({
+      data: {
+        venueId,
+        kind: "message.send",
+        payload: { messageLogId: log.id, venueId, channel: "EMAIL", to: "marco@test.local", body: "Ciao Marco", kind: "x" },
+        dedupeKey: `message.send:${log.id}`,
+        runAt: new Date(Date.now() + 365 * 86_400_000),
+      },
+    });
+
+    await anonimizzaOspite(venueId, guestId, { reason: "richiesta scritta" }, { actor: attore() });
+
+    const d = await db.campaignRecipient.findUniqueOrThrow({ where: { id: destinatario.id } });
+    expect(d.email).not.toContain("marco");
+    expect(d.firstName).toBeNull();
+    expect(d.lastName).toBeNull();
+
+    const e = await db.eventRequest.findUniqueOrThrow({ where: { id: evento.id } });
+    expect([e.nome, e.email, e.telefono, e.note]).toEqual(["Ospite anonimizzato", null, null, null]);
+    // La trattativa resta: trenta coperti sono un dato del locale.
+    expect(e.persone).toBe(30);
+
+    const w = await db.waitlistEntry.findUniqueOrThrow({ where: { id: attesa.id } });
+    expect([w.guestName, w.phone, w.email, w.notes]).toEqual(["Ospite anonimizzato", null, null, null]);
+
+    const c = await db.phoneCall.findUniqueOrThrow({
+      where: { id: chiamata.id },
+      include: { transcript: true, recording: true },
+    });
+    expect([c.fromNumber, c.summary, c.notes, c.transcript, c.recording]).toEqual([null, null, null, null, null]);
+
+    const s = await db.chatSession.findUniqueOrThrow({ where: { id: chat.id } });
+    expect([s.draftFirstName, s.draftEmail, s.draftPhone, s.draftNotes]).toEqual([null, null, null, null]);
+
+    expect((await db.payment.findUniqueOrThrow({ where: { id: pagamento.id } })).customerEmail).toBeNull();
+    expect(await db.guestProviderLink.count({ where: { guestId } })).toBe(0);
+
+    const j = await db.backgroundJob.findUniqueOrThrow({ where: { id: lavoro.id } });
+    expect(j.status).toBe("DONE");
+    expect(JSON.stringify(j.payload)).not.toContain("marco");
+    expect((await db.messageLog.findUniqueOrThrow({ where: { id: log.id } })).status).toBe("SKIPPED");
+
+    await db.backgroundJob.deleteMany({ where: { id: lavoro.id } });
+    await db.chatSession.deleteMany({ where: { venueId } });
+    await db.phoneCall.deleteMany({ where: { venueId } });
+    await db.waitlistEntry.deleteMany({ where: { venueId } });
+    await db.eventRequest.deleteMany({ where: { venueId } });
+    await db.payment.deleteMany({ where: { venueId } });
+    await db.campaign.deleteMany({ where: { venueId } });
+  });
+});

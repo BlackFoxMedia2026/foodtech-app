@@ -199,3 +199,30 @@ describe("il doppione identico", () => {
     ).toBeNull();
   });
 });
+
+describe("la durata non la sceglie chi prenota dal sito", () => {
+  it("una durata scritta a mano nella richiesta si ignora", async () => {
+    /* Il difetto: la rotta pubblica passava `durationMin` del corpo a
+       `createBooking`. Otto persone per quindici minuti passavano il
+       controllo di disponibilità, e si infilavano in buchi che non ci sono. */
+    const { POST } = await import("@/app/api/public/bookings/route");
+    const risposta = await POST(
+      new Request("https://prova.tavolo.test/api/public/bookings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          venueId,
+          guest: { firstName: "Furbo", email: `${PREFISSO}furbo@test.local` },
+          partySize: 8,
+          startsAt: fra(30).toISOString(),
+          durationMin: 15,
+        }),
+      }),
+    );
+    expect(risposta.status).toBe(201);
+    const corpo = await risposta.json();
+    const riga = await db.booking.findUniqueOrThrow({ where: { id: corpo.id } });
+    expect(riga.durationMin).not.toBe(15);
+    expect(riga.durationMin).toBeGreaterThanOrEqual(60);
+  });
+});

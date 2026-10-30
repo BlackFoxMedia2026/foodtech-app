@@ -1,5 +1,5 @@
 import { logAttenzione, logErrore, logEvento } from "@/lib/observability";
-import type { BackgroundJob, Prisma } from "@prisma/client";
+import { Prisma, type BackgroundJob } from "@prisma/client";
 import { db } from "@/lib/db";
 
 /**
@@ -23,9 +23,10 @@ import { db } from "@/lib/db";
  *   restituisce `{ again: true }` e riprende al giro dopo: così un budget di
  *   pochi secondi per esecuzione basta anche per mille destinatari.
  * - **Niente lavori appesi per sempre.** Se la funzione muore a metà, la riga
- *   resta `RUNNING`: dopo `MINUTI_APPESO` viene rimessa in coda. È il motivo
- *   per cui i tentativi si contano quando il lavoro *parte*, non quando
- *   finisce — altrimenti un lavoro che fa morire il processo ci riproverebbe
+ *   resta `RUNNING`: dopo `MINUTI_APPESO` viene rimessa in coda, oppure
+ *   fermata come `FAILED` se i tentativi sono finiti. È il motivo per cui i
+ *   tentativi si contano quando il lavoro *parte*, non quando finisce —
+ *   altrimenti un lavoro che fa morire il processo ci riproverebbe
  *   all'infinito.
  * - **Un errore definitivo resta visibile.** Tentativi esauriti significa
  *   `FAILED` in tabella, con il motivo: un invio che non è partito e sparisce
@@ -206,8 +207,11 @@ export async function enqueueJob(input: EnqueueInput): Promise<EnqueueResult> {
     if (esistente.status === "PENDING" || esistente.status === "RUNNING") {
       return { jobId: esistente.id, duplicate: true };
     }
-    const riusato = await db.backgroundJob.update({
-      where: { id: esistente.id },
+    // Riuso condizionato allo stato: due clic che arrivano insieme su una
+    // riga conclusa la rimettono in coda una volta sola, e il secondo
+    // riceve il lavoro già ripartito.
+    const { count } = await db.backgroundJob.updateMany({
+      where: { id: esistente.id, status: { in: ["DONE", "FAILED"] } },
       data: {
         ...dati,
         status: "PENDING",
@@ -218,11 +222,22 @@ export async function enqueueJob(input: EnqueueInput): Promise<EnqueueResult> {
         finishedAt: null,
       },
     });
-    return { jobId: riusato.id, duplicate: false };
+    return { jobId: esistente.id, duplicate: count === 0 };
   }
 
-  const creato = await db.backgroundJob.create({ data: dati });
-  return { jobId: creato.id, duplicate: false };
+  try {
+    const creato = await db.backgroundJob.create({ data: dati });
+    return { jobId: creato.id, duplicate: false };
+  } catch (err) {
+    // Il doppio clic vero: due richieste non trovano niente e provano a
+    // creare insieme. Il vincolo unico ne lascia passare una; l'altra non è
+    // un errore, è lo stesso lavoro chiesto due volte.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      const vincitore = await db.backgroundJob.findUnique({ where: { dedupeKey: dati.dedupeKey } });
+      if (vincitore) return { jobId: vincitore.id, duplicate: true };
+    }
+    throw err;
+  }
 }
 
 /**
@@ -239,9 +254,34 @@ async function claimJob(id: string, now: Date): Promise<BackgroundJob | null> {
   return db.backgroundJob.findUnique({ where: { id } });
 }
 
-/** Rimette in coda i lavori rimasti «in corso» oltre il ragionevole. */
+/**
+ * Rimette in coda i lavori rimasti «in corso» oltre il ragionevole.
+ *
+ * Prima però ferma quelli che i tentativi li hanno già spesi tutti: un
+ * lavoro che fa morire la funzione (un timeout, sempre nello stesso punto)
+ * non arriva mai al `catch`, e rimetterlo in coda a ogni giro voleva dire
+ * riprenderlo per sempre — e magari spedire la stessa email ogni dieci
+ * minuti. I tentativi si contano alla presa in carico (`claimJob`), quindi
+ * anche un lavoro morto li consuma.
+ *
+ * Restituisce quanti lavori sono tornati in coda.
+ */
 export async function reapStuckJobs(now: Date = new Date()): Promise<number> {
   const limite = new Date(now.getTime() - MINUTI_APPESO * 60_000);
+  const { count: arresi } = await db.backgroundJob.updateMany({
+    where: {
+      status: "RUNNING",
+      startedAt: { lt: limite },
+      attempts: { gte: db.backgroundJob.fields.maxAttempts },
+    },
+    data: {
+      status: "FAILED",
+      finishedAt: now,
+      lastError: `interrotto ${MINUTI_APPESO}+ minuti senza concludere, tentativi esauriti: non si riprova più da solo`,
+    },
+  });
+  if (arresi > 0) logAttenzione("coda.appesi_arresi", { quanti: arresi });
+
   const { count } = await db.backgroundJob.updateMany({
     where: { status: "RUNNING", startedAt: { lt: limite } },
     data: { status: "PENDING", runAt: now, lastError: "ripreso dopo interruzione" },
@@ -338,12 +378,15 @@ export async function runDueJobs(options: RunOptions): Promise<RunSummary> {
         summary.rinviatiPerQuota += 1;
         continue;
       }
-      fattiPerGruppo.set(gruppo, fatti + 1);
     }
 
     const job = await claimJob(id, new Date());
     if (!job) continue;
     summary.claimed += 1;
+    // La quota si consuma solo con una presa riuscita: un lavoro preso da un
+    // giro parallelo non è passato da qui, e non deve togliere il posto a un
+    // altro dello stesso gruppo.
+    if (gruppo) fattiPerGruppo.set(gruppo, (fattiPerGruppo.get(gruppo) ?? 0) + 1);
 
     const handler = options.handlers[job.kind];
     if (!handler) {

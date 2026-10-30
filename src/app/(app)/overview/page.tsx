@@ -18,7 +18,13 @@ export default async function OverviewPage() {
     prenotazioniNuove(ctx.venueId, new Date(), ctx.venue.timezone ?? DEFAULT_VENUE_TIMEZONE),
   ]);
 
-  const today = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+  // La data del locale: la pagina si disegna sul server, che su Vercel è in UTC.
+  const today = new Date().toLocaleDateString("it-IT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: ctx.venue.timezone ?? DEFAULT_VENUE_TIMEZONE,
+  });
 
   return (
     // Niente scroll: testata e briefing restano fissi, e tutto il resto sta

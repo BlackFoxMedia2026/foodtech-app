@@ -70,6 +70,7 @@ export async function avvisaPagamentoAlTavolo(esito: EsitoIncasso): Promise<void
       saldato: esito.saldato,
       metodo: dati.metodo,
       quando: dati.quando,
+      fuso: dati.fuso,
     });
   } catch (err) {
     // Il denaro è già arrivato: qui si può solo prenderne nota.
@@ -87,7 +88,7 @@ async function raccogli(esito: EsitoIncasso) {
       paidAt: true,
       createdAt: true,
       table: { select: { label: true } },
-      venue: { select: { name: true, email: true } },
+      venue: { select: { name: true, email: true, timezone: true } },
     },
   });
   if (!payment) return null;
@@ -114,6 +115,7 @@ async function raccogli(esito: EsitoIncasso) {
     clienteEmail: payment.customerEmail,
     metodo: payment.paymentMethod,
     quando: payment.paidAt ?? payment.createdAt,
+    fuso: payment.venue.timezone,
     totaleIncassato,
     pagamenti,
   };

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { verifyBookingToken, type BookingAction } from "@/lib/booking-token";
 import { recordAudit } from "./audit";
+import { disdiciDaFuori } from "./bookings";
 
 /**
  * Le azioni che un ospite compie dal link nel promemoria, senza account.
@@ -27,6 +28,11 @@ export type GuestBookingView = {
   status: string;
   /** Vero quando l'azione del link non ha più senso (già annullata, già passata). */
   closed: boolean;
+  /**
+   * La richiesta aspetta ancora il sì del locale. L'ospite può dire che ci
+   * sarà, ma non è lui a confermarla: la pagina lo deve dire.
+   */
+  inAttesa: boolean;
 };
 
 export async function readBookingByToken(token: string): Promise<GuestBookingView | null> {
@@ -56,12 +62,17 @@ export async function readBookingByToken(token: string): Promise<GuestBookingVie
     partySize: booking.partySize,
     status: booking.status,
     closed: chiusa || passata,
+    inAttesa: booking.status === "PENDING",
   };
 }
 
 export type GuestActionResult =
   | { ok: true; status: string; message: string }
-  | { ok: false; code: "invalid_token" | "not_found" | "already_closed" | "not_allowed"; message: string };
+  | {
+      ok: false;
+      code: "invalid_token" | "not_found" | "already_closed" | "not_allowed" | "too_late";
+      message: string;
+    };
 
 export async function applyBookingAction(token: string): Promise<GuestActionResult> {
   const verified = verifyBookingToken(token);
@@ -91,38 +102,80 @@ export async function applyBookingAction(token: string): Promise<GuestActionResu
     };
   }
 
+  const attore = {
+    userId: "guest",
+    email: null,
+    orgId: booking.venue.orgId,
+    venueId: booking.venueId,
+  };
+
   if (verified.action === "confirm") {
-    const aggiornata = await db.booking.update({
-      where: { id: booking.id },
-      data: { status: "CONFIRMED" },
-    });
+    /*
+      «Sì, ci sono» dice che l'ospite verrà. Non **approva** niente e non
+      riporta indietro niente.
+
+      Prima scriveva `CONFIRMED` qualunque fosse lo stato: una richiesta dal
+      sito ancora da valutare diventava confermata col clic dell'ospite stesso
+      — cioè il locale si trovava un tavolo promesso che non aveva mai
+      accettato — e un ospite già arrivato che riapriva la mail tornava
+      «confermato», con l'orologio della sala che ripartiva da capo.
+
+      Quindi lo stato non si tocca mai: resta scritto nel registro che
+      l'ospite ha risposto, che è l'informazione utile a chi guarda la sala.
+    */
+    const inAttesa = booking.status === "PENDING";
     // L'attore è l'ospite, non un membro dello staff: nel registro resta
     // l'azione senza utente interno, che è esattamente l'informazione utile.
-    await recordAudit(
-      { userId: "guest", email: null, orgId: booking.venue.orgId, venueId: booking.venueId },
-      "booking.guest_confirmed",
-      "booking",
-      booking.id,
-      { statoPrecedente: booking.status },
-    );
-    return { ok: true, status: aggiornata.status, message: "Grazie, ci vediamo presto!" };
+    await recordAudit(attore, "booking.guest_confirmed", "booking", booking.id, {
+      statoPrecedente: booking.status,
+      ...(inAttesa ? { inAttesaDelLocale: true } : {}),
+    });
+    return {
+      ok: true,
+      status: booking.status,
+      message: inAttesa
+        ? "Grazie! La tua richiesta è ancora in attesa di conferma da parte del locale: non è ancora un tavolo confermato."
+        : "Grazie, ci vediamo presto!",
+    };
   }
 
-  const aggiornata = await db.booking.update({
-    where: { id: booking.id },
-    data: { status: "CANCELLED", closedAt: new Date() },
+  /*
+    La disdetta passa dalla stessa strada delle altre: caparra da restituire,
+    annuncio alla sala, contatori dell'ospite. Prima scriveva lo stato da sé,
+    e il tavolo liberato dall'ospite restava apparecchiato senza che la sala
+    lo sapesse.
+  */
+  const esito = await disdiciDaFuori(booking.venueId, booking.id);
+  if (!esito.ok) {
+    if (esito.perche === "gia_passata") {
+      return {
+        ok: false,
+        code: "too_late",
+        message: "L'orario di questa prenotazione è già passato: per qualsiasi cosa chiama il locale.",
+      };
+    }
+    if (esito.perche === "stato" && esito.stato === "CANCELLED") {
+      return { ok: false, code: "already_closed", message: "Questa prenotazione è già stata annullata." };
+    }
+    if (esito.perche === "non_trovata") {
+      return { ok: false, code: "not_found", message: "Questa prenotazione non esiste più." };
+    }
+    return {
+      ok: false,
+      code: "already_closed",
+      message: "Questa prenotazione non si può più annullare da qui. Chiamaci se ti serve una mano.",
+    };
+  }
+
+  await recordAudit(attore, "booking.guest_cancelled", "booking", booking.id, {
+    statoPrecedente: booking.status,
+    quando: booking.startsAt.toISOString(),
+    coperti: booking.partySize,
   });
-  await recordAudit(
-    { userId: "guest", email: null, orgId: booking.venue.orgId, venueId: booking.venueId },
-    "booking.guest_cancelled",
-    "booking",
-    booking.id,
-    { statoPrecedente: booking.status, quando: booking.startsAt.toISOString(), coperti: booking.partySize },
-  );
 
   return {
     ok: true,
-    status: aggiornata.status,
+    status: esito.booking.status,
     message: "Prenotazione annullata. Grazie per avercelo detto: possiamo rimettere il tavolo a disposizione.",
   };
 }

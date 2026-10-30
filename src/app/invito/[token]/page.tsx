@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { utenteDiSessione } from "@/lib/sessione";
 import { leggiInvito } from "@/server/team";
 import { AcceptInviteForm } from "@/components/team/accept-invite-form";
 
@@ -20,15 +21,20 @@ export const metadata: Metadata = {
  * Un link non valido — inventato, scaduto, già usato — riceve la stessa
  * risposta: non esiste. Distinguere «scaduto» da «mai esistito» direbbe a chi
  * prova segreti a caso quando ha indovinato.
+ *
+ * Chi ha già un accesso accetta solo **da dentro** quell'accesso: la pagina
+ * gli dice con chi è entrato, così il modulo sa se mostrare «Accetta» o
+ * «Entra prima». Vedi `accettaInvito`.
  */
 export default async function PaginaInvito({ params }: { params: { token: string } }) {
   const invito = await leggiInvito(params.token);
+  const chi = invito?.haGiaUnAccount ? await utenteDiSessione() : null;
 
   return (
     <div className="min-h-screen bg-background px-4 py-16 text-foreground">
       <div className="mx-auto max-w-md">
         {invito ? (
-          <AcceptInviteForm invito={invito} />
+          <AcceptInviteForm invito={invito} entratoCome={chi?.email ?? null} />
         ) : (
           <div className="surface riquadro p-6 text-center">
             <h1 className="text-display text-2xl">Questo invito non è più valido</h1>

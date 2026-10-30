@@ -62,7 +62,8 @@ const OFFSET_MIN = {
  */
 const WINDOW_MIN = 45;
 
-/** Stati che aspettano ancora qualcuno: gli altri non vanno disturbati. */
+/** Stati che aspettano ancora qualcuno: gli altri non vanno disturbati.
+ *  `PENDING` riceve un testo diverso: vedi `inAttesa` in `sendDueReminders`. */
 const REMINDABLE = ["CONFIRMED", "PENDING"] as const;
 
 export type ReminderResult = {
@@ -111,20 +112,31 @@ function corpo(opts: {
   confirmUrl: string;
   cancelUrl: string;
   venuePhone: string | null;
+  /** La richiesta aspetta ancora il sì del locale: vedi `sendDueReminders`. */
+  inAttesa: boolean;
 }) {
-  const apertura =
+  const quando =
     opts.quando === "domani"
-      ? `ti aspettiamo <strong>domani</strong>, ${opts.giorno}, alle <strong>${opts.ora}</strong>`
-      : `ti aspettiamo <strong>oggi</strong> alle <strong>${opts.ora}</strong>`;
+      ? `<strong>domani</strong>, ${opts.giorno}, alle <strong>${opts.ora}</strong>`
+      : `<strong>oggi</strong> alle <strong>${opts.ora}</strong>`;
+  const apertura = opts.inAttesa
+    ? `la tua richiesta per ${quando}`
+    : `ti aspettiamo ${quando}`;
 
   return `
     <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #2F1F11; max-width: 520px;">
       <p style="font-size:16px;">Ciao ${opts.guestName},</p>
       <p style="font-size:16px;">${apertura} in ${opts.partySize} ${
         opts.partySize === 1 ? "persona" : "persone"
-      } da <strong>${opts.venueName}</strong>.</p>
+      } da <strong>${opts.venueName}</strong>${
+        opts.inAttesa ? " è ancora <strong>in attesa di conferma</strong> da parte del locale" : ""
+      }.</p>
 
-      <p style="font-size:15px;">Ci confermi che ci sei?</p>
+      <p style="font-size:15px;">${
+        opts.inAttesa
+          ? "Non è ancora un tavolo confermato. Ci dici intanto se ci sarai?"
+          : "Ci confermi che ci sei?"
+      }</p>
 
       <p>
         <a href="${opts.confirmUrl}"
@@ -173,11 +185,22 @@ export function testoPromemoriaSms(dati: {
   ora: string;
   persone: number;
   linkAnnulla: string;
+  /** La richiesta aspetta ancora il sì del locale. */
+  inAttesa?: boolean;
 }): string {
   const persone = `${dati.persone} ${dati.persone === 1 ? "persona" : "persone"}`;
   /* Senza nome la frase comincia con la maiuscola: «ti aspettiamo…» con la
      minuscola si legge come un messaggio tagliato a meta, e un messaggio che
      sembra rotto si legge come un imbroglio. */
+  if (dati.inAttesa) {
+    /* Non «ti aspettiamo»: il locale non ha ancora detto di si, e un SMS che
+       lo lascia credere e una promessa che nessuno ha fatto. */
+    const apertura = dati.nome ? `${dati.nome}, la tua richiesta` : "La tua richiesta";
+    return (
+      `${apertura} per ${dati.quando} alle ${dati.ora} da ${dati.locale}, ${persone}, ` +
+      `e ancora in attesa di conferma del locale. Se non puoi venire, annulla qui: ${dati.linkAnnulla}`
+    );
+  }
   const apertura = dati.nome ? `${dati.nome}, ti aspettiamo` : "Ti aspettiamo";
   return (
     `${apertura} ${dati.quando} alle ${dati.ora} da ${dati.locale}, ${persone}. ` +
@@ -241,6 +264,11 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
       }
 
       const timezone = booking.venue.timezone;
+      /* Anche una richiesta non ancora approvata riceve il promemoria — chi
+         non viene deve poterlo dire — ma con parole sue: «ti aspettiamo» a
+         chi il locale non ha ancora accettato e una promessa che nessuno ha
+         fatto, e il «Sì, ci sono» non la conferma (`applyBookingAction`). */
+      const inAttesa = booking.status === "PENDING";
       const quando = dateKeyInVenue(booking.startsAt, timezone) === dateKeyInVenue(now, timezone) ? "oggi" : "domani";
       const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -257,8 +285,9 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
             ...comuni,
             channel: "EMAIL" as const,
             to: email,
-            subject:
-              quando === "domani"
+            subject: inAttesa
+              ? `La tua richiesta per ${quando} alle ${formatOra(booking.startsAt, timezone)} è in attesa di conferma`
+              : quando === "domani"
                 ? `Ci vediamo domani alle ${formatOra(booking.startsAt, timezone)}?`
                 : `Ci vediamo oggi alle ${formatOra(booking.startsAt, timezone)}?`,
             body: corpo({
@@ -271,6 +300,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
               confirmUrl: `${base}/b/${signBookingToken(booking.id, "confirm")}`,
               cancelUrl: `${base}/b/${signBookingToken(booking.id, "cancel")}`,
               venuePhone: booking.venue.phone,
+              inAttesa,
             }),
             preview: `Promemoria prenotazione del ${formatGiorno(
               booking.startsAt,
@@ -288,6 +318,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
               ora: formatOra(booking.startsAt, timezone),
               persone: booking.partySize,
               linkAnnulla: `${base}/b/${signBookingToken(booking.id, "cancel")}`,
+              inAttesa,
             }),
           });
 

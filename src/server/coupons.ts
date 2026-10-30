@@ -1,6 +1,9 @@
 import { Prisma, type Coupon, type CouponKind } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { DEFAULT_VENUE_TIMEZONE, mezzanotteInVenue, todayInVenue } from "@/lib/venue-time";
+import { giornoDellaSettimana } from "./capienza-giorno";
+import { RIGHE_NEL_CONTO } from "@/server/conto-residuo";
 import { recordAudit, type AuditActor } from "./audit";
 
 /**
@@ -237,6 +240,9 @@ export function couponUsability(
   >,
   contesto: {
     now: Date;
+    /** Il fuso del locale: «oggi è martedì» va detto nel suo giorno, non in
+     *  quello del processo (UTC su Vercel). */
+    fuso?: string;
     usiTotali: number;
     /**
      * Chi lo sta usando, **se lo si sta usando**.
@@ -278,7 +284,7 @@ export function couponUsability(
   // esistesse, o una lettura parziale, arriva qui senza quel campo — e una
   // pagina che elenca coupon non deve andare in bianco per un valore mancante.
   const giorniValidi = coupon.validWeekdays ?? [];
-  if (giorniValidi.length > 0 && !giorniValidi.includes(contesto.now.getDay())) {
+  if (giorniValidi.length > 0 && !giorniValidi.includes(giornoDellaSettimana(contesto.now, contesto.fuso ?? DEFAULT_VENUE_TIMEZONE))) {
     return { usable: false, reason: "wrong_day" };
   }
 
@@ -366,10 +372,14 @@ export async function listCoupons(
   opts: { includeArchived?: boolean; now?: Date } = {},
 ): Promise<CouponView[]> {
   const now = opts.now ?? new Date();
-  // Il mese in corso secondo l'orologio di chi guarda la pagina, non secondo
-  // UTC: a Milano il primo del mese comincia due ore prima di mezzanotte a
-  // Greenwich, e un utilizzo delle 00:30 finirebbe nel mese sbagliato.
-  const inizioMese = new Date(now.getFullYear(), now.getMonth(), 1);
+  // Il mese in corso secondo l'orologio del locale, non secondo UTC: a Milano
+  // il primo del mese comincia due ore prima di mezzanotte a Greenwich, e un
+  // utilizzo delle 00:30 finirebbe nel mese sbagliato. `new Date(anno, mese,
+  // 1)` sembrava farlo, ma sul server è il fuso del processo — UTC su Vercel.
+  const fuso =
+    (await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }))?.timezone ??
+    DEFAULT_VENUE_TIMEZONE;
+  const inizioMese = mezzanotteInVenue(`${todayInVenue(fuso, now).slice(0, 8)}01`, fuso);
   const coupons = await db.coupon.findMany({
     where: { venueId, ...(opts.includeArchived ? {} : { status: { not: "ARCHIVED" } }) },
     orderBy: { createdAt: "desc" },
@@ -394,7 +404,7 @@ export async function listCoupons(
     );
     // Nell'elenco non c'è un cliente: si valuta tutto tranne i limiti per
     // persona, che dipendono da chi lo sta usando.
-    const esito = couponUsability(c, { now, usiTotali: usi });
+    const esito = couponUsability(c, { now, fuso, usiTotali: usi });
     return {
       id: c.id,
       code: c.code,
@@ -493,15 +503,19 @@ export async function redeemCoupon(venueId: string, input: RedeemInput, opts: { 
       const contoAperto = input.bookingId
         ? await tx.order.findFirst({
             where: { venueId, bookingId: input.bookingId, status: { in: ["RECEIVED", "PREPARING", "READY"] } },
-            select: { OrderItem: { select: { priceCents: true, quantity: true } } },
+            select: { OrderItem: { where: RIGHE_NEL_CONTO, select: { priceCents: true, quantity: true } } },
           })
         : null;
       const totaleConto = contoAperto
         ? contoAperto.OrderItem.reduce((n, r) => n + r.priceCents * r.quantity, 0)
         : null;
 
+      const fuso =
+        (await tx.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }))?.timezone ??
+        DEFAULT_VENUE_TIMEZONE;
       const valido = couponUsability(coupon, {
         now: new Date(),
+        fuso,
         usiTotali,
         ospite: { guestId: input.guestId ?? null, usi: usiDelCliente },
         ...(totaleConto != null ? { conto: { totaleCents: totaleConto } } : {}),

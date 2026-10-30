@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { RIGHE_NEL_CONTO } from "@/server/conto-residuo";
 import { recordAudit, type AuditActor } from "./audit";
 import { ALLERGENI, REGIMI, type Allergene, type Regime } from "@/lib/allergeni";
 
@@ -569,7 +570,7 @@ export async function getRendimentoPiatto(venueId: string, id: string): Promise<
   const [contiChiusiDelLocale, righe, righeCategoria, quantiPiatti] = await Promise.all([
     db.order.count({ where: { venueId, status: "COMPLETED" } }),
     db.orderItem.findMany({
-      where: { menuItemId: id, Order: { venueId, status: "COMPLETED" } },
+      where: { menuItemId: id, ...RIGHE_NEL_CONTO, Order: { venueId, status: "COMPLETED" } },
       select: {
         orderId: true,
         quantity: true,
@@ -583,6 +584,7 @@ export async function getRendimentoPiatto(venueId: string, id: string): Promise<
     db.orderItem.findMany({
       where: {
         MenuItem: { categoryId: piatto.categoryId },
+        ...RIGHE_NEL_CONTO,
         Order: { venueId, status: "COMPLETED", completedAt: { gte: da30 } },
       },
       select: { menuItemId: true, quantity: true },

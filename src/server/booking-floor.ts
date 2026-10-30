@@ -1,7 +1,8 @@
 import { Prisma, type Booking, type BookingStatus, type Guest, type Table } from "@prisma/client";
 import { recordAudit, type AuditActor } from "./audit";
 import { db } from "@/lib/db";
-import { startOfDay, endOfDay } from "@/lib/utils";
+import { dateKeyInVenue, DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
+import { MINUTI_IN_UN_GIORNO, zonedDayAndMinute, zonedTimeToInstant } from "./availability";
 
 export type FloorBooking = Booking & { guest: Guest | null; table: Table | null };
 
@@ -12,19 +13,28 @@ export type FloorBooking = Booking & { guest: Guest | null; table: Table | null 
  * concept introduced. Returns null when no Shift row is configured for that
  * exact weekday+name combination; callers should fall back to the whole day
  * rather than guessing an arbitrary lunch/dinner split.
+ *
+ * Il giorno arriva come `AAAA-MM-GG` **del locale** e gli orari si leggono nel
+ * suo fuso. Prima erano `getDay()` e `startOfDay` del processo — UTC su
+ * Vercel — e la Cena delle 19:00 diventava una finestra dalle 21:00 alle
+ * 01:00 italiane: le prenotazioni delle 19:30 finivano fuori dalla Mappa.
  */
 export async function getShiftWindowForDate(
   venueId: string,
-  date: Date,
+  giorno: string,
   serviceName: string,
+  timeZone: string = DEFAULT_VENUE_TIMEZONE,
 ): Promise<{ start: Date; end: Date } | null> {
-  const weekday = date.getDay();
+  const [year, month, day] = giorno.split("-").map(Number);
+  const data = { year: year!, month: month!, day: day! };
+  const weekday = new Date(Date.UTC(data.year, data.month - 1, data.day)).getUTCDay();
   const shift = await db.shift.findFirst({ where: { venueId, name: serviceName, weekday, active: true } });
   if (!shift) return null;
 
-  const dayStart = startOfDay(date);
-  const start = new Date(dayStart.getTime() + shift.startMinute * 60_000);
-  const end = new Date(dayStart.getTime() + shift.endMinute * 60_000);
+  // Un turno che scavalca la mezzanotte ha `endMinute` oltre 1440: la
+  // conversione lo porta da sé nel giorno dopo.
+  const start = zonedTimeToInstant(data, shift.startMinute, timeZone);
+  const end = zonedTimeToInstant(data, shift.endMinute, timeZone);
   return { start, end };
 }
 
@@ -36,13 +46,40 @@ export async function getShiftWindowForDate(
  * bookings from "Da assegnare" behind a misleading "tutte assegnate"
  * empty state whenever someone opened the page outside lunch hours.
  * Returns null if no shift covers the current moment (e.g. venue closed).
+ *
+ * L'orologio è quello del locale: con `getHours()` del processo, su Vercel,
+ * alle 20:00 italiane erano le 18:00 e la pagina si apriva su un turno che
+ * non c'era. Se si guarda oggi conta anche la coda della cena di ieri che ha
+ * scavalcato la mezzanotte, come in `findShiftFor`.
  */
-export async function getCurrentServiceName(venueId: string, date: Date): Promise<string | null> {
-  const weekday = date.getDay();
-  const shifts = await db.shift.findMany({ where: { venueId, weekday, active: true } });
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  return shifts.find((s) => nowMinutes >= s.startMinute && nowMinutes < s.endMinute)?.name ?? null;
+export async function getCurrentServiceName(
+  venueId: string,
+  giorno: string,
+  timeZone: string = DEFAULT_VENUE_TIMEZONE,
+  now: Date = new Date(),
+): Promise<string | null> {
+  const [year, month, day] = giorno.split("-").map(Number);
+  const weekday = new Date(Date.UTC(year!, (month ?? 1) - 1, day ?? 1)).getUTCDay();
+  const { minuteOfDay } = zonedDayAndMinute(now, timeZone);
+  const oggi = dateKeyInVenue(now, timeZone) === giorno;
+  const ieri = (weekday + 6) % 7;
+
+  const shifts = await db.shift.findMany({
+    where: { venueId, weekday: oggi ? { in: [weekday, ieri] } : weekday, active: true },
+  });
+  const delGiorno = shifts.find(
+    (s) => s.weekday === weekday && minuteOfDay >= s.startMinute && minuteOfDay < s.endMinute,
+  );
+  if (delGiorno) return delGiorno.name;
+  if (!oggi) return null;
+  return (
+    shifts.find(
+      (s) =>
+        s.weekday === ieri &&
+        s.endMinute > MINUTI_IN_UN_GIORNO &&
+        minuteOfDay < s.endMinute - MINUTI_IN_UN_GIORNO,
+    )?.name ?? null
+  );
 }
 
 const ACTIVE_STATUSES: BookingStatus[] = ["CONFIRMED", "PENDING", "ARRIVED", "SEATED", "COMPLETED"];
@@ -126,15 +163,22 @@ async function trovaConflitto(
   tableIds: string[],
   quando: { startsAt: Date; durationMin: number },
 ): Promise<{ id: string; tableId: string | null } | null> {
-  const dayStart = startOfDay(quando.startsAt);
-  const dayEnd = endOfDay(quando.startsAt);
+  /*
+    I candidati: chi comincia nelle ventiquattr'ore prima e fino alla fine di
+    questa prenotazione. Prima era «lo stesso giorno», con `startOfDay` del
+    processo — UTC su Vercel — e due cene a cavallo della mezzanotte (o delle
+    due di notte italiane, che per UTC sono la mezzanotte) non si vedevano a
+    vicenda. Una finestra di durata non ha giorni né fusi; ventiquattr'ore
+    coprono qualunque durata che `BookingInput` accetta (al massimo otto).
+  */
+  const fine = new Date(quando.startsAt.getTime() + quando.durationMin * 60_000);
   const candidates = await tx.booking.findMany({
     where: {
       venueId,
       deletedAt: null,
       id: { not: bookingId },
       status: { in: ACTIVE_STATUSES },
-      startsAt: { gte: dayStart, lte: dayEnd },
+      startsAt: { gt: new Date(quando.startsAt.getTime() - 24 * 3_600_000), lt: fine },
       OR: [{ tableId: { in: tableIds } }, { combinedTableIds: { hasSome: tableIds } }],
     },
     select: { id: true, tableId: true, startsAt: true, durationMin: true },

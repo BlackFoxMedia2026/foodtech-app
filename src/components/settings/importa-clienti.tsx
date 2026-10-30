@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileUp, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
+import { decodificaFile } from "@/lib/import-csv";
 
 /**
  * Portare dentro i clienti del gestionale di prima.
@@ -22,9 +23,11 @@ import { readApiError } from "@/lib/api-client";
  *
  * ## Perché il file si legge nel browser
  *
- * Perché un CSV è testo: `file.text()` e si manda. Un caricamento multipart
+ * Perché un CSV è testo: si legge e si manda. Un caricamento multipart
  * servirebbe per un allegato binario e qui aggiungerebbe un pezzo di codice
- * per niente.
+ * per niente. Si legge però dai byte e non con `file.text()`, che assume
+ * UTF-8: i CSV di Excel italiano sono in Windows-1252 (vedi
+ * `decodificaFile`).
  */
 
 type Conteggi = {
@@ -34,6 +37,7 @@ type Conteggi = {
   soloClienti: number;
   prenotazioniPassate: number;
   prenotazioniFuture: number;
+  annullateONoShow: number;
   ospitiNuovi: number;
   ospitiGiaVisti: number;
   giaImportate: number;
@@ -69,7 +73,7 @@ export function ImportaClienti({ canManage }: { canManage: boolean }) {
     setAnteprima(null);
     setFatto(null);
     setNomeFile(file.name);
-    const contenuto = await file.text();
+    const contenuto = decodificaFile(await file.arrayBuffer());
     setTesto(contenuto);
     await chiedi(contenuto, false);
   }
@@ -158,6 +162,13 @@ export function ImportaClienti({ canManage }: { canManage: boolean }) {
           {c.soloClienti > 0 && (
             <p className="text-sm text-muted-foreground">
               {c.soloClienti} righe senza data: entrano come clienti, non come prenotazioni.
+            </p>
+          )}
+
+          {c.annullateONoShow > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {c.annullateONoShow} prenotazioni il file le dà annullate o non presentate: entrano
+              così, senza promemoria e senza contare come visite.
             </p>
           )}
 

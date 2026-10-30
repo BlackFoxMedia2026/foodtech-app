@@ -98,7 +98,10 @@ export function GuestBookingActions({
           <p className="mt-6 text-sm text-muted-foreground">
             {annulla
               ? "Confermi di volerla annullare? Il tavolo torna disponibile per altri."
-              : "Confermi che ci sarai? Ci aiuta a tenere il tavolo pronto per te."}
+              : booking.inAttesa
+                ? // Il sì dell'ospite non è il sì del locale: dirlo prima del clic.
+                  "La tua richiesta è ancora in attesa di conferma da parte del locale. Intanto puoi dirci che ci sarai."
+                : "Confermi che ci sarai? Ci aiuta a tenere il tavolo pronto per te."}
           </p>
 
           <Button

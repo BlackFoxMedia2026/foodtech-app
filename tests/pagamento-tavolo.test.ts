@@ -415,6 +415,99 @@ describe("quando un pagamento non arriva", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/*  Righe annullate, gruppi che si alternano, tentativi ripresi               */
+/* -------------------------------------------------------------------------- */
+
+describe("quello che non si paga", () => {
+  /** Un piatto annullato dalla cucina non è uscito: nessuno lo paga. */
+  it("le righe annullate non sono pagabili e non entrano nel totale", async () => {
+    const id = await apparecchia([
+      { nome: "Risotto", prezzo: 1800, quantita: 1 },
+      { nome: "Tartare", prezzo: 1600, quantita: 2 },
+    ]);
+    const risotto = await db.orderItem.findFirstOrThrow({ where: { orderId: id, name: "Risotto" } });
+    await db.orderItem.update({ where: { id: risotto.id }, data: { status: "ANNULLATA" } });
+
+    const conto = await leggiContoTavolo(token);
+    expect(conto.totaleCents).toBe(3200);
+    expect(conto.residuoCents).toBe(3200);
+    expect(conto.righe.map((r) => r.nome)).toEqual(["Tartare"]);
+
+    // E chi paga «tutto» salda il conto con 32 €, non con 50.
+    const tavolo = await tavoloDaToken(token);
+    const { payment } = await impegnaPagamento(tavolo, { modo: "tutto" });
+    expect(payment.amountCents).toBe(3200);
+    const esito = await registraIncasso({ paymentId: payment.id });
+    expect(esito).toMatchObject({ saldato: true, residuoCents: 0 });
+
+    // Una riga annullata non si può nemmeno scegliere a mano.
+    await expect(
+      impegnaPagamento(tavolo, { modo: "righe", selezione: [{ orderItemId: risotto.id, quantity: 1 }] }),
+    ).rejects.toBeInstanceOf(PagamentoError);
+  });
+});
+
+describe("il QR mostra solo il gruppo seduto adesso", () => {
+  /**
+   * Il gruppo di prima ha saldato col QR e il cameriere ha premuto «Libera»:
+   * la prenotazione è `COMPLETED`, il conto resta aperto finché la cassa non
+   * lo chiude. Chi si siede dopo non deve vederselo davanti.
+   */
+  it("un conto rimasto aperto su una prenotazione conclusa non è più del tavolo", async () => {
+    const vecchio = await apparecchia([{ nome: "Cena di prima", prezzo: 9000, quantita: 1 }]);
+    const { bookingId } = await db.order.findUniqueOrThrow({ where: { id: vecchio } });
+    await db.booking.update({ where: { id: bookingId! }, data: { status: "COMPLETED" } });
+
+    await expect(leggiContoTavolo(token)).rejects.toMatchObject({ code: "nessun_conto" });
+
+    const nuovo = await apparecchia([{ nome: "Cena di adesso", prezzo: 4000, quantita: 1 }]);
+    const conto = await leggiContoTavolo(token);
+    expect(conto.orderId).toBe(nuovo);
+    expect(conto.totaleCents).toBe(4000);
+  });
+});
+
+describe("un tentativo che riparte", () => {
+  /**
+   * Una carta rifiutata non chiude la sessione di Checkout: il cliente
+   * riprova con un'altra. Se nel frattempo il tentativo era stato dato per
+   * perso, l'incasso che arriva deve riportare le sue portate a pagate.
+   */
+  it("l'incasso di un tentativo già liberato riporta le portate a pagate", async () => {
+    const id = await apparecchia([{ nome: "Barolo", prezzo: 1200, quantita: 3 }]);
+    const tavolo = await tavoloDaToken(token);
+    const riga = (await db.orderItem.findFirstOrThrow({ where: { orderId: id } })).id;
+    const { payment } = await impegnaPagamento(tavolo, {
+      modo: "righe",
+      selezione: [{ orderItemId: riga, quantity: 2 }],
+    });
+
+    await liberaPagamento(payment.id, "EXPIRED");
+    expect((await leggiContoTavolo(token)).righe[0].disponibili).toBe(3);
+
+    const esito = await registraIncasso({ paymentId: payment.id });
+    expect(esito!.applicato).toBe(true);
+
+    const conto = await leggiContoTavolo(token);
+    expect(conto.righe[0]).toMatchObject({ pagate: 2, impegnate: 0, disponibili: 1 });
+    expect(conto.pagatoCents).toBe(2400);
+  });
+
+  /** I due eventi dello stesso incasso, nello stesso istante. */
+  it("due conferme simultanee dello stesso pagamento ne applicano una", async () => {
+    await apparecchia([{ nome: "Cena", prezzo: 5000, quantita: 1 }]);
+    const tavolo = await tavoloDaToken(token);
+    const { payment } = await impegnaPagamento(tavolo, { modo: "tutto" });
+
+    const esiti = await Promise.all([
+      registraIncasso({ paymentId: payment.id }),
+      registraIncasso({ paymentId: payment.id }),
+    ]);
+    expect(esiti.filter((e) => e?.applicato)).toHaveLength(1);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /*  Quello che il telefono non decide                                         */
 /* -------------------------------------------------------------------------- */
 

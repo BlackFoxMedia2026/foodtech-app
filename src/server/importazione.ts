@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { leggiFile, type RigaLetta, type Scarto } from "@/lib/import-csv";
+import type { BookingStatus } from "@prisma/client";
 import { zonedTimeToInstant } from "@/server/availability";
 import { recordAudit, type AuditActor } from "@/server/audit";
 import { trovaOspite, trovaOCreaOspite } from "@/server/guest-match";
@@ -39,7 +40,9 @@ import { refreshGuestStats } from "@/server/guest-intelligence";
  *   campagna il consenso lo devono dare qui.
  * - **Non controlla la disponibilità.** Chi importa porta dentro anche le cene
  *   di tre anni fa, e un controllo di capienza le rifiuterebbe tutte. Lo stato
- *   segue la data: passata → `COMPLETED`, futura → `CONFIRMED`.
+ *   lo dice il file quando ha una colonna «stato» che si capisce (annullata,
+ *   no-show…, vedi `statoDi`); altrimenti segue la data: passata →
+ *   `COMPLETED`, futura → `CONFIRMED`.
  * - **Non assegna tavoli.** Il tavolo del gestionale di prima non esiste qui,
  *   e indovinarlo vorrebbe dire una sala apparecchiata sbagliata.
  */
@@ -55,6 +58,11 @@ export type Conteggi = {
   soloClienti: number;
   prenotazioniPassate: number;
   prenotazioniFuture: number;
+  /**
+   * Di quelle sopra, quante il file dice annullate o non presentate. Entrano
+   * col loro stato: niente promemoria, e non contano come visite.
+   */
+  annullateONoShow: number;
   /** Ospiti che qui non c'erano. */
   ospitiNuovi: number;
   /** Ospiti già in rubrica: si arricchiscono, non si duplicano. */
@@ -127,6 +135,51 @@ function istanteDi(riga: RigaLetta, fuso: string): Date | null {
   );
 }
 
+/**
+ * Lo stato con cui una riga entra in agenda.
+ *
+ * Il file vince quando dice qualcosa che cambia la sostanza: **annullata** e
+ * **no-show** restano tali, passate o future. Le altre parole («confermata»,
+ * «arrivato») non aggiungono niente alla data, e decide lei: una cena
+ * «confermata» di tre anni fa è una cena avvenuta. «In attesa» vale solo per
+ * il futuro — una richiesta mai confermata di un anno fa non è una cena da
+ * tenere in sospeso.
+ */
+export function statoDi(stato: RigaLetta["stato"], passata: boolean): BookingStatus {
+  if (stato === "CANCELLED" || stato === "NO_SHOW") return stato;
+  if (stato === "PENDING" && !passata) return "PENDING";
+  return passata ? "COMPLETED" : "CONFIRMED";
+}
+
+/**
+ * L'ospite di una riga **senza contatti**: stesso nome e cognome, e nessun
+ * contatto nemmeno lui.
+ *
+ * `trovaOspite` riconosce le persone dall'email e dal telefono; una riga con
+ * solo il nome non ha niente da confrontare, e ogni nuova importazione dello
+ * stesso file creava un'altra scheda «Mario Rossi». La scelta è la più
+ * semplice che non perda niente: un nome senza contatti è tutto quello che
+ * si sa di quella persona, e due schede identiche e vuote non dicono più di
+ * una. Chi ha un contatto non si tocca mai: quella è un'altra scheda, con
+ * una persona dietro.
+ */
+async function ospiteSenzaContatti(venueId: string, riga: RigaLetta): Promise<string | null> {
+  if (riga.email || riga.telefono) return null;
+  const trovato = await db.guest.findFirst({
+    where: {
+      venueId,
+      anonymizedAt: null,
+      email: null,
+      phone: null,
+      firstName: { equals: riga.nome.trim(), mode: "insensitive" },
+      lastName: riga.cognome?.trim() ? { equals: riga.cognome.trim(), mode: "insensitive" } : null,
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  return trovato?.id ?? null;
+}
+
 type Preparata = {
   riga: RigaLetta;
   istante: Date | null;
@@ -143,7 +196,9 @@ async function prepara(venueId: string, righe: RigaLetta[], fuso: string): Promi
     /* `trovaOspite` è lo stesso posto che riconosce chi chiama al telefono: se
        qui si confrontassero i contatti a modo proprio, la stessa persona
        risulterebbe nuova importando e conosciuta telefonando. */
-    const guestId = await trovaOspite(venueId, { email: riga.email, phone: riga.telefono });
+    const guestId =
+      (await trovaOspite(venueId, { email: riga.email, phone: riga.telefono })) ??
+      (await ospiteSenzaContatti(venueId, riga));
     preparate.push({
       riga,
       istante,
@@ -169,6 +224,7 @@ function conta(preparate: Preparata[], gia: Set<string>, scartate: number, righe
   let soloClienti = 0;
   let passate = 0;
   let future = 0;
+  let annullate = 0;
   let giaImportate = 0;
   const nuovi = new Set<string>();
   let giaVisti = 0;
@@ -176,8 +232,11 @@ function conta(preparate: Preparata[], gia: Set<string>, scartate: number, righe
   for (const p of preparate) {
     if (p.chiave && gia.has(p.chiave)) giaImportate += 1;
     else if (!p.istante) soloClienti += 1;
-    else if (p.istante.getTime() < adesso) passate += 1;
-    else future += 1;
+    else {
+      if (p.istante.getTime() < adesso) passate += 1;
+      else future += 1;
+      if (p.riga.stato === "CANCELLED" || p.riga.stato === "NO_SHOW") annullate += 1;
+    }
 
     if (p.guestId) giaVisti += 1;
     else nuovi.add(contattoDi(p.riga).toLowerCase());
@@ -190,6 +249,7 @@ function conta(preparate: Preparata[], gia: Set<string>, scartate: number, righe
     soloClienti,
     prenotazioniPassate: passate,
     prenotazioniFuture: future,
+    annullateONoShow: annullate,
     ospitiNuovi: nuovi.size,
     ospitiGiaVisti: giaVisti,
     giaImportate,
@@ -282,13 +342,19 @@ export async function eseguiImportazione(
     const { riga } = p;
     if (p.chiave && gia.has(p.chiave)) continue;
 
-    const ospite = await trovaOCreaOspite(venueId, {
-      firstName: riga.nome,
-      lastName: riga.cognome,
-      email: riga.email,
-      phone: riga.telefono,
-      /* Nessun consenso al marketing, mai: vedi il commento in testa al file. */
-    });
+    /* Senza contatti si cerca adesso e non si usa `p.guestId`: due righe con
+       lo stesso nome nello stesso file devono finire sulla stessa scheda, e
+       la prima l'ha appena creata. */
+    const senzaContatti = await ospiteSenzaContatti(venueId, riga);
+    const ospite = senzaContatti
+      ? { guestId: senzaContatti, giaConosciuto: true }
+      : await trovaOCreaOspite(venueId, {
+          firstName: riga.nome,
+          lastName: riga.cognome,
+          email: riga.email,
+          phone: riga.telefono,
+          /* Nessun consenso al marketing, mai: vedi il commento in testa al file. */
+        });
     if (!ospite.giaConosciuto) ospitiCreati += 1;
 
     if (!p.istante || !p.chiave) continue;
@@ -303,8 +369,9 @@ export async function eseguiImportazione(
           startsAt: p.istante,
           /* Una cena di tre anni fa è una cena avvenuta; una di venerdì è una
              prenotazione da rispettare. Mettere tutto `CONFIRMED` riempirebbe
-             l'agenda di stasera con dieci anni di storia. */
-          status: passata ? "COMPLETED" : "CONFIRMED",
+             l'agenda di stasera con dieci anni di storia. E un'annullata
+             resta annullata: vedi `statoDi`. */
+          status: statoDi(riga.stato, passata),
           source: "IMPORT",
           /* Importate da chi gestisce il locale: non sono «nuove». */
           seenAt: new Date(),

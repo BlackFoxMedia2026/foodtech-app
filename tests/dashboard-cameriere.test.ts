@@ -353,3 +353,55 @@ describe("la presa in carico implicita", () => {
     expect(t9.coperto.map((c) => c.nome)).toEqual(["Sara Fedi"]);
   });
 });
+
+describe("il conto del gruppo di prima", () => {
+  /**
+   * Il gruppo di prima ha chiesto il conto, ha pagato col QR e il cameriere
+   * ha premuto «Libera»: la prenotazione è conclusa, ma il conto resta aperto
+   * finché la cassa non lo chiude. Il gruppo seduto dopo non l'ha chiesto, e
+   * la sala non deve dirgli «CONTO».
+   */
+  it("non segna «conto richiesto» sul gruppo seduto dopo", async () => {
+    const t5 = (await db.table.create({ data: { venueId, label: "T5", seats: 2 } })).id;
+    const prima = await db.booking.create({
+      data: {
+        venueId,
+        tableId: t5,
+        partySize: 2,
+        startsAt: minutiFa(120),
+        status: "COMPLETED",
+        seatedAt: minutiFa(110),
+        source: "PHONE",
+      },
+    });
+    await db.order.create({
+      data: {
+        venueId,
+        bookingId: prima.id,
+        kind: "TABLE",
+        status: "RECEIVED",
+        reference: `${PREFISSO}${Date.now()}-t5`,
+        scheduledAt: minutiFa(110),
+        currency: "EUR",
+        contoRichiestoAt: minutiFa(15),
+        paymentStatus: "SUCCEEDED",
+      },
+    });
+    await db.booking.create({
+      data: {
+        venueId,
+        tableId: t5,
+        partySize: 2,
+        startsAt: minutiFa(5),
+        durationMin: 90,
+        status: "SEATED",
+        seatedAt: minutiFa(2),
+        source: "PHONE",
+      },
+    });
+
+    const tavolo = (await salaDiSara()).tavoli.find((t) => t.label === "T5")!;
+    expect(tavolo.stato).not.toBe("CONTO");
+    expect(tavolo.richiamo?.tipo).not.toBe("CONTO");
+  });
+});

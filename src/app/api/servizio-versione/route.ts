@@ -19,7 +19,7 @@ export async function GET() {
   if (!ctx.ok) return ctx.response;
   try {
     return NextResponse.json(
-      { v: await versioneServizio(ctx.venueId) },
+      { v: await versioneServizio(ctx.venueId, new Date(), ctx.venue.timezone) },
       // Nessuna cache: è una domanda sul presente, e una risposta di cinque
       // secondi fa non è la risposta.
       { headers: { "Cache-Control": "no-store" } },

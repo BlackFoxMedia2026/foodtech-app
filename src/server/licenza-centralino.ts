@@ -1,4 +1,4 @@
-import { createPublicKey, verify } from "node:crypto";
+import { createHash, createPublicKey, verify } from "node:crypto";
 import { db } from "@/lib/db";
 import {
   dividiLicenza,
@@ -289,7 +289,14 @@ export function statoDaChiave(
 }
 
 /** Il motivo per cui una chiave non accende, o il centralino è spento. */
-export type MotivoLicenza = "malformata" | "non_configurato" | "firma" | "altro_locale" | "scaduta" | "spento";
+export type MotivoLicenza =
+  | "malformata"
+  | "non_configurato"
+  | "firma"
+  | "altro_locale"
+  | "scaduta"
+  | "spento"
+  | "revocata";
 
 export class LicenzaError extends Error {
   constructor(
@@ -316,6 +323,22 @@ export async function attivaCentralino(
   if (!esito.ok) throw new LicenzaError(esito.motivo, esito.messaggio);
 
   const pulita = chiave.replace(/\s+/g, "");
+
+  /*
+    Una chiave revocata non si riaccende reincollandola.
+
+    `verificaLicenza` guarda firma, locale e scadenza: tutte cose che una
+    chiave revocata ha ancora in regola, perché la firma non scade. Senza
+    questo controllo bastava incollare di nuovo la chiave vecchia, e la
+    revoca rimandata veniva poi rifiutata come «vecchia» — la riattivazione
+    era più recente di lei. Il telefono restava acceso per sempre.
+  */
+  if (await eRevocata(venueId, pulita, esito.contenuto.d)) {
+    throw new LicenzaError(
+      "revocata",
+      "Questa chiave è stata revocata e non riaccende il telefono. Scrivici: te ne mandiamo una nuova.",
+    );
+  }
   await db.venue.update({
     where: { id: venueId },
     data: {
@@ -345,6 +368,65 @@ export async function spegniCentralino(venueId: string): Promise<void> {
       phoneLicenseExpiresAt: null,
       phoneLicenseFeatures: [],
     },
+  });
+}
+
+/**
+ * La revoca, scritta nel registro delle attività.
+ *
+ * Spegnere azzera la chiave sul locale, e con lei sparirebbe ogni traccia di
+ * **cosa** è stato spento: il registro la conserva, ed è da lì che
+ * `attivaCentralino` capisce se la chiave che sta per accendere è una di
+ * quelle già revocate. Non passa da `recordAudit`, che per scelta non fa mai
+ * fallire l'operazione: qui la riga **è** la revoca, e si scrive nella stessa
+ * transazione che spegne.
+ */
+export const AZIONE_REVOCA = "venue.centralino_revocato";
+
+/** Cosa resta di una revoca: il giorno, e l'impronta della chiave spenta. */
+type TracciaRevoca = {
+  /** Il giorno della revoca, `AAAA-MM-GG`. */
+  revocataIl: string;
+  /** SHA-256 della chiave in uso al momento della revoca, se ce n'era una. */
+  impronta: string | null;
+};
+
+/** L'impronta di una chiave: confrontabile, senza riscriverla per intero. */
+export function improntaChiave(chiave: string): string {
+  return createHash("sha256").update(chiave.replace(/\s+/g, ""), "utf8").digest("hex");
+}
+
+const GIORNO = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Se una chiave è stata spenta da una revoca.
+ *
+ * Due prove, perché nessuna basta da sola:
+ *
+ * - **la data di emissione** (`d`) più vecchia del giorno di una revoca:
+ *   copre ogni chiave precedente, anche una sostituita prima della revoca e
+ *   che quindi non era più quella in uso. Lo stesso giorno passa, come in
+ *   `applicaRevoca`: la granularità è il giorno, e una riattivazione emessa
+ *   il giorno della revoca deve poter accendere;
+ * - **l'impronta** della chiave revocata: copre la chiave senza data e
+ *   quella emessa il giorno stesso della revoca. Una chiave identica byte per
+ *   byte a quella revocata *è* quella revocata — una riattivazione vera ha
+ *   un contenuto diverso.
+ */
+async function eRevocata(venueId: string, chiave: string, emessaIl: string | undefined): Promise<boolean> {
+  const righe = await db.auditLog.findMany({
+    where: { venueId, action: AZIONE_REVOCA },
+    select: { diff: true },
+  });
+  if (righe.length === 0) return false;
+
+  const impronta = improntaChiave(chiave);
+  const emessa = emessaIl && GIORNO.test(emessaIl) ? emessaIl : null;
+  return righe.some(({ diff }) => {
+    const traccia = diff as Partial<TracciaRevoca> | null;
+    if (!traccia) return false;
+    if (traccia.impronta && traccia.impronta === impronta) return true;
+    return Boolean(emessa && traccia.revocataIl && emessa < traccia.revocataIl);
   });
 }
 
@@ -413,15 +495,40 @@ export async function applicaRevoca(chiave: string, adesso: Date = new Date()): 
 
   const locale = await db.venue.findUnique({
     where: { id: divisa.contenuto.l },
-    select: { id: true, phoneLicenseKey: true, phoneLicenseActivatedAt: true },
+    select: { id: true, orgId: true, phoneLicenseKey: true, phoneLicenseActivatedAt: true },
   });
   if (!locale) {
     return { ok: false, motivo: "altro_locale", messaggio: "Questo locale non esiste." };
   }
 
+  const traccia: TracciaRevoca = {
+    revocataIl:
+      divisa.contenuto.d && GIORNO.test(divisa.contenuto.d)
+        ? divisa.contenuto.d
+        : adesso.toISOString().slice(0, 10),
+    impronta: locale.phoneLicenseKey ? improntaChiave(locale.phoneLicenseKey) : null,
+  };
+  const registra = db.auditLog.create({
+    data: {
+      venueId: locale.id,
+      orgId: locale.orgId,
+      actorEmail: "ilmiocentralino",
+      action: AZIONE_REVOCA,
+      entityType: "venue",
+      entityId: locale.id,
+      diff: traccia,
+    },
+  });
+
   /* Già spento: si risponde bene e si dice che non c'era niente da spegnere.
-     Un errore qui farebbe ritentare chi ha già ottenuto il risultato. */
-  if (!locale.phoneLicenseKey) return { ok: true, spento: false };
+     Un errore qui farebbe ritentare chi ha già ottenuto il risultato. La
+     revoca però si registra lo stesso: il telefono spento a mano dal locale
+     non deve potersi riaccendere con una chiave che nel frattempo è stata
+     revocata. */
+  if (!locale.phoneLicenseKey) {
+    await registra;
+    return { ok: true, spento: false };
+  }
 
   const emessa = fineValidita(divisa.contenuto.d);
   const attivata = locale.phoneLicenseActivatedAt;
@@ -434,7 +541,20 @@ export async function applicaRevoca(chiave: string, adesso: Date = new Date()): 
     };
   }
 
-  await spegniCentralino(locale.id);
+  /* Spegnere e ricordare cosa si è spento vanno insieme: un telefono spento
+     senza traccia si riaccenderebbe con la stessa chiave. */
+  await db.$transaction([
+    db.venue.update({
+      where: { id: locale.id },
+      data: {
+        phoneLicenseKey: null,
+        phoneLicenseActivatedAt: null,
+        phoneLicenseExpiresAt: null,
+        phoneLicenseFeatures: [],
+      },
+    }),
+    registra,
+  ]);
   return { ok: true, spento: true };
 }
 

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { dateKeyInVenue, DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
 /* La soglia vive in `lib/quota.ts`: la usano anche le pagine che decidono
    se mostrare una percentuale. Due costanti con lo stesso valore sono due
    costanti che un giorno divergono. */
@@ -160,7 +161,7 @@ export async function getNoShowReport(
         guest: { select: { firstName: true, lastName: true, noShowCount: true, totalVisits: true } },
       },
     }),
-    db.venue.findUnique({ where: { id: venueId }, select: { avgSpendCents: true } }),
+    db.venue.findUnique({ where: { id: venueId }, select: { avgSpendCents: true, timezone: true } }),
     // I conti chiusi del periodo, con i coperti che li hanno prodotti: è da
     // qui che viene il valore misurato di un coperto.
     db.order.findMany({
@@ -222,8 +223,14 @@ export async function getNoShowReport(
     valoreCoperto.tipo === "sconosciuto" ? null : copertiPersi * valoreCoperto.centesimi;
 
   /* ---- per giorno della settimana ---- */
+  /* Il giorno della settimana del locale: `getDay()` del processo, su Vercel,
+     è quello UTC, e la cena dell'01:00 del sabato finiva sul venerdì. */
+  const fuso = venue?.timezone ?? DEFAULT_VENUE_TIMEZONE;
+  const giornoDi = new Map(
+    prenotazioni.map((b) => [b, new Date(`${dateKeyInVenue(b.startsAt, fuso)}T00:00:00Z`).getUTCDay()]),
+  );
   const perGiorno: AssenzePerGiorno[] = GIORNI.map((nome, weekday) => {
-    const delGiorno = prenotazioni.filter((b) => b.startsAt.getDay() === weekday);
+    const delGiorno = prenotazioni.filter((b) => giornoDi.get(b) === weekday);
     const assenzeDelGiorno = delGiorno.filter((b) => b.status === "NO_SHOW");
     return {
       weekday,

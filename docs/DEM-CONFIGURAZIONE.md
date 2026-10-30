@@ -63,10 +63,15 @@ Senza, il piano non è acquistabile e il pulsante «Passa a…» risponde con un
 
 ### 2.3 Il webhook
 
-Sullo stesso endpoint già registrato (`https://<dominio>/api/webhooks/stripe`) **aggiungere**
-questi eventi a quelli che ci sono:
+L'indirizzo è uno solo (`https://<dominio>/api/webhooks/stripe`), ma su Stripe gli endpoint sono
+**due**, perché un endpoint ascolta o l'account della piattaforma o gli account collegati — e
+ognuno ha il proprio segreto di firma (`whsec_…`).
+
+**Endpoint della piattaforma** («Il tuo account») → segreto in `STRIPE_WEBHOOK_SECRET`.
+Gli abbonamenti DEM li incassa la piattaforma, quindi i loro eventi stanno qui:
 
 ```
+checkout.session.completed
 customer.subscription.created
 customer.subscription.updated
 customer.subscription.deleted
@@ -74,7 +79,23 @@ invoice.paid
 invoice.payment_failed
 ```
 
-> Il `STRIPE_WEBHOOK_SECRET` resta quello: è lo stesso endpoint.
+**Endpoint degli account collegati** (Connect) → segreto in `STRIPE_CONNECT_WEBHOOK_SECRET`.
+Caparre e conto al tavolo sono addebiti diretti sull'account del ristorante, quindi i loro eventi
+arrivano **solo** da qui:
+
+```
+checkout.session.completed
+checkout.session.expired
+payment_intent.succeeded
+payment_intent.payment_failed
+charge.refunded
+account.updated
+```
+
+> Il server prova i due segreti in quest'ordine e accetta la firma valida con uno qualsiasi.
+> Con il solo `STRIPE_WEBHOOK_SECRET` gli abbonamenti DEM funzionano, ma gli eventi di caparre e
+> pagamenti al tavolo vengono rifiutati per firma non valida: il denaro arriva al ristorante e da
+> noi il pagamento resta «in corso».
 
 ### 2.4 Prova
 

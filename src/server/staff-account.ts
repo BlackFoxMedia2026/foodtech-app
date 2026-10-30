@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { StaffPermission, StaffRole } from "@prisma/client";
 import { db } from "@/lib/db";
+import { eSuperAdmin } from "@/lib/super-admin";
 import { coincideConPreset } from "@/lib/scheda-dipendente";
 import { recordAudit, type AuditActor } from "./audit";
 import { invitaAlTeam } from "./team";
@@ -29,6 +30,10 @@ import { invitaAlTeam } from "./team";
  *
  * Le stesse di `team.ts`, perché sono le stesse situazioni: su di sé non si
  * agisce, e l'ultimo manager di un locale non si disattiva né si abbassa.
+ *
+ * E una in più, che sta in `soloDiQuestoLocale`: password ed email vivono
+ * sull'`User`, che è **uno per persona in tutta Tavolo**, non su questo
+ * locale. Un responsabile ci mette mano solo se quell'accesso è soltanto suo.
  */
 
 export const ORE_VALIDITA_RESET = 48;
@@ -43,7 +48,9 @@ export class AccountError extends Error {
       | "email_in_uso"
       | "non_su_di_te"
       | "ultimo_manager"
-      | "link_non_valido",
+      | "link_non_valido"
+      | "indirizzo_riservato"
+      | "gestito_altrove",
   ) {
     super(code);
     this.name = "AccountError";
@@ -59,6 +66,9 @@ export const MESSAGGIO_ACCOUNT: Record<AccountError["code"], string> = {
   non_su_di_te: "Sul tuo account non puoi agire da qui: chiedilo a un altro manager.",
   ultimo_manager: "È l'ultimo manager del locale: nominane un altro prima, altrimenti nessuno potrebbe più gestirlo.",
   link_non_valido: "Questo link non è più valido.",
+  indirizzo_riservato: "Questo indirizzo non si può usare per un accesso al locale.",
+  gestito_altrove:
+    "Questo account entra anche in altri locali: password ed email le cambia la persona da sé, con «Password dimenticata?» nella pagina d'accesso.",
 };
 
 async function personaConAccount(venueId: string, waiterId: string) {
@@ -80,6 +90,25 @@ async function sarebbeUltimoManager(venueId: string, userId: string) {
     where: { venueId, role: "MANAGER", disabledAt: null, NOT: { userId } },
   });
   return altri === 0;
+}
+
+/**
+ * Password, email e link di reimpostazione toccano l'`User`, cioè l'accesso
+ * della persona **ovunque**, non solo qui. Un responsabile li gestisce solo
+ * per chi entra soltanto in questo locale.
+ *
+ * Senza questa difesa un manager poteva collegare a una scheda il titolare di
+ * un altro locale — o un amministratore di piattaforma — e sceglierne la
+ * password. Le appartenenze altrove contano anche se disattivate: un accesso
+ * disattivato si riattiva, e la persona rientrerebbe là con la password scelta
+ * qui. Per tutti loro resta il recupero, che passa dalla loro email.
+ */
+async function soloDiQuestoLocale(venueId: string, utente: { id: string; email: string }) {
+  if (eSuperAdmin(utente.email)) throw new AccountError("gestito_altrove");
+  const altrove = await db.venueMembership.count({
+    where: { userId: utente.id, NOT: { venueId } },
+  });
+  if (altrove > 0) throw new AccountError("gestito_altrove");
 }
 
 function hashToken(token: string) {
@@ -115,6 +144,9 @@ export async function creaAccesso(
   const data = CreaAccessoInput.parse(raw);
   const email = data.email ?? persona.email?.toLowerCase();
   if (!email) throw new AccountError("email_richiesta");
+  // Vedi `invitaAlTeam`: l'indirizzo di un amministratore di piattaforma non
+  // diventa un accesso di un locale.
+  if (eSuperAdmin(email)) throw new AccountError("indirizzo_riservato");
 
   if (persona.email !== email) {
     await db.waiter.update({ where: { id: waiterId }, data: { email } });
@@ -158,6 +190,10 @@ export async function cambiaEmailAccesso(venueId: string, waiterId: string, raw:
   if (!persona.user) throw new AccountError("senza_account");
   const { email } = CambiaEmailInput.parse(raw);
   if (email === persona.user.email) return persona.user;
+  // Un indirizzo d'amministratore messo su un account qualsiasi lo farebbe
+  // entrare nel pannello di piattaforma, che riconosce l'indirizzo.
+  if (eSuperAdmin(email)) throw new AccountError("indirizzo_riservato");
+  await soloDiQuestoLocale(venueId, persona.user);
 
   const occupata = await db.user.findUnique({ where: { email }, select: { id: true } });
   if (occupata) throw new AccountError("email_in_uso");
@@ -184,6 +220,7 @@ export async function impostaPassword(venueId: string, waiterId: string, raw: un
   const persona = await personaConAccount(venueId, waiterId);
   if (!persona.user) throw new AccountError("senza_account");
   const { password } = NuovaPasswordInput.parse(raw);
+  await soloDiQuestoLocale(venueId, persona.user);
   await db.user.update({
     where: { id: persona.user.id },
     data: {
@@ -227,6 +264,9 @@ export async function apriReset(userId: string) {
 export async function generaLinkReset(venueId: string, waiterId: string, baseUrl: string, actor?: AuditActor) {
   const persona = await personaConAccount(venueId, waiterId);
   if (!persona.user) throw new AccountError("senza_account");
+  // Il link lo consegna il responsabile: chi lo apre sceglie la password.
+  // Stessa difesa di `impostaPassword`.
+  await soloDiQuestoLocale(venueId, persona.user);
   const { token, scadeIl } = await apriReset(persona.user.id);
   await recordAudit(actor, "waiter.account_reset_link", "waiter", waiterId, { email: persona.user.email, scadeIl: scadeIl.toISOString() });
   return { link: `${baseUrl}/reimposta-password/${token}`, scadeIl };

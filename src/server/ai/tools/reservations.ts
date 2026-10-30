@@ -5,8 +5,9 @@ import type { Tool } from "../types";
 export const getTodayReservationsTool: Tool = {
   ability: null,
   async run(ctx) {
-    const day = ctx.page?.date ? new Date(ctx.page.date) : new Date();
-    const bookings = await listBookingsForDay(ctx.venueId, day);
+    // Giorno e orari nel fuso del locale: il processo, su Vercel, è in UTC.
+    const day = ctx.page?.date ?? new Date();
+    const bookings = await listBookingsForDay(ctx.venueId, day, ctx.venueTimezone);
 
     if (bookings.length === 0) {
       return { text: "Non risultano prenotazioni per oggi." };
@@ -20,7 +21,7 @@ export const getTodayReservationsTool: Tool = {
         title: "Prenotazioni di oggi",
         items: bookings.slice(0, 20).map((b) => ({
           title: b.guest ? `${b.guest.firstName} ${b.guest.lastName ?? ""}`.trim() : "Ospite",
-          subtitle: `${formatTime(b.startsAt)} · ${b.partySize} persone${b.table ? ` · ${b.table.label}` : ""}`,
+          subtitle: `${formatTime(b.startsAt, "it-IT", ctx.venueTimezone)} · ${b.partySize} persone${b.table ? ` · ${b.table.label}` : ""}`,
         })),
       },
     };

@@ -792,6 +792,15 @@ export type GiornoLibero = {
 const GIORNI_ALTERNATIVE = 21;
 const MAX_ALTERNATIVE = 3;
 
+/** Una data civile più `giorni`, senza passare per fusi: vedi `shiftDateKey`. */
+function giornoDopo(
+  data: { year: number; month: number; day: number },
+  giorni: number,
+): { year: number; month: number; day: number } {
+  const d = new Date(Date.UTC(data.year, data.month - 1, data.day + giorni));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+
 /**
  * I primi giorni con posto, dopo quello richiesto.
  *
@@ -829,7 +838,7 @@ export async function prossimiGiorniLiberi(
     : undefined;
 
   const inizio = zonedTimeToInstant(from, 0, timezone);
-  const fine = new Date(inizio.getTime() + (GIORNI_ALTERNATIVE + 1) * 86_400_000);
+  const fine = zonedTimeToInstant(giornoDopo(from, GIORNI_ALTERNATIVE + 1), 0, timezone);
   const context = { ...(await loadAvailabilityContext(venueId, inizio, fine)), timezone };
 
   const etichetta = new Intl.DateTimeFormat("it-IT", {
@@ -841,8 +850,11 @@ export async function prossimiGiorniLiberi(
 
   const trovati: GiornoLibero[] = [];
   for (let i = 1; i <= GIORNI_ALTERNATIVE && trovati.length < limite; i++) {
-    const istante = new Date(inizio.getTime() + i * 86_400_000);
-    const data = zonedCalendarDate(istante, timezone);
+    /* Per giorno di calendario, non per 24 ore: nella settimana del cambio
+       d'ora un giorno ne dura 23 o 25, e sommare 86.400.000 ms dalla
+       mezzanotte faceva ricadere due passi nello stesso giorno — lo stesso
+       sabato proposto due volte, e la domenica saltata. */
+    const data = giornoDopo(from, i);
     const giorno = buildDaySlots(
       { date: data, partySize, durationMin, now, canale: opts.canale, durataPer },
       context,

@@ -183,6 +183,33 @@ describe("disdire", () => {
     expect(avviso?.title).toContain("3 coperti");
   });
 
+  it("passa dalla stessa strada del gestionale: chiusura, e la caparra da restituire", async () => {
+    /* Prima qui c'era un `updateMany` suo: la caparra incassata restava in
+       cassa senza che nessuno lo sapesse, e la prenotazione disdetta non
+       aveva l'ora di chiusura. */
+    const p = await prenota(mario, DOMANI, "CONFIRMED", 2);
+    await db.booking.update({
+      where: { id: p.id },
+      data: { depositCents: 2000, depositStatus: "CAPTURED" },
+    });
+
+    const esito = await disdiciDalTelefono(
+      venueId,
+      { bookingId: p.id, telefono: CHIAMA },
+      { adesso: ADESSO },
+    );
+    expect(esito.ok).toBe(true);
+
+    const riletta = await db.booking.findUniqueOrThrow({ where: { id: p.id } });
+    expect(riletta.closedAt?.getTime()).toBe(ADESSO.getTime());
+
+    const caparra = await db.notification.findFirst({
+      where: { venueId, kind: "PAYMENT_REFUND" },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(caparra).not.toBeNull();
+  });
+
   it("non disdice la prenotazione di un altro", async () => {
     const sua = await prenota(estraneo, DOMANI);
     const esito = await disdiciDalTelefono(

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
-import { auditActor } from "@/server/audit";
+import { apiErrorResponse, requireUtenteApi } from "@/lib/api-auth";
+import { auditAttoreDelProprioAccesso } from "@/server/audit";
 import { chiudiLeMieSessioni } from "@/server/team";
 
 /**
@@ -12,12 +12,16 @@ import { chiudiLeMieSessioni } from "@/server/team";
  *
  * Chiude anche la sessione da cui arriva la richiesta: è il senso di «tutti»,
  * e chi la usa se lo aspetta.
+ *
+ * Guardia **dell'utente**, non del locale: l'amministratore di piattaforma non
+ * appartiene a nessun locale, e con `requireVenueApi` riceveva 403 — cioè non
+ * poteva chiudere le proprie sessioni, lui che vede tutti i ristoranti.
  */
 export async function DELETE(req: Request) {
-  const ctx = await requireVenueApi();
+  const ctx = await requireUtenteApi();
   if (!ctx.ok) return ctx.response;
   try {
-    const quando = await chiudiLeMieSessioni(ctx.userId, auditActor(ctx, req));
+    const quando = await chiudiLeMieSessioni(ctx.userId, await auditAttoreDelProprioAccesso(ctx, req));
     return NextResponse.json({ da: quando.toISOString() });
   } catch (err) {
     return apiErrorResponse(err);

@@ -1,8 +1,8 @@
 import { logErrore } from "./observability";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { auth } from "./auth";
 import { resolveActiveVenue, type ActiveVenueContext } from "./tenant";
+import { utenteDiSessione } from "./sessione";
 import { can, type Ability } from "./abilities";
 import { messaggioDiValidazione } from "./validation-message";
 import { tokenDaIntestazione, type Ambito } from "@/lib/api-token-forma";
@@ -68,16 +68,16 @@ export function apiError(status: number, code: string, message: string, detail?:
 export async function requireUtenteApi(): Promise<
   { ok: true; userId: string; email: string } | { ok: false; response: NextResponse }
 > {
-  const session = await auth();
-  const u = session?.user as { id?: string; email?: string } | undefined;
-  const userId = (session as { uid?: string } | null)?.uid ?? u?.id;
-  if (!userId || !u?.email) {
+  // Revoca compresa: senza, «esci da tutti» lasciava aperte proprio le porte
+  // dell'account — i due fattori e le sessioni. Vedi `lib/sessione.ts`.
+  const utente = await utenteDiSessione();
+  if (!utente) {
     return {
       ok: false,
       response: apiError(401, "unauthenticated", "Sessione scaduta. Rientra per continuare."),
     };
   }
-  return { ok: true, userId, email: u.email };
+  return { ok: true, userId: utente.userId, email: utente.email };
 }
 
 export async function requireVenueApi(ability?: Ability): Promise<VenueApiResult> {

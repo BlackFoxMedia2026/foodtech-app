@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   RIGHE_MASSIME,
   chiaveIntestazione,
+  decodificaFile,
   leggiFile,
   leggiGiorno,
   leggiOra,
+  leggiStato,
   mappaColonne,
   righeCsv,
   separatore,
@@ -241,5 +243,49 @@ describe("il file intero", () => {
     expect(esito.tagliato).toBe(true);
     expect(esito.righe).toHaveLength(RIGHE_MASSIME);
     expect(esito.totali).toBe(RIGHE_MASSIME + 10);
+  });
+});
+
+describe("lo stato", () => {
+  it("riconosce annullate e no-show, in italiano e in inglese", () => {
+    for (const v of ["Annullata", "cancellata", "Cancelled", "canceled", "DISDETTA"]) {
+      expect(leggiStato(v)).toBe("CANCELLED");
+    }
+    for (const v of ["No show", "no-show", "NoShow", "Non presentato", "Non si è presentato"]) {
+      expect(leggiStato(v)).toBe("NO_SHOW");
+    }
+    expect(leggiStato("Confermata")).toBe("CONFIRMED");
+    expect(leggiStato("confirmed")).toBe("CONFIRMED");
+    expect(leggiStato("Completata")).toBe("COMPLETED");
+    expect(leggiStato("Arrivato")).toBe("COMPLETED");
+    expect(leggiStato("In attesa")).toBe("PENDING");
+  });
+
+  it("una parola che non conosce non indovina: decide la data, come prima", () => {
+    expect(leggiStato("boh")).toBeNull();
+    expect(leggiStato("")).toBeNull();
+  });
+
+  it("la colonna «stato» arriva fino alla riga letta", () => {
+    const esito = leggiFile("Nome;Telefono;Data;Stato\nMario;333;25/12/2026;Annullata\nGiulia;334;26/12/2026;");
+    expect(esito.righe.map((r) => r.stato)).toEqual(["CANCELLED", null]);
+    expect(esito.colonne.ignorate).toEqual([]);
+  });
+
+  it("«Data prenotazione» scritta tutta attaccata è una data", () => {
+    expect(mappaColonne(["DataPrenotazione"]).indici).toEqual({ giorno: 0 });
+  });
+});
+
+describe("la codifica del file", () => {
+  it("legge l'UTF-8 così com'è", () => {
+    expect(decodificaFile(new TextEncoder().encode("Nicolò;Città"))).toBe("Nicolò;Città");
+  });
+
+  it("un CSV di Excel italiano in Windows-1252 non diventa «Nicol�»", () => {
+    /* «Nicolò» in Windows-1252: la «ò» è il byte 0xF2, che da solo non è mai
+       UTF-8 valido. */
+    const byte = new Uint8Array([0x4e, 0x69, 0x63, 0x6f, 0x6c, 0xf2, 0x3b, 0x80]);
+    expect(decodificaFile(byte)).toBe("Nicolò;€");
   });
 });

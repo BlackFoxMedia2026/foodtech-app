@@ -10,7 +10,10 @@ export async function sendBookingConfirmationEmail(
   bookingDate: Date,
   bookingTime: string,
   partySize: number,
-  reference: string
+  reference: string,
+  /** Il fuso del locale: il server gira in UTC, la data va detta nel giorno
+   *  del ristorante (una cena alle 00:30 a Roma è «ieri» per UTC). */
+  timeZone?: string,
 ) {
   if (!resend) {
     console.log(`[EMAIL] Booking confirmation (Resend not configured): ${guestEmail}`);
@@ -22,6 +25,7 @@ export async function sendBookingConfirmationEmail(
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: timeZone || "Europe/Rome",
   });
 
   const htmlContent = `
@@ -64,7 +68,9 @@ export async function sendPendingBookingNotificationEmail(
   bookingTime: string,
   partySize: number,
   reference: string,
-  guestPhone: string
+  guestPhone: string,
+  /** Il fuso del locale, come sopra. */
+  timeZone?: string,
 ) {
   if (!resend) {
     console.log(`[EMAIL] Pending notification (Resend not configured): ${managerEmail}`);
@@ -76,6 +82,7 @@ export async function sendPendingBookingNotificationEmail(
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: timeZone || "Europe/Rome",
   });
 
   const htmlContent = `
@@ -224,6 +231,9 @@ export type EmailPagamentoTavolo = {
   saldato: boolean;
   metodo: string | null;
   quando: Date;
+  /** Il fuso del locale: l'ora sulla ricevuta è quella della sala, non del
+   *  server (UTC su Vercel). */
+  fuso?: string;
 };
 
 /**
@@ -247,7 +257,11 @@ export async function sendTablePaymentEmails(dati: EmailPagamentoTavolo): Promis
   const locale = testoSicuro(dati.locale);
   const tavolo = testoSicuro(dati.tavolo);
   const totale = dati.billCents + dati.tipCents;
-  const ora = dati.quando.toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
+  const ora = dati.quando.toLocaleString("it-IT", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: dati.fuso || "Europe/Rome",
+  });
 
   const riga = (etichetta: string, valore: string, forte = false) => `
     <tr>

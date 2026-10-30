@@ -1,9 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { segnaCaparraPagata } from "@/server/caparre";
+import { segnaCaparraPagata, segnaCaparraRimborsata } from "@/server/caparre";
 import { chiaveIdempotenza, perConto, stripeConfigurato, stripeRichiesto } from "@/lib/stripe";
 import { manciaPercentuale, quotaDivisa } from "@/lib/conto-diviso";
+import { RIGHE_NEL_CONTO, totaleRighe } from "./conto-residuo";
 import {
   ContoTavoloError,
   leggiContoPerOrder,
@@ -562,8 +563,21 @@ export async function registraIncasso(input: {
   email?: string | null;
 }): Promise<EsitoIncasso | null> {
   return db.$transaction(async (tx) => {
-    const payment = await trovaPagamento(tx, input);
-    if (!payment) return null;
+    const trovato = await trovaPagamento(tx, input);
+    if (!trovato) return null;
+
+    /*
+      Serratura sulla riga del pagamento, e poi la si rilegge.
+
+      `checkout.session.completed` e `payment_intent.succeeded` raccontano lo
+      stesso incasso e possono arrivare nello stesso istante, su due processi.
+      Senza serratura entrambi leggerebbero `PROCESSING` e lo lavorerebbero
+      due volte — due avvisi al tavolo, e per una caparra (che non ha un conto
+      da bloccare) due scritture sulla prenotazione. Il secondo si ferma qui e
+      riparte quando il primo ha finito, trovando `SUCCEEDED`.
+    */
+    await tx.$queryRaw`SELECT 1 FROM "Payment" WHERE id = ${trovato.id} FOR UPDATE`;
+    const payment = await tx.payment.findUniqueOrThrow({ where: { id: trovato.id } });
 
     // Già incassato: l'evento è un doppione, o è il secondo evento dello
     // stesso pagamento. Non è un errore, e non va segnalato come tale.
@@ -600,10 +614,21 @@ export async function registraIncasso(input: {
       },
     });
 
-    // Le portate impegnate diventano pagate: da qui non tornano più
-    // disponibili, se non con un rimborso.
+    /*
+      Le portate impegnate diventano pagate: da qui non tornano più
+      disponibili, se non con un rimborso.
+
+      Anche quelle già **liberate**, non solo le `RESERVED`. Il denaro è
+      arrivato, ed è il solo fatto che conta: se il tentativo era stato dato
+      per perso — scaduto dal lavoro periodico un istante prima che Stripe
+      confermasse, o liberato da un evento arrivato fuori ordine — le sue
+      portate devono tornare pagate, altrimenti il tavolo vedrebbe di nuovo
+      pagabile un piatto che qualcuno ha già pagato. Qui si arriva solo con un
+      pagamento non ancora incassato (vedi sopra), quindi non c'è niente di
+      `RELEASED` per un rimborso da riportare indietro.
+    */
     await tx.paymentAllocation.updateMany({
-      where: { paymentId: payment.id, status: "RESERVED" },
+      where: { paymentId: payment.id, status: { in: ["RESERVED", "RELEASED", "EXPIRED"] } },
       data: { status: "PAID" },
     });
 
@@ -692,7 +717,7 @@ async function ricalcolaResiduo(
   adesso: Date,
 ): Promise<{ residuoCents: number; daPagareCents: number }> {
   const [righe, giftCard, punti, pagamenti] = await Promise.all([
-    tx.orderItem.findMany({ where: { orderId }, select: { priceCents: true, quantity: true } }),
+    tx.orderItem.findMany({ where: { orderId, ...RIGHE_NEL_CONTO }, select: { priceCents: true, quantity: true } }),
     tx.giftCardRedemption.aggregate({ where: { orderId }, _sum: { amountCents: true } }),
     tx.loyaltyTransaction.aggregate({ where: { orderId, kind: "REDEEMED" }, _sum: { amountCents: true } }),
     tx.payment.findMany({
@@ -701,7 +726,7 @@ async function ricalcolaResiduo(
     }),
   ]);
 
-  const totale = righe.reduce((s, r) => s + r.priceCents * r.quantity, 0);
+  const totale = totaleRighe(righe);
   const sconti = (giftCard._sum.amountCents ?? 0) + (punti._sum.amountCents ?? 0);
   const daPagareCents = Math.max(0, totale - sconti);
 
@@ -753,6 +778,20 @@ export async function registraRimborso(input: {
       if (payment.orderId) {
         await tx.order.update({ where: { id: payment.orderId }, data: { paymentStatus: "PENDING" } });
       }
+    }
+
+    /*
+      Una **caparra** restituita, anche dal cruscotto di Stripe: la
+      prenotazione lo deve sapere. Altrimenti resta «incassata», e alla
+      disdetta parte l'avviso «caparra da restituire» per denaro che il
+      cliente ha già riavuto. Nella stessa transazione, per la stessa ragione
+      di `segnaCaparraPagata`.
+    */
+    if (payment.kind === "DEPOSIT" && payment.bookingId) {
+      await segnaCaparraRimborsata(tx, payment.bookingId, {
+        totale,
+        trattenutaCents: Math.max(0, payment.amountCents - input.rimborsatoCents),
+      });
     }
 
     return { paymentId: payment.id, venueId: payment.venueId, totale };

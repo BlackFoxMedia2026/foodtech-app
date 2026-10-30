@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { todayInVenue } from "@/lib/venue-time";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { listBookingsForDay } from "@/server/bookings";
 import { getSettimana } from "@/server/booking-week";
@@ -22,13 +23,19 @@ export default async function BookingsPage({
   searchParams: { day?: string; status?: string; service?: string };
 }) {
   const ctx = await getActiveVenue();
-  const day = searchParams.day ? new Date(searchParams.day) : new Date();
-  const dayString = day.toISOString().slice(0, 10);
+  /* Il giorno è quello **del locale**: `new Date().toISOString()` è il giorno
+     UTC, e fra mezzanotte e le due di notte italiane l'agenda si apriva su
+     ieri. Un giorno scritto nell'indirizzo si prende com'è. */
+  const timeZone = ctx.venue.timezone;
+  const dayString =
+    searchParams.day && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.day)
+      ? searchParams.day
+      : todayInVenue(timeZone);
   const statusFilter = (searchParams.status as StatusFilter) ?? "all";
   const canManageBookings = can(ctx.role, "manage_bookings");
 
   const [rows, tables, allTables, rooms, serviceOptions, settimana] = await Promise.all([
-    listBookingsForDay(ctx.venueId, day),
+    listBookingsForDay(ctx.venueId, dayString, timeZone),
     db.table.findMany({
       where: { venueId: ctx.venueId, active: true },
       select: { id: true, label: true, seats: true },
@@ -47,12 +54,12 @@ export default async function BookingsPage({
   // opening the page outside lunch hours defaulted to "Pranzo" and silently
   // hid real dinner bookings behind a misleading "tutte assegnate" empty
   // state. An explicit ?service= from the user always wins.
-  const service = searchParams.service ?? (await getCurrentServiceName(ctx.venueId, day)) ?? serviceOptions[0] ?? "";
+  const service = searchParams.service ?? (await getCurrentServiceName(ctx.venueId, dayString, timeZone)) ?? serviceOptions[0] ?? "";
   // Single lightweight lookup, not a second bookings query — the Mappa view
   // derives its unassigned/assigned split from the SAME `rows` fetched
   // above, just further narrowed to this window client-side (brief section
   // 24: one source of truth, no parallel dataset).
-  const shiftWindow = service ? await getShiftWindowForDate(ctx.venueId, day, service) : null;
+  const shiftWindow = service ? await getShiftWindowForDate(ctx.venueId, dayString, service, timeZone) : null;
 
   let filteredRows = rows;
   if (statusFilter === "pending") {

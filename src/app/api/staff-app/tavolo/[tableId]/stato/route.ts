@@ -7,6 +7,7 @@ import { tavoloConsentito } from "@/server/staff-app/accesso-tavolo";
 import { apriTavolo } from "@/server/staff-app/tavolo";
 import { updateBooking } from "@/server/bookings";
 import { db } from "@/lib/db";
+import { giornataDiServizio } from "@/lib/venue-time";
 
 /**
  * Il cambio di stato del tavolo, dal telefono.
@@ -49,10 +50,10 @@ export async function POST(req: Request, { params }: { params: { tableId: string
       guardando il tavolo, e toglie al cameriere un passaggio che non ha
       motivo di fare — sul suo schermo c'è un tavolo, non un'agenda.
     */
-    const inizio = new Date();
-    inizio.setHours(0, 0, 0, 0);
-    const fine = new Date();
-    fine.setHours(23, 59, 59, 999);
+    /* La giornata di servizio del locale. Con `setHours` del processo — UTC
+       su Vercel — dopo l'una di notte italiana «Libera» non trovava più il
+       tavolo seduto e rispondeva «nessuna prenotazione». */
+    const { inizio, fine } = giornataDiServizio(new Date(), ctx.timezone);
 
     const candidate = await db.booking.findMany({
       where: {

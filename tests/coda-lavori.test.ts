@@ -117,6 +117,16 @@ describe("messa in coda", () => {
     expect(riga?.attempts).toBe(0);
   });
 
+  it("due richieste nello stesso istante con la stessa chiave: un lavoro, nessun errore", async () => {
+    // Il doppio clic vero: entrambe non trovano niente e creano insieme. Il
+    // vincolo unico ne lascia passare una; l'altra riceve lo stesso lavoro.
+    const chiave = `${PREFISSO}k-gara`;
+    const esiti = await Promise.all(Array.from({ length: 5 }, () => accoda({ dedupeKey: chiave })));
+    expect(new Set(esiti.map((e) => e.jobId)).size).toBe(1);
+    expect(esiti.filter((e) => !e.duplicate)).toHaveLength(1);
+    expect(await db.backgroundJob.count({ where: { dedupeKey: chiave } })).toBe(1);
+  });
+
   it("un lavoro programmato non parte prima della sua ora", async () => {
     const { chiamate, handlers } = contatore();
     await accoda({ runAt: new Date(Date.now() + 3_600_000) });
@@ -253,6 +263,41 @@ describe("errori e tentativi", () => {
     // Il tentativo speso resta contato: un lavoro che fa morire il processo
     // non deve poter riprovare per sempre.
     expect(riga?.attempts).toBe(1);
+  });
+
+  it("un lavoro appeso che ha esaurito i tentativi si ferma, non riparte", async () => {
+    // Un lavoro che fa morire la funzione non arriva mai al catch: senza
+    // questo controllo tornava in coda ogni dieci minuti, per sempre.
+    const { jobId } = await accoda({ maxAttempts: 2 });
+    await db.backgroundJob.update({
+      where: { id: jobId },
+      data: {
+        status: "RUNNING",
+        startedAt: new Date(Date.now() - (MINUTI_APPESO + 1) * 60_000),
+        attempts: 2,
+      },
+    });
+
+    await reapStuckJobs();
+    const riga = await db.backgroundJob.findUniqueOrThrow({ where: { id: jobId } });
+    expect(riga.status).toBe("FAILED");
+    expect(riga.finishedAt).not.toBeNull();
+    expect(riga.lastError).toContain("tentativi esauriti");
+  });
+
+  it("la presa in carico conta un tentativo anche se il lavoro non finisce mai", async () => {
+    const { jobId } = await accoda();
+    let tentativiVisti = -1;
+    await runDueJobs({
+      handlers: {
+        "prova.lavoro": async (_p, job) => {
+          tentativiVisti = job.attempts;
+          return { done: true };
+        },
+      },
+    });
+    expect(tentativiVisti).toBe(1);
+    expect((await db.backgroundJob.findUniqueOrThrow({ where: { id: jobId } })).attempts).toBe(1);
   });
 
   it("un lavoro in corso da poco non viene toccato", async () => {
@@ -483,8 +528,10 @@ describe("la pulizia della storia", () => {
       data: { status: "DONE", finishedAt: new Date() },
     });
 
+    // Il database è condiviso con altri test: si conta almeno il proprio, e
+    // si guarda riga per riga cosa è successo ai propri lavori.
     const quanti = await pulisciLavoriVecchi();
-    expect(quanti).toBe(1);
+    expect(quanti).toBeGreaterThanOrEqual(1);
     expect(await db.backgroundJob.findUnique({ where: { id: vecchio } })).toBeNull();
     expect(await db.backgroundJob.findUnique({ where: { id: recente } })).not.toBeNull();
   });
@@ -506,7 +553,7 @@ describe("la pulizia della storia", () => {
       },
     });
 
-    expect(await pulisciLavoriVecchi()).toBe(0);
+    await pulisciLavoriVecchi();
     const riga = await db.backgroundJob.findUniqueOrThrow({ where: { id: jobId } });
     expect(riga.status).toBe("FAILED");
     expect(riga.lastError).toContain("il fornitore");
@@ -514,7 +561,7 @@ describe("la pulizia della storia", () => {
 
   it("un lavoro ancora in attesa non si tocca, anche se accodato mesi fa", async () => {
     const { jobId } = await accoda({ runAt: new Date(Date.now() - 200 * 86_400_000) });
-    expect(await pulisciLavoriVecchi()).toBe(0);
+    await pulisciLavoriVecchi();
     expect(await db.backgroundJob.findUnique({ where: { id: jobId } })).not.toBeNull();
   });
 });

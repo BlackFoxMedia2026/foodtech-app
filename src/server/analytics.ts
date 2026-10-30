@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
 import { spesaPerOspite } from "./spesa-ospiti";
 
 const SLOT_BUCKETS = ["12-14", "14-17", "17-19", "19-21", "21-23", "23+"] as const;
@@ -12,8 +13,40 @@ type BookingRow = {
   source: string;
 };
 
-function bucketOf(startsAt: Date) {
-  const h = new Date(startsAt).getHours();
+/**
+ * Ora e giorno della settimana di un istante **nel fuso del locale**.
+ *
+ * Con `getHours()`/`getDay()` del processo — UTC su Vercel — la cena delle
+ * 20:30 finiva nella fascia «17-19» e quella dell'una del sabato sul venerdì:
+ * la mappa delle ore di punta era spostata di due ore. Un formattatore solo
+ * per tutta la lettura: qui si passa su ogni prenotazione del periodo.
+ */
+type Orologio = (istante: Date) => { ora: number; giorno: number };
+
+function orologioDel(timeZone: string): Orologio {
+  const f = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    hour: "2-digit",
+    hourCycle: "h23",
+  });
+  const GIORNI: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return (istante) => {
+    const p = f.formatToParts(istante);
+    return {
+      ora: Number(p.find((x) => x.type === "hour")?.value ?? 0),
+      giorno: GIORNI[p.find((x) => x.type === "weekday")?.value ?? "Sun"] ?? 0,
+    };
+  };
+}
+
+async function orologioDelLocale(venueId: string): Promise<Orologio> {
+  const venue = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
+  return orologioDel(venue?.timezone ?? DEFAULT_VENUE_TIMEZONE);
+}
+
+function bucketOf(startsAt: Date, orologio: Orologio) {
+  const h = orologio(startsAt).ora;
   return h < 14 ? "12-14" : h < 17 ? "14-17" : h < 19 ? "17-19" : h < 21 ? "19-21" : h < 23 ? "21-23" : "23+";
 }
 
@@ -40,23 +73,23 @@ function coreMetrics(bookings: BookingRow[]) {
   };
 }
 
-function slotsOf(bookings: BookingRow[]) {
+function slotsOf(bookings: BookingRow[], orologio: Orologio) {
   const slotMap: Record<string, number> = Object.fromEntries(SLOT_BUCKETS.map((b) => [b, 0]));
   bookings.forEach((b) => {
-    slotMap[bucketOf(b.startsAt)] += b.partySize;
+    slotMap[bucketOf(b.startsAt, orologio)] += b.partySize;
   });
   return Object.entries(slotMap).map(([slot, covers]) => ({ slot, covers }));
 }
 
-function heatmapOf(bookings: BookingRow[]) {
+function heatmapOf(bookings: BookingRow[], orologio: Orologio) {
   const heatmapMap: Record<string, number> = {};
   for (const weekday of WEEKDAY_LABELS) {
     for (const slot of SLOT_BUCKETS) heatmapMap[`${weekday}|${slot}`] = 0;
   }
   bookings.forEach((b) => {
-    const jsDay = new Date(b.startsAt).getDay();
+    const jsDay = orologio(b.startsAt).giorno;
     const weekday = WEEKDAY_LABELS[(jsDay + 6) % 7];
-    heatmapMap[`${weekday}|${bucketOf(b.startsAt)}`] += b.partySize;
+    heatmapMap[`${weekday}|${bucketOf(b.startsAt, orologio)}`] += b.partySize;
   });
   return Object.entries(heatmapMap).map(([key, covers]) => {
     const [weekday, slot] = key.split("|");
@@ -116,12 +149,13 @@ async function guestMetrics(venueId: string, bookings: BookingRow[], from: Date,
 export async function getAnalytics(venueId: string, from: Date, to: Date) {
   const bookings = await fetchBookingsInRange(venueId, from, to);
   const gm = await guestMetrics(venueId, bookings, from, to);
+  const orologio = await orologioDelLocale(venueId);
 
   return {
     ...coreMetrics(bookings),
     ...gm,
-    slots: slotsOf(bookings),
-    heatmap: heatmapOf(bookings),
+    slots: slotsOf(bookings, orologio),
+    heatmap: heatmapOf(bookings, orologio),
     sources: sourcesOf(bookings),
   };
 }

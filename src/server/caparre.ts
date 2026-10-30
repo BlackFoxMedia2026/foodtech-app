@@ -231,6 +231,7 @@ export async function chiediCaparra(
           caparraPerPersonaCents: true,
           caparraFissaCents: true,
           caparraOreAnnulloGratis: true,
+          timezone: true,
         },
       },
     },
@@ -329,7 +330,7 @@ export async function chiediCaparra(
               /* Nella descrizione ci vanno **i coperti e il giorno**: è quello
                  che il cliente deve riconoscere per essere sicuro di pagare la
                  cena giusta. */
-              description: `${booking.partySize} persone · ${booking.startsAt.toLocaleDateString("it-IT", { dateStyle: "full" })}`,
+              description: `${booking.partySize} persone · ${booking.startsAt.toLocaleDateString("it-IT", { dateStyle: "full", timeZone: booking.venue.timezone })}`,
             },
           },
         },
@@ -502,6 +503,34 @@ export async function segnaCaparraPagata(
 }
 
 /**
+ * La caparra è tornata indietro, in tutto o in parte.
+ *
+ * La chiama `registraRimborso`, cioè il webhook `charge.refunded`: è la strada
+ * da cui passano sia il pulsante «Restituisci» sia un rimborso fatto a mano
+ * dal cruscotto di Stripe, e solo così la prenotazione non resta «incassata»
+ * per denaro che il cliente ha già riavuto.
+ *
+ * Un rimborso **parziale** non ha uno stato suo: il locale tiene ancora una
+ * parte della caparra, quindi resta `CAPTURED`, e `depositCents` diventa
+ * quella parte. È la cifra che l'agenda mostra come «pagata» e quella che
+ * l'avviso di una disdetta direbbe di restituire — mostrare la caparra
+ * intera vorrebbe dire chiedere di restituire due volte gli stessi euro.
+ */
+export async function segnaCaparraRimborsata(
+  tx: Prisma.TransactionClient,
+  bookingId: string,
+  esito: { totale: boolean; trattenutaCents: number },
+): Promise<void> {
+  await tx.booking.update({
+    where: { id: bookingId },
+    data:
+      esito.totale || esito.trattenutaCents <= 0
+        ? { depositStatus: "REFUNDED" }
+        : { depositStatus: "CAPTURED", depositCents: esito.trattenutaCents },
+  });
+}
+
+/**
  * Restituisce la caparra.
  *
  * ## Perché non è automatico
@@ -519,17 +548,24 @@ export async function rimborsaCaparra(
   bookingId: string,
   opz: { actor?: AuditActor } = {},
 ): Promise<{ rimborsatoCents: number }> {
+  /* Anche una caparra già rimborsata **in parte** — dal cruscotto di Stripe,
+     di solito — ha ancora qualcosa da restituire: il residuo. Cercando solo
+     `SUCCEEDED` la si dichiarava «mai pagata», e i soldi rimasti al locale non
+     si potevano più restituire da qui. */
   const payment = await db.payment.findFirst({
-    where: { venueId, bookingId, kind: "DEPOSIT", status: "SUCCEEDED" },
+    where: { venueId, bookingId, kind: "DEPOSIT", status: { in: ["SUCCEEDED", "PARTIALLY_REFUNDED"] } },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
       amountCents: true,
+      refundedCents: true,
       stripePaymentId: true,
       venue: { select: { stripeAccountId: true } },
     },
   });
   if (!payment) throw new CaparraError("nessuna_caparra_pagata");
+  const residuoCents = Math.max(0, payment.amountCents - payment.refundedCents);
+  if (residuoCents <= 0) throw new CaparraError("nessuna_caparra_pagata");
   if (!payment.stripePaymentId || !payment.venue.stripeAccountId) {
     throw new CaparraError("stripe_non_pronto");
   }
@@ -538,14 +574,22 @@ export async function rimborsaCaparra(
   if (!stripe) throw new CaparraError("stripe_non_pronto");
 
   await stripe.refunds.create(
-    { payment_intent: payment.stripePaymentId },
+    // Senza `amount` Stripe restituisce tutto quello che resta: si scrive lo
+    // stesso, perché la cifra che va nel registro sia quella che è partita.
+    { payment_intent: payment.stripePaymentId, amount: residuoCents },
     {
       ...perConto(payment.venue.stripeAccountId),
       /* Idempotente sul pagamento: due clic su «restituisci» non fanno due
          rimborsi. Lo stato lo scrive il webhook `charge.refunded`, che è la
          strada da cui passano anche i rimborsi fatti dal cruscotto di Stripe:
-         una sola verità su quanto è tornato indietro. */
-      ...chiaveIdempotenza(`rimborso-${payment.id}`),
+         una sola verità su quanto è tornato indietro.
+
+         Dopo un rimborso parziale la chiave cambia con quanto è già tornato:
+         la stessa di prima Stripe la riconoscerebbe come la richiesta di
+         allora, con un altro importo, e la rifiuterebbe. */
+      ...chiaveIdempotenza(
+        payment.refundedCents > 0 ? `rimborso-${payment.id}-${payment.refundedCents}` : `rimborso-${payment.id}`,
+      ),
     },
   );
 
@@ -560,11 +604,11 @@ export async function rimborsaCaparra(
     "booking",
     bookingId,
     {
-      importoCents: payment.amountCents,
+      importoCents: residuoCents,
     },
   );
 
-  return { rimborsatoCents: payment.amountCents };
+  return { rimborsatoCents: residuoCents };
 }
 
 /**

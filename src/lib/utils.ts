@@ -46,29 +46,45 @@ export function formatNumber(value: number, decimali = 1, locale = "it-IT") {
   }).format(value);
 }
 
-export function formatDateTime(date: Date | string, locale = "it-IT") {
-  return new Intl.DateTimeFormat(locale, {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(date));
+/*
+ * I tre formattatori di data e ora prendono un `timeZone` facoltativo.
+ *
+ * Senza, rispondono nel fuso di chi esegue: nel browser è quello di chi
+ * guarda, ed è giusto per i componenti client. Sul **server** è il fuso del
+ * processo — su Vercel UTC — e una prenotazione delle 20:30 a Roma finiva
+ * nell'email di conferma come «18:30». Chi formatta sul server passa il fuso
+ * del locale (`Venue.timezone`); un fuso scritto male non fa cadere niente, si
+ * ripiega su quello di riferimento.
+ */
+function conFuso(
+  locale: string,
+  opzioni: Intl.DateTimeFormatOptions,
+  timeZone?: string,
+): Intl.DateTimeFormat {
+  if (!timeZone) return new Intl.DateTimeFormat(locale, opzioni);
+  try {
+    return new Intl.DateTimeFormat(locale, { ...opzioni, timeZone });
+  } catch {
+    return new Intl.DateTimeFormat(locale, { ...opzioni, timeZone: "Europe/Rome" });
+  }
 }
 
-export function formatDate(date: Date | string, locale = "it-IT") {
-  return new Intl.DateTimeFormat(locale, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(date));
+export function formatDateTime(date: Date | string, locale = "it-IT", timeZone?: string) {
+  return conFuso(
+    locale,
+    { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" },
+    timeZone,
+  ).format(new Date(date));
 }
 
-export function formatTime(date: Date | string, locale = "it-IT") {
-  return new Intl.DateTimeFormat(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(date));
+export function formatDate(date: Date | string, locale = "it-IT", timeZone?: string) {
+  return conFuso(locale, { day: "2-digit", month: "short", year: "numeric" }, timeZone).format(
+    new Date(date),
+  );
+}
+
+export function formatTime(date: Date | string, locale = "it-IT", timeZone?: string) {
+  return conFuso(locale, { hour: "2-digit", minute: "2-digit" }, timeZone).format(new Date(date));
 }
 
 export function initials(name?: string | null) {

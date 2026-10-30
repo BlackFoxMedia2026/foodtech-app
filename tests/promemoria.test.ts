@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { signBookingToken, verifyBookingToken } from "@/lib/booking-token";
 import { alreadySent, esitoResend } from "@/server/messaging/send";
-import { sendDueReminders, REMINDER_KINDS } from "@/server/reminders";
+import { sendDueReminders, REMINDER_KINDS, testoPromemoriaSms } from "@/server/reminders";
 import { applyBookingAction, readBookingByToken } from "@/server/guest-actions";
 
 /**
@@ -30,8 +30,9 @@ let guestSoloTelefonoId = "";
 
 /** Una prenotazione fra ~2h45: dentro la finestra del promemoria "3 ore". */
 async function prenotazioneFraPoco(
-  status: "CONFIRMED" | "CANCELLED" | "ARRIVED" = "CONFIRMED",
+  status: "CONFIRMED" | "CANCELLED" | "ARRIVED" | "SEATED" | "PENDING" = "CONFIRMED",
   chi: boolean | "solo-telefono" = true,
+  fraOre = 2.7,
 ) {
   const guest = chi === "solo-telefono" ? guestSoloTelefonoId : chi ? guestId : null;
   return db.booking.create({
@@ -39,7 +40,7 @@ async function prenotazioneFraPoco(
       venueId,
       guestId: guest,
       partySize: 2,
-      startsAt: new Date(Date.now() + 2.7 * 3600 * 1000),
+      startsAt: new Date(Date.now() + fraOre * 3600 * 1000),
       status,
       source: "PHONE",
     },
@@ -274,16 +275,140 @@ describe("chi ha lasciato solo il numero", () => {
   });
 });
 
+describe("il promemoria di una richiesta non ancora accettata", () => {
+  it("non dice «ti aspettiamo»: dice che è in attesa del locale", async () => {
+    /* Per SMS: in locale il canale email non c'è, e il testo si legge dal
+       registro allo stesso modo. */
+    const ambiente = { ...process.env };
+    process.env.BREVO_API_KEY = "chiave-di-prova";
+    process.env.BREVO_SMS_SENDER = "Tavolo";
+    const booking = await prenotazioneFraPoco("PENDING", "solo-telefono");
+    const esiti = await sendDueReminders();
+    process.env = ambiente;
+    const mio = esiti.find((e) => e.bookingId === booking.id && e.kind === REMINDER_KINDS.hours);
+    expect(mio?.outcome).toBe("queued");
+
+    const riga = await db.messageLog.findFirstOrThrow({
+      where: { bookingId: booking.id, kind: REMINDER_KINDS.hours },
+    });
+    expect(riga.bodyPreview).toContain("in attesa di conferma");
+    expect(riga.bodyPreview).not.toContain("ti aspettiamo");
+
+    await db.backgroundJob.deleteMany({ where: { venueId } });
+    await db.messageLog.deleteMany({ where: { bookingId: booking.id } });
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("l'SMS lo dice senza lettere accentate", () => {
+    const testo = testoPromemoriaSms({
+      nome: "Anna",
+      locale: "Da Mario",
+      quando: "domani",
+      ora: "20:30",
+      persone: 2,
+      linkAnnulla: "https://x.test/b/abc",
+      inAttesa: true,
+    });
+    expect(testo).toContain("in attesa di conferma");
+    expect(testo).not.toContain("ti aspettiamo");
+    expect(/[^\x00-\x7F]/.test(testo)).toBe(false);
+  });
+});
+
 describe("l'ospite risponde dal link", () => {
-  it("conferma", async () => {
+  it("conferma: resta confermata, e il registro dice che l'ospite ha risposto", async () => {
     const booking = await prenotazioneFraPoco("CONFIRMED");
-    await db.booking.update({ where: { id: booking.id }, data: { status: "PENDING" } });
 
     const esito = await applyBookingAction(signBookingToken(booking.id, "confirm"));
     expect(esito.ok).toBe(true);
 
     const riletta = await db.booking.findUnique({ where: { id: booking.id } });
     expect(riletta?.status).toBe("CONFIRMED");
+    const riga = await db.auditLog.findFirst({
+      where: { entityId: booking.id, action: "booking.guest_confirmed" },
+    });
+    expect(riga?.actorId).toBe("guest");
+
+    await db.auditLog.deleteMany({ where: { entityId: booking.id } });
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("«Sì, ci sono» non approva una richiesta che il locale non ha ancora accettato", async () => {
+    /* Il difetto: il clic dell'ospite scriveva `CONFIRMED` su una richiesta
+       dal sito ancora da valutare. Il locale si trovava un tavolo promesso
+       che non aveva mai accettato. */
+    const booking = await prenotazioneFraPoco("PENDING");
+
+    const esito = await applyBookingAction(signBookingToken(booking.id, "confirm"));
+    expect(esito.ok).toBe(true);
+    if (esito.ok) {
+      expect(esito.status).toBe("PENDING");
+      expect(esito.message).toContain("in attesa di conferma");
+    }
+
+    const riletta = await db.booking.findUnique({ where: { id: booking.id } });
+    expect(riletta?.status).toBe("PENDING");
+
+    await db.auditLog.deleteMany({ where: { entityId: booking.id } });
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("«Sì, ci sono» su un tavolo già seduto non lo riporta indietro", async () => {
+    const booking = await prenotazioneFraPoco("SEATED");
+    const seduti = new Date(Date.now() - 20 * 60_000);
+    await db.booking.update({ where: { id: booking.id }, data: { arrivedAt: seduti, seatedAt: seduti } });
+
+    const esito = await applyBookingAction(signBookingToken(booking.id, "confirm"));
+    expect(esito.ok).toBe(true);
+
+    const riletta = await db.booking.findUnique({ where: { id: booking.id } });
+    expect(riletta?.status).toBe("SEATED");
+    expect(riletta?.seatedAt?.getTime()).toBe(seduti.getTime());
+
+    await db.auditLog.deleteMany({ where: { entityId: booking.id } });
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("annullare dal link avvisa la sala, come una disdetta dal gestionale", async () => {
+    /* Prima scriveva lo stato da sé: niente annuncio, niente avviso della
+       caparra, contatori dell'ospite fermi. */
+    const booking = await prenotazioneFraPoco();
+    const esito = await applyBookingAction(signBookingToken(booking.id, "cancel"));
+    expect(esito.ok).toBe(true);
+
+    const avviso = await db.notification.findFirst({
+      where: { venueId, kind: "BOOKING_CANCELLED", meta: { path: ["bookingId"], equals: booking.id } },
+    });
+    expect(avviso).not.toBeNull();
+    const riletta = await db.booking.findUnique({ where: { id: booking.id } });
+    expect(riletta?.arrivedAt).toBeNull();
+    expect(riletta?.seatedAt).toBeNull();
+
+    await db.notification.deleteMany({ where: { venueId } });
+    await db.auditLog.deleteMany({ where: { entityId: booking.id } });
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("non annulla una cena il cui orario è già passato", async () => {
+    const booking = await prenotazioneFraPoco("CONFIRMED", true, -0.5);
+    const esito = await applyBookingAction(signBookingToken(booking.id, "cancel"));
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) expect(esito.code).toBe("too_late");
+
+    const riletta = await db.booking.findUnique({ where: { id: booking.id } });
+    expect(riletta?.status).toBe("CONFIRMED");
+
+    await db.auditLog.deleteMany({ where: { entityId: booking.id } });
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("non annulla dal link un tavolo già seduto", async () => {
+    const booking = await prenotazioneFraPoco("SEATED");
+    const esito = await applyBookingAction(signBookingToken(booking.id, "cancel"));
+    expect(esito.ok).toBe(false);
+
+    const riletta = await db.booking.findUnique({ where: { id: booking.id } });
+    expect(riletta?.status).toBe("SEATED");
 
     await db.auditLog.deleteMany({ where: { entityId: booking.id } });
     await db.booking.delete({ where: { id: booking.id } });
@@ -333,6 +458,13 @@ describe("l'ospite risponde dal link", () => {
     const esito = await applyBookingAction(signBookingToken(booking.id, "view"));
     expect(esito.ok).toBe(false);
     if (!esito.ok) expect(esito.code).toBe("not_allowed");
+    await db.booking.delete({ where: { id: booking.id } });
+  });
+
+  it("la pagina sa dire che la richiesta è ancora in attesa", async () => {
+    const booking = await prenotazioneFraPoco("PENDING");
+    const vista = await readBookingByToken(signBookingToken(booking.id, "confirm"));
+    expect(vista?.inAttesa).toBe(true);
     await db.booking.delete({ where: { id: booking.id } });
   });
 

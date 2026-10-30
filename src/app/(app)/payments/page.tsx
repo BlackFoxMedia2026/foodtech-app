@@ -152,7 +152,7 @@ export default async function PaymentsPage() {
                 {items.map((p) => (
                   <tr key={p.id}>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      {formatDateTime(p.paidAt ?? p.createdAt)}
+                      {formatDateTime(p.paidAt ?? p.createdAt, "it-IT", ctx.venue.timezone)}
                     </td>
                     <td className="px-3 py-2">
                       {KIND_LABEL[p.kind]}

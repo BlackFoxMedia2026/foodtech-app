@@ -640,3 +640,39 @@ describe("l'omaggio allegato a un'automazione", () => {
     expect(await db.coupon.count({ where: { venueId, guestId: g.id } })).toBe(1);
   });
 });
+
+describe("le regole del marketing valgono anche qui", () => {
+  const G = 3;
+  const compleanno = () => {
+    const b = piu(G);
+    return new Date(Date.UTC(1990, b.getUTCMonth(), b.getUTCDate()));
+  };
+
+  it("lascia fuori chi si è disiscritto, anche se la casella dice ancora sì", async () => {
+    await ospite("Disiscritta", { birthday: compleanno(), unsubscribedAt: piu(-10) });
+    const { pronti } = await resolveDestinatari(venueId, "compleanno", G, ORA);
+    expect(pronti).toHaveLength(0);
+  });
+
+  it("lascia fuori un indirizzo in lista di soppressione, scritto in qualunque modo", async () => {
+    const g = await ospite("Soppressa", { birthday: compleanno() });
+    await db.demSuppression.create({ data: { venueId, email: g.email!.toLowerCase(), reason: "COMPLAINT" } });
+    await db.guest.update({ where: { id: g.id }, data: { email: g.email!.toUpperCase() } });
+    const { pronti } = await resolveDestinatari(venueId, "compleanno", G, ORA);
+    expect(pronti).toHaveLength(0);
+    await db.demSuppression.deleteMany({ where: { venueId } });
+  });
+
+  it("il messaggio porta il link di disiscrizione e l'intestazione per il clic nel programma di posta", async () => {
+    const g = await ospite("ConLink", { totalVisits: 3, lastVisitAt: piu(-61) });
+    await updateAutomation(venueId, "non_torna", { active: true, giorni: 60 });
+    await runAutomation(venueId, "non_torna", { now: ORA });
+
+    const lavoro = await db.backgroundJob.findFirstOrThrow({ where: { venueId, kind: "message.send" } });
+    const payload = lavoro.payload as { body: string; headers?: Record<string, string> };
+    expect(payload.body).toContain("/api/unsubscribe?token=");
+    expect(payload.body).toContain(g.id);
+    expect(payload.headers?.["List-Unsubscribe"]).toMatch(/^<.*\/api\/unsubscribe\?token=.+>$/);
+    expect(payload.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+  });
+});

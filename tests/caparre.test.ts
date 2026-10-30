@@ -13,7 +13,7 @@ import {
   segnaCaparraPagata,
   type Politica,
 } from "@/server/caparre";
-import { registraIncasso } from "@/server/pagamenti-tavolo";
+import { registraIncasso, registraRimborso } from "@/server/pagamenti-tavolo";
 
 /**
  * La caparra sulla prenotazione.
@@ -482,6 +482,83 @@ describe("restituire la caparra", () => {
       (await db.booking.findUniqueOrThrow({ where: { id: b.id } }))
         .depositStatus,
     ).toBe("CAPTURED");
+  });
+
+  /* Il rimborso fatto dal cruscotto di Stripe arriva solo come
+     `charge.refunded`: se la prenotazione non lo sapesse, resterebbe
+     «incassata» e alla disdetta partirebbe «caparra da restituire» per
+     denaro che il cliente ha già riavuto. */
+  it("un rimborso totale arrivato da Stripe segna la caparra restituita", async () => {
+    const b = await db.booking.create({
+      data: { venueId, guestId, partySize: 10, startsAt: DOMANI, depositStatus: "CAPTURED", depositCents: 10_000 },
+      select: { id: true },
+    });
+    await db.payment.create({
+      data: {
+        venueId,
+        bookingId: b.id,
+        kind: "DEPOSIT",
+        status: "SUCCEEDED",
+        amountCents: 10_000,
+        stripePaymentId: `pi_${PREFISSO}${b.id}`,
+      },
+    });
+
+    await registraRimborso({ paymentIntentId: `pi_${PREFISSO}${b.id}`, rimborsatoCents: 10_000 });
+
+    const dopo = await db.booking.findUniqueOrThrow({ where: { id: b.id } });
+    expect(dopo.depositStatus).toBe("REFUNDED");
+    expect(await avvisaCaparraDaRestituire(venueId, { ...dopo, startsAt: DOMANI })).toBe(false);
+  });
+
+  it("un rimborso parziale lascia «incassata» solo la parte trattenuta", async () => {
+    const b = await db.booking.create({
+      data: { venueId, guestId, partySize: 10, startsAt: DOMANI, depositStatus: "CAPTURED", depositCents: 10_000 },
+      select: { id: true },
+    });
+    await db.payment.create({
+      data: {
+        venueId,
+        bookingId: b.id,
+        kind: "DEPOSIT",
+        status: "SUCCEEDED",
+        amountCents: 10_000,
+        stripePaymentId: `pi_${PREFISSO}${b.id}`,
+      },
+    });
+
+    await registraRimborso({ paymentIntentId: `pi_${PREFISSO}${b.id}`, rimborsatoCents: 4_000 });
+
+    const dopo = await db.booking.findUniqueOrThrow({ where: { id: b.id } });
+    expect(dopo.depositStatus).toBe("CAPTURED");
+    expect(dopo.depositCents).toBe(6_000);
+  });
+
+  /* Dopo un rimborso parziale il pagamento è `PARTIALLY_REFUNDED`: cercando
+     solo `SUCCEEDED` si rispondeva «nessuna caparra pagata». Qui si arriva
+     fino a Stripe (che nei test non è pronto): vuol dire che il residuo è
+     stato riconosciuto come rimborsabile. */
+  it("il residuo di una caparra rimborsata in parte si può ancora restituire", async () => {
+    const b = await db.booking.create({
+      data: { venueId, guestId, partySize: 10, startsAt: DOMANI, depositStatus: "CAPTURED", depositCents: 6_000 },
+      select: { id: true },
+    });
+    await db.payment.create({
+      data: {
+        venueId,
+        bookingId: b.id,
+        kind: "DEPOSIT",
+        status: "PARTIALLY_REFUNDED",
+        amountCents: 10_000,
+        refundedCents: 4_000,
+        stripePaymentId: "pi_prova",
+      },
+    });
+    await expect(rimborsaCaparra(venueId, b.id)).rejects.toThrow("stripe_non_pronto");
+
+    // Rimborsata per intero: lì sì, non resta niente.
+    await db.payment.updateMany({ where: { bookingId: b.id }, data: { refundedCents: 10_000 } });
+    await expect(rimborsaCaparra(venueId, b.id)).rejects.toThrow("nessuna_caparra_pagata");
   });
 
   it("l'errore porta un codice, non una frase da leggere a caso", () => {
