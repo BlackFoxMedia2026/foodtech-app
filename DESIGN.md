@@ -914,3 +914,45 @@ coda in attesa, la frase che dice a cosa serve la pagina. Un nome lo scrive
 ancora **solo chi ne ha uno vero e proprio**: un ospite, una prenotazione, una
 campagna, una sala. Quelli non sono titoli di pagina, sono il soggetto di
 quella schermata.
+
+## 14. Il Servizio: testata a capsula, corsia, scheda a tre fasce
+
+Dal 29 ottobre 2026 (commit `4a197b6`, `38198e3`). La pagina era confusa:
+sei numeri in alto, testate scritte sullo stesso fondo delle schede, e in
+fondo a ogni scheda tre grammatiche diverse (pastiglie, un filo, la nota per
+esteso). Quattro regole, tutte in `globals.css` accanto a `.capsula-tavolo`.
+
+**Niente cruscotto sopra il lavoro.** La fascia dei sei numeri non c'è più:
+ogni cifra sta nella testata del passo a cui appartiene («13 persone · entro
+60 min», «14 persone · max 32 min», «29 coperti · 7/19 tavoli»).
+
+**La testata si stacca dal lavoro.** `.testa-passo` è la **stessa capsula**
+della testata di tabella (`--table-head-luce`, `--testa-capsula-ombra`), alta
+68 px fissi, raggio 14 px. Il riassunto non va mai a capo, si taglia con i
+puntini: le tre testate restano alla stessa quota. Il numero a destra è
+`.testa-passo-conto`, una pastiglia chiara col rilievo delle pastiglie morbide
+(`--relief-chip-*`). Sotto, separata da uno spazio, la **corsia**
+(`.corsia-passo`): un incavo color carta che porta le schede e, da `xl`,
+scorre da sola mentre la testata resta ferma. I comandi di un passo (il filtro
+30/60/90) stanno sulla riga del primo gruppo, non in una riga loro.
+
+**La scheda ha tre fasce, sempre nello stesso ordine.**
+1. *Testa*: l'ora (il tavolo, per chi è seduto), il nome a 17 px, VIP in
+   maiuscoletto oro, una sola azione.
+2. *Dati*, a 15 px: persone, tavolo, tempo. Il tavolo è una pastiglia neutra
+   con l'etichetta e basta («T12»); diventa oro pieno (`.tavolo-in-chiusura`)
+   solo oltre l'ora di fine.
+3. *Piede* (`.piede-scheda`): le cose da sapere, la nota, la caparra, su una
+   fascia un tono sotto, a 14 px, separate da puntini. L'icona resta solo
+   dove porta un tono (attenzione, cosa bella). Senza niente da dire, il piede
+   non c'è.
+
+Chi è seduto senza niente da chiedere è **una riga sola** (`compatta`): la
+scheda intera serve a chi sta per liberarsi.
+
+**Due verdi, due ruoli.** La capsula è il verde della casa (`#2c5545`): dice
+*dove sei*. L'azione della scheda è un verde salvia più chiaro
+(`.azione-servizio`, `#4f826d` con la luce che scende dall'alto al centro come
+nei tondi degli strumenti): dice *cosa fare*. Non oro: l'oro in questa pagina
+vuol dire ritardo e tavolo oltre l'ora. Non lo stesso verde della capsula: i
+due livelli si confonderebbero.
