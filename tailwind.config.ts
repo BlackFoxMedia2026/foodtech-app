@@ -237,6 +237,18 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        /*
+          L'entrata delle finestre (`Dialog`). Non può usare `slide-up`: la
+          finestra è centrata con `translate(-50%, -50%)`, e un keyframe che
+          scrive `transform: translateY(8px)` la sovrascrive per tutta la
+          durata — la finestra partiva in basso a destra, spostata di metà
+          della sua misura, e poi scattava al centro. Qui il centraggio è
+          dentro ogni fotogramma.
+        */
+        "finestra-entra": {
+          from: { opacity: "0", transform: "translate(-50%, calc(-50% + 8px)) scale(0.985)" },
+          to: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
+        },
         mesh: {
           "0%, 100%": { opacity: "0.5", transform: "translate(0, 0) scale(1)" },
           "50%": { opacity: "0.85", transform: "translate(3%, -3%) scale(1.05)" },
@@ -265,6 +277,7 @@ const config: Config = {
       animation: {
         "fade-in": "fade-in 220ms ease-out",
         "slide-up": "slide-up 240ms ease-out",
+        "finestra-entra": "finestra-entra 220ms cubic-bezier(0.22, 1, 0.36, 1)",
         mesh: "mesh 18s ease-in-out infinite",
         "cambio-area": "cambio-area 300ms cubic-bezier(0.22, 1, 0.36, 1)",
         respiro: "respiro 2500ms ease-in-out infinite",

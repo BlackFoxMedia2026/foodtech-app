@@ -706,6 +706,20 @@ async function creaMenuDemo(venueId: string) {
     },
   ];
 
+  /*
+    Le foto dei piatti demo (3 novembre 2026): stanno in `public/demo/piatti`,
+    una per piatto, col nome del piatto in minuscolo e senza accenti. Il conto
+    del Servizio mostra le schede dei piatti con la loro foto, e una carta
+    tutta di segnaposto non fa vedere com'è il prodotto vero.
+  */
+  const fotoDemo = (nome: string) =>
+    `/demo/piatti/${nome
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")}.webp`;
+
   let quantiPiatti = 0;
   for (const [i, sezione] of carta.entries()) {
     const categoria = await db.menuCategory.create({
@@ -722,6 +736,7 @@ async function creaMenuDemo(venueId: string) {
           available: piatto.available ?? true,
           allergens: piatto.allergens ?? [],
           dietary: piatto.dietary ?? [],
+          imageUrl: fotoDemo(piatto.name),
           ordering: j,
         },
       });

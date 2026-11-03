@@ -160,7 +160,7 @@ export function TestataOspite({
           troncato a metà non è un numero e «Non riceve le comuni…» non è uno
           stato.
         */}
-        <div className="flex min-w-0 flex-1 basis-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        <div className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:basis-0">
           {ospite.email && (
             <a
               href={`mailto:${ospite.email}`}
@@ -168,7 +168,7 @@ export function TestataOspite({
               className="flex min-w-0 items-center gap-1.5 transition-colors duration-150 hover:text-accent-strong"
             >
               <Mail className="h-3.5 w-3.5 shrink-0 text-tertiary-foreground" aria-hidden="true" />
-              <span className="truncate">{ospite.email}</span>
+              <span className="break-all sm:truncate">{ospite.email}</span>
             </a>
           )}
           {ospite.phone && (

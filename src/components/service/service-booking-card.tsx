@@ -49,6 +49,8 @@ export function ServiceBookingCard({
   canManage,
   onChanged,
   compatta = false,
+  entrata = false,
+  inChiusura: nelGruppoChiusura = false,
 }: {
   booking: ServiceBooking;
   timezone: string;
@@ -57,10 +59,17 @@ export function ServiceBookingCard({
   onChanged: () => void;
   /** Una riga sola: per chi è seduto e non chiede niente. */
   compatta?: boolean;
+  /** È appena arrivata dal passo a sinistra: entra scivolando da sinistra. */
+  entrata?: boolean;
+  /** Sta nel gruppo «In chiusura»: il tavolo sta finendo. */
+  inChiusura?: boolean;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [contoAperto, setContoAperto] = useState(false);
+  /* Il conto è stato chiuso da questa scheda: chiudendo la finestra si libera
+     il tavolo. */
+  const [contoChiuso, setContoChiuso] = useState(false);
   const [couponAperto, setCouponAperto] = useState(false);
   const [pickerFor, setPickerFor] = useState<"seat" | "move" | null>(null);
   const [azioniAperte, setAzioniAperte] = useState(false);
@@ -169,6 +178,22 @@ export function ServiceBookingCard({
    * cinquanta volte» e «quella che fai due volte» la porta `principale`: la
    * prima resta anche sulla card chiusa, le altre si aprono toccando la card.
    */
+  /*
+    Cosa serve davvero, momento per momento (3 novembre 2026, rivisto con chi
+    lavora in sala):
+
+    - **chi deve arrivare** (attesi, in ritardo): arrivato, no-show, chiama,
+      tavolo. Il coupon no: se si dà, si dà quando sono arrivati;
+    - **arrivati**: accomoda, tavolo, coupon, scheda. Né conto né chiama: il
+      conto si chiede quando si è finito, e chi è davanti a te non si chiama;
+    - **seduti**: libera, tavolo, conto, coupon, scheda. Chiama no, sono lì;
+    - **in chiusura**: conto, coupon, scheda. Né «Libera» né chiama né cambia
+      tavolo: il gesto è il conto, e chiuderlo libera il tavolo (quando si
+      chiude la finestra, dopo aver detto i punti al cliente). Un tavolo che
+      sta finendo non si sposta più, semmai prima. Il collegamento col sistema
+      di pagamento del locale verrà dopo.
+  */
+  const daArrivare = booking.status === "CONFIRMED" || booking.status === "PENDING";
   const azioni: AzioneCard[] = [];
   if (canManage) {
     if (booking.status === "CONFIRMED" || booking.status === "PENDING") {
@@ -214,7 +239,9 @@ export function ServiceBookingCard({
       });
     }
 
-    if (booking.status === "SEATED") {
+    // In chiusura «Libera» non c'è: lì il gesto è il conto, e chiuderlo
+    // libera il tavolo da sé.
+    if (booking.status === "SEATED" && !nelGruppoChiusura) {
       azioni.push({
         chiave: "done",
         etichetta: "Libera il tavolo",
@@ -243,7 +270,7 @@ export function ServiceBookingCard({
       });
     }
 
-    if (booking.tableId && booking.status !== "COMPLETED") {
+    if (booking.tableId && booking.status !== "COMPLETED" && !nelGruppoChiusura) {
       azioni.push({
         chiave: "move",
         etichetta: "Cambia tavolo",
@@ -256,12 +283,13 @@ export function ServiceBookingCard({
       });
     }
 
-    if (booking.status === "SEATED" || booking.status === "ARRIVED") {
+    if (booking.status === "SEATED") {
       azioni.push({
         chiave: "conto",
         etichetta: `Apri il conto di ${booking.guestName}`,
         corta: "Conto",
         icona: Receipt,
+        principale: nelGruppoChiusura,
         onClick: () => {
           setAzioniAperte(false);
           setContoAperto(true);
@@ -269,7 +297,7 @@ export function ServiceBookingCard({
       });
     }
 
-    if (booking.status !== "COMPLETED") {
+    if (booking.status === "ARRIVED" || booking.status === "SEATED") {
       azioni.push({
         chiave: "coupon",
         etichetta: `Usa un coupon per ${booking.guestName}`,
@@ -282,7 +310,7 @@ export function ServiceBookingCard({
       });
     }
 
-    if (booking.phone) {
+    if (booking.phone && daArrivare) {
       azioni.push({
         chiave: "tel",
         etichetta: `Chiama ${booking.guestName}`,
@@ -389,6 +417,9 @@ export function ServiceBookingCard({
       : []),
   ];
 
+  /** Le sole cose a cui stare attenti: l'unico dettaglio sulla scheda chiusa. */
+  const attenzione = booking.daSapere.filter((r) => r.tono === "attenzione").map((r) => r.testo);
+
   /** Il tempo: il ritardo, quando si libera, fra quanto arriva. */
   const tempo =
     booking.lateBy > 0 ? (
@@ -434,8 +465,13 @@ export function ServiceBookingCard({
         if (!clicSullaCard(e) || secondarie.length === 0) return;
         setAzioniAperte((v) => !v);
       }}
+      /* Il nome con cui la vista la ritrova per farla volare da una colonna
+         all'altra (`volo-schede.ts`). La scheda resta ferma finché la
+         fotografia nuova non arriva: è lei a partire, non una dissolvenza. */
+      data-scheda={booking.id}
       className={cn(
-        "surface overflow-hidden border",
+        "surface scheda-passo overflow-hidden border",
+        entrata && "scheda-entra",
         rigaCompatta ? "rounded-xl" : "rounded-2xl",
         secondarie.length > 0 && "cursor-pointer",
         booking.lateBy > 0 ? "border-accent/60" : inChiusura ? "border-border-strong" : "border-border",
@@ -492,41 +528,54 @@ export function ServiceBookingCard({
           </div>
 
           {/* Aperte le azioni, i dettagli si tacciono: restano l'ora e il nome
-              — che dicono *su chi* si sta per agire — e sotto i bersagli. */}
-          {!azioniAperte && (
-            <>
-              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 px-4 pb-3.5 pt-2 text-[15px] text-foreground/80">
-                <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-                  <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  {booking.partySize}
-                  <span className="sr-only">{booking.partySize === 1 ? "persona" : "persone"}</span>
-                </span>
-                {!seduto &&
-                  (capsulaTavolo || (
-                    <span className="inline-flex h-[26px] items-center rounded-lg border border-dashed border-border px-2 text-sm text-muted-foreground">
-                      senza tavolo
-                    </span>
-                  ))}
-                {tempo}
-              </div>
+              — che dicono *su chi* si sta per agire — e sotto i bersagli.
 
-              {voci.length > 0 && (
-                <div className="piede-scheda flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5 text-sm font-medium">
-                  {voci.map((v, i) => (
-                    <Fragment key={v.chiave}>
-                      {i > 0 && (
-                        <span className="h-1 w-1 shrink-0 rounded-full bg-current opacity-30" aria-hidden="true" />
-                      )}
-                      <span className="min-w-0 max-w-full" title={v.titolo}>
-                        {v.contenuto}
-                      </span>
-                    </Fragment>
-                  ))}
-                </div>
+              Chiusa, la scheda dice **solo l'essenziale** (3 novembre 2026):
+              quanti, dove, quando, e un segnale solo se c'è qualcosa a cui
+              stare attenti. Il resto — preferenze, visite, note, caparra — si
+              legge toccando la scheda: in sala si guarda la colonna, non si
+              legge ogni scheda. */}
+          {!azioniAperte && (
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 pb-3.5 pt-2 text-[15px] text-foreground/80">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                <Users className="h-4 w-4 opacity-60" aria-hidden="true" />
+                {booking.partySize}
+                <span className="sr-only">{booking.partySize === 1 ? "persona" : "persone"}</span>
+              </span>
+              {!seduto &&
+                (capsulaTavolo || (
+                  <span className="inline-flex h-[26px] items-center rounded-lg border border-dashed border-border px-2 text-sm text-muted-foreground">
+                    senza tavolo
+                  </span>
+                ))}
+              {tempo}
+              {attenzione.length > 0 && (
+                <span
+                  className="segnale-attenzione ml-auto inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-semibold"
+                  title={attenzione.join(" · ")}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{attenzione[0]}</span>
+                  {attenzione.length > 1 && <span className="shrink-0 opacity-75">+{attenzione.length - 1}</span>}
+                </span>
               )}
-            </>
+            </div>
           )}
         </>
+      )}
+
+      {/* Aperta: prima tutto quello che c'è da sapere, poi i gesti. */}
+      {azioniAperte && voci.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pb-3 pt-1 text-sm font-medium">
+          {voci.map((v, i) => (
+            <Fragment key={v.chiave}>
+              {i > 0 && <span className="h-1 w-1 shrink-0 rounded-full bg-current opacity-30" aria-hidden="true" />}
+              <span className="min-w-0 max-w-full" title={v.titolo}>
+                {v.contenuto}
+              </span>
+            </Fragment>
+          ))}
+        </div>
       )}
 
       {azioniAperte && (
@@ -540,7 +589,15 @@ export function ServiceBookingCard({
       {contoAperto && (
         <BillDialog
           open
-          onOpenChange={setContoAperto}
+          onOpenChange={(v) => {
+            setContoAperto(v);
+            // Conto chiuso e finestra chiusa: il tavolo ha finito, si libera.
+            if (!v && contoChiuso && booking.status === "SEATED") {
+              setContoChiuso(false);
+              void cambiaStato("done", "COMPLETED", `Conto chiuso: tavolo di ${chiSi} liberato`);
+            }
+          }}
+          onContoChiuso={() => setContoChiuso(true)}
           bookingId={booking.id}
           guestName={booking.guestName}
           currency={currency}

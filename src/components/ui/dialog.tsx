@@ -31,7 +31,7 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "surface fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 p-6 animate-slide-up",
+        "surface fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 p-6 animate-finestra-entra",
         // Se il contenuto supera la finestra (un form che si apre, una lista lunga)
         // il dialog non può crescere fuori schermo: si ferma e scorre dentro.
         "scorrimento max-h-[calc(100dvh-2rem)] overflow-y-auto",

@@ -7,48 +7,31 @@ import { WalkInDialog } from "@/components/bookings/walk-in-dialog";
 import { cn } from "@/lib/utils";
 
 /**
- * I gesti della Panoramica, in testata e a riposo ridotti alla sola icona.
+ * I gesti della Panoramica, in testata, con il nome scritto accanto all'icona.
  *
  * Erano quattro riquadri larghi in mezzo alla pagina — tre più «Nuova
  * prenotazione» in testata, che è **lo stesso gesto** dieci centimetri più su
  * — e occupavano 268 px nella colonna di destra: lo spazio in cui adesso ci
- * sta il grafico dell'andamento senza far scorrere niente. Un pulsante grande
- * non è più facile da trovare di un'icona in testata, se la testata è il posto
- * dove i comandi stanno in tutte le altre schermate.
+ * sta il grafico dell'andamento senza far scorrere niente.
  *
- * Perché espandere invece di mostrare un tooltip: il testo esce **dentro** il
- * pulsante, quindi il bersaglio cresce con l'etichetta e il gesto si può
- * completare senza rimettere a fuoco. E non c'è il ritardo di 700 ms del
- * tooltip su una schermata che si usa durante il servizio.
+ * Per un periodo a riposo erano solo icone e il nome usciva al passaggio:
+ * quattro tondi uguali in fila non si distinguono a colpo d'occhio, e durante
+ * il servizio nessuno passa il puntatore per leggere. Ora dal `lg` in su il
+ * nome è sempre scritto; sotto restano tondi, perché lì la riga è
+ * contesa col saluto e la barra in basso ha già i nomi.
  *
- * Le tre regole che lo rendono usabile e non solo animato:
- *
- * - **il nome accessibile non dipende dall'espansione**: `aria-label` sta sul
- *   comando e vale sempre, anche col testo chiuso (che non è nascosto a
- *   schermo ma tagliato, e comunque non si legge);
- * - **si apre anche col tabulatore**, non solo col puntatore: `focus-visible`
- *   fa lo stesso lavoro di `hover`, quindi chi naviga da tastiera vede la
- *   parola prima di premere invio;
- * - **niente scatti**: cresce `max-width` e il margine del testo, e il gruppo
- *   è ancorato a destra — quindi si allarga verso il saluto, che è troncabile,
- *   invece di spingere fuori schermo i pulsanti accanto. Con
- *   `prefers-reduced-motion` la transizione non c'è e il testo appare secco.
+ * Il nome accessibile sta in `aria-label` sul comando e vale anche quando
+ * l'etichetta non si vede.
  */
 const COMANDO =
-  "group/azione tocco-comodo inline-flex h-10 items-center justify-center rounded-full px-2.5 transition-[filter,box-shadow] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+  "tocco-comodo inline-flex h-10 items-center justify-center rounded-full px-2.5 transition-[filter,box-shadow] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:pl-3 lg:pr-4";
 
 /** Il gesto principale porta il tono delle chiamate all'azione: crema su verde. */
 const TONO_PRIMARIO = "pulsante-cta bg-cta text-cta-ink shadow-[shadow:var(--button-accent-shadow)]";
 const TONO = "pastiglia finish-sage-tile border border-[#2f5b4a] text-ink";
 
-/*
-  `max-w-0` + `overflow-hidden` invece di `hidden`: una larghezza si può
-  animare, un `display` no. Il margine entra nella transizione insieme alla
-  larghezza, altrimenti a riposo resterebbero 8 px di aria dopo l'icona e i
-  pulsanti chiusi non sarebbero tondi.
-*/
 const ETICHETTA =
-  "max-w-0 overflow-hidden whitespace-nowrap text-xs font-semibold uppercase tracking-wider opacity-0 transition-[max-width,opacity,margin] duration-200 ease-out motion-reduce:transition-none group-hover/azione:ml-2 group-hover/azione:max-w-[12rem] group-hover/azione:opacity-100 group-focus-visible/azione:ml-2 group-focus-visible/azione:max-w-[12rem] group-focus-visible/azione:opacity-100";
+  "ml-2 hidden whitespace-nowrap text-xs font-semibold uppercase tracking-wider lg:inline";
 
 const ICONA = "h-5 w-5 shrink-0";
 

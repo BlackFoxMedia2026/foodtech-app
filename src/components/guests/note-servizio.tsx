@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, Loader2, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Lock, Sparkles } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { readApiError } from "@/lib/api-client";
@@ -118,10 +118,11 @@ export function NoteServizio({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <Campo
         id="note-allergie"
         icona={AlertTriangle}
+        tono="allerta"
         etichetta="Allergie e intolleranze"
         aiuto="Compare come segnale sulla prenotazione e nella riga del servizio."
         valore={bozza.allergies}
@@ -132,21 +133,23 @@ export function NoteServizio({
       <Campo
         id="note-preferenze"
         icona={Sparkles}
+        tono="gusto"
         etichetta="Preferenze"
         aiuto="Come gli piace essere accolto: la sala, il tavolo, il tipo di accoglienza."
         valore={bozza.preferenze}
         placeholder="Es. tavolo tranquillo, preferisce la sala Garden"
-        righe={3}
+        righe={2}
         onChange={(v) => setBozza((b) => ({ ...b, preferenze: v }))}
       />
       <Campo
         id="note-riservate"
-        icona={ShieldAlert}
+        icona={Lock}
+        tono="riservato"
         etichetta="Note riservate"
         aiuto="Restano dentro il locale: non entrano in nessun messaggio al cliente."
         valore={bozza.privateNotes}
         placeholder="Es. il 12 agosto ha contestato il conto, risolto dal direttore"
-        righe={3}
+        righe={2}
         onChange={(v) => setBozza((b) => ({ ...b, privateNotes: v }))}
       />
 
@@ -157,6 +160,7 @@ export function NoteServizio({
         alla conferma quando è fatto: una riga che dice «Salva» su una scheda
         che nessuno ha toccato è un invito a premere per niente.
       */}
+      {(cambiato || stato === "fatto") && (
       <div className="flex h-9 items-center gap-3">
         {cambiato && (
           <Button type="button" size="sm" onClick={salva} disabled={stato === "salvo"}>
@@ -170,9 +174,41 @@ export function NoteServizio({
           </span>
         )}
       </div>
+      )}
     </div>
   );
 }
+
+/*
+  Ogni campo è una scheda col suo dischetto (3 novembre 2026), non
+  un'etichetta sopra un riquadro grigio: tre tinte per tre cose diverse.
+  L'allergia è oro, e quando è scritta la scheda intera si accende — è
+  l'unica delle tre che cambia il servizio stasera. Le preferenze sono verdi,
+  le note riservate neutre col lucchetto.
+*/
+const TONI = {
+  allerta: {
+    disco: "bg-accent/25 text-accent-strong",
+    scheda: "border-accent/50 bg-accent/15",
+    testata: "bg-accent/10",
+    pastiglia: "bg-accent/20 text-accent-strong",
+    chi: "in servizio",
+  },
+  gusto: {
+    disco: "vetro kpi-pastiglia",
+    scheda: "",
+    testata: "bg-card-sunken/70",
+    pastiglia: "bg-secondary/70 text-foreground",
+    chi: "in sala",
+  },
+  riservato: {
+    disco: "vetro kpi-pastiglia",
+    scheda: "",
+    testata: "bg-card-sunken/70",
+    pastiglia: "bg-secondary/70 text-muted-foreground",
+    chi: "solo staff",
+  },
+} as const;
 
 function Campo({
   id,
@@ -182,31 +218,60 @@ function Campo({
   valore,
   placeholder,
   righe,
+  tono,
   onChange,
 }: {
   id: string;
-  icona: React.ComponentType<{ className?: string }>;
+  icona: React.ComponentType<{ className?: string; stroke?: string }>;
   etichetta: string;
   aiuto: string;
   valore: string;
   placeholder: string;
   righe: number;
+  tono: keyof typeof TONI;
   onChange: (v: string) => void;
 }) {
+  const t = TONI[tono];
+  const acceso = tono === "allerta" && valore.trim() !== "";
+  /*
+    Un foglietto con la sua intestazione: la riga in alto dice cos'è e chi lo
+    vede (la pastiglia a destra), sotto si scrive su carta bianca, senza un
+    secondo bordo dentro il primo. La spiegazione lunga sta nel suggerimento
+    e per i lettori di schermo: tre paragrafi di istruzioni sopra tre campi
+    erano la parte più alta della scheda.
+  */
   return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="flex items-center gap-2 text-sm font-medium">
-        <Icona className="h-3.5 w-3.5 text-accent-strong" aria-hidden="true" />
-        {etichetta}
-      </label>
-      <p className="text-xs text-tertiary-foreground">{aiuto}</p>
+    <div
+      className={`overflow-hidden rounded-xl border shadow-sm transition-colors focus-within:border-border-strong ${
+        acceso ? t.scheda : "border-border/70"
+      }`}
+    >
+      <div className={`flex items-center gap-2.5 px-3 py-2 ${acceso ? "" : t.testata}`} title={aiuto}>
+        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${t.disco}`}>
+          <Icona
+            className="h-4 w-4"
+            stroke={tono === "allerta" ? "currentColor" : "url(#trattoVetro)"}
+            aria-hidden="true"
+          />
+        </span>
+        <label htmlFor={id} className="min-w-0 flex-1 text-sm font-medium leading-snug">
+          {etichetta}
+        </label>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${t.pastiglia}`}>
+          {t.chi}
+        </span>
+      </div>
+      <p id={`${id}-aiuto`} className="sr-only">
+        {aiuto}
+      </p>
       <Textarea
         id={id}
         rows={righe}
         value={valore}
         placeholder={placeholder}
+        aria-describedby={`${id}-aiuto`}
         onChange={(e) => onChange(e.target.value)}
-        className="resize-y"
+        className="min-h-[3.5rem] resize-y rounded-none border-0 border-t border-border/60 bg-card px-3 py-2.5 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
       />
     </div>
   );

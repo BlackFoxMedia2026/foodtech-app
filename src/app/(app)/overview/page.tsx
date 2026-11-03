@@ -53,8 +53,7 @@ export default async function OverviewPage() {
         </div>
 
         {/* I gesti stanno qui, dove stanno i comandi in ogni altra schermata:
-            a riposo quattro icone, il nome esce passandoci sopra o arrivandoci
-            col tabulatore. Prima erano tre riquadri larghi in mezzo alla
+            quattro pulsanti col nome scritto (sotto `lg` solo l'icona). Prima erano tre riquadri larghi in mezzo alla
             pagina, e lo spazio che liberano è quello in cui ora ci sta il
             grafico dell'andamento senza far scorrere niente. */}
         <QuickActions />

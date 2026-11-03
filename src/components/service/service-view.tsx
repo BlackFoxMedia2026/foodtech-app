@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, ListOrdered, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,15 +11,23 @@ import type { ServiceSnapshot } from "@/server/service";
 import { ServiceBookingCard } from "@/components/service/service-booking-card";
 import { ServiceWaitlistCard } from "@/components/service/service-waitlist-card";
 import { ServiceSwitch } from "@/components/service/service-switch";
-import { AvvisiServizio } from "@/components/service/avvisi-servizio";
 import { PassoServizio, SelettorePassi } from "@/components/service/flusso-servizio";
-import type { ServiceInsight } from "@/server/service-intelligence";
 import { useServizioVivo } from "@/lib/use-servizio-vivo";
 import { RiepilogoTelefono } from "@/components/telefono/riepilogo-servizio";
 import { CambiamentiRecenti } from "@/components/service/cambiamenti-recenti";
+import { misuraSchede, volaScheda, ATTRIBUTO_SCHEDA } from "@/components/service/volo-schede";
 
 /** I tre momenti, nell'ordine in cui li vive chi entra. */
 type Passo = "arrivo" | "attesa" | "accomodati";
+
+/** In quale passo sta ogni prenotazione: 0 fuori, 1 in piedi, 2 a tavola. */
+function colonne(s: ServiceSnapshot) {
+  const m = new Map<string, number>();
+  for (const b of [...s.late, ...s.next]) m.set(b.id, 0);
+  for (const b of s.arrived) m.set(b.id, 1);
+  for (const b of s.seated) m.set(b.id, 2);
+  return m;
+}
 
 /**
  * La schermata del servizio.
@@ -33,27 +41,29 @@ type Passo = "arrivo" | "attesa" | "accomodati";
  *   accomodati: i tre momenti del cliente dentro il locale, nell'ordine in
  *   cui accadono. Il perché della divisione — e perché «in ritardo» e
  *   «arrivati» hanno cambiato colonna — sta in `flusso-servizio.tsx`.
- * - **Gli avvisi sono un livello trasversale**, non una fascia: stanno dietro
- *   un pulsante accanto all'interruttore Elenco/Sala. Prima si allargavano
- *   quando c'era più da fare, e per farlo spingevano il lavoro sotto la
- *   piega.
+ * - **Niente avvisi in pagina.** Prima erano una fascia che si allargava
+ *   quando c'era più da fare, poi un pulsante «Da tenere d'occhio» accanto
+ *   all'interruttore; adesso quello che chiede di essere fatto arriva dalle
+ *   notifiche, e la pagina comincia con il lavoro.
  * - **Su tablet due passi affiancati e il terzo sotto, su telefono uno per
  *   volta.** Comprimere tre colonne in 390 px produce tre strisce
  *   illeggibili.
  */
 export function ServiceView({
   initial,
-  insights,
   canManage,
 }: {
   initial: ServiceSnapshot;
-  insights: ServiceInsight[];
   canManage: boolean;
 }) {
   const router = useRouter();
   const [snapshot, setSnapshot] = useState(initial);
   const [window_, setWindow] = useState(60);
   const [passo, setPasso] = useState<Passo>("arrivo");
+  /* La griglia dei passi e dove stavano le schede prima dell'ultima
+     fotografia: servono a farle volare da una colonna all'altra. */
+  const griglia = useRef<HTMLDivElement>(null);
+  const posizioniPrima = useRef(new Map<string, DOMRect>());
   // Scarica la fotografia. Il *quando* non è più affare di questo componente:
   // ci pensa `useServizioVivo`, che chiede al server ogni cinque secondi se
   // qualcosa è cambiato e chiama questa funzione solo se la risposta è sì.
@@ -64,12 +74,59 @@ export function ServiceView({
       });
       // Una rete che salta per un istante non deve svuotare la schermata:
       // resta l'ultima fotografia buona, con l'ora a cui è stata presa.
-      if (res.ok) setSnapshot(await res.json());
+      if (res.ok) {
+        const nuova = await res.json();
+        // Prima che la fotografia nuova cambi il DOM: dove sta ogni scheda.
+        posizioniPrima.current = misuraSchede(griglia.current);
+        setSnapshot(nuova);
+      }
     },
     [window_],
   );
 
   const { ultimo, aggiornaOra } = useServizioVivo(scarica, initial.versione);
+
+  /*
+    Le schede appena passate al passo dopo (3 novembre 2026).
+
+    Confrontando la fotografia nuova con la precedente si sa chi ha cambiato
+    colonna: quelle schede volano dal posto di prima a quello nuovo
+    (`volo-schede.ts`), in avanti col gesto e all'indietro con «Annulla». Vale
+    anche per i gesti fatti da un collega su un altro tablet: chi guarda vede
+    il movimento, non un nome che sparisce.
+
+    È lo schema «stato precedente nello stato» di React: niente effetti,
+    niente riferimenti letti durante il disegno.
+  */
+  const [traccia, setTraccia] = useState(() => ({
+    foto: initial,
+    dove: colonne(initial),
+    entrate: new Set<string>(),
+  }));
+  if (traccia.foto !== snapshot) {
+    const dove = colonne(snapshot);
+    const entrate = new Set<string>();
+    for (const [id, col] of dove) {
+      const prima = traccia.dove.get(id);
+      // Avanti e indietro: «Annulla» riporta la scheda dov'era, e torna
+      // volando come era partita.
+      if (prima !== undefined && prima !== col) entrate.add(id);
+    }
+    setTraccia({ foto: snapshot, dove, entrate });
+  }
+  const entrata = (id: string) => traccia.entrate.has(id);
+
+  // Le schede passate al passo dopo volano dal posto di prima a quello nuovo.
+  useLayoutEffect(() => {
+    if (traccia.entrate.size === 0) return;
+    const chiudi: (() => void)[] = [];
+    for (const id of traccia.entrate) {
+      const da = posizioniPrima.current.get(id);
+      const el = griglia.current?.querySelector<HTMLElement>(`[${ATTRIBUTO_SCHEDA}="${CSS.escape(id)}"]`);
+      if (da && el) chiudi.push(volaScheda(el, da));
+    }
+    return () => chiudi.forEach((f) => f());
+  }, [traccia.entrate]);
 
   const aggiorna = useCallback(
     (finestra?: number) =>
@@ -157,57 +214,27 @@ export function ServiceView({
     */
     <div className="schermo animate-fade-in gap-4">
       {/*
-        Qui non c'è più un titolo: sta nella testata, accanto al marchio del
-        locale. Questa riga tiene solo i comandi — interruttore del servizio,
-        avvisi, ultimo cambiamento — e sono allineati a destra perché a
-        sinistra non c'è più niente che li bilanci.
-
-        Il titolo qui era già compatto di proposito: fra titolo, sei riquadri e
-        cinque avvisi la prima colonna operativa cominciava a 850 px, cioè
-        sotto la piega su un portatile. Adesso quei pixel non li spende
-        nessuno.
+        Qui non c'è più una riga di comandi. L'interruttore Elenco/Sala sta
+        nella testata, accanto al titolo (`ServiceSwitch` ci va con un
+        portale); gli avvisi «Da tenere d'occhio» sono usciti dalla pagina —
+        quello che chiede di essere fatto arriva dalle notifiche.
       */}
-      <header className="fissa flex flex-wrap items-center justify-end gap-3">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <ServiceSwitch />
+      <ServiceSwitch />
 
-          {/* Gli avvisi: un bersaglio accanto all'interruttore, non una
-              fascia che spinge giù il lavoro. */}
-          <AvvisiServizio insights={insights} />
+      {/*
+        Chi ha cambiato cosa (§65).
 
-          {/*
-            Chi ha cambiato cosa (§65).
-
-            La schermata si aggiorna da sola, e il cambiamento appariva senza
-            dire chi: due persone sullo stesso servizio da due tablet vedevano
-            un tavolo assegnarsi da solo, e la seconda rifaceva il lavoro della
-            prima o si fermava a chiedere. Adesso c'è scritto — e al posto
-            dell'ora dell'ultimo aggiornamento, che era la stessa cosa detta
-            senza informazione: «aggiornato alle 21:14» dice che il programma
-            funziona, non cosa è successo.
-
-            L'ora resta nel suggerimento, e quando non è cambiato niente torna
-            la frase di prima.
-          */}
-          {snapshot.cambiamenti.length > 0 ? (
-            <CambiamentiRecenti
-              cambiamenti={snapshot.cambiamenti}
-              ultimo={ultimo}
-            />
-          ) : (
-            ultimo && (
-              <span className="hidden t-nota sm:inline">
-                aggiornato alle{" "}
-                {ultimo.toLocaleTimeString("it-IT", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })}
-              </span>
-            )
-          )}
+        La schermata si aggiorna da sola, e il cambiamento appariva senza
+        dire chi: due persone sullo stesso servizio da due tablet vedevano
+        un tavolo assegnarsi da solo, e la seconda rifaceva il lavoro della
+        prima o si fermava a chiedere. Adesso c'è scritto, in una nota a
+        destra che compare solo quando c'è qualcosa da dire.
+      */}
+      {snapshot.cambiamenti.length > 0 && (
+        <div className="fissa hidden justify-end sm:flex">
+          <CambiamentiRecenti cambiamenti={snapshot.cambiamenti} ultimo={ultimo} />
         </div>
-      </header>
+      )}
 
       {/*
         Il riquadro della chiamata **non è più qui**.
@@ -272,10 +299,11 @@ export function ServiceView({
       */}
       {/* La regione elastica: i passi prendono l'altezza che avanza e scorrono
           al loro interno. */}
-      <div className="fill-scroll grid gap-4 pr-0.5 md:grid-cols-2 xl:grid-cols-3 xl:grid-rows-[minmax(0,1fr)] xl:overflow-hidden">
+      <div ref={griglia} className="fill-scroll grid gap-4 pr-0.5 md:grid-cols-2 xl:grid-cols-3 xl:grid-rows-[minmax(0,1fr)] xl:overflow-hidden">
         {/* Fuori: chi deve ancora entrare, compreso chi è in ritardo. */}
         <PassoServizio
           numero={1}
+          tinta="arrivo"
           titolo="In arrivo"
           visibile={passo === "arrivo"}
           conteggio={inArrivo.length}
@@ -342,6 +370,7 @@ export function ServiceView({
             stanno nello stesso posto. */}
         <PassoServizio
           numero={2}
+          tinta="attesa"
           titolo="In attesa"
           visibile={passo === "attesa"}
           conteggio={gruppiInAttesa}
@@ -371,6 +400,7 @@ export function ServiceView({
               {snapshot.arrived.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
+                  entrata={entrata(b.id)}
                   booking={b}
                   timezone={snapshot.timezone}
                   currency={snapshot.currency}
@@ -412,6 +442,7 @@ export function ServiceView({
             è un modo di essere seduti, non un terzo elenco. */}
         <PassoServizio
           numero={3}
+          tinta="accomodati"
           titolo="Accomodati"
           visibile={passo === "accomodati"}
           className="md:col-span-2 xl:col-span-1"
@@ -427,6 +458,8 @@ export function ServiceView({
               {snapshot.freeingSoon.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
+                  inChiusura
+                  entrata={entrata(b.id)}
                   booking={b}
                   timezone={snapshot.timezone}
                   currency={snapshot.currency}
@@ -448,6 +481,7 @@ export function ServiceView({
               {seduti.map((b) => (
                 <ServiceBookingCard
                   key={b.id}
+                  entrata={entrata(b.id)}
                   booking={b}
                   timezone={snapshot.timezone}
                   currency={snapshot.currency}

@@ -820,3 +820,178 @@
     --vi-vetro-chip: #f7f3ea;
   }
 }
+
+/* ========================================================================== */
+/*  Il Servizio in tre verdi (3 novembre 2026)                                */
+/* ========================================================================== */
+
+/*
+  I tre passi del Servizio erano tre colonne identiche, e da lontano — ed è
+  da lontano che si guarda questa schermata — non si capiva dov'era cosa.
+
+  Adesso ogni passo ha **un verde della casa**, dal più chiaro al più scuro
+  nell'ordine del flusso: salvia chiaro chi è fuori e deve arrivare, verde
+  medio chi è dentro e aspetta, il verde scuro della marca chi è a tavola.
+  Più si va avanti, più il colore si fa pieno. Nessuna tinta fuori dalla
+  palette: una prima versione con blu e ambra usciva dallo stile.
+
+  Le testate sono tessere della Panoramica (vetro chiaro, dischetto bombato):
+  il verde del passo sta nel dischetto, nel velo della corsia e nel pulsante
+  dell'azione, a tinta piatta. Niente gradienti lineari né barre laterali:
+  sembravano un'interfaccia d'altri tempi. I titoli restano scritti.
+*/
+[data-passo="arrivo"] {
+  --passo-cupola-luce: #93bba6;
+  --passo-cupola-base: #5f8f78;
+  --passo-cupola-ombra: #4a7562;
+  --passo-segno: #8fb5a2;
+  --passo-azione: #4a8068;
+  --passo-velo: rgba(213, 230, 218, 0.28);
+  --passo-filo: rgba(44, 85, 69, 0.1);
+}
+[data-passo="attesa"] {
+  --passo-cupola-luce: #6d9a84;
+  --passo-cupola-base: #3b6b55;
+  --passo-cupola-ombra: #2a5141;
+  --passo-segno: #3b6b55;
+  --passo-azione: #3b6b55;
+  --passo-velo: rgba(190, 214, 199, 0.45);
+  --passo-filo: rgba(44, 85, 69, 0.14);
+}
+[data-passo="accomodati"] {
+  --passo-cupola-luce: #355e4d;
+  --passo-cupola-base: #1b3d30;
+  --passo-cupola-ombra: #102a20;
+  --passo-segno: #1b3d30;
+  --passo-azione: #1b3d30;
+  --passo-velo: rgba(150, 186, 166, 0.5);
+  --passo-filo: rgba(44, 85, 69, 0.18);
+}
+
+/* Il dischetto della testata: la cupola della Panoramica, nel verde del
+   passo. Bombato come le tessere, la luce in alto a sinistra. */
+:root [data-passo] .kpi-pastiglia,
+:root:has([data-tema="carta"]) .guscio-app [data-passo] .vetro.kpi-pastiglia {
+  background-color: var(--passo-cupola-base);
+  background-image: radial-gradient(
+    circle at 35% 28%,
+    var(--passo-cupola-luce) 0%,
+    var(--passo-cupola-base) 55%,
+    var(--passo-cupola-ombra) 100%
+  );
+}
+
+/* La corsia: un velo verde appena diverso per passo, solo in Carta. */
+:root:has([data-tema="carta"]) [data-passo] .corsia-passo {
+  background-color: var(--passo-velo);
+  box-shadow: inset 0 0 0 1px var(--passo-filo);
+}
+:root:has([data-tema="carta"]) [data-passo] .azione-servizio {
+  background-color: var(--passo-azione);
+  background-image: none;
+  box-shadow: none;
+  color: #fff;
+}
+:root:has([data-tema="carta"]) [data-passo] .azione-servizio:hover {
+  filter: brightness(1.08);
+}
+
+/* La barra di scorrimento della corsia: una capsula sottile nel verde della
+   casa, staccata dal bordo del box, come nel riquadro Prenotazioni. */
+.corsia-scorre::-webkit-scrollbar {
+  width: 12px;
+}
+.corsia-scorre::-webkit-scrollbar-button {
+  display: none;
+}
+.corsia-scorre::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 18px;
+}
+.corsia-scorre::-webkit-scrollbar-thumb {
+  border: 4px solid transparent;
+  border-radius: 999px;
+  background: rgb(44 85 69 / 0.25) padding-box;
+}
+.corsia-scorre:hover::-webkit-scrollbar-thumb {
+  background-color: rgb(44 85 69 / 0.45);
+}
+@supports not selector(::-webkit-scrollbar) {
+  .corsia-scorre {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(44 85 69 / 0.3) transparent;
+  }
+}
+
+/* La copia che vola fra le colonne: sollevata, con l'ombra di chi è in
+   mano. */
+.scheda-in-volo {
+  /* Piena, non di vetro: in volo passa sopra altre schede, e il vetro le
+     lasciava trasparire attraverso il nome. */
+  background-color: #f7f3ea !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow:
+    inset 0 0 0 0.5px #fff,
+    0 22px 40px -14px rgba(16, 32, 26, 0.45) !important;
+}
+
+/* I due segnali della scheda chiusa: l'attenzione (oro) e chi sta arrivando. */
+.segnale-attenzione {
+  color: #7d5510;
+  background: rgba(243, 226, 191, 0.85);
+}
+.segnale-arriva {
+  color: #1f6b3d;
+  background: rgba(213, 232, 218, 0.85);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Il movimento: da sinistra verso destra                                    */
+/* -------------------------------------------------------------------------- */
+
+/*
+  La scheda che passa al passo dopo esce verso destra dalla sua colonna, e
+  nella colonna nuova entra da sinistra con un lampo della tinta del passo
+  in cui arriva. Due mezzi movimenti nella stessa direzione: l'occhio li
+  cuce in uno, e il flusso In arrivo → In attesa → Accomodati si vede.
+*/
+.scheda-passo {
+  transition:
+    transform 340ms var(--vi-curva, ease),
+    opacity 280ms ease;
+}
+.scheda-passo[data-uscente="true"] {
+  transform: translateX(72px) scale(0.98);
+  opacity: 0;
+  pointer-events: none;
+}
+.scheda-entra {
+  animation: scheda-entra 720ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes scheda-entra {
+  0% {
+    transform: translateX(-72px) scale(0.98);
+    opacity: 0;
+    box-shadow: 0 0 0 2px var(--passo-segno, #4a8068);
+  }
+  55% {
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--passo-segno, #4a8068);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scheda-passo {
+    transition: opacity 150ms ease;
+  }
+  .scheda-passo[data-uscente="true"] {
+    transform: none;
+  }
+  .scheda-entra {
+    animation: none;
+  }
+}

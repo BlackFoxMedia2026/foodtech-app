@@ -54,7 +54,7 @@ export type VisitaStorica = {
   /** Quanto è rimasto, in minuti: solo se c'è sia l'accomodamento sia la chiusura. */
   permanenzaMin: number | null;
   /** I piatti di quella sera, i più cari per primi. Vuoto se non c'è conto. */
-  piatti: { nome: string; quantita: number }[];
+  piatti: { nome: string; quantita: number; imageUrl: string | null; categoria: string | null }[];
 };
 
 export type ProdottoPreferito = {
@@ -540,7 +540,12 @@ export async function getCrmOspite(
           .slice()
           .sort((x, y) => y.priceCents * y.quantity - x.priceCents * x.quantity)
           .slice(0, 3)
-          .map((r) => ({ nome: r.name, quantita: r.quantity })),
+          .map((r) => ({
+            nome: r.name,
+            quantita: r.quantity,
+            imageUrl: r.MenuItem?.imageUrl ?? null,
+            categoria: r.MenuItem?.MenuCategory?.name ?? null,
+          })),
       };
     });
 

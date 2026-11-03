@@ -1,6 +1,15 @@
 "use client";
 
+import { CalendarClock, Hourglass, UtensilsCrossed } from "lucide-react";
+import { TrattiSfumati } from "@/components/ui/tessera-kpi";
 import { cn } from "@/lib/utils";
+
+/** L'icona di ogni passo, nel dischetto come nelle tessere della Panoramica. */
+const ICONA = {
+  arrivo: CalendarClock,
+  attesa: Hourglass,
+  accomodati: UtensilsCrossed,
+} as const;
 
 /**
  * Il flusso di sala: tre passi, non tre colonne.
@@ -70,6 +79,7 @@ import { cn } from "@/lib/utils";
  */
 export function PassoServizio({
   numero,
+  tinta,
   titolo,
   riassunto,
   conteggio,
@@ -80,6 +90,14 @@ export function PassoServizio({
 }: {
   /** Solo per i lettori di schermo: «Passo 2 di 3». */
   numero: 1 | 2 | 3;
+  /**
+   * La tinta del passo (3 novembre 2026): tre verdi della casa, dal più
+   * chiaro al più scuro nell'ordine del flusso. Prima i tre passi avevano la
+   * stessa capsula verde e le stesse schede color carta, e da lontano erano
+   * tre colonne uguali: adesso si riconoscono senza leggere il titolo. La
+   * tinta vive in `vetro-ios.css` (`[data-passo]`).
+   */
+  tinta: "arrivo" | "attesa" | "accomodati";
   titolo: string;
   riassunto: React.ReactNode;
   conteggio: number;
@@ -90,25 +108,57 @@ export function PassoServizio({
   className?: string;
   children: React.ReactNode;
 }) {
+  const Icona = ICONA[tinta];
   return (
+    /*
+      `min-h-0` solo da `xl`, dove i tre passi stanno in una riga alta quanto
+      lo schermo e ognuno scorre dentro di sé. Sotto, la griglia ha righe
+      `auto` dentro una regione di altezza fissa: con `min-h-0` la riga poteva
+      stringersi sotto il contenuto, e le schede di «In attesa» uscivano dalla
+      corsia e finivano sopra la testata di «Accomodati». Senza, la riga è alta
+      quanto le sue schede e a scorrere è la regione intera.
+    */
     <section
-      className={cn("flex min-h-0 min-w-0 flex-col gap-3", !visibile && "hidden md:flex", className)}
+      data-passo={tinta}
+      className={cn("flex min-w-0 flex-col gap-3 xl:min-h-0", !visibile && "hidden md:flex", className)}
       aria-label={`Passo ${numero} di 3: ${titolo}`}
     >
-      <div className="testa-passo flex h-[68px] shrink-0 items-center gap-3 rounded-[14px] pl-5 pr-3">
-        <h3 className="shrink-0 whitespace-nowrap text-xl font-bold tracking-[-0.01em]">{titolo}</h3>
-        <p className="min-w-0 flex-1 truncate text-sm opacity-85">{riassunto}</p>
-        <span
-          className="testa-passo-conto flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl font-bold tabular-nums"
-          aria-label={`${conteggio} in questo passo`}
-        >
-          {conteggio}
+      {/*
+        La testata è una **tessera della Panoramica** (3 novembre 2026): vetro
+        chiaro, dischetto verde bombato con l'icona, etichetta in maiuscoletto
+        e il conto in grande. Prima era una capsula a tinta piena, un'altra
+        grammatica rispetto alla dashboard. I tre passi si distinguono dal
+        verde del dischetto, dal più chiaro al più scuro nell'ordine del
+        flusso (`[data-passo]` in `vetro-ios.css`).
+      */}
+      <div className="vetro card-notch flex shrink-0 items-center gap-3 px-4 py-3">
+        <TrattiSfumati />
+        <span className="vetro kpi-pastiglia grid h-12 w-12 shrink-0 place-items-center rounded-full" aria-hidden="true">
+          <Icona className="h-6 w-6" stroke="url(#trattoVetro)" />
         </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="t-etichetta text-sm text-kpi-label-muted">{titolo}</h3>
+          <p className="flex min-w-0 items-baseline gap-2.5">
+            <span
+              className="font-mono text-3xl leading-9 tabular-nums text-foreground"
+              aria-label={`${conteggio} in questo passo`}
+            >
+              {conteggio}
+            </span>
+            <span className="min-w-0 truncate text-sm text-muted-foreground">{riassunto}</span>
+          </p>
+        </div>
       </div>
 
-      <div className="corsia-passo flex min-h-0 flex-1 flex-col gap-3 rounded-3xl p-3.5 xl:overflow-y-auto">
-        {comandi && <div className="flex justify-end">{comandi}</div>}
-        {children}
+      {/* Il box e ciò che scorre sono due elementi: il box taglia gli angoli,
+          dentro scorre l'elenco. Così la barra di scorrimento sta **dentro**
+          la corsia, staccata dal bordo, invece di correre sul filo del box
+          come se fosse fuori. */}
+      <div className="corsia-passo flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl">
+        <div className="corsia-scorre flex min-h-0 flex-1 flex-col gap-3 p-3.5 xl:overflow-y-auto">
+          {comandi && <div className="flex justify-end">{comandi}</div>}
+          {children}
+        </div>
       </div>
     </section>
   );

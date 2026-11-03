@@ -130,21 +130,26 @@ export function VenueSwitcher({
         className={cn(
           "overflow-hidden ease-[cubic-bezier(0.16,1,0.3,1)]",
           reducedMotion ? "transition-none" : "transition-[width,opacity] duration-[400ms]",
-          open ? "w-40 opacity-100" : "w-0 opacity-0",
+          open ? "w-52 opacity-100" : "w-0 opacity-0",
         )}
       >
         <div
           className={cn(
-            "w-40 ease-[cubic-bezier(0.16,1,0.3,1)]",
+            "w-52 ease-[cubic-bezier(0.16,1,0.3,1)]",
             reducedMotion ? "transition-none" : "transition-[opacity,transform] duration-300",
             open ? "translate-x-0 opacity-100 delay-100" : "-translate-x-2 opacity-0 delay-0",
           )}
         >
           <Select value={activeId} onValueChange={pick} disabled={pending} onOpenChange={setSelectOpen}>
-            <SelectTrigger className="h-9 w-40 rounded-lg border-border bg-transparent px-2.5">
-              <div className="flex min-w-0 items-center gap-1.5 truncate">
+            <SelectTrigger className="h-9 w-52 gap-1.5 rounded-lg [&>svg]:shrink-0 border-border bg-transparent px-2.5">
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <SelectValue />
+                {/* Solo il nome: la voce del menu porta anche la città, a
+                    capo, e nel pulsante alto 36 px la seconda riga usciva dal
+                    bordo. */}
+                <SelectValue className="min-w-0">
+                  <span className="block truncate">{attivo?.name}</span>
+                </SelectValue>
               </div>
             </SelectTrigger>
             <SelectContent>

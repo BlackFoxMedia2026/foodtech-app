@@ -112,7 +112,7 @@ export function RoomLiveView({
     if (res.ok) setLive(await res.json());
   }, []);
 
-  const { ultimo, aggiornaOra: aggiorna } = useServizioVivo(scarica);
+  const { aggiornaOra: aggiorna } = useServizioVivo(scarica);
 
   /*
     Dopo un'azione la mappa si riallinea, ma **il tavolo scelto resta scelto**:
@@ -163,19 +163,9 @@ export function RoomLiveView({
 
   return (
     <div className="schermo animate-fade-in gap-3">
-      {/* Nessun titolo: la testata dice «Servizio» e l'interruttore qui
-          accanto dice quale delle due viste si sta guardando. Scriverlo una
-          terza volta sarebbe spazio tolto alla mappa. */}
-      <header className="flex flex-wrap items-center justify-end gap-3">
-        <div className="flex items-center gap-3">
-          <ServiceSwitch />
-          {ultimo && (
-            <span className="hidden t-nota sm:inline">
-              {ultimo.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-            </span>
-          )}
-        </div>
-      </header>
+      {/* Nessun titolo e nessuna riga di comandi: l'interruttore Elenco/Sala
+          sta nella testata, accanto a «Servizio». */}
+      <ServiceSwitch />
 
       {rooms.length > 1 && (
         <div className="flex flex-wrap gap-1">

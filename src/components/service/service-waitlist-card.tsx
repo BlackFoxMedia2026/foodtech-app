@@ -33,6 +33,9 @@ export function ServiceWaitlistCard({
   const [error, setError] = useState<string | null>(null);
   const [seatOpen, setSeatOpen] = useState(false);
   const [azioniAperte, setAzioniAperte] = useState(false);
+  /* Accomodata, esce scivolando verso «Accomodati», come la scheda di
+     prenotazione. Dopo quattro secondi torna visibile se nulla è cambiato. */
+  const [uscente, setUscente] = useState(false);
 
   async function azione(url: string, body?: unknown) {
     setBusy(true);
@@ -103,8 +106,9 @@ export function ServiceWaitlistCard({
         if (!clicSullaCard(e) || secondarie.length === 0) return;
         setAzioniAperte((v) => !v);
       }}
+      data-uscente={uscente || undefined}
       className={cn(
-        "surface overflow-hidden rounded-2xl border",
+        "surface scheda-passo overflow-hidden rounded-2xl border",
         secondarie.length > 0 && "cursor-pointer",
         entry.overdue ? "border-accent/60" : "border-border",
       )}
@@ -159,28 +163,26 @@ export function ServiceWaitlistCard({
         )}
       </div>
 
+      {/* Solo l'essenziale, su una riga: quanti, da quanto aspettano, e lo
+          stato se non è più «in attesa». L'attesa resta anche con le azioni
+          aperte: è il dato con cui si decide chi accomodare. */}
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 px-4 pb-3.5 pt-2 text-[15px] text-foreground/80">
-        <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-          <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+          <Users className="h-4 w-4 opacity-60" aria-hidden="true" />
           {entry.partySize}
           <span className="sr-only">{entry.partySize === 1 ? "persona" : "persone"}</span>
         </span>
-        {entry.status === "NOTIFIED" && <span className="font-medium text-accent-strong">avvisato</span>}
-        {entry.status === "CONFIRMED" && <span className="font-semibold text-sage-strong">sta arrivando</span>}
-      </div>
-
-      {/* L'attesa sta nel piede e non si tace nemmeno con le azioni aperte: è
-          il dato con cui si decide chi accomodare, e la decisione si prende
-          proprio mentre si guarda il pulsante. */}
-      <p
-        className={cn(
-          "piede-scheda flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold",
-          entry.overdue && "text-accent-strong",
+        <span className={cn("inline-flex items-center gap-1.5", entry.overdue && "font-semibold text-accent-strong")}>
+          <Timer className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
+          {entry.waitingMin === 0 ? "appena entrato" : durataUmana(entry.waitingMin)}
+        </span>
+        {entry.status === "NOTIFIED" && (
+          <span className="segnale-attenzione ml-auto rounded-full px-2.5 py-0.5 text-[13px] font-semibold">avvisato</span>
         )}
-      >
-        <Timer className="h-4 w-4 shrink-0" aria-hidden="true" />
-        {entry.waitingMin === 0 ? "appena entrato" : `in attesa da ${durataUmana(entry.waitingMin)}`}
-      </p>
+        {entry.status === "CONFIRMED" && (
+          <span className="segnale-arriva ml-auto rounded-full px-2.5 py-0.5 text-[13px] font-semibold">sta arrivando</span>
+        )}
+      </div>
 
       {azioniAperte && (
         <div className="px-4 pb-4">
@@ -197,7 +199,11 @@ export function ServiceWaitlistCard({
           partySize={entry.partySize}
           open={seatOpen}
           onOpenChange={setSeatOpen}
-          onSeated={onChanged}
+          onSeated={() => {
+            setUscente(true);
+            window.setTimeout(() => setUscente(false), 4000);
+            onChanged();
+          }}
         />
       )}
     </article>

@@ -122,14 +122,14 @@ export function VisiteChart({ date }: { date: string[] }) {
           tutti, e quello attivo si riconosce senza aprire niente. Un `<select>`
           nasconderebbe tre opzioni su quattro per risparmiare sessanta pixel.
         */}
-        <div className="flex shrink-0 rounded-md border border-border p-0.5" role="group" aria-label="Periodo">
+        <div className="flex shrink-0 rounded-full border border-border bg-card-sunken/70 p-0.5" role="group" aria-label="Periodo">
           {PERIODI.map((p) => (
             <button
               key={p.chiave}
               type="button"
               onClick={() => setPeriodo(p)}
               aria-pressed={p.chiave === periodo.chiave}
-              className={`rounded px-2.5 py-1 text-xs transition-colors ${
+              className={`rounded-full px-3 py-1 text-xs transition-colors ${
                 p.chiave === periodo.chiave
                   ? "bg-secondary font-medium text-foreground"
                   : "text-muted-foreground hover:text-foreground"

@@ -1,16 +1,27 @@
 import Link from "next/link";
 import {
   Armchair,
+  Beef,
+  CakeSlice,
   CalendarDays,
+  ArrowUpRight,
   Clock,
+  Coffee,
+  Fish,
+  Footprints,
   MapPin,
+  Pizza,
+  Salad,
+  Sandwich,
+  Soup,
   TrendingDown,
   TrendingUp,
   Users,
   UtensilsCrossed,
+  Wine,
 } from "lucide-react";
-import { Base } from "@/components/ui/base-del-numero";
-import { formatCurrency, formatDate, formatNumber, formatTime } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 import type {
   Abitudini,
   CategoriaPreferita,
@@ -110,6 +121,76 @@ export function Dato({
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Una cifra in una pastiglia                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Il numero secondario di una sezione, nello stile delle tessere della
+ * Panoramica ma in piccolo: fondo incavato, numero monospaziato, etichetta
+ * sotto in tono basso. Sostituisce le righe di `Dato` in maiuscoletto che,
+ * quattro per riga dentro ogni riquadro, davano alla scheda l'aria di un
+ * foglio di calcolo.
+ *
+ * Nessun testo si tronca: l'etichetta va a capo se deve.
+ */
+export function Cifra({
+  valore,
+  etichetta,
+  nota,
+  tono = "neutro",
+  tinta = "chiara",
+  grande = false,
+}: {
+  valore: React.ReactNode;
+  etichetta: string;
+  nota?: React.ReactNode;
+  tono?: "neutro" | "su" | "giu";
+  /**
+   * Il fondo. `verde` è il verde della tessera con l'inchiostro crema, `oro`
+   * la sabbia dorata: due blocchi accostati con due fondi diversi si
+   * distinguono senza leggere l'etichetta.
+   */
+  tinta?: "chiara" | "verde" | "oro";
+  /** Il numero in grande, quando è il dato principale del riquadro. */
+  grande?: boolean;
+}) {
+  const fondo = {
+    chiara: "border-border/60 bg-card-sunken/70",
+    verde:
+      "border-transparent bg-[linear-gradient(135deg,#1C4A3A_0%,#102B22_100%)] text-cream shadow-[0_8px_18px_rgba(16,43,34,0.25)]",
+    oro: "border-accent/40 bg-[linear-gradient(135deg,#F3E6C4_0%,#E6CF98_100%)] text-clay-ink",
+  }[tinta];
+  const scuro = tinta === "verde";
+  const tinta2 = (verde: string, oro: string, chiara: string) =>
+    scuro ? verde : tinta === "oro" ? oro : chiara;
+  return (
+    <div className={`min-w-0 rounded-xl border px-4 py-3.5 ${fondo}`}>
+      <p
+        className={`font-mono tabular-nums ${grande ? "text-3xl leading-10" : "text-xl leading-7"} ${
+          tinta !== "chiara"
+            ? ""
+            : tono === "su"
+              ? "text-sage-strong"
+              : tono === "giu"
+                ? "text-accent-strong"
+                : "text-foreground"
+        }`}
+      >
+        {valore}
+      </p>
+      <p className={`text-[13px] font-medium leading-snug ${tinta2("text-cream/80", "text-clay-ink/75", "text-muted-foreground")}`}>
+        {etichetta}
+      </p>
+      {nota && (
+        <p className={`mt-0.5 text-[11px] leading-tight ${tinta2("text-cream/60", "text-clay-ink/60", "text-tertiary-foreground")}`}>
+          {nota}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Spesa                                                                     */
 /* -------------------------------------------------------------------------- */
 
@@ -162,33 +243,29 @@ export function SezioneSpesa({
     );
   }
 
+  /*
+    Valore storico e spesa media stanno già nelle tessere in cima alla
+    scheda: ripeterli qui erano due numeri letti due volte. Restano i due che
+    in cima non ci sono — il conto più alto e l'ultimo mese — e la tendenza.
+  */
+  const v = spesa.variazione90;
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4">
-        <Dato
-          etichetta="Valore storico"
-          valore={formatCurrency(spesa.totaleCents, currency)}
-          nota={<Base base="misurato" dettaglio={`Somma dei conti chiusi, ${misurataSu}.`} />}
-          grande
-        />
-        <Dato
-          etichetta="Spesa media"
-          valore={spesa.mediaContoCents != null ? formatCurrency(spesa.mediaContoCents, currency) : null}
-          nota={misurataSu}
-          grande
-        />
-        <Dato
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2.5">
+        <Cifra
           etichetta="Conto più alto"
-          valore={spesa.massimoCents != null ? formatCurrency(spesa.massimoCents, currency) : null}
+          tinta="verde"
           grande
+          valore={spesa.massimoCents != null ? formatCurrency(spesa.massimoCents, currency) : "—"}
+          nota={misurataSu}
         />
-        <Dato
+        <Cifra
           etichetta="Ultimi 30 giorni"
-          // Zero qui è una misura vera — «in questo mese non ha speso» — e non
-          // un dato mancante: i conti ci sono, semplicemente non in questo
-          // periodo.
-          valore={formatCurrency(spesa.ultimi30Cents, currency)}
+          tinta="oro"
           grande
+          // Zero qui è una misura vera — «in questo mese non ha speso» — e
+          // non un dato mancante.
+          valore={formatCurrency(spesa.ultimi30Cents, currency)}
         />
       </div>
 
@@ -197,20 +274,24 @@ export function SezioneSpesa({
         dentro. Una percentuale calcolata su un periodo vuoto è sempre
         «+infinito» o «-100%», che descrive l'aritmetica e non il cliente.
       */}
-      {spesa.variazione90 && (
-        <p className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card-sunken p-3 text-sm">
-          {spesa.variazione90.delta >= 0 ? (
-            <TrendingUp className="h-4 w-4 shrink-0 text-sage-strong" aria-hidden="true" />
-          ) : (
-            <TrendingDown className="h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />
-          )}
-          <span className={spesa.variazione90.delta >= 0 ? "text-sage-strong" : "text-accent-strong"}>
-            {spesa.variazione90.delta >= 0 ? "+" : "−"}
-            {Math.abs(Math.round(spesa.variazione90.delta * 100))}%
+      {v && (
+        <p className="flex items-start gap-2.5 text-sm">
+          <span
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
+              v.delta >= 0 ? "bg-sage/15 text-sage-strong" : "bg-accent/15 text-accent-strong"
+            }`}
+          >
+            {v.delta >= 0 ? (
+              <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <TrendingDown className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {v.delta >= 0 ? "+" : "−"}
+            {Math.abs(Math.round(v.delta * 100))}%
           </span>
           <span className="text-muted-foreground">
-            negli ultimi 90 giorni ({formatCurrency(spesa.variazione90.correnteCents, currency)}) rispetto
-            ai 90 precedenti ({formatCurrency(spesa.variazione90.precedenteCents, currency)})
+            negli ultimi 90 giorni ({formatCurrency(v.correnteCents, currency)}) rispetto ai 90
+            precedenti ({formatCurrency(v.precedenteCents, currency)})
           </span>
         </p>
       )}
@@ -250,38 +331,47 @@ export function ProdottiPreferiti({
     );
   }
 
+  /*
+    Una scheda per piatto, con la sua foto (3 novembre 2026): un elenco di
+    nomi in corpo piccolo si legge, una foto si riconosce. Il numero in
+    classifica sta sulla foto, la barra dice quante sere rispetto al primo.
+  */
+  const massimo = Math.max(...prodotti.map((p) => p.volte), 1);
+
   return (
-    <ol className="divide-y divide-border/60">
+    <ol className="space-y-2.5">
       {prodotti.map((p, i) => (
-        <li key={`${p.menuItemId ?? p.nome}`} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-          {/* Il numero d'ordine in tabellare e a larghezza fissa: una
-              classifica in cui «1.» e «10.» hanno larghezze diverse fa
-              ballare tutti i nomi. */}
-          <span className="w-5 shrink-0 text-sm tabular-nums text-tertiary-foreground">{i + 1}.</span>
-          {p.imageUrl && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={p.imageUrl}
-              alt=""
-              className="h-10 w-10 shrink-0 rounded-md border border-border object-cover"
-              width={40}
-              height={40}
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{p.nome}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {p.categoria ?? "fuori menu"}
-              {p.quantita > p.volte && ` · ${p.quantita} pezzi in tutto`}
-            </p>
+        <li
+          key={`${p.menuItemId ?? p.nome}`}
+          className="flex items-center gap-3 rounded-xl border border-border/60 bg-card-sunken/50 p-2.5"
+        >
+          <div className="relative shrink-0">
+            <FotoPiatto src={p.imageUrl} categoria={p.categoria} className="h-16 w-16 rounded-lg" />
+            <span className="absolute -left-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-card text-[11px] font-semibold tabular-nums shadow-sm ring-1 ring-border">
+              {i + 1}
+            </span>
           </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="break-words text-[15px] font-medium leading-snug">{p.nome}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span className="rounded-full bg-secondary/50 px-2 py-0.5 text-foreground">
+                {p.categoria ?? "fuori menu"}
+              </span>
+              {p.quantita > p.volte && <span className="tabular-nums">{p.quantita} pezzi in tutto</span>}
+            </div>
+            <div aria-hidden="true" className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary/50">
+              <div
+                className="h-full rounded-full bg-sage-strong"
+                style={{ width: `${Math.max(6, Math.round((p.volte / massimo) * 100))}%` }}
+              />
+            </div>
+          </div>
+
           <div className="shrink-0 text-right">
-            <p className="text-sm tabular-nums">
-              {p.volte} {p.volte === 1 ? "volta" : "volte"}
-            </p>
-            <p className="text-xs tabular-nums text-muted-foreground">
-              {formatCurrency(p.spesaCents, currency)}
-            </p>
+            <p className="font-mono text-xl leading-none tabular-nums">{p.volte}×</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{p.volte === 1 ? "sera" : "sere"}</p>
+            <p className="mt-1.5 text-xs font-medium tabular-nums">{formatCurrency(p.spesaCents, currency)}</p>
           </div>
         </li>
       ))}
@@ -354,7 +444,7 @@ export function CategoriePreferite({
       {righe.map((c) => (
         <li key={c.nome} className="space-y-1.5">
           <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="truncate">{c.nome}</span>
+            <span className="min-w-0 break-words">{c.nome}</span>
             <span className="shrink-0 tabular-nums">
               {Math.round(c.quota * 100)}%
               <span className="ml-2 text-xs text-muted-foreground">
@@ -365,7 +455,7 @@ export function CategoriePreferite({
           {/* La barra è decorazione del numero già scritto accanto, quindi
               `aria-hidden`: un lettore di schermo leggerebbe due volte la
               stessa percentuale. */}
-          <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-secondary/50">
+          <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-secondary/50">
             <div
               className="h-full rounded-full bg-sage-strong"
               style={{ width: `${Math.max(2, Math.round(c.quota * 100))}%` }}
@@ -463,21 +553,29 @@ export function AbitudiniCliente({ abitudini }: { abitudini: Abitudini }) {
     );
   }
 
+  /*
+    Tessere piccole con il dischetto, come la fascia della Panoramica: il
+    valore è la riga che si legge, l'etichetta lo accompagna. Niente
+    `truncate` — «Sala principale · B2» si legge intero o va a capo.
+  */
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-5 lg:grid-cols-3">
+    <ul className="grid gap-2.5 sm:grid-cols-2 2xl:grid-cols-3">
       {voci.map((v) => (
-        <div key={v.etichetta} className="min-w-0">
-          <p className="t-etichetta flex items-center gap-1.5">
-            <v.icona className="h-3 w-3 shrink-0" aria-hidden="true" />
-            {v.etichetta}
-          </p>
-          <p className="mt-0.5 truncate text-base" title={v.valore}>
-            {v.valore}
-          </p>
-          {v.nota && <p className="t-nota">{v.nota}</p>}
-        </div>
+        <li
+          key={v.etichetta}
+          className="flex min-w-0 items-start gap-3 rounded-xl border border-border/60 bg-card-sunken/70 p-3"
+        >
+          <span className="vetro kpi-pastiglia grid h-9 w-9 shrink-0 place-items-center rounded-full">
+            <v.icona className="h-[18px] w-[18px]" stroke="url(#trattoVetro)" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[13px] leading-snug text-muted-foreground">{v.etichetta}</p>
+            <p className="break-words text-base font-medium leading-snug">{v.valore}</p>
+            {v.nota && <p className="mt-0.5 text-[11px] leading-tight text-tertiary-foreground">{v.nota}</p>}
+          </div>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
@@ -503,7 +601,16 @@ export function AbitudiniCliente({ abitudini }: { abitudini: Abitudini }) {
  * offerta. Scrivere «0,00 €» direbbe che quella sera il cliente non ha speso
  * niente, che è una cosa diversa e che qui non sappiamo.
  */
-export function StoricoVisite({ visite, currency }: { visite: VisitaStorica[]; currency: string }) {
+export function StoricoVisite({
+  visite,
+  currency,
+  timeZone,
+}: {
+  visite: VisitaStorica[];
+  currency: string;
+  /** Il fuso del locale: la pagina si disegna sul server, che è in UTC. */
+  timeZone?: string | null;
+}) {
   if (visite.length === 0) {
     return (
       <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -512,59 +619,194 @@ export function StoricoVisite({ visite, currency }: { visite: VisitaStorica[]; c
     );
   }
 
+  /*
+    Ogni serata è una scheda, non una riga di tabella (3 novembre 2026).
+
+    A sinistra un calendarino — giorno grande, mese e ora piccoli — che si
+    scorre con l'occhio come le pagine di un'agenda. Al centro i fatti in
+    pastiglie con la loro icona (coperti, tavolo, permanenza) e i piatti con
+    la loro foto: la serata si riconosce da cosa c'era in tavola prima che
+    dalle parole. A destra il conto, o la pastiglia «nessun conto».
+  */
+  const fuso = timeZone ? { timeZone } : {};
+  const giorno = new Intl.DateTimeFormat("it-IT", { day: "2-digit", ...fuso });
+  const mese = new Intl.DateTimeFormat("it-IT", { month: "short", year: "2-digit", ...fuso });
+  const ora = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit", ...fuso });
+
   return (
-    <ul className="divide-y divide-border/60">
+    <ol className="space-y-2.5">
       {visite.map((v) => {
         const quando = new Date(v.quando);
+        const posto = [v.sala, v.tavolo && `tavolo ${v.tavolo}`].filter(Boolean).join(" · ");
         return (
           <li key={v.bookingId}>
             <Link
               href={`/bookings/${v.bookingId}`}
-              className="flex flex-wrap items-start gap-x-4 gap-y-2 py-3 transition-colors hover:bg-secondary/20"
+              className="group flex items-start gap-3 rounded-xl border border-border/60 bg-card-sunken/50 p-3 transition-colors hover:border-border-strong hover:bg-card-sunken sm:gap-4"
             >
-              <div className="w-28 shrink-0">
-                <p className="text-sm font-medium tabular-nums">{formatDate(quando)}</p>
-                <p className="text-xs tabular-nums text-muted-foreground">{formatTime(quando)}</p>
+              {/* Il calendarino */}
+              {/* Tre righe, tre pesi: il mese piccolo in maiuscoletto, il
+                  giorno grande in serif sul verde della tessera, l'ora sulla
+                  fascia grigia sotto. */}
+              <div className="flex w-[4.5rem] shrink-0 flex-col overflow-hidden rounded-xl text-center shadow-[0_6px_14px_rgba(16,43,34,0.22)] sm:w-20">
+                <div className="bg-[linear-gradient(160deg,#1C4A3A_0%,#102B22_100%)] px-2 pb-1.5 pt-1.5 text-cream">
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-cream/75">
+                    {mese.format(quando).replace(".", "")}
+                  </span>
+                  <span className="text-display block text-[1.75rem] leading-none tabular-nums">
+                    {giorno.format(quando)}
+                  </span>
+                </div>
+                <span className="bg-secondary py-1 font-mono text-xs tabular-nums text-foreground">
+                  {ora.format(quando)}
+                </span>
               </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="text-sm">
-                  {v.coperti} {v.coperti === 1 ? "coperto" : "coperti"}
-                  {v.tavolo && ` · ${[v.sala, `tavolo ${v.tavolo}`].filter(Boolean).join(" · ")}`}
-                  {v.senzaPrenotazione && (
-                    <span className="ml-2 text-xs text-tertiary-foreground">senza prenotazione</span>
-                  )}
-                </p>
-                {v.piatti.length > 0 && (
-                  <p className="mt-0.5 flex items-start gap-1.5 text-xs text-muted-foreground">
-                    <UtensilsCrossed className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="line-clamp-1">
-                      {v.piatti
-                        .map((p) => (p.quantita > 1 ? `${p.nome} ×${p.quantita}` : p.nome))
-                        .join(", ")}
+              <div className="min-w-0 flex-1 space-y-2">
+                {/* Sul telefono il conto sale qui: in colonna a destra
+                    toglieva ai piatti lo spazio per stare su una riga. */}
+                <div className="flex items-center justify-between gap-2 sm:hidden">
+                  {v.spesaCents != null ? (
+                    <p className="font-mono text-xl font-medium tabular-nums">
+                      {formatCurrency(v.spesaCents, currency)}
+                    </p>
+                  ) : (
+                    <span className="rounded-full border border-dashed border-border px-2 py-0.5 text-[11px] text-tertiary-foreground">
+                      nessun conto
                     </span>
-                  </p>
+                  )}
+                  <ApriSerata />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <Pastiglia icona={Users}>
+                    {v.coperti} {v.coperti === 1 ? "coperto" : "coperti"}
+                  </Pastiglia>
+                  {posto && <Pastiglia icona={MapPin}>{posto}</Pastiglia>}
+                  {v.permanenzaMin != null && (
+                    <Pastiglia icona={Clock}>
+                      {Math.floor(v.permanenzaMin / 60)}h {String(v.permanenzaMin % 60).padStart(2, "0")}m
+                    </Pastiglia>
+                  )}
+                  {v.senzaPrenotazione && <Pastiglia icona={Footprints}>senza prenotazione</Pastiglia>}
+                </div>
+
+                {v.piatti.length > 0 && (
+                  <ul className="flex flex-wrap gap-1.5" aria-label="Piatti della serata">
+                    {v.piatti.map((p) => (
+                      <li
+                        key={p.nome}
+                        className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-border/60 bg-card py-0.5 pl-0.5 pr-3 text-xs"
+                      >
+                        <FotoPiatto
+                          src={p.imageUrl}
+                          categoria={p.categoria}
+                          className="h-7 w-7 rounded-full"
+                          icona="h-3.5 w-3.5"
+                        />
+                        <span className="min-w-0 break-words">{p.nome}</span>
+                        {p.quantita > 1 && (
+                          <span className="shrink-0 tabular-nums text-muted-foreground">×{p.quantita}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
 
-              <div className="shrink-0 text-right">
+              <div className="hidden shrink-0 items-center gap-2.5 self-center sm:flex">
                 {v.spesaCents != null ? (
-                  <p className="text-sm font-medium tabular-nums">
+                  <p className="font-mono text-2xl font-medium tabular-nums">
                     {formatCurrency(v.spesaCents, currency)}
                   </p>
                 ) : (
-                  <p className="text-xs text-tertiary-foreground">nessun conto</p>
+                  <span className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-tertiary-foreground">
+                    nessun conto
+                  </span>
                 )}
-                {v.permanenzaMin != null && (
-                  <p className="text-xs tabular-nums text-muted-foreground">
-                    {Math.floor(v.permanenzaMin / 60)}h {String(v.permanenzaMin % 60).padStart(2, "0")}m
-                  </p>
-                )}
+                <ApriSerata />
               </div>
             </Link>
           </li>
         );
       })}
-    </ul>
+    </ol>
+  );
+}
+
+/** La freccia verso l'alto accanto al conto: la serata si apre. */
+function ApriSerata() {
+  return (
+    <span
+      aria-hidden="true"
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border/70 bg-card text-muted-foreground transition-colors group-hover:border-transparent group-hover:bg-[#1C4A3A] group-hover:text-cream"
+    >
+      <ArrowUpRight className="h-4 w-4" />
+    </span>
+  );
+}
+
+/** Un fatto breve con la sua icona: coperti, tavolo, durata. */
+function Pastiglia({
+  icona: Icona,
+  children,
+}: {
+  icona: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-2xl bg-secondary/45 px-2.5 py-1 text-xs text-foreground">
+      <Icona className="h-3.5 w-3.5 shrink-0 text-accent-strong" aria-hidden="true" />
+      <span className="min-w-0 break-words">{children}</span>
+    </span>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  La foto di un piatto                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * L'icona della portata, per i piatti senza foto: un piatto battuto a mano
+ * o una carta che le foto non le ha ancora. Un rettangolo grigio vuoto
+ * direbbe «immagine mancante»; un tondo verde con il disegno della portata
+ * dice comunque che cosa è.
+ */
+function iconaPortata(categoria: string | null): LucideIcon {
+  const c = (categoria ?? "").toLowerCase();
+  if (/dolc|dessert|pasticc/.test(c)) return CakeSlice;
+  if (/vin|bevand|drink|cocktail|birr/.test(c)) return Wine;
+  if (/caff|bar/.test(c)) return Coffee;
+  if (/pizz/.test(c)) return Pizza;
+  if (/prim|past|zupp|risott/.test(c)) return Soup;
+  if (/pesce|mare/.test(c)) return Fish;
+  if (/second|carn|grigli/.test(c)) return Beef;
+  if (/contorn|insalat|verdur/.test(c)) return Salad;
+  if (/antipast|crudi|stuzz/.test(c)) return Sandwich;
+  return UtensilsCrossed;
+}
+
+export function FotoPiatto({
+  src,
+  categoria,
+  className,
+  icona = "h-6 w-6",
+}: {
+  src: string | null;
+  categoria: string | null;
+  className: string;
+  /** La misura dell'icona di ripiego. */
+  icona?: string;
+}) {
+  if (src) {
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element */
+      <img src={src} alt="" loading="lazy" className={`${className} shrink-0 object-cover`} />
+    );
+  }
+  const Icona = iconaPortata(categoria);
+  return (
+    <span aria-hidden="true" className={`${className} vetro kpi-pastiglia grid shrink-0 place-items-center`}>
+      <Icona className={icona} stroke="url(#trattoVetro)" />
+    </span>
   );
 }

@@ -124,21 +124,26 @@ export function FidelityCard({
     */
     <div className="max-w-[24rem] space-y-3">
       <div
-        className={`relative overflow-hidden rounded-xl border ${m.bordo} ${m.fondo} ${m.inchiostro} shadow-[0_10px_24px_rgba(0,0,0,0.35)]`}
+        className={`relative rounded-xl border ${m.bordo} ${m.fondo} ${m.inchiostro} shadow-[0_10px_24px_rgba(0,0,0,0.35)]`}
         /* La proporzione delle carte vere. `aspect-ratio` e non un'altezza
            fissa: sul telefono la carta si rimpicciolisce restando una carta,
            mentre un'altezza fissa l'avrebbe fatta diventare un quadrato. */
         style={{ aspectRatio: "1.586 / 1" }}
+        /* Niente `overflow-hidden` qui: con `aspect-ratio` è proprio quello
+           che impedisce alla carta di crescere quando il contenuto non ci
+           sta, e l'ultima riga («valgono 3,80 €») veniva tagliata a metà.
+           Senza, la proporzione resta un minimo e il testo si legge intero;
+           il riflesso qui sotto prende il raggio da solo. */
       >
         {/* Il riflesso: una singola luce in alto a sinistra, la stessa
             direzione di `.surface` e `.vetro`. Su una superficie che vuole
             sembrare stampata è ciò che la distingue da un rettangolo pieno. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_12%_0%,rgba(255,255,255,0.16),transparent_58%)]"
+          className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[radial-gradient(120%_90%_at_12%_0%,rgba(255,255,255,0.16),transparent_58%)]"
         />
 
-        <div className="relative flex h-full flex-col justify-between p-4 sm:p-5">
+        <div className="relative flex h-full flex-col justify-between gap-3 p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className={`text-[0.65rem] uppercase tracking-[0.18em] ${m.tenue}`}>{m.nome}</p>
@@ -153,9 +158,9 @@ export function FidelityCard({
               <img
                 src={qrDataUrl}
                 alt={codice ? `Codice QR della tessera ${codice}` : "Codice QR della tessera"}
-                className="h-16 w-16 shrink-0 rounded-md bg-cream p-1 sm:h-20 sm:w-20"
-                width={80}
-                height={80}
+                className="h-16 w-16 shrink-0 rounded-md bg-cream p-1"
+                width={64}
+                height={64}
               />
             )}
           </div>
