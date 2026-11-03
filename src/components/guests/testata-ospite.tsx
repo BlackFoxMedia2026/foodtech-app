@@ -6,10 +6,8 @@ import {
   AlertTriangle,
   ArrowLeft,
   Download,
-  Mail,
   MoreHorizontal,
   Pencil,
-  Phone,
   ShieldOff,
 } from "lucide-react";
 import type { LoyaltyTier } from "@prisma/client";
@@ -30,7 +28,7 @@ import { EditGuestDialog } from "@/components/guests/edit-guest-dialog";
 import { ErasureDialog } from "@/components/guests/erasure-dialog";
 import { LoyaltyPill } from "@/components/guests/loyalty-pill";
 import type { StatoCliente } from "@/server/guest-crm";
-import { cn, initials } from "@/lib/utils";
+import { initials } from "@/lib/utils";
 
 interface OspiteTestata {
   id: string;
@@ -65,8 +63,8 @@ interface OspiteTestata {
  * card e non è una fascia: la scheda vera comincia dai quattro numeri sotto,
  * e questa riga serve solo a dire **chi si sta guardando** e a dare il modo
  * di modificarlo. Da sinistra a destra, nell'ordine in cui si legge una
- * persona: la freccia per tornare, la faccia, il nome, che tipo di cliente è,
- * come si contatta, se riceve le comunicazioni, come lo abbiamo etichettato.
+ * persona: la freccia per tornare, la faccia, il nome, che tipo di cliente è
+ * e gli eventuali segnali. Contatti e consenso stanno in «Modifica profilo».
  * All'estremo destro, staccate da `ml-auto`, le azioni.
  *
  * Una fascia con fondo e padding — che è quello che c'era qui prima — dava a
@@ -149,61 +147,11 @@ export function TestataOspite({
           <LoyaltyPill tier={ospite.loyaltyTier} />
         </div>
 
-        {/* --------------------------------- come si contatta, e se lo sentiamo */}
         {/*
-          `basis-0` anche qui, e per lo stesso motivo di sopra: senza, a 1280 px
-          il gruppo dei contatti non entrava e scendeva **intero** sulla riga
-          sotto — due righe per far stare un indirizzo email lungo. Con la base
-          a zero il gruppo non va mai a capo: resta in linea e si stringe, e a
-          stringersi è l'unica cosa che può permetterselo, cioè l'email, che ha
-          `truncate`. Telefono e consenso sono `shrink-0` perché un numero
-          troncato a metà non è un numero e «Non riceve le comuni…» non è uno
-          stato.
+          Email, telefono e consenso non stanno più qui (3 novembre 2026):
+          si leggono nella lista ospiti e in «Modifica profilo», e in testata
+          appesantivano una riga che deve dire solo chi si sta guardando.
         */}
-        <div className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:basis-0">
-          {ospite.email && (
-            <a
-              href={`mailto:${ospite.email}`}
-              title={`Scrivi a ${ospite.email}`}
-              className="flex min-w-0 items-center gap-1.5 transition-colors duration-150 hover:text-accent-strong"
-            >
-              <Mail className="h-3.5 w-3.5 shrink-0 text-tertiary-foreground" aria-hidden="true" />
-              <span className="break-all sm:truncate">{ospite.email}</span>
-            </a>
-          )}
-          {ospite.phone && (
-            <a
-              href={`tel:${ospite.phone}`}
-              title={`Chiama ${ospite.phone}`}
-              className="flex shrink-0 items-center gap-1.5 transition-colors duration-150 hover:text-accent-strong"
-            >
-              <Phone className="h-3.5 w-3.5 shrink-0 text-tertiary-foreground" aria-hidden="true" />
-              <span className="tabular-nums">{ospite.phone}</span>
-            </a>
-          )}
-
-          {/* Il consenso è un pallino e due parole, non una pillola: in una riga
-            alta quaranta pixel ogni bordo in più è rumore. Il colore lo dice il
-            pallino, che è la forma che in tutto il prodotto vuol dire «acceso o
-            spento adesso». */}
-          <span
-            title={
-              ospite.marketingOptIn
-                ? "Ha dato il consenso: entra nelle campagne e nei messaggi automatici."
-                : "Senza consenso non riceve campagne né messaggi automatici. Si cambia da «Modifica profilo»."
-            }
-            className="flex shrink-0 items-center gap-1.5 text-muted-foreground"
-          >
-            <span
-              aria-hidden="true"
-              className={cn(
-                "h-1.5 w-1.5 shrink-0 rounded-full",
-                ospite.marketingOptIn ? "bg-sage" : "bg-tertiary-foreground",
-              )}
-            />
-            {ospite.marketingOptIn ? "Riceve le comunicazioni" : "Non riceve le comunicazioni"}
-          </span>
-        </div>
 
         {/* --------------------------------------------------- segnali */}
         {/*
