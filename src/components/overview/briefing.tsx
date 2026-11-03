@@ -1,41 +1,6 @@
 import { CalendarRange, Gauge, Users, Wallet } from "lucide-react";
 import { riepilogoIncasso, type IncassoDelGiorno } from "@/components/overview/incasso";
-import { cn } from "@/lib/utils";
-
-/**
- * Le due sfumature dei tratti delle icone.
- *
- * `gradientUnits="userSpaceOnUse"` non è un dettaglio da copiare a memoria:
- * col valore predefinito (`objectBoundingBox`) il gradiente si risolve sul
- * riquadro di **ogni singolo sotto-tracciato**, e per specifica un elemento
- * il cui riquadro ha altezza o larghezza zero non viene disegnato. Le icone
- * di lucide sono piene di segmenti dritti — il calendario ne ha sette su
- * otto: `M3 10h18`, `M16 2v4`, i due puntini — e sparivano una riga per
- * volta, lasciando solo il rettangolo esterno. Nello spazio del `viewBox`
- * (`0 0 24 24`, lo stesso per tutte) il problema non esiste.
- *
- * Due sfumature e non una perché l'icona deve stare nel registro di chi le
- * sta accanto: crema→sabbia dentro il dischetto, dove il vicino è il numero;
- * sul tono dell'etichetta quando sul telefono le sta in riga, altrimenti
- * l'icona diventa più chiara della parola che accompagna e si prende
- * l'attenzione da sola.
- */
-function TrattiSfumati() {
-  return (
-    <svg width="0" height="0" aria-hidden="true" className="absolute">
-      <defs>
-        <linearGradient id="trattoVetro" gradientUnits="userSpaceOnUse" x1="12" y1="2" x2="12" y2="22">
-          <stop offset="0" style={{ stopColor: "var(--tratto-vetro-alto)" }} />
-          <stop offset="1" style={{ stopColor: "var(--tratto-vetro-basso)" }} />
-        </linearGradient>
-        <linearGradient id="trattoTenue" gradientUnits="userSpaceOnUse" x1="12" y1="2" x2="12" y2="22">
-          <stop offset="0" style={{ stopColor: "var(--tratto-tenue-alto)" }} />
-          <stop offset="1" style={{ stopColor: "var(--tratto-tenue-basso)" }} />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
+import { FasciaTessere, TesseraKpi } from "@/components/ui/tessera-kpi";
 
 type Blocco = {
   chiave: string;
@@ -173,76 +138,22 @@ export function Briefing({
     });
   }
 
+  // La tessera è quella comune (`ui/tessera-kpi.tsx`): nata qui, ora è la
+  // stessa in lista d'attesa, Report, Pagamenti e Coupon.
   return (
-    <section className="fissa">
-      <TrattiSfumati />
-
-      {/*
-        Due colonne sul telefono, tutte in fila sul desktop ampio.
-
-        Con tre numeri ci stavano tre colonne anche su 390 px. Il quarto è
-        l'incasso, e «2.250,00 €» in una colonna da 85 px non ci sta in nessuna
-        dimensione di carattere che si legga: sotto `xl` sono due colonne, e i
-        blocchi vanno a capo invece di stringersi. Da `xl` (1280 px) la fila è
-        una sola — l'obiettivo del desktop — e il numero più lungo ha 200 px
-        di spazio, misurati sul carattere monospaziato.
-
-        Se i blocchi sono un numero dispari l'ultimo prende tutta la riga,
-        altrimenti sotto `xl` resterebbe mezza cella vuota accanto.
-
-        E `items-start`, non `items-center`: la barra della pienezza allunga il
-        suo blocco di quattordici pixel, e col contenuto centrato la sua
-        etichetta e il suo numero finivano sette pixel più in alto degli altri
-        — card accostate con le etichette su righe diverse. Ancorare la barra
-        al fondo della card era peggio: il blocco perde l'altezza della barra e
-        il filetto passava a ridosso del «47%».
-      */}
-      <ul
-        className={cn(
-          "grid grid-cols-2 gap-2 sm:gap-3",
-          blocchi.length === 4 ? "xl:grid-cols-4" : "xl:grid-cols-3",
-        )}
-      >
-        {blocchi.map(({ chiave, icona: Icona, etichetta, corta, valore, barra, nota }, i) => (
-          <li
-            key={chiave}
-            className={cn(
-              "vetro card-notch flex flex-col gap-1 p-3 sm:flex-row sm:items-start sm:gap-3 sm:p-4",
-              blocchi.length % 2 === 1 && i === blocchi.length - 1 && "col-span-2 xl:col-span-1",
-            )}
-          >
-            {/* Il dischetto solo da `sm`: in una colonna da 114 px, 48 px di
-                tondo non lasciano spazio al numero accanto. */}
-            <span className="vetro kpi-pastiglia hidden h-12 w-12 shrink-0 place-items-center rounded-full sm:grid">
-              <Icona className="h-6 w-6" stroke="url(#trattoVetro)" />
-            </span>
-
-            <div className="min-w-0 flex-1">
-              <p className="t-etichetta flex items-center gap-1.5 text-[13px] text-kpi-label-muted sm:text-sm">
-                <Icona className="h-[22px] w-[22px] shrink-0 sm:hidden" stroke="url(#trattoTenue)" />
-                <span className="sm:hidden">{corta}</span>
-                <span className="hidden sm:inline">{etichetta}</span>
-              </p>
-              {/* Un gradino di corpo fra le due larghezze: a 30 px l'incasso
-                  sforava la colonna del portatile, e un numero che va a capo
-                  sull'euro si legge peggio di uno scritto più piccolo. */}
-              <p className="mt-0.5 font-mono text-2xl leading-8 text-foreground xl:text-3xl xl:leading-9">
-                {valore}
-              </p>
-              {barra != null && (
-                <div className="barra-binario mt-1.5 h-2 w-full overflow-hidden rounded-full bg-border">
-                  <div
-                    className="barra-pieno h-full rounded-full bg-surface-brown-light"
-                    style={{ width: `${Math.min(100, Math.max(0, barra))}%` }}
-                  />
-                </div>
-              )}
-              {nota && <p className="mt-1 text-[11px] leading-tight text-muted-foreground">{nota}</p>}
-            </div>
-          </li>
-        ))}
-      </ul>
-
-    </section>
+    <FasciaTessere colonne={Math.max(2, Math.min(4, blocchi.length)) as 2 | 3 | 4}>
+      {blocchi.map(({ chiave, icona, etichetta, corta, valore, barra, nota }, i) => (
+        <TesseraKpi
+          key={chiave}
+          icona={icona}
+          etichetta={etichetta}
+          corta={corta}
+          valore={valore}
+          barra={barra}
+          nota={nota}
+          ultimaDispari={blocchi.length % 2 === 1 && i === blocchi.length - 1}
+        />
+      ))}
+    </FasciaTessere>
   );
 }

@@ -364,6 +364,148 @@
   background: rgba(213, 232, 218, 0.7);
 }
 
+.pillola-ios[data-tono="neutro"] {
+  color: var(--vi-testo-2);
+  background: rgba(118, 118, 128, 0.12);
+}
+.pillola-ios[data-tono="avviso"] {
+  color: #1d5c76;
+  background: rgba(207, 226, 234, 0.75);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Le azioni a capsula (lista d'attesa, 3 novembre 2026)                      */
+/* -------------------------------------------------------------------------- */
+
+/*
+  I tondi del riquadro Prenotazioni, allungati a capsula col nome scritto.
+  Nella lista d'attesa i gesti sono quattro e diversi fra loro — avvisa,
+  ha confermato, accomoda, togli — e quattro tondi con la sola icona non si
+  distinguono mentre si ha una persona davanti. Il materiale è lo stesso:
+  vetro bianco per i gesti secondari, verde pieno per quello che conta.
+*/
+.azione-ios {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  min-width: 48px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-family: var(--vi-font);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform 150ms ease, background-color 150ms ease, filter 150ms ease;
+}
+.azione-ios:active {
+  transform: scale(0.96);
+}
+.azione-ios svg {
+  flex-shrink: 0;
+}
+.azione-ios:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.azione-ios:focus-visible {
+  outline: 2px solid var(--vi-verde);
+  outline-offset: 2px;
+}
+.azione-ios-tonda {
+  width: 48px;
+  padding: 0;
+}
+.azione-ios-vetro {
+  color: var(--vi-testo);
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    inset 0 0 0 0.5px #fff,
+    0 6px 16px -6px rgba(16, 32, 26, 0.28);
+}
+.azione-ios-vetro:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+.azione-ios-pieno {
+  color: #fff;
+  background: linear-gradient(180deg, var(--vi-verde-chiaro), var(--vi-verde));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 18px -6px rgba(44, 85, 69, 0.6);
+}
+.azione-ios-pieno:hover {
+  filter: brightness(1.08);
+}
+
+/* Il numero in fila: un tondo di vetro, verde pieno quando tocca a lui. */
+.posto-ios {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--vi-testo);
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow:
+    inset 0 0 0 0.5px #fff,
+    0 6px 16px -8px rgba(16, 32, 26, 0.3);
+}
+.posto-ios[data-tocca="true"] {
+  color: #fff;
+  background: linear-gradient(180deg, var(--vi-verde-chiaro), var(--vi-verde));
+}
+
+/* Le informazioni secondarie della riga: piccole capsule, icona + parole. */
+.chip-ios {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--vi-testo-2);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.9);
+}
+.chip-ios[data-tono="verde"] {
+  color: #1f6b3d;
+  background: rgba(213, 232, 218, 0.75);
+}
+.chip-ios[data-tono="oro"] {
+  color: #7d5510;
+  background: rgba(243, 226, 191, 0.75);
+}
+.chip-ios strong {
+  font-weight: 700;
+}
+
+/* La riga in ritardo: un filo oro intorno, il colore non lavora mai da solo
+   (lo dice anche la frase «oltre la stima»). */
+.vi-notifica[data-ritardo="true"] {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(196, 146, 60, 0.75),
+    0 10px 30px -10px rgba(16, 32, 26, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .azione-ios {
+    transition: none;
+  }
+  .azione-ios:active {
+    transform: none;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /*  L'elenco a gruppi (Oggi)                                                  */
 /* -------------------------------------------------------------------------- */

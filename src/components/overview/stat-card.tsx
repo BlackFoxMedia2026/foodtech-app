@@ -1,14 +1,26 @@
 import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
+import { TrattiSfumati } from "@/components/ui/tessera-kpi";
 
+/**
+ * Una tessera di numero per Report e Pagamenti.
+ *
+ * Dal 3 novembre 2026 ha **lo stesso disegno** della tessera della Panoramica
+ * (`ui/tessera-kpi.tsx`): vetro, dischetto verde con l'icona a tratto
+ * sfumato, etichetta in maiuscoletto, numero monospaziato. Prima qui c'erano
+ * sei finiture a tinta piena (bronzo, pergamena, salvia, tre marroni) che
+ * nessuna pagina usava più, e il numero stesso sembrava detto da un altro
+ * prodotto rispetto alla Panoramica.
+ *
+ * `tone`, `fill` ed `emphasize` restano nella firma per non rompere chi li
+ * passa, ma non cambiano più il materiale: la fascia è una sola. `tone="sage"`
+ * accende ancora il numero in verde, `tone="accent"` nell'oro che si legge.
+ */
 export function StatCard({
   label,
   value,
   hint,
   trend,
   tone,
-  fill,
-  emphasize,
   icon: Icon,
   progressPct,
   className,
@@ -17,148 +29,64 @@ export function StatCard({
   value: string;
   hint?: string;
   /**
-   * Il confronto col periodo prima.
-   *
-   * Sono **due fatti separati**, e prima erano schiacciati in uno: la freccia
-   * diceva «è un bene?» invece di «in che direzione è andato». Così le assenze
-   * salite dal 9% al 12% mostravano «▼ 3%» — una freccia in giù su un numero
-   * che era salito — mentre la fascia di confronto due centimetri sotto
-   * scriveva «↑ 3 pt». La stessa pagina si contraddiceva.
-   *
-   * Ora: la **freccia** viene dal segno di `value` (dove è andato), il
-   * **colore** da `buono` (se è una buona notizia). Con `value` a zero non si
-   * mostra freccia: non è andato da nessuna parte.
+   * Il confronto col periodo prima. La **freccia** viene dal segno di `value`
+   * (dove è andato), il **colore** da `buono` (se è una buona notizia). Con
+   * `value` a zero non si mostra freccia: non è andato da nessuna parte.
    */
   trend?: { value: number; buono?: boolean | null };
-  /** Colors the value text (and trend/progress fill). With `fill`, the same tone also fills the whole card instead of just the text. */
   tone?: "accent" | "cream" | "sage" | "brown-medium" | "brown-dark" | "brown-light";
-  /** Solidly fills the card with the tone color (caramel → white text, cream/sage → dark forest text) instead of just tinting the value. Reserve for the 1-2 KPIs that should visually dominate the row. */
+  /** Non cambia più il materiale: vedi la nota in testa. */
   fill?: boolean;
-  /** Subtle accent-tinted value — used by other stat-card call sites (analytics, payments) outside the overview redesign. */
+  /** Non cambia più il materiale: vedi la nota in testa. */
   emphasize?: boolean;
-  /** Small icon beside the label/value block — stays a neutral tone, never the brand accent. */
-  icon?: React.ComponentType<{ className?: string }>;
-  /** Renders a thin horizontal progress bar under the value (e.g. occupancy) — always neutral, never the brand accent. */
+  icon?: React.ComponentType<{ className?: string; stroke?: string }>;
   progressPct?: number;
   className?: string;
 }) {
-  const caramelFill = fill && tone === "accent";
-  const creamFill = fill && tone === "cream";
-  const sageFill = fill && tone === "sage";
-  const brownFill = fill && (tone === "brown-medium" || tone === "brown-dark");
-  const brownLightFill = fill && tone === "brown-light";
-  const lightFill = creamFill || sageFill || brownLightFill;
-
-  const valueColor = caramelFill
-    ? "text-clay-ink"
-    : creamFill
-      ? "text-clay-ink"
-      : sageFill
-        ? "text-forest"
-        : brownFill
-          ? "text-ink"
-          : brownLightFill
-            ? "text-clay-ink"
-            : tone === "accent"
-              ? "text-ink-tertiary"
-              : tone === "cream"
-                ? "text-ink"
-                : tone === "sage"
-                  ? "text-sage-strong"
-                  : emphasize
-                    ? "text-ink-tertiary"
-                    : "text-card-foreground";
-  const labelColor = caramelFill
-    ? "text-clay-ink/70"
-    : creamFill
-      ? "text-clay-ink-soft"
-      : sageFill
-        ? "text-forest/70"
-        : brownFill
-          ? "text-ink/65"
-          : brownLightFill
-            ? "text-clay-ink-soft"
-            : "text-card-foreground/65";
-
-  const textBlock = (
-    <>
-      <p className={cn("text-xs uppercase tracking-wider", labelColor)}>{label}</p>
-      <p className={cn("mt-2 font-mono text-3xl", valueColor)}>{value}</p>
-      {hint && <p className={cn("mt-1 text-xs", labelColor)}>{hint}</p>}
-      {trend && (
+  return (
+    <div className={cn("vetro card-notch flex items-start gap-3 p-4", className)}>
+      {Icon && (
+        <>
+          <TrattiSfumati />
+          <span className="vetro kpi-pastiglia hidden h-12 w-12 shrink-0 place-items-center rounded-full sm:grid">
+            <Icon className="h-6 w-6" stroke="url(#trattoVetro)" />
+          </span>
+        </>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="t-etichetta text-sm text-kpi-label-muted">{label}</p>
         <p
           className={cn(
-            "mt-3 inline-flex items-center gap-1 font-mono text-xs font-medium",
-            caramelFill || lightFill || brownFill
-              ? valueColor
-              : trend.buono == null
-                ? labelColor
+            "mt-0.5 font-mono text-2xl leading-8 tabular-nums xl:text-3xl xl:leading-9",
+            tone === "sage" ? "text-sage-strong" : tone === "accent" ? "text-accent-strong" : "text-foreground",
+          )}
+        >
+          {value}
+        </p>
+        {typeof progressPct === "number" && (
+          <div className="barra-binario mt-1.5 h-2 w-full overflow-hidden rounded-full bg-border">
+            <div
+              className="barra-pieno h-full rounded-full bg-surface-brown-light"
+              style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+            />
+          </div>
+        )}
+        {hint && <p className="mt-1 text-[11px] leading-tight text-muted-foreground">{hint}</p>}
+        {trend && (
+          <p
+            className={cn(
+              "mt-1.5 inline-flex items-center gap-1 font-mono text-xs font-medium",
+              trend.buono == null
+                ? "text-muted-foreground"
                 : trend.buono
                   ? "text-sage-strong"
                   : "text-destructive-soft",
-          )}
-        >
-          {trend.value === 0 ? "invariato" : `${trend.value > 0 ? "▲" : "▼"} ${Math.abs(trend.value)}%`}
-        </p>
-      )}
-      {typeof progressPct === "number" && (
-        <div
-          className={cn(
-            "mt-3 h-1.5 w-full overflow-hidden rounded-full",
-            caramelFill || creamFill || brownLightFill ? "bg-clay-ink/20" : sageFill ? "bg-forest/20" : brownFill ? "bg-veil-20" : "bg-border",
-          )}
-        >
-          <div
-            className={cn(
-              "h-full rounded-full",
-              caramelFill || creamFill || brownLightFill ? "bg-clay-ink" : sageFill ? "bg-forest" : brownFill ? "bg-cream" : "bg-surface-brown-light",
             )}
-            style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
-          />
-        </div>
-      )}
-    </>
-  );
-
-  const body = Icon ? (
-    <div className="flex items-center gap-3">
-      <span
-        className={cn(
-          "finish-metal-chip grid h-10 w-10 shrink-0 place-items-center rounded-full shadow-[0_8px_18px_rgba(0,0,0,0.3)]",
-          caramelFill || creamFill || brownLightFill
-            ? "bg-clay-ink/15 text-clay-ink"
-            : sageFill
-              ? "bg-forest/10 text-forest"
-              : brownFill
-                ? "bg-veil-15 text-ink"
-                : "bg-veil-10 text-ink",
+          >
+            {trend.value === 0 ? "invariato" : `${trend.value > 0 ? "▲" : "▼"} ${Math.abs(trend.value)}%`}
+          </p>
         )}
-      >
-        <Icon className="h-5 w-5" />
-      </span>
-      <div className="min-w-0 flex-1">{textBlock}</div>
+      </div>
     </div>
-  ) : (
-    textBlock
-  );
-
-  return (
-    <Card
-      className={cn(
-        caramelFill && "finish-bronze border-[#8a6640] shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-        creamFill && "finish-parchment border-line shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-        sageFill && "border-sage bg-sage shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-        brownFill &&
-          tone === "brown-medium" &&
-          "finish-brown-medium border-[#7b4e30] shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-        brownFill &&
-          tone === "brown-dark" &&
-          "finish-brown-dark border-[#633a26] shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-        brownLightFill && "finish-peach border-[#ae8c67] shadow-[0_10px_18px_rgba(0,0,0,0.22),0_24px_48px_rgba(0,0,0,0.35)]",
-        className,
-      )}
-    >
-      <CardContent className="p-5">{body}</CardContent>
-    </Card>
   );
 }

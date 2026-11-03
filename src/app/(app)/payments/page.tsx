@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Hourglass, HandCoins, RotateCcw, Wallet } from "lucide-react";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -106,15 +107,17 @@ export default async function PaymentsPage() {
         </p>
       </header>
 
-      <section className="fissa grid gap-3 md:grid-cols-4">
+      <section className="fissa grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         <StatCard
+          icon={Wallet}
           label="Incassato qui"
           value={formatCurrency(incassatoCents - manceCents, ctx.venue.currency)}
           emphasize
         />
-        <StatCard label="Di cui mance" value={formatCurrency(manceCents, ctx.venue.currency)} />
-        <StatCard label="Rimborsato" value={formatCurrency(rimborsatoCents, ctx.venue.currency)} />
+        <StatCard icon={HandCoins} label="Di cui mance" value={formatCurrency(manceCents, ctx.venue.currency)} />
+        <StatCard icon={RotateCcw} label="Rimborsato" value={formatCurrency(rimborsatoCents, ctx.venue.currency)} />
         <StatCard
+          icon={Hourglass}
           label="In corso"
           value={String(inCorso)}
           // I falliti si dicono accanto ai pendenti e non in un riquadro loro:

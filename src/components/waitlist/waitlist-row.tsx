@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, BellRing, Check, MapPin, Star, Timer, UtensilsCrossed, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertTriangle, BellRing, Check, MapPin, Phone, StickyNote, Star, Timer, UtensilsCrossed, X } from "lucide-react";
 import { readApiError } from "@/lib/api-client";
 import { SeatFromWaitlistDialog } from "@/components/waitlist/seat-from-waitlist-dialog";
 import { cn } from "@/lib/utils";
@@ -33,10 +32,15 @@ export type WaitlistRowEntry = {
   tocca: boolean;
 };
 
-const STATO: Record<string, { testo: string; classe: string }> = {
-  WAITING: { testo: "In attesa", classe: "bg-current/10 text-muted-foreground" },
-  NOTIFIED: { testo: "Avvisato", classe: "bg-accent/20 text-accent-foreground" },
-  CONFIRMED: { testo: "Sta arrivando", classe: "bg-sage/25 text-foreground" },
+/*
+  Lo stato è una pillola come quelle del riquadro Prenotazioni: pallino +
+  parola, il colore non lavora mai da solo. Grigio chi aspetta, oro chi è
+  stato avvisato (ha un tavolo tenuto che scade), verde chi sta arrivando.
+*/
+const STATO: Record<string, { testo: string; tono: string }> = {
+  WAITING: { testo: "In attesa", tono: "neutro" },
+  NOTIFIED: { testo: "Avvisato", tono: "da-confermare" },
+  CONFIRMED: { testo: "Sta arrivando", tono: "gia-confermata" },
 };
 
 export function WaitlistRow({
@@ -77,180 +81,185 @@ export function WaitlistRow({
     onChanged();
   }
 
-  const stato = STATO[entry.status] ?? { testo: entry.status, classe: "bg-current/10" };
+  const stato = STATO[entry.status] ?? { testo: entry.status, tono: "neutro" };
 
+  /*
+    La riga ha la forma delle schede «Nuova prenotazione» della Panoramica
+    (3 novembre 2026): chi e quanti in grande a sinistra, i gesti grandi a
+    destra. Prima il nome era in corpo 14, il tempo d'attesa in 12 e i gesti
+    erano pulsanti piccoli: si leggeva da vicino, mentre questa schermata si
+    guarda dal banco con una persona davanti.
+  */
   return (
-    <li
-      className={cn(
-        "surface rounded-md border p-4",
-        entry.overdue ? "border-accent/60" : "border-border",
-      )}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-current/10 text-xs font-medium">
+    <li className="vi-notifica vetro-ios-scheda" data-ritardo={entry.overdue || undefined}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-1 items-start gap-4">
+          <span
+            className="posto-ios"
+            data-tocca={entry.tocca || undefined}
+            aria-label={`Posizione ${position}`}
+          >
             {position}
           </span>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate font-medium">{entry.guestName}</p>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+              <p className="vi-nome min-w-0 !text-[21px]">{entry.guestName}</p>
+              <span className="pillola-ios" data-tono={stato.tono}>
+                {stato.testo}
+              </span>
               {/*
                 «Tocca a lei» compare solo quando la precedenza non coincide
                 con l'ordine di arrivo: è la decisione del motore detta in due
                 parole, con accanto il perché — quanto abbiamo sforato la
-                promessa — nella riga sotto. Sul primo della fila non
-                comparirebbe niente, perché non ci sarebbe niente da dire.
+                promessa — nella riga sotto.
               */}
               {entry.tocca && (
-                <span className="inline-flex items-center gap-1 rounded-md border border-accent/50 bg-accent/15 px-2 py-0.5 text-xs font-medium">
+                <span className="pillola-ios" data-tono="gia-confermata">
                   Tocca a lei
                 </span>
               )}
               {entry.isVip && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5 text-xs">
-                  <Star className="h-3 w-3" aria-hidden="true" /> VIP
+                <span className="pillola-ios" data-tono="da-confermare">
+                  <Star className="-ml-1 h-3.5 w-3.5" aria-hidden="true" /> VIP
                 </span>
               )}
-              <span className={cn("rounded-full px-2 py-0.5 text-xs", stato.classe)}>{stato.testo}</span>
             </div>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              {entry.partySize} {entry.partySize === 1 ? "persona" : "persone"}
-              {entry.phone && ` · ${entry.phone}`}
-              {entry.preferredRoomName && (
-                <>
-                  {" · "}
-                  <MapPin className="inline h-3 w-3" aria-hidden="true" /> {entry.preferredRoomName}
-                </>
-              )}
-            </p>
-
-            <p
-              className={cn(
-                "mt-1 flex items-center gap-1 text-xs",
-                entry.overdue ? "text-accent-strong" : "text-tertiary-foreground",
-              )}
-            >
-              <Timer className="h-3 w-3" aria-hidden="true" />
+            <p className="vi-dettaglio mt-1">
+              <strong>{entry.partySize}</strong> {entry.partySize === 1 ? "persona" : "persone"}
+              {" · "}
               {/*
                 In ore, non in minuti: «in attesa da 937 min» era esatto e
                 illeggibile, e nessuno converte a mente mentre ha una persona
-                davanti. È il terzo dei sette principi dell'audit visivo, e
-                qui era rimasto scoperto.
+                davanti.
               */}
-              {entry.waitingMin === 0
-                ? "appena entrato"
-                : `in attesa da ${durataUmana(entry.waitingMin)}`}
-              {/*
-                Non «oltre la stima di venti minuti» ma «quindici minuti oltre
-                la stima»: il numero che serve è di quanto abbiamo sforato, non
-                quanto avevamo promesso. Ed è lo stesso numero che decide chi
-                ha la precedenza sul primo tavolo che si libera
-                (`confrontaPerPrecedenza`), quindi chi legge la riga capisce
-                perché l'ordine è quello.
-              */}
-              {entry.overdue &&
-                entry.ritardoSullaPromessa > 0 &&
-                ` · ${durataUmana(entry.ritardoSullaPromessa)} oltre la stima`}
-              {entry.status === "NOTIFIED" && entry.offerExpiresAt && (
-                <> · tavolo tenuto fino alle {ora(entry.offerExpiresAt)}</>
-              )}
+              <span className={cn(entry.overdue && "font-semibold text-[#7d5510]")}>
+                <Timer className="mb-0.5 mr-1 inline h-4 w-4" aria-hidden="true" />
+                {entry.waitingMin === 0 ? (
+                  "appena entrato"
+                ) : (
+                  <>
+                    in attesa da <strong className={cn(entry.overdue && "!text-[#7d5510]")}>{durataUmana(entry.waitingMin)}</strong>
+                  </>
+                )}
+                {/*
+                  Non «oltre la stima di venti minuti» ma «quindici minuti oltre
+                  la stima»: il numero che serve è di quanto abbiamo sforato. È
+                  lo stesso che decide la precedenza (`confrontaPerPrecedenza`).
+                */}
+                {entry.overdue &&
+                  entry.ritardoSullaPromessa > 0 &&
+                  ` · ${durataUmana(entry.ritardoSullaPromessa)} oltre la stima`}
+              </span>
             </p>
 
-            {/*
-              Il tavolo da proporre, **nella riga**.
-
-              Il motore che lo trova esisteva già, ma bisognava premere
-              «Accomoda» e aprire una finestra per sapere quale. In Servizio
-              l'avviso lo dice ancora prima; qui, nella schermata che si chiama
-              Attesa, no.
-
-              È un suggerimento, non una promessa: premendo «Accomoda» la
-              verifica completa si rifà, e se il tavolo è stato preso nel
-              frattempo lo dice. Per questo il testo è «potrebbe stare», non
-              «è suo».
-            */}
-            {suggerito && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-sage-strong">
-                <UtensilsCrossed className="h-3 w-3 shrink-0" aria-hidden="true" />
-                Potrebbe stare al <strong className="font-medium">{suggerito.label}</strong> — {suggerito.seats}{" "}
-                {suggerito.seats === 1 ? "posto" : "posti"}
-              </p>
-            )}
-
-            {entry.allergies && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-accent-strong">
-                <AlertTriangle className="h-3 w-3" aria-hidden="true" /> {entry.allergies}
-              </p>
-            )}
-            {entry.notes && <p className="mt-1 text-xs text-muted-foreground">{entry.notes}</p>}
+            {/* Le informazioni che servono a decidere, in capsule leggibili
+                invece che in righe da 12 px una sotto l'altra. */}
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {entry.phone && (
+                <a href={`tel:${entry.phone.replace(/\s+/g, "")}`} className="chip-ios hover:underline">
+                  <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+                  {entry.phone}
+                </a>
+              )}
+              {entry.status === "NOTIFIED" && entry.offerExpiresAt && (
+                <span className="chip-ios" data-tono="oro">
+                  <BellRing className="h-3.5 w-3.5" aria-hidden="true" />
+                  Tavolo tenuto fino alle <strong>{ora(entry.offerExpiresAt)}</strong>
+                </span>
+              )}
+              {/*
+                Il tavolo da proporre, **nella riga**. È un suggerimento, non
+                una promessa: premendo «Accomoda» la verifica si rifà, e se il
+                tavolo è stato preso nel frattempo lo dice. Per questo
+                «potrebbe stare», non «è suo».
+              */}
+              {suggerito && (
+                <span className="chip-ios" data-tono="verde">
+                  <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
+                  Potrebbe stare al <strong>{suggerito.label}</strong> · {suggerito.seats}{" "}
+                  {suggerito.seats === 1 ? "posto" : "posti"}
+                </span>
+              )}
+              {entry.preferredRoomName && (
+                <span className="chip-ios">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                  {entry.preferredRoomName}
+                </span>
+              )}
+              {entry.allergies && (
+                <span className="chip-ios" data-tono="oro">
+                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                  {entry.allergies}
+                </span>
+              )}
+              {entry.notes && (
+                <span className="chip-ios">
+                  <StickyNote className="h-3.5 w-3.5" aria-hidden="true" />
+                  {entry.notes}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
         {canManage && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5 sm:pl-[60px] lg:shrink-0 lg:justify-end lg:pl-0">
             {entry.status === "WAITING" && (
-              <Button
-                className="tocco-comodo"
-                size="sm"
-                variant="outline"
+              <button
+                type="button"
+                className="azione-ios azione-ios-vetro flex-1 sm:flex-none"
                 disabled={busy !== null}
+                aria-label={`Avvisa ${entry.guestName}`}
                 onClick={() => azione("notify", `/api/waitlist/${entry.id}/notify`, { via: "manuale" })}
               >
-                <BellRing className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                <BellRing className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden="true" />
                 {busy === "notify" ? "Avviso…" : "Avvisa"}
-              </Button>
+              </button>
             )}
 
             {entry.status === "NOTIFIED" && (
-              <Button
-                className="tocco-comodo"
-                size="sm"
-                variant="outline"
+              <button
+                type="button"
+                className="azione-ios azione-ios-vetro flex-1 sm:flex-none"
                 disabled={busy !== null}
+                aria-label={`${entry.guestName} ha confermato`}
                 onClick={() => azione("confirm", `/api/waitlist/${entry.id}/confirm`)}
               >
-                <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                <Check className="h-[18px] w-[18px]" strokeWidth={2.4} aria-hidden="true" />
                 {busy === "confirm" ? "Salvo…" : "Ha confermato"}
-              </Button>
+              </button>
             )}
 
             {/*
               Il pulsante nomina il tavolo quando ce n'è uno da proporre: chi
-              lo preme sa dove sta mandando la persona prima di premerlo. La
-              finestra si apre comunque, perché la scelta finale è del
-              personale e a volte il tavolo giusto è un altro — ma si apre
-              **con quello già scelto**.
+              lo preme sa dove sta mandando la persona. La finestra si apre
+              comunque, **con quello già scelto**. Il nome accessibile porta
+              **chi**, non solo il verbo: dieci «Accomoda» identici non si
+              distinguono a voce.
             */}
-            <Button
-              size="sm"
-              className="tocco-comodo"
-              variant="accent"
+            <button
+              type="button"
+              className="azione-ios azione-ios-pieno flex-1 sm:flex-none"
               disabled={busy !== null}
-              /*
-                Il nome accessibile porta **chi**, non solo il verbo: dieci
-                pulsanti «Accomoda» in una lista sono dieci pulsanti identici
-                per chi naviga a voce, e non c'è modo di sapere quale riga si
-                sta per accomodare. È la stessa lezione del pulsante «Walk-in»
-                nella Panoramica, dove l'etichetta corta aveva perso il verbo.
-              */
               aria-label={`Accomoda ${entry.guestName}${suggerito ? ` al tavolo ${suggerito.label}` : ""}`}
               onClick={() => setSeatOpen(true)}
             >
-              <UtensilsCrossed className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              <UtensilsCrossed className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden="true" />
               {suggerito ? `Accomoda al ${suggerito.label}` : "Accomoda"}
-            </Button>
+            </button>
 
-            <Button
-              size="sm"
-              className="tocco-comodo"
-              variant="ghost"
+            <button
+              type="button"
+              className="azione-ios azione-ios-tonda azione-ios-vetro"
               disabled={busy !== null}
               aria-label={`Togli ${entry.guestName} dalla lista`}
+              title="Togli dalla lista"
               onClick={() => azione("close", `/api/waitlist/${entry.id}/close`, { status: "LEFT" })}
             >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
-            </Button>
+              <X className="h-5 w-5" style={{ color: "var(--vi-rosso)" }} strokeWidth={2.4} aria-hidden="true" />
+            </button>
           </div>
         )}
       </div>

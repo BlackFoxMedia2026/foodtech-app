@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CellaNumero } from "@/components/ui/cella-numero";
 import { useRouter } from "next/navigation";
-import { Clock, ListOrdered, Users } from "lucide-react";
+import { BellRing, ListOrdered, ListPlus, Timer, UserCheck } from "lucide-react";
+import { FasciaTessere, TesseraKpi } from "@/components/ui/tessera-kpi";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AddToWaitlistDialog } from "@/components/waitlist/add-to-waitlist-dialog";
@@ -61,18 +61,19 @@ export function WaitlistPageClient({
   const [addOpen, setAddOpen] = useState(false);
 
   return (
-    <div className="schermo animate-fade-in gap-4">
-      {/* Il titolo è nella testata: qui chi ha qualcuno in piedi davanti
-          legge il riassunto, che è la cosa che serve. */}
-      <header className="fissa flex flex-wrap items-start justify-between gap-4">
-        <div>
-          {entries.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {summary.personeInCoda} {summary.personeInCoda === 1 ? "persona" : "persone"} in coda
-              {summary.attesaMediaMin > 0 && ` · attesa media ${durataUmana(summary.attesaMediaMin)}`}
-              {summary.inRitardo > 0 && ` · ${summary.inRitardo} oltre la stima`}
-            </p>
-          )}
+    // `fondo-caldo` porta le variabili del vetro della Panoramica: le righe
+    // sono schede di quel vetro, i gesti sono i suoi tondi allungati.
+    <div className="schermo fondo-caldo animate-fade-in gap-4">
+      {/* La testata come quella della Panoramica: una riga in serif che dice
+          la cosa che serve — quante persone stanno aspettando — e accanto il
+          gesto, col tono delle chiamate all'azione. */}
+      <header className="fissa flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-display text-xl md:text-2xl">
+            {entries.length === 0
+              ? "Nessuno in attesa."
+              : `${summary.personeInCoda} ${summary.personeInCoda === 1 ? "persona" : "persone"} in coda.`}
+          </p>
           {summary.dimenticate > 0 && (
             /* Una riga aperta da stamattina non è una persona che aspetta: è
                una riga da chiudere. Fuori dalla media, e detta qui. */
@@ -84,20 +85,54 @@ export function WaitlistPageClient({
           )}
         </div>
         {canManage && (
-          <Button variant="accent" onClick={() => setAddOpen(true)}>
-            + Aggiungi in lista
-          </Button>
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="pulsante-cta tocco-comodo inline-flex h-10 items-center justify-center gap-2 rounded-full bg-cta pl-3 pr-4 text-xs font-semibold uppercase tracking-wider text-cta-ink shadow-[shadow:var(--button-accent-shadow)] transition-[filter] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <ListPlus className="h-5 w-5 shrink-0" aria-hidden="true" />
+            Aggiungi in lista
+          </button>
         )}
       </header>
 
       {entries.length > 0 && (
-        <section className="fissa surface grid grid-cols-3 divide-x divide-border riquadro">
-          {/* «2 in attesa» accanto a «9 persone in coda» si leggeva come una
-              contraddizione: sono gruppi, non persone. Un numero, un nome. */}
-          <CellaNumero icona={ListOrdered} etichetta={["Gruppo in attesa", "Gruppi in attesa"]} valore={summary.inAttesa} />
-          <CellaNumero icona={Clock} etichetta={["Avvisato", "Avvisati"]} valore={summary.avvisati} nota="tavolo tenuto" />
-          <CellaNumero icona={Users} etichetta={["Confermato", "Confermati"]} valore={summary.confermati} nota={["sta arrivando", "stanno arrivando"]} />
-        </section>
+        /* La fascia è la stessa tessera della Panoramica. «2 in attesa»
+           accanto a «9 persone in coda» si leggeva come una contraddizione:
+           sono gruppi, non persone. Un numero, un nome. */
+        <FasciaTessere colonne={4}>
+          <TesseraKpi
+            icona={ListOrdered}
+            etichetta={["Gruppo in attesa", "Gruppi in attesa"]}
+            corta="In attesa"
+            valore={summary.inAttesa}
+            nota="in fila per un tavolo"
+          />
+          <TesseraKpi
+            icona={BellRing}
+            etichetta={["Avvisato", "Avvisati"]}
+            valore={summary.avvisati}
+            nota="tavolo tenuto"
+          />
+          <TesseraKpi
+            icona={UserCheck}
+            etichetta={["Confermato", "Confermati"]}
+            valore={summary.confermati}
+            nota={["sta arrivando", "stanno arrivando"]}
+          />
+          <TesseraKpi
+            icona={Timer}
+            etichetta="Attesa media"
+            corta="Attesa"
+            valore={summary.attesaMediaMin > 0 ? durataUmana(summary.attesaMediaMin) : "—"}
+            allarme={summary.inRitardo > 0}
+            nota={
+              summary.inRitardo > 0
+                ? `${summary.inRitardo} oltre la stima`
+                : "tutti entro la stima"
+            }
+          />
+        </FasciaTessere>
       )}
 
       {entries.length === 0 ? (
@@ -118,7 +153,10 @@ export function WaitlistPageClient({
         </EmptyState>
         </div>
       ) : (
-        <ul className="fill-scroll space-y-2 pr-0.5">
+        /* `-mr-[18px]`: il margine destro più i 10 px del binario della barra
+           (`scrollbar-gutter: stable`), così le schede finiscono a filo delle
+           tessere sopra. */
+        <ul className="vi-scorre fill-scroll -ml-2 -mr-[18px] flex flex-col gap-3.5 px-2 pb-2">
           {entries.map((entry, i) => (
             <WaitlistRow
               key={entry.id}

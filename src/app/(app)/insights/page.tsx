@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowRight, ArrowUp, ArrowDown, CalendarRange, CalendarX, CircleCheck, Gift, Receipt, UserX, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -322,6 +322,7 @@ export default async function InsightsPage({
 
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <StatCard
+                icon={CalendarRange}
                 label="Prenotazioni totali"
                 value={String(a.bookings)}
                 hint="Nel periodo selezionato"
@@ -329,6 +330,7 @@ export default async function InsightsPage({
                 emphasize
               />
               <StatCard
+                icon={Users}
                 label="Coperti totali"
                 value={String(a.covers)}
                 hint="Somma dei posti prenotati"
@@ -349,6 +351,7 @@ export default async function InsightsPage({
           un'altra non è una variazione.
         */}
               <StatCard
+                icon={CircleCheck}
                 label="Tasso completamento"
                 value={
                   quotaAffidabile(a.bookings) ? `${a.occupancyRate}%` : "—"
@@ -367,6 +370,7 @@ export default async function InsightsPage({
                 }
               />
               <StatCard
+                icon={UserX}
                 label="No-show"
                 value={quotaAffidabile(a.bookings) ? `${a.noShowRate}%` : "—"}
                 hint={
@@ -384,6 +388,7 @@ export default async function InsightsPage({
                 }
               />
               <StatCard
+                icon={CalendarX}
                 label="Cancellazioni"
                 value={quotaAffidabile(a.bookings) ? `${a.cancelRate}%` : "—"}
                 hint={
@@ -405,7 +410,8 @@ export default async function InsightsPage({
              servito, cioè un debito verso i clienti. Sta fra i numeri
              d'insieme perché è lì che qualcuno lo cerca a fine mese. */
                 <StatCard
-                  label="Debito gift card"
+                  icon={Gift}
+                label="Debito gift card"
                   value={formatCurrency(
                     giftCard.residuoCents,
                     ctx.venue.currency,
@@ -422,6 +428,7 @@ export default async function InsightsPage({
           manca invece di mostrare uno zero.
         */}
               <StatCard
+                icon={Receipt}
                 label="Spesa media per visita"
                 value={
                   a.ospitiConConti > 0

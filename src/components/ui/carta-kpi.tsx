@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { accorda, type Parola } from "@/lib/accordo";
+import { TrattiSfumati } from "@/components/ui/tessera-kpi";
 
 /**
  * Le sei tinte della fascia. Stanno tutte dentro la coppia verde/oro di
@@ -14,14 +15,6 @@ import { accorda, type Parola } from "@/lib/accordo";
  */
 export type TonoKpi = "bosco" | "bronzo" | "petrolio" | "oliva" | "salvia" | "alloro";
 
-const TONO: Record<TonoKpi, string> = {
-  bosco: "kpi-bosco",
-  bronzo: "kpi-bronzo",
-  petrolio: "kpi-petrolio",
-  oliva: "kpi-oliva",
-  salvia: "kpi-salvia",
-  alloro: "kpi-alloro",
-};
 
 /**
  * La fascia: sei carte affiancate su scrivania, tre per due su tablet, e sul
@@ -112,50 +105,38 @@ export function CartaKpi({
   const etichettaResa = accorda(etichetta, valore);
   const notaResa = nota === undefined ? undefined : accorda(nota, valore);
 
+  /*
+    Dal 3 novembre 2026 la carta ha il disegno della tessera della Panoramica
+    (`tessera-kpi.tsx`): vetro chiaro, dischetto verde con l'icona a tratto
+    sfumato, numero monospaziato. Le sei tinte (`tono`) restano nella firma ma
+    non colorano più la carta: sei vetri di sei colori accanto alla fascia
+    neutra della Panoramica sembravano un altro prodotto.
+  */
+  void tono;
   return (
-    <div
-      className={cn(
-        "kpi-vetro flex flex-col gap-2 rounded-xl p-3",
-        "md:flex-row md:items-center md:gap-3 md:p-3.5",
-        TONO[tono],
-        className,
-      )}
-    >
+    <div className={cn("vetro card-notch flex items-start gap-3 p-3 sm:p-4", className)}>
+      <TrattiSfumati />
       <span
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-kpi-icon-border bg-kpi-icon-fill text-kpi-icon-ink md:h-11 md:w-11"
+        className="vetro kpi-pastiglia hidden h-12 w-12 shrink-0 place-items-center rounded-full sm:grid"
         aria-hidden="true"
       >
-        <Icona className="h-4 w-4 md:h-5 md:w-5" />
+        <Icona className="h-6 w-6" stroke="url(#trattoVetro)" />
       </span>
 
-      <div className="min-w-0">
-        {/* `text-2xl` e non più `2rem`: coricata, la carta dà al numero la
-            larghezza che resta dopo il dischetto — a 1024 px sono una
-            settantina di pixel, e «2/17» in 32 px non ci starebbe. Torna
-            grande da `xl`, dove la larghezza c'è. */}
+      <div className="min-w-0 flex-1">
+        <p className="t-etichetta truncate text-[13px] text-kpi-label-muted sm:text-sm">{etichettaResa}</p>
         <p
           className={cn(
-            "font-semibold",
             valoreCompatto
-              ? "truncate text-base leading-tight md:text-lg"
-              : "text-2xl leading-none tabular-nums xl:text-[1.75rem]",
-            allarme ? "text-accent-strong" : "text-ink",
+              ? "mt-1 truncate text-base font-semibold leading-tight md:text-lg"
+              : "mt-0.5 font-mono text-2xl leading-8 tabular-nums xl:text-3xl xl:leading-9",
+            allarme ? "text-accent-strong" : "text-foreground",
           )}
           title={valoreCompatto ? String(valore) : undefined}
         >
           {valore}
         </p>
-        <p className="mt-1.5 truncate text-[11px] font-semibold uppercase leading-tight tracking-wider text-kpi-label">
-          {etichettaResa}
-        </p>
-        {/* 65% e non 55%: misurato sul **reso**, cioè sulla tinta composita
-            alla quota dove la nota sta davvero (in basso, dove il gradiente è
-            quasi tutto `--kpi-basso`), il crema al 55% fa 4,24-4,56 : 1 e su
-            quattro toni su sei manca la soglia. A 65% fa 5,27-5,77 : 1 e resta
-            comunque due gradini sotto l'etichetta. */}
-        <p className="mt-0.5 truncate text-[11px] leading-tight text-kpi-note">
-          {notaResa || "\u00A0"}
-        </p>
+        <p className="mt-1 truncate text-[11px] leading-tight text-muted-foreground">{notaResa || " "}</p>
       </div>
     </div>
   );
