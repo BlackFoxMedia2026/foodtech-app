@@ -164,9 +164,14 @@ export function Cifra({
   const tinta2 = (verde: string, oro: string, chiara: string) =>
     scuro ? verde : tinta === "oro" ? oro : chiara;
   return (
-    <div className={`min-w-0 rounded-xl border px-4 py-3.5 ${fondo}`}>
+    /* Il riquadro è un contenitore: la cifra grande scala con la sua
+       larghezza (`cqi`) invece di avere una misura fissa, così «1.180,00 €»
+       sta su una riga anche quando la colonna si stringe. */
+    <div className={`min-w-0 rounded-xl border px-4 py-3.5 [container-type:inline-size] ${fondo}`}>
       <p
-        className={`font-mono tabular-nums ${grande ? "text-3xl leading-10" : "text-xl leading-7"} ${
+        className={`whitespace-nowrap font-mono tabular-nums ${
+          grande ? "text-[clamp(1.125rem,14cqi,1.875rem)] leading-10" : "text-xl leading-7"
+        } ${
           tinta !== "chiara"
             ? ""
             : tono === "su"
