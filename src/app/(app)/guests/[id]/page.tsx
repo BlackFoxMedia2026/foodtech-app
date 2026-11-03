@@ -6,7 +6,6 @@ import {
   History,
   NotebookPen,
   Phone,
-  PieChart,
   Receipt,
   Sparkles,
   TrendingUp,
@@ -241,6 +240,18 @@ export default async function GuestDetail({ params }: { params: { id: string } }
               </CardContent>
             </Card>
 
+            {/* Le abitudini stanno qui, una tessera per riga: a destra la
+                colonna è già lunga, qui sotto le note restava il vuoto. */}
+            <Card className="card-notch">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Abitudini
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AbitudiniCliente abitudini={crm.abitudini} inColonna />
+              </CardContent>
+            </Card>
           </div>
 
           {/* --------------------------------------- colonna: cosa fa, cambia */}
@@ -274,8 +285,9 @@ export default async function GuestDetail({ params }: { params: { id: string } }
             </Card>
 
             {/* «Quanto spende» e «in cosa» nella stessa card; accanto i piatti.
-                Affiancate da `xl`, dove ognuna ha almeno 380 px. */}
-            <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
+                Affiancate da `xl`, dove ognuna ha almeno 380 px, e alte uguali:
+                sotto la più corta non resta un buco. */}
+            <div className="grid gap-4 xl:grid-cols-2">
               <Card className="card-notch">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -285,11 +297,7 @@ export default async function GuestDetail({ params }: { params: { id: string } }
                 <CardContent className="space-y-5">
                   <SezioneSpesa spesa={crm.spesa} visite={crm.visite.totali} currency={valuta} />
                   {crm.spesa.conti > 0 && (
-                    <div className="space-y-3 border-t border-border pt-4">
-                      <p className="flex items-center gap-2 text-sm font-medium">
-                        <PieChart className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Dove vanno i
-                        soldi
-                      </p>
+                    <div className="border-t border-border pt-4">
                       <CategoriePreferite categorie={crm.categorie} currency={valuta} />
                     </div>
                   )}
@@ -308,17 +316,6 @@ export default async function GuestDetail({ params }: { params: { id: string } }
                 </CardContent>
               </Card>
             </div>
-
-            <Card className="card-notch">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Abitudini
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AbitudiniCliente abitudini={crm.abitudini} />
-              </CardContent>
-            </Card>
 
             <Card className="card-notch">
               <CardHeader>

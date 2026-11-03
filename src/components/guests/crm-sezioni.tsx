@@ -21,7 +21,7 @@ import {
   Wine,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import type {
   Abitudini,
   CategoriaPreferita,
@@ -489,7 +489,14 @@ export function CategoriePreferite({
  * accomodamento non ha una permanenza media, e una riga «—» occupa spazio per
  * dire che non sappiamo qualcosa che nessuno aveva chiesto.
  */
-export function AbitudiniCliente({ abitudini }: { abitudini: Abitudini }) {
+export function AbitudiniCliente({
+  abitudini,
+  inColonna = false,
+}: {
+  abitudini: Abitudini;
+  /** Nella colonna stretta di sinistra: da `lg` una tessera per riga. */
+  inColonna?: boolean;
+}) {
   const a = abitudini;
   const quota = (q: number) => `${Math.round(q * 100)}% delle visite`;
 
@@ -564,7 +571,7 @@ export function AbitudiniCliente({ abitudini }: { abitudini: Abitudini }) {
     `truncate` — «Sala principale · B2» si legge intero o va a capo.
   */
   return (
-    <ul className="grid gap-2.5 sm:grid-cols-2 2xl:grid-cols-3">
+    <ul className={cn("grid gap-2.5 sm:grid-cols-2", inColonna ? "lg:grid-cols-1" : "2xl:grid-cols-3")}>
       {voci.map((v) => (
         <li
           key={v.etichetta}
