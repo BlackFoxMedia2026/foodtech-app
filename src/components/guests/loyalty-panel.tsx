@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronDown, Gift, Hourglass, PenLine, Receipt, Sparkles } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Gift, Hourglass, PenLine, Receipt, Sparkles, X } from "lucide-react";
 import type { LoyaltyTxnKind } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,9 +100,27 @@ export function LoyaltyPanel({
           <Sparkles className="h-4 w-4 text-accent-strong" aria-hidden="true" /> Punti fedeltà
         </CardTitle>
         {canAdjust && saldo.attiva && (
-          <Button variant="outline" size="sm" onClick={() => setApri(!apri)}>
-            {apri ? "Annulla" : "Correggi a mano"}
-          </Button>
+          /* Una freccia nel tondino, come quella che apre la serata nello
+             storico: il nome dell'azione sta nel suggerimento e per i lettori
+             di schermo. Aperto il modulo, diventa la crocetta per chiuderlo. */
+          <button
+            type="button"
+            onClick={() => setApri(!apri)}
+            aria-expanded={apri}
+            aria-label={apri ? "Annulla la correzione" : "Correggi i punti a mano"}
+            title={apri ? "Annulla" : "Correggi a mano"}
+            className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border transition-colors ${
+              apri
+                ? "border-transparent bg-[#1C4A3A] text-cream"
+                : "border-border/70 bg-card text-muted-foreground hover:border-transparent hover:bg-[#1C4A3A] hover:text-cream"
+            }`}
+          >
+            {apri ? (
+              <X className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
         )}
       </CardHeader>
 
