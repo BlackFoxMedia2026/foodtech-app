@@ -40,7 +40,11 @@ export function disponiFila({
   attiva,
   gap,
   cornice,
-  minimoInRiga = 5,
+  // Quattro e non cinque: con cinque, Servizio e Prenotazioni — che a
+  // sinistra hanno un titolo più largo — passavano alla pila a 1340 px mentre
+  // le altre pagine restavano in riga, e la barra cambiava forma cambiando
+  // pagina.
+  minimoInRiga = 4,
 }: {
   /** La larghezza a disposizione della fila, cornice compresa. */
   spazio: number;

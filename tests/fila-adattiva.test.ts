@@ -43,8 +43,13 @@ describe("La fila della barra si adatta allo spazio che ha", () => {
     expect(d.visibili).toEqual([0, 1, 2, 3, 4, 8]);
   });
 
-  it("sotto le cinque voci in riga passa alla pila, col nome sotto l'icona", () => {
+  it("con quattro voci in riga resta in riga, con «Altro»", () => {
     const d = disponiFila({ ...base, spazio: 560 });
+    expect(d).toEqual({ forma: "riga", visibili: [0, 1, 2, 3] });
+  });
+
+  it("sotto le quattro voci in riga passa alla pila, col nome sotto l'icona", () => {
+    const d = disponiFila({ ...base, spazio: 520 });
     expect(d.forma).toBe("pila");
     expect(d.visibili).toHaveLength(9);
   });
