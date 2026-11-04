@@ -34,11 +34,15 @@ export function Sezione({
   id?: string;
 }) {
   return (
-    <section id={id} className={cn("surface p-5 md:p-6", className)} aria-labelledby={id ? `${id}-titolo` : undefined}>
-      <header className="mb-5 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+    /* Dal 4 novembre 2026 è la card della scheda ospite: spalla
+       (`card-notch`), titolo serif a 18 px con l'icona piccola in oro. Il
+       titolo da 24 px di prima, ripetuto in ogni sezione, gridava più forte
+       del nome della persona in testata. */
+    <section id={id} className={cn("surface card-notch p-5", className)} aria-labelledby={id ? `${id}-titolo` : undefined}>
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
-          <h2 id={id ? `${id}-titolo` : undefined} className="flex items-center gap-2 text-display text-xl md:text-2xl">
-            {Icona && <Icona className="h-5 w-5 shrink-0 text-accent-strong" aria-hidden="true" />}
+          <h2 id={id ? `${id}-titolo` : undefined} className="flex items-center gap-2 text-display text-lg font-medium leading-tight">
+            {Icona && <Icona className="h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />}
             <span className="break-words">{titolo}</span>
           </h2>
           {descrizione && <p className="mt-1 text-sm text-muted-foreground">{descrizione}</p>}

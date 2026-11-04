@@ -142,14 +142,14 @@ export function testoAvvisoScadenza(s: Scadenza): string {
 /* -------------------------------------------------------------------------- */
 
 export const TAB_SCHEDA = [
-  { chiave: "panoramica", label: "Panoramica" },
-  { chiave: "personali", label: "Dati personali" },
-  { chiave: "lavoro", label: "Lavoro" },
-  { chiave: "documenti", label: "Documenti" },
-  { chiave: "formazione", label: "Formazione e sicurezza" },
-  { chiave: "presenze", label: "Turni e presenze" },
-  { chiave: "account", label: "Account" },
-  { chiave: "note", label: "Note e storico" },
+  { chiave: "panoramica", label: "Panoramica", corta: "Panoramica" },
+  { chiave: "personali", label: "Dati personali", corta: "Dati personali" },
+  { chiave: "lavoro", label: "Lavoro", corta: "Lavoro" },
+  { chiave: "documenti", label: "Documenti", corta: "Documenti" },
+  { chiave: "formazione", label: "Formazione e sicurezza", corta: "Formazione" },
+  { chiave: "presenze", label: "Turni e presenze", corta: "Turni" },
+  { chiave: "account", label: "Account", corta: "Account" },
+  { chiave: "note", label: "Note e storico", corta: "Note" },
 ] as const;
 
 export type TabScheda = (typeof TAB_SCHEDA)[number]["chiave"];

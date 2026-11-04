@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useRef } from "react";
 import { TAB_SCHEDA, type TabScheda } from "@/lib/scheda-dipendente";
 import { cn } from "@/lib/utils";
 
@@ -10,14 +7,17 @@ import { cn } from "@/lib/utils";
  *
  * Sono **link** con `?tab=`, non uno stato: «guarda i documenti di Marco» è
  * un indirizzo che si manda, e tornare indietro dal browser deve riportare
- * alla linguetta di prima. Il server rende solo la linguetta aperta, quindi
- * aprire la scheda non carica le note, i turni e il registro di una persona
- * per mostrare la Panoramica.
+ * alla linguetta di prima. Il server rende solo la linguetta aperta.
  *
- * Grandi (`text-base`) e con il sottolineato pieno sull'attiva: la scheda la
- * usa anche chi con il gestionale ha poca confidenza, e una linguetta da 12
- * px con un cambio di colore appena percettibile non si trova. Sul telefono
- * scorrono in orizzontale e l'attiva si porta in vista da sola.
+ * ## Revisione del 4 novembre 2026
+ *
+ * Erano una fila sottolineata che scorreva in orizzontale: a 1300 px
+ * l'ultima si leggeva «Note e s», e chi non sapeva che la fila scorreva non
+ * la trovava. Adesso sono il binario a segmenti del vetro iOS (fondo grigio
+ * trasparente, la scelta in bianco rialzato) e **vanno a capo** invece di
+ * uscire dal bordo: nessuna linguetta si taglia, a nessuna larghezza. I nomi
+ * sono quelli corti (`corta` in `TAB_SCHEDA`), così a schermo largo stanno
+ * su una riga.
  */
 export function Linguette({
   attiva,
@@ -32,43 +32,38 @@ export function Linguette({
   /** Un numero accanto al nome: documenti caricati, scadenze da sistemare. */
   contatori?: Partial<Record<TabScheda, number>>;
 }) {
-  const attivaRef = useRef<HTMLAnchorElement>(null);
-
-  useEffect(() => {
-    attivaRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
-  }, [attiva]);
-
   return (
-    <nav aria-label="Sezioni della scheda" className="nav-scroll -mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-      <ul className="flex min-w-max items-stretch gap-1 border-b border-border">
+    <nav aria-label="Sezioni della scheda">
+      <ul className="inline-flex max-w-full flex-wrap gap-0.5 rounded-[14px] bg-[rgba(118,118,128,0.12)] p-[3px]">
         {TAB_SCHEDA.filter((t) => !nascoste.includes(t.chiave)).map((t) => {
           const eAttiva = t.chiave === attiva;
           const n = contatori[t.chiave];
           return (
             <li key={t.chiave}>
               <Link
-                ref={eAttiva ? attivaRef : undefined}
                 href={t.chiave === "panoramica" ? base : `${base}?tab=${t.chiave}`}
                 scroll={false}
                 aria-current={eAttiva ? "page" : undefined}
+                title={t.label}
                 className={cn(
-                  "relative flex h-12 items-center gap-2 whitespace-nowrap px-3 text-[15px] font-medium transition-colors md:text-base",
+                  "flex h-10 items-center gap-2 whitespace-nowrap rounded-[11px] px-3.5 text-[15px] font-medium transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                  eAttiva ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                  eAttiva
+                    ? "bg-white/90 font-semibold text-[#10201a] shadow-[0_3px_8px_rgba(16,32,26,0.12),0_1px_1px_rgba(16,32,26,0.04)]"
+                    : "text-muted-foreground hover:bg-white/40 hover:text-foreground",
                 )}
               >
-                {t.label}
+                {t.corta}
                 {typeof n === "number" && n > 0 && (
                   <span
                     className={cn(
-                      "rounded-full px-1.5 py-0.5 text-xs tabular-nums leading-none",
-                      eAttiva ? "bg-accent/50 text-ink" : "bg-veil-10 text-muted-foreground",
+                      "grid h-5 min-w-[1.25rem] place-items-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums leading-none",
+                      t.chiave === "documenti" ? "bg-veil-10 text-muted-foreground" : "bg-accent-strong text-cream",
                     )}
                   >
                     {n}
                   </span>
                 )}
-                {eAttiva && <span aria-hidden="true" className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent-strong" />}
               </Link>
             </li>
           );

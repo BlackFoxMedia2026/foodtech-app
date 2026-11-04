@@ -5,6 +5,7 @@ import { etichettaSettimana, intervalloCompatto, oreLeggibili, tipoTurnoBreve, t
 import { dataBreve } from "@/lib/scheda-dipendente";
 import type { RiepilogoPresenze } from "@/server/staff-presenze";
 import { cn } from "@/lib/utils";
+import { Cifra } from "@/components/guests/crm-sezioni";
 import { Sezione } from "./sezione";
 
 /**
@@ -34,7 +35,7 @@ export function Presenze({ riepilogo, oggi }: { riepilogo: RiepilogoPresenze; og
           </Link>
         }
       >
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           <Numero valore={oreLeggibili(s.minutiProgrammati)} etichetta="programmate" />
           <Numero valore={oreLeggibili(s.minutiSvolti)} etichetta="già svolte" nota="turni passati" />
           <Numero valore={String(s.turni)} etichetta={s.turni === 1 ? "turno" : "turni"} />
@@ -67,7 +68,7 @@ export function Presenze({ riepilogo, oggi }: { riepilogo: RiepilogoPresenze; og
       </Sezione>
 
       <Sezione id="assenze" titolo="Ferie, permessi e assenze" icona={Palmtree} descrizione={`Anno ${a.anno}. I giorni vengono dai turni segnati nel calendario.`}>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           <Numero valore={String(a.ferieUsate)} etichetta="ferie usate" nota={a.ferieUsate === 1 ? "giorno" : "giorni"} />
           <Numero valore={String(a.feriePianificate)} etichetta="ferie programmate" nota={a.feriePianificate === 1 ? "giorno" : "giorni"} />
           <Numero valore={String(a.permessi)} etichetta="permessi" nota={a.permessi === 1 ? "giorno" : "giorni"} />
@@ -102,12 +103,9 @@ function giornoLeggibile(dateKey: string) {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
 
+/* I numeri della settimana e dell'anno sono la `Cifra` della scheda ospite
+   (4 novembre 2026): stesso fondo incavato e stesso numero monospaziato, così
+   le due schede parlano la stessa lingua. */
 function Numero({ valore, etichetta, nota, allarme = false }: { valore: string; etichetta: string; nota?: string; allarme?: boolean }) {
-  return (
-    <div className="riquadro bg-card-sunken p-4">
-      <p className={cn("text-display text-3xl leading-none tabular-nums", allarme ? "text-accent-strong" : "text-foreground")}>{valore}</p>
-      <p className="mt-2 text-sm font-medium text-foreground/90">{etichetta}</p>
-      <p className="text-xs text-muted-foreground">{nota ?? " "}</p>
-    </div>
-  );
+  return <Cifra valore={valore} etichetta={etichetta} nota={nota} tono={allarme ? "giu" : "neutro"} />;
 }

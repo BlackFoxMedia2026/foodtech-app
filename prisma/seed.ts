@@ -390,11 +390,31 @@ async function creaOrganicoDemo(venueId: string) {
         birthday: new Date(Date.UTC(1988 + (i % 12), (i * 3) % 12, 5 + (i % 20))),
         hireDate: new Date(Date.UTC(2021 + (i % 5), (i * 2) % 12, 1 + (i % 27))),
         phone: `+39 34${i % 10} ${1000000 + i * 111111}`,
+        photoUrl: fotoStaffDemo(persona.firstName, persona.lastName),
       },
     });
     creati++;
   }
   if (creati > 0) console.log(`→ Creati ${creati} membri dello staff demo (sala, cucina, bar).`);
+
+  /* Le demo create prima delle foto (4 novembre 2026) le ricevono qui: solo
+     chi non ne ha una, così una foto caricata a mano non si sovrascrive. */
+  for (const persona of squadra) {
+    await db.waiter.updateMany({
+      where: { venueId, firstName: persona.firstName, lastName: persona.lastName, photoUrl: null },
+      data: { photoUrl: fotoStaffDemo(persona.firstName, persona.lastName) },
+    });
+  }
+}
+
+/**
+ * Il ritratto demo di una persona dello staff: `public/demo/staff`, un file
+ * per persona col nome in minuscolo (4 novembre 2026, generati con
+ * Higgsfield). Con le iniziali al posto delle facce, la scheda e l'elenco
+ * non fanno vedere com'è una squadra vera.
+ */
+function fotoStaffDemo(nome: string, cognome: string) {
+  return `/demo/staff/${`${nome}-${cognome}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.webp`;
 }
 
 /**

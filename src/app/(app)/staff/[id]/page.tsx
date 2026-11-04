@@ -1,8 +1,5 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { todayInVenue } from "@/lib/venue-time";
 import { costruisciScadenze } from "@/lib/scadenze-dipendente";
@@ -105,20 +102,14 @@ export default async function SchedaDipendentePage({
   ]);
 
   return (
-    <div className="schermo animate-fade-in gap-4">
-      <Button asChild variant="ghost" size="sm" className="fissa self-start">
-        <Link href="/staff">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Torna allo staff
-        </Link>
-      </Button>
+    <div className="schermo fondo-caldo animate-fade-in gap-4">
+      {/* La testata è una riga sola, ferma, come nella scheda ospite (4
+          novembre 2026): alta una settantina di pixel, non toglie spazio alle
+          sezioni sotto, che scorrono in una regione sola. */}
+      <Testata persona={persona} canManageStaff={canManageStaff} base={base} />
 
-      {/* Il corpo scorre dentro di sé: testata e linguette scorrono con lui,
-          perché su un tablet una testata fissa da 200 px lascerebbe poco spazio
-          alle sezioni — che sono la cosa da leggere. */}
-      <div className="fill-scroll -mx-1 px-1">
-        <div className="mx-auto max-w-6xl space-y-5 pb-8">
-          <Testata persona={persona} tipoContratto={tipoContratto} canManageStaff={canManageStaff} base={base} />
-
+      <div className="fill -mx-3 -mb-6 min-h-0 overflow-y-auto px-3 pb-6">
+        <div className="space-y-4">
           <Linguette
             attiva={tab}
             base={base}
@@ -131,7 +122,15 @@ export default async function SchedaDipendentePage({
           />
 
           {tab === "panoramica" && (
-            <Panoramica persona={persona} tipoContratto={tipoContratto} scadenze={scadenze} presenze={presenze} base={base} />
+            <Panoramica
+              persona={persona}
+              tipoContratto={tipoContratto}
+              scadenze={scadenze}
+              presenze={presenze}
+              documenti={documenti.length}
+              base={base}
+              oggi={oggi}
+            />
           )}
           {tab === "personali" && (
             <DatiPersonali persona={persona} canEdit={canManageStaff} modificaIniziale={searchParams.modifica === "1" && canManageStaff} />
