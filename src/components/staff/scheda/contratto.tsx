@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, FileSignature, Pencil, Plus, Trash2 } from "lucide-react";
+import { Award, BadgeCheck, CalendarDays, CalendarX2, ChevronDown, Clock, FileSignature, Hourglass, Pencil, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAvvisi } from "@/components/ui/avvisi";
@@ -25,8 +25,9 @@ import {
   pickCurrentContract,
   staffContractTypeLabel,
 } from "@/lib/staff-contracts";
-import { dataLunga, giorniLavorativiLeggibili } from "@/lib/scheda-dipendente";
-import { Campo, GrigliaCampi, PiedeModifica, Sezione } from "./sezione";
+import { dataLunga } from "@/lib/scheda-dipendente";
+import { Blocco, GiorniSettimana, Tassello, Voce } from "./lettura";
+import { PiedeModifica, Sezione } from "./sezione";
 import type { ContrattoDTO } from "./tipi";
 
 function conDate(c: ContrattoDTO) {
@@ -147,29 +148,66 @@ export function Contratto({ waiterId, contratti, canEdit }: { waiterId: string; 
       }
     >
       {attuale ? (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-display text-2xl">{staffContractTypeLabel(attuale.contractType)}</p>
-            <Badge tone={CONTRACT_STATUS_BADGE_TONE[getContractStatus(attuale)]} className="text-sm">
+        <div className="space-y-4">
+          {/* La testa del contratto: il tipo in grande col suo stato. Poi i
+              termini in tasselli con l'icona e i giorni come una settimana
+              disegnata (4 novembre 2026: prima erano otto etichette in
+              maiuscoletto su quattro colonne). */}
+          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[linear-gradient(135deg,#1C4A3A_0%,#102B22_100%)] p-4 text-cream shadow-[0_8px_18px_rgba(16,43,34,0.25)]">
+            <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-cream/10">
+              <FileSignature className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-cream/70">Contratto in corso</p>
+              <p className="text-display break-words text-xl leading-tight md:text-2xl">{staffContractTypeLabel(attuale.contractType)}</p>
+            </div>
+            <Badge tone={CONTRACT_STATUS_BADGE_TONE[getContractStatus(attuale)]} className={
+                /* Sul verde i toni neutri sparivano: crema per «in corso» e
+                   «senza scadenza», i colori d'allarme restano i loro. */
+                ["EXPIRING_SOON", "EXPIRED"].includes(getContractStatus(attuale))
+                  ? "text-sm"
+                  : "border-cream/30 bg-cream/15 text-sm text-cream"
+              }
+            >
               {getContractStatusDetail(attuale)}
             </Badge>
           </div>
 
-          <GrigliaCampi colonne={4}>
-            <Campo etichetta="Inizio contratto" valore={dataLunga(attuale.startDate)} />
-            <Campo etichetta="Fine contratto" valore={attuale.endDate ? dataLunga(attuale.endDate) : "Nessuna scadenza"} />
-            <Campo etichetta="Ore settimanali" valore={attuale.weeklyHours != null ? `${attuale.weeklyHours} ore` : null} vuoto="Non indicate" />
-            <Campo etichetta="Giorni lavorativi" valore={giorniLavorativiLeggibili(attuale.workingDays) || null} vuoto="Non indicati" />
-            <Campo etichetta="Livello / inquadramento" valore={attuale.level} vuoto="Non indicato" />
-            <Campo etichetta="Mansione contrattuale" valore={attuale.contractualRole} vuoto="Non indicata" />
-            <Campo
-              etichetta="Periodo di prova"
-              valore={attuale.probationEndDate ? `Fino al ${dataLunga(attuale.probationEndDate)}` : null}
-              vuoto="Non previsto"
-              nota={attuale.probationEndDate && attuale.probationEndDate.getTime() < Date.now() ? "Concluso." : undefined}
-            />
-            {attuale.notes && <Campo etichetta="Note" valore={attuale.notes} largo />}
-          </GrigliaCampi>
+          <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+            <Tassello icona={CalendarDays} etichetta="Inizio" valore={dataLunga(attuale.startDate)} />
+            <Tassello icona={CalendarX2} etichetta="Fine" valore={attuale.endDate ? dataLunga(attuale.endDate) : "Nessuna scadenza"} />
+            <Tassello icona={Clock} etichetta="Ore a settimana" valore={attuale.weeklyHours != null ? `${attuale.weeklyHours} ore` : null} vuoto="Non indicate" />
+            <Tassello icona={Award} etichetta="Livello" valore={attuale.level} />
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Blocco titolo="Giorni lavorativi">
+              {attuale.workingDays.length ? (
+                <GiorniSettimana giorni={attuale.workingDays} />
+              ) : (
+                <p className="text-sm text-tertiary-foreground">Non indicati</p>
+              )}
+            </Blocco>
+            <Blocco titolo="Mansione e prova">
+              <Voce icona={BadgeCheck} etichetta="Mansione contrattuale" vuoto="Non indicata">
+                {attuale.contractualRole}
+              </Voce>
+              <Voce
+                icona={Hourglass}
+                etichetta="Periodo di prova"
+                vuoto="Non previsto"
+                nota={attuale.probationEndDate && attuale.probationEndDate.getTime() < Date.now() ? "concluso" : undefined}
+              >
+                {attuale.probationEndDate ? `Fino al ${dataLunga(attuale.probationEndDate)}` : null}
+              </Voce>
+            </Blocco>
+          </div>
+
+          {attuale.notes && (
+            <Blocco titolo="Note">
+              <p className="whitespace-pre-line break-words text-base text-foreground">{attuale.notes}</p>
+            </Blocco>
+          )}
 
           <div className="border-t border-border/60 pt-5">
             <ContractDocument waiterId={waiterId} contractId={attuale.id} document={attuale.document} onChange={() => router.refresh()} />

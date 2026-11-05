@@ -18,6 +18,9 @@ import { cn } from "@/lib/utils";
  * uscire dal bordo: nessuna linguetta si taglia, a nessuna larghezza. I nomi
  * sono quelli corti (`corta` in `TAB_SCHEDA`), così a schermo largo stanno
  * su una riga.
+ *
+ * Il binario è largo quanto la pagina e le linguette si dividono lo spazio
+ * (`flex-auto`): una barra corta a sinistra lasciava un buco a destra.
  */
 export function Linguette({
   attiva,
@@ -34,19 +37,19 @@ export function Linguette({
 }) {
   return (
     <nav aria-label="Sezioni della scheda">
-      <ul className="inline-flex max-w-full flex-wrap gap-0.5 rounded-[14px] bg-[rgba(118,118,128,0.12)] p-[3px]">
+      <ul className="flex w-full flex-wrap gap-0.5 rounded-[14px] bg-[rgba(118,118,128,0.12)] p-[3px]">
         {TAB_SCHEDA.filter((t) => !nascoste.includes(t.chiave)).map((t) => {
           const eAttiva = t.chiave === attiva;
           const n = contatori[t.chiave];
           return (
-            <li key={t.chiave}>
+            <li key={t.chiave} className="flex-auto">
               <Link
                 href={t.chiave === "panoramica" ? base : `${base}?tab=${t.chiave}`}
                 scroll={false}
                 aria-current={eAttiva ? "page" : undefined}
                 title={t.label}
                 className={cn(
-                  "flex h-10 items-center gap-2 whitespace-nowrap rounded-[11px] px-3.5 text-[15px] font-medium transition-colors",
+                  "flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-[11px] px-3.5 text-[15px] font-medium transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                   eAttiva
                     ? "bg-white/90 font-semibold text-[#10201a] shadow-[0_3px_8px_rgba(16,32,26,0.12),0_1px_1px_rgba(16,32,26,0.04)]"

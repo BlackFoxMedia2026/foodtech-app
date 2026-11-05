@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, UserRound } from "lucide-react";
+import { Cake, Flag, HeartPulse, House, IdCard, Landmark, Mail, MapPin, Pencil, Phone, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAvvisi } from "@/components/ui/avvisi";
 import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { readApiError } from "@/lib/api-client";
 import { calcolaEta, dataLunga, perCampoData } from "@/lib/scheda-dipendente";
-import { Campo, CampoModulo, GrigliaCampi, PiedeModifica, Sezione } from "./sezione";
+import { Blocco, Contatto, Dischetto, Voce } from "./lettura";
+import { CampoModulo, GrigliaCampi, PiedeModifica, Sezione } from "./sezione";
 import type { PersonaDTO } from "./tipi";
 
 type Valori = {
@@ -164,41 +165,100 @@ export function DatiPersonali({
           )
         }
       >
-        <div className="space-y-8">
-          <GrigliaCampi>
-            <Campo etichetta="Nome" valore={persona.firstName} />
-            <Campo etichetta="Cognome" valore={persona.lastName} />
-            <Campo etichetta="Codice fiscale" valore={persona.fiscalCode} />
-            <Campo etichetta="Data di nascita" valore={dataLunga(persona.birthday)} nota={eta !== null ? `${eta} anni` : undefined} />
-            <Campo etichetta="Luogo di nascita" valore={persona.birthPlace} />
-            <Campo etichetta="Nazionalità" valore={persona.nationality} />
-          </GrigliaCampi>
+        {/*
+          Rifatta il 4 novembre 2026: prima era un modulo a riposo — etichette
+          in maiuscoletto su valori in fila, quattro titoletti col filo sotto —
+          e si leggeva come un foglio Word. Adesso sono blocchi con le loro
+          icone: **chi è**, **dove abita**, **come si contatta**, **chi
+          chiamare se succede qualcosa**. Nome e cognome non si ripetono (sono
+          in testata); telefono, email, indirizzo ed emergenza si toccano.
+        */}
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Blocco titolo="Anagrafica">
+            <Voce icona={IdCard} etichetta="Codice fiscale">
+              {persona.fiscalCode ? <span className="font-mono tracking-wide">{persona.fiscalCode}</span> : null}
+            </Voce>
+            <Voce icona={Cake} etichetta="Nascita" nota={eta !== null ? `${eta} anni` : undefined}>
+              {persona.birthday ? dataLunga(persona.birthday) : null}
+            </Voce>
+            <Voce icona={Landmark} etichetta="Luogo di nascita">
+              {persona.birthPlace || null}
+            </Voce>
+            <Voce icona={Flag} etichetta="Nazionalità">
+              {persona.nationality || null}
+            </Voce>
+          </Blocco>
 
-          <div>
-            <h3 className="t-etichetta mb-4 border-b border-border/60 pb-2 font-medium">Residenza</h3>
-            <GrigliaCampi>
-              <Campo etichetta="Indirizzo" valore={indirizzo || null} largo />
-            </GrigliaCampi>
+          <div className="grid gap-3">
+            <Blocco titolo="Residenza">
+              {indirizzo ? (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(indirizzo)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="-m-1 flex items-center gap-3 rounded-lg p-1 transition-colors hover:bg-veil-4"
+                >
+                  <Dischetto icona={House} />
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words text-base leading-snug text-foreground">{persona.address || indirizzo}</p>
+                    <p className="break-words text-sm text-muted-foreground">
+                      {[persona.postalCode, persona.city].filter(Boolean).join(" ")}
+                      {persona.province ? ` (${persona.province})` : ""}
+                    </p>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-accent-strong">
+                    <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> Mappa
+                  </span>
+                </a>
+              ) : (
+                <Voce icona={House} etichetta="Indirizzo">
+                  {null}
+                </Voce>
+              )}
+            </Blocco>
+
+            <Blocco titolo="Recapiti">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Contatto icona={Phone} etichetta="Telefono" valore={persona.phone} href={`tel:${persona.phone}`} />
+                <Contatto
+                  icona={Mail}
+                  etichetta="Email"
+                  valore={persona.email}
+                  href={persona.email ? `mailto:${persona.email}` : undefined}
+                  vuoto="Nessuna email"
+                />
+              </div>
+            </Blocco>
           </div>
 
-          <div>
-            <h3 className="t-etichetta mb-4 border-b border-border/60 pb-2 font-medium">Recapiti</h3>
-            <GrigliaCampi>
-              <Campo etichetta="Telefono" valore={persona.phone} href={`tel:${persona.phone}`} />
-              <Campo etichetta="Email personale" valore={persona.email} href={persona.email ? `mailto:${persona.email}` : undefined} />
-            </GrigliaCampi>
-          </div>
-
-          <div>
-            <h3 className="t-etichetta mb-4 border-b border-border/60 pb-2 font-medium">Contatto di emergenza</h3>
-            <GrigliaCampi>
-              <Campo etichetta="Nome" valore={persona.emergencyContactName} />
-              <Campo
-                etichetta="Numero"
-                valore={persona.emergencyContactPhone}
-                href={persona.emergencyContactPhone ? `tel:${persona.emergencyContactPhone}` : undefined}
-              />
-            </GrigliaCampi>
+          {/* L'emergenza è l'unico dato di questa pagina che si cerca di corsa:
+              fondo ambra, e il numero è un pulsante. */}
+          <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 lg:col-span-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <span
+                aria-hidden="true"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[linear-gradient(160deg,#B8893A_0%,#8A6424_100%)] text-cream shadow-[0_5px_12px_rgba(16,43,34,0.2)]"
+              >
+                <HeartPulse className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-accent-strong">In caso di emergenza</p>
+                {persona.emergencyContactName ? (
+                  <p className="break-words text-base text-foreground md:text-lg">{persona.emergencyContactName}</p>
+                ) : (
+                  <p className="text-base text-tertiary-foreground">Nessun contatto indicato</p>
+                )}
+              </div>
+              {persona.emergencyContactPhone && (
+                <a
+                  href={`tel:${persona.emergencyContactPhone}`}
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-cta px-4 text-sm font-medium text-cta-ink shadow-[shadow:var(--button-accent-shadow)] transition hover:brightness-105"
+                >
+                  <Phone className="h-4 w-4" aria-hidden="true" />
+                  <span className="tabular-nums">{persona.emergencyContactPhone}</span>
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </Sezione>
@@ -283,3 +343,4 @@ export function DatiPersonali({
     </form>
   );
 }
+

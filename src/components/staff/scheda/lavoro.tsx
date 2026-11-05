@@ -2,9 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Briefcase, Pencil } from "lucide-react";
+import { BadgeCheck, Briefcase, Building2, CalendarDays, Pencil, UserRoundCheck } from "lucide-react";
 import type { StaffCapability, StaffPrimaryRole } from "@prisma/client";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,11 +12,11 @@ import { CapabilityPicker } from "@/components/staff/capability-picker";
 import { readApiError } from "@/lib/api-client";
 import { ROLE_OPTIONS_BY_DEPARTMENT, staffDepartmentLabel } from "@/lib/staff-departments";
 import { DEFAULT_CAPABILITIES_BY_ROLE, STAFF_ROLE_DESCRIPTIONS, staffCapabilityLabel, staffDepartmentOf, staffPrimaryRoleLabel } from "@/lib/staff-roles";
-import { staffStatusLabel, staffStatusTone } from "@/lib/staff-status";
 import { dataLunga, perCampoData } from "@/lib/scheda-dipendente";
 import { Caratteristiche } from "./caratteristiche";
 import { Contratto } from "./contratto";
-import { Campo, CampoModulo, GrigliaCampi, PiedeModifica, Sezione } from "./sezione";
+import { Blocco, Dischetto, Voce } from "./lettura";
+import { CampoModulo, GrigliaCampi, PiedeModifica, Sezione } from "./sezione";
 import type { ContrattoDTO, PersonaDTO } from "./tipi";
 
 type Responsabile = { id: string; nome: string; primaryRole: StaffPrimaryRole | null };
@@ -136,36 +135,57 @@ function Ruolo({ persona, responsabili, canEdit }: { persona: PersonaDTO; respon
           )
         }
       >
-        <GrigliaCampi>
-          <Campo etichetta="Ruolo" valore={persona.primaryRole ? staffPrimaryRoleLabel(persona.primaryRole) : persona.role} />
-          <Campo etichetta="Reparto" valore={staffDepartmentLabel(reparto)} nota="Determinato dal ruolo." />
-          <Campo
-            etichetta="Stato"
-            valore={<Badge tone={staffStatusTone(persona.status)} className="text-sm">{staffStatusLabel(persona.status)}</Badge>}
-            nota="Si cambia dall'intestazione della scheda."
-          />
-          <Campo etichetta="Data di assunzione" valore={persona.hireDate ? dataLunga(persona.hireDate) : null} vuoto="Non indicata" />
-          <Campo etichetta="Responsabile diretto" valore={persona.manager?.nome} vuoto="Nessuno" nota={persona.manager?.primaryRole ? staffPrimaryRoleLabel(persona.manager.primaryRole) : undefined} />
+        {/* A riposo come la scheda ospite (4 novembre 2026): due riquadri con
+            le icone al posto della griglia di etichette. Lo stato non si
+            ripete: è in testata, dove si cambia. */}
+        <div className={mostraCapability ? "grid gap-3 lg:grid-cols-2" : "grid gap-3"}>
+          <Blocco titolo="Nel locale">
+            <Voce icona={Briefcase} etichetta="Ruolo">
+              {persona.primaryRole ? staffPrimaryRoleLabel(persona.primaryRole) : persona.role}
+            </Voce>
+            <Voce icona={Building2} etichetta="Reparto">
+              {staffDepartmentLabel(reparto)}
+            </Voce>
+            <Voce
+              icona={CalendarDays}
+              etichetta="Assunzione"
+              vuoto="Non indicata"
+              nota={persona.hireDate ? anzianita(new Date(persona.hireDate)) : undefined}
+            >
+              {persona.hireDate ? dataLunga(persona.hireDate) : null}
+            </Voce>
+            <Voce icona={UserRoundCheck} etichetta="Risponde a" vuoto="Nessun responsabile">
+              {persona.manager ? (
+                <>
+                  {persona.manager.nome}
+                  {persona.manager.primaryRole && (
+                    <span className="text-sm text-muted-foreground"> · {staffPrimaryRoleLabel(persona.manager.primaryRole)}</span>
+                  )}
+                </>
+              ) : null}
+            </Voce>
+          </Blocco>
+
           {mostraCapability && (
-            <Campo
-              etichetta="Competenze operative"
-              largo
-              valore={
-                persona.capabilities.length ? (
-                  <span className="flex flex-wrap gap-1.5">
-                    {persona.capabilities.map((c) => (
-                      <Badge key={c} tone="gold" className="text-sm">
-                        {staffCapabilityLabel(c)}
-                      </Badge>
-                    ))}
-                  </span>
-                ) : null
-              }
-              vuoto="Nessuna: non compare fra i candidati quando si assegna la sala."
-              nota="Determinano a quali ruoli tavolo può essere assegnata durante il servizio."
-            />
+            <Blocco titolo="Competenze in sala">
+              {persona.capabilities.length ? (
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {persona.capabilities.map((c) => (
+                    <li key={c} className="flex items-center gap-2.5 rounded-lg border border-accent/30 bg-accent/10 p-2">
+                      <Dischetto icona={BadgeCheck} tinta="oro" />
+                      <span className="break-words text-[15px] font-medium leading-snug">{staffCapabilityLabel(c)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  Nessuna: non compare fra i candidati quando si assegna la sala.
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">Decidono a quali ruoli al tavolo può essere assegnata durante il servizio.</p>
+            </Blocco>
           )}
-        </GrigliaCampi>
+        </div>
       </Sezione>
     );
   }
@@ -231,4 +251,15 @@ function Ruolo({ persona, responsabili, canEdit }: { persona: PersonaDTO; respon
       </Sezione>
     </form>
   );
+}
+
+/** «5 anni», «8 mesi»: da quanto è in squadra, accanto alla data. */
+function anzianita(inizio: Date): string | undefined {
+  const adesso = new Date();
+  const mesi =
+    (adesso.getFullYear() - inizio.getFullYear()) * 12 + (adesso.getMonth() - inizio.getMonth()) - (adesso.getDate() < inizio.getDate() ? 1 : 0);
+  if (mesi < 1) return undefined;
+  if (mesi < 12) return `${mesi} ${mesi === 1 ? "mese" : "mesi"}`;
+  const anni = Math.floor(mesi / 12);
+  return `${anni} ${anni === 1 ? "anno" : "anni"}`;
 }
