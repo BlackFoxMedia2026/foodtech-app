@@ -161,7 +161,9 @@ export function OperationalRoomView<T extends { id: string }>({
           )
         )}
 
-        {!hasPlan && emptyPlanSlot && (
+        {/* Senza tavoli il messaggio è uno solo, quello sotto: due avvisi
+            uno sopra l'altro dicono la stessa cosa due volte. */}
+        {!hasPlan && tables.length > 0 && emptyPlanSlot && (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
             <div
               className="pointer-events-auto flex items-center gap-2 riquadro bg-card/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
@@ -177,7 +179,7 @@ export function OperationalRoomView<T extends { id: string }>({
         ))}
       </div>
 
-      {hasPlan && tables.length === 0 && noTablesSlot && (
+      {tables.length === 0 && noTablesSlot && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">{noTablesSlot}</div>
       )}
 

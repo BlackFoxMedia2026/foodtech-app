@@ -349,6 +349,19 @@ export function isTableRef(el: RoomElement): el is TableRefElement {
   return el.type === "TABLE";
 }
 
+/**
+ * Quali tavoli stanno sulla piantina.
+ *
+ * Un tavolo esiste nel database anche quando non è disegnato: in Sala resta
+ * nella colonna dei «fuori piantina» finché qualcuno non ce lo mette. Chi
+ * mostra la sala — Prenotazioni, oltre all'editor — deve usare questa regola
+ * e non «tutti i tavoli della sala», altrimenti disegna tavoli che in Sala
+ * non ci sono.
+ */
+export function idTavoliSullaPiantina(elements: RoomElement[]): Set<string> {
+  return new Set(elements.filter(isTableRef).map((e) => e.tableId));
+}
+
 export function wallLength(w: WallElement | DividerElement) {
   return Math.hypot(w.endX - w.startX, w.endY - w.startY);
 }

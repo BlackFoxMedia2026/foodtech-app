@@ -12,11 +12,14 @@ function BookingCard({
   onAssignClick,
   isDragging,
   canManage,
+  fuoriPiantina,
 }: {
   booking: FloorBooking;
   onAssignClick: () => void;
   isDragging: boolean;
   canManage: boolean;
+  /** Il tavolo che ha già, se in Sala non è sulla piantina. */
+  fuoriPiantina?: string;
 }) {
   // Hook is always called (React rules) — `disabled` is dnd-kit's own way to
   // turn a draggable off, so a read-only viewer sees the same card with no
@@ -42,6 +45,9 @@ function BookingCard({
           <p className="text-xs font-medium text-accent-strong">{formatTime(booking.startsAt)}</p>
           <p className="truncate text-sm font-semibold text-card-foreground">{guestName}</p>
           <p className="text-xs text-muted-foreground">{booking.partySize} persone</p>
+          {fuoriPiantina && (
+            <p className="text-xs text-muted-foreground">Su {fuoriPiantina}, che non è sulla piantina</p>
+          )}
           {booking.guest?.phone && (
             <p className="flex items-center gap-1 text-xs text-muted-foreground">
               <Phone className="h-3 w-3" /> {booking.guest.phone}
@@ -78,6 +84,7 @@ export function UnassignedPanel({
   draggingBookingId,
   canManage,
   hiddenByServiceCount = 0,
+  tavoloFuoriPiantina = {},
 }: {
   bookings: FloorBooking[];
   collapsed: boolean;
@@ -91,6 +98,9 @@ export function UnassignedPanel({
    * filter (the bug this prop exists to fix: a booking at 20:00 was
    * invisible while viewing "Pranzo", with no indication why). */
   hiddenByServiceCount?: number;
+  /** Per id di prenotazione: il tavolo che ha già ma che in Sala è fuori
+   * piantina. Sulla mappa non si vedrebbe, quindi torna qui. */
+  tavoloFuoriPiantina?: Record<string, string>;
 }) {
   return (
     <div className="flex h-full flex-col bg-forest">
@@ -104,7 +114,7 @@ export function UnassignedPanel({
       </button>
       {!collapsed && (
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
-          <p className="text-[11px] text-cream/60">Prenotazioni senza tavolo</p>
+          <p className="text-[11px] text-cream/60">Prenotazioni senza un tavolo sulla piantina</p>
           {bookings.length === 0 ? (
             <div className="rounded-md border border-dashed border-cream/20 p-4 text-center text-xs text-cream/70">
               {hiddenByServiceCount > 0 ? (
@@ -128,6 +138,7 @@ export function UnassignedPanel({
                 onAssignClick={() => onAssignClick(b.id)}
                 isDragging={draggingBookingId === b.id}
                 canManage={canManage}
+                fuoriPiantina={tavoloFuoriPiantina[b.id]}
               />
             ))
           )}

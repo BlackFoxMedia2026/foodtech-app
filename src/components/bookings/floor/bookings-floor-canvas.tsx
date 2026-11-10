@@ -79,9 +79,21 @@ export function BookingsFloorCanvas({
         </>
       }
       noTablesSlot={
-        <div className="pointer-events-auto flex flex-col items-center gap-2 rounded-md border border-dashed border-border bg-card/90 px-6 py-8 text-center">
-          <MapIcon className="h-6 w-6 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Questa sala non ha ancora tavoli.</p>
+        /* La piantina la decide Sala: qui si mostrano solo i tavoli che sono
+           disegnati là. Una sala vuota in Sala è vuota anche qui, e il
+           messaggio porta dove si rimedia. */
+        <div
+          className="pointer-events-auto flex max-w-sm flex-col items-center gap-2 riquadro bg-card/90 px-6 py-8 text-center"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <MapIcon className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+          <p className="text-sm font-medium text-foreground">Nessun tavolo sulla piantina di questa sala</p>
+          <p className="text-sm text-muted-foreground">
+            I tavoli si mettono sulla piantina in Sala. Qui compaiono appena ci sono.
+          </p>
+          <a href={`/floor?room=${roomId}`} className="text-sm font-medium text-accent-strong hover:underline">
+            Apri Sala
+          </a>
         </div>
       }
       renderTable={(t) => (

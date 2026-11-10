@@ -5,6 +5,7 @@ import { listBookingsForDay } from "@/server/bookings";
 import { getSettimana } from "@/server/booking-week";
 import { getShiftWindowForDate, getCurrentServiceName } from "@/server/booking-floor";
 import { listRooms } from "@/server/rooms";
+import { idTavoliSullaPiantina, parseRoomLayoutElements } from "@/lib/room-layout";
 import { listServiceOptions } from "@/server/waiter-assignments";
 import { BookingsPageClient } from "@/components/bookings/bookings-page-client";
 
@@ -73,16 +74,23 @@ export default async function BookingsPage({
   // quando il filtro non trova niente ma la giornata è piena.
   const totaleDelGiorno = rows.filter((r) => r.status !== "CANCELLED").length;
 
-  const roomsWithTables = rooms.map((r) => ({
-    id: r.id,
-    name: r.name,
-    width: r.width,
-    height: r.height,
-    floorPlanUrl: r.floorPlanUrl,
-    activeLayoutMode: r.activeLayoutMode,
-    roomLayoutElements: r.roomLayout?.elements ?? [],
-    tables: allTables.filter((t) => t.roomId === r.id),
-  }));
+  const roomsWithTables = rooms.map((r) => {
+    const elementi = parseRoomLayoutElements(r.roomLayout?.elements ?? []);
+    /* Solo i tavoli che stanno sulla piantina di Sala. Prima passavano tutti
+       quelli collegati alla sala, e la Mappa disegnava alle vecchie coordinate
+       tavoli che in Sala erano fuori piantina: una sala vuota là, piena qui. */
+    const sullaPiantina = idTavoliSullaPiantina(elementi);
+    return {
+      id: r.id,
+      name: r.name,
+      width: r.width,
+      height: r.height,
+      floorPlanUrl: r.floorPlanUrl,
+      activeLayoutMode: r.activeLayoutMode,
+      roomLayoutElements: elementi,
+      tables: allTables.filter((t) => t.roomId === r.id && sullaPiantina.has(t.id)),
+    };
+  });
 
   return (
     // Si toglie la spesa dell'ospite prima di passare le righe al client: è un

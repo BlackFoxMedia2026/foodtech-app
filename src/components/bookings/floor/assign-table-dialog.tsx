@@ -137,6 +137,16 @@ export function AssignTableDialog({
             {tablesByRoom.map((room) => (
               <div key={room.roomId} className="space-y-1.5">
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{room.roomName}</p>
+                {/* Si assegna solo a un tavolo che si vede sulla Mappa: quelli
+                    fuori piantina in Sala non sono fra le scelte. */}
+                {room.tables.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Nessun tavolo sulla piantina.{" "}
+                    <a href={`/floor?room=${room.roomId}`} className="font-medium text-accent-strong hover:underline">
+                      Apri Sala
+                    </a>
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                   {room.tables.map((t) => {
                     const compatible = t.seats >= booking.partySize;

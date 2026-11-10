@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { DndContext, DragOverlay, PointerSensor, pointerWithin, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { BookingStatus, RoomLayoutMode, Table } from "@prisma/client";
@@ -99,11 +99,28 @@ export function BookingsFloorView({
     return needsTable.filter((r) => r.startsAt >= shiftWindow.start && r.startsAt <= shiftWindow.end);
   }, [rows, shiftWindow]);
 
-  const unassigned = useMemo(
-    () => inWindow.filter((r) => !r.tableId).sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
-    [inWindow],
+  /* I tavoli disegnati in Sala, in tutte le sale. `rooms` porta già solo
+     quelli (vedi bookings/page.tsx). */
+  const sullaPiantina = useMemo(() => new Set(rooms.flatMap((r) => r.tables.map((t) => t.id))), [rooms]);
+  /** Ha bisogno di un tavolo che si veda: senza tavolo, o su un tavolo che in
+   * Sala è fuori piantina — su questa mappa non comparirebbe da nessuna parte. */
+  const senzaPosto = useCallback(
+    (r: Row) => !r.tableId || !sullaPiantina.has(r.tableId),
+    [sullaPiantina],
   );
-  const assigned = useMemo(() => inWindow.filter((r) => !!r.tableId), [inWindow]);
+
+  const unassigned = useMemo(
+    () => inWindow.filter(senzaPosto).sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
+    [inWindow, senzaPosto],
+  );
+  const assigned = useMemo(() => inWindow.filter((r) => !senzaPosto(r)), [inWindow, senzaPosto]);
+  /** Per le prenotazioni che un tavolo ce l'hanno, ma fuori piantina: il nome
+   * di quel tavolo, così la scheda dice perché è finita qui. */
+  const tavoloFuoriPiantina = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const r of unassigned) if (r.tableId && r.table) m[r.id] = r.table.label;
+    return m;
+  }, [unassigned]);
 
   // Distinguishes "genuinely nothing to assign" from "the service filter is
   // hiding real unassigned bookings" — without this the empty state claimed
@@ -111,8 +128,8 @@ export function BookingsFloorView({
   // simply that the selected service didn't match those bookings' time.
   const unassignedOutsideWindowCount = useMemo(() => {
     if (!shiftWindow || unassigned.length > 0) return 0;
-    return rows.filter((r) => NEEDS_TABLE_STATUSES.has(r.status) && !r.tableId).length;
-  }, [rows, shiftWindow, unassigned.length]);
+    return rows.filter((r) => NEEDS_TABLE_STATUSES.has(r.status) && senzaPosto(r)).length;
+  }, [rows, shiftWindow, unassigned.length, senzaPosto]);
 
   const bookingsByTableId = useMemo(() => {
     const map: Record<string, FloorBooking[]> = {};
@@ -306,6 +323,7 @@ export function BookingsFloorView({
               draggingBookingId={draggingBooking?.id ?? null}
               canManage={canManage}
               hiddenByServiceCount={unassignedOutsideWindowCount}
+              tavoloFuoriPiantina={tavoloFuoriPiantina}
             />
           </div>
         </div>
