@@ -105,16 +105,6 @@ export function WeekBoard({
           <ColonnaGiorno key={g.dateKey} g={g} onApri={onApriGiorno} />
         ))}
       </div>
-
-      <p className="t-nota max-w-5xl shrink-0 px-1">
-        {/* Due schermate che rispondono a due domande diverse: dirlo evita che
-            qualcuno le confronti e pensi che una delle due sbagli. */}
-        Qui c&apos;è quello che è già prenotato, l&apos;intera giornata. La{" "}
-        <Link href="/insights" className="underline">
-          previsione dei coperti
-        </Link>{" "}
-        dice quanti ne aspettiamo, non quanti sono sui libri.
-      </p>
     </section>
   );
 }
