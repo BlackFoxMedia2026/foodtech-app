@@ -956,3 +956,32 @@ scheda intera serve a chi sta per liberarsi.
 nei tondi degli strumenti): dice *cosa fare*. Non oro: l'oro in questa pagina
 vuol dire ritardo e tavolo oltre l'ora. Non lo stesso verde della capsula: i
 due livelli si confonderebbero.
+
+## 15. La Settimana di Prenotazioni: l'altezza è il dato
+
+Dal 10 novembre 2026 (`week-board.tsx`). Erano sette schede alte con il numero
+a metà, una barretta in fondo e un terzo di pagina vuoto sotto: l'altezza
+c'era ma non diceva niente, e per confrontare sabato con giovedì bisognava
+leggere due numeri. Scelta fra tre proposte (colonne, turni × giorni, agenda).
+
+**Ogni giorno è una colonna che si riempie dal basso.** Il binario e il pieno
+sono `.barra-binario` / `.barra-pieno`, la stessa barra della pienezza delle
+altre pagine messa in piedi, con la metà tratteggiata come riferimento. Le
+colonne prendono l'altezza che avanza, fino a 40 rem.
+
+**Le parole si scrivono una volta.** «coperti su … prenotazioni · capienza N al
+giorno» sta nel riepilogo in cima (la capienza solo se è uguale tutti i
+giorni). In fondo alla colonna restano i **posti liberi**: è la risposta alla
+telefonata.
+
+**Oggi è la capsula `--oggi-fondo`**, come nel calendario dei turni. **I
+giorni passati non si sbiadiscono**: numero in `muted-foreground`, pieno
+grigio, «giorno passato» al posto dei posti liberi (la riga resta, così i
+fondi delle sette barre stanno in fila).
+
+**Una navigazione sola.** In questa vista la capsula della data nella barra
+diventa la settimana (`NavigatoreSettimana`, passo di sette giorni) e il
+selettore del turno lascia il posto a «Tutto il giorno», fermo: la settimana
+conta l'intera giornata, e «Pranzo» lì faceva leggere come pranzo numeri che
+non lo sono. Contare per turno è la proposta B, e richiede la capienza per
+turno in `booking-week.ts`.

@@ -9,7 +9,7 @@ import { BookingsTable } from "@/components/bookings/bookings-table";
 import { ALTEZZA, BarraPrenotazioni, FiltroStato, SelettoreVista } from "@/components/bookings/barra-prenotazioni";
 import { BookingServiceSelect } from "@/components/bookings/floor/booking-service-select";
 import { BookingsFloorView } from "@/components/bookings/floor/bookings-floor-view";
-import { WeekBoard } from "@/components/bookings/week-board";
+import { NavigatoreSettimana, WeekBoard } from "@/components/bookings/week-board";
 import type { Settimana } from "@/server/booking-week";
 import { cn } from "@/lib/utils";
 
@@ -115,10 +115,29 @@ export function BookingsPageClient({
         pagina dove la prima cosa da sapere è che giorno è.
       */}
       <BarraPrenotazioni
-        giorno={<DayPicker value={dayString} />}
+        giorno={
+          /* In Settimana la capsula è la settimana: frecce di sette giorni,
+             invece di una seconda navigazione sotto la barra. */
+          view === "settimana" ? <NavigatoreSettimana settimana={settimana} /> : <DayPicker value={dayString} />
+        }
         servizio={
           /* Sempre visibile, in ogni vista: restava legato alla Mappa, e la
-             barra si spostava sotto gli occhi cambiando vista. */
+             barra si spostava sotto gli occhi cambiando vista. In Settimana
+             però il turno non si applica — la settimana conta l'intera
+             giornata — e «Pranzo» scritto lì faceva leggere come pranzo dei
+             numeri che non lo sono. Al suo posto, nello stesso punto e con la
+             stessa misura, quello che la settimana conta davvero. */
+          view === "settimana" ? (
+            <span
+              title="La settimana conta l'intera giornata, tutti i turni"
+              className={cn(
+                ALTEZZA,
+                "pastiglia inline-flex shrink-0 items-center rounded-full border border-border/70 bg-card/70 px-2.5 text-sm font-medium text-muted-foreground min-[1280px]:px-3 min-[1500px]:px-4",
+              )}
+            >
+              Tutto il giorno
+            </span>
+          ) : (
           <BookingServiceSelect
             service={service}
             serviceOptions={serviceOptions}
@@ -127,6 +146,7 @@ export function BookingsPageClient({
               "pastiglia w-auto shrink-0 gap-1.5 rounded-full border-border/70 bg-card/70 px-2.5 text-sm font-medium shadow-none transition-colors hover:border-border-strong/70 hover:bg-veil-6 min-[1280px]:px-3 min-[1500px]:gap-2 min-[1500px]:px-4",
             )}
           />
+          )
         }
         filtro={<FiltroStato attivo={statusFilter} url={getStatusFilterUrl} inSospeso={pendingCount} />}
         vista={<SelettoreVista vista={view} onVista={changeView} />}
