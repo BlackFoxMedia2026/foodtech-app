@@ -69,7 +69,7 @@ export default async function NewBookingPage({
   };
 
   return (
-    <div className="schermo animate-fade-in mx-auto w-full max-w-2xl gap-3">
+    <div className="schermo animate-fade-in mx-auto w-full max-w-2xl gap-3 lg:max-w-5xl">
       <Button asChild variant="ghost" size="sm" className="fissa self-start">
         <Link href="/bookings">
           <ArrowLeft className="h-4 w-4" /> Torna alle prenotazioni

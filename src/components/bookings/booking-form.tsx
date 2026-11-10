@@ -4,12 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { readApiError } from "@/lib/api-client";
 import { SlotPicker } from "@/components/bookings/slot-picker";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -42,8 +41,11 @@ export function BookingForm({
   tables,
   onClose,
   iniziale,
+  servizio,
 }: {
   tables: TableOpt[];
+  /** Il servizio della pagina da cui si apre: è quello che si mostra per primo. */
+  servizio?: string;
   onClose?: () => void;
   /**
    * Quello che si sa già, quando si arriva qui da una telefonata.
@@ -107,6 +109,13 @@ export function BookingForm({
   );
   const formRef = useRef<HTMLFormElement | null>(null);
 
+  /* Nome e cognome si seguono solo per sapere quando chiedere l'email: i
+     campi restano non controllati, il valore lo legge il form all'invio. */
+  const [nome, setNome] = useState(iniziale?.nome ?? "");
+  const [cognome, setCognome] = useState(iniziale?.cognome ?? "");
+  const clienteNuovo =
+    !riconosciuto && nome.trim().length > 0 && cognome.trim().length > 0;
+
   useEffect(() => {
     const cifre = telefono.replace(/\D/g, "");
     if (cifre.length < 6) {
@@ -147,6 +156,8 @@ export function BookingForm({
     const secondo = campo("lastName");
     if (primo) primo.value = nome ?? "";
     if (secondo) secondo.value = resto.join(" ");
+    setNome(nome ?? "");
+    setCognome(resto.join(" "));
     primo?.focus();
   }
 
@@ -204,7 +215,8 @@ export function BookingForm({
       guest: {
         firstName: fd.get("firstName"),
         lastName: fd.get("lastName"),
-        email: fd.get("email"),
+        // Il campo c'è solo per un cliente nuovo: assente o vuoto, è null.
+        email: fd.get("email") || null,
         phone: fd.get("phone"),
       },
       partySize,
@@ -244,42 +256,77 @@ export function BookingForm({
 
   return (
     <form ref={formRef} onSubmit={onSubmit} method="post" className="space-y-5">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="firstName">Nome</Label>
-          <Input
-            id="firstName"
-            name="firstName"
-            required
-            placeholder="Lorenzo"
-            defaultValue={iniziale?.nome ?? ""}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="lastName">Cognome</Label>
-          <Input
-            id="lastName"
-            name="lastName"
-            placeholder="Ferri"
-            defaultValue={iniziale?.cognome ?? ""}
-          />
-        </div>
-        {/* Il telefono prende la riga intera: al telefono è il campo più
+      {/*
+        Due colonne da `lg`: a sinistra **chi** e per quanti, a destra **quando**.
+        In una colonna sola gli orari spingevano forzatura, dettagli e pulsanti
+        sotto la piega, mentre ai lati della finestra restava un palmo vuoto.
+      */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-6">
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="firstName">Nome</Label>
+              <Input
+                id="firstName"
+                name="firstName"
+                required
+                placeholder="Lorenzo"
+                defaultValue={iniziale?.nome ?? ""}
+                onChange={(e) => setNome(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lastName">Cognome</Label>
+              <Input
+                id="lastName"
+                name="lastName"
+                placeholder="Ferri"
+                defaultValue={iniziale?.cognome ?? ""}
+                onChange={(e) => setCognome(e.target.value)}
+              />
+            </div>
+            {/* Il telefono prende la riga intera: al telefono è il campo più
             importante dopo il nome, e da quando l'email è nel secondo livello
             questa metà era un buco. */}
-        <div className="col-span-2 space-y-1.5">
-          <Label htmlFor="phone">Telefono</Label>
-          <Input
-            id="phone"
-            name="phone"
-            placeholder="+39 …"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
-          />
-        </div>
-      </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor="phone">Telefono</Label>
+              <Input
+                id="phone"
+                name="phone"
+                placeholder="+39 …"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+              />
+            </div>
 
-      {/*
+            {/*
+              L'email si chiede solo a chi è nuovo.
+
+              Un cliente riconosciuto ce l'ha già in scheda, e chiedergliela
+              di nuovo al telefono è tempo perso. Per uno nuovo compare dopo
+              nome e cognome, cioè quando si sa che è una persona da
+              registrare: prima, con il modulo vuoto, sarebbe un campo in più
+              per tutti. Era nel secondo livello, dove si apriva poco.
+            */}
+            {clienteNuovo && (
+              <div className="col-span-2 space-y-1.5 animate-fade-in">
+                <Label htmlFor="email">
+                  Email{" "}
+                  <span className="font-normal normal-case tracking-normal text-tertiary-foreground">
+                    · cliente nuovo, per conferma e promemoria
+                  </span>
+                </Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="ospite@email.com"
+                />
+              </div>
+            )}
+          </div>
+
+          {/*
         «Questa persona la conosciamo già?»
 
         Compare **solo** quando c'è una corrispondenza. Non si scrive «nessun
@@ -294,114 +341,131 @@ export function BookingForm({
         riusa la scheda che c'è. Serve a non chiedere quello che il locale sa
         già, e a saperlo mentre si decide.
       */}
-      {riconosciuto && (
-        <div className="riquadro comodo space-y-2 border-accent/40 bg-accent/5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-sm font-medium">{riconosciuto.nome}</p>
-            <p className="t-nota">
-              {riconosciuto.visite}{" "}
-              {riconosciuto.visite === 1 ? "visita" : "visite"}
-              {riconosciuto.ultimaVisita &&
-                ` · ultima il ${formatDate(riconosciuto.ultimaVisita)}`}
-            </p>
-          </div>
+          {riconosciuto && (
+            <div className="riquadro comodo space-y-2 border-accent/40 bg-accent/5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-sm font-medium">{riconosciuto.nome}</p>
+                <p className="t-nota">
+                  {riconosciuto.visite}{" "}
+                  {riconosciuto.visite === 1 ? "visita" : "visite"}
+                  {riconosciuto.ultimaVisita &&
+                    ` · ultima il ${formatDate(riconosciuto.ultimaVisita)}`}
+                </p>
+              </div>
 
-          {/* I segnali prima, il tag dopo: un'allergia e due assenze cambiano
+              {/* I segnali prima, il tag dopo: un'allergia e due assenze cambiano
               come si accoglie questa persona adesso, «VIP» dice come la vede
               il locale. Erano tre pillole uguali in fila. */}
-          <div className="flex flex-wrap items-center gap-2">
-            {riconosciuto.allergie && (
-              <Etichetta linguaggio="segnale" icona={AlertTriangle}>
-                {riconosciuto.allergie}
-              </Etichetta>
-            )}
-            {riconosciuto.assenze > 0 && (
-              <Etichetta linguaggio="segnale" icona={AlertTriangle}>
-                {riconosciuto.assenze}{" "}
-                {riconosciuto.assenze === 1 ? "assenza" : "assenze"}
-              </Etichetta>
-            )}
-            {(riconosciuto.livello === "VIP" ||
-              riconosciuto.livello === "AMBASSADOR") && (
-              <Etichetta linguaggio="manuale">
-                {riconosciuto.livello === "AMBASSADOR" ? "Ambassador" : "VIP"}
-              </Etichetta>
-            )}
-          </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {riconosciuto.allergie && (
+                  <Etichetta linguaggio="segnale" icona={AlertTriangle}>
+                    {riconosciuto.allergie}
+                  </Etichetta>
+                )}
+                {riconosciuto.assenze > 0 && (
+                  <Etichetta linguaggio="segnale" icona={AlertTriangle}>
+                    {riconosciuto.assenze}{" "}
+                    {riconosciuto.assenze === 1 ? "assenza" : "assenze"}
+                  </Etichetta>
+                )}
+                {(riconosciuto.livello === "VIP" ||
+                  riconosciuto.livello === "AMBASSADOR") && (
+                  <Etichetta linguaggio="manuale">
+                    {riconosciuto.livello === "AMBASSADOR"
+                      ? "Ambassador"
+                      : "VIP"}
+                  </Etichetta>
+                )}
+              </div>
 
-          {/*
+              {/*
             «Usa questi dati» non è obbligatorio: se la persona al telefono dà
             un cognome diverso o una email nuova, si scrive quella e il server
             riconosce comunque la scheda dal telefono. Il pulsante serve a
             **non digitare**, non a vincolare.
           */}
-          <Button type="button" variant="outline" size="sm" onClick={usaOspite}>
-            Usa questi dati
-          </Button>
-        </div>
-      )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={usaOspite}
+              >
+                Usa questi dati
+              </Button>
+            </div>
+          )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="date">Data</Label>
-          <Input
-            id="date"
-            name="date"
-            type="date"
-            value={giorno}
-            onChange={(e) => {
-              setDate(e.target.value);
-              setSlot(null);
-            }}
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="partySize">Persone</Label>
-          <Input
-            id="partySize"
-            name="partySize"
-            type="number"
-            min={1}
-            max={50}
-            value={partySize}
-            onChange={(e) => {
-              setPartySize(
-                Math.min(50, Math.max(1, Number(e.target.value) || 1)),
-              );
-              setSlot(null);
-            }}
-            required
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Orario</Label>
-        {forceOpen ? (
-          <div className="space-y-1.5">
-            <Input
-              id="time"
-              type="time"
-              value={manualTime}
-              onChange={(e) => setManualTime(e.target.value)}
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              Con la forzatura attiva l&apos;orario è libero: il controllo di
-              disponibilità non viene eseguito.
-            </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="date">Data</Label>
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                value={giorno}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setSlot(null);
+                }}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="partySize">Persone</Label>
+              <Input
+                id="partySize"
+                name="partySize"
+                type="number"
+                min={1}
+                max={50}
+                value={partySize}
+                onChange={(e) => {
+                  setPartySize(
+                    Math.min(50, Math.max(1, Number(e.target.value) || 1)),
+                  );
+                  setSlot(null);
+                }}
+                required
+              />
+            </div>
           </div>
-        ) : (
-          <SlotPicker
-            date={giorno}
-            partySize={partySize}
-            value={slot}
-            onChange={setSlot}
-          />
-        )}
+        </div>
+
+        <div className="space-y-2 lg:riquadro lg:p-4">
+          <Label>Orario</Label>
+          {forceOpen ? (
+            <div className="space-y-1.5">
+              <Input
+                id="time"
+                type="time"
+                value={manualTime}
+                onChange={(e) => setManualTime(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Con la forzatura attiva l&apos;orario è libero: il controllo di
+                disponibilità non viene eseguito.
+              </p>
+            </div>
+          ) : (
+            <SlotPicker
+              date={giorno}
+              partySize={partySize}
+              value={slot}
+              onChange={setSlot}
+              perServizio
+              servizioPreferito={servizio}
+            />
+          )}
+        </div>
       </div>
 
+      {/*
+        Forzatura e secondo livello stanno **sotto** le due colonne, a tutta
+        larghezza. Dentro la colonna di sinistra, aprendo «Altri dettagli» la
+        riga si allungava e il riquadro degli orari le andava dietro, vuoto per
+        metà altezza. Qui crescono verso il basso e basta.
+      */}
       <div className="riquadro p-3">
         <label className="flex cursor-pointer items-start gap-2.5 text-sm">
           <input
@@ -448,121 +512,117 @@ export function BookingForm({
         Al telefono servono cinque cose — nome, telefono, quando, quanti — e
         se ne vedevano nove: l'audit visivo ha stimato 20-30 secondi contro i
         10 possibili, e trenta secondi con un cliente in linea sono lunghi.
-        Email, tavolo, durata, fonte, occasione e note **non spariscono**: si
+        Tavolo, durata, fonte, occasione e note **non spariscono**: si
         aprono, e restano dentro lo stesso `<form>` — quindi si inviano
         comunque, aperte o chiuse.
 
         `<details>` e non uno stato React: funziona senza JavaScript, con la
         tastiera, e il browser ricorda l'apertura durante la compilazione.
-        Chi prende cinque prenotazioni di fila lo apre una volta e resta
-        aperto.
+
+        L'intestazione era una riga di testo e non si capiva che si aprisse:
+        adesso ha la freccia, «Mostra / Nascondi» a destra e il fondo che
+        cambia sotto il puntatore, come ogni altra cosa che si preme.
       */}
-      <details className="riquadro">
-        <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium">
-          Altri dettagli
-          <span className="ml-2 font-normal text-tertiary-foreground">
-            email, tavolo, durata, fonte, occasione, note
+      <details className="group riquadro overflow-hidden">
+        <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 text-sm transition-colors hover:bg-veil-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          <ChevronDown
+            className="h-4 w-4 shrink-0 text-accent-strong transition-transform duration-200 group-open:rotate-180"
+            aria-hidden="true"
+          />
+          <span className="font-medium">Altri dettagli</span>
+          <span className="hidden min-w-0 truncate text-tertiary-foreground sm:inline">
+            tavolo, durata, fonte, occasione, note
+          </span>
+          <span className="ml-auto shrink-0 text-xs font-medium text-accent-strong">
+            <span className="group-open:hidden">Mostra</span>
+            <span className="hidden group-open:inline">Nascondi</span>
           </span>
         </summary>
 
-        <div className="space-y-5 border-t border-border p-3">
+        <div className="grid grid-cols-2 items-start gap-x-3 gap-y-4 border-t border-border p-3 lg:grid-cols-3 lg:gap-x-4">
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label>Tavolo</Label>
+            <Select name="tableId">
+              <SelectTrigger>
+                <SelectValue placeholder="Assegna in seguito" />
+              </SelectTrigger>
+              <SelectContent>
+                {tables.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.label} · {t.seats} posti
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="durationMin">Durata (min)</Label>
             <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="ospite@email.com"
+              id="durationMin"
+              name="durationMin"
+              type="number"
+              min={15}
+              max={480}
+              value={durata}
+              onChange={(e) => {
+                setDurataToccata(true);
+                setDurata(Number(e.target.value));
+              }}
             />
-            <p className="t-nota">
-              Serve solo per la conferma scritta e il promemoria: al telefono il
-              numero basta.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Tavolo</Label>
-              <Select name="tableId">
-                <SelectTrigger>
-                  <SelectValue placeholder="Assegna in seguito" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tables.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.label} · {t.seats} posti
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="durationMin">Durata (min)</Label>
-              <Input
-                id="durationMin"
-                name="durationMin"
-                type="number"
-                min={15}
-                max={480}
-                value={durata}
-                onChange={(e) => {
-                  setDurataToccata(true);
-                  setDurata(Number(e.target.value));
-                }}
-              />
-            </div>
-          </div>
-
-          {durataNota && !durataToccata && (
-            <p className="t-nota">Durata proposta: {durataNota}</p>
-          )}
-          {durataToccata && (
-            <p className="t-nota">
-              Durata scelta a mano: resta questa, la misura del locale non la
-              corregge.
-            </p>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Fonte</Label>
-              <Select name="source" defaultValue="PHONE">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PHONE">Telefono</SelectItem>
-                  <SelectItem value="WIDGET">Sito</SelectItem>
-                  <SelectItem value="WALK_IN">Walk-in</SelectItem>
-                  <SelectItem value="GOOGLE">Google</SelectItem>
-                  <SelectItem value="SOCIAL">Social</SelectItem>
-                  <SelectItem value="CONCIERGE">Concierge</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Occasione</Label>
-              <Select name="occasion">
-                <SelectTrigger>
-                  <SelectValue placeholder="Nessuna" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BIRTHDAY">Compleanno</SelectItem>
-                  <SelectItem value="ANNIVERSARY">Anniversario</SelectItem>
-                  <SelectItem value="BUSINESS">Lavoro</SelectItem>
-                  <SelectItem value="DATE">Romantica</SelectItem>
-                  <SelectItem value="CELEBRATION">Celebrazione</SelectItem>
-                  <SelectItem value="OTHER">Altro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {durataNota && !durataToccata && (
+              <p className="t-nota">Proposta: {durataNota}</p>
+            )}
+            {durataToccata && (
+              <p className="t-nota">
+                Scelta a mano: la misura del locale non la corregge.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
+            <Label>Fonte</Label>
+            <Select name="source" defaultValue="PHONE">
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PHONE">Telefono</SelectItem>
+                <SelectItem value="WIDGET">Sito</SelectItem>
+                <SelectItem value="WALK_IN">Walk-in</SelectItem>
+                <SelectItem value="GOOGLE">Google</SelectItem>
+                <SelectItem value="SOCIAL">Social</SelectItem>
+                <SelectItem value="CONCIERGE">Concierge</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Occasione</Label>
+            <Select name="occasion">
+              <SelectTrigger>
+                <SelectValue placeholder="Nessuna" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="BIRTHDAY">Compleanno</SelectItem>
+                <SelectItem value="ANNIVERSARY">Anniversario</SelectItem>
+                <SelectItem value="BUSINESS">Lavoro</SelectItem>
+                <SelectItem value="DATE">Romantica</SelectItem>
+                <SelectItem value="CELEBRATION">Celebrazione</SelectItem>
+                <SelectItem value="OTHER">Altro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="col-span-2 space-y-1.5">
             <Label htmlFor="notes">Note</Label>
-            <Textarea
+            {/* Una riga, come gli altri campi: una casella alta tre volte
+                rompeva l'allineamento della griglia per una frase che di
+                solito è «allergia ai crostacei». */}
+            <Input
               id="notes"
               name="notes"
+              maxLength={500}
               placeholder="Allergie, preferenze, richieste speciali…"
             />
           </div>

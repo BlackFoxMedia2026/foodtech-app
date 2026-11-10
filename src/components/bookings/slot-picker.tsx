@@ -50,6 +50,17 @@ interface SlotPickerProps {
    * guardando il calendario, non con un bottone.
    */
   onPickDay?: (date: string, startsAt: string) => void;
+  /**
+   * Un servizio alla volta, scelto da un selettore, invece di tutti in colonna.
+   *
+   * In sala, con un cliente al telefono, pranzo e cena insieme sono una
+   * trentina di pulsanti da scorrere per trovare l'unico che serve — e la
+   * domanda «pranzo o cena?» è la prima che si fa comunque. Il widget
+   * pubblico resta com'era: lì la pagina è tutta per gli orari.
+   */
+  perServizio?: boolean;
+  /** Il servizio da mostrare per primo, per nome (es. quello della pagina). */
+  servizioPreferito?: string;
 }
 
 /**
@@ -62,7 +73,16 @@ interface SlotPickerProps {
  * Gli orari al completo restano visibili ma disattivati: dire "quello non si può"
  * è più utile che far sparire la riga senza spiegazioni.
  */
-export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDay }: SlotPickerProps) {
+export function SlotPicker({
+  venueId,
+  date,
+  partySize,
+  value,
+  onChange,
+  onPickDay,
+  perServizio = false,
+  servizioPreferito,
+}: SlotPickerProps) {
   /**
    * In sala si segna quello che è oltre la capienza; al cliente no.
    *
@@ -75,6 +95,7 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [alternative, setAlternative] = useState<GiornoLibero[] | null>(null);
+  const [turno, setTurno] = useState<string | null>(null);
 
   useEffect(() => {
     if (!date) {
@@ -94,25 +115,53 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
     fetch(`${endpoint}?${params}`, { signal: controller.signal })
       .then(async (res) => {
         const body = await res.json();
-        if (!res.ok) throw new Error(body?.message || body?.error || "Impossibile caricare gli orari.");
+        if (!res.ok)
+          throw new Error(
+            body?.message || body?.error || "Impossibile caricare gli orari.",
+          );
         return body as DayAvailability;
       })
       .then((body) => {
         setData(body);
 
+        // Il servizio aperto: quello dell'orario già scelto, poi quello della
+        // pagina da cui si arriva, poi il primo con posto. Mai uno vuoto se
+        // ce n'è uno pieno di orari liberi.
+        const conPosto = (s: ShiftSlots) => s.slots.some((x) => x.available);
+        const preferito = servizioPreferito?.trim().toLowerCase();
+        const scelto =
+          body.shifts.find((s) => s.slots.some((x) => x.startsAt === value)) ??
+          body.shifts.find(
+            (s) =>
+              preferito && s.name.toLowerCase() === preferito && conPosto(s),
+          ) ??
+          body.shifts.find(conPosto) ??
+          body.shifts[0];
+        setTurno(scelto?.shiftId ?? null);
+
         // Se l'orario scelto non è più fra quelli proponibili — cambiata data o
         // numero di persone — la selezione va annullata invece di restare appesa.
-        const stillThere = body.shifts.some((s) => s.slots.some((x) => x.startsAt === value && x.available));
+        const stillThere = body.shifts.some((s) =>
+          s.slots.some((x) => x.startsAt === value && x.available),
+        );
         if (value && !stillThere) onChange(null);
 
         // «E allora quando?» si chiede solo davanti a una giornata piena: chi
         // trova posto al primo colpo non paga il conto di una ricerca che non
         // gli serve.
-        const nienteLibero = body.shifts.every((s) => s.slots.every((x) => !x.available));
+        const nienteLibero = body.shifts.every((s) =>
+          s.slots.every((x) => !x.available),
+        );
         if (!onPickDay || !venueId || !nienteLibero) return;
 
-        const q = new URLSearchParams({ venue: venueId, date, partySize: String(partySize) });
-        fetch(`/api/public/availability/alternatives?${q}`, { signal: controller.signal })
+        const q = new URLSearchParams({
+          venue: venueId,
+          date,
+          partySize: String(partySize),
+        });
+        fetch(`/api/public/availability/alternatives?${q}`, {
+          signal: controller.signal,
+        })
           .then((r) => (r.ok ? r.json() : null))
           .then((alt) => setAlternative(alt?.giorni ?? []))
           .catch(() => {
@@ -122,7 +171,11 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
       })
       .catch((err) => {
         if (err.name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "Impossibile caricare gli orari.");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Impossibile caricare gli orari.",
+        );
         setData(null);
       })
       .finally(() => {
@@ -136,7 +189,9 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
   }, [venueId, date, partySize]);
 
   if (!date) {
-    return <p className="text-sm text-muted-foreground">Scegli prima una data.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">Scegli prima una data.</p>
+    );
   }
 
   if (loading) {
@@ -173,26 +228,82 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
     );
   }
 
-  const nothingFree = data.shifts.every((s) => s.slots.every((x) => !x.available));
+  const nothingFree = data.shifts.every((s) =>
+    s.slots.every((x) => !x.available),
+  );
+  const selettore = perServizio && data.shifts.length > 1;
+  const visibili = selettore
+    ? data.shifts.filter((s) => s.shiftId === (turno ?? data.shifts[0].shiftId))
+    : data.shifts;
 
   return (
     <div className="space-y-4">
       {nothingFree && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Per {partySize} {partySize === 1 ? "persona" : "persone"} non c&apos;è posto in questa data.
+            Per {partySize} {partySize === 1 ? "persona" : "persone"} non
+            c&apos;è posto in questa data.
           </p>
           <Alternative giorni={alternative} onPickDay={onPickDay} />
         </div>
       )}
 
-      {data.shifts.map((shift) => (
+      {selettore && (
+        <div
+          role="tablist"
+          aria-label="Servizio"
+          className="binario flex gap-1 rounded-full border border-border/70 bg-card/50 p-1"
+        >
+          {data.shifts.map((s) => {
+            const attivo = s.shiftId === (turno ?? data.shifts[0].shiftId);
+            const liberi = s.slots.filter((x) => x.available).length;
+            const conScelta = s.slots.some((x) => x.startsAt === value);
+            return (
+              <button
+                key={s.shiftId}
+                type="button"
+                role="tab"
+                aria-selected={attivo}
+                onClick={() => setTurno(s.shiftId)}
+                className={cn(
+                  "segmento flex h-9 flex-1 items-center justify-center gap-2 rounded-full border px-3 text-sm transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  attivo
+                    ? "border-accent-strong/55 bg-accent/15 font-semibold text-accent-strong"
+                    : "border-transparent font-medium text-muted-foreground hover:bg-veil-6 hover:text-foreground",
+                )}
+              >
+                {s.name}
+                {/* Quanti orari liberi, o il pallino se l'orario scelto è lì:
+                    dall'altro servizio si deve capire che c'è qualcosa. */}
+                <span className="t-nota tabular-nums">{liberi}</span>
+                {conScelta && !attivo && (
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-accent-strong"
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {visibili.map((shift) => (
         <fieldset key={shift.shiftId} className="space-y-2">
-          <legend className="t-etichetta font-medium">
+          <legend
+            className={cn("t-etichetta font-medium", selettore && "sr-only")}
+          >
             {shift.name}
           </legend>
 
-          <div className="flex flex-wrap gap-2">
+          <div
+            className={
+              perServizio
+                ? "grid grid-cols-4 gap-1.5 sm:grid-cols-5"
+                : "flex flex-wrap gap-2"
+            }
+          >
             {shift.slots.map((slot) => {
               const selected = slot.startsAt === value;
 
@@ -211,12 +322,15 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
                   }
                   onClick={() => onChange(slot.startsAt)}
                   className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                    perServizio
+                      ? "h-9 rounded-full border text-sm font-medium tabular-nums transition-colors"
+                      : "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     selected
                       ? "border-transparent bg-accent text-accent-foreground"
                       : "border-border text-foreground hover:bg-secondary",
-                    !slot.available && "cursor-not-allowed border-dashed text-muted-foreground opacity-50 hover:bg-transparent",
+                    !slot.available &&
+                      "cursor-not-allowed border-dashed text-muted-foreground opacity-50 hover:bg-transparent",
                   )}
                   title={
                     !slot.available
@@ -230,7 +344,10 @@ export function SlotPicker({ venueId, date, partySize, value, onChange, onPickDa
                   {/* Il pallino c'è solo in sala: al cliente non si racconta
                       come il locale gestisce la propria capienza. */}
                   {segnaOltre && slot.available && slot.oltreCapienza && (
-                    <span className="ml-1 text-accent-strong" aria-hidden="true">
+                    <span
+                      className="ml-1 text-accent-strong"
+                      aria-hidden="true"
+                    >
                       •
                     </span>
                   )}
@@ -267,8 +384,8 @@ function Alternative({
   if (giorni.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Nelle prossime tre settimane non troviamo posto per questo numero di persone. Chiamaci: a volte si
-        libera qualcosa che qui non si vede.
+        Nelle prossime tre settimane non troviamo posto per questo numero di
+        persone. Chiamaci: a volte si libera qualcosa che qui non si vede.
       </p>
     );
   }

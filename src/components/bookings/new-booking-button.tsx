@@ -9,8 +9,11 @@ import { BookingForm } from "./booking-form";
 export function NewBookingButton({
   tables,
   className,
+  servizio,
 }: {
   tables: { id: string; label: string; seats: number }[];
+  /** Il servizio che la pagina sta guardando: il modulo apre quello. */
+  servizio?: string;
   /** L'altezza la detta la barra che lo contiene, non il pulsante. */
   className?: string;
 }) {
@@ -22,11 +25,11 @@ export function NewBookingButton({
           <Plus className="h-4 w-4" /> Nuova prenotazione
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl lg:max-w-5xl">
         <DialogHeader>
           <DialogTitle>Nuova prenotazione</DialogTitle>
         </DialogHeader>
-        <BookingForm tables={tables} onClose={() => setOpen(false)} />
+        <BookingForm tables={tables} servizio={servizio} onClose={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

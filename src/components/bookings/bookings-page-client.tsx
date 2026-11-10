@@ -130,7 +130,7 @@ export function BookingsPageClient({
         }
         filtro={<FiltroStato attivo={statusFilter} url={getStatusFilterUrl} inSospeso={pendingCount} />}
         vista={<SelettoreVista vista={view} onVista={changeView} />}
-        azione={<NewBookingButton tables={tables} className={cn(ALTEZZA, "px-3.5 text-sm font-semibold sm:px-4 min-[1500px]:px-5")} />}
+        azione={<NewBookingButton tables={tables} servizio={service} className={cn(ALTEZZA, "px-3.5 text-sm font-semibold sm:px-4 min-[1500px]:px-5")} />}
       />
 
       {/*
