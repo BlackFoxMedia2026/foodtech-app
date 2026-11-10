@@ -82,12 +82,12 @@ export function DayPicker({ value }: { value: string }) {
           Safari 16+, Firefox 101+) apre il calendario anche quando il clic cade
           sul testo invece che sull'icona nativa, che qui è invisibile.
         */}
-        <span className="relative flex h-9 items-center rounded-full px-1.5 transition-colors hover:bg-veil-6 focus-within:ring-2 focus-within:ring-ring lg:h-10 min-[1500px]:px-2.5">
+        <span className="relative flex h-9 items-center rounded-full px-1.5 transition-colors hover:bg-veil-6 focus-within:ring-2 focus-within:ring-ring min-[1500px]:px-2.5">
           {/*
             La data è il testo più pesante della barra dopo la chiamata
             all'azione: è la domanda a cui questa pagina risponde per prima.
           */}
-          <span className="whitespace-nowrap text-[0.9375rem] font-semibold first-letter:uppercase min-[1440px]:text-base min-[1500px]:text-[1.0625rem]">
+          <span className="whitespace-nowrap text-sm font-semibold first-letter:uppercase">
             <span className="min-[1440px]:hidden">{etichettaCorta}</span>
             <span className="hidden min-[1440px]:inline">{etichetta}</span>
           </span>
@@ -127,12 +127,12 @@ function Freccia({ verso, onClick }: { verso: "indietro" | "avanti"; onClick: ()
       onClick={onClick}
       aria-label={verso === "indietro" ? "Giorno precedente" : "Giorno successivo"}
       className={cn(
-        "pastiglia grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border/60 bg-secondary/40 text-muted-foreground transition-colors lg:h-10 lg:w-10",
+        "pastiglia grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border/60 bg-secondary/40 text-muted-foreground transition-colors",
         "hover:border-border-strong/70 hover:bg-secondary/70 hover:text-foreground",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
     >
-      <Icona className="h-[18px] w-[18px]" aria-hidden="true" />
+      <Icona className="h-4 w-4" aria-hidden="true" />
     </button>
   );
 }

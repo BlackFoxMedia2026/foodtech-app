@@ -124,13 +124,13 @@ export function BookingsPageClient({
             serviceOptions={serviceOptions}
             className={cn(
               ALTEZZA,
-              "pastiglia w-auto shrink-0 gap-1.5 rounded-full border-border/70 bg-card/70 px-2.5 text-[0.9375rem] font-medium shadow-none transition-colors hover:border-border-strong/70 hover:bg-veil-6 min-[1280px]:px-3 min-[1440px]:text-base min-[1500px]:gap-2 min-[1500px]:px-4",
+              "pastiglia w-auto shrink-0 gap-1.5 rounded-full border-border/70 bg-card/70 px-2.5 text-sm font-medium shadow-none transition-colors hover:border-border-strong/70 hover:bg-veil-6 min-[1280px]:px-3 min-[1500px]:gap-2 min-[1500px]:px-4",
             )}
           />
         }
         filtro={<FiltroStato attivo={statusFilter} url={getStatusFilterUrl} inSospeso={pendingCount} />}
         vista={<SelettoreVista vista={view} onVista={changeView} />}
-        azione={<NewBookingButton tables={tables} className={cn(ALTEZZA, "px-3.5 text-[0.9375rem] font-semibold sm:px-4 min-[1440px]:text-base min-[1500px]:px-6")} />}
+        azione={<NewBookingButton tables={tables} className={cn(ALTEZZA, "px-3.5 text-sm font-semibold sm:px-4 min-[1500px]:px-5")} />}
       />
 
       {/*

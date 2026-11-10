@@ -39,33 +39,19 @@ import { cn } from "@/lib/utils";
 */
 
 /**
- * L'altezza di ogni controllo della barra.
- *
- * Cresce a scaglioni invece di restare fissa: 52 px sono giusti su uno schermo
- * largo e non ci starebbero su un portatile da tredici pollici, dove la barra
- * andrebbe a capo. Sotto 1440 px si scende a 48, sotto 1024 a 44 — e si
- * stringono **prima i passi e i fianchi**, poi l'altezza. Il testo non scende
- * mai sotto i 15 px: una barra minuscola pur di farla entrare non è una barra
- * che si usa.
+ * L'altezza di ogni controllo della barra: 44 px, come le voci della barra in
+ * alto (`classiVoceIn` in nav-items.ts). Era a scaglioni fino a 52 px e il
+ * testo arrivava a 16-17: accanto alla navigazione, che sta a 14, la barra di
+ * Prenotazioni sembrava di un'altra applicazione. Ora le due righe si leggono
+ * con lo stesso corpo e la stessa altezza.
  */
-export const ALTEZZA = "h-11 lg:h-12 min-[1440px]:h-[52px]";
+export const ALTEZZA = "h-11";
 /*
-  Tre soglie, e tutte e tre muovono lo **spazio** prima della dimensione.
-
-  A 1500 px arrivano i passi generosi fra i gruppi — 20 px invece di 12 — ed è
-  la misura che la barra vorrebbe avere sempre. A 1440 crescono **altezza e
-  corpo del testo**: i passi restano stretti perché a 1440 esatti la riga più
-  lunga possibile — «Mercoledì 23 settembre», la parola più lunga della
-  settimana — sforava di nove pixel e la barra andava a capo.
-
-  A 1280, la terza: sotto quella soglia si stringono di due pixel per lato i
-  fianchi di ogni comando e di quattro i passi fra i gruppi. Una quarantina di
-  pixel in tutto, che non si vedono a occhio ma spostano da ~1150 a ~1100 il
-  punto in cui la barra va a capo. È l'ordine che questa barra segue ovunque:
-  prima i passi, poi i fianchi, poi l'altezza, e il corpo del testo mai —
-  stringere l'aria non si vede, un testo da dodici punti sì.
+  Il corpo del testo è lo stesso della navigazione: `text-sm`. Quando lo
+  spazio stringe si stringono prima i passi fra i gruppi (soglie 1280 e 1500),
+  poi i fianchi dei comandi; testo e altezza restano fermi.
 */
-const TESTO = "text-[0.9375rem] min-[1440px]:text-base";
+const TESTO = "text-sm";
 
 /** Il fondo comune dei comandi secondari: verde di scheda, bordo sottile. */
 const SECONDARIO =
@@ -229,7 +215,7 @@ export function SelettoreVista({ vista, onVista }: { vista: Vista; onVista: (v: 
                 : "border-transparent font-medium text-muted-foreground hover:bg-veil-6 hover:text-foreground",
             )}
           >
-            <Icona className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+            <Icona className="h-4 w-4 shrink-0" aria-hidden="true" />
             {/* Sotto `sm` restano le sole icone: tre parole non ci stanno, e
                 il nome lo dice comunque l'etichetta accessibile. */}
             <span className="hidden sm:inline">{v.label}</span>
@@ -299,7 +285,7 @@ export function FiltroStato({
           )}
         >
           <SlidersHorizontal
-            className={cn("h-[18px] w-[18px] shrink-0", attivi === 0 && "text-accent-strong")}
+            className={cn("h-4 w-4 shrink-0", attivi === 0 && "text-accent-strong")}
             aria-hidden="true"
           />
           <span className="whitespace-nowrap">
@@ -318,7 +304,7 @@ export function FiltroStato({
           {attivi === 0 && inSospeso > 0 && (
             <span className="h-2 w-2 shrink-0 rounded-full bg-accent-strong" aria-hidden="true" />
           )}
-          <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
 
