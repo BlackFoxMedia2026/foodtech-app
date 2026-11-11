@@ -240,3 +240,49 @@ export async function controllaReputazione(venueId: string): Promise<EsitoReputa
 
   return esito;
 }
+
+/**
+ * Aperture e click giorno per giorno dall'invio (11 novembre 2026), per il
+ * grafico «nel tempo» della campagna.
+ *
+ * Viene dalle righe dei destinatari (`openedAt`, `clickedAt`: la **prima**
+ * apertura e il primo click di ciascuno), quindi conta persone e non
+ * aperture ripetute. Le righe possono mancare — campagne consegnate a un
+ * fornitore esterno, destinatari cancellati per l'oblio — e allora la serie
+ * torna vuota e il grafico non si disegna: una curva piatta a zero direbbe
+ * «nessuno ha aperto», che non sappiamo.
+ *
+ * Al massimo 14 giorni: dopo due settimane una campagna non apre più, e una
+ * coda lunga di zeri schiaccia la parte che conta.
+ */
+export type GiornoCampagna = { giorno: number; aperture: number; click: number };
+
+export async function andamentoCampagna(venueId: string, campaignId: string): Promise<GiornoCampagna[]> {
+  const campagna = await db.campaign.findFirst({
+    where: { id: campaignId, venueId },
+    select: { sendingStartedAt: true, sentAt: true },
+  });
+  const inizio = campagna?.sendingStartedAt ?? campagna?.sentAt;
+  if (!inizio) return [];
+
+  const righe = await db.campaignRecipient.findMany({
+    where: { campaignId, venueId, OR: [{ openedAt: { not: null } }, { clickedAt: { not: null } }] },
+    select: { openedAt: true, clickedAt: true },
+  });
+  if (righe.length === 0) return [];
+
+  const GIORNO = 24 * 60 * 60 * 1000;
+  const indice = (d: Date) => Math.max(0, Math.floor((d.getTime() - inizio.getTime()) / GIORNO));
+  let ultimo = 0;
+  for (const r of righe) {
+    if (r.openedAt) ultimo = Math.max(ultimo, indice(r.openedAt));
+    if (r.clickedAt) ultimo = Math.max(ultimo, indice(r.clickedAt));
+  }
+  const n = Math.min(14, Math.max(ultimo + 1, 3));
+  const giorni: GiornoCampagna[] = Array.from({ length: n }, (_, i) => ({ giorno: i + 1, aperture: 0, click: 0 }));
+  for (const r of righe) {
+    if (r.openedAt && indice(r.openedAt) < n) giorni[indice(r.openedAt)].aperture++;
+    if (r.clickedAt && indice(r.clickedAt) < n) giorni[indice(r.clickedAt)].click++;
+  }
+  return giorni;
+}

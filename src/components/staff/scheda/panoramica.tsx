@@ -25,8 +25,9 @@ import type { PersonaDTO } from "./tipi";
  *   stessa cosa tre volte: «Scade il 4 novembre», «Scade oggi», «In
  *   scadenza». Ora la data sta nel calendarino, il tempo che manca nella
  *   riga, lo stato nella pastiglia.
- * - **La settimana a giorni**: i prossimi sette giorni uno per riga, anche
- *   quelli liberi, così «nessun turno» si vede invece di leggersi.
+ * - **La settimana a giorni**: i prossimi sette giorni, anche quelli liberi,
+ *   così «nessun turno» si vede invece di leggersi. Dall'11 novembre in
+ *   orizzontale, a tutta larghezza (vedi `Settimana`).
  * - Niente testo tagliato: tutto va a capo.
  */
 export function Panoramica({
@@ -92,38 +93,37 @@ export function Panoramica({
         />
       </FasciaTessere>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:items-start">
-        {/* ----------------------------------------------------- scadenze */}
-        <Sezione id="scadenze" titolo="Scadenze" icona={ShieldCheck}>
-          {scadenze.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Nessuna scadenza da tenere d&apos;occhio.
-            </p>
-          ) : (
-            <ul className="space-y-2.5">
-              {scadenze.map((s) => (
-                <li key={s.chiave}>
-                  <SchedaScadenza scadenza={s} adesso={adesso} href={`${base}?tab=${s.tab}`} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Sezione>
+      {/* --------------------------------------------------- la settimana */}
+      <Sezione
+        id="prossimi-turni"
+        titolo="Prossimi sette giorni"
+        icona={Clock}
+        descrizione={riepilogoSettimana(presenze?.prossimi ?? [])}
+        azione={
+          <Link href={`${base}?tab=presenze`} scroll={false} className="inline-flex items-center gap-1 text-sm font-medium text-accent-strong hover:underline">
+            Turni <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        }
+      >
+        <Settimana oggi={oggi} turni={presenze?.prossimi ?? []} />
+      </Sezione>
 
-        {/* ------------------------------------------------- la settimana */}
-        <Sezione
-          id="prossimi-turni"
-          titolo="Prossimi sette giorni"
-          icona={Clock}
-          azione={
-            <Link href={`${base}?tab=presenze`} scroll={false} className="inline-flex items-center gap-1 text-sm font-medium text-accent-strong hover:underline">
-              Turni <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </Link>
-          }
-        >
-          <Settimana oggi={oggi} turni={presenze?.prossimi ?? []} />
-        </Sezione>
-      </div>
+      {/* ------------------------------------------------------- scadenze */}
+      <Sezione id="scadenze" titolo="Scadenze" icona={ShieldCheck}>
+        {scadenze.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            Nessuna scadenza da tenere d&apos;occhio.
+          </p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+            {scadenze.map((s) => (
+              <li key={s.chiave}>
+                <SchedaScadenza scadenza={s} adesso={adesso} href={`${base}?tab=${s.tab}`} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Sezione>
     </div>
   );
 }
@@ -218,6 +218,27 @@ function SchedaScadenza({ scadenza: s, adesso, href }: { scadenza: Scadenza; ade
 const giornoSett = new Intl.DateTimeFormat("it-IT", { weekday: "short", timeZone: "UTC" });
 const giornoLungo = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
+/*
+ * La settimana in orizzontale (11 novembre 2026): sette colonne affiancate,
+ * a tutta larghezza sopra le scadenze. In verticale erano sette righe e una
+ * colonna alta 600 px per dire, quasi sempre, «Libero» sette volte. Ora sta
+ * in una fascia alta quanto un turno.
+ *
+ * - oggi è la colonna verde piena;
+ * - un giorno lavorato ha l'orario su due righe (inizio sopra, fine sotto)
+ *   e il servizio, su un fondo chiaro con il bordo; un giorno libero è una
+ *   colonna quieta col trattino;
+ * - le assenze hanno il loro colore (malattia rossa, il resto oro);
+ * - sotto i 640 px le colonne non si schiacciano: la fascia scorre di lato
+ *   dentro la card.
+ */
+function riepilogoSettimana(turni: TurnoProssimo[]) {
+  const lavoro = turni.filter((t) => t.kind === "WORK");
+  const giorni = new Set(lavoro.map((t) => t.dateKey)).size;
+  if (giorni === 0) return "Nessun turno in calendario.";
+  return `${lavoro.length} ${lavoro.length === 1 ? "turno" : "turni"} · ${7 - giorni} ${7 - giorni === 1 ? "giorno libero" : "giorni liberi"}`;
+}
+
 function Settimana({ oggi, turni }: { oggi: string; turni: TurnoProssimo[] }) {
   const [y, m, d] = oggi.split("-").map(Number);
   const giorni = Array.from({ length: 7 }, (_, i) => {
@@ -227,56 +248,68 @@ function Settimana({ oggi, turni }: { oggi: string; turni: TurnoProssimo[] }) {
   });
 
   return (
-    <ol className="space-y-1.5">
-      {giorni.map((g, i) => {
-        const libero = g.turni.length === 0;
-        return (
-          <li
-            key={g.chiave}
-            aria-label={giornoLungo.format(g.data)}
-            className={cn(
-              "flex items-center gap-3 rounded-xl border p-2",
-              i === 0 ? "border-sage/40 bg-sage/10" : "border-border/50 bg-card-sunken/40",
-            )}
-          >
-            <div
+    <div className="-mx-1 overflow-x-auto px-1 pb-1">
+      <ol className="grid min-w-[36rem] grid-cols-7 gap-2">
+        {giorni.map((g, i) => {
+          const oggiE = i === 0;
+          const libero = g.turni.length === 0;
+          return (
+            <li
+              key={g.chiave}
+              aria-label={giornoLungo.format(g.data)}
               className={cn(
-                "flex w-12 shrink-0 flex-col items-center rounded-lg py-1 leading-none",
-                i === 0 ? "bg-[linear-gradient(160deg,#1C4A3A_0%,#102B22_100%)] text-cream" : "bg-secondary/60 text-foreground",
+                "flex min-h-[8.5rem] min-w-0 flex-col rounded-xl border p-2.5",
+                oggiE
+                  ? "border-transparent bg-[linear-gradient(160deg,#1C4A3A_0%,#102B22_100%)] text-cream shadow-[0_8px_18px_rgba(16,43,34,0.22)]"
+                  : libero
+                    ? "border-dashed border-border/70"
+                    : "border-border/60 bg-card-sunken/70",
               )}
             >
-              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-80">
-                {giornoSett.format(g.data).replace(".", "")}
-              </span>
-              <span className="text-display mt-0.5 text-lg tabular-nums">{g.data.getUTCDate()}</span>
-            </div>
+              <div className="flex items-baseline justify-between gap-1 leading-none">
+                <span className={cn("text-[11px] font-semibold uppercase tracking-[0.12em]", oggiE ? "text-cream/75" : "text-muted-foreground")}>
+                  {oggiE ? "Oggi" : giornoSett.format(g.data).replace(".", "")}
+                </span>
+                <span className={cn("text-display text-2xl tabular-nums", !oggiE && libero && "text-tertiary-foreground")}>
+                  {g.data.getUTCDate()}
+                </span>
+              </div>
 
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-              {i === 0 && <span className="text-xs font-semibold text-sage-strong">Oggi</span>}
-              {libero ? (
-                <span className="text-sm text-tertiary-foreground">Libero</span>
-              ) : (
-                g.turni.map((t, j) =>
-                  t.kind === "WORK" && t.startMinute != null && t.endMinute != null ? (
-                    <span
-                      key={j}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-2.5 py-1 text-sm"
-                    >
-                      <span className="font-mono tabular-nums">{intervalloCompatto(t.startMinute, t.endMinute)}</span>
-                      {t.service && <span className="text-muted-foreground">{t.service}</span>}
-                    </span>
-                  ) : (
-                    <span key={j} className="rounded-full bg-accent/15 px-2.5 py-1 text-sm text-accent-strong">
-                      {tipoTurnoBreve(t.kind)}
-                    </span>
-                  ),
-                )
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+              <div className="mt-auto flex flex-col gap-1.5 pt-3">
+                {libero ? (
+                  <span className={cn("text-sm", oggiE ? "text-cream/70" : "text-tertiary-foreground")}>Libero</span>
+                ) : (
+                  g.turni.map((t, j) =>
+                    t.kind === "WORK" && t.startMinute != null && t.endMinute != null ? (
+                      <span key={j} className="min-w-0 leading-tight">
+                        <span className="block font-mono text-base font-medium tabular-nums">{intervalloCompatto(t.startMinute, t.endMinute)}</span>
+                        {t.service && (
+                          <span className={cn("block truncate text-xs", oggiE ? "text-cream/70" : "text-muted-foreground")}>{t.service}</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span
+                        key={j}
+                        className={cn(
+                          "self-start rounded-full px-2 py-0.5 text-xs font-medium",
+                          oggiE
+                            ? "bg-cream/15 text-cream"
+                            : t.kind === "SICK_LEAVE"
+                              ? "bg-destructive/10 text-destructive-soft"
+                              : "bg-accent/15 text-accent-strong",
+                        )}
+                      >
+                        {tipoTurnoBreve(t.kind)}
+                      </span>
+                    ),
+                  )
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 

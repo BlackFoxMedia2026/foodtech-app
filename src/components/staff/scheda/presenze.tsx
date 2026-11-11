@@ -1,11 +1,11 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarClock, Palmtree } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { etichettaSettimana, intervalloCompatto, oreLeggibili, tipoTurnoBreve, tipoTurnoLabel } from "@/lib/turni";
+import { etichettaSettimana, intervalloCompatto, tipoTurnoBreve, tipoTurnoLabel } from "@/lib/turni";
 import { dataBreve } from "@/lib/scheda-dipendente";
 import type { RiepilogoPresenze } from "@/server/staff-presenze";
 import { cn } from "@/lib/utils";
-import { Cifra } from "@/components/guests/crm-sezioni";
 import { Sezione } from "./sezione";
 
 /**
@@ -35,16 +35,16 @@ export function Presenze({ riepilogo, oggi }: { riepilogo: RiepilogoPresenze; og
           </Link>
         }
       >
-        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-          <Numero valore={oreLeggibili(s.minutiProgrammati)} etichetta="programmate" />
-          <Numero valore={oreLeggibili(s.minutiSvolti)} etichetta="già svolte" nota="turni passati" />
-          <Numero valore={String(s.turni)} etichetta={s.turni === 1 ? "turno" : "turni"} />
-          <Numero valore={String(s.assenze)} etichetta={s.assenze === 1 ? "assenza" : "assenze"} allarme={s.assenze > 0} />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Dato {...ore(s.minutiProgrammati)} etichetta="programmate" tinta="settimana" primo />
+          <Dato {...ore(s.minutiSvolti)} etichetta="già svolte" nota="dai turni passati" tinta="settimana" />
+          <Dato valore={String(s.turni)} etichetta={s.turni === 1 ? "turno" : "turni"} tinta="settimana" />
+          <Dato valore={String(s.assenze)} etichetta={s.assenze === 1 ? "assenza" : "assenze"} tinta="settimana" allarme={s.assenze > 0} />
         </div>
 
-        <h3 className="t-etichetta mb-2 mt-8 border-b border-border/60 pb-2 font-medium">Prossimi turni</h3>
+        <Sottotitolo>Prossimi turni</Sottotitolo>
         {riepilogo.prossimi.length === 0 ? (
-          <p className="text-base text-muted-foreground">Nessun turno pianificato nei prossimi sette giorni.</p>
+          <Vuoto>Nessun turno pianificato nei prossimi sette giorni.</Vuoto>
         ) : (
           <ul className="divide-y divide-border/60">
             {riepilogo.prossimi.map((t) => (
@@ -68,16 +68,16 @@ export function Presenze({ riepilogo, oggi }: { riepilogo: RiepilogoPresenze; og
       </Sezione>
 
       <Sezione id="assenze" titolo="Ferie, permessi e assenze" icona={Palmtree} descrizione={`Anno ${a.anno}. I giorni vengono dai turni segnati nel calendario.`}>
-        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-          <Numero valore={String(a.ferieUsate)} etichetta="ferie usate" nota={a.ferieUsate === 1 ? "giorno" : "giorni"} />
-          <Numero valore={String(a.feriePianificate)} etichetta="ferie programmate" nota={a.feriePianificate === 1 ? "giorno" : "giorni"} />
-          <Numero valore={String(a.permessi)} etichetta="permessi" nota={a.permessi === 1 ? "giorno" : "giorni"} />
-          <Numero valore={String(a.malattia)} etichetta="malattia" nota={a.malattia === 1 ? "giorno" : "giorni"} allarme={a.malattia > 0} />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Dato valore={String(a.ferieUsate)} unita={giorni(a.ferieUsate)} etichetta="ferie usate" tinta="assenze" primo />
+          <Dato valore={String(a.feriePianificate)} unita={giorni(a.feriePianificate)} etichetta="ferie programmate" tinta="assenze" />
+          <Dato valore={String(a.permessi)} unita={giorni(a.permessi)} etichetta="permessi" tinta="assenze" />
+          <Dato valore={String(a.malattia)} unita={giorni(a.malattia)} etichetta="malattia" tinta="assenze" allarme={a.malattia > 0} />
         </div>
 
-        <h3 className="t-etichetta mb-2 mt-8 border-b border-border/60 pb-2 font-medium">Storico</h3>
+        <Sottotitolo>Storico</Sottotitolo>
         {riepilogo.storicoAssenze.length === 0 ? (
-          <p className="text-base text-muted-foreground">Nessuna assenza registrata quest&apos;anno.</p>
+          <Vuoto>Nessuna assenza registrata quest&apos;anno.</Vuoto>
         ) : (
           <ul className="divide-y divide-border/60">
             {riepilogo.storicoAssenze.map((x) => (
@@ -103,9 +103,72 @@ function giornoLeggibile(dateKey: string) {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
 
-/* I numeri della settimana e dell'anno sono la `Cifra` della scheda ospite
-   (4 novembre 2026): stesso fondo incavato e stesso numero monospaziato, così
-   le due schede parlano la stessa lingua. */
-function Numero({ valore, etichetta, nota, allarme = false }: { valore: string; etichetta: string; nota?: string; allarme?: boolean }) {
-  return <Cifra valore={valore} etichetta={etichetta} nota={nota} tono={allarme ? "giu" : "neutro"} />;
+function giorni(n: number) {
+  return n === 1 ? "giorno" : "giorni";
+}
+
+/** «7 h 30′» diviso in numero e unità, per scriverli in due corpi. */
+function ore(minuti: number): { valore: string; unita: string } {
+  const h = Math.floor(minuti / 60);
+  const m = minuti % 60;
+  return m === 0 ? { valore: String(h), unita: "h" } : { valore: `${h}:${String(m).padStart(2, "0")}`, unita: "h" };
+}
+
+function Sottotitolo({ children }: { children: ReactNode }) {
+  return <h3 className="mb-1 mt-7 border-b border-border/60 pb-2 text-sm font-semibold uppercase tracking-wider text-foreground/75">{children}</h3>;
+}
+
+function Vuoto({ children }: { children: ReactNode }) {
+  return <p className="mt-3 rounded-xl border border-dashed border-border px-4 py-4 text-base text-muted-foreground">{children}</p>;
+}
+
+/*
+ * I numeri della scheda Turni (11 novembre 2026). Prima erano la `Cifra`
+ * della scheda ospite: numero a 20 px, etichetta a 13, nota a 11, e le due
+ * sezioni avevano tessere identiche — «0 h programmate» e «0 ferie usate» si
+ * distinguevano solo leggendo. Ora ogni sezione ha il suo colore (verde la
+ * settimana, sabbia dorata le assenze), la prima tessera è piena come la
+ * tessera verde della Panoramica, e i corpi salgono: numero a 30 px, unità
+ * e etichetta a 16, nota a 14.
+ */
+const TINTE = {
+  settimana: {
+    pieno: "border-transparent bg-[linear-gradient(135deg,#1C4A3A_0%,#102B22_100%)] text-cream shadow-[0_8px_18px_rgba(16,43,34,0.22)]",
+    tenue: "border-[#1C4A3A]/15 bg-[#1C4A3A]/[0.06] text-[#1C4A3A]",
+  },
+  assenze: {
+    pieno: "border-accent/40 bg-[linear-gradient(135deg,#F3E6C4_0%,#E6CF98_100%)] text-clay-ink",
+    tenue: "border-accent/30 bg-[#F3E6C4]/50 text-clay-ink",
+  },
+} as const;
+
+function Dato({
+  valore,
+  unita,
+  etichetta,
+  nota,
+  tinta,
+  primo = false,
+  allarme = false,
+}: {
+  valore: string;
+  unita?: string;
+  etichetta: string;
+  nota?: string;
+  tinta: keyof typeof TINTE;
+  /** La prima tessera della fila, a fondo pieno: il dato da leggere per primo. */
+  primo?: boolean;
+  allarme?: boolean;
+}) {
+  const scuro = primo && tinta === "settimana";
+  return (
+    <div className={cn("min-w-0 rounded-xl border px-4 py-4", primo ? TINTE[tinta].pieno : TINTE[tinta].tenue)}>
+      <p className="flex items-baseline gap-1.5 whitespace-nowrap">
+        <span className={cn("font-mono text-3xl font-medium leading-9 tabular-nums", allarme && !primo && "text-accent-strong-ink")}>{valore}</span>
+        {unita && <span className={cn("text-base", scuro ? "text-cream/75" : "opacity-70")}>{unita}</span>}
+      </p>
+      <p className={cn("mt-1.5 text-base font-medium leading-snug", scuro ? "text-cream" : "text-foreground")}>{etichetta}</p>
+      {nota && <p className={cn("mt-0.5 text-sm leading-snug", scuro ? "text-cream/70" : "text-muted-foreground")}>{nota}</p>}
+    </div>
+  );
 }
