@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarCheck, MailOpen, MousePointerClick, Pencil, Send, Users } from "lucide-react";
+import { CalendarCheck, MailCheck, MailOpen, MousePointerClick, Pencil, Users } from "lucide-react";
 import { getActiveVenue } from "@/lib/tenant";
 import {
   FINESTRA_ATTRIBUZIONE_GIORNI,
@@ -17,10 +17,23 @@ import { FasciaTessere, TesseraKpi } from "@/components/ui/tessera-kpi";
 import { CampaignActions } from "@/components/campaigns/campaign-actions";
 import { CampaignSendStatus } from "@/components/campaigns/campaign-send-status";
 import { AnnullaCampagna } from "@/components/campaigns/annulla-campagna";
-import { AnteprimaEmail, Cronologia, LinkCliccati, Percorso, SaluteInvio } from "@/components/campaigns/risultati-visivi";
+import {
+  AnteprimaEmail,
+  Consegna,
+  LinkCliccati,
+  PiuAttivi,
+  PrenotazioniArrivate,
+  Tassi,
+} from "@/components/campaigns/risultati-visivi";
 import { AndamentoCampagna } from "@/components/campaigns/andamento-campagna";
 import { statoCampagna } from "@/lib/campaign-status";
-import { andamentoCampagna, risultatiCampagna, type RisultatiCampagna } from "@/server/dem/statistiche";
+import {
+  andamentoCampagna,
+  mediaDelLocale,
+  piuAttivi,
+  prenotazioniDellaCampagna,
+  risultatiCampagna,
+} from "@/server/dem/statistiche";
 import { superAdminCorrente } from "@/lib/super-admin";
 import { PannelloBlocco } from "@/components/costi/pannello-blocco";
 import { dettaglioCosti } from "@/server/costi/dettaglio";
@@ -36,35 +49,32 @@ const LOYALTY_LABELS: Record<string, string> = {
 
 const NUM = new Intl.NumberFormat("it-IT");
 const EURO = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const QUANDO = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
-/* I tassi si leggono su chi ha ricevuto; se il fornitore non manda gli esiti
-   di consegna, sulle inviate — e la nota della tessera dice quale delle due. */
-function baseTassi(r: RisultatiCampagna) {
-  return r.consegnate > 0 ? r.consegnate : r.inviate;
-}
-function percento(parte: number, base: number) {
-  return base > 0 ? Math.round((parte / base) * 1000) / 10 : undefined;
-}
-function quota(parte: number, base: number) {
-  const v = percento(parte, base);
-  return v === undefined ? "—" : `${v.toLocaleString("it-IT")}%`;
+function pct(parte: number, base: number) {
+  return base > 0 ? Math.round((parte / base) * 1000) / 10 : null;
 }
 
 /**
- * Il dettaglio di una campagna.
+ * Il report di una campagna.
  *
- * Revisione dell'11 novembre 2026: la pagina era «troppo caotica» — otto
- * numeri tutti alla stessa voce, un grafico che ne ripeteva tre, le note in
- * mezzo. Ora si legge dall'alto in basso come una risposta:
+ * Terza revisione dell'11 novembre 2026, sul modello dei report di Mailchimp
+ * e Klaviyo: le sezioni una sotto l'altra, ognuna una domanda.
  *
- * 1. **quattro tessere** (inviate, aperture, click, prenotazioni), le stesse
- *    della Panoramica del locale;
- * 2. **il percorso** (imbuto) accanto all'**arrivo** (esiti di consegna);
- * 3. **nel tempo**: aperture e click giorno per giorno;
- * 4. **l'email** com'è arrivata e **a chi** è andata;
- * 5. la **cronologia** come linea del tempo, e le note in fondo.
+ * 1. **Testata**: oggetto, quando è partita, a chi — come un messaggio.
+ * 2. **Quattro numeri**: consegnate, aperte, click, prenotazioni.
+ * 3. **I tassi contro la media del locale** (le barre «list average»).
+ * 4. **Le prime 48 ore**, ora per ora.
+ * 5. **Link più cliccati** e **chi ha interagito di più**, affiancati e
+ *    della stessa altezza.
+ * 6. **Le prenotazioni arrivate**, una per riga (gli «ordini» di Klaviyo).
+ * 7. **La consegna**, e in fondo **l'email** com'è arrivata.
  *
- * Una bozza, che non ha numeri, apre direttamente su email e pubblico.
+ * I tassi si leggono su chi ha ricevuto, come fa Mailchimp: i rimbalzi non
+ * potevano aprire. Se il fornitore non manda le consegne, sulle inviate, e
+ * la riga sotto il numero dice quale delle due.
+ *
+ * Una bozza, che non ha numeri, mostra testata, email e invio.
  */
 export default async function CampaignDetailPage({ params }: { params: { id: string } }) {
   const ctx = await getActiveVenue();
@@ -104,7 +114,14 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
   // esterno non tornano indietro gli eventi, e inventarli sarebbe peggio.
   const risultati = campaign.sentCount > 0 ? await risultatiCampagna(ctx.venueId, campaign.id) : null;
   const r = risultati && risultati.inviate > 0 ? risultati : null;
-  const andamento = r ? await andamentoCampagna(ctx.venueId, campaign.id) : [];
+  const [andamento, media, attivi, arrivate] = r
+    ? await Promise.all([
+        andamentoCampagna(ctx.venueId, campaign.id),
+        mediaDelLocale(ctx.venueId, campaign.id),
+        piuAttivi(ctx.venueId, campaign.id),
+        prenotazioniDellaCampagna(ctx.venueId, campaign.id),
+      ])
+    : [null, null, [], []];
 
   const filtri = [
     ...(segment.inactiveDays !== undefined ? [`Inattivi da ${segment.inactiveDays} giorni`] : []),
@@ -113,57 +130,9 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
     ...(segment.tags ?? []).map((t) => `Tag: ${t}`),
   ];
 
-  const emailEPubblico = (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
-      <Card>
-        <CardHeader>
-          <CardTitle>L&apos;email</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AnteprimaEmail oggetto={campaign.subject ?? ""} corpo={campaign.body || ""} />
-        </CardContent>
-      </Card>
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-accent-strong" aria-hidden="true" /> A chi va
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {campaign.status === "DRAFT" && (
-              <p className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-mono text-3xl tabular-nums text-foreground">{NUM.format(matchingGuests.length)}</span>
-                <span className="text-base text-muted-foreground">clienti oggi nel segmento</span>
-              </p>
-            )}
-            <ul className="flex flex-wrap gap-2">
-              {filtri.length === 0 ? (
-                <li className="rounded-full bg-secondary px-3 py-1 text-sm text-foreground">Tutti i clienti</li>
-              ) : (
-                filtri.map((f) => (
-                  <li key={f} className="rounded-full border border-border/70 bg-card-sunken/60 px-3 py-1 text-sm text-foreground">
-                    {f}
-                  </li>
-                ))
-              )}
-            </ul>
-            <p className="text-sm text-muted-foreground">Solo clienti con consenso marketing attivo ed email valida.</p>
-          </CardContent>
-        </Card>
-        {r && r.linkPiuCliccati.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Link più cliccati</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <LinkCliccati link={r.linkPiuCliccati} />
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
-  );
+  const partita = campaign.sendingStartedAt ?? campaign.sentAt ?? resa.sentAt;
+  const base = r ? (r.consegnate > 0 ? r.consegnate : r.inviate) : 0;
+  const nomeBase = r && r.consegnate > 0 ? "consegnate" : "inviate";
 
   return (
     <div className="schermo animate-fade-in gap-4">
@@ -198,7 +167,40 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
           />
         )}
 
-        {!r && emailEPubblico}
+        {/* ------------------------------------------------------ testata */}
+        <Card>
+          <CardContent className="space-y-3 pt-5">
+            <div>
+              <p className="t-etichetta">Oggetto</p>
+              <p className="mt-1 text-display text-2xl leading-snug">{campaign.subject || "Senza oggetto"}</p>
+              {campaign.previewText && <p className="mt-0.5 text-base text-muted-foreground">{campaign.previewText}</p>}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-base">
+              {partita && campaign.status !== "DRAFT" && (
+                <span className="text-foreground first-letter:uppercase">
+                  {campaign.status === "SCHEDULED" ? "In partenza " : "Partita "}
+                  {QUANDO.format(partita)}
+                </span>
+              )}
+              {partita && campaign.status !== "DRAFT" && <span className="text-muted-foreground">·</span>}
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <Users className="h-4 w-4 text-accent-strong" aria-hidden="true" />
+                {r
+                  ? `${NUM.format(r.inviate)} clienti`
+                  : campaign.status === "DRAFT"
+                    ? `${NUM.format(matchingGuests.length)} clienti oggi nel segmento`
+                    : "a"}
+              </span>
+              {(filtri.length === 0 ? ["Tutti i clienti con consenso"] : filtri).map((f) => (
+                <span key={f} className="rounded-full border border-border/70 bg-card-sunken/60 px-3 py-0.5 text-sm text-foreground">
+                  {f}
+                </span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {!r && <EmailCard />}
 
         {campaign.status === "DRAFT" && (
           <Card>
@@ -246,86 +248,131 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
 
         {r && (
           <>
-            {/* ----------------------------------------- i quattro numeri */}
+            {/* -------------------------------------------- quattro numeri */}
             <FasciaTessere colonne={4}>
               <TesseraKpi
-                icona={Send}
-                etichetta={r.inviate === 1 ? "Inviata" : "Inviate"}
-                valore={NUM.format(r.inviate)}
-                nota={r.consegnate > 0 ? `${NUM.format(r.consegnate)} consegnate` : "esiti di consegna non arrivati"}
+                icona={MailCheck}
+                etichetta={["Consegnata", "Consegnate"]}
+                valore={r.consegnate > 0 ? r.consegnate : r.inviate}
+                nota={r.consegnate > 0 ? `su ${NUM.format(r.inviate)} inviate` : "inviate · consegne non tracciate"}
               />
-              <TesseraKpi
-                icona={MailOpen}
-                etichetta="Aperture"
-                valore={quota(r.aperte, baseTassi(r))}
-                barra={percento(r.aperte, baseTassi(r))}
-                nota={`${NUM.format(r.aperte)} su ${NUM.format(baseTassi(r))} ${r.consegnate > 0 ? "consegnate" : "inviate"}`}
-              />
-              <TesseraKpi
-                icona={MousePointerClick}
-                etichetta="Click"
-                valore={quota(r.click, baseTassi(r))}
-                barra={percento(r.click, baseTassi(r))}
-                nota={`${NUM.format(r.click)} ${r.click === 1 ? "persona ha" : "persone hanno"} cliccato`}
-              />
+              <TesseraKpi icona={MailOpen} etichetta={["Aperta", "Aperte"]} valore={r.aperte} nota={["persona diversa", "persone diverse"]} />
+              <TesseraKpi icona={MousePointerClick} etichetta="Click" valore={r.click} nota={["persona sul link", "persone sul link"]} />
               <TesseraKpi
                 icona={CalendarCheck}
                 etichetta={["Prenotazione", "Prenotazioni"]}
                 valore={resa.bookings}
                 nota={
                   resa.bookings === 0
-                    ? `nessuna dal link, entro ${FINESTRA_ATTRIBUZIONE_GIORNI} giorni`
-                    : `${resa.covers} coperti${resa.revenueCents != null ? ` · ${EURO.format(resa.revenueCents / 100)} stimati` : ""}`
+                    ? `nessuna entro ${FINESTRA_ATTRIBUZIONE_GIORNI} giorni`
+                    : `${resa.covers} coperti${resa.revenueCents != null ? ` · ${EURO.format(resa.revenueCents / 100)}` : ""}`
                 }
               />
             </FasciaTessere>
 
-            {/* -------------------------------------- percorso e arrivo */}
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+            {/* ------------------------------------------------------ tassi */}
+            <Card>
+              <CardHeader>
+                <CardTitle>È andata bene?</CardTitle>
+                <CardDescription>
+                  {media
+                    ? `Confrontata con la media delle altre ${media.campagne === 1 ? "campagna" : `${media.campagne} campagne`} del locale.`
+                    : "Quando il locale avrà altre campagne, qui vedrai il confronto."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tassi
+                  tassi={[
+                    {
+                      nome: "Tasso di apertura",
+                      icona: "apertura",
+                      valore: pct(r.aperte, base),
+                      media: media?.apertura ?? null,
+                      dettaglio: `${NUM.format(r.aperte)} su ${NUM.format(base)} ${nomeBase}`,
+                    },
+                    {
+                      nome: "Tasso di click",
+                      icona: "click",
+                      valore: pct(r.click, base),
+                      media: media?.click ?? null,
+                      dettaglio: `${NUM.format(r.click)} su ${NUM.format(base)} ${nomeBase}`,
+                    },
+                    {
+                      nome: "Tasso di prenotazione",
+                      icona: "prenotazione",
+                      valore: pct(resa.bookings, base),
+                      media: null,
+                      dettaglio: `${NUM.format(resa.bookings)} su ${NUM.format(base)} ${nomeBase}`,
+                    },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+
+            {/* ------------------------------------------------ prime 48 ore */}
+            {andamento && partita && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Il percorso</CardTitle>
-                  <CardDescription>Dall&apos;invio alla prenotazione: ogni barra sulla stessa base, le email inviate.</CardDescription>
+                  <CardTitle>Le prime ore</CardTitle>
+                  <CardDescription>Quando le persone hanno aperto e cliccato, ora per ora dall&apos;invio.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Percorso r={r} prenotazioni={resa.bookings} />
+                  <AndamentoCampagna dati={andamento} inizio={partita.toISOString()} />
                 </CardContent>
               </Card>
-              <Card>
+            )}
+
+            {/* --------------------------------------- link e persone, pari */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="h-full">
                 <CardHeader>
-                  <CardTitle>L&apos;arrivo</CardTitle>
-                  <CardDescription>Aggiornato man mano che gli esiti arrivano.</CardDescription>
+                  <CardTitle>Link più cliccati</CardTitle>
+                  <CardDescription>Dove sono andati, dall&apos;email.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <SaluteInvio r={r} />
+                  <LinkCliccati link={r.linkPiuCliccati} />
+                </CardContent>
+              </Card>
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle>Chi ha interagito di più</CardTitle>
+                  <CardDescription>Prima chi ha cliccato, poi chi ha aperto più volte.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PiuAttivi persone={attivi} />
                 </CardContent>
               </Card>
             </div>
 
-            {andamento.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Nel tempo</CardTitle>
-                  <CardDescription>La prima apertura e il primo click di ogni persona, giorno per giorno dall&apos;invio.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <AndamentoCampagna giorni={andamento} />
-                </CardContent>
-              </Card>
-            )}
+            {/* ------------------------------------------------ prenotazioni */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Le prenotazioni arrivate</CardTitle>
+                <CardDescription>
+                  {resa.bookings > 0
+                    ? `${resa.bookings} ${resa.bookings === 1 ? "prenotazione" : "prenotazioni"} dal link, ${resa.covers} coperti${
+                        resa.revenueCents != null ? ` · circa ${EURO.format(resa.revenueCents / 100)} sullo scontrino medio` : ""
+                      }.`
+                    : `Quelle nate dal link dell'email nei ${FINESTRA_ATTRIBUZIONE_GIORNI} giorni dopo l'invio.`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PrenotazioniArrivate prenotazioni={arrivate} />
+              </CardContent>
+            </Card>
 
-            {emailEPubblico}
+            {/* ---------------------------------------------------- consegna */}
+            <Card>
+              <CardHeader>
+                <CardTitle>La consegna</CardTitle>
+                <CardDescription>Gli esiti, aggiornati man mano che arrivano.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Consegna r={r} />
+              </CardContent>
+            </Card>
 
-            {r.tappe.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cronologia</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Cronologia tappe={r.tappe} />
-                </CardContent>
-              </Card>
-            )}
+            <EmailCard />
 
             {/* Le note d'onestà stanno in fondo, insieme e piccole: in mezzo
                 ai numeri li coprivano. Quello che dicono non cambia. */}
@@ -336,8 +383,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
               </p>
               <p>
                 Le prenotazioni sono quelle nate dal link di questa email entro {FINESTRA_ATTRIBUZIONE_GIORNI} giorni
-                dall&apos;invio, senza le disdette e chi non si è presentato: una prenotazione disdetta è arrivata
-                dalla campagna ma non ha portato nessuno a tavola.
+                dall&apos;invio, senza le disdette e chi non si è presentato.
                 {resa.fuoriFinestra > 0 && ` Altre ${resa.fuoriFinestra} sono arrivate dallo stesso link più tardi e non le contiamo.`}
                 {resa.bookings > 0 && resa.revenueCents == null && " Imposta lo scontrino medio in Impostazioni per vedere quanto valgono."}
               </p>
@@ -358,4 +404,23 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
       </div>
     </div>
   );
+
+  function EmailCard() {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>L&apos;email</CardTitle>
+          <CardDescription>Come l&apos;hanno ricevuta.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AnteprimaEmail
+            mittente={ctx.venue.name}
+            oggetto={campaign!.subject ?? ""}
+            anteprima={campaign!.previewText}
+            corpo={campaign!.body || ""}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 }

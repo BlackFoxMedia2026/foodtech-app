@@ -2,6 +2,7 @@
 import type { PrismaClient, Prisma, StaffCapability } from "@prisma/client";
 import { dateKeyInVenue, todayInVenue } from "../src/lib/venue-time";
 import { bookingEnd, overlaps } from "../src/server/availability";
+import { campagneDemoComplete } from "./demo-campagne";
 
 /**
  * La vetrina della demo: le **righe** che mancavano.
@@ -1851,6 +1852,7 @@ export async function arricchisciVetrina(db: PrismaClient, venueId: string, nome
   await daiUnTavoloAChiNonCeLHa(db, venueId);
   await assegnaPersonaleDiOggi(db, venueId);
   await sistemaCampagnaDemo(db, venueId);
+  await campagneDemoComplete(db, venueId);
   await arricchisciEsperienze(db, venueId);
   await creaContattiWifiDemo(db, venueId);
 }

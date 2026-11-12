@@ -242,47 +242,124 @@ export async function controllaReputazione(venueId: string): Promise<EsitoReputa
 }
 
 /**
- * Aperture e click giorno per giorno dall'invio (11 novembre 2026), per il
- * grafico «nel tempo» della campagna.
+ * Aperture e click **ora per ora** nelle prime 48 ore dall'invio, come il
+ * «24-hour performance» dei report di Mailchimp (11 novembre 2026; prima era
+ * giorno per giorno, e un'email si gioca nelle prime ore: per giorni era una
+ * colonna alta e tredici basse).
  *
  * Viene dalle righe dei destinatari (`openedAt`, `clickedAt`: la **prima**
  * apertura e il primo click di ciascuno), quindi conta persone e non
- * aperture ripetute. Le righe possono mancare — campagne consegnate a un
- * fornitore esterno, destinatari cancellati per l'oblio — e allora la serie
- * torna vuota e il grafico non si disegna: una curva piatta a zero direbbe
- * «nessuno ha aperto», che non sappiamo.
- *
- * Al massimo 14 giorni: dopo due settimane una campagna non apre più, e una
- * coda lunga di zeri schiaccia la parte che conta.
+ * aperture ripetute. Senza righe la serie è vuota e il grafico non si
+ * disegna: una curva piatta a zero direbbe «nessuno ha aperto», che non
+ * sappiamo.
  */
-export type GiornoCampagna = { giorno: number; aperture: number; click: number };
+export type OraCampagna = { ora: number; aperture: number; click: number };
+export type AndamentoCampagna = { ore: OraCampagna[]; aperteTotali: number; entroSeiOre: number; dopo48: number };
 
-export async function andamentoCampagna(venueId: string, campaignId: string): Promise<GiornoCampagna[]> {
+export async function andamentoCampagna(venueId: string, campaignId: string): Promise<AndamentoCampagna | null> {
   const campagna = await db.campaign.findFirst({
     where: { id: campaignId, venueId },
     select: { sendingStartedAt: true, sentAt: true },
   });
   const inizio = campagna?.sendingStartedAt ?? campagna?.sentAt;
-  if (!inizio) return [];
+  if (!inizio) return null;
 
   const righe = await db.campaignRecipient.findMany({
     where: { campaignId, venueId, OR: [{ openedAt: { not: null } }, { clickedAt: { not: null } }] },
     select: { openedAt: true, clickedAt: true },
   });
-  if (righe.length === 0) return [];
+  if (righe.length === 0) return null;
 
-  const GIORNO = 24 * 60 * 60 * 1000;
-  const indice = (d: Date) => Math.max(0, Math.floor((d.getTime() - inizio.getTime()) / GIORNO));
-  let ultimo = 0;
+  const N = 48;
+  const ore: OraCampagna[] = Array.from({ length: N }, (_, i) => ({ ora: i, aperture: 0, click: 0 }));
+  const indice = (d: Date) => Math.max(0, Math.floor((d.getTime() - inizio.getTime()) / 3_600_000));
+  let aperteTotali = 0;
+  let entroSeiOre = 0;
+  let dopo48 = 0;
   for (const r of righe) {
-    if (r.openedAt) ultimo = Math.max(ultimo, indice(r.openedAt));
-    if (r.clickedAt) ultimo = Math.max(ultimo, indice(r.clickedAt));
+    if (r.openedAt) {
+      aperteTotali++;
+      const i = indice(r.openedAt);
+      if (i < 6) entroSeiOre++;
+      if (i < N) ore[i].aperture++;
+      else dopo48++;
+    }
+    if (r.clickedAt && indice(r.clickedAt) < N) ore[indice(r.clickedAt)].click++;
   }
-  const n = Math.min(14, Math.max(ultimo + 1, 3));
-  const giorni: GiornoCampagna[] = Array.from({ length: n }, (_, i) => ({ giorno: i + 1, aperture: 0, click: 0 }));
-  for (const r of righe) {
-    if (r.openedAt && indice(r.openedAt) < n) giorni[indice(r.openedAt)].aperture++;
-    if (r.clickedAt && indice(r.clickedAt) < n) giorni[indice(r.clickedAt)].click++;
+  return { ore, aperteTotali, entroSeiOre, dopo48 };
+}
+
+/**
+ * La media delle **altre** campagne inviate dal locale: il termine di
+ * paragone che Mailchimp chiama «media della lista». Pesata sulle consegne
+ * (una campagna a 500 persone conta più di una a 20). `null` se non ce ne
+ * sono: senza paragone non si scrive un paragone.
+ */
+export async function mediaDelLocale(
+  venueId: string,
+  escludi: string,
+): Promise<{ campagne: number; apertura: number | null; click: number | null } | null> {
+  const altre = await db.campaign.findMany({
+    where: { venueId, status: "SENT", id: { not: escludi }, sentCount: { gt: 0 } },
+    select: { sentCount: true, deliveredCount: true, openedCount: true, clickedCount: true },
+  });
+  if (altre.length === 0) return null;
+  let base = 0;
+  let aperte = 0;
+  let click = 0;
+  for (const c of altre) {
+    base += c.deliveredCount > 0 ? c.deliveredCount : c.sentCount;
+    aperte += c.openedCount;
+    click += c.clickedCount;
   }
-  return giorni;
+  return { campagne: altre.length, apertura: percentuale(aperte, base), click: percentuale(click, base) };
+}
+
+/**
+ * Chi ha interagito di più: i destinatari con più click, poi più aperture —
+ * il «subscribers with most opens» dei report. Con la prenotazione, se dal
+ * link ne è nata una: è la riga che il ristoratore cerca.
+ */
+export type Attivo = { nome: string; guestId: string | null; aperture: number; click: number; prenotato: boolean };
+
+export async function piuAttivi(venueId: string, campaignId: string, quanti = 6): Promise<Attivo[]> {
+  const righe = await db.campaignRecipient.findMany({
+    where: { campaignId, venueId, openCount: { gt: 0 } },
+    orderBy: [{ clickCount: "desc" }, { openCount: "desc" }, { openedAt: "asc" }],
+    take: quanti,
+    select: { guestId: true, firstName: true, lastName: true, email: true, openCount: true, clickCount: true },
+  });
+  const prenotati = new Set(
+    (
+      await db.booking.findMany({
+        where: { venueId, campaignId, deletedAt: null, guestId: { in: righe.map((r) => r.guestId).filter((x): x is string => Boolean(x)) } },
+        select: { guestId: true },
+      })
+    ).map((b) => b.guestId),
+  );
+  return righe.map((r) => ({
+    nome: [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email,
+    guestId: r.guestId,
+    aperture: r.openCount,
+    click: r.clickCount,
+    prenotato: r.guestId ? prenotati.has(r.guestId) : false,
+  }));
+}
+
+/** Le prenotazioni nate dal link, le più recenti prima: gli «ordini» della campagna. */
+export async function prenotazioniDellaCampagna(venueId: string, campaignId: string, quante = 8) {
+  return db.booking.findMany({
+    where: { venueId, campaignId, deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    take: quante,
+    select: {
+      id: true,
+      startsAt: true,
+      createdAt: true,
+      partySize: true,
+      status: true,
+      guestId: true,
+      guest: { select: { firstName: true, lastName: true } },
+    },
+  });
 }

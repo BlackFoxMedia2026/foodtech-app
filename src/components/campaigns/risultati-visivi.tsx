@@ -1,27 +1,23 @@
-import { Check, CircleAlert } from "lucide-react";
-import type { RisultatiCampagna } from "@/server/dem/statistiche";
+import type { BookingStatus } from "@prisma/client";
+import { Check, CircleAlert, MousePointerClick, Eye, CalendarCheck } from "lucide-react";
+import type { Attivo, RisultatiCampagna } from "@/server/dem/statistiche";
+import { StatusBadge } from "@/components/bookings/status-badge";
 import { cn } from "@/lib/utils";
 
 /**
- * I pezzi visivi del dettaglio campagna (11 novembre 2026).
+ * I pezzi del report di una campagna (11 novembre 2026, terza passata).
  *
- * Prima la pagina era otto numeri in maiuscoletto su due righe, un grafico a
- * tre barre che ripeteva tre di quei numeri, e quattro paragrafi di note in
- * mezzo: tutto alla stessa voce, nessun punto da cui partire. Ora ogni domanda
- * ha la sua forma:
- *
- * - **com'è andata** → il percorso, un imbuto a barre orizzontali sulla stessa
- *   base (le inviate), così il calo fra un passo e l'altro si vede;
- * - **è arrivata?** → una barra sola divisa per esito, più i segnali di guaio;
- * - **quando** → la cronologia come linea del tempo.
+ * Il disegno viene dai report dei servizi di email marketing (Mailchimp,
+ * Klaviyo), che si somigliano tutti per una ragione: rispondono nello stesso
+ * ordine alle stesse domande. **È andata bene?** — i tassi, confrontati con
+ * una media, perché «41%» da solo non dice se è tanto. **Quando?** — le
+ * prime ore. **Su cosa e chi?** — i link e le persone. **Cosa ha reso?** —
+ * gli ordini, che qui sono prenotazioni. **È arrivata?** — la consegna.
  *
  * I colori vengono dal validatore della skill dataviz sul fondo Carta
  * (`#f6efe1`): verde `#1f8058` e oro `#b07d2a` passano tutti i controlli; la
  * separazione per protanopia è a 7,2, nella fascia che chiede una seconda
- * codifica, e ce l'hanno: etichette scritte e legenda.
- *
- * Le percentuali che non si possono calcolare restano un trattino, non uno
- * zero (vedi `server/dem/statistiche.ts`).
+ * codifica, e ce l'hanno sempre: etichette scritte, legenda, tratteggio.
  */
 
 export const VERDE = "#1f8058";
@@ -29,78 +25,266 @@ export const ORO = "#b07d2a";
 const ROSSO = "#9c3b22";
 
 const NUM = new Intl.NumberFormat("it-IT");
-const pct = (parte: number, base: number) => (base > 0 ? Math.round((parte / base) * 1000) / 10 : null);
-const pctTesto = (v: number | null) => (v === null ? "—" : `${v.toLocaleString("it-IT")}%`);
+const pctTesto = (v: number | null) => (v === null ? "—" : `${v.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%`);
 
 /* -------------------------------------------------------------------------- */
-/*  Il percorso                                                               */
+/*  I tassi, contro la media del locale                                       */
 /* -------------------------------------------------------------------------- */
 
-export function Percorso({ r, prenotazioni }: { r: RisultatiCampagna; prenotazioni: number }) {
-  /* «Consegnate» entra solo se il fornitore manda l'esito di consegna. Senza,
-     il contatore resta a zero mentre le aperture salgono — e un imbuto che
-     scende a 0 e risale a 22 è un disegno sbagliato, non un dato. */
-  const consegneTracciate = r.consegnate > 0 || r.aperte === 0;
-  const passi = [
-    { nome: "Inviate", valore: r.inviate },
-    ...(consegneTracciate ? [{ nome: "Consegnate", valore: r.consegnate }] : []),
-    { nome: "Aperte", valore: r.aperte },
-    { nome: "Click", valore: r.click },
-    { nome: "Prenotazioni", valore: prenotazioni, esito: true },
-  ];
+export type Tasso = {
+  nome: string;
+  valore: number | null;
+  /** La media delle altre campagne del locale, se ce ne sono. */
+  media: number | null;
+  /** «22 su 40 consegnate» — la base del numero, che non si taglia. */
+  dettaglio: string;
+  icona: "apertura" | "click" | "prenotazione";
+};
 
+const ICONE = { apertura: Eye, click: MousePointerClick, prenotazione: CalendarCheck };
+
+/**
+ * Tre tassi in colonna, ciascuno con la sua barra e una tacca per la media
+ * del locale, come le barre «list average» di Mailchimp.
+ *
+ * Ogni barra ha la **sua** scala (1,4 volte il più grande fra valore e
+ * media): un click al 6% su una scala da 0 a 100 è un filo invisibile, e il
+ * confronto che conta — sopra o sotto la media — sparisce. Il numero scritto
+ * resta quello vero.
+ */
+export function Tassi({ tassi }: { tassi: Tasso[] }) {
   return (
-    <div>
-      <ol className="space-y-3">
-        {passi.map((p, i) => {
-          const quota = pct(p.valore, r.inviate);
-          const precedente = i > 0 ? passi[i - 1].valore : null;
-          const dalPrecedente = precedente !== null ? pct(p.valore, precedente) : null;
-          return (
-            <li key={p.nome} className="grid grid-cols-[6.5rem_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[8rem_minmax(0,1fr)_7.5rem]">
-              <span className="text-base font-medium text-foreground">{p.nome}</span>
-              <div
-                className="h-9 overflow-hidden rounded-md bg-secondary/60"
-                title={`${p.nome}: ${NUM.format(p.valore)} (${pctTesto(quota)} delle inviate)`}
-              >
-                <div
-                  className="h-full rounded-r-[4px] transition-[width] duration-700"
-                  style={{
-                    width: `${p.valore > 0 ? Math.max(1.5, ((p.valore / Math.max(1, r.inviate)) * 100)) : 0}%`,
-                    background: p.esito ? ORO : VERDE,
-                    opacity: p.esito ? 1 : 1 - i * 0.12,
-                  }}
-                />
-              </div>
-              <span className="text-right leading-tight">
-                <span className="block font-mono text-xl tabular-nums text-foreground">{NUM.format(p.valore)}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {i === 0 ? "la base" : dalPrecedente === null ? "—" : `${pctTesto(dalPrecedente)} del passo prima`}
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-0 md:divide-x md:divide-border/60">
+      {tassi.map((t) => {
+        const Icona = ICONE[t.icona];
+        const scala = Math.max(t.valore ?? 0, t.media ?? 0, 1) * 1.4;
+        const delta = t.valore !== null && t.media !== null ? Math.round((t.valore - t.media) * 10) / 10 : null;
+        return (
+          <div key={t.nome} className="md:px-6 md:first:pl-0 md:last:pr-0">
+            <p className="flex items-center gap-2 text-base font-medium text-foreground">
+              <Icona className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              {t.nome}
+            </p>
+            <p className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="font-mono text-4xl tabular-nums text-foreground">{pctTesto(t.valore)}</span>
+              {delta !== null && (
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-sm font-medium tabular-nums",
+                    delta >= 0 ? "bg-[#1f8058]/10 text-[#17603f]" : "bg-[#b07d2a]/12 text-[#7a5418]",
+                  )}
+                >
+                  {delta >= 0 ? "+" : "−"}
+                  {Math.abs(delta).toLocaleString("it-IT")} punti
                 </span>
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-      {!consegneTracciate && (
-        <p className="mt-4 text-sm text-muted-foreground">
-          Il fornitore non ha mandato gli esiti di consegna: il passo «Consegnate» non c&apos;è, le aperture si
-          leggono sulle inviate.
-        </p>
-      )}
+              )}
+            </p>
+            <p className="text-sm text-muted-foreground">{t.dettaglio}</p>
+
+            <div
+              className="relative mt-4 h-3 rounded-full bg-secondary/70"
+              role="img"
+              aria-label={`${t.nome}: ${pctTesto(t.valore)}${t.media !== null ? `, media del locale ${pctTesto(t.media)}` : ""}`}
+            >
+              {t.valore !== null && t.valore > 0 && (
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${(t.valore / scala) * 100}%`, background: t.icona === "prenotazione" ? ORO : VERDE }}
+                />
+              )}
+              {t.media !== null && (
+                <div className="absolute -top-1.5 h-6 w-[3px] rounded-full bg-foreground/70" style={{ left: `calc(${(t.media / scala) * 100}% - 1.5px)` }} />
+              )}
+            </div>
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+              {t.media !== null ? (
+                <>
+                  <span className="inline-block h-3 w-[3px] rounded-full bg-foreground/70" aria-hidden="true" />
+                  media del locale {pctTesto(t.media)}
+                </>
+              ) : (
+                "nessuna altra campagna da confrontare"
+              )}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  La salute dell'invio                                                      */
+/*  I link più cliccati                                                       */
 /* -------------------------------------------------------------------------- */
 
-export function SaluteInvio({ r }: { r: RisultatiCampagna }) {
+function nomeLink(url: string) {
+  try {
+    const u = new URL(url);
+    if (u.pathname.endsWith("/prenota")) return "Prenota il tuo tavolo";
+    if (u.pathname.endsWith("/menu")) return "Sfoglia il menu";
+    if (u.hostname.includes("instagram")) return "Instagram";
+    return u.hostname.replace(/^www\./, "") + (u.pathname === "/" ? "" : u.pathname);
+  } catch {
+    return url;
+  }
+}
+
+export function LinkCliccati({ link }: { link: RisultatiCampagna["linkPiuCliccati"] }) {
+  if (link.length === 0) {
+    return <p className="rounded-xl border border-dashed border-border p-6 text-center text-base text-muted-foreground">Nessun click ancora.</p>;
+  }
+  const totale = link.reduce((n, l) => n + l.click, 0);
+  const max = Math.max(1, ...link.map((l) => l.click));
+  return (
+    <ol className="space-y-4">
+      {link.map((l, i) => (
+        <li key={l.url}>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block truncate text-base font-medium text-foreground">
+                <span className="mr-2 font-mono text-sm text-muted-foreground">{i + 1}</span>
+                {nomeLink(l.url)}
+              </span>
+              <span className="block truncate text-xs text-muted-foreground" title={l.url}>
+                {l.url.replace(/^https?:\/\//, "").split("?")[0]}
+              </span>
+            </span>
+            <span className="shrink-0 text-right">
+              <span className="font-mono text-lg tabular-nums text-foreground">{NUM.format(l.click)}</span>
+              <span className="ml-1.5 text-sm text-muted-foreground">{Math.round((l.click / Math.max(1, totale)) * 100)}%</span>
+            </span>
+          </div>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary/60">
+            <div className="h-full rounded-full" style={{ width: `${(l.click / max) * 100}%`, background: VERDE, opacity: i === 0 ? 1 : 0.6 }} />
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Chi ha interagito di più                                                  */
+/* -------------------------------------------------------------------------- */
+
+function iniziali(nome: string) {
+  return nome
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+export function PiuAttivi({ persone }: { persone: Attivo[] }) {
+  if (persone.length === 0) {
+    return <p className="rounded-xl border border-dashed border-border p-6 text-center text-base text-muted-foreground">Nessuna apertura ancora.</p>;
+  }
+  return (
+    <ul className="divide-y divide-border/60">
+      {persone.map((p, i) => {
+        const riga = (
+          <>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[linear-gradient(160deg,#1C4A3A_0%,#102B22_100%)] text-sm font-semibold text-cream">
+              {iniziali(p.nome)}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-base font-medium text-foreground">{p.nome}</span>
+              <span className="block text-sm text-muted-foreground">
+                {p.aperture} {p.aperture === 1 ? "apertura" : "aperture"} · {p.click} click
+              </span>
+            </span>
+            {p.prenotato && (
+              <span className="shrink-0 rounded-full bg-[#b07d2a]/15 px-2.5 py-1 text-xs font-semibold text-[#7a5418]">Ha prenotato</span>
+            )}
+          </>
+        );
+        return (
+          <li key={`${p.guestId ?? p.nome}-${i}`}>
+            {p.guestId ? (
+              <a href={`/guests/${p.guestId}`} className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-card-sunken/60">
+                {riga}
+              </a>
+            ) : (
+              <div className="flex items-center gap-3 py-2.5">{riga}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Le prenotazioni arrivate                                                  */
+/* -------------------------------------------------------------------------- */
+
+const QUANDO = new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const GIORNO_BREVE = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short" });
+
+export type PrenotazioneArrivata = {
+  id: string;
+  startsAt: Date;
+  createdAt: Date;
+  partySize: number;
+  status: BookingStatus;
+  guest: { firstName: string; lastName: string | null } | null;
+};
+
+export function PrenotazioniArrivate({ prenotazioni }: { prenotazioni: PrenotazioneArrivata[] }) {
+  if (prenotazioni.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-border p-6 text-center text-base text-muted-foreground">
+        Nessuna prenotazione dal link di questa campagna, per ora.
+      </p>
+    );
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[34rem] text-left">
+        <thead>
+          <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
+            <th className="pb-2 font-medium">Cliente</th>
+            <th className="pb-2 font-medium">A cena</th>
+            <th className="pb-2 text-right font-medium">Coperti</th>
+            <th className="pb-2 pl-4 font-medium">Prenotata il</th>
+            <th className="pb-2 font-medium">Stato</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/50">
+          {prenotazioni.map((b) => (
+            <tr key={b.id} className="text-base">
+              <td className="py-3 pr-3 font-medium text-foreground">
+                {b.guest ? [b.guest.firstName, b.guest.lastName].filter(Boolean).join(" ") : "Ospite"}
+              </td>
+              <td className="py-3 pr-3 tabular-nums text-foreground first-letter:uppercase">{QUANDO.format(b.startsAt)}</td>
+              <td className="py-3 text-right font-mono tabular-nums text-foreground">{b.partySize}</td>
+              <td className="py-3 pl-4 pr-3 text-sm tabular-nums text-muted-foreground">{GIORNO_BREVE.format(b.createdAt)}</td>
+              <td className="py-3">
+                <StatusBadge status={b.status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  La consegna                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * È arrivata? Una barra divisa per esito (solo se il fornitore manda le
+ * consegne: senza, era una barra grigia piena, un grafico di niente) e
+ * cinque tessere con un segno: spunta verde se va bene, allarme oro se no.
+ */
+export function Consegna({ r }: { r: RisultatiCampagna }) {
+  const tracciate = r.consegnate > 0;
   const senzaEsito = Math.max(0, r.inviate - r.consegnate - r.rimbalzi - r.nonRiuscite);
   const fette = [
     { nome: "Consegnate", valore: r.consegnate, colore: VERDE },
-    { nome: "Senza esito di consegna", valore: senzaEsito, colore: "hsl(var(--border-strong))" },
+    { nome: "In attesa di esito", valore: senzaEsito, colore: "hsl(var(--border-strong))" },
     { nome: "Non recapitate", valore: r.rimbalzi, colore: ORO },
     { nome: "Non riuscite", valore: r.nonRiuscite, colore: ROSSO },
   ].filter((f) => f.valore > 0);
@@ -111,120 +295,59 @@ export function SaluteInvio({ r }: { r: RisultatiCampagna }) {
     <div className="space-y-5">
       <div
         className={cn(
-          "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
+          "flex items-center gap-2 rounded-lg px-3.5 py-2.5 text-base font-medium",
           guai === 0 ? "bg-[#1f8058]/10 text-[#17603f]" : "bg-[#b07d2a]/12 text-[#7a5418]",
         )}
       >
-        {guai === 0 ? <Check className="h-4 w-4" aria-hidden="true" /> : <CircleAlert className="h-4 w-4" aria-hidden="true" />}
-        {guai === 0 ? "Invio pulito: nessun rimbalzo, errore o segnalazione." : "Qualche email non è arrivata: controlla gli indirizzi."}
+        {guai === 0 ? <Check className="h-5 w-5 shrink-0" aria-hidden="true" /> : <CircleAlert className="h-5 w-5 shrink-0" aria-hidden="true" />}
+        {guai === 0
+          ? "Invio pulito: nessun rimbalzo, errore o segnalazione."
+          : `${NUM.format(r.rimbalzi + r.nonRiuscite)} ${r.rimbalzi + r.nonRiuscite === 1 ? "email non è arrivata" : "email non sono arrivate"}: controlla gli indirizzi nelle schede dei clienti.`}
       </div>
 
-      <div>
-        <div className="flex h-4 gap-[2px] overflow-hidden rounded-full" role="img" aria-label="Esito delle email inviate">
-          {fette.map((f) => (
-            <div
-              key={f.nome}
-              title={`${f.nome}: ${NUM.format(f.valore)}`}
-              style={{ width: `${(f.valore / totale) * 100}%`, background: f.colore }}
-            />
-          ))}
+      {tracciate && (
+        <div>
+          <div className="flex h-4 gap-[2px] overflow-hidden rounded-full" role="img" aria-label="Esito delle email inviate">
+            {fette.map((f) => (
+              <div key={f.nome} title={`${f.nome}: ${NUM.format(f.valore)}`} style={{ width: `${(f.valore / totale) * 100}%`, background: f.colore }} />
+            ))}
+          </div>
+          <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
+            {fette.map((f) => (
+              <li key={f.nome} className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: f.colore }} aria-hidden="true" />
+                <span className="text-muted-foreground">{f.nome}</span>
+                <span className="font-mono tabular-nums text-foreground">{NUM.format(f.valore)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-        <ul className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-2">
-          {fette.map((f) => (
-            <li key={f.nome} className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: f.colore }} aria-hidden="true" />
-              <span className="text-muted-foreground">{f.nome}</span>
-              <span className="ml-auto font-mono tabular-nums text-foreground">{NUM.format(f.valore)}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      )}
 
-      <dl className="grid grid-cols-2 gap-2.5">
-        <Segnale nome="Disiscrizioni" valore={r.disiscrizioni} quota={r.tassoDisiscrizione} />
-        <Segnale nome="Segnalate come spam" valore={r.segnalazioni} />
+      <dl className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
+        <Segnale nome="Consegnate" valore={r.consegnate} buono nota={tracciate ? `${pctTesto(r.tassoConsegna)} delle inviate` : "esito non arrivato"} />
+        <Segnale nome="Non recapitate" valore={r.rimbalzi} nota="indirizzo sbagliato o pieno" />
+        <Segnale nome="Non riuscite" valore={r.nonRiuscite} nota="errore nell'invio" />
+        <Segnale nome="Segnalate come spam" valore={r.segnalazioni} nota="dal destinatario" />
+        <Segnale nome="Disiscrizioni" valore={r.disiscrizioni} nota="non riceveranno più email" />
       </dl>
     </div>
   );
 }
 
-function Segnale({ nome, valore, quota }: { nome: string; valore: number; quota?: number | null }) {
-  const male = valore > 0;
+function Segnale({ nome, valore, nota, buono = false }: { nome: string; valore: number; nota: string; buono?: boolean }) {
+  /* Per «consegnate» il numero alto è il bene; per le altre, lo zero. */
+  const male = !buono && valore > 0;
+  const Icona = male ? CircleAlert : Check;
   return (
     <div className={cn("rounded-xl border px-3.5 py-3", male ? "border-[#b07d2a]/40 bg-[#b07d2a]/8" : "border-border/60 bg-card-sunken/50")}>
-      <dt className="text-sm text-muted-foreground">{nome}</dt>
-      <dd className="mt-0.5 flex items-baseline gap-2">
-        <span className="font-mono text-xl tabular-nums text-foreground">{NUM.format(valore)}</span>
-        {quota !== undefined && <span className="text-xs text-muted-foreground">{pctTesto(quota ?? null)}</span>}
-      </dd>
+      <dt className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        {(!buono || valore > 0) && <Icona className={cn("h-3.5 w-3.5", male ? "text-[#b07d2a]" : "text-[#1f8058]")} aria-hidden="true" />}
+        {nome}
+      </dt>
+      <dd className="mt-1 font-mono text-2xl tabular-nums text-foreground">{NUM.format(valore)}</dd>
+      <dd className="text-xs leading-snug text-muted-foreground">{nota}</dd>
     </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  I link più cliccati                                                       */
-/* -------------------------------------------------------------------------- */
-
-export function LinkCliccati({ link }: { link: RisultatiCampagna["linkPiuCliccati"] }) {
-  const max = Math.max(1, ...link.map((l) => l.click));
-  return (
-    <ul className="space-y-2.5">
-      {link.map((l) => (
-        <li key={l.url}>
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="min-w-0 truncate text-foreground" title={l.url}>
-              {l.url.replace(/^https?:\/\//, "")}
-            </span>
-            <span className="shrink-0 font-mono tabular-nums">{NUM.format(l.click)}</span>
-          </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary/60">
-            <div className="h-full rounded-full" style={{ width: `${(l.click / max) * 100}%`, background: ORO }} />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  La cronologia                                                             */
-/* -------------------------------------------------------------------------- */
-
-const GIORNO = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short" });
-const ORA = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" });
-
-export function Cronologia({ tappe }: { tappe: { etichetta: string; quando: Date }[] }) {
-  return (
-    <ol className="flex flex-col gap-4 sm:flex-row sm:gap-0">
-      {tappe.map((t, i) => {
-        const ultima = i === tappe.length - 1;
-        return (
-          <li key={t.etichetta} className="relative flex gap-3 sm:flex-1 sm:flex-col sm:gap-2">
-            {/* Il filo fra un punto e il successivo. */}
-            {!ultima && (
-              <span
-                aria-hidden="true"
-                className="absolute left-[7px] top-4 h-[calc(100%+0.5rem)] w-px bg-border sm:left-4 sm:top-[7px] sm:h-px sm:w-full"
-              />
-            )}
-            <span
-              aria-hidden="true"
-              className={cn(
-                "relative z-10 mt-0.5 h-[15px] w-[15px] shrink-0 rounded-full border-2 sm:mt-0",
-                ultima ? "border-transparent" : "border-[#1f8058] bg-card",
-              )}
-              style={ultima ? { background: VERDE } : undefined}
-            />
-            <span className="leading-tight sm:pr-3">
-              <span className="block text-base font-medium text-foreground">{t.etichetta}</span>
-              <span className="block text-sm tabular-nums text-muted-foreground">
-                {GIORNO.format(t.quando)} · {ORA.format(t.quando)}
-              </span>
-            </span>
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 
@@ -232,26 +355,50 @@ export function Cronologia({ tappe }: { tappe: { etichetta: string; quando: Date
 /*  L'email com'è arrivata                                                    */
 /* -------------------------------------------------------------------------- */
 
+/** `{{nome}}` diventa una pastiglia «Nome»: ognuno riceve il suo, qui si mostra dove va. */
+function conSegnaposti(html: string) {
+  return html.replace(
+    /\{\{\s*([a-zà-ù_]+)\s*\}\}/gi,
+    (_, nome: string) =>
+      `<span style="display:inline-block;padding:0 .45em;border-radius:999px;background:#1f80581a;color:#17603f;font-size:.85em;font-weight:600">${nome.charAt(0).toUpperCase()}${nome.slice(1)}</span>`,
+  );
+}
+
 /**
- * L'email in una cornice da casella di posta: l'oggetto in grassetto come in
- * una lista di messaggi, il corpo su carta bianca. Prima il corpo stava in un
- * riquadro grigio in 12 px, e si leggeva come un campo di un modulo.
+ * L'email in una cornice da casella di posta: mittente, oggetto e anteprima
+ * come in una lista di messaggi, il corpo su carta bianca.
  */
-export function AnteprimaEmail({ oggetto, corpo }: { oggetto: string; corpo: string }) {
+export function AnteprimaEmail({
+  oggetto,
+  anteprima,
+  corpo,
+  mittente,
+}: {
+  oggetto: string;
+  anteprima?: string | null;
+  corpo: string;
+  mittente: string;
+}) {
   return (
     <div className="overflow-hidden rounded-xl border border-border/70 bg-card-sunken/40 shadow-[0_6px_16px_rgba(47,31,17,0.06)]">
-      <div className="flex items-center gap-1.5 border-b border-border/60 px-4 py-2.5" aria-hidden="true">
-        <span className="h-2.5 w-2.5 rounded-full bg-border" />
-        <span className="h-2.5 w-2.5 rounded-full bg-border" />
-        <span className="h-2.5 w-2.5 rounded-full bg-border" />
+      <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[linear-gradient(160deg,#1C4A3A_0%,#102B22_100%)] text-sm font-semibold text-cream">
+          {iniziali(mittente)}
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-foreground">{mittente}</span>
+          <span className="block truncate text-base text-foreground">
+            {oggetto || "Senza oggetto"}
+            {anteprima && <span className="text-muted-foreground"> — {anteprima}</span>}
+          </span>
+        </span>
       </div>
-      <div className="px-4 pb-3 pt-3.5">
-        <p className="t-etichetta">Oggetto</p>
-        <p className="mt-1 text-lg font-semibold leading-snug text-foreground">{oggetto || "Senza oggetto"}</p>
-      </div>
-      <div className="relative mx-3 mb-3 max-h-72 overflow-hidden rounded-lg bg-white px-5 py-4 text-[15px] leading-relaxed text-[#2f1f11]">
+      <div className="relative m-3 max-h-[26rem] overflow-hidden rounded-lg bg-white px-6 py-5 text-[15px] leading-relaxed text-[#2f1f11]">
         {corpo ? (
-          <div className="[&_a]:text-[#1f8058] [&_a]:underline [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_img]:max-w-full [&_p+p]:mt-3" dangerouslySetInnerHTML={{ __html: corpo }} />
+          <div
+            className="[&_a]:font-medium [&_a]:text-[#1f8058] [&_a]:underline [&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_img]:max-w-full [&_p+p]:mt-3"
+            dangerouslySetInnerHTML={{ __html: conSegnaposti(corpo) }}
+          />
         ) : (
           <p className="text-[#2f1f11]/50">Nessun testo.</p>
         )}
