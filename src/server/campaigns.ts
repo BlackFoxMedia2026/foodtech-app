@@ -122,7 +122,7 @@ export function getRequestOrigin(): string {
 }
 
 export async function listCampaigns(venueId: string) {
-  return db.campaign.findMany({ where: { venueId }, orderBy: { createdAt: "desc" } });
+  return db.campaign.findMany({ where: { venueId, deletedAt: null }, orderBy: { createdAt: "desc" } });
 }
 
 /**
@@ -138,6 +138,9 @@ export interface NewsletterSource {
   /** «Inviata», «In bozza», «Programmata» — una parola, non un badge di stato completo. */
   statoLabel: string;
   inviata: boolean;
+  /** Solo le bozze mai partite si possono eliminare: una campagna inviata
+   *  resta nello storico, con i numeri e le prenotazioni che ha portato. */
+  eliminabile: boolean;
   /** Riusato come oggetto della nuova campagna solo se chi scrive non ne ha già uno. */
   subject: string | null;
   document: EmailDocument;
@@ -163,6 +166,7 @@ export async function listNewsletterSources(
       venueId,
       channel: "EMAIL",
       contentBlocks: { not: Prisma.DbNull },
+      deletedAt: null,
       ...(excludeId ? { id: { not: excludeId } } : {}),
     },
     orderBy: { createdAt: "desc" },
@@ -197,11 +201,103 @@ export async function listNewsletterSources(
           ? "Programmata"
           : "In bozza",
       inviata,
+      eliminabile: c.status === "DRAFT" && c.sentCount === 0,
       subject: c.subject,
       document,
     });
   }
   return fonti;
+}
+
+/**
+ * Mette una bozza nel cestino, e solo una bozza.
+ *
+ * Non la cancella: la segna. Dal cestino del passo «Modelli» si recupera con
+ * un clic, ed eliminare per sbaglio la bozza di una settimana di lavoro non
+ * deve costare la settimana.
+ *
+ * La condizione sta nella `where` e non in un controllo prima: fra la lettura
+ * e la scrittura la campagna potrebbe partire, e una campagna inviata non
+ * finisce nel cestino — resta nello storico, coi suoi numeri.
+ *
+ * @returns `false` se non c'era niente da eliminare: non esiste, è di un altro
+ *          locale, non è (più) una bozza o è già nel cestino.
+ */
+export async function eliminaBozza(venueId: string, id: string): Promise<boolean> {
+  const { count } = await db.campaign.updateMany({
+    where: { id, venueId, status: "DRAFT", sentCount: 0, deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
+  return count > 0;
+}
+
+/** Riporta una bozza fuori dal cestino. */
+export async function ripristinaBozza(venueId: string, id: string): Promise<boolean> {
+  const { count } = await db.campaign.updateMany({
+    where: { id, venueId, deletedAt: { not: null } },
+    data: { deletedAt: null },
+  });
+  return count > 0;
+}
+
+/** Una bozza nel cestino, come la mostra il passo «Modelli». */
+export interface BozzaNelCestino {
+  id: string;
+  name: string;
+  /** «Eliminata il 12 novembre 2026». */
+  dataLabel: string;
+  /** L'email com'era, per rimetterla fra le newsletter quando torna. Nulla se
+   *  la bozza non aveva ancora un contenuto vero. */
+  fonte: NewsletterSource | null;
+}
+
+/** Le bozze nel cestino, le più recenti in alto. */
+export async function bozzeNelCestino(venueId: string, limit = 50): Promise<BozzaNelCestino[]> {
+  const righe = await db.campaign.findMany({
+    where: { venueId, deletedAt: { not: null } },
+    orderBy: { deletedAt: "desc" },
+    take: limit,
+    select: { id: true, name: true, subject: true, deletedAt: true, createdAt: true, contentBlocks: true },
+  });
+  return righe.map((r) => {
+    const document = parseEmailDocument(r.contentBlocks);
+    return {
+      id: r.id,
+      name: r.name,
+      dataLabel: `Eliminata il ${FORMATO_DATA.format(r.deletedAt!)}`,
+      fonte: hasSubstantiveContent(document.blocks)
+        ? {
+            id: r.id,
+            name: r.name,
+            dataLabel: FORMATO_DATA.format(r.createdAt),
+            statoLabel: "In bozza",
+            inviata: false,
+            eliminabile: true,
+            subject: r.subject,
+            document,
+          }
+        : null,
+    };
+  });
+}
+
+/**
+ * Nasconde o rimostra un modello della libreria per questo locale.
+ *
+ * I modelli sono di tutti e stanno nel codice: «eliminarne» uno vuol dire
+ * toglierlo dalla vista di questo locale, ed è per questo che si recupera.
+ */
+export async function nascondiModello(venueId: string, templateId: string, nascosto: boolean): Promise<string[]> {
+  const venue = await db.venue.findUniqueOrThrow({
+    where: { id: venueId },
+    select: { hiddenCampaignTemplates: true },
+  });
+  const insieme = new Set(venue.hiddenCampaignTemplates);
+  if (nascosto) insieme.add(templateId);
+  else insieme.delete(templateId);
+  const elenco = [...insieme];
+  await db.venue.update({ where: { id: venueId }, data: { hiddenCampaignTemplates: elenco } });
+  return elenco;
 }
 
 export type CampaignWithResults = Awaited<ReturnType<typeof listCampaigns>>[number] & {
@@ -257,7 +353,8 @@ export async function listCampaignsWithResults(venueId: string): Promise<Campaig
 }
 
 export async function getCampaign(venueId: string, id: string) {
-  return db.campaign.findFirst({ where: { id, venueId } });
+  // Una bozza nel cestino non si apre: si recupera prima, dal passo «Modelli».
+  return db.campaign.findFirst({ where: { id, venueId, deletedAt: null } });
 }
 
 export async function createCampaign(venueId: string, raw: unknown) {

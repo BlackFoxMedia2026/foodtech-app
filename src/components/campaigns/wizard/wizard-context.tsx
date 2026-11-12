@@ -3,7 +3,7 @@
 import { createContext, useContext, useReducer, type Dispatch, type ReactNode } from "react";
 import { DEFAULT_EMAIL_SETTINGS, type Block, type EmailSettings } from "@/lib/campaign-blocks";
 import type { PendingTemplateSelection } from "@/lib/campaign-start";
-import type { NewsletterSource, SegmentFilterType } from "@/server/campaigns";
+import type { BozzaNelCestino, NewsletterSource, SegmentFilterType } from "@/server/campaigns";
 import type { SegmentPreviewResult } from "@/lib/campaign-wizard-api";
 
 export type { PendingTemplateSelection } from "@/lib/campaign-start";
@@ -26,6 +26,13 @@ export interface WizardState {
   pendingTemplateSelection: PendingTemplateSelection | null;
   /** Le newsletter già create dal locale, riutilizzabili come base (sola lettura, caricate dal server). */
   previousCampaigns: NewsletterSource[];
+  /** Il cestino del passo «Modelli»: bozze eliminate, recuperabili. */
+  cestino: BozzaNelCestino[];
+  /** Gli id dei modelli della libreria che il locale ha tolto dalla vista. */
+  modelliNascosti: string[];
+  /** L'email di questa campagna tolta con «Elimina» dal passo «Modelli»: sta
+   *  nel cestino finché la pagina è aperta, e da lì si rimette com'era. */
+  emailScartata: { blocks: Block[]; settings: EmailSettings } | null;
   testEmailSentThisSession: boolean;
   providerConfigured: boolean | null;
   saving: boolean;
@@ -56,6 +63,10 @@ export interface WizardState {
 
 export type WizardAction =
   | { type: "SET_STEP"; step: number }
+  | { type: "SET_CESTINO"; cestino: BozzaNelCestino[] }
+  | { type: "SET_PREVIOUS_CAMPAIGNS"; previousCampaigns: NewsletterSource[] }
+  | { type: "SET_MODELLI_NASCOSTI"; ids: string[] }
+  | { type: "SET_EMAIL_SCARTATA"; email: { blocks: Block[]; settings: EmailSettings } | null }
   | { type: "SET_OBJECTIVE"; objectiveId: string; segment: SegmentFilterType; subject: string; blocks: Block[] }
   | { type: "SET_NAME"; name: string }
   | { type: "SET_SEGMENT"; segment: SegmentFilterType }
@@ -101,6 +112,9 @@ export const initialWizardState: WizardState = {
   emailSettings: { ...DEFAULT_EMAIL_SETTINGS },
   pendingTemplateSelection: null,
   previousCampaigns: [],
+  cestino: [],
+  modelliNascosti: [],
+  emailScartata: null,
   testEmailSentThisSession: false,
   providerConfigured: null,
   saving: false,
@@ -146,6 +160,14 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       return { ...state, emailSettings: action.settings };
     case "SET_PENDING_TEMPLATE_SELECTION":
       return { ...state, pendingTemplateSelection: action.selection };
+    case "SET_CESTINO":
+      return { ...state, cestino: action.cestino };
+    case "SET_PREVIOUS_CAMPAIGNS":
+      return { ...state, previousCampaigns: action.previousCampaigns };
+    case "SET_MODELLI_NASCOSTI":
+      return { ...state, modelliNascosti: action.ids };
+    case "SET_EMAIL_SCARTATA":
+      return { ...state, emailScartata: action.email };
     case "MARK_TEST_SENT":
       return { ...state, testEmailSentThisSession: true };
     case "SET_CAMPAIGN_ID":

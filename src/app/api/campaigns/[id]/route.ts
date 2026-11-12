@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiErrorResponse, requireVenueApi } from "@/lib/api-auth";
 
-import { getCampaign, updateCampaign } from "@/server/campaigns";
+import { eliminaBozza, getCampaign, updateCampaign } from "@/server/campaigns";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const ctx = await requireVenueApi();
@@ -21,4 +21,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   } catch (err) {
     return apiErrorResponse(err);
   }
+}
+
+/** Nel cestino, solo bozze: una campagna partita resta nello storico (vedi `eliminaBozza`). */
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const ctx = await requireVenueApi("edit_marketing");
+  if (!ctx.ok) return ctx.response;
+  const eliminata = await eliminaBozza(ctx.venueId, params.id);
+  if (!eliminata) return NextResponse.json({ error: "not_a_draft" }, { status: 409 });
+  return NextResponse.json({ ok: true });
 }

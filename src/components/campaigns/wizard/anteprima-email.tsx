@@ -58,3 +58,32 @@ export function AnteprimaEmail({
     </div>
   );
 }
+
+/**
+ * La barra di scorrimento del tema dentro l'anteprima.
+ *
+ * L'iframe è un documento a sé: le regole di globals.css non ci arrivano e
+ * compariva la barra grigia di sistema, con le frecce. I colori si leggono
+ * dall'iframe stesso — le variabili CSS si ereditano fino a lui — così la
+ * capsula è quella del tema in uso, verde in Carta e grigia in Sera. Il
+ * foglio si aggiunge solo all'anteprima: l'HTML dell'email resta intatto.
+ */
+export function barraDelTema(iframe: HTMLIFrameElement) {
+  const doc = iframe.contentDocument;
+  if (!doc?.head) return;
+  const stile = getComputedStyle(iframe);
+  const pollice = stile.getPropertyValue("--scorre-pollice").trim();
+  const attivo = stile.getPropertyValue("--scorre-pollice-attivo").trim() || pollice;
+  const tinta = stile.getPropertyValue("--scorre-tinta").trim();
+  if (!pollice) return;
+  const el = doc.createElement("style");
+  el.textContent = `
+    ::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+    ::-webkit-scrollbar-button, ::-webkit-scrollbar-corner { display: none; background: transparent; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: ${pollice} padding-box; }
+    ::-webkit-scrollbar-thumb:hover, ::-webkit-scrollbar-thumb:active { background: ${attivo} padding-box; }
+    @supports not selector(::-webkit-scrollbar) { html { scrollbar-width: thin; scrollbar-color: ${tinta || "auto"} transparent; } }
+  `;
+  doc.head.appendChild(el);
+}

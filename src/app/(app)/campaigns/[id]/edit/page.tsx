@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getActiveVenue } from "@/lib/tenant";
-import { getCampaign, listNewsletterSources } from "@/server/campaigns";
+import { bozzeNelCestino, getCampaign, listNewsletterSources } from "@/server/campaigns";
 import { CampaignWizard } from "@/components/campaigns/wizard/campaign-wizard";
 import { statoConsumo } from "@/server/dem/consumo";
 import { Button } from "@/components/ui/button";
-import { parseEmailDocument } from "@/lib/campaign-blocks";
+import { hasSubstantiveContent, parseEmailDocument } from "@/lib/campaign-blocks";
 import type { SegmentFilterType } from "@/server/campaigns";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +39,8 @@ export default async function EditCampaignPage({ params }: { params: { id: strin
   // Gli invii che restano: servono alla colonna dei destinatari per dire
   // quanto costa questa campagna prima che qualcuno prema «invia».
   const quota = await statoConsumo(ctx.venueId);
+  // Il cestino del passo «Modelli»: le bozze eliminate, da cui si recupera.
+  const cestino = await bozzeNelCestino(ctx.venueId);
 
   return (
     <CampaignWizard
@@ -51,10 +53,14 @@ export default async function EditCampaignPage({ params }: { params: { id: strin
         contentBlocks: documento.blocks,
         emailSettings: documento.settings,
         previousCampaigns,
+        cestino,
+        modelliNascosti: ctx.venue.hiddenCampaignTemplates ?? [],
         // Si riprende da «Obiettivo»: è lì che ora stanno nome e gruppo di
-        // clienti, cioè quanto una bozza ha già di sicuro.
+        // clienti, cioè quanto una bozza ha già di sicuro. Il contenuto si
+        // salva solo da «Modelli» in poi: se c'è, quel passo è già superato e
+        // l'email scelta allora non va scelta di nuovo.
         step: 0,
-        furthestStep: 1,
+        furthestStep: hasSubstantiveContent(documento.blocks) ? 3 : 1,
         senderName: process.env.BREVO_FROM_NAME || "Tavolo",
         senderEmail: process.env.BREVO_FROM_EMAIL || "marketing@tavolo.local",
         brandLogoUrl: ctx.venue.brandLogoUrl ?? "",

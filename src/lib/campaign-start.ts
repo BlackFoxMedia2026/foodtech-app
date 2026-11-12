@@ -15,7 +15,9 @@ import { getCampaignTemplate, withBrandLogo, type CampaignTemplate } from "./cam
  * idea senza aver già buttato via il contenuto che c'era.
  */
 export interface PendingTemplateSelection {
-  type: "blank" | "template" | "previous";
+  /** `current`: tenere l'email già in lavorazione, per chi torna dall'editor.
+   *  Non si risolve: il documento c'è già, va solo lasciato com'è. */
+  type: "blank" | "template" | "previous" | "current";
   templateId?: string;
   /** Solo per `previous`: la campagna da cui copiare — mai quella da modificare. */
   sourceCampaignId?: string;

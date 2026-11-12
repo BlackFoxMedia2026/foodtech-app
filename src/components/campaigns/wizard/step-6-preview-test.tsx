@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Monitor, Smartphone } from "lucide-react";
+import { ImageIcon, Monitor, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { compileEmailDocument } from "@/lib/campaign-blocks-compiler";
+import { fotoDiEsempioRimaste } from "@/lib/campaign-templates";
 import { fetchProviderStatus, sendTestEmail } from "@/lib/campaign-wizard-api";
+import { barraDelTema } from "./anteprima-email";
 import { useWizardDispatch, useWizardState } from "./wizard-context";
 
 export function Step6PreviewTest() {
@@ -35,6 +37,8 @@ export function Step6PreviewTest() {
     state.brandPrimaryColor || undefined,
   );
 
+  const fotoEsempio = fotoDiEsempioRimaste(state.contentBlocks);
+
   async function handleSendTest() {
     if (!state.campaignId || !testEmail) return;
     setSending(true);
@@ -59,6 +63,23 @@ export function Step6PreviewTest() {
           Controlla come apparirà l&apos;email prima di inviarla.
         </p>
       </div>
+
+      {/* Un avviso e non un blocco: una foto d'esempio può anche andar bene
+          a chi la sceglie, ma deve saperlo prima di premere «Invia». */}
+      {fotoEsempio > 0 && (
+        <p className="riquadro flex items-start gap-2.5 px-4 py-3 text-sm">
+          <ImageIcon className="mt-0.5 h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />
+          <span>
+            {fotoEsempio === 1
+              ? "C'è ancora una foto di esempio del modello."
+              : `Ci sono ancora ${fotoEsempio} foto di esempio del modello.`}{" "}
+            <span className="text-muted-foreground">
+              Torna all&apos;editor e sostituiscile con quelle del tuo locale: chi legge si aspetta di trovare in
+              sala quello che vede nell&apos;email.
+            </span>
+          </span>
+        </p>
+      )}
 
       {/* L'email a sinistra grande quanto può essere, i campi a destra: è
           l'anteprima la cosa che si guarda in questo passo. */}
@@ -94,6 +115,7 @@ export function Step6PreviewTest() {
             <iframe
               title="Anteprima email"
               srcDoc={html}
+              onLoad={(e) => barraDelTema(e.currentTarget)}
               className="rounded bg-white"
               style={{ width: viewport === "desktop" ? 600 : 375, height: "min(70vh, 760px)", maxWidth: "100%" }}
             />

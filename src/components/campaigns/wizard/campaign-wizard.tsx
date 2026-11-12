@@ -54,9 +54,11 @@ function canGoNext(state: WizardState): boolean {
       // quindi tornare indietro con "Indietro" non deve ribloccare l'utente qui.
       return state.name.trim().length > 0 && (state.objectiveId !== null || state.campaignId !== null);
     case PASSO.modelli:
-      // Basta una selezione in sospeso oppure del contenuto già presente da una
-      // visita precedente allo step.
-      return state.pendingTemplateSelection !== null || hasSubstantiveContent(state.contentBlocks);
+      // Serve sempre una scelta esplicita: un modello, una newsletter,
+      // l'email personalizzata o — per chi torna dall'editor — «La tua email».
+      // Il contenuto da solo non basta: l'obiettivo ne precompila già uno, e
+      // «Avanti» portava nell'editor senza che si fosse scelto niente.
+      return state.pendingTemplateSelection !== null;
     case PASSO.editor:
       return hasUnsubscribeBlock(state.contentBlocks) && hasSubstantiveContent(state.contentBlocks);
     default:
@@ -192,8 +194,16 @@ function WizardShell() {
     let stateToPersist = state;
     const selezione = selezioneEsplicita ?? state.pendingTemplateSelection;
 
-    if (state.step === PASSO.modelli && selezione) {
+    if (state.step === PASSO.modelli && selezione?.type === "current") {
+      // L'email resta quella che c'è: si consuma solo la scelta.
+      dispatch({ type: "SET_PENDING_TEMPLATE_SELECTION", selection: null });
+    } else if (state.step === PASSO.modelli && selezione) {
+      /* Si chiede solo a chi l'email l'ha già scelta o toccata, cioè ha
+         superato questo passo. Il contenuto che l'obiettivo precompila non è
+         lavoro di nessuno: chiedere di «sostituirlo» confondeva chi non aveva
+         ancora scritto niente. */
       if (
+        state.furthestStep > PASSO.modelli &&
         hasSubstantiveContent(state.contentBlocks) &&
         !window.confirm("Hai già del contenuto nell'email. Continuando, verrà sostituito interamente. Procedere?")
       ) {
@@ -299,11 +309,16 @@ function WizardShell() {
           <StepComponent />
         </div>
       ) : senzaCornice ? (
-        <div className="fill-scroll pt-3">
+        /* `key={state.step}`: un'area di scorrimento nuova a ogni passo, quindi
+           si riparte dall'alto. Con la stessa area, chi premeva «Avanti» in
+           fondo ai filtri arrivava ai modelli già scorso a metà pagina.
+           `pr-6`: senza, le card e i pulsanti toccavano la barra di scorrimento e la
+           capsula verde sembrava il loro bordo. */
+        <div key={state.step} className="fill-scroll pr-6 pt-3">
           <StepComponent onAvanti={handleNext} />
         </div>
       ) : (
-        <div className="fill-scroll pt-3">
+        <div key={state.step} className="fill-scroll pr-6 pt-3">
           <div className="surface mx-auto max-w-3xl p-6">
             <StepComponent />
           </div>

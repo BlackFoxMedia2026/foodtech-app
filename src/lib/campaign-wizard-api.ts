@@ -88,6 +88,30 @@ export async function fetchProviderStatus(): Promise<{ configured: boolean }> {
   return parseJsonOrThrow(res);
 }
 
+/** Mette una bozza nel cestino. Il server rifiuta (409) se la campagna non è più una bozza. */
+export async function deleteCampaignDraft(id: string): Promise<void> {
+  const res = await fetch(`/api/campaigns/${id}`, { method: "DELETE" });
+  if (res.status === 409) throw new Error("Questa campagna non è più una bozza: resta nello storico.");
+  await parseJsonOrThrow(res);
+}
+
+/** Riporta una bozza fuori dal cestino. */
+export async function restoreCampaignDraft(id: string): Promise<void> {
+  const res = await fetch(`/api/campaigns/${id}/restore`, { method: "POST" });
+  await parseJsonOrThrow(res);
+}
+
+/** Nasconde (o rimostra) un modello della libreria per il locale. Restituisce l'elenco aggiornato. */
+export async function setTemplateHidden(templateId: string, hidden: boolean): Promise<string[]> {
+  const res = await fetch("/api/campaigns/templates-hidden", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ templateId, hidden }),
+  });
+  const { hiddenTemplates } = (await parseJsonOrThrow(res)) as { hiddenTemplates: string[] };
+  return hiddenTemplates;
+}
+
 export async function uploadCampaignImage(file: File): Promise<{ url: string }> {
   const form = new FormData();
   form.append("file", file);

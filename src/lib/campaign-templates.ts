@@ -84,6 +84,21 @@ function placeholderImage(label: string, width: number, height: number): string 
 
 const LOGO_PLACEHOLDER = placeholderImage("IL TUO LOGO", 240, 72);
 
+/**
+ * Le foto di esempio dei modelli, vere e non riquadri tratteggiati: un
+ * modello si sceglie dalla forma, e una foto di piatto dice «qui va un
+ * piatto» meglio di qualunque scritta. Restano nell'email aperta
+ * nell'editor, da sostituire con quelle del locale: l'anteprima prima
+ * dell'invio avvisa se ne è rimasta qualcuna (vedi `fotoDiEsempioRimaste`).
+ *
+ * Percorsi relativi al sito: nelle anteprime funzionano così, e il
+ * compilatore li rende assoluti quando l'email parte (un client di posta un
+ * indirizzo relativo non lo sa aprire). JPG e non WebP: Outlook desktop il
+ * WebP non lo mostra.
+ */
+export const CARTELLA_FOTO_ESEMPIO = "/modelli/";
+const fotoEsempio = (file: string) => `${CARTELLA_FOTO_ESEMPIO}${file}`;
+
 const SERIF = EMAIL_FONT_STACKS[1].stack;
 const MODERNO = EMAIL_FONT_STACKS[2].stack;
 
@@ -115,7 +130,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     previewText: "Foto grande, data in evidenza, un solo invito.",
     blocks: blocchi("event_announcement", [
       { type: "logo", imageUrl: LOGO_PLACEHOLDER, align: "center" },
-      { type: "hero_image", imageUrl: placeholderImage("FOTO DELL'EVENTO", 600, 320), alt: "L'evento" },
+      { type: "hero_image", imageUrl: fotoEsempio("evento.jpg"), alt: "L'evento" },
       {
         type: "title",
         text: "Una serata da ricordare",
@@ -168,7 +183,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
         text: "Ciao {{FIRSTNAME}}, arriva la ricorrenza che aspettavamo tutto l'anno e vogliamo passarla con te.",
         style: { align: "center", paddingBottom: 4 },
       },
-      { type: "hero_image", imageUrl: placeholderImage("FOTO DELLA FESTA", 600, 280), alt: "La festa" },
+      { type: "hero_image", imageUrl: fotoEsempio("festa.jpg"), alt: "La festa" },
       {
         type: "offer_box",
         title: "Il menù della festa",
@@ -202,7 +217,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     settings: { fontFamily: SERIF, emailBackground: "#fdfbf7", textColor: "#3a332b", linkColor: "#7a4a2c" },
     blocks: blocchi("wine_dinner", [
       { type: "logo", imageUrl: LOGO_PLACEHOLDER, align: "center" },
-      { type: "hero_image", imageUrl: placeholderImage("FOTO DEI CALICI", 600, 260), alt: "Degustazione" },
+      { type: "hero_image", imageUrl: fotoEsempio("calici.jpg"), alt: "Degustazione" },
       {
         type: "title",
         text: "Cena in degustazione",
@@ -329,7 +344,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
         type: "columns",
         ratio: "30-70",
         columns: [
-          [{ type: "image", imageUrl: placeholderImage("PIATTO", 300, 300), alt: "Il primo piatto" }],
+          [{ type: "image", imageUrl: fotoEsempio("piatto-risotto.jpg"), alt: "Il primo piatto" }],
           [
             { type: "title", text: "Il nome del piatto", align: "left", level: 3 },
             {
@@ -352,7 +367,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
               style: { fontSize: 14 },
             },
           ],
-          [{ type: "image", imageUrl: placeholderImage("PIATTO", 300, 300), alt: "Il secondo piatto" }],
+          [{ type: "image", imageUrl: fotoEsempio("piatto-guancia.jpg"), alt: "Il secondo piatto" }],
         ],
       },
       { type: "button_cta", label: "Prenota per assaggiarli", url: "{{BOOKING_LINK}}", align: "center" },
@@ -375,7 +390,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     settings: { fontFamily: MODERNO, pageBackground: "#efeae1" },
     blocks: blocchi("seasonal_menu", [
       { type: "logo", imageUrl: LOGO_PLACEHOLDER, align: "center" },
-      { type: "hero_image", imageUrl: placeholderImage("FOTO DELLA STAGIONE", 600, 240), alt: "La stagione" },
+      { type: "hero_image", imageUrl: fotoEsempio("stagione-hero.jpg"), alt: "La stagione" },
       { type: "title", text: "Il menù della stagione", align: "center", level: 1, style: { paddingTop: 24 } },
       {
         type: "text",
@@ -387,17 +402,17 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
         ratio: "33-33-33",
         columns: [
           [
-            { type: "image", imageUrl: placeholderImage("FOTO", 180, 180), alt: "Antipasto" },
+            { type: "image", imageUrl: fotoEsempio("stagione-antipasto.jpg"), alt: "Antipasto" },
             { type: "title", text: "Antipasto", align: "center", level: 3, style: { fontSize: 15 } },
             { type: "text", text: "Una riga di descrizione.", style: { fontSize: 13, align: "center" } },
           ],
           [
-            { type: "image", imageUrl: placeholderImage("FOTO", 180, 180), alt: "Primo" },
+            { type: "image", imageUrl: fotoEsempio("stagione-primo.jpg"), alt: "Primo" },
             { type: "title", text: "Primo", align: "center", level: 3, style: { fontSize: 15 } },
             { type: "text", text: "Una riga di descrizione.", style: { fontSize: 13, align: "center" } },
           ],
           [
-            { type: "image", imageUrl: placeholderImage("FOTO", 180, 180), alt: "Dolce" },
+            { type: "image", imageUrl: fotoEsempio("stagione-dolce.jpg"), alt: "Dolce" },
             { type: "title", text: "Dolce", align: "center", level: 3, style: { fontSize: 15 } },
             { type: "text", text: "Una riga di descrizione.", style: { fontSize: 13, align: "center" } },
           ],
@@ -436,7 +451,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
         ratio: "50-50",
         columns: [
           [
-            { type: "image", imageUrl: placeholderImage("FOTO", 260, 170), alt: "La prima notizia" },
+            { type: "image", imageUrl: fotoEsempio("notizia-vongole.jpg"), alt: "La prima notizia" },
             { type: "title", text: "La prima notizia", align: "left", level: 3, style: { fontSize: 17 } },
             {
               type: "text",
@@ -445,7 +460,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
             },
           ],
           [
-            { type: "image", imageUrl: placeholderImage("FOTO", 260, 170), alt: "La seconda notizia" },
+            { type: "image", imageUrl: fotoEsempio("notizia-tiramisu.jpg"), alt: "La seconda notizia" },
             { type: "title", text: "La seconda notizia", align: "left", level: 3, style: { fontSize: 17 } },
             {
               type: "text",
@@ -491,7 +506,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
         level: 1,
         style: { paddingLeft: 44, paddingRight: 44, fontSize: 30, lineHeight: 1.2 },
       },
-      { type: "image", imageUrl: placeholderImage("FOTO", 520, 300), alt: "La storia" },
+      { type: "image", imageUrl: fotoEsempio("storia.jpg"), alt: "La storia" },
       {
         type: "text",
         text: "Ciao {{FIRSTNAME}},\n\nqui si scrive la storia: il produttore che ci porta le verdure, il piatto che viene da una ricetta di famiglia, il motivo per cui abbiamo aperto.\n\nÈ il tipo di email che non chiede niente e che la gente legge fino in fondo. Un paio di paragrafi bastano — il resto lo racconti a tavola.",
@@ -590,7 +605,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     previewText: "Un invito caldo a chi non prenota da un po', con un motivo per tornare.",
     blocks: blocchi("win_back", [
       { type: "logo", imageUrl: LOGO_PLACEHOLDER, align: "center" },
-      { type: "hero_image", imageUrl: placeholderImage("FOTO DELLA SALA", 600, 240), alt: "La sala" },
+      { type: "hero_image", imageUrl: fotoEsempio("sala.jpg"), alt: "La sala" },
       { type: "title", text: "Ci sei mancato", align: "center", level: 1, style: { paddingTop: 24 } },
       {
         type: "text",
@@ -674,4 +689,19 @@ export function templatesForCategory(categoria: CategoriaModello | null): Campai
 export function withBrandLogo(blocks: Block[], logoUrl?: string): Block[] {
   if (!logoUrl) return blocks;
   return blocks.map((b) => (b.type === "logo" ? { ...b, imageUrl: logoUrl } : b));
+}
+
+/**
+ * Quante foto di esempio dei modelli sono ancora nell'email. Servono a
+ * scegliere, non a partire: un locale che manda il risotto di un altro fa una
+ * promessa che in sala non mantiene.
+ */
+export function fotoDiEsempioRimaste(blocks: Block[]): number {
+  let n = 0;
+  const conta = (b: { type: string; imageUrl?: string; columns?: unknown }) => {
+    if (typeof b.imageUrl === "string" && b.imageUrl.startsWith(CARTELLA_FOTO_ESEMPIO)) n++;
+    if (Array.isArray(b.columns)) for (const col of b.columns) for (const figlio of col) conta(figlio);
+  };
+  for (const b of blocks) conta(b as Parameters<typeof conta>[0]);
+  return n;
 }

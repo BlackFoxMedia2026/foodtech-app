@@ -1,5 +1,5 @@
 import { getActiveVenue } from "@/lib/tenant";
-import { listNewsletterSources } from "@/server/campaigns";
+import { bozzeNelCestino, listNewsletterSources } from "@/server/campaigns";
 import { CampaignWizard } from "@/components/campaigns/wizard/campaign-wizard";
 import { statoConsumo } from "@/server/dem/consumo";
 
@@ -31,6 +31,8 @@ export default async function NewCampaignPage({
   // Gli invii che restano: servono alla colonna dei destinatari per dire
   // quanto costa questa campagna prima che qualcuno prema «invia».
   const quota = await statoConsumo(ctx.venueId);
+  // Il cestino del passo «Modelli»: le bozze eliminate, da cui si recupera.
+  const cestino = await bozzeNelCestino(ctx.venueId);
 
   // Solo un'etichetta che esiste: un valore inventato nell'indirizzo non deve
   // creare una campagna con un segmento che nessuno sa leggere.
@@ -49,6 +51,8 @@ export default async function NewCampaignPage({
         quotaDisponibili: quota.disponibili,
         quotaLimite: quota.limite,
         previousCampaigns,
+        cestino,
+        modelliNascosti: ctx.venue.hiddenCampaignTemplates ?? [],
         ...(audienceTag ? { segment: { audienceTag } } : {}),
         ...(searchParams.nome ? { name: searchParams.nome.slice(0, 80) } : {}),
       }}

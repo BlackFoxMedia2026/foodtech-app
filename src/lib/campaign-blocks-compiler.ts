@@ -16,6 +16,21 @@ function alignStyle(align: "left" | "center" | "right"): string {
   return `text-align:${align};`;
 }
 
+/**
+ * L'indirizzo di un'immagine come lo legge un client di posta.
+ *
+ * Le foto di esempio dei modelli stanno nel sito (`/modelli/…`): nel browser
+ * un percorso relativo funziona, in Gmail no. Si rende assoluto solo quando
+ * l'email parte (`compileCampaignContent`, con `NEXT_PUBLIC_APP_URL`). Le
+ * anteprime — wizard, elenco campagne — restano relative: la variabile può
+ * puntare a un altro indirizzo (in sviluppo è la porta sbagliata, o la
+ * produzione) e la foto non si vedrebbe.
+ */
+function srcImmagine(url: string, origine: string | undefined): string {
+  if (!origine || !url.startsWith("/") || url.startsWith("//")) return url;
+  return `${origine.trim().replace(/\/+$/, "")}${url}`;
+}
+
 const DEFAULT_ACCENT_COLOR = "#c9a25a";
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6,8}$/;
 
@@ -58,6 +73,8 @@ function background(style: BlockStyle | undefined): string {
 }
 
 interface RenderContext {
+  /** Dove stanno le immagini con percorso relativo: solo per l'invio. */
+  origineImmagini?: string;
   accent: string;
   settings: EmailSettings;
 }
@@ -96,7 +113,7 @@ function renderSimpleBlock(block: SimpleBlock, ctx: RenderContext): string {
       const s = block.style;
       const width = num(s?.width, 100);
       const radius = num(s?.borderRadius, 0);
-      const img = `<img src="${escapeHtml(block.imageUrl)}" alt="${escapeHtml(
+      const img = `<img src="${escapeHtml(srcImmagine(block.imageUrl, ctx.origineImmagini))}" alt="${escapeHtml(
         block.alt
       )}" width="${width}%" style="display:block;width:${width}%;max-width:100%;border:0;${
         radius ? `border-radius:${radius}px;` : ""
@@ -143,13 +160,13 @@ function renderBlock(block: Block, ctx: RenderContext): string {
     case "logo":
       return `<tr><td style="${padding(s, DEFAULT_BLOCK_PADDING.logo)}${background(s)}${alignStyle(
         s?.align ?? block.align
-      )}"><img src="${escapeHtml(block.imageUrl)}" alt="Logo" height="${num(
+      )}"><img src="${escapeHtml(srcImmagine(block.imageUrl, ctx.origineImmagini))}" alt="Logo" height="${num(
         s?.fontSize,
         48
       )}" style="display:inline-block;border:0;" /></td></tr>`;
     case "hero_image":
       return `<tr><td style="${padding(s, DEFAULT_BLOCK_PADDING.hero_image)}${background(s)}"><img src="${escapeHtml(
-        block.imageUrl
+        srcImmagine(block.imageUrl, ctx.origineImmagini)
       )}" alt="${escapeHtml(block.alt)}" width="100%" style="display:block;width:100%;max-width:100%;border:0;${
         s?.borderRadius ? `border-radius:${num(s.borderRadius, 0)}px;` : ""
       }" /></td></tr>`;
@@ -329,9 +346,17 @@ const RESPONSIVE_STYLE =
  * `accentColor` è il colore principale del brand (Impostazioni → Brand): usato
  * per bottoni e badge, ricade su un gold neutro se il locale non l'ha impostato.
  */
-export function compileEmailDocument(doc: EmailDocument, accentColor?: string): string {
+export function compileEmailDocument(
+  doc: EmailDocument,
+  accentColor?: string,
+  opzioni: { origineImmagini?: string } = {}
+): string {
   const settings = { ...DEFAULT_EMAIL_SETTINGS, ...doc.settings };
-  const ctx: RenderContext = { accent: resolveAccentColor(accentColor), settings };
+  const ctx: RenderContext = {
+    accent: resolveAccentColor(accentColor),
+    settings,
+    origineImmagini: opzioni.origineImmagini,
+  };
   const rows = doc.blocks.map((b) => renderBlock(b, ctx)).join("");
   const width = Math.min(Math.max(num(settings.contentWidth, 600), 320), 800);
   return `${RESPONSIVE_STYLE}<table role="presentation" width="100%" style="background-color:${safeColor(
@@ -353,7 +378,10 @@ export function compileBlocksToHtml(blocks: Block[], accentColor?: string): stri
 
 /** Il punto d'ingresso del server: accetta il documento nuovo o l'array vecchio. */
 export function compileCampaignContent(raw: unknown, accentColor?: string): string {
-  return compileEmailDocument(parseEmailDocument(raw), accentColor);
+  // È l'email che parte (o il corpo salvato per partire): immagini assolute.
+  return compileEmailDocument(parseEmailDocument(raw), accentColor, {
+    origineImmagini: process.env.NEXT_PUBLIC_APP_URL,
+  });
 }
 
 function substituteTokens(html: string, vars: Record<string, string>): string {

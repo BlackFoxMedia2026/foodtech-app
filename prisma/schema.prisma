@@ -89,12 +89,15 @@ model OrgMembership {
 }
 
 model Venue {
-  id       String    @id @default(cuid())
-  orgId    String
-  name     String
-  slug     String
-  kind     VenueKind @default(RESTAURANT)
-  timezone String    @default("Europe/Rome")
+  id                      String    @id @default(cuid())
+  /// I modelli email della libreria che il locale ha tolto dalla vista (il
+  /// cestino del passo «Modelli»): gli id di campaign-templates.ts.
+  hiddenCampaignTemplates String[]  @default([])
+  orgId                   String
+  name                    String
+  slug                    String
+  kind                    VenueKind @default(RESTAURANT)
+  timezone                String    @default("Europe/Rome")
 
   /// Se questo locale chiede una **caparra** sulle prenotazioni.
   ///
@@ -322,12 +325,12 @@ model Venue {
   /// cambia da qui.
   phoneSipPassword String?
 
-  agentConversations AgentConversation[]
-  agentUsages        AgentUsage[]
-  phoneCalls         PhoneCall[]
-  voiceNumbers       VoiceNumber[]
-  servizi            VenueServizio[]
-  recuperiVoice      VoiceRecovery[]
+  agentConversations           AgentConversation[]
+  agentUsages                  AgentUsage[]
+  phoneCalls                   PhoneCall[]
+  voiceNumbers                 VoiceNumber[]
+  servizi                      VenueServizio[]
+  recuperiVoice                VoiceRecovery[]
   /// Come questo locale si chiama **nel centralino**.
   ///
   /// Lo dichiara il centralino stesso insieme alle sue linee, e serve al verso
@@ -335,85 +338,85 @@ model Venue {
   /// di assegnare un numero a questo locale — invece di far aprire il secondo
   /// gestionale a chi accende un cliente. Nullo finche il centralino non si e
   /// mai presentato.
-  centralinoTenantId String?
-  voiceConfiguration VoiceConfiguration?
-  voiceCallbacks     VoiceCallback[]
-  voiceInsights      VoiceCRMInsight[]
-  voiceKnowledge     VoiceKnowledgeItem[]
-  ApiToken           ApiToken[]
-  AutomationWorkflow AutomationWorkflow[]
-  BackgroundJob      BackgroundJob[]
-  bookings           Booking[]
-  campaigns          Campaign[]
-  ChatSession        ChatSession[]
-  Connector          Connector[]
-  ConsentLog         ConsentLog[]
-  CostEntry          CostEntry[]
-  Coupon             Coupon[]
-  CouponRedemption   CouponRedemption[]
-  experiences        Experience[]
-  GiftCard           GiftCard[]
-  guests             Guest[]
-  GuestProviderLink  GuestProviderLink[]
-  MenuCategory       MenuCategory[]
-  MenuItem           MenuItem[]
-  MenuItemCost       MenuItemCost[]
-  MenuScan           MenuScan[]
-  MessageLog         MessageLog[]
-  Notification       Notification[]
-  Order              Order[]
-  POSConnector       POSConnector[]
-  payments           Payment[]
-  QrCode             QrCode[]
-  Review             Review[]
-  ReviewLink         ReviewLink[]
-  ReviewLinkClick    ReviewLinkClick[]
-  rooms              Room[]
-  shifts             Shift[]
-  Survey             Survey[]
-  tables             Table[]
-  tablePresets       TablePreset[]
-  tableCombinations  TableCombination[]
-  blocks             TableBlock[]
-  org                Organization              @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  WaitlistEntry      WaitlistEntry[]
-  WifiLead           WifiLead[]
-  WifiSession        WifiSession[]
-  members            VenueMembership[]
-  invites            VenueInvite[]
-  waiters            Waiter[]
-  waiterAssignments  WaiterAssignment[]
-  staffAssignments   StaffAssignment[]
-  workShifts         WorkShift[]
-  staffRequests      StaffRequest[]
-  staffContracts     StaffContract[]
-  contractDocuments  ContractDocument[]
-  staffDocuments     StaffDocument[]
-  staffTrainings     StaffTraining[]
-  staffMedicalChecks StaffMedicalCheck[]
-  staffNotes         StaffNote[]
-  demSubscription    DemSubscription?
-  demUsagePeriods    DemUsagePeriod[]
-  demSuppressions    DemSuppression[]
-  demDomain          DemDomain?
-  demSesTenant       DemSesTenant?
-  campaignRecipients CampaignRecipient[]
-  campaignEvents     CampaignEvent[]
-  comande            Comanda[]
-  usageEvents        UsageEvent[]
-  costPeriods        CostPeriod[]
-  costOverrides      CostOverride[]
-  platformAlerts     PlatformAlert[]
-  EventRequest       EventRequest[]
+  centralinoTenantId           String?
+  voiceConfiguration           VoiceConfiguration?
+  voiceCallbacks               VoiceCallback[]
+  voiceInsights                VoiceCRMInsight[]
+  voiceKnowledge               VoiceKnowledgeItem[]
+  ApiToken                     ApiToken[]
+  AutomationWorkflow           AutomationWorkflow[]
+  BackgroundJob                BackgroundJob[]
+  bookings                     Booking[]
+  campaigns                    Campaign[]
+  ChatSession                  ChatSession[]
+  Connector                    Connector[]
+  ConsentLog                   ConsentLog[]
+  CostEntry                    CostEntry[]
+  Coupon                       Coupon[]
+  CouponRedemption             CouponRedemption[]
+  experiences                  Experience[]
+  GiftCard                     GiftCard[]
+  guests                       Guest[]
+  GuestProviderLink            GuestProviderLink[]
+  MenuCategory                 MenuCategory[]
+  MenuItem                     MenuItem[]
+  MenuItemCost                 MenuItemCost[]
+  MenuScan                     MenuScan[]
+  MessageLog                   MessageLog[]
+  Notification                 Notification[]
+  Order                        Order[]
+  POSConnector                 POSConnector[]
+  payments                     Payment[]
+  QrCode                       QrCode[]
+  Review                       Review[]
+  ReviewLink                   ReviewLink[]
+  ReviewLinkClick              ReviewLinkClick[]
+  rooms                        Room[]
+  shifts                       Shift[]
+  Survey                       Survey[]
+  tables                       Table[]
+  tablePresets                 TablePreset[]
+  tableCombinations            TableCombination[]
+  blocks                       TableBlock[]
+  org                          Organization                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  WaitlistEntry                WaitlistEntry[]
+  WifiLead                     WifiLead[]
+  WifiSession                  WifiSession[]
+  members                      VenueMembership[]
+  invites                      VenueInvite[]
+  waiters                      Waiter[]
+  waiterAssignments            WaiterAssignment[]
+  staffAssignments             StaffAssignment[]
+  workShifts                   WorkShift[]
+  staffRequests                StaffRequest[]
+  staffContracts               StaffContract[]
+  contractDocuments            ContractDocument[]
+  staffDocuments               StaffDocument[]
+  staffTrainings               StaffTraining[]
+  staffMedicalChecks           StaffMedicalCheck[]
+  staffNotes                   StaffNote[]
+  demSubscription              DemSubscription?
+  demUsagePeriods              DemUsagePeriod[]
+  demSuppressions              DemSuppression[]
+  demDomain                    DemDomain?
+  demSesTenant                 DemSesTenant?
+  campaignRecipients           CampaignRecipient[]
+  campaignEvents               CampaignEvent[]
+  comande                      Comanda[]
+  usageEvents                  UsageEvent[]
+  costPeriods                  CostPeriod[]
+  costOverrides                CostOverride[]
+  platformAlerts               PlatformAlert[]
+  EventRequest                 EventRequest[]
   /// Le integrazioni installate **su questo locale**. Il catalogo sta nel
   /// codice (`server/integrations/registry.ts`); qui c'è solo ciò che questo
   /// ristorante ha installato. Vedi `docs/INTEGRATION-PLATFORM.md`.
-  integrations       IntegrationInstallation[]
-  integrationBetaAccess IntegrationBetaAccess[]
+  integrations                 IntegrationInstallation[]
+  integrationBetaAccess        IntegrationBetaAccess[]
   integrationCertificationRuns IntegrationCertificationRun[]
-  integrationAccessRequests IntegrationAccessRequest[]
-  integrationAssistances    IntegrationAssistance[]
-  integrationHandoffs       IntegrationCredentialHandoff[]
+  integrationAccessRequests    IntegrationAccessRequest[]
+  integrationAssistances       IntegrationAssistance[]
+  integrationHandoffs          IntegrationCredentialHandoff[]
 
   @@unique([orgId, slug])
 }
@@ -609,17 +612,17 @@ model TableCombination {
 }
 
 model TablePreset {
-  id        String     @id @default(cuid())
-  venueId   String
-  label     String
-  shape     TableShape
-  seats     Int
+  id         String     @id @default(cuid())
+  venueId    String
+  label      String
+  shape      TableShape
+  seats      Int
   width      Int
   height     Int
   /// Vedi `Table.chairSides`: il predefinito lo ricorda come la misura.
   chairSides ChairSides @default(ALL)
-  createdAt DateTime   @default(now())
-  venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+  venue      Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@unique([venueId, label])
 }
@@ -846,6 +849,9 @@ model Campaign {
   id                String              @id @default(cuid())
   venueId           String
   name              String
+  /// Nel cestino: una bozza eliminata dal passo «Modelli». Si recupera da lì
+  /// finché nessuno la toglie per sempre. Solo bozze mai partite ci finiscono.
+  deletedAt         DateTime?
   channel           CampaignChannel     @default(EMAIL)
   segment           Json?
   subject           String?
