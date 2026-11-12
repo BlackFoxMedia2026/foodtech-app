@@ -32,7 +32,12 @@ export const CAMPAIGN_OBJECTIVES: CampaignObjective[] = [
     label: "Recupera clienti inattivi",
     description: "Raggiungi chi non prenota da tempo e invitalo a tornare.",
     icon: "UserX",
-    suggestedSegment: { inactiveDays: 60 },
+    /* Il gruppo «Clienti inattivi», non un filtro sui giorni: con
+       `inactiveDays: 60` il riepilogo leggeva «nessun gruppo + un filtro» e
+       mostrava «Segmento personalizzato» appena scelto l'obiettivo. Il
+       gruppo usa la stessa soglia della scheda ospite (TAG_RULES), così
+       «inattivo» vuol dire la stessa cosa in tutto il prodotto. */
+    suggestedSegment: { audienceTag: "inattivi" },
     suggestedSubject: "Ci manchi al tavolo",
     suggestedTemplateId: "win_back",
   },

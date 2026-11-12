@@ -51,7 +51,9 @@ export default async function EditCampaignPage({ params }: { params: { id: strin
         contentBlocks: documento.blocks,
         emailSettings: documento.settings,
         previousCampaigns,
-        step: 1,
+        // Si riprende da «Obiettivo»: è lì che ora stanno nome e gruppo di
+        // clienti, cioè quanto una bozza ha già di sicuro.
+        step: 0,
         furthestStep: 1,
         senderName: process.env.BREVO_FROM_NAME || "Tavolo",
         senderEmail: process.env.BREVO_FROM_EMAIL || "marketing@tavolo.local",

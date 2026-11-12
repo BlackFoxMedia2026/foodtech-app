@@ -2101,6 +2101,47 @@
     background-image: var(--relief-dome-bg);
     box-shadow: var(--relief-dome-shadow);
   }
+  /* Gli obiettivi di una campagna: lastre che si scelgono.
+     A riposo la lastra (§4 di DESIGN.md); al passaggio sale di un gradino
+     d'ombra; scelta, prende il verde pieno nell'anello (regola 2: il verde
+     dice ciò che è attivo). Il fondo resta la lastra: sotto c'è testo. */
+  :root:has([data-tema="carta"]) .scelta-obiettivo {
+    border-color: var(--card-edge);
+    background-color: var(--card-fill);
+    background-image: none;
+    box-shadow: var(--shadow-bevel), var(--shadow-contact), var(--shadow-lift);
+  }
+  :root:has([data-tema="carta"]) .scelta-obiettivo:hover {
+    border-color: var(--border-control);
+    box-shadow: var(--shadow-bevel), var(--shadow-contact), 0 18px 30px -14px #b3a88c99;
+  }
+  :root:has([data-tema="carta"]) .scelta-obiettivo[aria-pressed="true"] {
+    border-color: var(--control-fill);
+    box-shadow: 0 0 0 1px var(--control-fill), var(--shadow-bevel), var(--shadow-lift);
+  }
+  /* «Parti da zero» è l'uscita, non un obiettivo: fondo aperto, filo tratteggiato. */
+  :root:has([data-tema="carta"]) .scelta-obiettivo-libera:not([aria-pressed="true"]) {
+    border-color: var(--border-control);
+    background-color: transparent;
+    box-shadow: none;
+  }
+  .spunta-obiettivo {
+    border-color: hsl(var(--border));
+  }
+  [aria-pressed="true"] > div > div > .spunta-obiettivo {
+    border-color: rgb(var(--accent-strong));
+    background-color: rgb(var(--accent-strong));
+    color: rgb(var(--accent-strong-foreground));
+  }
+  :root:has([data-tema="carta"]) .spunta-obiettivo {
+    border-color: var(--border-control);
+    background-color: var(--surface-row);
+  }
+  :root:has([data-tema="carta"]) [aria-pressed="true"] > div > div > .spunta-obiettivo {
+    border-color: var(--control-fill);
+    background-color: var(--control-fill);
+    color: var(--control-ink);
+  }
   /* Un elenco dentro una scheda non è un incavo: è la scheda. */
   :root:has([data-tema="carta"]) .recessed {
     box-shadow: var(--card-shadow);

@@ -3,7 +3,7 @@ import type { WizardState } from "./wizard-context";
 /**
  * La quota del piano nella forma che il riepilogo si aspetta, o niente.
  *
- * Sta in una funzione sola perché la usano due passi — «Segmento» e «Filtri» —
+ * Sta in una funzione sola perché la usano due passi — «Obiettivo» (gruppo di clienti) e «Filtri» —
  * e perché la condizione «il dato c'è» va decisa in un posto: quando il piano
  * non è stato letto (una bozza aperta da un percorso che non lo passa) la
  * colonna non deve mostrare «0 invii disponibili», che è un allarme falso.

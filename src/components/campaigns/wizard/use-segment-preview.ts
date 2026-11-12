@@ -8,7 +8,7 @@ import { useWizardDispatch, useWizardState } from "./wizard-context";
  * Il conteggio dei destinatari, ricalcolato mentre si sceglie.
  *
  * Sta qui e non dentro un passo perché ora i passi che toccano il pubblico
- * sono due — «Segmento» e «Filtri» — e il numero deve essere lo stesso in
+ * sono due — «Obiettivo» (gruppo di clienti) e «Filtri» — e il numero deve essere lo stesso in
  * entrambi, aggiornato con la stessa attesa.
  */
 export function useSegmentPreview() {

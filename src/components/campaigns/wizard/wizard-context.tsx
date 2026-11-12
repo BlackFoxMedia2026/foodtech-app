@@ -80,7 +80,6 @@ export type WizardAction =
  */
 export const WIZARD_STEPS = [
   { id: "objective", label: "Obiettivo" },
-  { id: "segment", label: "Segmento" },
   { id: "filters", label: "Filtri" },
   { id: "template", label: "Modelli" },
   { id: "editor", label: "Editor" },

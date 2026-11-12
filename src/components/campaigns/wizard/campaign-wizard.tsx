@@ -2,7 +2,7 @@
 
 import { useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, Loader2, Save } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2, Pencil, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Stepper } from "@/components/ui/stepper";
@@ -16,7 +16,6 @@ import {
   type WizardState,
 } from "./wizard-context";
 import { Step1Objective } from "./step-1-objective";
-import { Step2Segmento } from "./step-2-segmento";
 import { Step3Filtri } from "./step-3-filtri";
 import { resolveTemplateSelection, type PendingTemplateSelection } from "@/lib/campaign-start";
 import { Step4Models } from "./step-4-models";
@@ -36,7 +35,6 @@ export interface StepProps {
 
 const STEP_COMPONENTS: ComponentType<StepProps>[] = [
   Step1Objective,
-  Step2Segmento,
   Step3Filtri,
   Step4Models,
   Step5Editor,
@@ -44,8 +42,9 @@ const STEP_COMPONENTS: ComponentType<StepProps>[] = [
   Step7Send,
 ];
 
-/** Gli indici dei passi, per nome: con sette passi «2» non vuol dire niente. */
-const PASSO = { obiettivo: 0, segmento: 1, filtri: 2, modelli: 3, editor: 4, anteprima: 5, invio: 6 } as const;
+/** Gli indici dei passi, per nome: con sei passi «2» non vuol dire niente.
+ *  Il gruppo di clienti si sceglie nel passo «Obiettivo» (scelta-pubblico.tsx). */
+const PASSO = { obiettivo: 0, filtri: 1, modelli: 2, editor: 3, anteprima: 4, invio: 5 } as const;
 
 function canGoNext(state: WizardState): boolean {
   switch (state.step) {
@@ -76,9 +75,8 @@ function payloadForStep(step: number, state: WizardState): DraftPayload {
   switch (step) {
     case PASSO.obiettivo:
       return { name: state.name, segment: state.segment, subject: subjectOrUndefined(state) };
-    // Segmento e Filtri scrivono lo stesso campo: sono due schermate dello
-    // stesso oggetto, non due dati diversi.
-    case PASSO.segmento:
+    // Il gruppo si sceglie con l'obiettivo e si salva con lui; i filtri
+    // scrivono lo stesso campo, restringendolo.
     case PASSO.filtri:
       return { segment: state.segment };
     case PASSO.modelli:
@@ -122,6 +120,47 @@ function AutoSaveBadge({ state }: { state: WizardState["autoSave"] }) {
   );
 }
 
+/**
+ * Il nome della campagna è il titolo stesso, e si scrive lì.
+ *
+ * Prima stava in un riquadro a parte accanto agli obiettivi, e rubava loro una
+ * colonna per un dato che serve solo a ritrovare la campagna. Qui il titolo è
+ * un campo: la matita e la sottolineatura tratteggiata dicono che si può
+ * cambiare, il campo misura quanto il testo (la colonna nascosta nella stessa
+ * cella fa da metro) e «Senza nome» resta il segnaposto.
+ */
+function NomeCampagna({ compatto }: { compatto: boolean }) {
+  const state = useWizardState();
+  const dispatch = useWizardDispatch();
+  return (
+    <h1 className={cn("text-display", compatto ? "text-lg" : "text-xl md:text-2xl")}>
+      <label
+        title="Clicca per rinominare la campagna"
+        className="group -mx-1.5 flex max-w-full cursor-text items-center gap-2 rounded-md px-1.5 transition-colors focus-within:bg-secondary/70 hover:bg-secondary/50"
+      >
+        <span className="sr-only">Nome della campagna (solo per uso interno: i clienti non lo vedranno)</span>
+        <span className="inline-grid min-w-0 max-w-[32ch]">
+          <span aria-hidden="true" className="invisible col-start-1 row-start-1 truncate whitespace-pre">
+            {state.name || "Senza nome"}
+          </span>
+          <input
+            value={state.name}
+            onChange={(e) => dispatch({ type: "SET_NAME", name: e.target.value })}
+            placeholder="Senza nome"
+            maxLength={120}
+            size={1}
+            className="col-start-1 row-start-1 w-full min-w-[4ch] border-b border-dashed border-transparent bg-transparent [font:inherit] text-foreground outline-none transition-colors placeholder:text-muted-foreground group-hover:border-border-strong focus:border-accent-strong"
+          />
+        </span>
+        <Pencil
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-focus-within:text-accent-strong group-hover:text-foreground"
+        />
+      </label>
+    </h1>
+  );
+}
+
 function WizardShell() {
   const state = useWizardState();
   const dispatch = useWizardDispatch();
@@ -133,7 +172,10 @@ function WizardShell() {
   // perché handleNext, nel caso «Modelli», deve poter salvare blocchi appena risolti
   // da una selezione in sospeso prima che il reducer li rifletta nel render successivo.
   async function persistStep(step: number, stateToPersist: WizardState = state) {
-    const payload = payloadForStep(step, stateToPersist);
+    /* Il nome si cambia dal titolo in qualunque passo: viaggia con ogni
+       salvataggio, purché non sia vuoto (lo schema lo vuole lungo almeno 1). */
+    const nome = stateToPersist.name.trim();
+    const payload = { ...payloadForStep(step, stateToPersist), ...(nome ? { name: stateToPersist.name } : {}) };
     if (!stateToPersist.campaignId) {
       if (!payload.name) return; // niente da creare ancora
       const created = await createCampaignDraft({ ...payload, name: payload.name });
@@ -204,7 +246,7 @@ function WizardShell() {
   const isEditorStep = state.step === PASSO.editor;
   /* Scegliere non è compilare.
   
-     Obiettivo, Segmento, Filtri, Modelli e Anteprima erano dentro una card larga
+     Obiettivo, Filtri, Modelli e Anteprima erano dentro una card larga
      896 px al centro di uno schermo che spesso ne ha il doppio: sei modelli
      affiancati diventavano una colonna sola, e la scelta — che è la sostanza
      di questi passi — si faceva scorrendo. Qui la pagina prende la larghezza
@@ -227,11 +269,9 @@ function WizardShell() {
             : "flex flex-col gap-5 pb-1 md:flex-row md:items-center md:justify-between md:gap-10",
         )}
       >
-        <div className={cn(isEditorStep && "shrink-0")}>
+        <div className={cn("min-w-0", isEditorStep && "shrink-0")}>
           {!isEditorStep && <p className="t-etichetta">Nuova campagna email</p>}
-          <h1 className={cn("text-display", isEditorStep ? "text-lg" : "text-xl md:text-2xl")}>
-            {state.name || "Senza nome"}
-          </h1>
+          <NomeCampagna compatto={isEditorStep} />
         </div>
         {/* Lo stepper dice dove sei, non cosa fare: sta in fila col titolo e
             occupa la larghezza che gli serve, non tutta quella disponibile. */}
@@ -271,7 +311,11 @@ function WizardShell() {
       )}
 
       {!isLastStep && (
-        <div className="fissa -mx-4 border-t border-border bg-background/85 px-4 pt-3 backdrop-blur md:-mx-6">
+        /* Niente fondo né margini negativi: la barra sta fuori dall'area che
+           scorre, sotto non ci passa niente da velare, e una fascia più
+           chiara allargata oltre il contenuto si leggeva come una striscia
+           storta. Resta il filo sopra, allineato al contenuto. */
+        <div className="fissa border-t border-border/60 pt-3">
           {/* Su telefono i tre comandi non ci stanno affiancati alla stessa
               misura: «bozza» è la parola che si può perdere senza perdere il
               senso, e il pulsante resta dove il pollice lo cerca. */}
