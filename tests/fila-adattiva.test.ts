@@ -48,19 +48,22 @@ describe("La fila della barra si adatta allo spazio che ha", () => {
     expect(d).toEqual({ forma: "riga", visibili: [0, 1, 2, 3] });
   });
 
-  it("sotto le quattro voci in riga passa alla pila, col nome sotto l'icona", () => {
+  it("anche con meno di quattro voci resta in riga: le voci non rimpiccioliscono", () => {
     const d = disponiFila({ ...base, spazio: 520 });
-    expect(d.forma).toBe("pila");
-    expect(d.visibili).toHaveLength(9);
+    expect(d).toEqual({ forma: "riga", visibili: [0, 1, 2] });
   });
 
-  it("anche in pila, quello che non entra va in «Altro» e la voce accesa resta", () => {
+  it("stringendo ancora resta in riga con la sola voce accesa e «Altro»", () => {
     const d = disponiFila({ ...base, spazio: 340, attiva: 7 });
-    expect(d.forma).toBe("pila");
-    expect(d.visibili.length).toBeLessThan(9);
-    expect(d.visibili.at(-1)).toBe(7);
-    const usato = d.visibili.reduce((a, i) => a + larghezze.pila[i] + 4, 0) + altro.pila + 10;
+    expect(d).toEqual({ forma: "riga", visibili: [7] });
+    const usato = d.visibili.reduce((a, i) => a + riga[i] + 4, 0) + altro.riga + 10;
     expect(usato).toBeLessThanOrEqual(340);
+  });
+
+  it("passa alla pila solo se in riga non entra nemmeno la voce accesa con «Altro»", () => {
+    const d = disponiFila({ ...base, spazio: 200, attiva: 7 });
+    expect(d.forma).toBe("pila");
+    expect(d.visibili).toContain(7);
   });
 
   it("senza voce accesa (una pagina del profilo) prende semplicemente le prime", () => {
@@ -68,15 +71,15 @@ describe("La fila della barra si adatta allo spazio che ha", () => {
     expect(d.visibili).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
-  it("con poche voci il minimo in riga è quante sono: meglio tutte in pila che una sola in riga", () => {
+  it("con poche voci, quelle che non entrano vanno in «Altro» invece di rimpicciolire", () => {
     const poche: Record<Forma, number[]> = {
       ampia: [127, 109, 137],
       riga: [123, 105, 133],
       pila: [64, 52, 50],
     };
     expect(disponiFila({ ...base, larghezze: poche, spazio: 300 })).toEqual({
-      forma: "pila",
-      visibili: [0, 1, 2],
+      forma: "riga",
+      visibili: [0],
     });
     expect(disponiFila({ ...base, larghezze: poche, spazio: 380 }).forma).toBe("riga");
   });

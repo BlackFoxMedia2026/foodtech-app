@@ -134,12 +134,12 @@ export function useFilaAdattiva({
 
   /*
     Prima della misura — cioè nell'HTML che arriva dal server — la fila non sa
-    quanto spazio ha: tutto nella forma più compatta, e chi la disegna taglia
+    quanto spazio ha: tutto in riga, la forma che avrà quasi sempre, e chi la disegna taglia
     quello che sborda (`misurata` falso) invece di lasciarlo scivolare sotto
     l'agente. Per un istante si può perdere l'ultima voce, non si può coprire
     un pulsante.
   */
-  const forma: Forma = disposizione?.forma ?? "pila";
+  const forma: Forma = disposizione?.forma ?? "riga";
   const visibili = disposizione ? disposizione.visibili : chiavi.map((_, i) => i);
 
   return {

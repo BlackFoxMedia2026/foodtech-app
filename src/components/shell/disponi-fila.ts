@@ -11,9 +11,9 @@
  * 1. **ampia** — tutte le voci col nome intero e il respiro pieno;
  * 2. **riga** — tutte le voci, con meno spazio fra icona e bordo;
  * 3. **riga con «Altro»** — il nome resta intero, le ultime voci passano nel
- *    menu. Vale finché in riga ne restano almeno `minimoInRiga`;
- * 4. **pila** — il nome sotto l'icona, come nella barra del telefono, e
- *    quello che non entra ancora in «Altro».
+ *    menu, fino a lasciarne in riga una sola (la accesa);
+ * 4. **pila** — solo come ultima risorsa, se nemmeno quella entra: il nome
+ *    sotto l'icona, e quello che non entra ancora in «Altro».
  *
  * Il testo non si accorcia mai oltre la forma della pila: prima di comprimere
  * una parola si sposta una voce.
@@ -40,11 +40,12 @@ export function disponiFila({
   attiva,
   gap,
   cornice,
-  // Quattro e non cinque: con cinque, Servizio e Prenotazioni — che a
-  // sinistra hanno un titolo più largo — passavano alla pila a 1340 px mentre
-  // le altre pagine restavano in riga, e la barra cambiava forma cambiando
-  // pagina.
-  minimoInRiga = 4,
+  // Una: le voci restano della loro grandezza e quelle che non entrano vanno
+  // in «Altro», anche se in riga ne resta una sola. La pila col nome sotto
+  // l'icona rimpiccioliva tutta la barra appena la finestra si stringeva, ed
+  // è stata scartata (12 nov 2026): resta solo se in riga non entra nemmeno
+  // la voce accesa con «Altro».
+  minimoInRiga = 1,
 }: {
   /** La larghezza a disposizione della fila, cornice compresa. */
   spazio: number;
@@ -71,7 +72,9 @@ export function disponiFila({
   if (intera("riga")) return { forma: "riga", visibili: tutte };
 
   const riga = conAltro(larghezze.riga, altro.riga, spazio, cornice, gap, attiva);
-  if (riga.length >= Math.min(minimoInRiga, n)) return { forma: "riga", visibili: riga };
+  const rigaSta =
+    cornice + altro.riga + riga.reduce((a, i) => a + larghezze.riga[i] + gap, 0) <= spazio;
+  if (riga.length >= Math.min(minimoInRiga, n) && rigaSta) return { forma: "riga", visibili: riga };
 
   if (intera("pila")) return { forma: "pila", visibili: tutte };
   return {

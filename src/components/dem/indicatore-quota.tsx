@@ -33,15 +33,15 @@ export function IndicatoreQuota({
     <Link
       href="/settings/marketing/piano"
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+        "inline-flex h-9 items-center gap-2 rounded-full border px-4 text-sm transition-colors",
         esaurita || sospeso
           ? "border-destructive/50 bg-destructive/20 text-ink hover:bg-destructive/25"
           : agliSgoccioli
             ? "border-accent/60 bg-accent/30 text-ink hover:bg-accent/40"
-            : "border-border text-muted-foreground hover:bg-white/5 hover:text-foreground",
+            : "border-primary/15 bg-white text-primary hover:bg-white/85",
       )}
     >
-      <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span className="tabular-nums">
         {sospeso
           ? "Invii sospesi"
