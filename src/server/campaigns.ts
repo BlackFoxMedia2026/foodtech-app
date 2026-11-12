@@ -167,6 +167,10 @@ export async function listNewsletterSources(
       channel: "EMAIL",
       contentBlocks: { not: Prisma.DbNull },
       deletedAt: null,
+      // Solo bozze mai partite: le campagne inviate stanno nell'elenco
+      // Campagne, col loro storico; qui si riprende il lavoro lasciato a metà.
+      status: "DRAFT",
+      sentCount: 0,
       ...(excludeId ? { id: { not: excludeId } } : {}),
     },
     orderBy: { createdAt: "desc" },

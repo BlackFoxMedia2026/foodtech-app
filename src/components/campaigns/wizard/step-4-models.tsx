@@ -403,7 +403,7 @@ export function Step4Models({ onAvanti }: StepProps) {
         <div>
           <h2 className="text-display text-2xl">Da dove vuoi partire?</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Riprendi una newsletter già creata, scegli un modello oppure parti da zero.
+            Riprendi una bozza, scegli un modello oppure parti da zero.
           </p>
         </div>
         {/* Bianco pieno e non trasparente: sul fondo caldo della pagina un
@@ -472,7 +472,7 @@ export function Step4Models({ onAvanti }: StepProps) {
       )}
 
       <Sezione
-        titolo="Newsletter precedenti"
+        titolo="Le tue bozze"
         azione={
           newsletter.length > NEWSLETTER_IN_VETRINA && (
             <button
@@ -491,7 +491,7 @@ export function Step4Models({ onAvanti }: StepProps) {
           <div className="riquadro tratteggiato flex items-center gap-3 px-4 py-3.5 text-sm text-muted-foreground">
             <Mail className="h-4 w-4 shrink-0 text-tertiary-foreground" aria-hidden="true" />
             <span>
-              Non hai ancora newsletter da riprendere. Le campagne che crei compariranno qui, pronte da riusare.
+              Nessuna bozza salvata. Le campagne che prepari e non invii compariranno qui, pronte da riprendere.
             </span>
           </div>
         ) : (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ComponentType } from "react";
-import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, Loader2, Pencil, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -166,7 +165,6 @@ function NomeCampagna({ compatto }: { compatto: boolean }) {
 function WizardShell() {
   const state = useWizardState();
   const dispatch = useWizardDispatch();
-  const router = useRouter();
   const [localError, setLocalError] = useState<string | null>(null);
   const StepComponent = STEP_COMPONENTS[state.step];
 
@@ -182,7 +180,11 @@ function WizardShell() {
       if (!payload.name) return; // niente da creare ancora
       const created = await createCampaignDraft({ ...payload, name: payload.name });
       dispatch({ type: "SET_CAMPAIGN_ID", campaignId: created.id });
-      router.replace(`/campaigns/${created.id}/edit`);
+      /* Solo l'indirizzo, non la pagina: `router.replace` portava su
+         /campaigns/[id]/edit, che rimonta il wizard da capo — e «Avanti»
+         sull'obiettivo riportava all'obiettivo. Next 14 tiene allineato il
+         router con `history.replaceState`; un ricaricamento ritrova la bozza. */
+      window.history.replaceState(null, "", `/campaigns/${created.id}/edit`);
       return created.id;
     }
     await patchCampaignDraft(stateToPersist.campaignId, payload);
