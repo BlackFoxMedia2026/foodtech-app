@@ -31,33 +31,32 @@ import type { CouponView } from "@/server/coupons";
 
 type Tipo = "PERCENT" | "FIXED" | "FREE_ITEM" | "MENU_OFFER";
 
-const TIPI: { value: Tipo; label: string; nota: string; icona: LucideIcon }[] =
-  [
-    {
-      value: "PERCENT",
-      label: "Percentuale",
-      nota: "Es. il 10% sul conto",
-      icona: Percent,
-    },
-    {
-      value: "FIXED",
-      label: "Sconto in euro",
-      nota: "Es. 15 € in meno",
-      icona: Euro,
-    },
-    {
-      value: "FREE_ITEM",
-      label: "Un omaggio",
-      nota: "Es. il dolce, un calice",
-      icona: Gift,
-    },
-    {
-      value: "MENU_OFFER",
-      label: "Offerta dedicata",
-      nota: "Es. menù a prezzo fisso",
-      icona: UtensilsCrossed,
-    },
-  ];
+const TIPI: { value: Tipo; label: string; nota: string; icona: LucideIcon }[] = [
+  {
+    value: "PERCENT",
+    label: "Percentuale",
+    nota: "Es. il 10% sul conto",
+    icona: Percent,
+  },
+  {
+    value: "FIXED",
+    label: "Sconto in euro",
+    nota: "Es. 15 € in meno",
+    icona: Euro,
+  },
+  {
+    value: "FREE_ITEM",
+    label: "Un omaggio",
+    nota: "Es. il dolce, un calice",
+    icona: Gift,
+  },
+  {
+    value: "MENU_OFFER",
+    label: "Offerta dedicata",
+    nota: "Es. menù a prezzo fisso",
+    icona: UtensilsCrossed,
+  },
+];
 
 const PASSI = [
   { id: "cosa", label: "Cosa dà" },
@@ -65,22 +64,10 @@ const PASSI = [
   { id: "quando", label: "Quando vale" },
 ];
 
-const DOMANDE = [
-  "Che cosa regala il coupon?",
-  "Come lo chiamiamo?",
-  "Quando si può usare?",
-];
+const DOMANDE = ["Che cosa regala il coupon?", "Come lo chiamiamo?", "Quando si può usare?"];
 
 const GIORNI_BREVI = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"];
-const GIORNI = [
-  "domenica",
-  "lunedì",
-  "martedì",
-  "mercoledì",
-  "giovedì",
-  "venerdì",
-  "sabato",
-];
+const GIORNI = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 
 /**
  * Creare un coupon, in tre passi.
@@ -135,29 +122,19 @@ export function CouponDialog({
   const [description, setDescription] = useState(d?.description ?? "");
   const [kind, setKind] = useState<Tipo>((d?.kind as Tipo) ?? "PERCENT");
   const [valore, setValore] = useState(
-    d == null
-      ? "10"
-      : d.kind === "FIXED"
-        ? (d.value / 100).toFixed(2).replace(".", ",")
-        : String(d.value),
+    d == null ? "10" : d.kind === "FIXED" ? (d.value / 100).toFixed(2).replace(".", ",") : String(d.value),
   );
   const [freeItem, setFreeItem] = useState(d?.freeItem ?? "");
   const [code, setCode] = useState("");
-  const [validUntil, setValidUntil] = useState(
-    d?.validUntil ? isoGiorno(new Date(d.validUntil)) : "",
-  );
+  const [validUntil, setValidUntil] = useState(d?.validUntil ? isoGiorno(new Date(d.validUntil)) : "");
   const [maxRedemptions, setMaxRedemptions] = useState(
     d?.maxRedemptions != null ? String(d.maxRedemptions) : "",
   );
   const [maxPerGuest, setMaxPerGuest] = useState(String(d?.maxPerGuest ?? 1));
   const [minSpend, setMinSpend] = useState(
-    d?.minSpendCents != null
-      ? (d.minSpendCents / 100).toFixed(2).replace(".", ",")
-      : "",
+    d?.minSpendCents != null ? (d.minSpendCents / 100).toFixed(2).replace(".", ",") : "",
   );
-  const [giorni, setGiorni] = useState<number[]>(
-    d ? (d.validWeekdays ?? []) : giorniIniziali,
-  );
+  const [giorni, setGiorni] = useState<number[]>(d ? (d.validWeekdays ?? []) : giorniIniziali);
   const [inCorso, setInCorso] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -206,23 +183,15 @@ export function CouponDialog({
         name,
         description: description.trim() || null,
         kind,
-        ...(conValore
-          ? { value: kind === "PERCENT" ? numero : Math.round(numero * 100) }
-          : {}),
+        ...(conValore ? { value: kind === "PERCENT" ? numero : Math.round(numero * 100) } : {}),
         ...(conOmaggio ? { freeItem: freeItem.trim() } : {}),
         ...(code.trim() ? { code: code.trim() } : {}),
-        ...(validUntil
-          ? { validUntil: new Date(validUntil).toISOString() }
-          : {}),
-        ...(maxRedemptions.trim()
-          ? { maxRedemptions: Number(maxRedemptions) }
-          : {}),
+        ...(validUntil ? { validUntil: new Date(validUntil).toISOString() } : {}),
+        ...(maxRedemptions.trim() ? { maxRedemptions: Number(maxRedemptions) } : {}),
         maxPerGuest: Number(maxPerGuest) || 1,
         ...(minSpend.trim()
           ? {
-              minSpendCents: Math.round(
-                Number(minSpend.replace(",", ".")) * 100,
-              ),
+              minSpendCents: Math.round(Number(minSpend.replace(",", ".")) * 100),
             }
           : {}),
         ...(giorni.length > 0 ? { validWeekdays: giorni } : {}),
@@ -231,9 +200,7 @@ export function CouponDialog({
 
     setInCorso(false);
     if (!res.ok) {
-      setError(
-        await readApiError(res, "Non siamo riusciti a creare il coupon."),
-      );
+      setError(await readApiError(res, "Non siamo riusciti a creare il coupon."));
       return;
     }
     onOpenChange(false);
@@ -297,9 +264,7 @@ export function CouponDialog({
       <DialogContent className="gap-0 p-0 sm:max-w-4xl md:grid-cols-[18rem_minmax(0,1fr)]">
         <aside className="flex flex-col gap-6 border-b border-border bg-[#c9a96a]/[0.07] p-6 md:border-b-0 md:border-r md:p-7">
           <DialogHeader>
-            <DialogTitle>
-              {d ? `Duplica «${d.name}»` : "Nuovo coupon"}
-            </DialogTitle>
+            <DialogTitle>{d ? `Duplica «${d.name}»` : "Nuovo coupon"}</DialogTitle>
             <DialogDescription>
               {d
                 ? "Le condizioni sono quelle dell'originale. Il codice sarà nuovo."
@@ -343,27 +308,18 @@ export function CouponDialog({
                     <span
                       className={cn(
                         "grid h-[1.625rem] w-[1.625rem] shrink-0 place-items-center rounded-full border text-xs font-semibold transition-colors",
-                        corrente &&
-                          "border-primary bg-primary text-primary-foreground",
+                        corrente && "border-primary bg-primary text-primary-foreground",
                         fatto && "border-primary/50 text-primary",
-                        !corrente &&
-                          !fatto &&
-                          "border-border text-muted-foreground",
+                        !corrente && !fatto && "border-border text-muted-foreground",
                       )}
                     >
-                      {fatto ? (
-                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                      ) : (
-                        i + 1
-                      )}
+                      {fatto ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : i + 1}
                     </span>
                     <span className="min-w-0 pt-0.5">
                       <span
                         className={cn(
                           "block text-sm font-semibold leading-snug",
-                          corrente
-                            ? "text-foreground"
-                            : "text-muted-foreground",
+                          corrente ? "text-foreground" : "text-muted-foreground",
                         )}
                       >
                         {p.label}
@@ -432,12 +388,8 @@ export function CouponDialog({
                             <Icona className="h-4 w-4" aria-hidden="true" />
                           </span>
                           <span className="min-w-0">
-                            <span className="block text-sm font-semibold text-foreground">
-                              {t.label}
-                            </span>
-                            <span className="block truncate text-xs text-tertiary-foreground">
-                              {t.nota}
-                            </span>
+                            <span className="block text-sm font-semibold text-foreground">{t.label}</span>
+                            <span className="block truncate text-xs text-tertiary-foreground">{t.nota}</span>
                           </span>
                         </button>
                       );
@@ -454,9 +406,7 @@ export function CouponDialog({
                 <div className="rounded-xl border border-border bg-veil-6 p-5">
                   {conValore ? (
                     <>
-                      <Label htmlFor="c-valore">
-                        {kind === "PERCENT" ? "Quanto sconto" : "Quanti euro"}
-                      </Label>
+                      <Label htmlFor="c-valore">{kind === "PERCENT" ? "Quanto sconto" : "Quanti euro"}</Label>
                       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-3">
                         <div className="relative w-36 shrink-0">
                           <Input
@@ -473,14 +423,9 @@ export function CouponDialog({
                           </span>
                         </div>
                         <Rapide
-                          voci={(kind === "PERCENT"
-                            ? [5, 10, 15, 20, 25]
-                            : [5, 10, 15, 20, 30]
-                          ).map(String)}
+                          voci={(kind === "PERCENT" ? [5, 10, 15, 20, 25] : [5, 10, 15, 20, 30]).map(String)}
                           attiva={valore.replace(",", ".")}
-                          etichetta={(v) =>
-                            kind === "PERCENT" ? `${v}%` : `${v} €`
-                          }
+                          etichetta={(v) => (kind === "PERCENT" ? `${v}%` : `${v} €`)}
                           onScegli={setValore}
                         />
                       </div>
@@ -488,9 +433,7 @@ export function CouponDialog({
                   ) : (
                     <>
                       <Label htmlFor="c-omaggio">
-                        {kind === "FREE_ITEM"
-                          ? "Cosa si offre"
-                          : "Cosa comprende l'offerta"}
+                        {kind === "FREE_ITEM" ? "Cosa si offre" : "Cosa comprende l'offerta"}
                       </Label>
                       <Input
                         id="c-omaggio"
@@ -508,17 +451,8 @@ export function CouponDialog({
                         className="mt-3"
                         voci={
                           kind === "FREE_ITEM"
-                            ? [
-                                "Il dolce",
-                                "Un calice di bollicine",
-                                "Il caffè",
-                                "L'antipasto",
-                              ]
-                            : [
-                                "Menù degustazione",
-                                "Menù del giorno",
-                                "Aperitivo",
-                              ]
+                            ? ["Il dolce", "Un calice di bollicine", "Il caffè", "L'antipasto"]
+                            : ["Menù degustazione", "Menù del giorno", "Aperitivo"]
                         }
                         attiva={freeItem}
                         onScegli={setFreeItem}
@@ -558,8 +492,8 @@ export function CouponDialog({
                       className="font-mono tracking-[0.06em] placeholder:font-sans placeholder:tracking-normal"
                     />
                     <p className="t-nota">
-                      Facoltativo. Se lo lasci vuoto ne creiamo uno senza
-                      lettere che si confondono al telefono.
+                      Facoltativo. Se lo lasci vuoto ne creiamo uno senza lettere che si confondono al
+                      telefono.
                     </p>
                   </div>
 
@@ -590,9 +524,7 @@ export function CouponDialog({
                       value={validUntil}
                       onChange={(e) => setValidUntil(e.target.value)}
                     />
-                    <p className="t-nota">
-                      {validUntil ? "" : "Vuoto: non scade."}
-                    </p>
+                    <p className="t-nota">{validUntil ? "" : "Vuoto: non scade."}</p>
                   </div>
 
                   {/* Senza questa, un coupon nato per riempire il martedì viene
@@ -610,9 +542,7 @@ export function CouponDialog({
                             aria-label={GIORNI[i]}
                             onClick={() =>
                               setGiorni((prima) =>
-                                prima.includes(i)
-                                  ? prima.filter((x) => x !== i)
-                                  : [...prima, i],
+                                prima.includes(i) ? prima.filter((x) => x !== i) : [...prima, i],
                               )
                             }
                             className={cn(
@@ -629,9 +559,7 @@ export function CouponDialog({
                       })}
                     </div>
                     <p className="t-nota">
-                      {giorni.length === 0
-                        ? "Nessuno scelto: vale tutti i giorni."
-                        : `Vale ${giorniTesto}.`}
+                      {giorni.length === 0 ? "Nessuno scelto: vale tutti i giorni." : `Vale ${giorniTesto}.`}
                     </p>
                   </div>
                 </div>
@@ -679,15 +607,11 @@ export function CouponDialog({
 
           {/* Sul telefono l'anteprima non c'è: resta il riassunto in una riga. */}
           <p className="mt-5 flex flex-wrap items-baseline gap-x-1.5 border-t border-border pt-3 text-xs text-tertiary-foreground md:hidden">
-            <span className="font-medium text-foreground">
-              {name.trim() || "Senza nome"}
-            </span>
+            <span className="font-medium text-foreground">{name.trim() || "Senza nome"}</span>
             {beneficio && (
               <>
                 <span aria-hidden="true">·</span>
-                <span className="font-medium text-accent-strong">
-                  {beneficio}
-                </span>
+                <span className="font-medium text-accent-strong">{beneficio}</span>
               </>
             )}
             <span aria-hidden="true">·</span>
@@ -696,10 +620,7 @@ export function CouponDialog({
 
           {(error || bloccato) && (
             <p
-              className={cn(
-                "mt-4 text-sm",
-                error ? "text-destructive" : "text-muted-foreground",
-              )}
+              className={cn("mt-4 text-sm", error ? "text-destructive" : "text-muted-foreground")}
               role={error ? "alert" : undefined}
             >
               {error ?? bloccato}
@@ -708,29 +629,15 @@ export function CouponDialog({
 
           <DialogFooter className="mt-6 border-t border-border pt-5 sm:justify-between">
             {passo === 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-                disabled={inCorso}
-              >
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={inCorso}>
                 Annulla
               </Button>
             ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => vaiA(passo - 1)}
-                disabled={inCorso}
-              >
+              <Button type="button" variant="ghost" onClick={() => vaiA(passo - 1)} disabled={inCorso}>
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Indietro
               </Button>
             )}
-            <Button
-              type="submit"
-              variant={ultimo ? "accent" : "default"}
-              disabled={inCorso || !!bloccato}
-            >
+            <Button type="submit" variant={ultimo ? "accent" : "default"} disabled={inCorso || !!bloccato}>
               {ultimo ? (
                 inCorso ? (
                   "Creo…"

@@ -2053,6 +2053,73 @@
     }
   }
 
+  /*
+   * Lo stesso biglietto, nel pannello del coupon: orizzontale come la scheda
+   * dell'elenco, con la matrice a destra larga `--matrice`. La maschera sta
+   * su un figlio (`::before` non basta: il contenuto andrebbe sopra i buchi),
+   * quindi l'involucro porta l'ombra e il corpo porta la sagoma.
+   */
+  .biglietto-orizzontale {
+    --tacca: 9px;
+    --matrice: 14.5rem;
+    position: relative;
+    isolation: isolate;
+    filter: drop-shadow(0 1px 1px rgba(16, 32, 26, 0.06)) drop-shadow(0 10px 16px rgba(16, 32, 26, 0.11));
+  }
+  .biglietto-orizzontale::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: 18px;
+    background:
+      linear-gradient(90deg, transparent calc(100% - var(--matrice)), rgba(201, 169, 106, 0.13) 0),
+      var(--card-fill);
+    box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.85);
+    -webkit-mask:
+      radial-gradient(circle var(--tacca) at calc(100% - var(--matrice)) 0, #0000 calc(100% - 0.5px), #000 100%),
+      radial-gradient(circle var(--tacca) at calc(100% - var(--matrice)) 100%, #0000 calc(100% - 0.5px), #000 100%);
+    -webkit-mask-composite: source-in;
+    mask:
+      radial-gradient(circle var(--tacca) at calc(100% - var(--matrice)) 0, #0000 calc(100% - 0.5px), #000 100%),
+      radial-gradient(circle var(--tacca) at calc(100% - var(--matrice)) 100%, #0000 calc(100% - 0.5px), #000 100%);
+    mask-composite: intersect;
+  }
+  /* Niente fondo al passaggio: la matrice non è mascherata e coprirebbe le
+     tacche. Al passaggio si accende il tondo della copia. */
+  .biglietto-matrice {
+    border-radius: 0 18px 18px 0;
+  }
+
+  /*
+   * Una pillola di comando in rilievo: carta chiara, filo caldo, ombra corta.
+   *
+   * I comandi del pannello del coupon erano `outline`: sul vetro il loro bordo
+   * al 40% spariva, e restavano due scritte sospese. Qui hanno un corpo — la
+   * stessa luce dall'alto delle carte — e si leggono come pulsanti.
+   */
+  .pillola-comando {
+    border: 1px solid rgba(170, 155, 120, 0.5);
+    background-image: linear-gradient(180deg, #fffefb 0%, #f4eee2 100%);
+    color: hsl(var(--card-foreground));
+    font-weight: 500;
+    box-shadow:
+      inset 0 1px 0 #ffffff,
+      0 1px 1px rgba(120, 105, 70, 0.12),
+      0 4px 10px -4px rgba(110, 95, 60, 0.3);
+    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  }
+  .pillola-comando:hover:not(:disabled) {
+    border-color: rgba(120, 105, 70, 0.6);
+    box-shadow:
+      inset 0 1px 0 #ffffff,
+      0 1px 1px rgba(120, 105, 70, 0.14),
+      0 6px 14px -5px rgba(110, 95, 60, 0.38);
+  }
+  .pillola-comando:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
   /* Hides the scrollbar on the horizontally-scrolling top nav without
      hiding the ability to scroll (wheel/touch/keyboard still work). */
   .nav-scroll {

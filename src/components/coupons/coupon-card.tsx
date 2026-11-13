@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { categoriaDi, condizioniDi, statoDi } from "@/lib/coupon-vista";
+import { categoriaDi, condizioniDi, misuraCodice, statoDi } from "@/lib/coupon-vista";
 import { cn } from "@/lib/utils";
 import type { CouponView } from "@/server/coupons";
 
@@ -104,9 +104,7 @@ export function CouponCard({
             </span>
           </button>
           {/* L'unica cosa colorata: fra undici coupon si cerca «chi fa il 20%». */}
-          <p className="mt-0.5 text-sm font-medium leading-snug text-accent-strong">
-            {c.descrizione}
-          </p>
+          <p className="mt-0.5 text-sm font-medium leading-snug text-accent-strong">{c.descrizione}</p>
           {condizioni.length > 0 && (
             /*
               Testo che va a capo, non caselle affiancate: il separatore sta
@@ -300,7 +298,10 @@ function Tagliando({ codice }: { codice: string }) {
           aria-hidden="true"
         />
       </span>
-      <span className="break-all font-mono text-[1.1875rem] font-medium leading-tight tracking-[0.06em] text-primary">
+      <span
+        className="whitespace-nowrap font-mono font-medium leading-tight tracking-[0.06em] text-primary"
+        style={{ fontSize: misuraCodice(codice, 196, 19) }}
+      >
         {codice}
       </span>
       <span className="sr-only" aria-live="polite">

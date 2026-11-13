@@ -245,3 +245,26 @@ export function corrisponde(c: CouponView, query: string): boolean {
     c.descrizione.toLowerCase().includes(q)
   );
 }
+
+/**
+ * La misura del codice perché stia **sempre su una riga**.
+ *
+ * Un codice che va a capo («COMPLEANNO-KP / Y8») non si detta più: sembra
+ * due codici. Con un carattere monospaziato ogni lettera occupa circa 0,6 em,
+ * più la spaziatura di 0,06 em; da lì la misura che fa entrare tutti i
+ * caratteri nella larghezza data, senza superare quella di partenza. I codici
+ * arrivano al massimo a 24 caratteri (lo schema di riscatto), quindi il caso
+ * peggiore resta leggibile.
+ */
+export function misuraCodice(
+  codice: string,
+  larghezzaPx: number,
+  massimoPx: number,
+): string {
+  const perCarattere = 0.66;
+  const px = Math.min(
+    massimoPx,
+    larghezzaPx / (Math.max(codice.length, 1) * perCarattere),
+  );
+  return `${Math.max(10, Math.floor(px * 10) / 10)}px`;
+}
