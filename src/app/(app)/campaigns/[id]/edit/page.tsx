@@ -39,6 +39,13 @@ export default async function EditCampaignPage({ params }: { params: { id: strin
   // Gli invii che restano: servono alla colonna dei destinatari per dire
   // quanto costa questa campagna prima che qualcuno prema «invia».
   const quota = await statoConsumo(ctx.venueId);
+
+  /* Dove ci si era fermati, dedotto da ciò che la bozza ha salvato: nome e
+     gruppo si salvano da «Obiettivo», il contenuto da «Modelli» in poi, il
+     testo d'anteprima solo dal passo «Anteprima». «Continua» riprende da lì,
+     non dall'obiettivo: gli altri passi restano raggiungibili dallo stepper. */
+  const conContenuto = hasSubstantiveContent(documento.blocks);
+  const passoRaggiunto = conContenuto ? (campaign.previewText?.trim() ? 4 : 3) : 1;
   // Il cestino del passo «Modelli»: le bozze eliminate, da cui si recupera.
   const cestino = await bozzeNelCestino(ctx.venueId);
 
@@ -55,12 +62,8 @@ export default async function EditCampaignPage({ params }: { params: { id: strin
         previousCampaigns,
         cestino,
         modelliNascosti: ctx.venue.hiddenCampaignTemplates ?? [],
-        // Si riprende da «Obiettivo»: è lì che ora stanno nome e gruppo di
-        // clienti, cioè quanto una bozza ha già di sicuro. Il contenuto si
-        // salva solo da «Modelli» in poi: se c'è, quel passo è già superato e
-        // l'email scelta allora non va scelta di nuovo.
-        step: 0,
-        furthestStep: hasSubstantiveContent(documento.blocks) ? 3 : 1,
+        step: passoRaggiunto,
+        furthestStep: passoRaggiunto,
         senderName: process.env.BREVO_FROM_NAME || "Tavolo",
         senderEmail: process.env.BREVO_FROM_EMAIL || "marketing@tavolo.local",
         brandLogoUrl: ctx.venue.brandLogoUrl ?? "",

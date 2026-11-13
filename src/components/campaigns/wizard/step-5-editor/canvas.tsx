@@ -58,6 +58,9 @@ function EmptyColumnDrop({ target, dragging }: { target: DropTarget; dragging: b
   );
 }
 
+/** I blocchi che, selezionati, aprono la barra del testo sopra di sé. */
+export const TIPI_CON_BARRA_TESTO: Block["type"][] = ["text", "title", "button_cta"];
+
 /* ------------------------------------------------------------------ *
  * Il blocco con i suoi comandi
  * ------------------------------------------------------------------ */
@@ -78,6 +81,10 @@ function BlockChrome({
   children: React.ReactNode;
 }) {
   const locked = block.type === "unsubscribe_link";
+  /* Sopra un blocco di testo selezionato si apre la barra del testo, che è
+     in primo piano: i comandi lì sotto restavano coperti e «Elimina» non si
+     poteva cliccare. Per questi blocchi stanno sotto il bordo inferiore. */
+  const comandiSotto = TIPI_CON_BARRA_TESTO.includes(block.type);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: block.id,
     data: { kind: "move", blockId: block.id },
@@ -102,7 +109,9 @@ function BlockChrome({
           pulsanti invece di un'anteprima dell'email. */}
       <div
         className={cn(
-          "absolute -top-[30px] right-0 z-20 flex items-center gap-0.5 rounded-md border border-border-strong bg-card p-0.5 shadow-lg transition-opacity",
+          "absolute right-0 z-20 flex",
+          comandiSotto ? "-bottom-[30px]" : "-top-[30px]",
+          "flex items-center gap-0.5 rounded-md border border-border-strong bg-card p-0.5 shadow-lg transition-opacity",
           selected ? "opacity-100" : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
         )}
       >

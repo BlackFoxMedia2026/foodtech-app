@@ -185,9 +185,25 @@ function CardCampagna({ c, html, quando }: { c: CampaignWithResults; html: strin
        oggetto va su due righe. */
     <Link
       href={href}
-      className="group block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group relative block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <article className="surface flex h-full flex-col overflow-hidden rounded-2xl p-0 transition-[transform,box-shadow] duration-200 motion-safe:group-hover:-translate-y-0.5 group-hover:shadow-lg">
+      {/* La bozza è l'unica scheda su cui c'è ancora da fare: un alone d'oro
+          dietro e un rilievo più alto la staccano dalle inviate, che sono
+          archivio. Eccezione voluta alla lastra di DESIGN.md §4. */}
+      {bozza && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-3 rounded-[1.75rem] bg-[radial-gradient(ellipse_at_center,#e2bf6d80_0%,#c9a25a40_45%,transparent_75%)] opacity-80 blur-xl transition-opacity duration-300 group-hover:opacity-100"
+        />
+      )}
+      <article
+        className={cn(
+          "surface relative flex h-full flex-col overflow-hidden rounded-2xl p-0 transition-[transform,box-shadow] duration-200",
+          bozza
+            ? "-translate-y-1 border-[#d9b874] shadow-[inset_0_1px_0_#ffffff,inset_0_-1px_0_#efe2c2,0_2px_3px_#b08c4a4d,0_24px_44px_-16px_#9a7a3080] motion-safe:group-hover:-translate-y-1.5"
+            : "motion-safe:group-hover:-translate-y-0.5 group-hover:shadow-lg",
+        )}
+      >
         {/* L'email in miniatura, con canale e stato sopra: si legge prima
             di tutto il resto. Senza contenuto, un riquadro che lo dice. */}
         <div className="relative">
@@ -239,7 +255,9 @@ function CardCampagna({ c, html, quando }: { c: CampaignWithResults; html: strin
                 {bozza ? "Non ancora inviata: i risultati arriveranno qui." : "In attesa dei primi numeri dal fornitore."}
               </p>
               {bozza && (
-                <span className="shrink-0 text-sm font-medium text-primary group-hover:underline">Continua</span>
+                <span className="shrink-0 rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors group-hover:bg-primary/90">
+                  Continua
+                </span>
               )}
             </div>
           )}

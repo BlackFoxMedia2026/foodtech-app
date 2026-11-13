@@ -32,7 +32,7 @@ import { newId } from "@/lib/campaign-document-ops";
 import { cn } from "@/lib/utils";
 import { useWizardDispatch, useWizardState } from "../wizard-context";
 import { BLOCK_TYPE_LABELS, LIBRARY_BY_ID, type BlockDefaults } from "./block-library";
-import { Canvas } from "./canvas";
+import { Canvas, TIPI_CON_BARRA_TESTO } from "./canvas";
 import { EditorProvider, useEditor } from "./editor-context";
 import { Inspector } from "./inspector";
 import { LibraryPanel } from "./library-panel";
@@ -44,7 +44,7 @@ const MOBILE_WIDTH = 390;
 const AUTOSAVE_DELAY_MS = 1200;
 
 /** I blocchi su cui la barra del testo ha senso. */
-const TEXTUAL_TYPES: Block["type"][] = ["text", "title", "button_cta"];
+const TEXTUAL_TYPES = TIPI_CON_BARRA_TESTO;
 
 function Workspace() {
   const wizard = useWizardState();
