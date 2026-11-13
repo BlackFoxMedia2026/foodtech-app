@@ -39,6 +39,8 @@ export type AuditAction =
   | "guest.anonymize"
   | "guest.export"
   | "guest.merge"
+  /** Destinatari caricati da file in una campagna, con consenso dichiarato. */
+  | "campaign.import_contacts"
   | "order.open"
   | "order.line_add"
   | "order.line_update"

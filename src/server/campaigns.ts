@@ -94,6 +94,13 @@ export const SegmentFilter = z.object({
   hasFutureBooking: z.boolean().optional(),
   noFutureBooking: z.boolean().optional(),
   hadCancelledBooking: z.boolean().optional(),
+  /**
+   * Clienti aggiunti a mano da un file nel passo «Destinatari»: si sommano a
+   * chi passa i filtri, non li attraversano. Il consenso resta un vincolo
+   * anche per loro (vedi `resolveSegment`): l'importazione lo registra solo
+   * dietro la dichiarazione del locale, vedi `server/campaign-contatti.ts`.
+   */
+  extraGuestIds: z.array(z.string().min(1).max(40)).max(5000).optional(),
 });
 export type SegmentFilterType = z.infer<typeof SegmentFilter>;
 
@@ -483,6 +490,11 @@ function buildSegmentWhere(venueId: string, segment: SegmentFilterType): Prisma.
   if (and.length > 0) {
     where.AND = and;
   }
+  if (segment.extraGuestIds && segment.extraGuestIds.length > 0) {
+    // Chi passa i filtri **oppure** chi è stato aggiunto dal file; il locale
+    // resta un vincolo su entrambi i rami.
+    return { venueId, OR: [where, { id: { in: segment.extraGuestIds } }] };
+  }
   return where;
 }
 
@@ -490,13 +502,15 @@ function buildSegmentWhere(venueId: string, segment: SegmentFilterType): Prisma.
  * come filtro finale in JS sui risultati già ridotti dagli altri filtri — corretto e
  * semplice ai volumi di guest per-venue di questo SaaS (a scale molto più grandi si
  * passerebbe a $queryRaw con EXTRACT(MONTH FROM birthday)). */
-function applyBirthdayThisMonthFilter<T extends { birthday: Date | null }>(
+function applyBirthdayThisMonthFilter<T extends { id: string; birthday: Date | null }>(
   guests: T[],
   segment: SegmentFilterType
 ): T[] {
   if (!segment.birthdayThisMonth) return guests;
   const currentMonth = new Date().getMonth();
-  return guests.filter((g) => g.birthday && g.birthday.getMonth() === currentMonth);
+  // Gli aggiunti dal file non passano dai filtri: nemmeno da questo.
+  const extra = new Set(segment.extraGuestIds ?? []);
+  return guests.filter((g) => extra.has(g.id) || (g.birthday && g.birthday.getMonth() === currentMonth));
 }
 
 /**
@@ -528,6 +542,8 @@ export interface SegmentPreviewResult {
   /** Lo stesso indirizzo su due schede cliente: una email sola. */
   duplicatesRemoved: number;
   finalRecipients: number;
+  /** Dei destinatari finali, quanti arrivano dal file e non dai filtri. */
+  fromFile: number;
 }
 
 /**
@@ -546,6 +562,13 @@ export interface SegmentPreviewResult {
  * È anche il preventivo: i destinatari finali sono gli invii che questa
  * campagna costerà.
  */
+/** Quanti dei destinatari stanno nel file (anche se passerebbero i filtri). */
+function contaDalFile(destinatari: { id: string }[], segment: SegmentFilterType): number {
+  if (!segment.extraGuestIds?.length) return 0;
+  const extra = new Set(segment.extraGuestIds);
+  return destinatari.filter((d) => extra.has(d.id)).length;
+}
+
 export async function previewSegment(venueId: string, segment: SegmentFilterType): Promise<SegmentPreviewResult> {
   const where = buildSegmentWhere(venueId, segment);
   const allMatching = applyBirthdayThisMonthFilter(
@@ -565,7 +588,97 @@ export async function previewSegment(venueId: string, segment: SegmentFilterType
     excludedSuppressed: esclusi.soppressi,
     duplicatesRemoved: esclusi.doppioni,
     finalRecipients: destinatari.length,
+    fromFile: contaDalFile(destinatari, segment),
   };
+}
+
+/** Una riga dell'elenco destinatari del passo «Invio». */
+export interface RigaDestinatario {
+  id: string;
+  nome: string;
+  email: string;
+  /** `file`: aggiunto da un CSV; `filtri`: scelto dal pubblico e dai filtri. */
+  origine: "file" | "filtri";
+  /** Ultima visita, già formattata; nulla se non è mai venuto. */
+  ultimaVisita: string | null;
+  /** Da quando è in rubrica, già formattata. */
+  inRubricaDal: string;
+}
+
+/**
+ * I destinatari veri della campagna, una pagina alla volta.
+ *
+ * Sono gli stessi di `previewSegment` — stessi filtri, stesse esclusioni
+ * (`eleggibili`): il numero in testa alla tabella e le righe non possono
+ * raccontare due cose diverse. La ricerca e la pagina si applicano dopo,
+ * sull'elenco già pulito.
+ */
+export async function elencoDestinatari(
+  venueId: string,
+  segment: SegmentFilterType,
+  { cerca = "", pagina = 1, perPagina = 25 }: { cerca?: string; pagina?: number; perPagina?: number } = {},
+): Promise<{ righe: RigaDestinatario[]; totale: number; trovati: number; pagina: number; pagine: number }> {
+  const where = buildSegmentWhere(venueId, segment);
+  const tutti = applyBirthdayThisMonthFilter(
+    await db.guest.findMany({
+      where,
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        marketingOptIn: true,
+        unsubscribedAt: true,
+        birthday: true,
+        lastVisitAt: true,
+        createdAt: true,
+      },
+    }),
+    segment,
+  );
+  const { destinatari } = await eleggibili(venueId, tutti);
+
+  const ago = cerca.trim().toLowerCase();
+  const trovati = ago
+    ? destinatari.filter((d) =>
+        [d.firstName, d.lastName, d.email].some((v) => v?.toLowerCase().includes(ago)),
+      )
+    : destinatari;
+  const pagine = Math.max(1, Math.ceil(trovati.length / perPagina));
+  const qui = Math.min(Math.max(1, pagina), pagine);
+  const extra = new Set(segment.extraGuestIds ?? []);
+  return {
+    righe: trovati.slice((qui - 1) * perPagina, qui * perPagina).map((d) => ({
+      id: d.id,
+      nome: [d.firstName, d.lastName].filter(Boolean).join(" "),
+      email: d.email ?? "",
+      origine: extra.has(d.id) ? "file" : "filtri",
+      ultimaVisita: d.lastVisitAt ? FORMATO_DATA.format(d.lastVisitAt) : null,
+      inRubricaDal: FORMATO_DATA.format(d.createdAt),
+    })),
+    totale: destinatari.length,
+    trovati: trovati.length,
+    pagina: qui,
+    pagine,
+  };
+}
+
+/**
+ * Gli id di chi riceve già la campagna con questo pubblico (filtri più
+ * contatti dal file, consenso compreso): lo stesso conto della tabella dei
+ * destinatari. Serve al caricamento di un file per saltare chi c'è già.
+ */
+export async function idDestinatari(venueId: string, segment: SegmentFilterType): Promise<Set<string>> {
+  const tutti = applyBirthdayThisMonthFilter(
+    await db.guest.findMany({
+      where: buildSegmentWhere(venueId, segment),
+      select: { id: true, email: true, marketingOptIn: true, unsubscribedAt: true, birthday: true },
+    }),
+    segment,
+  );
+  const { destinatari } = await eleggibili(venueId, tutti);
+  return new Set(destinatari.map((d) => d.id));
 }
 
 /**

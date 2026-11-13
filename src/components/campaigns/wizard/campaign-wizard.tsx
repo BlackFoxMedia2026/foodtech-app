@@ -265,7 +265,9 @@ function WizardShell() {
      che c'è e la card sparisce: il contenuto sta sul fondo della pagina,
      senza una cornice attorno che non delimita niente. Il modulo di invio
      resta in colonna stretta, perché lì si legge e si conferma. */
-  const senzaCornice = state.step <= PASSO.modelli || state.step === PASSO.anteprima;
+  // Anche l'invio: ora ha la tabella dei destinatari, che in colonna stretta
+  // non ci sta.
+  const senzaCornice = state.step <= PASSO.modelli || state.step === PASSO.anteprima || state.step === PASSO.invio;
 
   return (
     <div className={cn("schermo w-full gap-4", isEditorStep ? "max-w-none gap-2" : "mx-auto max-w-[1480px]")}>

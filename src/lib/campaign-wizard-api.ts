@@ -8,6 +8,8 @@ export interface SegmentPreviewResult {
   excludedSuppressed: number;
   duplicatesRemoved: number;
   finalRecipients: number;
+  /** Dei destinatari finali, quanti arrivano dal file CSV. */
+  fromFile?: number;
 }
 
 export interface DraftPayload {
@@ -70,6 +72,58 @@ export async function patchCampaignDraft(id: string, payload: DraftPayload) {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+  return parseJsonOrThrow(res);
+}
+
+export type { RigaDestinatario } from "@/server/campaigns";
+import type { RigaDestinatario } from "@/server/campaigns";
+
+/** Una pagina dell'elenco destinatari, con la ricerca. */
+export async function fetchDestinatari(
+  segment: SegmentFilterType,
+  opzioni: { cerca?: string; pagina?: number } = {},
+): Promise<{ righe: RigaDestinatario[]; totale: number; trovati: number; pagina: number; pagine: number }> {
+  const res = await fetch("/api/campaigns/destinatari", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ segment, ...opzioni }),
+  });
+  return parseJsonOrThrow(res);
+}
+
+export type { EsitoContatti as EsitoContattiCsv } from "@/server/campaign-contatti";
+import type { EsitoContatti } from "@/server/campaign-contatti";
+import type { AbbinamentoColonne } from "@/lib/contatti-colonne";
+
+/** Legge un CSV di contatti e lo confronta con la rubrica, senza scrivere. */
+export async function anteprimaContattiCsv(
+  testo: string,
+  colonne?: AbbinamentoColonne,
+  segment?: SegmentFilterType,
+): Promise<EsitoContatti> {
+  const res = await fetch("/api/campaigns/contatti-csv", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ testo, colonne, segment }),
+  });
+  return parseJsonOrThrow(res);
+}
+
+/**
+ * Aggiunge i contatti del CSV alla rubrica, col consenso dichiarato dal
+ * locale, e restituisce gli id da mettere fra i destinatari della campagna.
+ */
+export async function importaContattiCsv(
+  testo: string,
+  campaignId: string | null,
+  colonne?: AbbinamentoColonne,
+  segment?: SegmentFilterType,
+): Promise<EsitoContatti & { guestIds: string[] }> {
+  const res = await fetch("/api/campaigns/contatti-csv", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ testo, esegui: true, consensoDichiarato: true, campaignId, colonne, segment }),
   });
   return parseJsonOrThrow(res);
 }
