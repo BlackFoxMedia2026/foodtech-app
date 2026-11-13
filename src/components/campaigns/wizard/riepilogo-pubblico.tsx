@@ -130,7 +130,7 @@ export function RiepilogoPubblico({
 }) {
   const supera = quota && preview ? preview.finalRecipients > quota.disponibili : false;
   return (
-    <aside className="surface h-fit overflow-hidden p-0 xl:sticky xl:top-0">
+    <aside data-destinazione="consenso" className="surface h-fit overflow-hidden p-0 xl:sticky xl:top-0">
       <div className="space-y-2 px-5 pb-4 pt-5">
         <p className="t-etichetta">{titoloSegmento}</p>
         {sceltaSegmento ?? <EtichettaSegmento preset={preset} />}

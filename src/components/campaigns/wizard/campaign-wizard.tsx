@@ -21,6 +21,7 @@ import { Step4Models } from "./step-4-models";
 import { Step5Editor } from "./step-5-editor/step-5-editor";
 import { Step6PreviewTest } from "./step-6-preview-test";
 import { Step7Send } from "./step-7-send";
+import { useArrivo } from "./arrivo";
 
 /**
  * Solo lo step «Modelli» la usa — scegliere un modello e partire sono lo stesso
@@ -165,6 +166,7 @@ function NomeCampagna({ compatto }: { compatto: boolean }) {
 function WizardShell() {
   const state = useWizardState();
   const dispatch = useWizardDispatch();
+  useArrivo();
   const [localError, setLocalError] = useState<string | null>(null);
   const StepComponent = STEP_COMPONENTS[state.step];
 

@@ -95,6 +95,7 @@ function BlockChrome({
     <div
       ref={setNodeRef}
       data-block-id={block.id}
+      data-destinazione={locked ? "disiscrizione" : undefined}
       onMouseDown={onSelect}
       className={cn(
         "group relative",

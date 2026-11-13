@@ -7,6 +7,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   FileSpreadsheet,
   Loader2,
   Search,
@@ -38,18 +39,81 @@ import { useWizardDispatch, useWizardState } from "./wizard-context";
 
 const NUM = new Intl.NumberFormat("it-IT");
 
-function ChecklistRow({ ok, label, consiglio = false }: { ok: boolean; label: string; consiglio?: boolean }) {
-  return (
-    <li className="flex items-start gap-2 text-sm">
+/**
+ * Una voce dei controlli. Ognuna porta dove si sistema: un passo del wizard
+ * (`onClick`) o un'impostazione (`href`, in una scheda nuova così la bozza
+ * resta aperta qui).
+ */
+function ChecklistRow({
+  ok,
+  label,
+  consiglio = false,
+  onClick,
+  href,
+  titolo,
+}: {
+  ok: boolean;
+  label: string;
+  consiglio?: boolean;
+  onClick?: () => void;
+  href?: string;
+  /** Dove porta, per il tooltip e i lettori di schermo. */
+  titolo: string;
+}) {
+  const classe = cn(
+    "group -mx-2 flex w-[calc(100%+1rem)] items-start gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors",
+    "hover:bg-black/[0.04] focus-visible:bg-black/[0.04] focus-visible:outline-none",
+  );
+  const contenuto = (
+    <>
       {ok ? (
-        <Check className="mt-0.5 h-4 w-4 shrink-0 text-sage-strong" />
+        <Check className="mt-0.5 h-4 w-4 shrink-0 text-sage-strong" aria-hidden="true" />
       ) : (
-        <X className={cn("mt-0.5 h-4 w-4 shrink-0", consiglio ? "text-accent-strong" : "text-destructive")} />
+        <X
+          className={cn("mt-0.5 h-4 w-4 shrink-0", consiglio ? "text-accent-strong" : "text-destructive")}
+          aria-hidden="true"
+        />
       )}
-      <span className={cn(!ok && (consiglio ? "text-muted-foreground" : "text-destructive-soft"))}>{label}</span>
+      <span
+        className={cn(
+          "min-w-0 flex-1 underline-offset-2 group-hover:underline",
+          !ok && (consiglio ? "text-muted-foreground" : "text-destructive-soft"),
+        )}
+      >
+        {label}
+      </span>
+      {href ? (
+        <ExternalLink
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-50 transition-opacity group-hover:opacity-100"
+          aria-hidden="true"
+        />
+      ) : (
+        <ChevronRight
+          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground opacity-50 transition-opacity group-hover:opacity-100"
+          aria-hidden="true"
+        />
+      )}
+    </>
+  );
+  return (
+    <li>
+      {href ? (
+        <a href={href} target="_blank" rel="noopener" title={titolo} aria-label={`${label}: ${titolo}`} className={classe}>
+          {contenuto}
+        </a>
+      ) : (
+        <button type="button" onClick={onClick} title={titolo} aria-label={`${label}: ${titolo}`} className={classe}>
+          {contenuto}
+        </button>
+      )}
     </li>
   );
 }
+
+/** I passi del wizard dove si sistemano i controlli. */
+const PASSO_FILTRI = 1;
+const PASSO_EDITOR = 3;
+const PASSO_ANTEPRIMA = 4;
 
 /**
  * Destinatari e invio.
@@ -154,21 +218,40 @@ export function Step7Send() {
         <aside className="space-y-4 xl:sticky xl:top-0">
           <div className="surface space-y-4 p-5">
             <p className="t-etichetta">Pronta per partire?</p>
-            <ul className="space-y-2">
-              <ChecklistRow ok={hasUnsubscribe} label="Link di disiscrizione presente" />
+            <ul className="space-y-0.5">
               <ChecklistRow
+                ok={hasUnsubscribe}
+                label="Link di disiscrizione presente"
+                titolo="Apri l'editor dell'email"
+                onClick={() => dispatch({ type: "SET_STEP", step: PASSO_EDITOR, destinazione: "disiscrizione" })}
+              />
+              <ChecklistRow
+                titolo="Vai all'elenco dei destinatari"
+                onClick={() => dispatch({ type: "SET_DESTINAZIONE", destinazione: "destinatari" })}
                 ok={hasRecipients}
                 label={`Destinatari validi (${NUM.format(destinatari)}${
                   state.segmentPreview?.fromFile ? `, di cui ${NUM.format(state.segmentPreview.fromFile)} dal file` : ""
                 })`}
               />
-              <ChecklistRow ok label="Consenso marketing rispettato (sempre applicato)" />
+              <ChecklistRow
+                ok
+                label="Consenso marketing rispettato (sempre applicato)"
+                titolo="Rivedi a chi è rivolta la campagna"
+                onClick={() => dispatch({ type: "SET_STEP", step: PASSO_FILTRI, destinazione: "consenso" })}
+              />
               {/* Il nome del fornitore non compare: per chi usa Foodtech l'invio
                   è di Foodtech, e sapere da chi passa non gli serve per decidere. */}
-              <ChecklistRow ok={providerConfigured} label="Invio email attivo" />
+              <ChecklistRow
+                ok={providerConfigured}
+                label="Invio email attivo"
+                titolo="Apri le impostazioni di invio"
+                href="/settings/marketing/invio"
+              />
               {quota && (
                 <ChecklistRow
                   ok={quota.disponibili >= destinatari}
+                  titolo="Vedi il piano e gli invii disponibili"
+                  href="/settings/marketing/piano"
                   label={`Invii disponibili (${NUM.format(quota.disponibili)} nel piano, ${NUM.format(destinatari)} richiesti)`}
                 />
               )}
@@ -176,6 +259,8 @@ export function Step7Send() {
                 ok={state.testEmailSentThisSession}
                 consiglio
                 label="Email di prova inviata (consigliato)"
+                titolo="Vai all'anteprima per mandarti una prova"
+                onClick={() => dispatch({ type: "SET_STEP", step: PASSO_ANTEPRIMA, destinazione: "test-email" })}
               />
             </ul>
 
@@ -287,7 +372,11 @@ function TabellaDestinatari({ onAggiungi }: { onAggiungi: () => void }) {
     dati && dati.trovati > 0 ? `${(dati.pagina - 1) * 25 + 1}–${Math.min(dati.pagina * 25, dati.trovati)}` : "0";
 
   return (
-    <section className="surface min-w-0 overflow-hidden p-0" aria-label="Destinatari della campagna">
+    <section
+      id="destinatari"
+      className="surface min-w-0 scroll-mt-4 overflow-hidden p-0"
+      aria-label="Destinatari della campagna"
+    >
       {/* -------------------------------------------- testata */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
         <div className="flex items-center gap-3">

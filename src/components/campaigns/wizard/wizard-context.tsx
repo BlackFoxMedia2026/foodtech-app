@@ -12,6 +12,8 @@ export interface WizardState {
   campaignId: string | null;
   step: number;
   furthestStep: number;
+  /** Dove portare chi arriva su questo passo da un controllo: vedi `arrivo.ts`. */
+  destinazione: string | null;
   objectiveId: string | null;
   name: string;
   segment: SegmentFilterType;
@@ -62,7 +64,8 @@ export interface WizardState {
 }
 
 export type WizardAction =
-  | { type: "SET_STEP"; step: number }
+  | { type: "SET_STEP"; step: number; destinazione?: string }
+  | { type: "SET_DESTINAZIONE"; destinazione: string | null }
   | { type: "SET_CESTINO"; cestino: BozzaNelCestino[] }
   | { type: "SET_PREVIOUS_CAMPAIGNS"; previousCampaigns: NewsletterSource[] }
   | { type: "SET_MODELLI_NASCOSTI"; ids: string[] }
@@ -102,6 +105,7 @@ export const initialWizardState: WizardState = {
   campaignId: null,
   step: 0,
   furthestStep: 0,
+  destinazione: null,
   objectiveId: null,
   name: "",
   segment: {},
@@ -134,8 +138,15 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case "SET_STEP": {
       const step = action.step;
-      return { ...state, step, furthestStep: Math.max(state.furthestStep, step) };
+      return {
+        ...state,
+        step,
+        furthestStep: Math.max(state.furthestStep, step),
+        destinazione: action.destinazione ?? null,
+      };
     }
+    case "SET_DESTINAZIONE":
+      return { ...state, destinazione: action.destinazione };
     case "SET_OBJECTIVE":
       return {
         ...state,

@@ -59,6 +59,16 @@ function Workspace() {
   const [aiError, setAiError] = useState<string | null>(null);
 
   const selected = selectedId ? findBlock(doc, selectedId) : null;
+
+  /* Arrivati da «Link di disiscrizione» nei controlli dell'invio: il blocco
+     si seleziona, così a destra ci sono già le sue impostazioni. */
+  const versoDisiscrizione = wizard.destinazione === "disiscrizione";
+  useEffect(() => {
+    if (!versoDisiscrizione) return;
+    const blocco = doc.blocks.find((b) => b.type === "unsubscribe_link");
+    if (blocco) editor.select(blocco.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [versoDisiscrizione]);
   const accent = wizard.brandPrimaryColor || "#c9a25a";
 
   const defaults: BlockDefaults = {
