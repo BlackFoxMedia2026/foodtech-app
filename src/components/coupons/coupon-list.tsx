@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Archive,
@@ -118,6 +118,28 @@ export function CouponList({
   const [q, setQ] = useState("");
   const [gruppo, setGruppo] = useState<GruppoCoupon>("attivi");
   const [categoria, setCategoria] = useState<string | null>(null);
+  /*
+    La barra prende il vetro solo quando è davvero attaccata in cima.
+
+    Aveva sempre `bg-background`: una striscia piena e piatta sopra lo
+    sfondo sfumato, che si vedeva come un rettangolo grigio e tagliava la
+    coda dell'ombra delle carte qui sopra. Ferma, la barra non ha bisogno
+    di fondo; le serve solo quando l'elenco le scorre sotto.
+  */
+  const senzaCoupon = items.length === 0;
+  const sentinellaRef = useRef<HTMLDivElement>(null);
+  const [incollata, setIncollata] = useState(false);
+  useEffect(() => {
+    const el = sentinellaRef.current;
+    if (!el) return;
+    const root = el.closest(".fill-scroll");
+    const io = new IntersectionObserver(
+      ([e]) => setIncollata(!e.isIntersecting),
+      { root, threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [senzaCoupon]);
 
   /* ---------------------------------------------------------------------- */
   /*  I numeri della testata                                                */
@@ -283,7 +305,7 @@ export function CouponList({
           della regione che scorre, così cercare è possibile anche a metà di
           quaranta coupon.
         */
-        <div className="fill-scroll -mx-1 px-1">
+        <div className="fill-scroll -mx-4 px-4">
           {/*
             Quattro numeri sulla scrivania, due sul telefono.
 
@@ -335,7 +357,14 @@ export function CouponList({
           </div>
 
           {/* ══ La barra: ricerca, viste, tipologia, chiamata ═════════════ */}
-          <div className="sticky top-0 z-10 -mx-1 mt-4 bg-background px-1 pb-2.5 pt-2.5">
+          <div ref={sentinellaRef} aria-hidden="true" className="h-px" />
+          <div
+            className={cn(
+              "sticky top-0 z-10 -mx-4 mt-4 px-4 pb-2.5 pt-2.5 transition-[background-color,box-shadow] duration-200",
+              incollata &&
+                "bg-[color:var(--glass-fill)] shadow-[0_8px_16px_-12px_#b3a88c80] backdrop-blur-md",
+            )}
+          >
             <div className="flex flex-wrap items-center gap-2">
               {/*
                 La ricerca prende tutto lo spazio che avanza.
@@ -532,7 +561,7 @@ export function CouponList({
                 : VUOTO[gruppo].spiegazione}
             </EmptyState>
           ) : (
-            <ul className="mt-2 flex flex-col gap-2.5 pb-2">
+            <ul className="elenco-tagliandi mt-2 flex flex-col gap-3 pb-4">
               {visibili.map((c) => (
                 <CouponCard
                   key={c.id}

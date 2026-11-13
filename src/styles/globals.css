@@ -2012,6 +2012,47 @@
     border-radius: 4px 24px 24px 24px;
   }
 
+  /*
+   * Il coupon come un biglietto: matrice, perforazione, due tacche.
+   *
+   * Le tacche sono buchi veri (una maschera), non due dischi colorati come
+   * lo sfondo: sopra la sfumatura del guscio un disco «color pagina» si
+   * vedrebbe come una macchia. La maschera però taglierebbe anche l'ombra
+   * esterna, quindi l'ombra la disegna l'elenco (`.elenco-tagliandi`) con
+   * `drop-shadow`, che segue la sagoma bucata. Il vetro resta nel colore
+   * (`--card-fill`): la sfocatura di sfondo, dentro un antenato con `filter`,
+   * non avrebbe niente da sfocare.
+   */
+  .elenco-tagliandi {
+    filter: drop-shadow(0 1px 1px rgba(16, 32, 26, 0.06)) drop-shadow(0 10px 14px rgba(16, 32, 26, 0.1));
+  }
+  .scheda-tagliando {
+    --matrice: 15.5rem;
+    --tacca: 9px;
+    border-radius: 20px;
+    background-color: var(--card-fill);
+    background-image: var(--card-sheen, none);
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.85),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    transition: background-color 150ms ease;
+  }
+  .scheda-tagliando:hover {
+    background-color: color-mix(in srgb, var(--card-fill), #fff 18%);
+  }
+  @media (min-width: 1024px) {
+    .scheda-tagliando {
+      -webkit-mask:
+        radial-gradient(circle var(--tacca) at var(--matrice) 0, #0000 calc(100% - 0.5px), #000 100%),
+        radial-gradient(circle var(--tacca) at var(--matrice) 100%, #0000 calc(100% - 0.5px), #000 100%);
+      -webkit-mask-composite: source-in;
+      mask:
+        radial-gradient(circle var(--tacca) at var(--matrice) 0, #0000 calc(100% - 0.5px), #000 100%),
+        radial-gradient(circle var(--tacca) at var(--matrice) 100%, #0000 calc(100% - 0.5px), #000 100%);
+      mask-composite: intersect;
+    }
+  }
+
   /* Hides the scrollbar on the horizontally-scrolling top nav without
      hiding the ability to scroll (wheel/touch/keyboard still work). */
   .nav-scroll {
