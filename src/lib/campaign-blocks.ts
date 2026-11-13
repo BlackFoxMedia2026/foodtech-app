@@ -453,6 +453,11 @@ export interface EmailSettings {
   emailBackground: string;
   /** Il colore attorno al foglio, visibile nei client che mostrano un margine. */
   pageBackground: string;
+  /** Un'immagine sopra il colore del foglio (il colore resta: è ciò che
+   *  vede chi ha le immagini spente, e Outlook desktop). */
+  emailBackgroundImage?: string;
+  /** Un'immagine sopra il colore attorno al foglio. */
+  pageBackgroundImage?: string;
   fontFamily: string;
   textColor: string;
   linkColor: string;
@@ -491,6 +496,8 @@ const EmailSettingsSchema = z.object({
   contentWidth: z.number().min(320).max(800),
   emailBackground: z.string(),
   pageBackground: z.string(),
+  emailBackgroundImage: z.string().optional(),
+  pageBackgroundImage: z.string().optional(),
   fontFamily: z.string(),
   textColor: z.string(),
   linkColor: z.string(),

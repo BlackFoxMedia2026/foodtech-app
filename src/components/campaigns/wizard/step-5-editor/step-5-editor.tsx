@@ -271,6 +271,35 @@ function Workspace() {
 
   /* ------------------------------------------------------------------ render */
   const canvasWidth = viewport === "desktop" ? doc.settings.contentWidth : MOBILE_WIDTH;
+
+  /* Il foglio si adatta al banco. L'email è larga 600 px per costruzione e
+     con le due colonne aperte, su un portatile, il banco ne ha meno: il
+     foglio usciva di lato con una barra orizzontale. Si misura lo spazio e si
+     riduce la scala quanto basta — lo zoom scelto resta, moltiplicato. Il
+     contenitore prende le misure già ridotte (la `transform` non le cambia
+     da sola), così non avanza spazio vuoto né a destra né in fondo. */
+  const banco = useRef<HTMLDivElement>(null);
+  const finestra = useRef<HTMLDivElement>(null);
+  const [spazio, setSpazio] = useState<number | null>(null);
+  const [altezzaFinestra, setAltezzaFinestra] = useState(0);
+  useEffect(() => {
+    const b = banco.current;
+    const f = finestra.current;
+    if (!b || !f) return;
+    const misura = () => {
+      const stile = getComputedStyle(b);
+      setSpazio(b.clientWidth - parseFloat(stile.paddingLeft) - parseFloat(stile.paddingRight));
+      setAltezzaFinestra(f.offsetHeight);
+    };
+    misura();
+    const osservatore = new ResizeObserver(misura);
+    osservatore.observe(b);
+    osservatore.observe(f);
+    return () => osservatore.disconnect();
+  }, []);
+  const larghezzaFinestra = canvasWidth + (viewport === "mobile" ? 0 : MARGINE_FINESTRA) * 2;
+  const adatta = spazio ? Math.min(1, spazio / larghezzaFinestra) : 1;
+  const scala = zoom * adatta;
   const draggedLabel =
     dragging?.startsWith("new:")
       ? LIBRARY_BY_ID.get(dragging.slice(4))?.label
@@ -298,8 +327,10 @@ function Workspace() {
           </aside>
 
           {/* -------------------------------------------------- canvas */}
-          <div className="flex min-w-0 flex-1 flex-col bg-[#070f0c] recessed">
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-2.5">
+          {/* Il banco chiaro e caldo, non più il nero: il foglio si guarda
+              come arriverà, dentro una finestra di posta su un tavolo di carta. */}
+          <div className="flex min-w-0 flex-1 flex-col bg-[#ebe5da]">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/[0.06] bg-white/55 px-4 py-2.5 backdrop-blur-sm">
               <p className="hidden text-[15px] font-medium md:block">Editor email</p>
 
               <div className="flex items-center gap-0.5 rounded-md bg-secondary/60 p-0.5">
@@ -376,25 +407,47 @@ function Workspace() {
               </p>
             )}
 
-            <div className="fill-scroll px-4 pb-24 pt-12">
-              <div style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}>
-                <Canvas
-                  blocks={doc.blocks}
-                  settings={doc.settings}
-                  accent={accent}
-                  selectedId={selectedId}
-                  dragging={dragging !== null}
-                  width={canvasWidth}
-                  onSelect={editor.select}
-                  onChangeBlock={(id, patch, key) => editor.update(id, patch, key)}
-                  onDuplicate={editor.duplicate}
-                  onDelete={editor.remove}
-                  onRequestMedia={setMediaFor}
-                  onTextFocus={editor.select}
-                  onTextBlur={() => undefined}
-                  onAddFirst={() => addBlock("text")}
-                  onAddRow={(r) => addRow(r)}
-                />
+            <div ref={banco} className="fill-scroll px-4 pb-24 pt-10">
+              <div
+                className="mx-auto"
+                style={{
+                  width: larghezzaFinestra * scala,
+                  height: altezzaFinestra ? altezzaFinestra * scala : undefined,
+                }}
+              >
+                <div
+                  ref={finestra}
+                  style={{ width: larghezzaFinestra, transform: `scale(${scala})`, transformOrigin: "top left" }}
+                >
+                <FinestraPosta
+                  larghezza={canvasWidth}
+                  mobile={viewport === "mobile"}
+                  oggetto={wizard.subject}
+                  mittente={wizard.senderName}
+                  indirizzo={wizard.senderEmail}
+                  sfondoPagina={doc.settings.pageBackground}
+                  immagineSfondoPagina={doc.settings.pageBackgroundImage}
+                  accento={accent}
+                >
+                  <Canvas
+                    blocks={doc.blocks}
+                    settings={doc.settings}
+                    accent={accent}
+                    selectedId={selectedId}
+                    dragging={dragging !== null}
+                    width={canvasWidth}
+                    onSelect={editor.select}
+                    onChangeBlock={(id, patch, key) => editor.update(id, patch, key)}
+                    onDuplicate={editor.duplicate}
+                    onDelete={editor.remove}
+                    onRequestMedia={setMediaFor}
+                    onTextFocus={editor.select}
+                    onTextBlur={() => undefined}
+                    onAddFirst={() => addBlock("text")}
+                    onAddRow={(r) => addRow(r)}
+                  />
+                </FinestraPosta>
+                </div>
               </div>
             </div>
           </div>
@@ -424,6 +477,7 @@ function Workspace() {
                   onChangeStyle={(patch) => selected && editor.setStyle(selected.id, patch)}
                   onChangeSettings={editor.setSettings}
                   onRequestMedia={() => selected && setMediaFor(selected.id)}
+                  onRequestSfondo={(dove) => setMediaFor(`sfondo:${dove}`)}
                 />
               </div>
             </aside>
@@ -475,7 +529,10 @@ function Workspace() {
         open={mediaFor !== null}
         onOpenChange={(open) => !open && setMediaFor(null)}
         onPick={(url) => {
-          if (mediaFor) editor.update(mediaFor, { imageUrl: url } as Partial<Block>);
+          // Gli sfondi dell'email passano dalla stessa libreria dei blocchi immagine.
+          if (mediaFor === "sfondo:email") editor.setSettings({ emailBackgroundImage: url });
+          else if (mediaFor === "sfondo:pagina") editor.setSettings({ pageBackgroundImage: url });
+          else if (mediaFor) editor.update(mediaFor, { imageUrl: url } as Partial<Block>);
           setMediaFor(null);
         }}
       />
@@ -510,5 +567,85 @@ export function Step5Editor() {
     <EditorProvider initialDoc={initialDoc}>
       <Workspace />
     </EditorProvider>
+  );
+}
+
+/** Lo sfondo della pagina intorno al foglio, nella finestra di posta. */
+const MARGINE_FINESTRA = 32;
+
+/**
+ * La finestra di posta intorno al foglio.
+ *
+ * Il foglio da solo su un fondo scuro si leggeva come un documento in un
+ * programma di grafica; chi scrive una newsletter vuole vedere l'email come
+ * la vedrà Mario: con l'oggetto in alto, il mittente, e lo sfondo della
+ * pagina intorno al foglio. Niente di cliccabile qui: l'oggetto si cambia
+ * nell'anteprima, il mittente nelle impostazioni.
+ */
+function FinestraPosta({
+  larghezza,
+  mobile,
+  oggetto,
+  mittente,
+  indirizzo,
+  sfondoPagina,
+  immagineSfondoPagina,
+  accento,
+  children,
+}: {
+  larghezza: number;
+  mobile: boolean;
+  oggetto: string;
+  mittente: string;
+  indirizzo: string;
+  sfondoPagina: string;
+  immagineSfondoPagina?: string;
+  accento: string;
+  children: React.ReactNode;
+}) {
+  // Su telefono le app di posta mostrano l'email a tutta larghezza.
+  const margine = mobile ? 0 : MARGINE_FINESTRA;
+  const iniziale = (mittente.trim()[0] ?? "T").toUpperCase();
+  return (
+    <div
+      className="mx-auto overflow-hidden rounded-2xl bg-white shadow-[0_28px_70px_-28px_rgba(70,52,24,0.45),0_2px_6px_rgba(70,52,24,0.08)] ring-1 ring-black/[0.06]"
+      style={{ width: larghezza + margine * 2 }}
+    >
+      <div
+        className="border-b border-black/[0.06] px-6 py-4 text-[#1f1f1f]"
+        style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
+      >
+        <p className={cn("text-[19px] font-semibold leading-snug", !oggetto.trim() && "text-[#9a9a9a]")}>
+          {oggetto.trim() || "L'oggetto dell'email"}
+        </p>
+        <div className="mt-3 flex items-center gap-3">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+            style={{ backgroundColor: accento }}
+            aria-hidden="true"
+          >
+            {iniziale}
+          </span>
+          <div className="min-w-0 flex-1 text-[13px] leading-tight">
+            <p className="truncate">
+              <span className="font-semibold">{mittente}</span>{" "}
+              <span className="text-[#7a7a7a]">&lt;{indirizzo}&gt;</span>
+            </p>
+            <p className="mt-0.5 text-[#7a7a7a]">a Mario Rossi</p>
+          </div>
+          <span className="shrink-0 text-xs text-[#8a8a8a]">adesso</span>
+        </div>
+      </div>
+      <div
+        className="bg-cover bg-top bg-no-repeat"
+        style={{
+          backgroundColor: sfondoPagina,
+          backgroundImage: immagineSfondoPagina ? `url("${immagineSfondoPagina}")` : undefined,
+          padding: margine,
+        }}
+      >
+        {children}
+      </div>
+    </div>
   );
 }

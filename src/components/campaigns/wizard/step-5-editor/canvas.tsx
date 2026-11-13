@@ -252,8 +252,13 @@ export function Canvas(props: CanvasProps) {
 
   return (
     <div
-      className="mx-auto shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
-      style={{ width, backgroundColor: settings.emailBackground, fontFamily: settings.fontFamily }}
+      className="mx-auto bg-cover bg-top bg-no-repeat shadow-[0_1px_4px_rgba(0,0,0,0.08)]"
+      style={{
+        width,
+        backgroundColor: settings.emailBackground,
+        backgroundImage: settings.emailBackgroundImage ? `url("${settings.emailBackgroundImage}")` : undefined,
+        fontFamily: settings.fontFamily,
+      }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) props.onSelect(null);
       }}

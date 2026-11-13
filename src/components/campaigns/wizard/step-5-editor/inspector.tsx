@@ -23,6 +23,8 @@ export interface InspectorProps {
   onChangeStyle: (patch: Record<string, unknown>) => void;
   onChangeSettings: (patch: Partial<EmailSettings>) => void;
   onRequestMedia: () => void;
+  /** Apre la libreria immagini per uno dei due sfondi dell'email. */
+  onRequestSfondo: (dove: "email" | "pagina") => void;
 }
 
 const ALIGN_OPTIONS: { value: BlockAlign; label: React.ReactNode; title: string }[] = [
@@ -123,10 +125,12 @@ function EmailSettingsPanel({
   settings,
   brandColors,
   onChangeSettings,
+  onRequestSfondo,
 }: {
   settings: EmailSettings;
   brandColors: InspectorProps["brandColors"];
   onChangeSettings: InspectorProps["onChangeSettings"];
+  onRequestSfondo: InspectorProps["onRequestSfondo"];
 }) {
   return (
     <>
@@ -136,6 +140,11 @@ function EmailSettingsPanel({
             value={settings.emailBackground}
             onChange={(v) => onChangeSettings({ emailBackground: v ?? "#ffffff" })}
             brandColors={brandColors}
+            immagine={{
+              url: settings.emailBackgroundImage,
+              onScegli: () => onRequestSfondo("email"),
+              onTogli: () => onChangeSettings({ emailBackgroundImage: undefined }),
+            }}
           />
         </FieldRow>
         <FieldRow label="Sfondo pagina">
@@ -143,6 +152,11 @@ function EmailSettingsPanel({
             value={settings.pageBackground}
             onChange={(v) => onChangeSettings({ pageBackground: v ?? "#f4f1ea" })}
             brandColors={brandColors}
+            immagine={{
+              url: settings.pageBackgroundImage,
+              onScegli: () => onRequestSfondo("pagina"),
+              onTogli: () => onChangeSettings({ pageBackgroundImage: undefined }),
+            }}
           />
         </FieldRow>
         <FieldRow label="Testo">
@@ -195,11 +209,17 @@ export function Inspector({
   onChangeStyle,
   onChangeSettings,
   onRequestMedia,
+  onRequestSfondo,
 }: InspectorProps) {
   if (!block) {
     return (
       <div className="space-y-6">
-        <EmailSettingsPanel settings={settings} brandColors={brandColors} onChangeSettings={onChangeSettings} />
+        <EmailSettingsPanel
+          settings={settings}
+          brandColors={brandColors}
+          onChangeSettings={onChangeSettings}
+          onRequestSfondo={onRequestSfondo}
+        />
       </div>
     );
   }

@@ -31,6 +31,18 @@ function srcImmagine(url: string, origine: string | undefined): string {
   return `${origine.trim().replace(/\/+$/, "")}${url}`;
 }
 
+/**
+ * Uno sfondo a immagine, dentro uno `style`. Solo indirizzi web o del sito,
+ * e senza i caratteri che chiuderebbero `url(…)` o l'attributo: l'indirizzo
+ * arriva da un campo JSON e finisce in CSS. Il colore resta sotto — è quello
+ * che vede chi ha le immagini spente, e Outlook desktop che le ignora.
+ */
+function sfondoImmagine(url: string | undefined, origine: string | undefined): string {
+  if (!url || /["'()<>\s\\]/.test(url) || !/^(https?:\/\/|\/[^/])/.test(url)) return "";
+  const src = srcImmagine(url, origine);
+  return `background-image:url('${src}');background-size:cover;background-position:center top;background-repeat:no-repeat;`;
+}
+
 const DEFAULT_ACCENT_COLOR = "#c9a25a";
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6,8}$/;
 
@@ -362,10 +374,10 @@ export function compileEmailDocument(
   return `${RESPONSIVE_STYLE}<table role="presentation" width="100%" style="background-color:${safeColor(
     settings.pageBackground,
     "#f4f1ea"
-  )};border-collapse:collapse;margin:0;padding:0;"><tr><td align="center" style="padding:0;"><table role="presentation" class="tv-shell" width="${width}" style="width:${width}px;max-width:${width}px;margin:0 auto;background-color:${safeColor(
+  )};${sfondoImmagine(settings.pageBackgroundImage, ctx.origineImmagini)}border-collapse:collapse;margin:0;padding:0;"><tr><td align="center" style="padding:0;"><table role="presentation" class="tv-shell" width="${width}" style="width:${width}px;max-width:${width}px;margin:0 auto;background-color:${safeColor(
     settings.emailBackground,
     "#ffffff"
-  )};border-collapse:collapse;">${rows}</table></td></tr></table>`;
+  )};${sfondoImmagine(settings.emailBackgroundImage, ctx.origineImmagini)}border-collapse:collapse;">${rows}</table></td></tr></table>`;
 }
 
 /** Forma storica: un array piatto di blocchi con le impostazioni predefinite. */

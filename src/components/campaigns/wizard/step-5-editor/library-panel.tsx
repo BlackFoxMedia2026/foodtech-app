@@ -19,14 +19,16 @@ function DraggableTile({ item, onClick }: { item: LibraryItem; onClick: () => vo
       {...listeners}
       {...attributes}
       className={cn(
-        "flex h-[74px] cursor-grab flex-col items-center justify-center gap-1.5 rounded-md border text-[13px] transition-colors active:cursor-grabbing",
+        // Due per riga e più alte: il nome sta intero e l'icona si riconosce
+        // al primo sguardo, anche col dito sul tablet.
+        "flex h-[92px] cursor-grab flex-col items-center justify-center gap-2 rounded-xl border text-sm font-medium transition-colors active:cursor-grabbing",
         item.group === "ristorante"
           ? "border-accent/55 bg-accent/10 hover:bg-accent/20"
           : "border-border bg-secondary/40 hover:bg-secondary/70",
         isDragging && "opacity-40"
       )}
     >
-      <Icon className="h-5 w-5 text-muted-foreground" />
+      <Icon className="h-6 w-6 text-muted-foreground" />
       {item.label}
     </button>
   );
@@ -103,7 +105,7 @@ export function LibraryPanel({
           <>
             <section className="space-y-2">
               <p className="t-etichetta">Base</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {base.map((item) => (
                   <DraggableTile key={item.id} item={item} onClick={() => onAddBlock(item.id)} />
                 ))}
@@ -111,7 +113,7 @@ export function LibraryPanel({
             </section>
             <section className="space-y-2">
               <p className="t-etichetta">Ristorante</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {restaurant.map((item) => (
                   <DraggableTile key={item.id} item={item} onClick={() => onAddBlock(item.id)} />
                 ))}
