@@ -4,7 +4,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Info,
   MailCheck,
   Settings2,
   Ticket,
@@ -71,118 +70,131 @@ export default async function WifiLeadsPage({
       <div className="fill-scroll -mx-4 px-4">
         {/* ── I quattro numeri ──────────────────────────────────────────── */}
         {stats.contatti > 0 && (
-          <>
-            <div className="grid grid-cols-2 gap-2.5 md:gap-3.5 lg:grid-cols-4 lg:gap-4">
-              <CartaKpi
-                icona={Users}
-                tono="bosco"
-                valore={stats.contatti}
-                etichetta={["Contatto", "Contatti"]}
-                nota={`${stats.ultimi30} negli ultimi 30 giorni`}
-              />
-              {/* Il numero onesto, e l'unico in oro: dice se il portale serve. */}
-              <CartaKpi
-                icona={UtensilsCrossed}
-                tono="bronzo"
-                valore={stats.conPrenotazione}
-                etichetta="Poi venuti a mangiare"
-                nota="con almeno una prenotazione"
-                allarme
-              />
-              <CartaKpi
-                className="hidden sm:flex"
-                icona={MailCheck}
-                tono="petrolio"
-                valore={stats.conMarketing}
-                etichetta="Consenso marketing"
-                nota="si possono scrivere"
-              />
-              <CartaKpi
-                className="hidden sm:flex"
-                icona={Ticket}
-                tono="oliva"
-                valore={`${stats.couponUsati}/${stats.couponEmessi}`}
-                etichetta="Sconti usati"
-                nota="su quelli emessi"
-              />
-            </div>
-
-            <p className="mt-3 flex items-start gap-2 t-nota">
-              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              Il numero che dice se questa cosa serve è «poi venuti a mangiare»: un indirizzo email raccolto
-              non è un cliente, ed è un dato di cui rispondi tu.
-            </p>
-          </>
+          <div className="grid grid-cols-2 gap-2.5 md:gap-3.5 lg:grid-cols-4 lg:gap-4">
+            <CartaKpi
+              icona={Users}
+              tono="bosco"
+              valore={stats.contatti}
+              etichetta={["Contatto", "Contatti"]}
+              nota={`${stats.ultimi30} negli ultimi 30 giorni`}
+            />
+            {/* Il numero onesto, e l'unico in oro: dice se il portale serve. */}
+            <CartaKpi
+              icona={UtensilsCrossed}
+              tono="bronzo"
+              valore={stats.conPrenotazione}
+              etichetta="Poi venuti a mangiare"
+              nota="il numero che conta: almeno una prenotazione"
+              allarme
+            />
+            <CartaKpi
+              className="hidden sm:flex"
+              icona={MailCheck}
+              tono="petrolio"
+              valore={stats.conMarketing}
+              etichetta="Consenso marketing"
+              nota="si possono scrivere"
+            />
+            <CartaKpi
+              className="hidden sm:flex"
+              icona={Ticket}
+              tono="oliva"
+              valore={`${stats.couponUsati}/${stats.couponEmessi}`}
+              etichetta="Sconti usati"
+              nota="su quelli emessi"
+            />
+          </div>
         )}
 
         {/* ══ La barra: stato del portale, viste, configurazione ═══════════ */}
-        {/* Non appiccicata, e senza fondo: l'elenco è a pagine, e una fascia
-            piena sopra lo sfondo sfumato era il rettangolo grigio dei Coupon. */}
-        <div className="mt-4 pb-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Lo stato del portale è la prima cosa: se è chiuso, l'elenco
-                non cresce, e il resto della pagina è storia. */}
+        {/* Una fascia verde bosco con le scritte chiare: è l'unica superficie
+            scura della pagina, e così lo stato del portale e le viste si
+            staccano dalle carte e dalle schede, tutte color carta. Il verde
+            è quello del pulsante attivo della barra in alto, con una luce
+            dorata appena accennata a sinistra e il bordo interno chiaro
+            delle lastre. Non appiccicata: l'elenco è a pagine. */}
+        <div
+          className={cn(
+            "relative flex flex-wrap items-center gap-x-4 gap-y-3 overflow-hidden rounded-[1.5rem] px-4 py-3.5 text-[#f7f3ea] sm:px-5",
+            "bg-[radial-gradient(120%_180%_at_0%_0%,rgba(201,169,106,0.22),transparent_45%),linear-gradient(135deg,#25402f,#1d3227_55%,#16271e)]",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_10px_24px_-14px_rgba(16,32,26,0.6),0_2px_6px_-2px_rgba(16,32,26,0.25)]",
+            stats.contatti > 0 ? "mt-4" : "mt-0",
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-3">
             <span
               className={cn(
-                "inline-flex h-10 min-w-0 items-center gap-2 rounded-full border px-4 text-sm",
+                "relative grid h-12 w-12 shrink-0 place-items-center rounded-full ring-1",
                 attivo
-                  ? "border-sage/40 bg-sage/10 text-foreground"
-                  : "border-border bg-veil-6 text-muted-foreground",
+                  ? "bg-[#f7f3ea]/12 text-[#f7f3ea] ring-[#f7f3ea]/20"
+                  : "bg-black/15 text-[#f7f3ea]/55 ring-[#f7f3ea]/10",
               )}
+              aria-hidden="true"
             >
-              <span className="relative grid h-2 w-2 place-items-center" aria-hidden="true">
-                {attivo && <span className="absolute h-2 w-2 animate-ping rounded-full bg-sage/60" />}
-                <span className={cn("h-2 w-2 rounded-full", attivo ? "bg-sage" : "bg-muted-foreground/50")} />
-              </span>
-              {attivo ? (
-                <span className="truncate">
-                  Portale attivo <span className="text-muted-foreground">· {ctx.venue.wifiNetworkName}</span>
+              <Wifi className="h-5 w-5" />
+              {/* Il pallino vivo: c'è solo quando il portale risponde. */}
+              {attivo && (
+                <span className="absolute -right-0.5 -top-0.5 grid h-3 w-3 place-items-center rounded-full bg-[#1d3227]">
+                  <span className="absolute h-2 w-2 animate-ping rounded-full bg-[#9fd4a8]/60" />
+                  <span className="h-2 w-2 rounded-full bg-[#9fd4a8]" />
                 </span>
-              ) : (
-                "Portale chiuso"
               )}
             </span>
+            <div className="min-w-0 leading-tight">
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-[#ddc38f]">
+                {attivo ? "Portale attivo" : "Portale chiuso"}
+              </p>
+              <p className="truncate text-base font-semibold text-[#f7f3ea]">
+                {attivo ? ctx.venue.wifiNetworkName : "Nessuno può collegarsi"}
+              </p>
+            </div>
+          </div>
 
-            <nav
-              className="flex items-center gap-1 rounded-full border border-border/70 bg-card-sunken/70 p-1"
-              aria-label="Filtra i contatti"
-            >
-              {viste.map((v) => (
-                <Link
-                  key={v.id}
-                  href={v.href}
-                  aria-current={v.scelta ? "page" : undefined}
+          <span className="hidden h-10 w-px bg-[#f7f3ea]/15 sm:block" aria-hidden="true" />
+
+          <nav
+            className="flex items-center gap-1 rounded-full bg-black/20 p-1 shadow-[inset_0_1px_3px_rgba(0,0,0,0.25)]"
+            aria-label="Filtra i contatti"
+          >
+            {viste.map((v) => (
+              <Link
+                key={v.id}
+                href={v.href}
+                aria-current={v.scelta ? "page" : undefined}
+                className={cn(
+                  "inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-full px-4 text-[0.9375rem] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddc38f]",
+                  v.scelta
+                    ? "bg-[#f7f3ea] font-medium text-[#1d3227] shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_10px_-4px_rgba(0,0,0,0.35)]"
+                    : "text-[#f7f3ea]/70 hover:text-[#f7f3ea]",
+                )}
+              >
+                {v.nome}
+                <span
                   className={cn(
-                    "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    v.scelta
-                      ? "border border-accent/55 bg-accent/20 font-medium text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
+                    "rounded-full px-1.5 text-xs tabular-nums",
+                    v.scelta ? "bg-[#c9a96a]/25 text-[#7a5a1c]" : "text-[#f7f3ea]/50",
                   )}
                 >
-                  {v.nome}
-                  <span
-                    className={cn(
-                      "tabular-nums",
-                      v.scelta ? "text-accent-strong" : "text-tertiary-foreground",
-                    )}
-                  >
-                    {v.conto}
-                  </span>
-                </Link>
-              ))}
-            </nav>
-
-            <Button
-              asChild
-              variant={attivo ? "ghost" : "accent"}
-              className={cn("h-10 sm:ml-auto", attivo && "pillola-comando rounded-full px-4")}
-            >
-              <Link href="/settings/wifi">
-                <Settings2 className="h-4 w-4" aria-hidden="true" />
-                {attivo ? "Configurazione" : "Apri il portale"}
+                  {v.conto}
+                </span>
               </Link>
-            </Button>
-          </div>
+            ))}
+          </nav>
+
+          {/* Sul verde il comando è chiaro e trasparente; da chiuso diventa
+              la chiamata dorata piena, perché è l'unica cosa da fare. */}
+          <Link
+            href="/settings/wifi"
+            className={cn(
+              "inline-flex h-11 items-center gap-2 rounded-full px-5 text-[0.9375rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddc38f] sm:ml-auto",
+              attivo
+                ? "border border-[#f7f3ea]/25 bg-[#f7f3ea]/10 text-[#f7f3ea] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-[#f7f3ea]/18"
+                : "bg-[#c9a96a] text-[#1d3227] shadow-[0_4px_12px_-4px_rgba(0,0,0,0.4)] hover:bg-[#ddc38f]",
+            )}
+          >
+            <Settings2 className="h-4 w-4" aria-hidden="true" />
+            {attivo ? "Configurazione" : "Apri il portale"}
+          </Link>
         </div>
 
         {/* ══ Chi si è collegato ══════════════════════════════════════════ */}
@@ -241,8 +253,8 @@ export default async function WifiLeadsPage({
                         </span>
                       )}
                       {l.consentMarketing ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-sage/40 bg-sage/10 px-2.5 py-1 text-xs text-foreground">
-                          <Check className="h-3 w-3 text-sage" aria-hidden="true" />
+                        <span className="inline-flex items-center gap-1 rounded-full border border-sage-deep/25 bg-sage px-2.5 py-1 text-xs font-medium text-sage-strong">
+                          <Check className="h-3 w-3 text-sage-deep" aria-hidden="true" />
                           Consenso
                         </span>
                       ) : (
