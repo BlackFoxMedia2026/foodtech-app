@@ -81,6 +81,15 @@ export function FasciaTessere({
       <ul
         className={cn(
           "grid grid-cols-2 gap-2 sm:gap-3",
+          /* Sotto `md` le tessere sono sempre due per riga, e lo spigolo vivo
+             di ognuna punta al centro della fascia (16 nov 2026): la prima
+             riga lo gira in basso (sinistra in basso a destra, destra in basso
+             a sinistra), le righe sotto lo tengono in alto, con quelle di
+             sinistra girate verso destra. L'ultima dispari, larga tutta la
+             riga, resta com'è. */
+          "max-md:[&>li:first-child:not(.col-span-2)]:rounded-[24px_24px_4px_24px]",
+          "max-md:[&>li:nth-child(2)]:rounded-[24px_24px_24px_4px]",
+          "max-md:[&>li:nth-child(2n+3):not(.col-span-2)]:rounded-[24px_4px_24px_24px]",
           colonne === 3 && "md:grid-cols-3",
           COLONNE[colonne],
         )}
@@ -129,7 +138,7 @@ export function TesseraKpi({
   return (
     <li
       className={cn(
-        "vetro card-notch flex flex-col gap-1 p-3 sm:flex-row sm:items-start sm:gap-3 sm:p-4",
+        "vetro card-notch flex flex-col gap-1.5 p-3.5 sm:flex-row sm:items-start sm:gap-3 sm:p-4",
         ultimaDispari && "col-span-2 md:col-span-1",
         className,
       )}
@@ -140,31 +149,35 @@ export function TesseraKpi({
         <Icona className="h-6 w-6" stroke="url(#trattoVetro)" />
       </span>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 [container-type:inline-size]">
         {/* Sul telefono l'etichetta è intera anche lei: «PRENOT.» faceva
             indovinare. Per farla stare l'icona scende a 18 px e la spaziatura
             si stringe; se ancora non basta va a capo, non si taglia. */}
-        <p className="t-etichetta flex items-center gap-1.5 text-[13px] text-kpi-label-muted max-sm:tracking-[0.02em] sm:text-sm">
-          <Icona className="h-[18px] w-[18px] shrink-0 sm:hidden" stroke="url(#trattoTenue)" />
+        <p className="t-etichetta flex items-center gap-1.5 text-sm text-kpi-label-muted max-sm:tracking-[0.02em]">
+          <Icona className="h-5 w-5 shrink-0 sm:hidden" stroke="url(#trattoTenue)" />
           <span className="min-w-0 break-words">{etichettaResa}</span>
         </p>
         <p
           className={cn(
-            "mt-0.5 font-mono text-2xl leading-8 tabular-nums xl:text-3xl xl:leading-9",
+            "mt-1 font-mono leading-tight tabular-nums sm:mt-0.5 sm:text-2xl sm:leading-8 xl:text-3xl xl:leading-9",
+            /* Sul telefono il numero è il più grande possibile: i corti
+               («8», «23%») a 36 px; quelli lunghi («1.575,00 €») seguono la
+               larghezza della colonna (cqw) così non vanno mai a capo. */
+            String(valore).length > 5 ? "text-[clamp(1.375rem,15cqw,2rem)]" : "text-[2.25rem]",
             allarme ? "text-accent-strong" : "text-foreground",
           )}
         >
           {valore}
         </p>
         {barra != null && (
-          <div className="barra-binario mt-1.5 h-2 w-full overflow-hidden rounded-full bg-border">
+          <div className="barra-binario mt-2 h-2.5 w-full sm:mt-1.5 sm:h-2 overflow-hidden rounded-full bg-border">
             <div
               className="barra-pieno h-full rounded-full bg-surface-brown-light"
               style={{ width: `${Math.min(100, Math.max(0, barra))}%` }}
             />
           </div>
         )}
-        {notaResa && <p className="mt-1 text-xs leading-tight text-muted-foreground md:text-[11px]">{notaResa}</p>}
+        {notaResa && <p className="mt-1 text-[13px] leading-tight text-muted-foreground sm:text-xs md:text-[11px]">{notaResa}</p>}
       </div>
     </li>
   );

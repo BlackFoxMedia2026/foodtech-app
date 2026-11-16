@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowUpRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefing } from "@/components/overview/briefing";
 import { QuickActions } from "@/components/overview/quick-actions";
 import { WeekTrend } from "@/components/overview/week-trend";
-import { WidgetPrenotazioni } from "@/components/overview/widget-prenotazioni";
+import { PrenotazioniTelefono } from "@/components/overview/prenotazioni-telefono";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { DEFAULT_VENUE_TIMEZONE } from "@/lib/venue-time";
+import { cn } from "@/lib/utils";
 import { getOverview } from "@/server/insights";
 import { perIlRiquadro, prenotazioniNuove } from "@/server/prenotazioni-nuove";
 
@@ -115,7 +117,7 @@ export default async function OverviewPage() {
         bordo. `-mx-3 px-3 -mb-6 pb-6` allarga il bordo nel margine di `main`
         senza spostare le card: l'ombra ha dove cadere.
       */}
-      <section className="fill -mx-3 -mb-6 min-h-0 space-y-4 px-3 pb-6 max-md:flex-none md:grid md:overflow-y-auto md:grid-cols-[1.4fr_1fr] md:gap-4 md:space-y-0">
+      <section className="fill -mx-3 -mb-6 min-h-0 px-3 pb-6 max-md:mb-0 max-md:pb-8 max-md:flex max-md:flex-none max-md:flex-col max-md:gap-4 md:grid md:overflow-y-auto md:grid-cols-[1.4fr_1fr] md:gap-4">
         {/*
           A sinistra le prenotazioni. Prima qui c'era **tutta** la giornata in
           una lista alta quanto la schermata, e a metà servizio erano quasi
@@ -125,7 +127,11 @@ export default async function OverviewPage() {
           gruppi; l'elenco scorre dentro il riquadro, così l'andamento può
           restargli **accanto** invece che sotto.
         */}
-        <WidgetPrenotazioni
+        {/* Sul telefono (16 nov 2026) le prenotazioni stanno dietro un banner
+            col numero da gestire cerchiato, e vengono **dopo** l'andamento
+            (l'andamento ha `max-md:order-first`): la dashboard resta numeri e grafico, e
+            l'elenco si apre quando serve. */}
+        <PrenotazioniTelefono
           nuove={nuove}
           oggi={data.todayBookings.map(perIlRiquadro)}
           puoGestire={can(ctx.role, "manage_bookings")}
@@ -148,27 +154,34 @@ export default async function OverviewPage() {
             `min-h-0` a ogni livello un elemento flex non scende sotto
             l'altezza del proprio contenuto, e la colonna sforerebbe invece di
             adattarsi. */}
-        <Card className="card-notch md:flex md:min-h-0 md:flex-col">
-          <CardHeader className="py-3">
+        <Card className="card-notch max-md:order-first md:flex md:min-h-0 md:flex-col">
+          {/* Titolo, confronto e uscita in una riga (16 nov 2026): «Coperti ·
+              44% sulla settimana scorsa» e «Vedi report completo» erano due
+              righe di testo che sul telefono spingevano le prenotazioni sotto
+              lo schermo. Il confronto resta accanto al titolo, solo freccia e
+              percentuale; il report è la freccia in alto a destra. */}
+          <CardHeader className="flex-row items-center gap-2 space-y-0 py-3 pr-3">
             <CardTitle className="text-base">Andamento settimanale</CardTitle>
-            <CardDescription>
-              Coperti ·{" "}
-              <span className={data.weekComparisonPct >= 0 ? "text-sage-strong" : "text-destructive-soft"}>
-                {data.weekComparisonPct >= 0 ? "▲" : "▼"} {Math.abs(data.weekComparisonPct)}% sulla
-                settimana scorsa
-              </span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0 md:flex md:min-h-0 md:flex-1 md:flex-col">
-            <WeekTrend data={data.trend} />
+            <span
+              className={cn(
+                "font-mono text-sm tabular-nums",
+                data.weekComparisonPct >= 0 ? "text-sage-strong" : "text-destructive-soft",
+              )}
+              aria-label={`Coperti ${data.weekComparisonPct >= 0 ? "in aumento" : "in calo"} del ${Math.abs(data.weekComparisonPct)}% sulla settimana scorsa`}
+            >
+              {data.weekComparisonPct >= 0 ? "▲" : "▼"} {Math.abs(data.weekComparisonPct)}%
+            </span>
             <Link
               href="/insights"
-              /* Non è un collegamento dentro una frase: è l'unica uscita
-                 dal riquadro, quindi ha diritto a un bersaglio vero. */
-              className="tocco-comodo mt-2 inline-flex min-h-[36px] items-center text-xs font-medium text-ink-tertiary hover:underline"
+              aria-label="Vedi report completo"
+              title="Vedi report completo"
+              className="tondo-ios tondo-ios-44 tondo-ios-vetro ml-auto shrink-0"
             >
-              Vedi report completo
+              <ArrowUpRight className="h-5 w-5" strokeWidth={2} />
             </Link>
+          </CardHeader>
+          <CardContent className="pb-4 pt-0 md:flex md:min-h-0 md:flex-1 md:flex-col md:pb-6">
+            <WeekTrend data={data.trend} />
           </CardContent>
         </Card>
       </section>

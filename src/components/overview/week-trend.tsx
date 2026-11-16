@@ -5,7 +5,8 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 export function WeekTrend({ data }: { data: { day: string; covers: number; bookings: number }[] }) {
   return (
     /*
-      L'altezza: 160 px sul telefono, e da tablet in su quella che avanza nel
+      L'altezza: 128 px sul telefono (era 160: il banner delle prenotazioni
+      deve stare nella prima schermata), e da tablet in su quella che avanza nel
       riquadro — che è alto quanto le prenotazioni accanto.
 
       Era fissa a 160 px anche sul desktop, e da quando il grafico sta
@@ -16,7 +17,7 @@ export function WeekTrend({ data }: { data: { day: string; covers: number; booki
       Il minimo resta: in una giornata senza prenotazioni la card accanto è
       bassa, e un grafico di venti pixel non è un grafico.
     */
-    <div className="h-40 w-full md:h-auto md:min-h-40 md:flex-1">
+    <div className="h-32 w-full md:h-auto md:min-h-40 md:flex-1">
       <ResponsiveContainer width="100%" height="100%">
         {/* Il margine sinistro era -16 con un asse da 32: le etichette,
               allineate a destra dentro l'asse, finivano mezzo pixel fuori dal
