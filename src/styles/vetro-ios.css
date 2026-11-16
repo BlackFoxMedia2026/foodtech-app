@@ -121,6 +121,31 @@
   border-radius: 12px;
   background: rgba(118, 118, 128, 0.12);
 }
+/* Sul telefono lo switch divide la riga con «Da gestire»: largo quanto le
+   sue voci, non 220. */
+@media (max-width: 767.98px) {
+  .segmenti-ios-stretto {
+    width: auto;
+  }
+  .segmenti-ios-stretto .segmenti-ios-voce {
+    padding: 0 12px;
+    font-size: 14px;
+    gap: 5px;
+  }
+  /* Il numero delle nuove è già cerchiato nel banner, subito sopra. */
+  .segmenti-ios-stretto .segmenti-ios-badge {
+    display: none;
+  }
+}
+/* Telefoni stretti (360): anche il numero di oggi lascia il posto al titolo. */
+@media (max-width: 379.98px) {
+  .segmenti-ios-stretto .segmenti-ios-voce {
+    padding: 0 10px;
+  }
+  .segmenti-ios-stretto .segmenti-ios-conta {
+    display: none;
+  }
+}
 .segmenti-ios-cursore {
   position: absolute;
   top: 2px;

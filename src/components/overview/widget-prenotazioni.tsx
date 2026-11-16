@@ -78,6 +78,13 @@ export function WidgetPrenotazioni({
   /** Le uscite in corso: «Annulla» dentro i 300 ms deve fermare anche quelle. */
   const uscite = useRef(new Map<string, number>());
   const titoloElenco = useRef<HTMLHeadingElement>(null);
+  /* Sul telefono «Da gestire» sta nella testata e il titolo dell'elenco è
+     nascosto: il fuoco va su quello dei due che si vede. */
+  const titoloTestata = useRef<HTMLHeadingElement>(null);
+  const fuocoSulTitolo = () => {
+    const t = titoloElenco.current;
+    (t && t.offsetParent !== null ? t : titoloTestata.current)?.focus();
+  };
 
   // Il «· 11 min fa» resta vero senza ricaricare la pagina.
   useEffect(() => {
@@ -165,7 +172,7 @@ export function WidgetPrenotazioni({
     );
     setAvviso({ testo: testoAvviso(r.inSospeso), annullabile: p.id });
     // Il bottone premuto sta per sparire: il fuoco va in un posto che resta.
-    titoloElenco.current?.focus();
+    fuocoSulTitolo();
   }
 
   function annulla(id: string) {
@@ -190,10 +197,16 @@ export function WidgetPrenotazioni({
     <TooltipProvider delayDuration={300}>
       <section
         aria-labelledby="riquadro-prenotazioni"
-        className="vetro-ios flex min-w-0 flex-col md:min-h-0"
+        className="vetro-ios flex min-w-0 flex-col max-md:!p-5 md:min-h-0"
       >
-        <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-          <div className="min-w-0">
+        {/* Sul telefono si arriva qui dal banner, che dice già «Prenotazioni»:
+            titolo e data restano solo per i lettori di schermo, e in testata
+            c'è la scheda aperta, accanto allo switch, su una riga sola. */}
+        <header className="flex items-center justify-between gap-3 md:flex-wrap md:items-start md:gap-x-4 md:gap-y-3">
+          <h3 ref={titoloTestata} tabIndex={-1} className="vi-titolo-sezione min-w-0 truncate outline-none max-md:!text-lg md:hidden">
+            {scheda === "nuove" ? "Da gestire" : "Oggi"}
+          </h3>
+          <div className="min-w-0 max-md:sr-only">
             <h2 id="riquadro-prenotazioni" className="vi-titolo">
               Prenotazioni
             </h2>
@@ -202,8 +215,8 @@ export function WidgetPrenotazioni({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="segmenti-ios" data-scelto={scheda === "oggi" ? "1" : "0"} role="group" aria-label="Quali prenotazioni">
+          <div className="flex shrink-0 items-center gap-2 md:gap-3">
+            <div className="segmenti-ios segmenti-ios-stretto" data-scelto={scheda === "oggi" ? "1" : "0"} role="group" aria-label="Quali prenotazioni">
               <span className="segmenti-ios-cursore" aria-hidden="true" />
               <button
                 type="button"
@@ -237,7 +250,7 @@ export function WidgetPrenotazioni({
               <TooltipTrigger asChild>
                 <Link
                   href="/bookings"
-                  className="tondo-ios tondo-ios-44 tondo-ios-vetro"
+                  className="tondo-ios tondo-ios-44 tondo-ios-vetro max-md:!h-10 max-md:!w-10"
                   aria-label="Apri il calendario delle prenotazioni"
                 >
                   <CalendarDays className="h-5 w-5" strokeWidth={2} />
@@ -249,10 +262,10 @@ export function WidgetPrenotazioni({
         </header>
 
         {/* Solo l'elenco scorre: la testata resta dov'è. */}
-        <div id="scheda-prenotazioni" className="vi-scorre -mx-2 mt-5 flex min-h-0 flex-1 flex-col px-2 md:overflow-y-auto">
+        <div id="scheda-prenotazioni" className="vi-scorre -mx-2 mt-4 md:mt-5 flex min-h-0 flex-1 flex-col px-2 md:overflow-y-auto">
           {scheda === "nuove" ? (
             <>
-              <div className="mb-3 flex items-baseline justify-between gap-3 px-1">
+              <div className="mb-3 flex items-baseline justify-between gap-3 px-1 max-md:hidden">
                 <h3 ref={titoloElenco} tabIndex={-1} className="vi-titolo-sezione outline-none">
                   Da gestire
                 </h3>
@@ -323,7 +336,7 @@ export function WidgetPrenotazioni({
               if (!confermata.current) return;
               confermata.current = false;
               e.preventDefault();
-              titoloElenco.current?.focus();
+              fuocoSulTitolo();
             }}
           >
             <DialogHeader>
