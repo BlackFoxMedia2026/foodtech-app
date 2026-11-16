@@ -22,3 +22,23 @@ export const openaiProvider: LLMProvider = {
     }
   },
 };
+
+/**
+ * Il modello che trascrive i vocali dell'agente. Si può cambiare senza
+ * toccare il codice, come quello della chat.
+ */
+const MODELLO_TRASCRIZIONE = process.env.OPENAI_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe";
+
+/**
+ * Da audio a testo, in italiano. Lo usano la dettatura (il testo torna nel
+ * campo da correggere) e il messaggio vocale (il testo parte da solo).
+ */
+export async function trascriviAudio(file: File): Promise<string> {
+  if (!client) throw new Error("llm_unavailable");
+  const esito = await client.audio.transcriptions.create({
+    file,
+    model: MODELLO_TRASCRIZIONE,
+    language: "it",
+  });
+  return esito.text.trim();
+}

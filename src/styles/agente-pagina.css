@@ -1,0 +1,203 @@
+/*
+  L'agente a tutta pagina (components/agent/agent-drawer.tsx).
+
+  Tre strati:
+  1. la pagina: verde in vetro (la pagina sotto sfocata e tinta), che entra
+     come un cerchio che si allarga dal pulsante dell'agente;
+  2. i bordi: una luce bianca che gira lungo i lati dello schermo, come Siri;
+  3. il contenuto, che arriva quando l'onda ha riempito lo schermo.
+*/
+
+.agente-pagina {
+  --agente-verde: var(--vi-verde, #2c5545);
+  background:
+    radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, #ffffff 10%, transparent), transparent 60%),
+    color-mix(in srgb, var(--agente-verde) 88%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(28px) saturate(150%);
+  overflow: hidden;
+}
+
+.agente-pagina[data-state="open"] {
+  animation: agente-onda-entra 640ms cubic-bezier(0.22, 0.9, 0.24, 1) both;
+}
+.agente-pagina[data-state="closed"] {
+  animation: agente-onda-esce 380ms cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+
+@keyframes agente-onda-entra {
+  from {
+    clip-path: circle(0px at var(--agente-x) var(--agente-y));
+  }
+  to {
+    clip-path: circle(150vmax at var(--agente-x) var(--agente-y));
+  }
+}
+@keyframes agente-onda-esce {
+  from {
+    clip-path: circle(150vmax at var(--agente-x) var(--agente-y));
+  }
+  to {
+    clip-path: circle(0px at var(--agente-x) var(--agente-y));
+  }
+}
+
+/* --- I bordi in stile Siri ------------------------------------------------
+   Una linea sottile lungo i lati, dipinta con una sfumatura conica bianca il
+   cui angolo gira (`--agente-angolo`, animabile grazie a @property). Due
+   copie: una nitida, e una sfocata dal genitore — il filtro sul genitore
+   agisce dopo la maschera del figlio, quindi la luce si spande verso
+   l'interno invece di essere tagliata. */
+@property --agente-angolo {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+.agente-bordi {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.45;
+  transition: opacity 600ms ease;
+  animation: agente-luce-gira 6s linear infinite;
+}
+
+.agente-bordi__linea {
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  background: conic-gradient(
+      from var(--agente-angolo),
+      #ffffff,
+      rgb(255 255 255 / 0.05) 16%,
+      #d9f0e3 30%,
+      rgb(255 255 255 / 0.05) 46%,
+      #ffffff 62%,
+      rgb(255 255 255 / 0.1) 80%,
+      #ffffff
+    )
+    border-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) padding-box exclude,
+    linear-gradient(#000 0 0);
+}
+
+/* Il filtro sta sul contenitore: agisce dopo la maschera della linea, e la
+   luce si spande verso l'interno invece di essere tagliata. */
+.agente-bordi__alone {
+  position: absolute;
+  inset: 0;
+  filter: blur(16px);
+  opacity: 0.9;
+}
+.agente-bordi__linea--spessa {
+  border-width: 16px;
+}
+
+@keyframes agente-luce-gira {
+  to {
+    --agente-angolo: 360deg;
+  }
+}
+
+/* All'ingresso la luce è piena, poi si calma; torna piena (e gira più in
+   fretta) mentre l'agente ascolta o risponde. */
+.agente-pagina[data-state="open"] .agente-bordi {
+  animation:
+    agente-luce-gira 6s linear infinite,
+    agente-bordi-ingresso 1600ms ease-out both;
+}
+.agente-pagina[data-acceso] .agente-bordi {
+  opacity: 1;
+}
+.agente-pagina[data-acceso] .agente-bordi {
+  animation-duration: 2.4s;
+}
+
+@keyframes agente-bordi-ingresso {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+/* Con l'animazione d'ingresso finita, `data-acceso` deve poter vincere. */
+.agente-pagina[data-state="open"][data-acceso] .agente-bordi {
+  animation: agente-luce-gira 2.4s linear infinite;
+  opacity: 1;
+}
+
+/* --- Il contenuto -------------------------------------------------------- */
+.agente-tasto {
+  background: rgb(255 255 255 / 0.14);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.22);
+  transition: background-color 150ms ease;
+}
+.agente-tasto:hover {
+  background: rgb(255 255 255 / 0.22);
+}
+
+/* L'icona, il titolo e le proposte arrivano dopo l'onda, uno dopo l'altro. */
+.agente-pagina[data-state="open"] .agente-benvenuto > * {
+  animation: agente-sale 520ms cubic-bezier(0.22, 0.9, 0.24, 1) both;
+}
+.agente-pagina[data-state="open"] .agente-benvenuto > :nth-child(1) {
+  animation-delay: 280ms;
+}
+.agente-pagina[data-state="open"] .agente-benvenuto > :nth-child(2) {
+  animation-delay: 400ms;
+}
+.agente-pagina[data-state="open"] .agente-benvenuto > :nth-child(3) {
+  animation: none;
+}
+.agente-pagina[data-state="open"] .agente-proposta {
+  animation: agente-sale 480ms cubic-bezier(0.22, 0.9, 0.24, 1) both;
+}
+
+@keyframes agente-sale {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agente-pagina[data-state="open"],
+  .agente-pagina[data-state="closed"],
+  .agente-pagina[data-state="open"] .agente-benvenuto > *,
+  .agente-pagina[data-state="open"] .agente-proposta,
+  .agente-pagina[data-state="open"] .agente-bordi {
+    animation: none;
+  }
+  .agente-bordi,
+  .agente-pagina[data-acceso] .agente-bordi {
+    animation: none;
+  }
+}
+
+/* Acceso (ascolta o risponde): il bagliore entra di più nella pagina. */
+.agente-pagina[data-acceso] .agente-bordi__alone {
+  filter: blur(22px);
+  opacity: 1;
+}
+.agente-pagina[data-acceso] .agente-bordi__linea--spessa {
+  border-width: 28px;
+}
+.agente-pagina[data-acceso] .agente-bordi > .agente-bordi__linea {
+  border-width: 4px;
+}

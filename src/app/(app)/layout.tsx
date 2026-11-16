@@ -1,4 +1,5 @@
 import "@/styles/vetro-ios.css";
+import "@/styles/agente-pagina.css";
 import { redirect } from "next/navigation";
 import { Fraunces, Inter, Space_Mono } from "next/font/google";
 import { Header } from "@/components/shell/header";

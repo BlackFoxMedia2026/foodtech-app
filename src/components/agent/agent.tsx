@@ -30,6 +30,9 @@ export function Agent() {
   const [pendingNewConversation, setPendingNewConversation] = useState(false);
   const [actedMessageIds, setActedMessageIds] = useState<Set<string>>(new Set());
   const [confirmingMessageId, setConfirmingMessageId] = useState<string | null>(null);
+  /** Il centro del pulsante: da lì parte (e lì rientra) l'onda verde. */
+  const [origine, setOrigine] = useState<{ x: number; y: number } | null>(null);
+  const [ascolta, setAscolta] = useState(false);
 
   const page = usePageContext();
   const pageRef = useRef(page);
@@ -175,22 +178,20 @@ export function Agent() {
   }, []);
 
   const handleOpenChange = useCallback((next: boolean) => {
+    // A tutta pagina l'agente è modale: Radix tiene il fuoco dentro e lo
+    // riporta al pulsante alla chiusura, da solo.
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (r) setOrigine({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     setOpen(next);
-    if (!next) {
-      // modal={false} means Radix doesn't auto-restore focus to the
-      // trigger on close (that convenience is tied to its focus-trap
-      // machinery, which non-modal dialogs intentionally skip) — restore
-      // it ourselves once the close transition has settled.
-      requestAnimationFrame(() => triggerRef.current?.focus());
-    }
+    if (!next) setAscolta(false);
   }, []);
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange} modal={false}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <AgentButton ref={triggerRef} open={open} processing={sending} />
       </SheetTrigger>
-      <AgentDrawer onNewConversation={handleNewConversation}>
+      <AgentDrawer origine={origine} acceso={ascolta || sending} onNewConversation={handleNewConversation}>
         <AgentChat
           messages={messages}
           sending={sending}
@@ -200,6 +201,7 @@ export function Agent() {
           onSend={sendMessage}
           onConfirmAction={handleConfirmAction}
           onCancelAction={handleCancelAction}
+          onAscolto={setAscolta}
         />
       </AgentDrawer>
     </Sheet>

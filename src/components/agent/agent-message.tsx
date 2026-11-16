@@ -24,19 +24,23 @@ export function AgentMessage({
     <div className={cn("flex gap-2", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
         <div className="mt-0.5 shrink-0">
-          <AgentVisual state="idle" size={18} />
+          <AgentVisual state="idle" size={24} />
         </div>
       )}
       <div className="max-w-[85%] space-y-1.5">
         <div
           className={cn(
-            "whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-relaxed",
-            isUser ? "bg-accent-strong text-white" : "bg-card/80 text-card-foreground",
+            "whitespace-pre-wrap text-base leading-relaxed",
+            // Sulla pagina verde: chi scrive su bianco, l'agente in bianco sul verde.
+            isUser ? "rounded-[20px] rounded-br-md bg-white px-4 py-2.5 text-[#1d3a2f] shadow-sm" : "pt-0.5 text-white",
           )}
         >
           {message.content}
         </div>
         {message.structured && (
+          /* I risultati (numeri, elenchi, conferme) sono pensati per il
+             chiaro: stanno su una carta bianca. */
+          <div className="rounded-2xl bg-[color:var(--card-fill)] p-1.5 text-card-foreground shadow-md">
           <AgentStructuredResult
             result={message.structured}
             acted={acted}
@@ -44,6 +48,7 @@ export function AgentMessage({
             onConfirmAction={onConfirmAction}
             onCancelAction={onCancelAction}
           />
+          </div>
         )}
       </div>
     </div>
