@@ -23,6 +23,7 @@ import { ColorField } from "@/components/settings/color-field";
 import { salvaPortaleWifi, type PortaleWifiPayload } from "@/lib/wifi-portale-api";
 import { cn } from "@/lib/utils";
 import { AnteprimaPortale } from "./anteprima-portale";
+import { CompilaRete } from "./compila-rete";
 import type { ConfigPortale } from "./wizard-portale";
 
 /**
@@ -422,6 +423,18 @@ export function BuilderPortale({
           {/* ── Rete ── */}
           {scheda === "rete" && (
             <>
+              <CompilaRete
+                onCompila={(r) => {
+                  // Una rete nuova senza password (dalla scansione): la vecchia
+                  // password non le appartiene, e il cursore va dove si scrive.
+                  // Il rinvio lascia al dialogo il tempo di chiudersi, che
+                  // altrimenti riporta il focus sul pulsante.
+                  if (r.password === null && r.ssid !== c.networkName) tocca("password", "");
+                  tocca("networkName", r.ssid);
+                  if (r.password !== null) tocca("password", r.password);
+                  else setTimeout(() => document.getElementById("b-pass")?.focus(), 50);
+                }}
+              />
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="b-rete">Nome della rete</Label>

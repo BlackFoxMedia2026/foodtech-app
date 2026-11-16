@@ -72,6 +72,51 @@ export function stringaWifi(w: PayloadWifi): string {
   return `WIFI:${parti.join(";")};;`;
 }
 
+/**
+ * Il contrario di `stringaWifi`: la riga letta da un QR, di nuovo in campi.
+ *
+ * Serve a chi ha già il QR della rete — quello stampato dal router, o quello
+ * che il telefono mostra in «Condividi rete» — e non ricorda la password.
+ * L'ordine dei campi non è fisso (Android scrive `S:` prima di `T:`), e il
+ * backslash protegge i caratteri speciali come in scrittura. Restituisce
+ * `null` se il QR non è di una rete Wi-Fi.
+ */
+export function leggiStringaWifi(testo: string): PayloadWifi | null {
+  const t = testo.trim();
+  if (!/^WIFI:/i.test(t)) return null;
+
+  const campi = new Map<string, string>();
+  let chiave = "";
+  let valore = "";
+  let inValore = false;
+  for (let i = 5; i < t.length; i++) {
+    const ch = t[i];
+    if (ch === "\\" && i + 1 < t.length) {
+      if (inValore) valore += t[++i];
+      else chiave += t[++i];
+    } else if (!inValore && ch === ":") {
+      inValore = true;
+    } else if (ch === ";") {
+      if (chiave) campi.set(chiave.toUpperCase(), valore);
+      chiave = "";
+      valore = "";
+      inValore = false;
+    } else if (inValore) {
+      valore += ch;
+    } else {
+      chiave += ch;
+    }
+  }
+  if (chiave && inValore) campi.set(chiave.toUpperCase(), valore);
+
+  const ssid = campi.get("S") ?? "";
+  if (!ssid) return null;
+  const tipo = (campi.get("T") ?? "").toUpperCase();
+  const sicurezza: Sicurezza = tipo === "NOPASS" ? "NONE" : tipo === "SAE" || tipo === "WPA3" ? "WPA3" : "WPA";
+  const password = sicurezza === "NONE" ? "" : (campi.get("P") ?? "");
+  return { ssid, password, sicurezza: !tipo && !password ? "NONE" : sicurezza, nascosta: /^true$/i.test(campi.get("H") ?? "") };
+}
+
 export type FontiContenuto = {
   kind: TipoQr;
   destinationUrl: string | null;

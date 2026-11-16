@@ -1,0 +1,21 @@
+{
+  "name": "foodtech-app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "L'app Foodtech: il gestionale in una shell Capacitor, con i gesti che il browser non sa fare (scansione delle reti Wi-Fi).",
+  "scripts": {
+    "dev": "node scripts/sviluppo.mjs",
+    "sync": "cap sync",
+    "android": "cap open android",
+    "apk": "cap sync android && cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0",
+    "@capgo/capacitor-wifi": "8.5.9"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.0",
+    "typescript": "5.6.3"
+  }
+}

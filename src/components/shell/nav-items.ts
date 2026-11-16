@@ -337,7 +337,9 @@ export const MOBILE_NAV: NavItem[] = [
   PRIMARY_NAV[0], // Panoramica
   PRIMARY_NAV[1], // Servizio — durante il servizio è la schermata madre
   PRIMARY_NAV[2], // Prenotazioni
-  PRIMARY_NAV[3], // Sala
+  /* «Sala» è uscita dalla barra il 16 novembre: con quattro voci il «+» non
+     stava al centro (due a sinistra, tre a destra contando «Altro»).Ora sono
+     due e due, e la sala si apre da «Altro». */
 ];
 
 /** Vero se questo percorso sta sotto questo indirizzo. */

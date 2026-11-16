@@ -30,6 +30,7 @@ import { salvaPortaleWifi } from "@/lib/wifi-portale-api";
 import { cn } from "@/lib/utils";
 import { AnteprimaPortale } from "./anteprima-portale";
 import { GuidaRouter } from "./guida-router";
+import { CompilaRete } from "./compila-rete";
 
 /**
  * La configurazione del portale, in quattro passi.
@@ -368,6 +369,18 @@ export function WizardPortale({
                 sottotitolo="Inserisci i dati della rete Wi-Fi dedicata agli ospiti: sono quelli che il portale consegnerà a chi lascia un contatto."
               />
 
+              <CompilaRete
+                onCompila={(r) => {
+                  // Una rete nuova senza password (dalla scansione): la vecchia
+                  // password non le appartiene, e il cursore va dove si scrive.
+                  // Il rinvio lascia al dialogo il tempo di chiudersi, che
+                  // altrimenti riporta il focus sul pulsante.
+                  if (r.password === null && r.ssid !== c.networkName) tocca("password", "");
+                  tocca("networkName", r.ssid);
+                  if (r.password !== null) tocca("password", r.password);
+                  else setTimeout(() => document.getElementById("w-pass")?.focus(), 50);
+                }}
+              />
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="w-rete">Nome della rete</Label>

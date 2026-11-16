@@ -353,16 +353,17 @@ describe("il menu Marketing", () => {
 });
 
 describe("la barra in basso del telefono", () => {
-  it("ha quattro voci, e la quinta è «Altro»", () => {
-    expect(MOBILE_NAV).toHaveLength(4);
+  it("ha tre voci: due a sinistra del «+», una a destra, poi «Altro»", () => {
+    expect(MOBILE_NAV.map((v) => v.href)).toEqual(["/overview", "/service", "/bookings"]);
   });
 
   it("porta le prenotazioni, che sono l'unica cosa che tutti i ruoli operativi possono fare", () => {
     expect(MOBILE_NAV.map((v) => v.href)).toContain("/bookings");
   });
 
-  it("porta la sala", () => {
-    expect(MOBILE_NAV.map((v) => v.href)).toContain("/floor");
+  it("la sala sta in «Altro», non in barra", () => {
+    expect(MOBILE_NAV.map((v) => v.href)).not.toContain("/floor");
+    expect(primarieFuoriDallaBarra().map((v) => v.href)).toContain("/floor");
   });
 
   it("ogni voce della barra viene dalla navigazione principale", () => {
@@ -376,7 +377,7 @@ describe("la barra in basso del telefono", () => {
     // Le sezioni amministrative stanno sotto l'avatar, che su telefono c'è
     // come su scrivania: elencarle anche qui sarebbe la stessa pagina
     // raggiungibile da due strade sullo stesso schermo.
-    expect(primarieFuoriDallaBarra(false).map((v) => v.label)).toEqual(["Ospiti", "Staff", "Marketing", "Menu"]);
+    expect(primarieFuoriDallaBarra(false).map((v) => v.label)).toEqual(["Sala", "Ospiti", "Staff", "Marketing", "Menu"]);
     expect(primarieFuoriDallaBarra(false).every((v) => PRIMARY_NAV.includes(v))).toBe(true);
   });
 });

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarPlus, ChevronDown, ListPlus, MoreHorizontal, Plus, UtensilsCrossed, X } from "lucide-react";
+import { CalendarPlus, ChevronDown, ListPlus, MoreHorizontal, Plus, UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   MOBILE_NAV,
@@ -81,47 +81,22 @@ export function MobileNav({
       <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
 
       {/* Le due tendine condividono lo stesso fondo scurito. */}
-      {(altroOpen || azioniOpen) && (
-        <button
-          type="button"
-          aria-label="Chiudi"
-          onClick={() => {
-            setAltroOpen(false);
-            setAzioniOpen(false);
-          }}
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-        />
-      )}
-
-      {azioniOpen && canManageBookings && (
-        <div
-          role="dialog"
-          aria-label="Azioni rapide"
-          className="fixed inset-x-3 bottom-24 z-50 space-y-2 md:hidden"
-        >
-          <AzioneRapida
-            icon={CalendarPlus}
-            label="Nuova prenotazione"
-            hint="Al telefono o allo sportello"
-            onClick={() => vaiA("/bookings/new")}
-          />
-          <AzioneRapida
-            icon={ListPlus}
-            label="Aggiungi in lista d'attesa"
-            hint="Quando il locale è pieno"
-            onClick={() => vaiA("/waitlist")}
-          />
-          <AzioneRapida
-            icon={UtensilsCrossed}
-            label="Accomoda un walk-in"
-            hint="Chi entra senza prenotazione"
-            onClick={() => {
-              setAzioniOpen(false);
-              setWalkInOpen(true);
-            }}
-          />
-        </div>
-      )}
+      {/* Sempre presente, così si scurisce e si schiarisce in dissolvenza
+          invece di comparire di colpo insieme al ventaglio. */}
+      <button
+        type="button"
+        aria-label="Chiudi"
+        aria-hidden={!(altroOpen || azioniOpen)}
+        tabIndex={altroOpen || azioniOpen ? 0 : -1}
+        onClick={() => {
+          setAltroOpen(false);
+          setAzioniOpen(false);
+        }}
+        className={cn(
+          "fixed inset-0 z-40 bg-black/50 transition-opacity duration-200 motion-reduce:transition-none md:hidden",
+          altroOpen || azioniOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      />
 
       {altroOpen && (
         <nav
@@ -213,7 +188,54 @@ export function MobileNav({
             <VoceBarra key={item.href} item={item} pathname={pathname} onNavigate={() => setAltroOpen(false)} />
           ))}
 
-          <li className="flex items-center justify-center px-1">
+          <li className="relative flex items-center justify-center px-1">
+            {canManageBookings && (
+              /* Il ventaglio: tre cerchi che escono dal «+» lungo un arco.
+                 Stanno sempre nel DOM, così l'apertura e la chiusura si
+                 animano; da chiusi sono raccolti sotto il «+» e non si
+                 toccano. Il centro dell'arco è il centro del «+» (che sta
+                 alzato di 40 px, metà fuori dalla barra). */
+              <div
+                role="group"
+                aria-label="Azioni rapide"
+                aria-hidden={!azioniOpen}
+                className="pointer-events-none absolute left-1/2 top-1/2 h-0 w-0 -translate-y-5"
+              >
+                {[
+                  {
+                    icon: CalendarPlus,
+                    label: "Prenotazione",
+                    aria: "Nuova prenotazione",
+                    pos: [-104, -100],
+                    onClick: () => vaiA("/bookings/new"),
+                  },
+                  {
+                    icon: ListPlus,
+                    label: "Lista d'attesa",
+                    aria: "Aggiungi in lista d'attesa",
+                    pos: [0, -158],
+                    onClick: () => vaiA("/waitlist"),
+                  },
+                  {
+                    icon: UtensilsCrossed,
+                    label: "Walk-in",
+                    aria: "Accomoda un walk-in",
+                    pos: [104, -100],
+                    onClick: () => {
+                      setAzioniOpen(false);
+                      setWalkInOpen(true);
+                    },
+                  },
+                ].map((a, i) => (
+                  <PetaloAzione
+                    key={a.label}
+                    {...a}
+                    aperto={azioniOpen}
+                    ordine={i}
+                  />
+                ))}
+              </div>
+            )}
             {canManageBookings ? (
               <button
                 type="button"
@@ -223,16 +245,23 @@ export function MobileNav({
                   setAltroOpen(false);
                   setAzioniOpen((v) => !v);
                 }}
-                className="-mt-4 flex h-14 w-14 items-center justify-center rounded-full bg-cta text-cta-ink shadow-lg transition-transform active:scale-95"
+                /* Più grande e sporgente: metà del cerchio esce sopra il filo
+                    della barra, così si vede come il gesto principale. */
+                className="relative z-10 -mt-10 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-cta text-cta-ink shadow-xl ring-4 ring-background transition-transform active:scale-95"
               >
-                {azioniOpen ? (
-                  <X className="h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <Plus className="h-6 w-6" aria-hidden="true" />
-                )}
+                {/* Il «+» ruota di 45° e diventa la ✕: è lo stesso segno che
+                    si chiude, non un'icona che ne sostituisce un'altra. */}
+                <Plus
+                  className={cn(
+                    "h-8 w-8 transition-transform duration-300 ease-out motion-reduce:transition-none",
+                    azioniOpen && "rotate-45",
+                  )}
+                  strokeWidth={2.5}
+                  aria-hidden="true"
+                />
               </button>
             ) : (
-              <span className="h-14 w-14" aria-hidden="true" />
+              <span className="h-[72px] w-[72px]" aria-hidden="true" />
             )}
           </li>
 
@@ -261,11 +290,11 @@ export function MobileNav({
                 });
               }}
               className={cn(
-                "flex min-h-[56px] w-full flex-col items-center justify-center gap-1 px-1 py-2 text-[11px]",
-                altroAttivo || altroOpen ? "text-foreground" : "text-muted-foreground",
+                "flex min-h-[60px] w-full flex-col items-center justify-center gap-1 px-1 py-2 text-[12px] leading-tight",
+                altroAttivo || altroOpen ? "font-medium text-foreground" : "text-muted-foreground",
               )}
             >
-              <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+              <MoreHorizontal className="h-6 w-6" aria-hidden="true" />
               Altro
             </button>
           </li>
@@ -293,42 +322,89 @@ function VoceBarra({
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
         className={cn(
-          // 10 px invece di 11: «Panoramica» intera ci sta, e vale più di un
-          // nome più corto ma diverso da quello che si legge sul tablet.
-          "flex min-h-[56px] flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] leading-tight",
+          // Con quattro voci più il «+» ogni posto è largo un quinto dello
+          // schermo: a 12 px ci stanno «Panoramica» e «Prenotazioni» intere.
+          "flex min-h-[60px] flex-col items-center justify-center gap-1 px-0.5 py-2 text-[12px] leading-tight",
           active ? "font-medium text-foreground" : "text-muted-foreground",
         )}
       >
-        <Icon className="h-5 w-5 shrink-0" />
-        <span className="w-full truncate text-center">{item.shortLabel ?? item.label}</span>
+        <Icon className="h-6 w-6 shrink-0" />
+        <span className="w-full truncate text-center">{item.label}</span>
       </Link>
     </li>
   );
 }
 
-function AzioneRapida({
+/** Curva a molla per l'apertura: arriva, supera di poco il punto e torna. */
+const MOLLA = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+/** Curva per la chiusura: parte piano e accelera verso il «+», senza rimbalzo. */
+const RIENTRO = "cubic-bezier(0.4, 0, 1, 1)";
+
+/**
+ * Un cerchio del ventaglio del «+».
+ *
+ * Da chiuso è piccolo, trasparente e nascosto **dietro** il «+». All'apertura
+ * esce lungo la sua direzione con una molla, uno dopo l'altro (45 ms di
+ * scarto, da sinistra a destra), e il nome compare solo quando il cerchio è
+ * quasi arrivato: un'etichetta che vola insieme al cerchio si legge male e
+ * sporca il movimento. Alla chiusura tutto rientra insieme, più veloce e
+ * senza rimbalzo — un rimbalzo verso il centro farebbe sbucare i cerchi
+ * dall'altra parte del «+».
+ */
+function PetaloAzione({
   icon: Icon,
   label,
-  hint,
+  aria,
+  pos,
   onClick,
+  aperto,
+  ordine,
 }: {
   icon: typeof Plus;
   label: string;
-  hint: string;
+  aria: string;
+  /** Dove si ferma il centro del cerchio, rispetto al centro del «+». */
+  pos: number[];
   onClick: () => void;
+  aperto: boolean;
+  ordine: number;
 }) {
+  const [x, y] = pos;
   return (
     <button
       type="button"
+      aria-label={aria}
+      tabIndex={aperto ? 0 : -1}
       onClick={onClick}
-      className="flex min-h-[60px] w-full items-center gap-3 riquadro bg-popover px-4 text-left"
+      style={{
+        // -30px: il punto di riferimento è il centro del cerchio, non del
+        // pulsante intero (che ha anche il nome sotto).
+        transform: aperto
+          ? `translate(-50%, -30px) translate(${x}px, ${y}px) scale(1)`
+          : "translate(-50%, -30px) scale(0.2)",
+        transitionProperty: "transform, opacity",
+        transitionDuration: aperto ? "420ms, 160ms" : "200ms, 160ms",
+        transitionTimingFunction: aperto ? `${MOLLA}, linear` : RIENTRO,
+        transitionDelay: aperto ? `${ordine * 45}ms` : "0ms",
+      }}
+      className={cn(
+        "absolute left-0 top-0 flex w-24 flex-col items-center gap-1.5 motion-reduce:!transition-none",
+        aperto ? "pointer-events-auto opacity-100" : "opacity-0",
+      )}
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-current/10">
-        <Icon className="h-4 w-4" aria-hidden="true" />
+      <span className="flex h-[60px] w-[60px] items-center justify-center rounded-full bg-popover text-foreground shadow-xl ring-1 ring-border transition-transform active:scale-90">
+        <Icon className="h-6 w-6" aria-hidden="true" />
       </span>
-      <span>
-        <span className="block text-sm font-medium text-foreground">{label}</span>
-        <span className="block text-xs text-muted-foreground">{hint}</span>
+      <span
+        style={{
+          transitionDelay: aperto ? `${ordine * 45 + 220}ms` : "0ms",
+        }}
+        className={cn(
+          "whitespace-nowrap rounded-full bg-popover/95 px-2.5 py-0.5 text-[12px] font-medium leading-tight text-foreground shadow-sm transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
+          aperto ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
+        )}
+      >
+        {label}
       </span>
     </button>
   );
