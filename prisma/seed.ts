@@ -842,11 +842,14 @@ async function main() {
 
   const owner = await db.user.upsert({
     where: { email: "owner@tavolo.demo" },
-    update: { passwordHash },
+    /* La foto della titolare demo: la pagina «Altro» del telefono si apre
+       col suo ritratto, non con due iniziali. */
+    update: { passwordHash, image: "/demo/utenti/anna-conti.webp" },
     create: {
       email: "owner@tavolo.demo",
       name: "Anna Conti",
       passwordHash,
+      image: "/demo/utenti/anna-conti.webp",
     },
   });
 

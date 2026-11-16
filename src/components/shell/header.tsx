@@ -129,7 +129,12 @@ export function Header({
               testata restano tre. */}
           <IndicatoreTelefono />
           <NotificationBell />
-          <ProfileMenu user={user} role={role} conStaffApp={conStaffApp} />
+          {/* Sul telefono il profilo è la pagina «Altro» della barra in
+              basso: due strade per le impostazioni sullo stesso schermo
+              non insegnano dove stanno le cose. */}
+          <div className="hidden md:block">
+            <ProfileMenu user={user} role={role} conStaffApp={conStaffApp} />
+          </div>
         </div>
       </div>
     </header>
