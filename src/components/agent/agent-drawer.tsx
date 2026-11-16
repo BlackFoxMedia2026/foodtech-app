@@ -1,7 +1,7 @@
 "use client";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Plus, X } from "lucide-react";
+import { SquarePen, X } from "lucide-react";
 
 /**
  * L'agente a tutta pagina.
@@ -18,11 +18,14 @@ import { Plus, X } from "lucide-react";
 export function AgentDrawer({
   origine,
   acceso,
+  conMessaggi,
   onNewConversation,
   children,
 }: {
   origine: { x: number; y: number } | null;
   acceso: boolean;
+  /** «Nuova conversazione» ha senso solo se c'è una conversazione da chiudere. */
+  conMessaggi: boolean;
   onNewConversation: () => void;
   children: React.ReactNode;
 }) {
@@ -48,15 +51,20 @@ export function AgentDrawer({
         </span>
 
         <div className="relative z-10 flex shrink-0 items-center justify-between px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <button
-            type="button"
-            onClick={onNewConversation}
-            aria-label="Nuova conversazione"
-            title="Nuova conversazione"
-            className="agente-tasto grid h-11 w-11 place-items-center rounded-full"
-          >
-            <Plus className="h-5 w-5" aria-hidden="true" />
-          </button>
+          {conMessaggi ? (
+            <button
+              type="button"
+              onClick={onNewConversation}
+              aria-label="Nuova conversazione"
+              title="Nuova conversazione"
+              className="agente-tasto grid h-11 w-11 place-items-center rounded-full"
+            >
+              <SquarePen className="h-5 w-5" aria-hidden="true" />
+            </button>
+          ) : (
+            // Tiene il titolo al centro anche senza il tasto.
+            <span className="h-11 w-11" aria-hidden="true" />
+          )}
           <DialogPrimitive.Title className="text-base font-medium text-white/90">Agente</DialogPrimitive.Title>
           <DialogPrimitive.Close
             aria-label="Chiudi Agente"

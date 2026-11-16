@@ -191,7 +191,9 @@ export function Agent() {
       <SheetTrigger asChild>
         <AgentButton ref={triggerRef} open={open} processing={sending} />
       </SheetTrigger>
-      <AgentDrawer origine={origine} acceso={ascolta || sending} onNewConversation={handleNewConversation}>
+      <AgentDrawer origine={origine} acceso={ascolta || sending}
+        conMessaggi={messages.length > 0}
+        onNewConversation={handleNewConversation}>
         <AgentChat
           messages={messages}
           sending={sending}
