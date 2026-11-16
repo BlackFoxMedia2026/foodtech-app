@@ -77,7 +77,7 @@ export function CouponCard({
         stato.spento && "opacity-[0.62] hover:opacity-100",
       )}
     >
-      <Tagliando codice={c.code} />
+      <Tagliando codice={c.code} categoria={c.category} />
 
       <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_8.5rem_6.5rem_auto] lg:gap-x-6 lg:py-[1.125rem] lg:pl-7">
         {/* ── 1. Quale coupon è, cosa dà, a che condizioni ─────────────── */}
@@ -90,7 +90,15 @@ export function CouponCard({
             pillola e il beneficio. Come occhiello è una parola sola, quieta,
             e il nome torna a essere l'inizio della lettura.
           */}
-          <p className="text-[0.6875rem] font-medium uppercase leading-none tracking-[0.14em] text-tertiary-foreground">
+          <p
+            className="flex items-center gap-1.5 text-[0.6875rem] font-semibold uppercase leading-none tracking-[0.14em]"
+            style={{ color: tintaDi(c.category).a }}
+          >
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: tintaDi(c.category).da }}
+              aria-hidden="true"
+            />
             {categoria}
           </p>
           {/* Il nome apre la scheda: è il bersaglio che si tenta per primo. */}
@@ -241,7 +249,31 @@ export function CouponCard({
  * («Codice» diventa «Copiato» con la spunta) e, per chi usa un lettore di
  * schermo, in un'area annunciata.
  */
-function Tagliando({ codice }: { codice: string }) {
+/**
+ * La tinta di ogni categoria: la matrice del biglietto è piena di quel verde.
+ *
+ * Erano tutte color carta, e undici schede in fila si distinguevano solo
+ * leggendo. Una tinta diversa per categoria (terracotta, oro, petrolio) era
+ * troppo: la pagina usciva dalla casa. Restano tutti verdi, quello del bosco
+ * della marca, spostati di poco verso il salvia, l'oliva o il petrolio — si
+ * riconoscono accostati, e insieme fanno una famiglia sola.
+ */
+const TINTA: Record<string, { da: string; a: string }> = {
+  GENERIC: { da: "#2f5141", a: "#1d3227" },
+  BIRTHDAY: { da: "#3f6b55", a: "#284836" },
+  WINBACK: { da: "#2e5a57", a: "#1c3c3a" },
+  EVENT: { da: "#35503f", a: "#21352a" },
+  NEW_CUSTOMER: { da: "#4a7559", a: "#30553f" },
+  WIFI: { da: "#28473a", a: "#172b22" },
+  REFERRAL: { da: "#56704a", a: "#3b5232" },
+  STAFF: { da: "#3b5a4c", a: "#263d33" },
+};
+export function tintaDi(categoria: string) {
+  return TINTA[categoria] ?? TINTA.GENERIC;
+}
+
+function Tagliando({ codice, categoria }: { codice: string; categoria: string }) {
+  const tinta = tintaDi(categoria);
   const [copiato, setCopiato] = useState(false);
 
   async function copia() {
@@ -262,12 +294,15 @@ function Tagliando({ codice }: { codice: string }) {
       title="Clicca per copiare"
       className={cn(
         "group relative flex shrink-0 flex-col justify-center gap-2 px-5 py-4 text-left",
-        // Un velo d'oro appena percettibile: la matrice è carta diversa dal
-        // resto del biglietto, non un riquadro.
-        "bg-[#c9a96a]/[0.07] transition-colors hover:bg-[#c9a96a]/[0.13]",
+        // Piena della tinta della categoria, con una luce in alto a sinistra:
+        // la matrice è cartoncino colorato, il resto del biglietto è carta.
+        "text-[#f7f3ea] transition-[filter] hover:brightness-110",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         "lg:w-[var(--matrice)] lg:pl-6",
       )}
+      style={{
+        backgroundImage: `radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.16), transparent 55%), linear-gradient(135deg, ${tinta.da}, ${tinta.a})`,
+      }}
     >
       {/*
         La perforazione: puntini, da una tacca all'altra. Una riga tratteggiata
@@ -277,29 +312,29 @@ function Tagliando({ codice }: { codice: string }) {
       <span
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute text-[#b3a07a]",
+          "pointer-events-none absolute text-[#f7f3ea]/55",
           "inset-x-4 bottom-0 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1.4px)] bg-[length:7px_2px] bg-repeat-x",
           "lg:inset-x-auto lg:bottom-[calc(var(--tacca)+6px)] lg:right-0 lg:top-[calc(var(--tacca)+6px)] lg:h-auto lg:w-[2px] lg:translate-x-1/2 lg:bg-[length:2px_7px] lg:bg-repeat-y",
         )}
       />
       <span className="flex items-center justify-between gap-2 text-[0.6875rem] font-medium uppercase leading-none tracking-[0.14em]">
         {copiato ? (
-          <span className="flex items-center gap-1.5 text-sage">
+          <span className="flex items-center gap-1.5 text-[#f7f3ea]">
             <Check className="h-3.5 w-3.5" aria-hidden="true" /> Copiato
           </span>
         ) : (
-          <span className="text-tertiary-foreground">Codice</span>
+          <span className="text-[#f7f3ea]/70">Codice</span>
         )}
         <Copy
           className={cn(
-            "h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-70 group-focus-visible:opacity-70",
+            "h-3.5 w-3.5 text-[#f7f3ea] opacity-0 transition-opacity group-hover:opacity-80 group-focus-visible:opacity-80",
             copiato && "invisible",
           )}
           aria-hidden="true"
         />
       </span>
       <span
-        className="whitespace-nowrap font-mono font-medium leading-tight tracking-[0.06em] text-primary"
+        className="whitespace-nowrap font-mono font-medium leading-tight tracking-[0.06em] text-[#fffaf0] [text-shadow:0_1px_1px_rgba(0,0,0,0.18)]"
         style={{ fontSize: misuraCodice(codice, 196, 19) }}
       >
         {codice}
