@@ -87,6 +87,44 @@ export default async function GuestsPage({
         rows={elenco.items}
         availableTags={availableTags}
         spesaCents={Object.fromEntries(elenco.spesaCents)}
+        piedeTelefono={
+          /* Sul telefono la paginazione non è una barra fissa che taglia
+             l'elenco: è la fine dell'elenco. Si incontra quando si è
+             finito di scorrere, che è l'unico momento in cui serve. */
+          <nav
+            aria-label="Pagine degli ospiti"
+            className="flex flex-col items-center gap-2 pb-2 pt-5"
+          >
+            {elenco.pagine > 1 && (
+              <div className="flex items-center gap-1 rounded-full border border-border bg-card-sunken p-1">
+                <Link
+                  href={href(searchParams, elenco.pagina - 1)}
+                  aria-label="Pagina precedente"
+                  aria-disabled={elenco.pagina === 1}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors active:bg-secondary/60 ${
+                    elenco.pagina === 1 ? "pointer-events-none opacity-30" : ""
+                  }`}
+                >
+                  <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                </Link>
+                <span className="min-w-[5.5rem] text-center text-sm font-medium tabular-nums">
+                  {elenco.pagina} di {elenco.pagine}
+                </span>
+                <Link
+                  href={href(searchParams, elenco.pagina + 1)}
+                  aria-label="Pagina successiva"
+                  aria-disabled={elenco.pagina === elenco.pagine}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors active:bg-secondary/60 ${
+                    elenco.pagina === elenco.pagine ? "pointer-events-none opacity-30" : ""
+                  }`}
+                >
+                  <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                </Link>
+              </div>
+            )}
+            <span className="text-[13px] text-muted-foreground tabular-nums">{conteggio}</span>
+          </nav>
+        }
       />
 
       {/*
@@ -108,7 +146,7 @@ export default async function GuestsPage({
           parole «Precedenti/Successivi» restano per chi usa un lettore di
           schermo e tornano visibili da `sm`. */}
       <nav
-        className="fissa flex items-center gap-x-3 sm:gap-x-4"
+        className="fissa hidden items-center gap-x-3 sm:gap-x-4 md:flex"
         aria-label="Pagine degli ospiti"
       >
         {elenco.pagine > 1 ? (

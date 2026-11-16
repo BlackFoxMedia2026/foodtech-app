@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ChevronRight, Mail, Phone, Search } from "lucide-react";
@@ -14,21 +15,17 @@ import type { PaginaOspiti } from "@/server/guests";
 
 const ALL_TAGS = "__all__";
 
-/** «15 nov», o «15 nov 2025» se non è quest'anno: nell'elenco del telefono
- * l'anno corrente è rumore che manda la riga a capo. */
-function dataBreve(d: Date | string) {
-  const data = new Date(d);
-  const stessoAnno = data.getFullYear() === new Date().getFullYear();
-  return stessoAnno
-    ? new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short" }).format(data)
-    : formatDate(data);
-}
-
 export function GuestsTable({
   rows,
   availableTags,
   spesaCents,
+  piedeTelefono,
 }: {
+  /**
+   * La paginazione del telefono, messa in fondo alla lista e non sotto: sul
+   * telefono scorre con gli ospiti invece di tagliarli a metà riga.
+   */
+  piedeTelefono?: ReactNode;
   /**
    * Solo le colonne che l'elenco mostra, non la riga intera del database: la
    * spesa è un `Decimal` di Prisma e non attraversa il confine col client, e
@@ -123,55 +120,43 @@ export function GuestsTable({
           l'email sempre troncata — e su uno schermo se ne leggevano tre.
           L'email intera resta nella scheda, a un tocco: qui si mostra il
           telefono, che è il contatto che si usa dal telefono. */}
-      <div className="fill-scroll md:hidden">
+      {/* L'elenco scorre fin sotto la barra dell'app e ci passa dietro
+          sfumando, invece di fermarsi su un bordo netto a metà ospite
+          (`.scorre-sotto-barra` in globals.css). */}
+      <div className="fill-scroll scorre-sotto-barra md:hidden">
         {rows.length === 0 ? (
           <p className="riquadro comodo text-center text-[15px] text-muted-foreground">Nessun ospite trovato.</p>
         ) : (
           <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card-sunken">
             {rows.map((g) => {
               const name = `${g.firstName} ${g.lastName ?? ""}`.trim();
-              const speso = spesaCents[g.id];
-              const contatto = g.phone ?? g.email;
               return (
                 <li key={g.id}>
                   <Link
                     href={`/guests/${g.id}`}
-                    className="flex min-h-[4.5rem] items-center gap-3 px-3.5 py-3 transition-colors active:bg-secondary/40"
+                    className="flex min-h-[4rem] items-center gap-3 px-3.5 py-3 transition-colors active:bg-secondary/40"
                   >
                     <Avatar className="h-11 w-11 shrink-0">
                       <AvatarFallback className="text-sm">{initials(name)}</AvatarFallback>
                     </Avatar>
+                    {/* Tre cose sole: chi è, il livello, il numero per
+                        chiamarlo. I tag scritti a mano e la riga di numeri
+                        (visite, spesa, ultima data) allungavano ogni ospite;
+                        sono nella scheda, a un tocco, e nella tabella da
+                        tablet in su. */}
                     <div className="min-w-0 flex-1">
-                      {/* Il nome va a capo invece di troncarsi: è la cosa che
-                          si cerca. I tag gli stanno accanto e scendono sotto
-                          solo se non c'è posto. */}
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <p className="break-words text-base font-semibold leading-snug">{name}</p>
-                        <Tag tags={g.tags} />
-                        <LoyaltyPill tier={g.loyaltyTier} />
+                      {/* Il livello sta accanto al nome, non sotto: la riga
+                          resta di due linee per tutti, con o senza livello. */}
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="min-w-0 truncate text-base font-semibold leading-snug">{name}</p>
+                        <span className="shrink-0">
+                          <LoyaltyPill tier={g.loyaltyTier} />
+                        </span>
                       </div>
-                      {/* Una riga di numeri: «11 visite · 802 € · 15 nov». La
-                          data senza l'anno quando è quello in corso, perché
-                          con l'anno la riga andava sempre a capo. */}
-                      <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
-                        <span className="whitespace-nowrap tabular-nums">
-                          {g.totalVisits} {g.totalVisits === 1 ? "visita" : "visite"}
-                        </span>
-                        {speso != null && (
-                          <span className="whitespace-nowrap tabular-nums"> · {formatCurrency(speso)}</span>
-                        )}{" "}
-                        <span className="whitespace-nowrap">
-                          · {g.lastVisitAt ? `ultima ${dataBreve(g.lastVisitAt)}` : "mai venuto"}
-                        </span>
-                      </p>
-                      {contatto && (
-                        <p className="mt-0.5 flex items-center gap-1.5 text-[13px] leading-snug text-tertiary-foreground">
-                          {g.phone ? (
-                            <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                          ) : (
-                            <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                          )}
-                          <span className="truncate tabular-nums">{contatto}</span>
+                      {g.phone && (
+                        <p className="mt-1 flex items-center gap-1.5 text-[13px] leading-snug text-muted-foreground">
+                          <Phone className="h-3.5 w-3.5 shrink-0 text-tertiary-foreground" aria-hidden="true" />
+                          <span className="truncate tabular-nums">{g.phone}</span>
                         </p>
                       )}
                     </div>
@@ -182,6 +167,7 @@ export function GuestsTable({
             })}
           </ul>
         )}
+        {piedeTelefono}
       </div>
 
       {/*

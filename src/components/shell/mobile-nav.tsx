@@ -195,7 +195,7 @@ export function MobileNav({
 
       <nav
         aria-label="Navigazione principale"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/70 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 md:hidden"
       >
         {/* Un filo di respiro ai lati: «Panoramica» a 10 px riempie il suo
             posto, e senza questo tocca il bordo dello schermo. */}

@@ -1153,6 +1153,36 @@
   }
 
   /*
+   * Un elenco che scorre **sotto** la barra del telefono, come in un'app.
+   *
+   * Il `<main>` lascia in fondo lo spazio della barra (6rem + zona sicura);
+   * questa regione se lo riprende col margine negativo e lo restituisce come
+   * padding interno, così l'ultima riga si può ancora portare sopra la barra.
+   *
+   * La sfumatura è lunga — parte ben sopra la barra — e non arriva a zero:
+   * sotto il vetro della barra le righe restano intraviste, che è ciò che
+   * dice «qui sotto continua». Una sfumatura fino al trasparente sembrava
+   * una fine, non un passaggio.
+   */
+  .scorre-sotto-barra {
+    --barra-sotto: calc(6rem + env(safe-area-inset-bottom));
+    margin-bottom: calc(-1 * var(--barra-sotto));
+    padding-bottom: calc(var(--barra-sotto) + 1rem);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      #000 calc(100% - var(--barra-sotto) - 7rem),
+      rgba(0, 0, 0, 0.55) calc(100% - var(--barra-sotto)),
+      rgba(0, 0, 0, 0.3) 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      #000 calc(100% - var(--barra-sotto) - 7rem),
+      rgba(0, 0, 0, 0.55) calc(100% - var(--barra-sotto)),
+      rgba(0, 0, 0, 0.3) 100%
+    );
+  }
+
+  /*
    * Il terzo livello, finalmente dichiarato.
    *
    * Il linguaggio ne aveva due: `.surface` — le card, che galleggiano — e
