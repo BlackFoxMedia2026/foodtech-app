@@ -1,4 +1,5 @@
 import { Wifi } from "lucide-react";
+import { testoSu } from "@/lib/colore-leggibile";
 import { cn } from "@/lib/utils";
 
 /**
@@ -105,7 +106,9 @@ export function AnteprimaPortale({ dati, className }: { dati: DatiAnteprima; cla
 
           <div
             className="mt-4 rounded-md py-2 text-center text-[11px] font-medium"
-            style={{ backgroundColor: accento ?? "#F2E7D0", color: "#2F1F11" }}
+            // Il testo si sceglie sul colore: un pulsante verde bosco con la scritta
+            // marrone era illeggibile, e lo vedeva solo il cliente.
+            style={{ backgroundColor: accento ?? "#F2E7D0", color: accento ? testoSu(accento).colore : "#2F1F11" }}
           >
             {dati.conCoupon ? "Collegati e prendi lo sconto" : "Collegati"}
           </div>

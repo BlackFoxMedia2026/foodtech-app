@@ -2120,6 +2120,43 @@
     transform: translateY(1px);
   }
 
+  /* I comandi sopra la fascia verde (Portale Wi-Fi, Contatti Wi-Fi): lo
+     stesso rilievo della pillola, rovesciato. Vetro chiaro e testo crema per
+     i secondari; crema pieno con inchiostro verde per quello che conta.
+     Vengono dopo `.pillola-comando` perché, sullo stesso elemento, vincano. */
+  .comando-su-verde {
+    border: 1px solid rgba(247, 243, 234, 0.25);
+    background: rgba(247, 243, 234, 0.1);
+    background-image: none;
+    color: #f7f3ea;
+    font-weight: 500;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    transition: background-color 150ms ease, transform 150ms ease;
+  }
+  .comando-su-verde:hover:not(:disabled) {
+    background: rgba(247, 243, 234, 0.18);
+    color: #f7f3ea;
+  }
+  .comando-crema {
+    border: 0;
+    background: #f7f3ea;
+    background-image: none;
+    color: #1d3227;
+    font-weight: 600;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.2),
+      0 6px 14px -6px rgba(0, 0, 0, 0.45);
+    transition: background-color 150ms ease, transform 150ms ease;
+  }
+  .comando-crema:hover:not(:disabled) {
+    background: #ffffff;
+    color: #1d3227;
+  }
+  .comando-su-verde:active:not(:disabled),
+  .comando-crema:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
   /* Hides the scrollbar on the horizontally-scrolling top nav without
      hiding the ability to scroll (wheel/touch/keyboard still work). */
   .nav-scroll {

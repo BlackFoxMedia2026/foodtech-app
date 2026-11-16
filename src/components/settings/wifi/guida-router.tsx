@@ -105,7 +105,12 @@ export function GuidaRouter({
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" className={className} onClick={() => setAperta(true)}>
+      <Button
+        type="button"
+        variant="ghost"
+        className={cn("pillola-comando h-10 rounded-full px-4", className)}
+        onClick={() => setAperta(true)}
+      >
         <Router className="h-3.5 w-3.5" aria-hidden="true" /> {etichetta}
       </Button>
 

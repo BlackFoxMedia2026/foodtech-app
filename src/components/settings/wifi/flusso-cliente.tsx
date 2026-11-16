@@ -26,35 +26,41 @@ const PASSI = [
 
 export function FlussoCliente({ className }: { className?: string }) {
   return (
+    // Una sola lastra, non quattro riquadri: è un percorso, e i passi si
+    // leggono come tappe di una stessa linea. Su telefono due per riga, e la
+    // linea che li unisce sparisce — racconterebbe un ordine che non è quello.
     <ol
       className={cn(
-        // Su telefono due colonne: quattro riquadri in fila diventerebbero
-        // quattro colonne da 80 px con le parole spezzate a metà.
-        "grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-0",
+        "surface grid grid-cols-2 gap-x-3 gap-y-5 px-4 py-5 md:grid-cols-4 md:gap-0 md:px-2",
         className,
       )}
     >
       {PASSI.map((passo, i) => (
-        <li key={passo.titolo} className="flex items-center gap-2 md:flex-1">
-          <div className="riquadro comodo flex min-w-0 flex-1 flex-col items-center gap-2 bg-card/40 p-3 text-center md:gap-2.5">
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-accent/30 bg-accent/10 text-accent-strong md:h-10 md:w-10"
-              aria-hidden="true"
-            >
-              <passo.icona className="h-4 w-4 md:h-[18px] md:w-[18px]" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-medium leading-tight md:text-sm">{passo.titolo}</p>
-              <p className="mt-0.5 t-nota leading-tight">{passo.nota}</p>
-            </div>
-          </div>
-          {/* Il trattino fra un passo e l'altro c'è solo dove i quattro
-              riquadri stanno davvero in fila: in griglia due per due
-              punterebbe dal primo al secondo e dal terzo al quarto, cioè
-              racconterebbe un ordine che non è quello. */}
+        <li key={passo.titolo} className="relative flex flex-col items-center gap-2.5 text-center md:px-3">
           {i < PASSI.length - 1 && (
-            <span className="hidden h-px w-3 shrink-0 bg-border md:block lg:w-5" aria-hidden="true" />
+            <span
+              className="absolute left-[calc(50%+1.75rem)] right-[calc(-50%+1.75rem)] top-5 hidden border-t border-dashed border-[#c9a96a]/60 md:block"
+              aria-hidden="true"
+            />
           )}
+          <span
+            className={cn(
+              "relative grid h-10 w-10 shrink-0 place-items-center rounded-full",
+              i === PASSI.length - 1
+                ? "bg-primary text-primary-foreground shadow-[0_6px_14px_-6px_rgba(16,32,26,0.5)]"
+                : "bg-[#c9a96a]/20 text-accent-strong",
+            )}
+            aria-hidden="true"
+          >
+            <passo.icona className="h-[18px] w-[18px]" />
+            <span className="absolute -right-1 -top-1 grid h-[18px] w-[18px] place-items-center rounded-full bg-card text-[10px] font-semibold tabular-nums text-accent-strong shadow-[0_1px_3px_rgba(60,45,20,0.25)]">
+              {i + 1}
+            </span>
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-tight text-card-foreground">{passo.titolo}</p>
+            <p className="mt-0.5 t-nota leading-tight">{passo.nota}</p>
+          </div>
         </li>
       ))}
     </ol>
