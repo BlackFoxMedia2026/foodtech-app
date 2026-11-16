@@ -61,7 +61,7 @@ export default function Landing() {
       )}
     >
       <TemaCarta />
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background pt-[env(safe-area-inset-top)]">
         <div className="container flex h-16 items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2">
             <Logo />

@@ -106,7 +106,7 @@ function SignInForm() {
         sans.variable,
         display.variable,
         mono.variable,
-        "grid min-h-screen w-full gap-10 overflow-x-hidden bg-background p-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] text-foreground sm:p-8 md:grid-cols-[44%_1fr] md:gap-12 md:p-8 lg:grid-cols-[47%_1fr] lg:gap-16 lg:p-10 xl:gap-20",
+        "grid min-h-screen w-full gap-10 overflow-x-hidden bg-background p-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] text-foreground sm:p-8 md:grid-cols-[44%_1fr] md:gap-12 md:p-8 lg:grid-cols-[47%_1fr] lg:gap-16 lg:p-10 xl:gap-20",
       )}
     >
       {/* Identity panel */}

@@ -826,27 +826,32 @@
    * vengono ignorati e torna la barra di sistema. Solo Firefox, che gli
    * pseudo-elementi non li conosce, la riceve.
    */
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-    background: transparent;
-  }
-  ::-webkit-scrollbar-button,
-  ::-webkit-scrollbar-corner {
-    display: none;
-    background: transparent;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    border: 2px solid transparent;
-    border-radius: 999px;
-    background: var(--scorre-pollice) padding-box;
-  }
-  ::-webkit-scrollbar-thumb:hover,
-  ::-webkit-scrollbar-thumb:active {
-    background: var(--scorre-pollice-attivo) padding-box;
+  /* Solo con mouse o trackpad. Sugli schermi touch (telefono, app) resta la
+     barra nativa, che compare mentre si scorre e poi sparisce: disegnata da
+     noi restava fissa sul bordo, una cosa che nessuna app mostra. */
+  @media (hover: hover) and (pointer: fine) {
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+      background: transparent;
+    }
+    ::-webkit-scrollbar-button,
+    ::-webkit-scrollbar-corner {
+      display: none;
+      background: transparent;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: 999px;
+      background: var(--scorre-pollice) padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover,
+    ::-webkit-scrollbar-thumb:active {
+      background: var(--scorre-pollice-attivo) padding-box;
+    }
   }
   @supports not selector(::-webkit-scrollbar) {
     * {
