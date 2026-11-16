@@ -107,9 +107,12 @@ export function Testata({
     <header className="fissa flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-border/70 pb-3">
       {/* Il contenuto in un solo figlio elastico con `basis-0`, come nella
           testata ospite: le azioni non finiscono mai a capo da sole. */}
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 lg:w-auto lg:flex-1 lg:basis-0">
-        <div className="flex min-w-0 items-center gap-3">
-          <Button asChild variant="ghost" size="icon" className="-ml-2 h-8 w-8 shrink-0">
+      {/* Sul telefono il contenitore si scioglie (`contents`): lo stato
+          finisce sulla stessa riga delle azioni invece di averne una sua, e
+          la testata passa da quattro righe a due. */}
+      <div className="contents min-w-0 flex-wrap items-center gap-x-4 gap-y-2 md:flex md:w-full lg:w-auto lg:flex-1 lg:basis-0">
+        <div className="flex w-full min-w-0 items-center gap-3 md:w-auto">
+          <Button asChild variant="ghost" size="icon" className="-ml-2 h-11 w-11 shrink-0 md:h-8 md:w-8">
             <Link href="/staff" aria-label="Torna allo staff" title="Staff">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             </Link>
@@ -162,7 +165,7 @@ export function Testata({
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" aria-label={`Altre azioni per ${nome}`} title="Altre azioni">
+              <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 md:h-9 md:w-9" aria-label={`Altre azioni per ${nome}`} title="Altre azioni">
                 <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
@@ -202,9 +205,11 @@ export function Testata({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button asChild variant="accent">
-            <Link href={`${base}?tab=personali&modifica=1`} scroll={false}>
-              <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica profilo
+          <Button asChild variant="accent" className="h-11 md:h-9">
+            <Link href={`${base}?tab=personali&modifica=1`} scroll={false} aria-label="Modifica profilo">
+              {/* «Modifica» sul telefono: con la parola intera non stava
+                  sulla riga dello stato. */}
+              <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica<span className="hidden md:inline"> profilo</span>
             </Link>
           </Button>
         </div>

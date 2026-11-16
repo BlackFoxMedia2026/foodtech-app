@@ -104,19 +104,19 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
 
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
-        <div>
-          <CardTitle>{automation.name}</CardTitle>
-          <CardDescription>{automation.promise}</CardDescription>
-        </div>
+      {/* Una griglia: su telefono la promessa scende a tutta larghezza sotto
+          titolo e interruttore, invece di stare in una colonna da 200 px. */}
+      <CardHeader className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 space-y-0 md:gap-x-4">
+        <CardTitle className="col-start-1 row-start-1 self-center md:self-start">{automation.name}</CardTitle>
+        <CardDescription className="col-span-2 row-start-2 md:col-span-1">{automation.promise}</CardDescription>
         {/* L'interruttore da solo è alto venti pixel: su un telefono si
             sbaglia, e qui sbagliare significa far partire email a clienti
             veri. L'etichetta è parte del bersaglio, e il bersaglio è alto 44. */}
         <label
           htmlFor={`interruttore-${automation.key}`}
-          className="flex min-h-[44px] shrink-0 cursor-pointer items-center gap-2 px-1"
+          className="col-start-2 row-start-1 flex min-h-[44px] shrink-0 cursor-pointer items-center gap-2 px-1 md:row-span-2"
         >
-          <span className="text-xs text-muted-foreground">{automation.active ? "Accesa" : "Spenta"}</span>
+          <span className="text-[13px] text-muted-foreground md:text-xs">{automation.active ? "Accesa" : "Spenta"}</span>
           <Switch
             id={`interruttore-${automation.key}`}
             checked={automation.active}
@@ -141,7 +141,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
           </p>
 
           {automation.esempi.length > 0 && (
-            <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+            <ul className="mt-2 space-y-0.5 text-[13px] text-muted-foreground md:text-xs">
               {automation.esempi.map((e, i) => (
                 <li key={i}>
                   {e.nome} — {e.reason}
@@ -187,7 +187,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
             onChange={(e) => setGiorni(e.target.value)}
             className="w-28"
           />
-          <p className="text-xs text-muted-foreground">{automation.knob.hint}</p>
+          <p className="text-[13px] text-muted-foreground md:text-xs">{automation.knob.hint}</p>
         </div>
 
         <div>
@@ -216,7 +216,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
                 disabled={!canEdit}
                 onChange={(e) => setIntro(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground md:text-xs">
                 Il nome dell&apos;ospite, il saluto, il pulsante per prenotare e la firma del locale li mettiamo noi.
                 Qui va quello che vuoi dire.
               </p>
@@ -304,7 +304,7 @@ export function AutomationCard({ automation, canEdit }: { automation: Automation
               </p>
             </div>
           ) : (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-[13px] text-muted-foreground md:text-xs">
               Il messaggio parte senza regali. Se ne alleghi uno, ogni persona riceve un codice personale.
             </p>
           )}

@@ -72,7 +72,7 @@ export function GruppoImpostazioni({
         <div className="min-w-0">
           <h3 className="t-titolo-sezione">{titolo}</h3>
           {descrizione && (
-            <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-muted-foreground md:text-sm">
+            <p className="mt-0.5 max-w-2xl text-[0.8125rem] leading-relaxed text-muted-foreground md:text-sm">
               {descrizione}
             </p>
           )}
@@ -147,14 +147,14 @@ export function RigaImpostazione({
         <Nome
           {...(htmlFor ? { htmlFor } : {})}
           className={cn(
-            "block text-sm font-medium text-foreground md:text-[0.9375rem]",
+            "block text-[0.9375rem] font-medium text-foreground",
             htmlFor && "cursor-pointer",
           )}
         >
           {nome}
         </Nome>
         {descrizione && (
-          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-1 max-w-2xl text-[0.8125rem] leading-relaxed text-muted-foreground md:text-xs">
             {descrizione}
           </p>
         )}
@@ -174,7 +174,12 @@ export function RigaImpostazione({
         <Nome
           {...(htmlFor ? { htmlFor } : {})}
           className={cn(
-            "min-w-0 flex-1 text-sm font-medium text-foreground md:text-[0.9375rem]",
+            /* Base 10rem e non zero (`flex-1`) sul telefono: con base zero il
+               nome restava sulla riga del controllo e si stringeva fino a una
+               parola per riga («Come / si / divide / il / lavoro»). Con una
+               base vera, quando nome e controllo non stanno insieme il
+               controllo scende sotto, e il nome resta leggibile. */
+            "min-w-0 flex-[1_1_10rem] text-[0.9375rem] font-medium text-foreground md:flex-1",
             htmlFor && "cursor-pointer",
           )}
         >
@@ -193,7 +198,7 @@ export function RigaImpostazione({
         )}
       </div>
       {descrizione && (
-        <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-1 max-w-2xl text-[0.8125rem] leading-relaxed text-muted-foreground md:text-xs">
           {descrizione}
         </p>
       )}
@@ -255,7 +260,7 @@ export function ValoreVuoto({
   children?: ReactNode;
 }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-tertiary-foreground">
+    <span className="inline-flex items-center rounded-full border border-dashed border-border px-2 py-0.5 text-[0.8125rem] text-tertiary-foreground md:text-xs">
       {children}
     </span>
   );

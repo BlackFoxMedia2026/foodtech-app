@@ -105,7 +105,9 @@ export default async function AdminIntegrazionePage({ params }: { params: { slug
         {voce.mancaPerOperare.length > 0 && (
           <div>
             <p className="t-etichetta mb-1">Cosa manca per operare</p>
-            <ul className="list-disc space-y-0.5 pl-5 text-sm">
+            {/* Le voci sono spesso nomi di variabili senza spazi: senza `break-words`
+                allargavano la pagina sul telefono. */}
+            <ul className="list-disc space-y-0.5 break-words pl-5 text-sm">
               {voce.mancaPerOperare.map((m) => (
                 <li key={m}>{m}</li>
               ))}

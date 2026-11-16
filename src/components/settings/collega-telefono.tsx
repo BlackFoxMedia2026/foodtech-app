@@ -328,7 +328,7 @@ export function CollegaTelefono({
                     {attiva && <Check className="h-4 w-4 text-sage-strong" aria-hidden="true" />}
                     {scelta.titolo}
                   </span>
-                  <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                  <span className="mt-1 block text-[0.8125rem] md:text-xs leading-relaxed text-muted-foreground">
                     {scelta.riga}
                   </span>
                 </button>
@@ -346,7 +346,7 @@ export function CollegaTelefono({
               a cui rispondi tu non passano da qui e non finiscono nei conteggi.
             </p>
           )}
-          {erroreIngresso && <p className="text-xs text-destructive">{erroreIngresso}</p>}
+          {erroreIngresso && <p className="text-[0.8125rem] md:text-xs text-destructive">{erroreIngresso}</p>}
         </div>
       ),
     },
@@ -358,7 +358,7 @@ export function CollegaTelefono({
             cosa: "L'abbiamo acceso noi: non c'è nessun codice da mandarci e nessuna chiave da incollare.",
             fatto: true,
             corpo: (
-              <p className="text-xs leading-relaxed text-muted-foreground">
+              <p className="text-[0.8125rem] md:text-xs leading-relaxed text-muted-foreground">
                 Se qualcosa non torna — funzioni che ti aspettavi e non vedi, o il telefono che
                 risulta spento — scrivici: si accende e si spegne dal nostro pannello, non da qui.
               </p>
@@ -450,7 +450,7 @@ export function CollegaTelefono({
             </p>
           )}
           {erroreChiave && (
-            <p className="text-xs text-destructive">{erroreChiave}</p>
+            <p className="text-[0.8125rem] md:text-xs text-destructive">{erroreChiave}</p>
           )}
         </div>
       ),
@@ -524,7 +524,7 @@ export function CollegaTelefono({
           </div>
 
           {erroreCollegamento && (
-            <p className="text-xs text-destructive">{erroreCollegamento}</p>
+            <p className="text-[0.8125rem] md:text-xs text-destructive">{erroreCollegamento}</p>
           )}
         </div>
       ),
@@ -543,7 +543,7 @@ export function CollegaTelefono({
             corpo: (
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs font-medium">Il numero a cui far deviare</p>
+                  <p className="text-[0.8125rem] md:text-xs font-medium">Il numero a cui far deviare</p>
                   {ingresso.numeroTavolo ? (
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <code className="select-all rounded bg-muted px-2 py-1 font-mono text-sm">
@@ -555,7 +555,7 @@ export function CollegaTelefono({
                     /* Niente numero finto, e niente campo da riempire a mano:
                        il numero lo assegniamo noi, e un segnaposto qui
                        finirebbe detto all'operatore. */
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-[0.8125rem] md:text-xs text-muted-foreground">
                       Non te l&apos;abbiamo ancora assegnato. Scrivici: è un numero nostro, lo
                       colleghiamo a questo locale e compare qui.
                     </p>
@@ -563,7 +563,7 @@ export function CollegaTelefono({
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-medium">Cosa chiedere</p>
+                  <p className="text-[0.8125rem] md:text-xs font-medium">Cosa chiedere</p>
                   <ul className="space-y-1">
                     {COSA_CHIEDERE.map((riga) => (
                       <li key={riga} className="flex gap-2 text-xs leading-relaxed">
@@ -580,7 +580,7 @@ export function CollegaTelefono({
                       chiamate, fa perdere le sue. Vedi
                       `src/lib/operatori-telefonici.ts`. */}
                   {opScelto?.provato && opScelto.istruzioni ? (
-                    <ol className="mt-2 space-y-1 text-xs leading-relaxed text-muted-foreground">
+                    <ol className="mt-2 space-y-1 text-[0.8125rem] md:text-xs leading-relaxed text-muted-foreground">
                       {opScelto.istruzioni.passi.map((passo) => (
                         <li key={passo}>{passo}</li>
                       ))}
@@ -667,7 +667,7 @@ export function CollegaTelefono({
                       <span className="t-nota">Salvato.</span>
                     )}
                     {erroreIngresso && (
-                      <span className="text-xs text-destructive">{erroreIngresso}</span>
+                      <span className="text-[0.8125rem] md:text-xs text-destructive">{erroreIngresso}</span>
                     )}
                   </div>
                 </form>
@@ -838,7 +838,7 @@ export function CollegaTelefono({
             </Button>
             {salvato && !erroreSip && <span className="t-nota">Salvato.</span>}
             {erroreSip && (
-              <span className="text-xs text-destructive">{erroreSip}</span>
+              <span className="text-[0.8125rem] md:text-xs text-destructive">{erroreSip}</span>
             )}
           </div>
 
@@ -920,7 +920,7 @@ export function CollegaTelefono({
                   <span className="text-sm font-medium">{passo.titolo}</span>
                   {passo.nota && <span className="t-nota">{passo.nota}</span>}
                 </p>
-                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                <p className="mt-0.5 text-[0.8125rem] md:text-xs leading-relaxed text-muted-foreground">
                   {passo.cosa}
                 </p>
                 <div className="mt-3">{passo.corpo}</div>

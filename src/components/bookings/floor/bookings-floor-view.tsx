@@ -6,10 +6,10 @@ import { DndContext, DragOverlay, PointerSensor, pointerWithin, useSensor, useSe
 import type { BookingStatus, RoomLayoutMode, Table } from "@prisma/client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatTime } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
 import { bookingsOverlap } from "@/lib/booking-time";
 import { BookingsFloorCanvas } from "./bookings-floor-canvas";
 import { UnassignedPanel } from "./unassigned-panel";
@@ -265,10 +265,11 @@ export function BookingsFloorView({
       onDragEnd={onDragEnd}
       onDragCancel={() => setDraggingBooking(null)}
     >
-      <div className={incorporata ? "flex h-full min-h-[480px] flex-col gap-2" : "flex h-[calc(100vh-260px)] min-h-[480px] flex-col gap-2"}>
+      <div className={incorporata ? "flex h-full min-h-[480px] flex-col gap-2" : "fill flex min-h-[420px] flex-col gap-2 md:h-[calc(100vh-260px)] md:min-h-[480px] md:flex-none"}>
         {banner && <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{banner}</p>}
 
-        <div className={incorporata ? "hidden" : "flex items-center gap-1"}>
+        {/* Su telefono le frecce della sala sono bersagli da 44 (`icon` è 40). */}
+        <div className={incorporata ? "hidden" : "flex items-center gap-1 max-md:[&_button]:h-11 max-md:[&_button]:w-11"}>
           <Button type="button" size="icon" variant="ghost" onClick={() => goToRoom(-1)} disabled={rooms.length <= 1} aria-label="Sala precedente">
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -314,7 +315,11 @@ export function BookingsFloorView({
               occupiedTableIds={occupiedTableIdsForDrag}
             />
           </div>
-          <div className="min-h-0 overflow-hidden rounded-xl sm:flex-1" style={{ flexBasis: "28%" }}>
+          {/* Chiuso, sul telefono il pannello è alto quanto la sua testata: col
+              28% fisso restava un blocco verde vuoto sotto la mappa. */}
+          <div
+            className={cn("min-h-0 basis-[28%] overflow-hidden rounded-xl sm:flex-1", panelCollapsed && "max-sm:basis-auto")}
+          >
             <UnassignedPanel
               bookings={unassigned}
               collapsed={panelCollapsed}
@@ -394,7 +399,7 @@ export function BookingsFloorView({
                   autoFocus
                 />
               </div>
-              <div className="flex justify-end gap-2">
+              <DialogFooter>
                 <Button
                   type="button"
                   variant="outline"
@@ -425,7 +430,7 @@ export function BookingsFloorView({
                 >
                   Assegna comunque
                 </Button>
-              </div>
+              </DialogFooter>
             </>
           )}
         </DialogContent>

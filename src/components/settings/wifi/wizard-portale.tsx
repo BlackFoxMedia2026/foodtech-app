@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Stepper } from "@/components/ui/stepper";
+import { AvanzamentoPassi } from "@/components/marketing/avanzamento-passi";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { BrandImageField } from "@/components/settings/brand-image-field";
@@ -333,7 +334,7 @@ export function WizardPortale({
           schermata, e lo stepper dice soltanto dove sei. */}
       <header className="fissa mx-auto w-full max-w-4xl space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={esci}>
+          <Button type="button" variant="ghost" size="sm" onClick={esci} className="-ml-3 h-11 sm:ml-0 sm:h-9">
             <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Portale Wi-Fi
           </Button>
           {eraAttivo && (
@@ -343,18 +344,18 @@ export function WizardPortale({
             </span>
           )}
         </div>
-        <Stepper
-          steps={PASSI}
-          currentStepIndex={passo}
-          furthestStepIndex={piuLontano}
-          onStepClick={vaiA}
-        />
-        {/* Sul telefono lo stepper resta quattro pallini senza parole — quattro
-            etichette a 390 px sono quattro righe di puntini. Dove si è si dice
-            qui, in una riga sola. */}
-        <p className="t-nota sm:hidden">
-          Passo {passo + 1} di {PASSI.length} · {PASSI[passo].label}
-        </p>
+        <div className="hidden sm:block">
+          <Stepper
+            steps={PASSI}
+            currentStepIndex={passo}
+            furthestStepIndex={piuLontano}
+            onStepClick={vaiA}
+          />
+        </div>
+        {/* Sul telefono i pallini da 28 px erano bersagli troppo piccoli e
+            non dicevano il nome del passo: qui il passo e una barra, come
+            nella procedura delle campagne. Si torna con «Indietro» in basso. */}
+        <AvanzamentoPassi passi={PASSI} corrente={passo} className="sm:hidden" />
       </header>
 
       <div className="fill-scroll pr-0.5">
@@ -713,20 +714,49 @@ export function WizardPortale({
           type="button"
           variant="ghost"
           onClick={() => (passo === 0 ? esci() : setPasso(passo - 1))}
+          aria-label={passo === 0 ? "Annulla" : "Indietro"}
+          className={cn("h-11 sm:h-9", passo > 0 && "w-11 px-0 sm:w-auto sm:px-4")}
         >
-          {passo === 0 ? "Annulla" : "Indietro"}
+          {/* Su telefono «Indietro» è la sola freccia, come nelle campagne: sull'ultimo
+              passo servono due pulsanti a destra, e le parole li mandavano su due righe. */}
+          {passo === 0 ? (
+            "Annulla"
+          ) : (
+            <>
+              <ChevronLeft className="h-4 w-4 sm:hidden" aria-hidden="true" />
+              <span className="hidden sm:inline">Indietro</span>
+            </>
+          )}
         </Button>
 
         {passo < PASSI.length - 1 ? (
-          <Button type="button" variant="accent" onClick={() => vaiA(passo + 1)} disabled={avantiBloccato}>
+          <Button
+            type="button"
+            variant="accent"
+            onClick={() => vaiA(passo + 1)}
+            disabled={avantiBloccato}
+            className="h-11 px-6 sm:h-9 sm:px-4"
+          >
             Continua
           </Button>
         ) : (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setAnteprimaAperta(true)}>
-              <Smartphone className="h-4 w-4" aria-hidden="true" /> Apri anteprima
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAnteprimaAperta(true)}
+              className="h-11 rounded-full sm:h-9"
+            >
+              <Smartphone className="h-4 w-4" aria-hidden="true" /> <span className="sm:hidden">Anteprima</span>
+              <span className="hidden sm:inline">Apri anteprima</span>
             </Button>
-            <Button type="button" variant="accent" onClick={salva} disabled={salvando || !reteCompleta}>
+            <Button
+              type="button"
+              variant="accent"
+              onClick={salva}
+              disabled={salvando || !reteCompleta}
+              className="h-11 sm:h-9"
+            >
               {salvando ? "Salvo…" : eraAttivo ? "Salva le modifiche" : "Attiva portale"}
             </Button>
           </div>

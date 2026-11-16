@@ -187,7 +187,7 @@ export function Cifra({
         {etichetta}
       </p>
       {nota && (
-        <p className={`mt-0.5 text-[11px] leading-tight ${tinta2("text-cream/60", "text-clay-ink/60", "text-tertiary-foreground")}`}>
+        <p className={`mt-0.5 text-xs md:text-[11px] leading-tight ${tinta2("text-cream/60", "text-clay-ink/60", "text-tertiary-foreground")}`}>
           {nota}
         </p>
       )}
@@ -352,7 +352,7 @@ export function ProdottiPreferiti({
         >
           <div className="relative shrink-0">
             <FotoPiatto src={p.imageUrl} categoria={p.categoria} className="h-16 w-16 rounded-lg" />
-            <span className="absolute -left-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-card text-[11px] font-semibold tabular-nums shadow-sm ring-1 ring-border">
+            <span className="absolute -left-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-card text-xs md:text-[11px] font-semibold tabular-nums shadow-sm ring-1 ring-border">
               {i + 1}
             </span>
           </div>
@@ -375,7 +375,7 @@ export function ProdottiPreferiti({
 
           <div className="shrink-0 text-right">
             <p className="font-mono text-xl leading-none tabular-nums">{p.volte}×</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{p.volte === 1 ? "sera" : "sere"}</p>
+            <p className="mt-0.5 text-xs md:text-[11px] text-muted-foreground">{p.volte === 1 ? "sera" : "sere"}</p>
             <p className="mt-1.5 text-xs font-medium tabular-nums">{formatCurrency(p.spesaCents, currency)}</p>
           </div>
         </li>
@@ -583,7 +583,7 @@ export function AbitudiniCliente({
           <div className="min-w-0">
             <p className="text-[13px] leading-snug text-muted-foreground">{v.etichetta}</p>
             <p className="break-words text-base font-medium leading-snug">{v.valore}</p>
-            {v.nota && <p className="mt-0.5 text-[11px] leading-tight text-tertiary-foreground">{v.nota}</p>}
+            {v.nota && <p className="mt-0.5 text-xs md:text-[11px] leading-tight text-tertiary-foreground">{v.nota}</p>}
           </div>
         </li>
       ))}
@@ -662,7 +662,7 @@ export function StoricoVisite({
                   fascia grigia sotto. */}
               <div className="flex w-[4.5rem] shrink-0 flex-col overflow-hidden rounded-xl text-center shadow-[0_6px_14px_rgba(16,43,34,0.22)] sm:w-20">
                 <div className="bg-[linear-gradient(160deg,#1C4A3A_0%,#102B22_100%)] px-2 pb-1.5 pt-1.5 text-cream">
-                  <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-cream/75">
+                  <span className="block whitespace-nowrap text-xs font-semibold uppercase tracking-[0.06em] text-cream/75 md:text-[10px] md:tracking-[0.16em]">
                     {mese.format(quando).replace(".", "")}
                   </span>
                   <span className="text-display block text-[1.75rem] leading-none tabular-nums">
@@ -683,13 +683,28 @@ export function StoricoVisite({
                       {formatCurrency(v.spesaCents, currency)}
                     </p>
                   ) : (
-                    <span className="rounded-full border border-dashed border-border px-2 py-0.5 text-[11px] text-tertiary-foreground">
+                    <span className="rounded-full border border-dashed border-border px-2 py-0.5 text-xs md:text-[11px] text-tertiary-foreground">
                       nessun conto
                     </span>
                   )}
                   <ApriSerata />
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                {/* Sul telefono coperti, posto e durata sono una riga di
+                    testo: come pastiglie andavano una per riga e la serata
+                    diventava alta il triplo del calendarino accanto. */}
+                <p className="text-[13px] leading-snug text-muted-foreground sm:hidden">
+                  {[
+                    `${v.coperti} ${v.coperti === 1 ? "coperto" : "coperti"}`,
+                    posto,
+                    v.permanenzaMin != null
+                      ? `${Math.floor(v.permanenzaMin / 60)}h ${String(v.permanenzaMin % 60).padStart(2, "0")}m`
+                      : null,
+                    v.senzaPrenotazione ? "senza prenotazione" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+                <div className="hidden flex-wrap gap-1.5 sm:flex">
                   <Pastiglia icona={Users}>
                     {v.coperti} {v.coperti === 1 ? "coperto" : "coperti"}
                   </Pastiglia>

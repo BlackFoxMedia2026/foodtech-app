@@ -219,7 +219,7 @@ export function GrigliaTurni({
             className="sticky left-0 top-0 z-40 flex items-center justify-center border-b border-r border-border/50 bg-[color:var(--grid-header)]"
             style={{ height: ALTEZZA_TESTATA }}
           >
-            <span className="t-etichetta text-[0.62rem]">Ore</span>
+            <span className="t-etichetta text-xs md:text-[0.62rem]">Ore</span>
           </div>
           {giorni.map((g) => (
             <IntestazioneGiorno
@@ -250,7 +250,7 @@ export function GrigliaTurni({
                 className="sticky left-0 z-40 border-b border-r border-border/40 bg-[color:var(--grid-body)] px-2 py-1.5"
                 style={{ top: ALTEZZA_TESTATA }}
               >
-                <span className="block text-[0.58rem] uppercase leading-[1.15] tracking-wide text-tertiary-foreground">
+                <span className="block text-xs uppercase leading-[1.15] tracking-wide text-tertiary-foreground md:text-[0.58rem]">
                   tutto
                   <br />
                   il giorno
@@ -283,7 +283,7 @@ export function GrigliaTurni({
               >
                 <span
                   className={cn(
-                    "text-[0.68rem] tabular-nums",
+                    "text-[13px] tabular-nums md:text-[0.68rem]",
                     ora === oraDiAdesso ? "font-medium text-accent-strong" : "text-tertiary-foreground",
                   )}
                 >
@@ -423,7 +423,7 @@ function IntestazioneGiorno({
       )}
     >
       <span className="flex items-baseline gap-1.5">
-        <span className="t-etichetta text-[0.62rem]">{nomeGiornoBreve(giorno)}</span>
+        <span className="t-etichetta text-xs md:text-[0.62rem]">{nomeGiornoBreve(giorno)}</span>
         <span
           className={cn(
             "text-[0.95rem] font-semibold leading-none tabular-nums",
@@ -433,7 +433,7 @@ function IntestazioneGiorno({
           {numeroGiorno(giorno)}
         </span>
       </span>
-      <span className="truncate text-[0.66rem] leading-tight text-muted-foreground">{lungo}</span>
+      <span className="truncate text-xs leading-tight text-muted-foreground md:text-[0.66rem]">{lungo}</span>
     </button>
   );
 }

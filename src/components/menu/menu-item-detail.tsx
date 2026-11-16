@@ -283,14 +283,28 @@ export function MenuItemDetail(props: {
       {/* Dove sono: «Menu › Antipasti». L'etichetta della categoria stava sopra
           il titolo e costava una riga per dire una cosa che è un passaggio del
           percorso, non un dato del piatto. */}
-      <div className="fissa flex items-center gap-1 self-start">
-        <Button asChild variant="ghost" size="sm">
+      <div className="fissa flex items-center gap-1 max-md:-mb-2 max-md:w-full md:self-start">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 h-11 text-sm md:ml-0 md:h-9 md:text-xs">
           <Link href="/menu">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Menu
           </Link>
         </Button>
         {categoriaCorrente && (
-          <span className="t-nota truncate">/ {categoriaCorrente.name}</span>
+          <span className="t-nota min-w-0 truncate">/ {categoriaCorrente.name}</span>
+        )}
+        {/* Sul telefono il salvataggio sta qui, in alto a destra come nella
+            barra di un'app: sotto il titolo era una riga intera in più prima
+            della foto, e resta raggiungibile mentre si scorre il modulo. */}
+        {canEdit && (
+          <Button
+            variant="accent"
+            size="sm"
+            onClick={salva}
+            disabled={!salvabile || inCorso || (!cambiato && !nuovo)}
+            className="ml-auto h-11 shrink-0 px-4 text-sm md:hidden"
+          >
+            {inCorso ? "Salvo…" : nuovo ? "Crea" : "Salva"}
+          </Button>
         )}
       </div>
 
@@ -320,9 +334,9 @@ export function MenuItemDetail(props: {
         </div>
 
         {canEdit && (
-          <div className="flex items-center gap-3">
+          <div className={cn("flex items-center gap-3", !(cambiato && !nuovo) && "max-md:hidden")}>
             {cambiato && !nuovo && <span className="t-nota">Modifiche non salvate</span>}
-            <Button variant="accent" onClick={salva} disabled={!salvabile || inCorso || (!cambiato && !nuovo)}>
+            <Button variant="accent" onClick={salva} disabled={!salvabile || inCorso || (!cambiato && !nuovo)} className="max-md:hidden">
               {inCorso ? "Salvo…" : nuovo ? "Crea il piatto" : "Salva modifiche"}
             </Button>
           </div>
@@ -337,7 +351,7 @@ export function MenuItemDetail(props: {
         </p>
       )}
 
-      <div className="fill-scroll space-y-4 pr-0.5">
+      <div className="fill-scroll space-y-4 max-md:[scrollbar-gutter:auto] md:pr-0.5">
         {/* ---------------------------------------------------------------- */}
         {/*  Foto e dati: due colonne da tablet in su, una sul telefono      */}
         {/* ---------------------------------------------------------------- */}

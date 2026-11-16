@@ -137,7 +137,7 @@ export function CouponPannello({
               <Icona className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1 pt-0.5">
-              <p className="text-[0.6875rem] font-medium uppercase leading-none tracking-[0.14em] text-tertiary-foreground">
+              <p className="text-xs font-medium uppercase leading-none tracking-[0.12em] sm:text-[0.6875rem] sm:tracking-[0.14em] text-tertiary-foreground">
                 {categoriaDi(c)}
               </p>
               <SheetTitle className="mt-1.5 text-display text-xl leading-tight text-card-foreground">
@@ -161,7 +161,7 @@ export function CouponPannello({
               type="button"
               size="icon"
               variant="ghost"
-              className="-mr-2 -mt-1 h-8 w-8 shrink-0"
+              className="-mr-2 -mt-1 h-11 w-11 shrink-0 sm:h-8 sm:w-8"
               aria-label="Chiudi la scheda del coupon"
               onClick={onChiudi}
             >
@@ -185,9 +185,12 @@ export function CouponPannello({
             codice, che si clicca tutta per copiarlo. In piedi era alto 190 px
             per due righe di testo.
           */}
-          <div className="biglietto-orizzontale flex min-h-[4.75rem]">
+          {/* Su telefono la matrice è più stretta (10.5rem invece di 14.5): con
+              quella piena a «Cosa dà» restavano 70 px e andava a capo parola
+              per parola. Il codice si rimisura sulla larghezza che resta. */}
+          <div className="biglietto-orizzontale flex min-h-[4.75rem] [--matrice:10.5rem] sm:[--matrice:14.5rem]">
             <div className="flex min-w-0 flex-1 flex-col justify-center px-5 py-3.5">
-              <p className="text-[0.6875rem] font-medium uppercase leading-none tracking-[0.14em] text-tertiary-foreground">
+              <p className="text-xs font-medium uppercase leading-none tracking-[0.12em] sm:text-[0.6875rem] sm:tracking-[0.14em] text-tertiary-foreground">
                 Cosa dà
               </p>
               <p className="mt-1.5 text-[0.9375rem] font-semibold leading-snug text-accent-strong">
@@ -410,7 +413,7 @@ function Numero({
 }) {
   return (
     <div className="min-w-0 px-4 py-3.5">
-      <p className="text-[0.6875rem] font-medium uppercase leading-none tracking-[0.12em] text-tertiary-foreground">
+      <p className="text-xs font-medium uppercase leading-none tracking-[0.12em] text-tertiary-foreground sm:text-[0.6875rem]">
         {etichetta}
       </p>
       <p
@@ -461,7 +464,7 @@ function Matrice({ codice }: { codice: string }) {
         destra: accanto al codice gli rubava larghezza e ci finiva addosso.
         Così il codice ha tutta la matrice per sé.
       */}
-      <span className="flex items-center justify-between gap-2 text-[0.6875rem] font-medium uppercase leading-none tracking-[0.14em]">
+      <span className="flex items-center justify-between gap-2 text-xs font-medium uppercase leading-none tracking-[0.12em] sm:text-[0.6875rem] sm:tracking-[0.14em]">
         {copiato ? (
           <span className="text-sage">Copiato</span>
         ) : (
@@ -477,8 +480,15 @@ function Matrice({ codice }: { codice: string }) {
         )}
       </span>
       <span
-        className="mt-2 block whitespace-nowrap font-mono font-medium leading-tight tracking-[0.06em] text-primary"
+        className="mt-2 hidden whitespace-nowrap font-mono font-medium leading-tight tracking-[0.06em] text-primary sm:block"
         style={{ fontSize: misuraCodice(codice, 190, 15) }}
+      >
+        {codice}
+      </span>
+      <span
+        aria-hidden="true"
+        className="mt-2 block whitespace-nowrap font-mono font-medium leading-tight tracking-[0.06em] text-primary sm:hidden"
+        style={{ fontSize: misuraCodice(codice, 124, 15) }}
       >
         {codice}
       </span>

@@ -204,10 +204,10 @@ export function ServiceOrganizationSettings({
                   }}
                   className="w-full sm:w-56"
                 />
-                <Button type="button" size="icon" variant="ghost" aria-label="Salva il nome" onClick={() => saveRename(room.id)}>
+                <Button type="button" size="icon" className="h-11 w-11 md:h-9 md:w-9" variant="ghost" aria-label="Salva il nome" onClick={() => saveRename(room.id)}>
                   <Check className="h-4 w-4" />
                 </Button>
-                <Button type="button" size="icon" variant="ghost" aria-label="Annulla" onClick={() => setEditingId(null)}>
+                <Button type="button" size="icon" className="h-11 w-11 md:h-9 md:w-9" variant="ghost" aria-label="Annulla" onClick={() => setEditingId(null)}>
                   <X className="h-4 w-4" />
                 </Button>
               </RigaImpostazione>
@@ -227,7 +227,7 @@ export function ServiceOrganizationSettings({
                   <>
                     <Button
                       type="button"
-                      size="icon"
+                      size="icon" className="h-11 w-11 md:h-9 md:w-9"
                       variant="ghost"
                       aria-label={`Rinomina ${room.name}`}
                       onClick={() => {
@@ -239,7 +239,7 @@ export function ServiceOrganizationSettings({
                     </Button>
                     <Button
                       type="button"
-                      size="icon"
+                      size="icon" className="h-11 w-11 md:h-9 md:w-9"
                       variant="ghost"
                       aria-label={`Elimina ${room.name}`}
                       onClick={() => setConfirmDeleteId(room.id)}

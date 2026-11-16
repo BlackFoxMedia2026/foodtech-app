@@ -243,7 +243,7 @@ export function MenuEditor({
                 onChange={(e) => setRicerca(e.target.value)}
                 placeholder={`Cerca fra ${totalePiatti} piatti`}
                 aria-label="Cerca un piatto"
-                className="h-12 rounded-lg pl-10 pr-3 text-sm"
+                className="h-12 rounded-lg pl-10 pr-3 text-base md:text-sm"
               />
             </div>
           ) : (
@@ -286,7 +286,7 @@ export function MenuEditor({
               </Tooltip>
 
               <PopoverContent align="end" className="w-56 p-1.5">
-                <p className="px-2 pb-1.5 pt-1 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="px-2 pb-1.5 pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Mostra
                 </p>
                 {FILTRI.map((f) => (
@@ -391,7 +391,7 @@ export function MenuEditor({
         </div>
       ) : (
         // L'elenco dei piatti non ha una lunghezza massima: scorre lui.
-        <div className="fill-scroll mt-3 space-y-4 pr-0.5">
+        <div className="fill-scroll mt-3 space-y-4 max-md:overflow-x-hidden max-md:[scrollbar-gutter:auto] md:pr-0.5">
           {filtrando && visibili.length === 0 && (
             <p className="riquadro p-4 text-sm text-muted-foreground">
               Nessun piatto con questo nome o in questa condizione.
@@ -402,17 +402,17 @@ export function MenuEditor({
             const idPiatti = c.items.map((i) => i.id);
             return (
               <Card key={c.id}>
-                <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
+                <CardHeader className="flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1 space-y-0 p-4 pb-2 md:p-5 md:pb-3">
                   <div className="flex items-center gap-2">
                     <CardTitle>{c.name}</CardTitle>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[0.8125rem] text-muted-foreground md:text-xs">
                       {c.items.length} {c.items.length === 1 ? "piatto" : "piatti"}
                     </span>
                     {!c.active && <Badge tone="neutral">Nascosta</Badge>}
                   </div>
 
                   {canEdit && (
-                    <div className="flex items-center gap-1">
+                    <div className="-mr-2 flex items-center gap-0.5 md:mr-0 md:gap-1">
                       {!filtrando && (
                       <>
                       <button
@@ -420,18 +420,18 @@ export function MenuEditor({
                         aria-label={`Sposta ${c.name} in su`}
                         disabled={indiceCategoria === 0 || busy !== null}
                         onClick={() => sposta("categorie", idCategorie, indiceCategoria, indiceCategoria - 1)}
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10 disabled:opacity-30"
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10 disabled:opacity-30 md:h-9 md:w-9"
                       >
-                        <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+                        <ArrowUp className="h-4 w-4" aria-hidden="true" />
                       </button>
                       <button
                         type="button"
                         aria-label={`Sposta ${c.name} in giù`}
                         disabled={indiceCategoria === categorie.length - 1 || busy !== null}
                         onClick={() => sposta("categorie", idCategorie, indiceCategoria, indiceCategoria + 1)}
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10 disabled:opacity-30"
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10 disabled:opacity-30 md:h-9 md:w-9"
                       >
-                        <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+                        <ArrowDown className="h-4 w-4" aria-hidden="true" />
                       </button>
                       </>
                       )}
@@ -469,15 +469,15 @@ export function MenuEditor({
                             "Non siamo riusciti a eliminare la categoria.",
                           )
                         }
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10"
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-current/10 md:h-9 md:w-9"
                       >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
                   )}
                 </CardHeader>
 
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-2 p-4 pt-0 md:p-5 md:pt-0">
                   {c.items.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       Nessun piatto in questa categoria.
@@ -485,7 +485,7 @@ export function MenuEditor({
                   ) : (
                     <ul className="divide-y divide-border">
                       {c.items.map((i) => (
-                        <li key={i.id} className="flex items-start gap-3 py-4 sm:items-center sm:gap-4">
+                        <li key={i.id} className="relative flex items-center gap-3 py-3 sm:gap-4 sm:py-4">
                           {/*
                             La foto, e perché è grande.
 
@@ -498,7 +498,7 @@ export function MenuEditor({
                             altezza diversa si scorrono peggio di righe
                             uguali.
                           */}
-                          <div className="riquadro relative aspect-[4/3] w-24 shrink-0 overflow-hidden bg-secondary/40 sm:w-32 md:w-40 lg:w-44">
+                          <div className="riquadro relative aspect-[4/3] w-[4.5rem] shrink-0 self-start overflow-hidden bg-secondary/40 sm:w-32 sm:self-auto md:w-40 lg:w-44">
                             {i.imageUrl ? (
                               /* eslint-disable-next-line @next/next/no-img-element */
                               <img
@@ -516,29 +516,34 @@ export function MenuEditor({
                             )}
                           </div>
 
-                          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                            <div className="min-w-0">
+                          <div className="flex min-w-0 flex-1 items-center justify-between gap-2 sm:gap-4">
+                            <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                                 {/* Il nome è il titolo della riga: più grande
                                     di tutto il resto. Il prezzo gli sta
                                     accanto in terracotta — si legge subito,
                                     ma non compete. */}
-                                <span
+                                {/* Il nome porta alla scheda. Sul telefono
+                                    il collegamento copre tutta la riga (il
+                                    pulsante «Modifica» lì non c'è): si tocca
+                                    il piatto, non un bersaglio dentro. */}
+                                <Link
+                                  href={`/menu/${i.id}`}
                                   className={cn(
-                                    "t-titolo-scheda text-base md:text-lg",
+                                    "t-titolo-scheda text-base after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring sm:after:hidden md:text-lg",
                                     !i.available && "line-through opacity-60",
                                   )}
                                 >
                                   {i.name}
-                                </span>
-                                <span className="tabular-nums text-accent-strong">
+                                </Link>
+                                <span className="text-[0.9375rem] tabular-nums text-accent-strong md:text-base">
                                   {formatCurrency(i.priceCents, currency)}
                                 </span>
                                 {!i.available && <Badge tone="warning">Finito</Badge>}
                               </div>
 
                               {i.description && (
-                                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                                <p className="mt-0.5 line-clamp-2 text-[0.8125rem] leading-snug text-muted-foreground sm:mt-1 sm:text-sm">
                                   {i.description}
                                 </p>
                               )}
@@ -556,7 +561,7 @@ export function MenuEditor({
                                 pubblica, non l'editor.
                               */}
                               {(i.dietary.length > 0 || i.allergens.length > 0) && (
-                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:mt-2">
                                   {i.dietary.map((d) => (
                                     <span
                                       key={d}
@@ -586,10 +591,10 @@ export function MenuEditor({
                               porta per tutto il resto.
                             */}
                             {canEdit && (
-                              <div className="flex shrink-0 items-center gap-3">
+                              <div className="relative z-10 flex shrink-0 items-center gap-3">
                                 <label
                                   htmlFor={`piatto-disp-${i.id}`}
-                                  className="flex min-h-[44px] cursor-pointer items-center px-1"
+                                  className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center px-1"
                                   title={i.available ? "Segna come finito" : "Rimetti disponibile"}
                                 >
                                   <Switch
@@ -610,7 +615,7 @@ export function MenuEditor({
                                   />
                                 </label>
 
-                                <Button asChild variant="outline" size="sm">
+                                <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
                                   <Link href={`/menu/${i.id}`}>
                                     <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Modifica
                                   </Link>
@@ -624,7 +629,7 @@ export function MenuEditor({
                   )}
 
                   {canEdit && (
-                    <Button asChild variant="ghost" size="sm">
+                    <Button asChild variant="ghost" size="sm" className="-ml-2 h-11 text-sm md:ml-0 md:h-9 md:text-xs">
                       <Link href={`/menu/nuovo?categoria=${c.id}`}>
                         <Plus className="h-4 w-4" aria-hidden="true" /> Aggiungi un piatto
                       </Link>
@@ -636,16 +641,16 @@ export function MenuEditor({
           })}
 
           {canEdit && (
-            <div className="flex flex-wrap items-end gap-2 pt-2">
+            <div className="flex items-end gap-2 pb-2 pt-2 sm:flex-wrap">
               <Input
                 value={nuovaCategoria}
                 onChange={(e) => setNuovaCategoria(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && void aggiungiCategoria()}
                 placeholder="Es. Dolci"
-                className="w-56"
+                className="h-11 min-w-0 flex-1 text-base sm:w-56 sm:flex-none md:h-9 md:text-sm"
                 aria-label="Nome della nuova categoria"
               />
-              <Button variant="outline" onClick={aggiungiCategoria} disabled={busy === "nuova"}>
+              <Button variant="outline" onClick={aggiungiCategoria} disabled={busy === "nuova"} className="h-11 md:h-9">
                 <Plus className="h-4 w-4" aria-hidden="true" /> Nuova categoria
               </Button>
             </div>

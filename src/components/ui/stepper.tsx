@@ -41,7 +41,8 @@ export function Stepper({
               disabled={!isReachable || !onStepClick}
               onClick={() => onStepClick?.(index)}
               className={cn(
-                "flex items-center gap-2 text-left",
+                // 44 px d'altezza toccabile anche se il cerchio ne misura 28.
+                "flex min-h-[44px] items-center gap-2 text-left",
                 isReachable && onStepClick ? "cursor-pointer" : "cursor-default",
               )}
             >
@@ -62,7 +63,10 @@ export function Stepper({
                   // Nello stepper compatto restano solo il passo corrente e i
                   // suoi vicini a portare l'etichetta finché lo schermo è
                   // stretto: sei parole in fila diventano due righe di puntini.
-                  compatto ? (isCurrent ? "hidden sm:block" : "hidden lg:block") : "hidden sm:block",
+                  // Sul telefono il passo corrente dice il suo nome anche
+                  // nello stepper esteso: sei cerchi numerati senza una
+                  // parola non dicono dove si è.
+                  compatto ? (isCurrent ? "hidden sm:block" : "hidden lg:block") : isCurrent ? "block" : "hidden sm:block",
                   isCurrent ? "text-foreground" : "text-muted-foreground",
                 )}
               >

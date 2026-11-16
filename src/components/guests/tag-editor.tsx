@@ -93,7 +93,7 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
         <Etichetta
           key={t}
           linguaggio="manuale"
-          className="h-7 gap-1.5 px-3 transition-colors hover:bg-secondary/70"
+          className="h-10 gap-1.5 px-3 text-sm transition-colors hover:bg-secondary/70 md:h-7 md:text-xs"
         >
           {t}
           <button
@@ -102,7 +102,7 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
             disabled={pending}
             aria-label={`Rimuovi tag ${t}`}
             title={`Rimuovi «${t}»`}
-            className="-mr-1 grid h-4 w-4 place-items-center rounded-full text-tertiary-foreground transition-colors hover:bg-black/20 hover:text-foreground disabled:opacity-50"
+            className="-mr-2 grid h-8 w-8 place-items-center md:-mr-1 md:h-4 md:w-4 rounded-full text-tertiary-foreground transition-colors hover:bg-black/20 hover:text-foreground disabled:opacity-50"
           >
             <X className="h-3 w-3" aria-hidden="true" />
           </button>
@@ -114,7 +114,7 @@ export function TagEditor({ guestId, tags }: { guestId: string; tags: string[] }
           <button
             type="button"
             disabled={pending}
-            className="inline-flex h-7 items-center gap-1.5 rounded-full border border-dashed border-border-strong px-3 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:border-solid hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 data-[state=open]:border-solid data-[state=open]:bg-secondary data-[state=open]:text-foreground"
+            className="inline-flex h-10 items-center gap-1.5 rounded-full border border-dashed border-border-strong px-3.5 text-sm font-medium md:h-7 md:px-3 md:text-xs text-muted-foreground transition-colors duration-150 hover:border-solid hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 data-[state=open]:border-solid data-[state=open]:bg-secondary data-[state=open]:text-foreground"
           >
             <Plus className="h-3 w-3" aria-hidden="true" /> Aggiungi tag
           </button>

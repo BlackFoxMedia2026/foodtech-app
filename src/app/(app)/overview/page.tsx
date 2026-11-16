@@ -35,16 +35,22 @@ export default async function OverviewPage() {
     // `fondo-caldo`: il riquadro «Prenotazioni» è di vetro, e il vetro ha
     // bisogno di qualcosa da sfocare. Il fondo lo dipinge il guscio dell'app,
     // su tutte le pagine (vetro-ios.css).
-    <div className="schermo fondo-caldo animate-fade-in gap-4">
+    // Sul telefono scorre la schermata intera (DESIGN.md §7, «sotto il
+    // breakpoint scorre la regione intera»): saluto e numeri salgono via e
+    // lasciano lo schermo alle prenotazioni, invece di tenerne fermo metà.
+    // I margini negativi danno spazio alle ombre e portano lo scorrimento
+    // fino al bordo; il `pb-24` di `main` tiene già tutto sopra la barra.
+    <div className="schermo fondo-caldo animate-fade-in gap-4 max-md:-mx-4 max-md:overflow-y-auto max-md:px-4">
       <header className="fissa flex items-center justify-between gap-3">
         <div className="min-w-0">
           {/* Il nome del locale sta nella testata, accanto al titolo: qui
               resta il saluto, che non è il titolo della pagina ma il modo in
               cui questa schermata comincia.
 
-              Sul telefono sta su una riga e la data si nasconde: due righe di
-              intestazione qui sono due prenotazioni in meno visibili. */}
-          <p className="truncate text-display text-xl md:text-2xl">
+              Sul telefono la data si nasconde, e se il nome è lungo il saluto
+              va a capo invece di tagliarsi: ora la schermata scorre tutta,
+              quindi una riga in più non toglie spazio alle prenotazioni. */}
+          <p className="text-display text-xl md:truncate md:text-2xl">
             Buona giornata, {ctx.session.user?.name?.split(" ")[0] ?? "ospite"}.
             <span className="ml-2 hidden align-middle text-sm font-normal capitalize text-muted-foreground lg:inline">
               {today}
@@ -109,7 +115,7 @@ export default async function OverviewPage() {
         bordo. `-mx-3 px-3 -mb-6 pb-6` allarga il bordo nel margine di `main`
         senza spostare le card: l'ombra ha dove cadere.
       */}
-      <section className="fill -mx-3 -mb-6 min-h-0 space-y-4 overflow-y-auto px-3 pb-6 md:grid md:grid-cols-[1.4fr_1fr] md:gap-4 md:space-y-0">
+      <section className="fill -mx-3 -mb-6 min-h-0 space-y-4 px-3 pb-6 max-md:flex-none md:grid md:overflow-y-auto md:grid-cols-[1.4fr_1fr] md:gap-4 md:space-y-0">
         {/*
           A sinistra le prenotazioni. Prima qui c'era **tutta** la giornata in
           una lista alta quanto la schermata, e a metà servizio erano quasi

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Table } from "@prisma/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,7 +91,7 @@ export function AssignBookingDialog({
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -110,7 +110,7 @@ export function AssignBookingDialog({
               >
                 {pendingBookingId === confirmBooking.id ? "Assegno…" : "Assegna comunque"}
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         ) : unassignedBookings.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nessuna prenotazione senza tavolo al momento.</p>

@@ -91,7 +91,7 @@ export function CouponCard({
             e il nome torna a essere l'inizio della lettura.
           */}
           <p
-            className="flex items-center gap-1.5 text-[0.6875rem] font-semibold uppercase leading-none tracking-[0.14em]"
+            className="flex items-center gap-1.5 text-xs font-semibold uppercase leading-none tracking-[0.12em] lg:text-[0.6875rem] lg:tracking-[0.14em]"
             style={{ color: tintaDi(c.category).a }}
           >
             <span
@@ -105,7 +105,8 @@ export function CouponCard({
           <button
             type="button"
             onClick={onApri}
-            className="mt-1.5 min-w-0 max-w-full rounded-sm text-left underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            // L'area sensibile si allarga in verticale (after invisibile) fino a 44 px sul telefono.
+            className="relative mt-1.5 min-w-0 max-w-full rounded-sm text-left underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] lg:after:hidden hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="text-[1.0625rem] font-semibold leading-snug tracking-[-0.005em] text-card-foreground">
               {c.name}
@@ -119,7 +120,7 @@ export function CouponCard({
               attaccato alla parola che lo precede, quindi andando a capo il
               puntino resta in fondo alla riga, mai in testa a quella nuova.
             */
-            <p className="mt-1 text-xs leading-relaxed text-tertiary-foreground">
+            <p className="mt-1 text-[13px] leading-relaxed text-tertiary-foreground lg:text-xs">
               {condizioni.map((x, i) => (
                 <span key={x.testo} className={cn(x.avviso && "font-medium text-accent-strong")}>
                   {i > 0 && " · "}
@@ -140,7 +141,7 @@ export function CouponCard({
               <span className="text-sm tabular-nums text-muted-foreground"> / {c.maxRedemptions}</span>
             )}
           </p>
-          <p className="mt-1 whitespace-nowrap text-xs leading-none text-tertiary-foreground">
+          <p className="mt-1 whitespace-nowrap text-[13px] leading-none text-tertiary-foreground lg:text-xs">
             {accorda(["utilizzo", "utilizzi"], c.usi)}
             {conTetto ? "" : " · senza tetto"}
           </p>
@@ -188,7 +189,7 @@ export function CouponCard({
             onClick={onApri}
             aria-label={`Apri ${c.name}`}
             title="Apri il coupon"
-            className="group/apri h-9 w-9 rounded-full"
+            className="group/apri h-11 w-11 rounded-full lg:h-9 lg:w-9"
           >
             <ArrowUpRight
               className="h-4 w-4 transition-transform group-hover/apri:-translate-y-px group-hover/apri:translate-x-px"
@@ -208,6 +209,7 @@ export function CouponCard({
                   size="icon"
                   disabled={inCorso}
                   aria-label={`Altre azioni per ${c.name}`}
+                  className="h-11 w-11 lg:h-9 lg:w-9"
                 >
                   <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -317,17 +319,18 @@ function Tagliando({ codice, categoria }: { codice: string; categoria: string })
           "lg:inset-x-auto lg:bottom-[calc(var(--tacca)+6px)] lg:right-0 lg:top-[calc(var(--tacca)+6px)] lg:h-auto lg:w-[2px] lg:translate-x-1/2 lg:bg-[length:2px_7px] lg:bg-repeat-y",
         )}
       />
-      <span className="flex items-center justify-between gap-2 text-[0.6875rem] font-medium uppercase leading-none tracking-[0.14em]">
+      <span className="flex items-center justify-between gap-2 text-xs font-medium uppercase leading-none tracking-[0.12em] lg:text-[0.6875rem] lg:tracking-[0.14em]">
         {copiato ? (
           <span className="flex items-center gap-1.5 text-[#f7f3ea]">
             <Check className="h-3.5 w-3.5" aria-hidden="true" /> Copiato
           </span>
         ) : (
-          <span className="text-[#f7f3ea]/70">Codice</span>
+          <span className="text-[#f7f3ea]/80">Codice</span>
         )}
         <Copy
           className={cn(
-            "h-3.5 w-3.5 text-[#f7f3ea] opacity-0 transition-opacity group-hover:opacity-80 group-focus-visible:opacity-80",
+            // Sul telefono non c'è passaggio del mouse: l'icona di copia resta visibile.
+            "h-3.5 w-3.5 text-[#f7f3ea] opacity-80 transition-opacity lg:opacity-0 lg:group-hover:opacity-80 group-focus-visible:opacity-80",
             copiato && "invisible",
           )}
           aria-hidden="true"

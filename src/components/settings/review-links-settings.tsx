@@ -146,7 +146,7 @@ export function ReviewLinksSettings({
           {canManage && (
             <Button
               variant="ghost"
-              size="icon"
+              size="icon" className="h-11 w-11 md:h-9 md:w-9"
               aria-label={`Togli il collegamento a ${NOME_PIATTAFORMA[r.platform as keyof typeof NOME_PIATTAFORMA]}`}
               onClick={() => {
                 setRighe(righe.filter((_, n) => n !== i));

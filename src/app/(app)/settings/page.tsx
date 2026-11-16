@@ -131,13 +131,13 @@ export default async function SettingsPage({
           can(ctx.role, "manage_venue") && (
             <Link
               href="/settings/brand"
-              className="mt-4 inline-flex max-w-full items-center gap-3 rounded-full border border-accent/40 bg-accent/10 py-2 pl-4 pr-3 text-sm transition-colors hover:bg-accent/15"
+              className="mt-4 flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 py-2.5 pl-4 pr-3 text-[0.9375rem] transition-colors hover:bg-accent/15 md:inline-flex md:min-h-0 md:w-auto md:max-w-full md:rounded-full md:py-2 md:text-sm"
             >
               <AlertTriangle
                 className="h-4 w-4 shrink-0 text-accent-strong"
                 aria-hidden="true"
               />
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1 md:flex-none">
                 <span className="font-medium">
                   Configurazione del brand incompleta
                 </span>
@@ -302,7 +302,9 @@ export default async function SettingsPage({
         */}
         <Link
           href="/settings"
-          className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          /* Alto 44 sul telefono: è l'unica via di ritorno all'indice, e un
+             link alto quanto il suo testo si manca col pollice. */
+          className="-ml-1 mt-2 inline-flex min-h-[44px] items-center gap-2 px-1 text-[0.9375rem] text-muted-foreground transition-colors hover:text-foreground md:ml-0 md:mt-4 md:min-h-0 md:px-0 md:text-sm"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Tutte le impostazioni

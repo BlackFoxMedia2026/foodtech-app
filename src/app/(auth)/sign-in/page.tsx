@@ -226,7 +226,8 @@ function SignInForm() {
               */}
               <Link
                 href="/password-dimenticata"
-                className="text-xs text-card-foreground/65 underline underline-offset-2 transition-colors hover:text-card-foreground"
+                // Bersaglio da 44 px sul telefono: prima era alto 20 e scritto a 12.
+                className="inline-flex min-h-[44px] items-center text-sm text-card-foreground/65 underline underline-offset-2 transition-colors hover:text-card-foreground md:min-h-0 md:text-xs"
               >
                 Password dimenticata?
               </Link>

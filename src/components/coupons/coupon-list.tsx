@@ -76,6 +76,9 @@ import { CouponPannello } from "@/components/coupons/coupon-pannello";
  * linguetta loro: prima restavano fuori dalla query, quindi archiviare era
  * l'unica azione del prodotto senza ritorno.
  */
+const NOTA_USO =
+  "I coupon si usano al tavolo, dalla scheda della prenotazione in Servizio. Uno archiviato non si usa più ma resta negli utilizzi già fatti: la storia di uno sconto non si cancella. Gli utilizzi si possono annullare, uno per uno, dal tavolo.";
+
 export function CouponList({
   items,
   canEdit,
@@ -375,7 +378,11 @@ export function CouponList({
                 solo** da un bordo all'altro — ed è anche il campo dove si
                 incolla un codice, che è lungo.
               */}
-              <div className="relative min-w-[13rem] flex-1">
+              {/* Su telefono: ricerca e tipologia sulla prima riga, le quattro
+                  viste sulla seconda a tutta larghezza, la chiamata in fondo.
+                  Con ricerca e viste sulla stessa riga alle viste restavano
+                  80 px: si vedeva «Attivi 3» tagliato e basta. */}
+              <div className="relative min-w-0 flex-1 sm:min-w-[13rem]">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                   aria-hidden="true"
@@ -383,16 +390,16 @@ export function CouponList({
                 <Input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Cerca per nome o codice…"
+                  placeholder="Cerca nome o codice…"
                   aria-label="Cerca fra i coupon"
-                  className="h-10 rounded-full pl-9 pr-9"
+                  className="h-11 rounded-full pl-9 pr-11 text-base sm:h-10 sm:pr-9 sm:text-sm"
                 />
                 {q && (
                   <button
                     type="button"
                     onClick={() => setQ("")}
                     aria-label="Svuota la ricerca"
-                    className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:bg-current/10"
+                    className="absolute right-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:bg-current/10 sm:right-2 sm:h-6 sm:w-6"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -408,13 +415,14 @@ export function CouponList({
                   fondo. */}
               <div
                 className={cn(
-                  "flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-full border border-border/70 bg-card-sunken/70 p-1 lg:flex-none",
+                  // Su telefono due righe da due: in fila scorrevano di lato e «Archiviati» restava fuori vista.
+                  "order-last grid min-w-0 basis-full grid-cols-2 items-center gap-1 rounded-[1.375rem] border border-border/70 bg-card-sunken/70 p-1 sm:order-none sm:flex sm:basis-auto sm:flex-1 sm:overflow-x-auto sm:rounded-full lg:flex-none",
                   // Il bordo destro sfuma dove le linguette escono dalla
                   // capsula: senza, sul telefono si vede «Attivi 13» e basta,
                   // e le altre tre viste — archiviati compresi — sembrano non
                   // esistere invece che stare a un dito di scorrimento. Da
                   // `lg` non serve: ci stanno tutte.
-                  "[mask-image:linear-gradient(to_right,#000_calc(100%-1.75rem),transparent)] lg:[mask-image:none]",
+                  "sm:[mask-image:linear-gradient(to_right,#000_calc(100%-1.75rem),transparent)] lg:[mask-image:none]",
                 )}
                 role="tablist"
                 aria-label="Filtra per stato"
@@ -429,7 +437,7 @@ export function CouponList({
                       aria-selected={scelto}
                       onClick={() => setGruppo(g.id)}
                       className={cn(
-                        "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "inline-flex h-10 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm transition-colors sm:h-8 sm:justify-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         scelto
                           ? "border border-accent/55 bg-accent/20 font-medium text-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -438,7 +446,7 @@ export function CouponList({
                       {g.nome}
                       <span
                         className={cn(
-                          "text-xs tabular-nums",
+                          "text-[13px] tabular-nums sm:text-xs",
                           scelto ? "text-accent-strong" : "text-muted-foreground/70",
                         )}
                       >
@@ -456,7 +464,8 @@ export function CouponList({
                       variant="outline"
                       aria-label="Filtra per tipologia"
                       className={cn(
-                        "h-10 shrink-0 rounded-full border-border/70 px-3 sm:px-4",
+                        "h-11 w-11 shrink-0 rounded-full border-border/70 px-0 sm:h-10 sm:w-auto sm:px-4",
+                        categoria && "w-auto px-3",
                         categoria && "border-accent/55 bg-accent/15",
                       )}
                     >
@@ -505,7 +514,7 @@ export function CouponList({
               {canEdit && (
                 <Button
                   variant="accent"
-                  className="h-10 w-full shrink-0 sm:ml-auto sm:w-auto"
+                  className="order-last h-11 w-full shrink-0 sm:order-none sm:ml-auto sm:h-10 sm:w-auto"
                   onClick={() => setNuovo(true)}
                 >
                   <Plus className="h-4 w-4" aria-hidden="true" /> Nuovo coupon
@@ -578,6 +587,9 @@ export function CouponList({
               ))}
             </ul>
           )}
+          {/* Su telefono la nota scorre con l'elenco: fissa in fondo si
+              prendeva cinque righe di schermo, e i coupon una finestrella. */}
+          <p className="t-nota pb-2 md:hidden">{NOTA_USO}</p>
         </div>
       )}
 
@@ -585,11 +597,7 @@ export function CouponList({
           anche a chi lo sapeva già. Sta qui perché è la stessa materia
           dell'altra frase — dove finisce un coupon, dove lo si usa — e perché
           è una cosa che si legge una volta sola nella vita. */}
-      <p className="fissa mt-4 t-nota">
-        I coupon si usano al tavolo, dalla scheda della prenotazione in Servizio. Uno archiviato non si
-        usa più ma resta negli utilizzi già fatti: la storia di uno sconto non si cancella. Gli utilizzi
-        si possono annullare, uno per uno, dal tavolo.
-      </p>
+      <p className="fissa mt-4 hidden t-nota md:block">{NOTA_USO}</p>
 
       {/* ══ Fuori dal flusso ════════════════════════════════════════════ */}
       {aperto && (

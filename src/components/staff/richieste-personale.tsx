@@ -106,13 +106,18 @@ export function RichiestePersonale({
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-display text-lg">Richieste da decidere</h2>
-          <p className="t-nota">
+          <p className="t-nota text-[13px] sm:text-xs">
             Ferie, permessi e cambi turno. Le più vecchie in cima: aspettano da
             più tempo.
           </p>
         </div>
         {canManage && (
-          <Button size="sm" variant={apri ? "outline" : "default"} onClick={() => setApri((v) => !v)}>
+          <Button
+            size="sm"
+            variant={apri ? "outline" : "default"}
+            className="h-11 text-sm sm:h-9 sm:text-xs"
+            onClick={() => setApri((v) => !v)}
+          >
             {apri ? "Annulla" : "Segna una richiesta"}
           </Button>
         )}
@@ -132,7 +137,7 @@ export function RichiestePersonale({
               id="waiterId"
               name="waiterId"
               required
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-base md:h-auto md:py-2 md:text-sm"
             >
               {persone.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -147,7 +152,7 @@ export function RichiestePersonale({
               id="type"
               name="type"
               required
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-base md:h-auto md:py-2 md:text-sm"
             >
               {TIPI_RICHIESTA.map((t) => (
                 <option key={t} value={t}>
@@ -170,7 +175,7 @@ export function RichiestePersonale({
             <Input id="motivo" name="motivo" maxLength={1000} className="mt-1" />
           </div>
           <div className="sm:col-span-2">
-            <Button type="submit" size="sm" disabled={inCorso === "nuova"}>
+            <Button type="submit" size="sm" className="h-11 w-full text-sm sm:h-9 sm:w-auto sm:text-xs" disabled={inCorso === "nuova"}>
               Segna
             </Button>
           </div>
@@ -178,7 +183,7 @@ export function RichiestePersonale({
       )}
 
       {richieste.length === 0 ? (
-        <p className="t-nota">
+        <p className="t-nota text-[13px] sm:text-xs">
           Nessuna richiesta in attesa. Quelle decise restano nella scheda della
           persona.
         </p>
@@ -194,16 +199,19 @@ export function RichiestePersonale({
                 <p className="text-sm">
                   <strong>{r.persona?.nome ?? "Senza nome"}</strong> · {r.tipoNome}
                 </p>
-                <p className="t-nota">
+                <p className="t-nota text-[13px] sm:text-xs">
                   {r.dal === r.al ? giorno(r.dal) : `dal ${giorno(r.dal)} al ${giorno(r.al)}`}
                   {r.motivo ? ` · ${r.motivo}` : ""}
                 </p>
               </div>
               {canManage && (
-                <div className="flex items-center gap-1.5">
+                // Sul telefono i due esiti prendono la riga, metà ciascuno: è
+                // la decisione per cui si apre la pagina.
+                <div className="flex w-full items-center gap-1.5 sm:w-auto">
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-11 flex-1 text-sm sm:h-9 sm:flex-none sm:text-xs"
                     onClick={() => void decidi(r.id, "APPROVED")}
                     disabled={inCorso === r.id}
                   >
@@ -213,6 +221,7 @@ export function RichiestePersonale({
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="h-11 flex-1 text-sm sm:h-9 sm:flex-none sm:text-xs"
                     onClick={() => void decidi(r.id, "REJECTED")}
                     disabled={inCorso === r.id}
                   >

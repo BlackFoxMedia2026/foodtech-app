@@ -139,7 +139,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
       <header className="fissa flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="t-etichetta">Marketing / Campagne</p>
-          <h1 className="text-display text-3xl">{campaign.name}</h1>
+          <h1 className="text-display text-2xl md:text-3xl">{campaign.name}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Badge tone={stato.tone}>{stato.label}</Badge>
@@ -182,7 +182,8 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
                   {QUANDO.format(partita)}
                 </span>
               )}
-              {partita && campaign.status !== "DRAFT" && <span className="text-muted-foreground">·</span>}
+              {/* Su telefono la riga va a capo e il punto finirebbe in testa alla riga nuova. */}
+              {partita && campaign.status !== "DRAFT" && <span className="hidden text-muted-foreground sm:inline">·</span>}
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                 <Users className="h-4 w-4 text-accent-strong" aria-hidden="true" />
                 {r
@@ -323,7 +324,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
             )}
 
             {/* --------------------------------------- link e persone, pari */}
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <Card className="h-full">
                 <CardHeader>
                   <CardTitle>Link più cliccati</CardTitle>

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { CalendarDays, ChefHat, ChevronLeft, ChevronRight, SlidersHorizontal, Users } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Vista } from "@/components/staff/calendario/tipi";
+import { nomeGiornoBreve, numeroGiorno } from "@/lib/turni";
 import { cn } from "@/lib/utils";
 
 /** L'ordine è quello del mockup, e non è casuale: la settimana è la vista
@@ -37,6 +38,10 @@ export function TestataCalendario({
   conFiltriAttivi,
   interruttore,
   azione,
+  settimana,
+  giornoSelezionato,
+  oggi,
+  onGiorno,
 }: {
   etichetta: string;
   vista: Vista;
@@ -57,6 +62,12 @@ export function TestataCalendario({
    * l'unica cosa qui dentro che scrive qualcosa. Prima stava da sola in una
    * testata sopra la pagina, che esisteva solo per contenere lei. */
   azione: ReactNode;
+  /** I sette giorni della settimana del giorno scelto: la striscia del
+   * telefono. */
+  settimana: string[];
+  giornoSelezionato: string;
+  oggi: string;
+  onGiorno: (giorno: string) => void;
 }) {
   /*
     Una riga sola. Prima la barra andava a capo dentro di sé (il selettore di
@@ -73,8 +84,150 @@ export function TestataCalendario({
   */
   return (
     <div className="fissa flex flex-wrap items-center gap-2.5">
-      {interruttore}
-      <div className="riquadro flex w-full min-w-0 items-center gap-2 bg-card/40 px-2 py-1.5 md:w-auto md:flex-[1_0_auto]">
+      {/*
+        Il telefono ha una testata sua, come il Calendario di iOS.
+
+        La barra della scrivania su 358 px non ci stava: la data si riduceva a
+        una «l» fra le due frecce e il selettore di vista usciva dallo schermo.
+        Qui le stesse cose stanno in righe che non si contendono lo spazio:
+        dove sono (frecce, data intera, Oggi), la settimana come striscia di
+        giorni da toccare, come guardo (Giorno/Mese) con «Nuovo turno», e i
+        tre numeri in una riga di testo. I filtri salgono accanto
+        all'interruttore Persone/Turni/Richieste.
+      */}
+      <div className="flex w-full min-w-0 flex-col gap-2.5 md:hidden">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">{interruttore}</div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={conFiltriAttivi ? "Filtri (attivi)" : "Filtri"}
+                className={cn(
+                  "relative grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-veil-4 transition-colors",
+                  conFiltriAttivi ? "border-accent text-accent-strong" : "border-border/70 text-foreground/90",
+                )}
+              >
+                <SlidersHorizontal className="h-[18px] w-[18px]" aria-hidden="true" />
+                {conFiltriAttivi && (
+                  <span aria-hidden="true" className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent-strong" />
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[min(300px,calc(100vw-2rem))] p-3">
+              {pannelloFiltri}
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="riquadro flex min-w-0 items-center gap-1 bg-card/40 p-1">
+          <button
+            type="button"
+            onClick={onPrecedente}
+            aria-label="Periodo precedente"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors active:bg-veil-10"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <h2 className="min-w-0 flex-1 text-balance text-center text-[15px] font-semibold leading-tight first-letter:uppercase">
+            {etichetta}
+          </h2>
+          <button
+            type="button"
+            onClick={onSuccessivo}
+            aria-label="Periodo successivo"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors active:bg-veil-10"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={onOggi}
+            className="h-11 shrink-0 rounded-full border border-border/70 px-4 text-sm font-medium text-foreground/90 transition-colors active:bg-veil-10"
+          >
+            Oggi
+          </button>
+        </div>
+
+        {/* La settimana come striscia: il giorno si sceglie con un tocco, senza
+            passare per le frecce sette volte. Solo nella vista Giorno — nel
+            mese i giorni sono già tutti lì. */}
+        {vista !== "mese" && (
+          <div className="grid grid-cols-7 gap-1" role="group" aria-label="Giorni della settimana">
+            {settimana.map((g) => {
+              const scelto = g === giornoSelezionato;
+              const eOggiQui = g === oggi;
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => onGiorno(g)}
+                  aria-current={scelto ? "date" : undefined}
+                  className={cn(
+                    "flex min-h-[3.25rem] flex-col items-center justify-center gap-1 rounded-xl transition-colors",
+                    scelto
+                      ? "bg-segment text-segment-ink"
+                      : eOggiQui
+                        ? "bg-[color:var(--grid-header-today)] text-foreground"
+                        : "text-foreground active:bg-veil-10",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "text-xs font-medium uppercase tracking-wide",
+                      scelto ? "text-segment-ink" : "text-muted-foreground",
+                    )}
+                  >
+                    {nomeGiornoBreve(g)}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[17px] font-semibold leading-none tabular-nums",
+                      !scelto && eOggiQui && "text-accent-strong",
+                    )}
+                  >
+                    {numeroGiorno(g)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex shrink-0 items-center gap-0.5 rounded-full border border-border/60 bg-veil-4 p-0.5">
+            {VISTE.filter((v) => v.value !== "settimana").map((v) => {
+              // Sul telefono la settimana diventa un giorno (vedi
+              // `CalendarioTurni`): «Giorno» è acceso in entrambi i casi.
+              const attiva = v.value === "mese" ? vista === "mese" : vista !== "mese";
+              return (
+                <button
+                  key={v.value}
+                  type="button"
+                  onClick={() => onVista(v.value)}
+                  aria-pressed={attiva}
+                  className={cn(
+                    "h-10 rounded-full px-2.5 text-sm font-medium transition-colors min-[380px]:px-4",
+                    attiva ? "bg-segment text-segment-ink" : "text-muted-foreground",
+                  )}
+                >
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="min-w-0 shrink-0">{azione}</div>
+        </div>
+
+        <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <Kpi icona={Users} valore={inTurno} etichetta={eOggi ? "in turno oggi" : "in turno"} />
+          <Kpi icona={ChefHat} valore={assenti} etichetta="assenti" />
+          <Kpi icona={CalendarDays} valore={liberi} etichetta="liberi" />
+        </p>
+      </div>
+
+      <div className="hidden md:contents">{interruttore}</div>
+      <div className="riquadro hidden w-full min-w-0 items-center gap-2 bg-card/40 px-2 py-1.5 md:flex md:w-auto md:flex-[1_0_auto]">
         <button
           type="button"
           onClick={onPrecedente}
@@ -146,13 +299,13 @@ export function TestataCalendario({
       {/* I tre numeri in un riquadro solo, su una riga. Da `xl` in su li
           ripete già il riepilogo della colonna a sinistra, a un palmo da qui:
           lì si tolgono e la riga respira. */}
-      <div className="riquadro flex shrink-0 items-center gap-3.5 self-stretch bg-card/40 px-3.5 xl:hidden">
+      <div className="riquadro hidden shrink-0 items-center gap-3.5 self-stretch bg-card/40 px-3.5 md:flex xl:hidden">
         <Kpi icona={Users} valore={inTurno} etichetta={eOggi ? "in turno oggi" : "in turno"} />
         <Kpi icona={ChefHat} valore={assenti} etichetta="assenti" />
         <Kpi icona={CalendarDays} valore={liberi} etichetta="liberi" />
       </div>
 
-      <div className="ml-auto shrink-0">{azione}</div>
+      <div className="ml-auto hidden shrink-0 md:block">{azione}</div>
     </div>
   );
 }
@@ -167,10 +320,10 @@ function Kpi({
   etichetta: string;
 }) {
   return (
-    <p className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+    <span className="flex items-center gap-1.5 whitespace-nowrap text-[13px] text-muted-foreground md:text-xs">
       <Icona className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span className="text-sm font-semibold tabular-nums text-foreground">{valore}</span>
       {etichetta}
-    </p>
+    </span>
   );
 }

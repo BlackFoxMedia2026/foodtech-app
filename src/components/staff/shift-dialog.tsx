@@ -301,7 +301,7 @@ export function ShiftDialog({
               <div
                 role="group"
                 aria-labelledby="tipo-turno"
-                className="binario grid grid-cols-3 gap-1 rounded-2xl border border-border/70 bg-card/50 p-1 sm:grid-cols-6 sm:rounded-full"
+                className="binario grid grid-cols-2 gap-1 rounded-2xl border border-border/70 bg-card/50 p-1 sm:grid-cols-6 sm:rounded-full"
               >
                 {TIPI_TURNO.map((t) => (
                   <button
@@ -310,13 +310,16 @@ export function ShiftDialog({
                     onClick={() => setKind(t.value)}
                     aria-pressed={kind === t.value}
                     className={cn(
-                      "segmento h-8 min-w-0 whitespace-nowrap rounded-full border px-1 text-sm sm:px-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "segmento h-10 min-w-0 whitespace-nowrap rounded-full border px-1 text-sm sm:h-8 sm:px-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       kind === t.value
                         ? "border-accent-strong/55 bg-accent/15 font-semibold text-accent-strong"
                         : "border-transparent font-medium text-muted-foreground hover:bg-veil-6 hover:text-foreground",
                     )}
                   >
-                    {t.breve}
+                    {/* Sul telefono, in due colonne, c'è posto per il nome
+                        intero: «Non disp.» era un'abbreviazione. */}
+                    <span className="sm:hidden">{t.label}</span>
+                    <span className="hidden sm:inline">{t.breve}</span>
                   </button>
                 ))}
               </div>

@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { PARTI, indirizzoParte, parteDa } from "@/lib/parti-impostazioni";
 import { classiVoceIn, type NavItem } from "@/components/shell/nav-items";
 import { ContenutoVoce } from "@/components/shell/contenuto-voce";
@@ -150,25 +150,33 @@ export function AltreSezioniMobile({ attiva }: { attiva: string }) {
   const altre = PARTI.filter((p) => p.id !== attiva);
 
   return (
-    <div className="mt-10 border-t border-border pt-5 md:hidden">
-      <p className="t-etichetta">Altre impostazioni</p>
+    <div className="mt-10 md:hidden">
+      <p className="t-etichetta px-1">Altre impostazioni</p>
+      {/* Lo stesso gruppo di righe dell'indice: è la stessa scelta, e deve
+          avere la stessa forma. */}
       <nav
         aria-label="Altre sezioni delle impostazioni"
-        className="mt-3 flex flex-col gap-2"
+        className="riquadro mt-2 overflow-hidden rounded-xl border-border/80"
       >
-        {altre.map((parte) => (
-          <Link
-            key={parte.id}
-            href={indirizzoParte(parte.id)}
-            className={cn(
-              "flex min-h-[44px] items-center justify-between gap-3 rounded-lg border border-border px-3 text-sm transition-colors",
-              "hover:border-line-40 hover:text-foreground",
-            )}
-          >
-            <span className="min-w-0 truncate">{parte.titolo}</span>
-            <span className="t-nota shrink-0">{parte.dentro.length} voci</span>
-          </Link>
-        ))}
+        {altre.map((parte) => {
+          const { icona: Icona } = SEGNI[parte.id];
+          return (
+            <Link
+              key={parte.id}
+              href={indirizzoParte(parte.id)}
+              className="flex min-h-[52px] items-center gap-3 border-b border-border/60 px-4 py-2 text-base transition-colors last:border-b-0 active:bg-current/5"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted/60">
+                <Icona className="h-4 w-4 text-foreground" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1 font-medium">{parte.titolo}</span>
+              <span className="shrink-0 text-[0.8125rem] text-muted-foreground">
+                {parte.dentro.length} voci
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-tertiary-foreground" aria-hidden="true" />
+            </Link>
+          );
+        })}
       </nav>
     </div>
   );

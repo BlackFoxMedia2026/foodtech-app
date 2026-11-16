@@ -194,7 +194,7 @@ function Soglia({
 }) {
   const attiva = valore !== undefined;
   const bottone =
-    "grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
+    "grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground md:h-9 md:w-9 transition-colors hover:bg-secondary hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
   return (
     <Campo etichetta={etichetta} id={id}>
       <div
@@ -221,7 +221,7 @@ function Soglia({
             const pulito = e.target.value.replace(/\D/g, "");
             onChange(pulito ? Math.min(Number(pulito), 9999) : undefined);
           }}
-          className="min-w-0 flex-1 bg-transparent text-center text-sm font-medium tabular-nums outline-none placeholder:font-normal placeholder:text-muted-foreground"
+          className="min-w-0 flex-1 bg-transparent text-center text-base font-medium tabular-nums outline-none md:text-sm placeholder:font-normal placeholder:text-muted-foreground"
         />
         {attiva && <span className="shrink-0 text-xs text-muted-foreground">{unita(valore)}</span>}
         <button
@@ -233,7 +233,8 @@ function Soglia({
           <Plus className="h-4 w-4" />
         </button>
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      {/* I valori pronti sono scorciatoie da toccare: su telefono 44 px d'altezza, spaziati. */}
+      <div className="flex flex-wrap gap-2 md:gap-1.5">
         {pronti.map((n) => (
           <button
             key={n}
@@ -241,7 +242,7 @@ function Soglia({
             aria-pressed={valore === n}
             onClick={() => onChange(valore === n ? undefined : n)}
             className={cn(
-              "rounded-full border px-2.5 py-0.5 text-xs tabular-nums transition-colors",
+              "h-11 min-w-11 rounded-full border px-3.5 text-sm tabular-nums transition-colors md:h-auto md:min-w-0 md:px-2.5 md:py-0.5 md:text-xs",
               valore === n
                 ? "border-transparent bg-segment font-medium text-segment-ink"
                 : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground",
@@ -311,7 +312,7 @@ function Gettoni({ valori, onChange }: { valori: string[]; onChange: (v: string[
         onKeyDown={tasto}
         onBlur={() => bozza.trim() && aggiungi(bozza)}
         placeholder={valori.length ? "Aggiungi…" : "es. celiaco, terrazza"}
-        className="min-w-[8rem] flex-1 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground"
+        className="min-h-10 min-w-[8rem] flex-1 bg-transparent px-1.5 text-base outline-none placeholder:text-muted-foreground md:min-h-0 md:text-sm"
       />
     </div>
   );
@@ -364,7 +365,7 @@ export function Step3Filtri() {
         )}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-8">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-8">
         <div className="space-y-5">
           <Sezione
             titolo="Profilo e fidelizzazione"
@@ -373,7 +374,7 @@ export function Step3Filtri() {
             attivi={profilo.length}
             onAzzera={() => azzera(profilo)}
           >
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <Campo etichetta="Tag" id="tags" aiuto="Basta che il cliente abbia uno dei tag. Invio per aggiungerlo.">
                 <Gettoni valori={segment.tags ?? []} onChange={(tags) => updateSegment({ tags: tags.length ? tags : undefined })} />
               </Campo>
@@ -409,7 +410,7 @@ export function Step3Filtri() {
           >
             {/* Tre soglie in fila appena c'è spazio: si leggono come una frase
                 sola, «almeno… da almeno… almeno…». */}
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               <Soglia
                 id="minTotalVisits"
                 etichetta="Visite minime"

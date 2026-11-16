@@ -141,7 +141,7 @@ export function BookingWindowSettings({
               setSalvato(false);
             }}
             placeholder="nessun limite"
-            className="w-32 text-right"
+            className="w-36 text-right md:w-32"
           />
           <span className="text-sm text-muted-foreground">giorni</span>
         </RigaImpostazione>

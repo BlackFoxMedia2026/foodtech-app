@@ -249,6 +249,12 @@ const config: Config = {
           from: { opacity: "0", transform: "translate(-50%, calc(-50% + 8px)) scale(0.985)" },
           to: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
         },
+        /* Il foglio dal basso del telefono: la stessa finestra, che sale dal
+           bordo invece di comparire al centro. */
+        "foglio-sale": {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
         mesh: {
           "0%, 100%": { opacity: "0.5", transform: "translate(0, 0) scale(1)" },
           "50%": { opacity: "0.85", transform: "translate(3%, -3%) scale(1.05)" },
@@ -278,6 +284,7 @@ const config: Config = {
         "fade-in": "fade-in 220ms ease-out",
         "slide-up": "slide-up 240ms ease-out",
         "finestra-entra": "finestra-entra 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "foglio-sale": "foglio-sale 280ms cubic-bezier(0.22, 1, 0.36, 1)",
         mesh: "mesh 18s ease-in-out infinite",
         "cambio-area": "cambio-area 300ms cubic-bezier(0.22, 1, 0.36, 1)",
         respiro: "respiro 2500ms ease-in-out infinite",

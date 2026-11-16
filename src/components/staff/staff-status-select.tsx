@@ -70,7 +70,7 @@ export function StaffStatusSelect({
           variant="outline"
           size="sm"
           disabled={disabled || submitting}
-          className="gap-1.5"
+          className="h-11 gap-1.5 text-sm md:h-9 md:text-xs"
           aria-label={`Stato: ${staffStatusLabel(status)}. Cambia`}
           title={error ?? undefined}
         >

@@ -122,14 +122,14 @@ export function VisiteChart({ date }: { date: string[] }) {
           tutti, e quello attivo si riconosce senza aprire niente. Un `<select>`
           nasconderebbe tre opzioni su quattro per risparmiare sessanta pixel.
         */}
-        <div className="flex shrink-0 rounded-full border border-border bg-card-sunken/70 p-0.5" role="group" aria-label="Periodo">
+        <div className="flex w-full shrink-0 rounded-full border border-border bg-card-sunken/70 p-0.5 md:w-auto" role="group" aria-label="Periodo">
           {PERIODI.map((p) => (
             <button
               key={p.chiave}
               type="button"
               onClick={() => setPeriodo(p)}
               aria-pressed={p.chiave === periodo.chiave}
-              className={`rounded-full px-3 py-1 text-xs transition-colors ${
+              className={`min-h-10 flex-1 whitespace-nowrap rounded-full px-2 py-1 md:px-3 text-sm transition-colors md:min-h-0 md:flex-none md:text-xs ${
                 p.chiave === periodo.chiave
                   ? "bg-secondary font-medium text-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -148,7 +148,7 @@ export function VisiteChart({ date }: { date: string[] }) {
             <XAxis
               dataKey="etichetta"
               stroke="hsl(var(--card-foreground) / 0.65)"
-              fontSize={11}
+              fontSize={12}
               tickLine={false}
               axisLine={false}
               /* Con tredici mesi le etichette si sovrappongono: recharts ne
@@ -158,7 +158,7 @@ export function VisiteChart({ date }: { date: string[] }) {
             />
             <YAxis
               stroke="hsl(var(--card-foreground) / 0.65)"
-              fontSize={11}
+              fontSize={12}
               tickLine={false}
               axisLine={false}
               width={26}

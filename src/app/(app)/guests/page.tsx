@@ -70,7 +70,7 @@ export default async function GuestsPage({
               {doppioni === 1 ? "Una coppia di schede sembra" : `${doppioni} coppie di schede sembrano`} la
               stessa persona
             </span>
-            <span className="block text-xs text-muted-foreground">
+            <span className="mt-0.5 block text-[13px] text-muted-foreground sm:text-xs">
               Stessa email o stesso telefono. Tre copie di un cliente sono tre saldi punti che non si
               sommano.
             </span>
@@ -103,33 +103,39 @@ export default async function GuestsPage({
         si impila e il conteggio va in fondo, dove non contende lo spazio ai
         due bersagli che si toccano.
       */}
+      {/* Sul telefono una riga sola, come le pagine di un'app: due frecce da
+          44 px agli estremi e le due frasi in mezzo, una sotto l'altra. Le
+          parole «Precedenti/Successivi» restano per chi usa un lettore di
+          schermo e tornano visibili da `sm`. */}
       <nav
-        className="fissa flex flex-wrap items-center gap-x-4 gap-y-3"
+        className="fissa flex items-center gap-x-3 sm:gap-x-4"
         aria-label="Pagine degli ospiti"
       >
         {elenco.pagine > 1 ? (
-          <Button asChild variant="outline" size="sm" className="order-1" disabled={elenco.pagina === 1}>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-11 w-11 shrink-0 px-0 sm:h-9 sm:w-auto sm:px-3"
+            disabled={elenco.pagina === 1}
+          >
             <Link
               href={href(searchParams, elenco.pagina - 1)}
               aria-disabled={elenco.pagina === 1}
               className={elenco.pagina === 1 ? "pointer-events-none opacity-50" : undefined}
             >
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Precedenti
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Precedenti</span>
             </Link>
           </Button>
         ) : (
           // Un segnaposto vuoto tiene il conteggio dove sta sempre: senza,
           // con una pagina sola scivolerebbe a sinistra e la riga di fondo
           // cambierebbe forma a ogni ricerca.
-          <span aria-hidden="true" />
+          <span aria-hidden="true" className="hidden sm:block" />
         )}
 
-        {/* Sul telefono le due frasi prendono una riga tutta loro, sotto i
-            pulsanti: in fila con loro spingevano «Successivi» a capo da solo,
-            e il pulsante che serve finiva staccato da quello che lo precede.
-            Da `sm` tornano in mezzo, dove il conteggio sta subito prima di
-            «Successivi». */}
-        <div className="order-3 flex w-full items-center justify-center gap-6 text-sm text-muted-foreground sm:order-2 sm:ml-auto sm:w-auto sm:justify-end">
+        <div className="flex min-w-0 flex-1 flex-col items-center text-[13px] leading-snug text-muted-foreground sm:ml-auto sm:flex-none sm:flex-row sm:justify-end sm:gap-6 sm:text-sm">
           {elenco.pagine > 1 && (
             <span>
               Pagina {elenco.pagina} di {elenco.pagine}
@@ -139,13 +145,14 @@ export default async function GuestsPage({
         </div>
 
         {elenco.pagine > 1 && (
-          <Button asChild variant="outline" size="sm" className="order-2 ml-auto sm:order-3 sm:ml-0">
+          <Button asChild variant="outline" size="sm" className="h-11 w-11 shrink-0 px-0 sm:h-9 sm:w-auto sm:px-3">
             <Link
               href={href(searchParams, elenco.pagina + 1)}
               aria-disabled={elenco.pagina === elenco.pagine}
               className={elenco.pagina === elenco.pagine ? "pointer-events-none opacity-50" : undefined}
             >
-              Successivi <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Successivi</span>
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </Button>
         )}

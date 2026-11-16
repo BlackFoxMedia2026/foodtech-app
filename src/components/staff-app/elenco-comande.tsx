@@ -34,7 +34,7 @@ type Linguetta = "tutte" | "in_cucina" | "in_preparazione" | "pronte" | "servite
 const LINGUETTE: { chiave: Linguetta; etichetta: string; stati: string[] }[] = [
   { chiave: "tutte", etichetta: "Tutte", stati: [] },
   { chiave: "in_cucina", etichetta: "In cucina", stati: ["INVIATA", "RICEVUTA"] },
-  { chiave: "in_preparazione", etichetta: "In prep.", stati: ["IN_PREPARAZIONE"] },
+  { chiave: "in_preparazione", etichetta: "In preparazione", stati: ["IN_PREPARAZIONE"] },
   { chiave: "pronte", etichetta: "Pronte", stati: ["PRONTA"] },
   { chiave: "servite", etichetta: "Servite", stati: ["SERVITA"] },
 ];

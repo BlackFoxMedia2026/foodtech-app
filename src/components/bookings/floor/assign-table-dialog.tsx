@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Table } from "@prisma/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -111,7 +111,7 @@ export function AssignTableDialog({
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -130,7 +130,7 @@ export function AssignTableDialog({
               >
                 {pendingTableId === confirmTable.id ? "Assegno…" : "Assegna comunque"}
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         ) : (
           <div className="space-y-4">

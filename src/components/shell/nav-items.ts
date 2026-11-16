@@ -426,6 +426,10 @@ export function primarieFuoriDallaBarra(
  * pixel, e «Prenotazioni» ci finisce dentro con i puntini. La parola
  * accorciata è sempre **la stessa parola** — mai un sinonimo — altrimenti si
  * torna ai due vocabolari che la barra in basso ha già smesso di avere.
+ *
+ * Dal 16 novembre 2026 la testata usa solo `lungo`, anche sul telefono: la
+ * lente della ricerca è passata in «Altro» e il titolo, se non sta, va a capo
+ * su due righe. `breve` resta per chi vuole una forma corta altrove.
  */
 export type TitoloPagina = { lungo: string; breve: string };
 
@@ -456,6 +460,9 @@ const TITOLI_EXTRA: Record<string, string | [lungo: string, breve: string]> = {
   /* Analytics vive nel menu Marketing, quindi la voce accesa in barra è
      Marketing: senza questa riga la sua testata direbbe «Marketing». */
   "/insights": "Analytics",
+  /* Esperienze è fuori dalla navigazione (sospesa, vedi sopra) ma la pagina
+     esiste: senza questa riga la sua testata resta senza titolo. */
+  "/experiences": "Esperienze",
   "/campaigns": "Campagne",
   "/campaigns/new": ["Nuova campagna", "Nuova camp."],
 };

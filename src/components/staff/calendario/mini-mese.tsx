@@ -75,7 +75,7 @@ export function MiniMese({
 
       <div className="grid grid-cols-7 gap-y-0.5">
         {INIZIALI_GIORNI.map((iniziale, i) => (
-          <span key={i} className="pb-1 text-center text-[0.65rem] font-medium text-tertiary-foreground">
+          <span key={i} className="pb-1 text-center text-xs md:text-[0.65rem] font-medium text-tertiary-foreground">
             {iniziale}
           </span>
         ))}

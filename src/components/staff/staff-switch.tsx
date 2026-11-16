@@ -51,7 +51,7 @@ export function StaffSwitch({
             scroll={false}
             aria-current={attiva ? "page" : undefined}
             className={cn(
-              "flex-1 rounded-full px-3 py-1.5 text-center text-xs font-medium transition-colors",
+              "flex min-h-10 flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 text-center text-sm font-medium transition-colors md:block md:min-h-0 md:py-1.5 md:text-xs",
               attiva ? "bg-segment text-segment-ink" : "text-muted-foreground hover:bg-veil-10 hover:text-foreground",
             )}
           >

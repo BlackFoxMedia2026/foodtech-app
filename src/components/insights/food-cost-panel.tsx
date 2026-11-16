@@ -105,11 +105,30 @@ export function FoodCostPanel({ report, currency }: { report: FoodCostReport; cu
         {report.piatti.length > 0 && (
           <div>
             <p className="text-sm font-medium">Dal margine più alto al più basso</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-[13px] text-muted-foreground sm:text-xs">
               In cima i piatti che tengono su il conto, in fondo quelli che lo affondano. Nessuna soglia decisa da
               noi su cosa sia un buon margine: cambia troppo fra un antipasto e una bottiglia.
             </p>
-            <div className="mt-3 overflow-x-auto">
+            {/* Sul telefono un elenco e non una tabella: cinque colonne in
+                330 px mandavano i nomi dei piatti a capo parola per parola e
+                «Resta» — il dato per cui si guarda — fuori dallo schermo. */}
+            <ul className="mt-3 divide-y divide-border sm:hidden">
+              {report.piatti.map((p) => (
+                <li key={p.menuItemId} className="flex items-start justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="break-words text-[15px] leading-snug">{p.name}</p>
+                    <p className="mt-0.5 text-[13px] tabular-nums text-muted-foreground">
+                      {p.quantita} venduti · incasso {euro(p.incassoCents)} · costo {euro(p.costoCents ?? 0)}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[15px] font-medium tabular-nums">{euro(p.margineCents ?? 0)}</p>
+                    <p className="text-[13px] tabular-nums text-muted-foreground">resta {p.marginePct}%</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 hidden overflow-x-auto sm:block">
               <table className="w-full min-w-[420px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left t-etichetta">

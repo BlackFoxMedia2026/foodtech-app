@@ -102,7 +102,7 @@ export function MenuItemSales({ dati, currency }: { dati: RendimentoPiatto; curr
                   <XAxis
                     dataKey="etichetta"
                     stroke="hsl(var(--card-foreground) / 0.65)"
-                    fontSize={11}
+                    fontSize={12}
                     tickLine={false}
                     axisLine={false}
                     interval="preserveStartEnd"
@@ -110,7 +110,7 @@ export function MenuItemSales({ dati, currency }: { dati: RendimentoPiatto; curr
                   />
                   <YAxis
                     stroke="hsl(var(--card-foreground) / 0.65)"
-                    fontSize={11}
+                    fontSize={12}
                     tickLine={false}
                     axisLine={false}
                     width={28}

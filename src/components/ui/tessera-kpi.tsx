@@ -121,7 +121,9 @@ export function TesseraKpi({
   className?: string;
 }) {
   const etichettaResa = accorda(etichetta, valore);
-  const cortaResa = corta === undefined ? etichettaResa : accorda(corta, valore);
+  /* `corta` resta nella firma per chi la passa, ma non si usa più: vedi
+     l'etichetta qui sotto. */
+  void corta;
   const notaResa = nota === undefined ? undefined : accorda(nota, valore);
 
   return (
@@ -139,10 +141,12 @@ export function TesseraKpi({
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="t-etichetta flex items-center gap-1.5 text-[13px] text-kpi-label-muted sm:text-sm">
-          <Icona className="h-[22px] w-[22px] shrink-0 sm:hidden" stroke="url(#trattoTenue)" />
-          <span className="sm:hidden">{cortaResa}</span>
-          <span className="hidden sm:inline">{etichettaResa}</span>
+        {/* Sul telefono l'etichetta è intera anche lei: «PRENOT.» faceva
+            indovinare. Per farla stare l'icona scende a 18 px e la spaziatura
+            si stringe; se ancora non basta va a capo, non si taglia. */}
+        <p className="t-etichetta flex items-center gap-1.5 text-[13px] text-kpi-label-muted max-sm:tracking-[0.02em] sm:text-sm">
+          <Icona className="h-[18px] w-[18px] shrink-0 sm:hidden" stroke="url(#trattoTenue)" />
+          <span className="min-w-0 break-words">{etichettaResa}</span>
         </p>
         <p
           className={cn(
@@ -160,7 +164,7 @@ export function TesseraKpi({
             />
           </div>
         )}
-        {notaResa && <p className="mt-1 text-[11px] leading-tight text-muted-foreground">{notaResa}</p>}
+        {notaResa && <p className="mt-1 text-xs leading-tight text-muted-foreground md:text-[11px]">{notaResa}</p>}
       </div>
     </li>
   );

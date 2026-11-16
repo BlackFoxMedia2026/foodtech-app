@@ -381,7 +381,7 @@ export function PublicBookingForm({
         aria-hidden="true"
       />
 
-      <Button type="submit" variant="accent" disabled={loading} className="w-full" style={buttonStyle}>
+      <Button type="submit" variant="accent" disabled={loading} className="h-12 w-full text-base md:h-10 md:text-sm" style={buttonStyle}>
         {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

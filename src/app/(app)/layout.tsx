@@ -162,7 +162,7 @@ export default async function AppShell({
         }
       >
         <div
-          className={`${sans.variable} ${display.variable} ${mono.variable} guscio-app relative z-0 flex h-screen flex-col overflow-hidden bg-background text-foreground`}
+          className={`${sans.variable} ${display.variable} ${mono.variable} guscio-app relative z-0 flex h-screen flex-col supports-[height:100dvh]:h-[100dvh] overflow-hidden bg-background text-foreground`}
         >
           <TemaCarta />
           <Header
@@ -177,6 +177,9 @@ export default async function AppShell({
             conStaffApp={conStaffApp}
           />
           {/*
+        Il guscio è alto `100dvh` dove esiste: con `100vh` su iOS il fondo
+        resta sotto la barra degli indirizzi, e con lui l'ultima riga.
+
         `main` dà la sua altezza alle pagine invece di scorrere.
         
         Prima era lui il contenitore che scorreva, e una pagina più alta dello
@@ -188,9 +191,10 @@ export default async function AppShell({
         contenuto, che sarebbe peggio.
         
         `pb-24` su telefono è lo spazio della barra in basso, altrimenti
-        l'ultima riga finisce sotto la navigazione.
+        l'ultima riga finisce sotto la navigazione. Più la zona sicura: su un
+        iPhone la barra cresce della linea della home, e lo spazio con lei.
       */}
-          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-24 pt-4 md:px-6 md:pb-6 md:pt-5 lg:px-8">
+          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 md:px-6 md:pb-6 md:pt-5 lg:px-8">
             <VenueTimeProvider timezone={ctx.venue.timezone}>
               {children}
             </VenueTimeProvider>

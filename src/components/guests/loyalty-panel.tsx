@@ -260,7 +260,7 @@ export function LoyaltyPanel({
               <button
                 type="button"
                 onClick={() => setTutti(!tutti)}
-                className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                className="inline-flex min-h-10 items-center gap-1 rounded-full border border-border px-4 py-1 text-sm font-medium md:min-h-0 md:px-3 md:text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
                 <ChevronDown
                   className={`h-3.5 w-3.5 transition-transform ${tutti ? "rotate-180" : ""}`}

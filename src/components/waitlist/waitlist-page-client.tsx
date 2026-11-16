@@ -63,13 +63,17 @@ export function WaitlistPageClient({
   return (
     // `fondo-caldo` porta le variabili del vetro della Panoramica: le righe
     // sono schede di quel vetro, i gesti sono i suoi tondi allungati.
-    <div className="schermo fondo-caldo animate-fade-in gap-4">
+    //
+    // Sul telefono scorre la schermata intera, come in Panoramica: le quattro
+    // tessere salgono via e lo schermo resta alla fila, invece di lasciarle
+    // una finestrella sotto metà pagina di numeri fermi.
+    <div className="schermo fondo-caldo animate-fade-in gap-4 max-md:-mx-4 max-md:overflow-y-auto max-md:px-4">
       {/* La testata come quella della Panoramica: una riga in serif che dice
           la cosa che serve — quante persone stanno aspettando — e accanto il
           gesto, col tono delle chiamate all'azione. */}
       <header className="fissa flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-display text-xl md:text-2xl">
+          <p className="text-display text-xl md:truncate md:text-2xl">
             {entries.length === 0
               ? "Nessuno in attesa."
               : `${summary.personeInCoda} ${summary.personeInCoda === 1 ? "persona" : "persone"} in coda.`}
@@ -156,7 +160,7 @@ export function WaitlistPageClient({
         /* `-mr-[18px]`: il margine destro più i 10 px del binario della barra
            (`scrollbar-gutter: stable`), così le schede finiscono a filo delle
            tessere sopra. */
-        <ul className="vi-scorre fill-scroll -ml-2 -mr-[18px] flex flex-col gap-3.5 px-2 pb-2">
+        <ul className="vi-scorre fill-scroll -ml-2 -mr-[18px] flex flex-col gap-3.5 px-2 pb-2 max-md:-mr-2 max-md:flex-none max-md:overflow-visible">
           {entries.map((entry, i) => (
             <WaitlistRow
               key={entry.id}

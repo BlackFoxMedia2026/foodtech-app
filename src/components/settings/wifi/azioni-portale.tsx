@@ -127,7 +127,8 @@ export function StatoRouter({ collegatoIl, canManage }: { collegatoIl: Date | nu
           type="button"
           disabled={inCorso}
           onClick={() => salva({ routerCollegato: !collegato })}
-          className="underline decoration-[#f7f3ea]/40 underline-offset-2 hover:text-[#f7f3ea] disabled:opacity-50"
+          // Sul telefono l'area sensibile si allunga in verticale fino a 44 px, senza cambiare la riga.
+          className="relative underline decoration-[#f7f3ea]/40 underline-offset-2 after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-[''] hover:text-[#f7f3ea] disabled:opacity-50 md:after:hidden"
         >
           {collegato ? "non è più collegato" : "l'ho collegato"}
         </button>

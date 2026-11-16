@@ -86,7 +86,7 @@ export function PillolaStato({ stato, etichetta, className }: { stato: StatoClie
 export function SegnoAnteprima({ className }: { className?: string }) {
   return (
     <span
-      className={cn("inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground", className)}
+      className={cn("inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium leading-none text-muted-foreground", className)}
       title="In prova con i primi ristoranti: alcune funzioni possono cambiare."
     >
       Anteprima

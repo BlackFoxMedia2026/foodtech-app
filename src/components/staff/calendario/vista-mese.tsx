@@ -105,7 +105,7 @@ export function VistaMese({
     <div className="fill-scroll scorrimento riquadro flex flex-col overflow-auto bg-[color:var(--grid-body)] [scrollbar-gutter:auto]">
       <div className="sticky top-0 z-20 grid shrink-0 grid-cols-7 border-b border-border/50 bg-[color:var(--grid-header)]">
         {INIZIALI_GIORNI.map((iniziale, i) => (
-          <span key={i} className="t-etichetta px-2 py-1.5 text-center text-[0.62rem]">
+          <span key={i} className="t-etichetta px-2 py-1.5 text-center text-xs md:text-[0.62rem]">
             {iniziale}
           </span>
         ))}
@@ -148,7 +148,7 @@ export function VistaMese({
                   {numeroGiorno(g)}
                 </button>
                 {(voce?.inTurno ?? 0) > 0 && (
-                  <span className="shrink-0 text-[0.66rem] tabular-nums text-muted-foreground">{voce!.inTurno}</span>
+                  <span className="shrink-0 text-xs md:text-[0.66rem] tabular-nums text-muted-foreground">{voce!.inTurno}</span>
                 )}
               </div>
 
@@ -169,13 +169,13 @@ export function VistaMese({
                       )}
                     >
                       <span aria-hidden="true" className={cn("h-2.5 w-[2px] shrink-0 rounded-full", PALLINO_LEGENDA[famigliaDiTurno("WORK", repartoDi(blocco.turni[0]))])} />
-                      <span className={cn("ora-reparto shrink-0 text-[0.62rem] tabular-nums", famiglia.testo)}>
+                      <span className={cn("ora-reparto shrink-0 text-xs md:text-[0.62rem] tabular-nums", famiglia.testo)}>
                         {intervalloCompatto(blocco.startMinute, blocco.endMinute)}
                       </span>
                       {/* La sigla del reparto, dove prima c'era il numero di persone:
                           stessa larghezza, e il reparto smette di essere solo un
                           colore. Il numero resta nel `title` del blocco. */}
-                      <span className="ml-auto shrink-0 text-[0.64rem] font-medium tracking-wide text-ink/70" title={famiglia.label}>
+                      <span className="ml-auto shrink-0 text-xs md:text-[0.64rem] font-medium tracking-wide text-ink/70" title={famiglia.label}>
                         <span aria-hidden="true">{siglaReparto(famigliaDiTurno("WORK", repartoDi(blocco.turni[0])))}</span>
                         <span className="sr-only">{famiglia.label}</span>
                       </span>
@@ -199,7 +199,7 @@ export function VistaMese({
                       )}
                     >
                       <IconaTipoTurno kind={t.kind} className={cn("h-2.5 w-2.5 shrink-0", famiglia.testo)} />
-                      <span className="min-w-0 flex-1 truncate text-[0.64rem] leading-tight text-ink/85">
+                      <span className="min-w-0 flex-1 truncate text-xs md:text-[0.64rem] leading-tight text-ink/85">
                         {t.persona.lastName}
                       </span>
                     </button>
@@ -210,7 +210,7 @@ export function VistaMese({
                   <button
                     type="button"
                     onClick={() => onApriGiorno(g)}
-                    className="w-full px-1 text-left text-[0.64rem] text-muted-foreground transition-colors hover:text-foreground"
+                    className="w-full px-1 text-left text-xs md:text-[0.64rem] text-muted-foreground transition-colors hover:text-foreground"
                   >
                     +{nascosti} {nascosti === 1 ? "altro" : "altri"}
                   </button>

@@ -21,6 +21,8 @@ export const PopoverContent = React.forwardRef<
       className={cn(
         "popover-content z-50 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg outline-none",
         className,
+        // Sul telefono non esce mai dallo schermo, qualunque `w-` passi la pagina.
+        "max-md:max-w-[calc(100vw-24px)]",
       )}
       {...props}
     />

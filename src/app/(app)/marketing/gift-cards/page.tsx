@@ -9,7 +9,9 @@ export default async function GiftCardsPage() {
   const items = await listGiftCards(ctx.venueId);
 
   return (
-    <div className="schermo animate-fade-in gap-4">
+    /* Su telefono scorre la pagina intera: con numeri e nota fissi in cima
+       all'elenco delle carte restava una finestrella sotto la piega. */
+    <div className="flex flex-col gap-4 animate-fade-in md:schermo">
       <GiftCardList
         items={items}
         canIssue={can(ctx.role, "manage_venue")}

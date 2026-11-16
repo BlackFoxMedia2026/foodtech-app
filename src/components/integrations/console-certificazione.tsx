@@ -270,7 +270,7 @@ export function ConsoleCertificazione({ slug }: { slug: string }) {
                   <tr key={r.capacita} className="border-t border-border">
                     <td className="py-1.5 pr-4">
                       {r.etichetta}
-                      {c?.fiscale && <Badge tone="warning" className="ml-2 text-[10px]">FISCAL_SIDE_EFFECT_POSSIBLE</Badge>}
+                      {c?.fiscale && <Badge tone="warning" className="ml-2 text-xs">FISCAL_SIDE_EFFECT_POSSIBLE</Badge>}
                     </td>
                     {LIVELLI.map((l) => (
                       <td key={l} className="px-3 py-1.5 text-center">

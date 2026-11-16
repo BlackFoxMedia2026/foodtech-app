@@ -51,21 +51,23 @@ export default async function IntegrazioniPage({ searchParams }: { searchParams:
 
   return (
     <div className="schermo animate-fade-in gap-3">
-      <Button asChild variant="ghost" size="sm" className="fissa self-start">
+      <Button asChild variant="ghost" size="sm" className="fissa -ml-2 h-11 self-start text-sm md:ml-0 md:h-9 md:text-xs">
         <Link href="/settings?sez=sistema">
           <ArrowLeft className="h-4 w-4" /> Impostazioni
         </Link>
       </Button>
 
       <header className="fissa">
-        <p className="t-etichetta">Impostazioni / Integrazioni</p>
-        <h1 className="mt-1 t-titolo-pagina">Integrazioni</h1>
+        {/* Il percorso lo dice già il «← Impostazioni» qui sopra: sul
+            telefono sarebbe la stessa informazione due volte. */}
+        <p className="t-etichetta hidden md:block">Impostazioni / Integrazioni</p>
+        <h1 className="t-titolo-pagina md:mt-1">Integrazioni</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Collega Foodtech agli strumenti che il tuo ristorante utilizza già.
         </p>
       </header>
 
-      <div className="fill-scroll pr-0.5">
+      <div className="fill-scroll max-md:[scrollbar-gutter:auto] md:pr-0.5">
         <div className="space-y-4 pb-4">
           {avvisoConsegna && (
             <p role="status" className="riquadro border-accent/40 bg-accent/10 p-3 text-sm">

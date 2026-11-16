@@ -196,12 +196,13 @@ export function VenueSwitcher({
                 sala, con le frecce) ce lo porta con un portale, e finché c'è
                 il titolo di sempre si nasconde. */}
             <div id="titolo-su-misura" className="flex min-w-0 self-center empty:hidden" />
-            {/* Un gradino più piccolo sul telefono: «Prenotazioni» a 18 px
-                finisce nei puntini fra il marchio e le quattro icone a
-                destra, e un titolo troncato è peggio di un titolo piccolo. */}
-            <h1 className="truncate text-base font-semibold leading-none sm:text-lg [#titolo-su-misura:not(:empty)~&]:hidden">
-              <span className="sm:hidden">{titolo.breve}</span>
-              <span className="hidden sm:inline">{titolo.lungo}</span>
+            {/* Sul telefono il titolo è **intero** e, se non sta, va a capo
+                su due righe: «Prenot.» o «Impostazi…» costringevano a
+                indovinare dove ci si trova. Lo spazio l'ha liberato la lente
+                della ricerca, che sul telefono sta in «Altro». Da `sm` torna
+                su una riga, a 18 px. */}
+            <h1 className="text-base font-semibold leading-[1.15] max-sm:line-clamp-2 max-sm:break-words sm:truncate sm:text-lg sm:leading-none [#titolo-su-misura:not(:empty)~&]:hidden">
+              {titolo.lungo}
             </h1>
             {/* Il nome del locale: la «T» dice il prodotto, non dice quale
                 ristorante si sta guardando. Sparisce dove lo spazio finisce —

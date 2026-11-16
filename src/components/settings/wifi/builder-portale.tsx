@@ -183,12 +183,15 @@ export function BuilderPortale({
         <header className="flex flex-wrap items-end justify-between gap-3 px-5 pt-5 md:px-6">
           <div>
             <h2 className="t-titolo-scheda">Personalizza il portale</h2>
-            <p className="t-nota">Quello che scrivi qui compare nel telefono accanto, mentre lo scrivi.</p>
+            {/* «Nell'anteprima» e non «nel telefono accanto»: su telefono l'anteprima sta sotto. */}
+            <p className="t-nota">Quello che scrivi qui compare nell&apos;anteprima, mentre lo scrivi.</p>
           </div>
         </header>
 
         <nav
-          className="mx-5 mt-4 flex gap-1 overflow-x-auto rounded-full bg-card-sunken/80 p-1 shadow-[inset_0_1px_2px_rgba(60,45,20,0.08)] md:mx-6"
+          // Su telefono le quattro parti stanno in due righe: in fila
+          // scorrevano di lato e «Dopo l'accesso» e «Rete» restavano fuori vista.
+          className="mx-5 mt-4 grid grid-cols-2 gap-1 rounded-[1.375rem] bg-card-sunken/80 p-1 shadow-[inset_0_1px_2px_rgba(60,45,20,0.08)] sm:flex sm:overflow-x-auto sm:rounded-full md:mx-6"
           role="tablist"
           aria-label="Parti del portale"
         >
@@ -200,13 +203,14 @@ export function BuilderPortale({
               aria-selected={scheda === s.id}
               onClick={() => setScheda(s.id)}
               className={cn(
-                "inline-flex h-9 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "inline-flex h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3.5 text-sm transition-colors sm:h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 scheda === s.id
                   ? "bg-card font-medium text-foreground shadow-[0_1px_2px_rgba(60,45,20,0.12),0_2px_8px_-4px_rgba(60,45,20,0.18)]"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <s.icona className="h-4 w-4" aria-hidden="true" />
+              {/* Su telefono, in mezza riga, l'icona spingeva «Dopo l'accesso» fuori dalla capsula. */}
+              <s.icona className="hidden h-4 w-4 sm:block" aria-hidden="true" />
               {s.nome}
             </button>
           ))}

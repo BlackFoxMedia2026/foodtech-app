@@ -41,9 +41,14 @@ export function QrLista({ items }: { items: QrCodeSalvato[] }) {
             Un codice da stampare per ogni cosa che i tuoi clienti aprono col telefono.
           </p>
         </div>
-        <Button variant="accent" onClick={() => setSceltaAperta(true)}>
-          <Plus className="h-4 w-4" /> Nuovo QR code
-        </Button>
+        {/* Con l'elenco vuoto la porta è una sola, quella dello stato vuoto:
+            due pulsanti primari uguali nella stessa schermata si contendono
+            il pollice. Su telefono il pulsante prende la riga intera. */}
+        {items.length > 0 && (
+          <Button variant="accent" onClick={() => setSceltaAperta(true)} className="h-11 w-full sm:w-auto md:h-9">
+            <Plus className="h-4 w-4" /> Nuovo QR code
+          </Button>
+        )}
       </header>
 
       {items.length === 0 ? (

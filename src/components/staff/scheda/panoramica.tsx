@@ -100,7 +100,7 @@ export function Panoramica({
         icona={Clock}
         descrizione={riepilogoSettimana(presenze?.prossimi ?? [])}
         azione={
-          <Link href={`${base}?tab=presenze`} scroll={false} className="inline-flex items-center gap-1 text-sm font-medium text-accent-strong hover:underline">
+          <Link href={`${base}?tab=presenze`} scroll={false} className="-my-2 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-accent-strong hover:underline md:my-0 md:min-h-0">
             Turni <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
         }
@@ -163,12 +163,12 @@ function SchedaScadenza({ scadenza: s, adesso, href }: { scadenza: Scadenza; ade
       {data ? (
         <div className="flex w-14 shrink-0 flex-col overflow-hidden rounded-lg text-center shadow-[0_5px_12px_rgba(16,43,34,0.2)]">
           <div className={cn("px-1.5 pb-1 pt-1", CALENDARINO[s.stato])}>
-            <span className="block text-[9px] font-semibold uppercase tracking-[0.16em] opacity-80">
+            <span className="block text-xs md:text-[9px] font-semibold uppercase tracking-[0.16em] opacity-80">
               {mese.format(data).replace(".", "")}
             </span>
             <span className="text-display block text-xl leading-none tabular-nums">{data.getDate()}</span>
           </div>
-          <span className="bg-secondary py-0.5 font-mono text-[11px] tabular-nums text-foreground">{data.getFullYear()}</span>
+          <span className="bg-secondary py-0.5 font-mono text-xs md:text-[11px] tabular-nums text-foreground">{data.getFullYear()}</span>
         </div>
       ) : s.stato === "valido" ? (
         /* In regola e senza scadenza (un contratto a tempo indeterminato, un
@@ -248,8 +248,8 @@ function Settimana({ oggi, turni }: { oggi: string; turni: TurnoProssimo[] }) {
   });
 
   return (
-    <div className="-mx-1 overflow-x-auto px-1 pb-1">
-      <ol className="grid min-w-[36rem] grid-cols-7 gap-2">
+    <div className="-mx-1 snap-x overflow-x-auto px-1 pb-1">
+      <ol className="grid min-w-[36rem] grid-cols-7 gap-2 [&>li]:snap-start">
         {giorni.map((g, i) => {
           const oggiE = i === 0;
           const libero = g.turni.length === 0;
@@ -266,8 +266,10 @@ function Settimana({ oggi, turni }: { oggi: string; turni: TurnoProssimo[] }) {
                     : "border-border/60 bg-card-sunken/70",
               )}
             >
-              <div className="flex items-baseline justify-between gap-1 leading-none">
-                <span className={cn("text-[11px] font-semibold uppercase tracking-[0.12em]", oggiE ? "text-cream/75" : "text-muted-foreground")}>
+              {/* Sul telefono il giorno sta sopra il numero: affiancati, in una
+                  tessera da 75 px, «OGGI» finiva sotto il «16». */}
+              <div className="flex flex-col items-start gap-1 leading-none md:flex-row md:items-baseline md:justify-between">
+                <span className={cn("text-xs md:text-[11px] font-semibold uppercase tracking-[0.12em]", oggiE ? "text-cream/75" : "text-muted-foreground")}>
                   {oggiE ? "Oggi" : giornoSett.format(g.data).replace(".", "")}
                 </span>
                 <span className={cn("text-display text-2xl tabular-nums", !oggiE && libero && "text-tertiary-foreground")}>

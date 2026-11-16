@@ -124,7 +124,7 @@ export function CartaKpi({
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="t-etichetta truncate text-[13px] text-kpi-label-muted sm:text-sm">{etichettaResa}</p>
+        <p className="t-etichetta break-words text-[13px] text-kpi-label-muted max-sm:tracking-[0.02em] sm:truncate sm:text-sm">{etichettaResa}</p>
         <p
           className={cn(
             valoreCompatto
@@ -136,7 +136,8 @@ export function CartaKpi({
         >
           {valore}
         </p>
-        <p className="mt-1 truncate text-[11px] leading-tight text-muted-foreground">{notaResa || " "}</p>
+        {/* La base del numero non si taglia (vedi sopra): sul telefono va a capo. */}
+        <p className="mt-1 text-xs leading-tight text-muted-foreground md:truncate md:text-[11px]">{notaResa || " "}</p>
       </div>
     </div>
   );

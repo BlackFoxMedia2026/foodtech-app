@@ -475,7 +475,7 @@ export function BookingForm({
               setForceOpen(e.target.checked);
               if (!e.target.checked) setForceReason("");
             }}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-current"
+            className="mt-0.5 h-5 w-5 shrink-0 accent-current md:h-4 md:w-4"
           />
           <span>
             <span className="flex items-center gap-1.5 font-medium">
@@ -631,7 +631,9 @@ export function BookingForm({
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <div className="flex justify-end gap-2">
+      {/* Sul telefono i pulsanti occupano la riga e sono alti un pollice:
+          è l'ultimo gesto del modulo, e sta dove arriva il dito. */}
+      <div className="flex justify-end gap-2 max-md:[&>button]:h-12 max-md:[&>button]:flex-1">
         {onClose && (
           <Button type="button" variant="outline" onClick={onClose}>
             Annulla

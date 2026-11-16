@@ -67,11 +67,13 @@ export function DayPicker({ value }: { value: string }) {
   const etichettaCorta = giorno.toLocaleDateString("it-IT", { weekday: "short", ...formato });
 
   return (
-    <div className="flex shrink-0 items-center gap-2 min-[1280px]:gap-2.5 min-[1440px]:gap-3">
+    // Su telefono la data prende tutta la prima riga della barra: è la prima
+    // cosa da sapere, e le frecce finiscono ai due lati, dove arriva il pollice.
+    <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto min-[1280px]:gap-2.5 min-[1440px]:gap-3">
       <div
         className={cn(
           ALTEZZA,
-          "pastiglia flex items-center gap-1 rounded-full border border-border/70 bg-card/70 px-1",
+          "pastiglia flex min-w-0 flex-1 items-center justify-between gap-1 rounded-full border border-border/70 bg-card/70 px-1 sm:flex-none sm:justify-start",
         )}
       >
         <Freccia verso="indietro" onClick={() => shift(-1)} />

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import type { Booking, Guest, Table } from "@prisma/client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge, SourceBadge, etichettaFonte } from "@/components/bookings/status-badge";
@@ -78,7 +78,10 @@ export function BookingsTable({
           l'unica colonna con più di un dato dentro; ora, persone, tavolo e
           azioni hanno larghezze fisse e strette; lo stato ha lo spazio che
           serve al selettore, che ora è un comando e non un'etichetta. */}
-      <Tabella densita="densa" fill={fill} minWidth="md:min-w-[760px]">
+      <ElencoTelefono rows={rows} fill={fill} canManage={canManage} onApri={setAperta} />
+
+      {/* Da `md` la tabella; sotto, l'elenco qui sopra. */}
+      <Tabella densita="densa" fill={fill} minWidth="md:min-w-[760px]" className="hidden md:flex">
         <Testa>
           <Th densita="densa" className="md:w-[8%]">Orario</Th>
           <Th densita="densa" className="md:w-[36%]">Ospite</Th>
@@ -304,5 +307,95 @@ export function BookingsTable({
         )}
       </Pannello>
     </>
+  );
+}
+
+/**
+ * L'elenco del telefono: una riga per prenotazione, come un'app di agenda.
+ *
+ * Sotto `md` la tabella schiacciava quattro colonne in 340 px e nomi e
+ * telefoni andavano a capo parola per parola. Qui l'ora sta in una colonna
+ * stretta a sinistra, il nome prende tutta la riga, sotto una sola riga di
+ * dati (persone · tavolo), i segnali da sapere e lo stato come pillola.
+ * Tutta la riga apre il pannello (che su telefono è il foglio dal basso):
+ * il bersaglio è la riga intera, non una freccia da 32 px. Il telefono
+ * dell'ospite non c'è: sta nel foglio, a un tocco, con il link per chiamare.
+ */
+function ElencoTelefono({
+  rows,
+  fill,
+  canManage,
+  onApri,
+}: {
+  rows: Row[];
+  fill: boolean;
+  canManage: boolean;
+  onApri: (r: Row) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-[20px] border border-border bg-card md:hidden",
+        fill && "fill flex flex-col",
+      )}
+    >
+      <ul className={cn("divide-y divide-border", fill && "fill-scroll [scrollbar-gutter:auto]")}>
+        {rows.map((b) => {
+          const name = b.guest ? `${b.guest.firstName} ${b.guest.lastName ?? ""}`.trim() : "Walk-in";
+          const isPending = b.status === "PENDING";
+          const segnali = cosaSapere({
+            allergies: b.guest?.allergies,
+            privateNotes: b.guest?.privateNotes,
+            preferences: b.guest?.preferences,
+            visits: b.guest?.totalVisits,
+            noShows: b.guest?.noShowCount,
+            loyaltyTier: b.guest?.loyaltyTier,
+            occasion: b.occasion,
+          });
+          return (
+            <li key={b.id} className={cn("relative flex gap-3 px-4 py-3.5", isPending && "bg-accent/10")}>
+              {/* Il bersaglio della riga: copre tutto, sotto ai comandi. */}
+              <button
+                type="button"
+                onClick={() => onApri(b)}
+                aria-label={`Apri la prenotazione di ${name}`}
+                className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-veil-6"
+              />
+              <span className="pointer-events-none relative w-12 shrink-0 pt-px text-base font-semibold tabular-nums">
+                {formatTime(b.startsAt)}
+              </span>
+              <div className="pointer-events-none relative min-w-0 flex-1">
+                <p className="t-titolo-scheda break-words font-semibold">{name}</p>
+                <p className="mt-0.5 text-sm tabular-nums text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {b.partySize} {b.partySize === 1 ? "persona" : "persone"}
+                  </span>
+                  {b.table?.label ? ` · ${b.table.label}` : " · senza tavolo"}
+                </p>
+                {/* I segnali vanno a capo invece di uscire dal bordo a 360 px. */}
+                <CosaSapere righe={segnali} className="mt-1.5 text-sm [&>span]:whitespace-normal" />
+                {/* I comandi tornano cliccabili sopra il bersaglio della riga. */}
+                <div className="pointer-events-auto mt-2.5 flex flex-wrap items-center gap-2">
+                  <SelettoreStato
+                    bookingId={b.id}
+                    stato={b.status}
+                    nome={name}
+                    modificabile={canManage}
+                    className="h-9 px-3 text-sm"
+                  />
+                  {isPending && canManage && (
+                    <ApprovaPrenotazione bookingId={b.id} nome={name} className="h-9 text-sm" />
+                  )}
+                </div>
+              </div>
+              <ChevronRight
+                className="pointer-events-none relative mt-1 h-5 w-5 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

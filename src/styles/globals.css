@@ -2509,3 +2509,78 @@
     box-shadow: 0 0 0 3px rgba(44, 85, 69, 0.35);
   }
 }
+
+/*
+ * ---------------------------------------------------------------------
+ *  Il telefono (sotto `md`): le soglie che nessuna pagina deve scavalcare
+ * ---------------------------------------------------------------------
+ *
+ * Fuori da ogni `@layer` di proposito: vengono dopo le utilità di Tailwind
+ * e le battono a parità di specificità. Valgono solo sotto 768 px, quindi
+ * la scrivania resta identica al pixel.
+ */
+@media (max-width: 767.98px) {
+  /*
+    Nessun testo sotto i 12 px. Le misure scritte a mano (`text-[11px]` e
+    sorelle, un centinaio di usi) erano pensate per la scrivania, dove si
+    legge a mezzo metro; sul telefono in mano diventano grigio illeggibile.
+    Si alzano qui, in un posto solo, invece di inseguirle pagina per pagina.
+  */
+  .text-\[9px\],
+  .text-\[10px\],
+  .text-\[11px\],
+  .text-\[0\.6rem\],
+  .text-\[0\.62rem\],
+  .text-\[0\.64rem\],
+  .text-\[0\.65rem\],
+  .text-\[0\.66rem\],
+  .text-\[0\.68rem\],
+  .text-\[0\.6875rem\],
+  .text-\[0\.7rem\],
+  .text-\[0\.72rem\],
+  .testa-tabella th {
+    font-size: 0.75rem;
+  }
+
+  /*
+    I campi a 16 px: sotto quella misura Safari su iPhone ingrandisce la
+    pagina al tocco, e poi non torna indietro da solo. In Carta `text-sm`
+    vale già 16, ma al buio (Staff App, pagine degli ospiti) vale 14, e un
+    campo senza misura eredita quella del contenitore. Restano fuori i campi
+    scritti apposta più grandi.
+  */
+  :is(
+      input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="submit"], [type="button"], [type="reset"], [type="image"]),
+      textarea,
+      select
+    ):not([class*="text-base"], [class*="text-lg"], [class*="text-xl"], [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="text-5xl"]) {
+    font-size: 16px;
+  }
+}
+
+/*
+  Il bersaglio dei pulsanti sul telefono: 44 px, la misura che un dito prende
+  senza sbagliare. I pulsanti restano alti 36 (le righe dense ne hanno
+  bisogno) e l'area sensibile cresce di 4 px per lato con un `::after`
+  invisibile — la stessa idea di `.tocco-comodo`. Chi è già posizionato
+  (`absolute`, `fixed`, `sticky`) fa già da riferimento e non si tocca.
+*/
+@media (max-width: 767.98px) {
+  .bersaglio-telefono:not(.absolute, .fixed, .sticky) {
+    position: relative;
+  }
+  .bersaglio-telefono::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+  }
+
+  /*
+    Sul telefono la barra di scorrimento si sovrappone al contenuto: lo
+    spazio riservato da `scrollbar-gutter: stable` lasciava solo un margine
+    destro più largo del sinistro.
+  */
+  .fill-scroll {
+    scrollbar-gutter: auto;
+  }
+}

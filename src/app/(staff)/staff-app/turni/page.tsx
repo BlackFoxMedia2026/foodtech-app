@@ -56,7 +56,8 @@ export default async function TurniPage() {
               <div
                 className={cn(
                   "flex min-h-[60px] items-center gap-3 border-b border-border py-2.5",
-                  oggiStesso && "border-l-2 border-l-accent pl-3",
+                  // Il margine negativo compensa bordo e rientro: le date restano in colonna.
+                  oggiStesso && "-ml-3.5 border-l-2 border-l-accent pl-3",
                 )}
               >
                 <div className="w-14 shrink-0">

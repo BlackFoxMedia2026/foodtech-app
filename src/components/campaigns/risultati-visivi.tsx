@@ -324,7 +324,10 @@ export function Consegna({ r }: { r: RisultatiCampagna }) {
         </div>
       )}
 
-      <dl className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
+      {/* Su telefono un elenco a righe, come un gruppo di Impostazioni: in
+          due colonne strette «Segnalate come spam» andava a capo parola per
+          parola e l'icona si schiacciava. Da `md` tornano le cinque tessere. */}
+      <dl className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card-sunken/50 md:grid md:grid-cols-5 md:gap-2.5 md:divide-y-0 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
         <Segnale nome="Consegnate" valore={r.consegnate} buono nota={tracciate ? `${pctTesto(r.tassoConsegna)} delle inviate` : "esito non arrivato"} />
         <Segnale nome="Non recapitate" valore={r.rimbalzi} nota="indirizzo sbagliato o pieno" />
         <Segnale nome="Non riuscite" valore={r.nonRiuscite} nota="errore nell'invio" />
@@ -340,13 +343,22 @@ function Segnale({ nome, valore, nota, buono = false }: { nome: string; valore: 
   const male = !buono && valore > 0;
   const Icona = male ? CircleAlert : Check;
   return (
-    <div className={cn("rounded-xl border px-3.5 py-3", male ? "border-[#b07d2a]/40 bg-[#b07d2a]/8" : "border-border/60 bg-card-sunken/50")}>
-      <dt className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        {(!buono || valore > 0) && <Icona className={cn("h-3.5 w-3.5", male ? "text-[#b07d2a]" : "text-[#1f8058]")} aria-hidden="true" />}
+    <div
+      className={cn(
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 md:block md:rounded-xl md:border md:px-3.5",
+        male ? "bg-[#b07d2a]/8 md:border-[#b07d2a]/40" : "md:border-border/60 md:bg-card-sunken/50",
+      )}
+    >
+      <dt className="col-start-1 flex items-center gap-1.5 text-[15px] text-foreground md:text-sm md:text-muted-foreground">
+        {(!buono || valore > 0) && (
+          <Icona className={cn("h-3.5 w-3.5 shrink-0", male ? "text-[#b07d2a]" : "text-[#1f8058]")} aria-hidden="true" />
+        )}
         {nome}
       </dt>
-      <dd className="mt-1 font-mono text-2xl tabular-nums text-foreground">{NUM.format(valore)}</dd>
-      <dd className="text-xs leading-snug text-muted-foreground">{nota}</dd>
+      <dd className="col-start-2 row-span-2 row-start-1 font-mono text-xl tabular-nums text-foreground md:mt-1 md:text-2xl">
+        {NUM.format(valore)}
+      </dd>
+      <dd className="col-start-1 text-[13px] leading-snug text-muted-foreground md:text-xs">{nota}</dd>
     </div>
   );
 }

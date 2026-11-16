@@ -111,7 +111,7 @@ export function CaparraRegola({
                 manda al cliente.
               </p>
               {!pagamentiPronti && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[0.8125rem] text-muted-foreground md:text-xs">
                   I pagamenti non sono ancora collegati:{" "}
                   <Link href="/settings/pagamenti" className="underline">
                     collega Stripe

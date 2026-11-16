@@ -8,7 +8,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { TableStaffMap } from "./table-node";
 import type { TableOperationalStatus } from "@/lib/table-status";
@@ -339,14 +339,14 @@ export function FloorRoomsView({
               />
               {renameError && <p className="text-xs text-destructive">{renameError}</p>}
             </div>
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setRenameOpen(false)}>
                 Annulla
               </Button>
               <Button type="submit" variant="accent" disabled={renameSubmitting}>
                 {renameSubmitting ? "Salvataggio…" : "Salva"}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -368,14 +368,14 @@ export function FloorRoomsView({
               />
               {newRoomError && <p className="text-xs text-destructive">{newRoomError}</p>}
             </div>
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setNewRoomOpen(false)}>
                 Annulla
               </Button>
               <Button type="submit" variant="accent" disabled={newRoomSubmitting}>
                 {newRoomSubmitting ? "Creazione…" : "Crea sala"}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -389,14 +389,14 @@ export function FloorRoomsView({
             </DialogDescription>
           </DialogHeader>
           {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
               Annulla
             </Button>
             <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleteSubmitting}>
               {deleteSubmitting ? "Elimino…" : "Elimina sala"}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

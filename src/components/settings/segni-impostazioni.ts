@@ -22,7 +22,9 @@ export const SEGNI: Record<
   { icona: React.ComponentType<{ className?: string }>; breve: string }
 > = {
   locale: { icona: Building2, breve: "Locale" },
-  prenotazioni: { icona: CalendarRange, breve: "Prenot." },
+  /* Mai «Prenot.»: una parola tagliata si legge come un errore. Se non
+     sta, la fila passa da sola alla forma con la sola icona. */
+  prenotazioni: { icona: CalendarRange, breve: "Prenotazioni" },
   ospiti: { icona: Users, breve: "Ospiti" },
   /* Una cornetta che squilla, non un telefono fermo: questa sezione parla di
      chiamate che arrivano. */

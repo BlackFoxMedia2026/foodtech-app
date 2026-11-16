@@ -257,7 +257,9 @@ export function EditorSala({
         <span
           tabIndex={0}
           aria-label={`${editor.tavoliSullaPiantina.length} tavoli, ${postiTotali} posti`}
-          className="group flex h-10 shrink-0 items-center rounded-full px-2.5 text-[13px] text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          // Sul telefono i due conteggi lasciano il posto ai gesti: la barra
+          // usciva dalla tela e «Tavolo» e «Salva» finivano fuori schermo.
+          className="group hidden h-10 shrink-0 sm:flex items-center rounded-full px-2.5 text-[13px] text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <IconaTavolo />
           <span className="ml-1.5 font-medium tabular-nums text-foreground">{editor.tavoliSullaPiantina.length}</span>
@@ -266,14 +268,16 @@ export function EditorSala({
           </NomeEspandibile>
         </span>
 
-        <Divisore />
+        <span className="hidden sm:contents">
+          <Divisore />
+        </span>
 
         <FloorServiceFilter date={date} service={service} serviceOptions={serviceOptions} variante="compatta" />
         {assegnati && (
           <span
             tabIndex={0}
             aria-label={`${assegnati.assegnati} di ${assegnati.totale} tavoli con un responsabile assegnato`}
-            className="group flex h-10 shrink-0 items-center rounded-full px-2.5 text-[13px] text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="group hidden h-10 shrink-0 sm:flex items-center rounded-full px-2.5 text-[13px] text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <UserCheck className="h-[18px] w-[18px] shrink-0" />
             <span className="ml-1.5 font-medium tabular-nums text-foreground">
@@ -345,11 +349,13 @@ export function EditorSala({
       */}
       <TitoloInTestata>
         <div className="flex min-w-0 items-center gap-0.5">
+          {/* Con una sala sola le frecce non portano da nessuna parte: spente,
+              rubavano al nome lo spazio della testata («S…» sul telefono). */}
           <Button
             type="button"
             size="icon"
             variant="ghost"
-            className="h-7 w-7 shrink-0"
+            className={cn("h-9 w-9 shrink-0", totaleSale <= 1 && "hidden")}
             onClick={() => onCambiaSala(-1)}
             disabled={totaleSale <= 1}
             aria-label="Sala precedente"
@@ -357,7 +363,7 @@ export function EditorSala({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h1
-            className="min-w-0 truncate text-display text-lg leading-none sm:text-xl"
+            className="min-w-0 truncate text-display text-base leading-none sm:text-xl"
             title={totaleSale > 1 ? `${sala.name} · sala ${indiceSala + 1} di ${totaleSale}` : sala.name}
           >
             {sala.name}
@@ -366,7 +372,7 @@ export function EditorSala({
             type="button"
             size="icon"
             variant="ghost"
-            className="h-7 w-7 shrink-0"
+            className={cn("h-9 w-9 shrink-0", totaleSale <= 1 && "hidden")}
             onClick={() => onCambiaSala(1)}
             disabled={totaleSale <= 1}
             aria-label="Sala successiva"
@@ -375,7 +381,7 @@ export function EditorSala({
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" aria-label="Azioni sala">
+              <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0" aria-label="Azioni sala">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -407,7 +413,7 @@ export function EditorSala({
               type="button"
               size="icon"
               variant="ghost"
-              className="h-8 w-8 shrink-0 xl:hidden"
+              className="h-10 w-10 shrink-0 xl:hidden"
               onClick={() => setSinistraAperta((v) => !v)}
               aria-label="Mostra elementi"
             >
@@ -418,7 +424,7 @@ export function EditorSala({
               type="button"
               size="icon"
               variant="ghost"
-              className="ml-auto h-8 w-8 shrink-0 xl:hidden"
+              className="ml-auto h-10 w-10 shrink-0 xl:hidden"
               onClick={() => setDestraAperta((v) => !v)}
               aria-label="Mostra proprietà"
             >

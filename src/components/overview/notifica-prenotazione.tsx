@@ -42,16 +42,22 @@ export function NotificaPrenotazione({
         <span className="vi-icona-app" aria-hidden="true">
           <CalendarDays className="h-4 w-4" strokeWidth={2.2} />
         </span>
-        <p className="min-w-0 flex-1 truncate">
+        {/* Sul telefono l'etichetta non si taglia («NUOVA PRE…»): la pillola
+            scende sotto il nome e la riga resta tutta all'etichetta. */}
+        <p className="min-w-0 flex-1 md:truncate">
           <span className="vi-etichetta-app">Nuova prenotazione</span>{" "}
           {/* Il tempo relativo cambia fra il server e il browser: è giusto
               che il browser vinca. */}
-          <span className="vi-quando" suppressHydrationWarning>
+          <span className="vi-quando whitespace-nowrap" suppressHydrationWarning>
             · {daQuanto(new Date(p.createdAt), adesso)}
           </span>
         </p>
-        <span className="pillola-ios" data-tono={pilla.tipo}>
-          {pilla.parola}
+        {/* Il contenitore porta la visibilità: `.pillola-ios` sta fuori dai
+            layer di Tailwind e vincerebbe su `hidden`. */}
+        <span className="hidden md:contents">
+          <span className="pillola-ios" data-tono={pilla.tipo}>
+            {pilla.parola}
+          </span>
         </span>
       </div>
 
@@ -61,6 +67,11 @@ export function NotificaPrenotazione({
           <p className="vi-dettaglio">
             {quando.prefisso} <strong>{quando.ora}</strong> · {persone(p.partySize)}
           </p>
+          <span className="mt-2 flex md:hidden">
+            <span className="pillola-ios" data-tono={pilla.tipo}>
+              {pilla.parola}
+            </span>
+          </span>
         </div>
 
         {puoGestire && (

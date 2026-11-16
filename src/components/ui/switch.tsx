@@ -11,6 +11,9 @@ export const Switch = React.forwardRef<
   <SwitchPrimitive.Root
     ref={ref}
     className={cn(
+      /* Sul telefono l'area sensibile arriva a 44 px d'altezza con un
+         `::after` invisibile: l'interruttore resta 36×20 come si vede. */
+      "relative max-md:after:absolute max-md:after:-inset-x-1 max-md:after:-inset-y-3 max-md:after:content-['']",
       "interruttore peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-accent data-[state=unchecked]:bg-muted",
       className,
     )}

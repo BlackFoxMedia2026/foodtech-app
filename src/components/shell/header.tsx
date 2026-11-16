@@ -72,7 +72,9 @@ export function Header({
     pathname === "/settings" || pathname.startsWith("/settings/");
 
   return (
-    <header className="testata-app relative z-10 bg-background">
+    /* Sotto la tacca, quando la pagina arriva fino al bordo (app installata,
+       `viewportFit: cover`): la testata scende di quanto serve. */
+    <header className="testata-app relative z-10 bg-background pt-[env(safe-area-inset-top)]">
       <div className="flex h-16 items-center gap-2 px-3 pt-3 md:gap-3 md:px-4 lg:px-6">
         {/*
           A sinistra c'è il marchio del locale e, accanto, il titolo della

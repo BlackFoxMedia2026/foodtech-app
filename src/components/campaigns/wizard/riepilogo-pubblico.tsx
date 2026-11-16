@@ -69,7 +69,8 @@ function Imbuto({ preview }: { preview: SegmentPreviewResult }) {
               />
             ))}
       </div>
-      <ul className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[0.72rem] leading-tight">
+      {/* 13 px su telefono: sono i motivi per cui qualcuno resta fuori, e si leggono. */}
+      <ul className="grid grid-cols-1 gap-x-3 gap-y-1.5 text-[13px] leading-tight min-[400px]:grid-cols-2 md:text-[0.72rem]">
         {pezzi.slice(1).map((p) => (
           <li key={p.id} className={cn("flex items-center gap-1.5", p.n === 0 && "opacity-55")}>
             <span className={cn("h-2 w-2 shrink-0 rounded-full", p.colore)} aria-hidden="true" />
@@ -204,7 +205,7 @@ export function RiepilogoPubblico({
             </p>
           </div>
           <BarraPiano quota={quota} questa={preview.finalRecipients} />
-          <p className="text-[0.72rem] text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground md:text-[0.72rem]">
             Questa campagna ne usa{" "}
             <span className="font-medium text-foreground">{formatta(preview.finalRecipients)}</span> su{" "}
             {formatta(quota.disponibili)} disponibili.

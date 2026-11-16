@@ -257,7 +257,7 @@ function Campo({
         <label htmlFor={id} className="min-w-0 flex-1 text-sm font-medium leading-snug">
           {etichetta}
         </label>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${t.pastiglia}`}>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs md:text-[11px] font-medium ${t.pastiglia}`}>
           {t.chi}
         </span>
       </div>

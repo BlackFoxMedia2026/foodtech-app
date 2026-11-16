@@ -66,7 +66,7 @@ export default async function CollegaTelefonoPage() {
   return (
     <div className="schermo animate-fade-in mx-auto w-full max-w-3xl gap-4">
       <div className="fissa">
-        <Button asChild variant="ghost" size="sm">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 h-11 text-sm md:ml-0 md:h-9 md:text-xs">
           <Link href="/settings?sez=centralino">
             <ArrowLeft className="h-4 w-4" /> Torna alle impostazioni
           </Link>

@@ -75,7 +75,7 @@ export function GiftCardList({
           </p>
         </div>
         {canIssue && (
-          <Button variant="accent" onClick={() => setNuova(true)}>
+          <Button variant="accent" onClick={() => setNuova(true)} className="h-11 w-full sm:w-auto md:h-9">
             <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> Nuova gift card
           </Button>
         )}
@@ -93,8 +93,8 @@ export function GiftCardList({
           qualcosa a qualcuno. Erano tre riquadri identici con lo stesso corpo
           tipografico: la stessa forma per un debito e per due consuntivi.
         */
-        <div className="fissa grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="riquadro comodo sm:col-span-2">
+        <div className="fissa grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="riquadro comodo col-span-2">
             <p className="t-etichetta">Ancora da spendere</p>
             <p className="mt-1 text-display text-3xl tabular-nums md:text-4xl">{euro(daSpendere)}</p>
             <p className="t-nota">
@@ -137,7 +137,7 @@ export function GiftCardList({
           </CardContent>
         </Card>
       ) : (
-        <div className="fill-scroll grid gap-3 pr-0.5">
+        <div className="grid gap-3 md:fill-scroll md:pr-0.5">
           {items.map((c) => (
             <Card key={c.id}>
               <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 pb-3">
@@ -167,7 +167,7 @@ export function GiftCardList({
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-display text-2xl tabular-nums">{euro(c.residuoCents)}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[13px] text-muted-foreground md:text-xs">
                     {c.spesoCents > 0 ? `di ${euro(c.initialCents)}` : "da spendere"}
                   </p>
                 </div>
@@ -177,7 +177,7 @@ export function GiftCardList({
                   <div className="min-w-0 text-sm text-muted-foreground">
                     {c.message && <p>«{c.message}»</p>}
                     {c.utilizzi > 0 && (
-                      <p className="text-xs">
+                      <p className="text-[13px] md:text-xs">
                         {c.utilizzi === 1 ? "Usata una volta" : `Usata ${c.utilizzi} volte`} · {euro(c.spesoCents)}{" "}
                         scalati
                       </p>

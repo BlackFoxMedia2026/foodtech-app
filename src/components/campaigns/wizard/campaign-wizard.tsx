@@ -22,6 +22,7 @@ import { Step5Editor } from "./step-5-editor/step-5-editor";
 import { Step6PreviewTest } from "./step-6-preview-test";
 import { Step7Send } from "./step-7-send";
 import { useArrivo } from "./arrivo";
+import { AvanzamentoPassi } from "@/components/marketing/avanzamento-passi";
 
 /**
  * Solo lo step «Modelli» la usa — scegliere un modello e partire sono lo stesso
@@ -136,9 +137,10 @@ function NomeCampagna({ compatto }: { compatto: boolean }) {
   const dispatch = useWizardDispatch();
   return (
     <h1 className={cn("text-display", compatto ? "text-lg" : "text-xl md:text-2xl")}>
+      {/* `min-h-11` su telefono: il titolo è anche un campo, e va preso col dito. */}
       <label
         title="Clicca per rinominare la campagna"
-        className="group -mx-1.5 flex max-w-full cursor-text items-center gap-2 rounded-md px-1.5 transition-colors focus-within:bg-secondary/70 hover:bg-secondary/50"
+        className="group -mx-1.5 flex min-h-11 max-w-full cursor-text items-center gap-2 rounded-md px-1.5 transition-colors md:min-h-0 focus-within:bg-secondary/70 hover:bg-secondary/50"
       >
         <span className="sr-only">Nome della campagna (solo per uso interno: i clienti non lo vedranno)</span>
         <span className="inline-grid min-w-0 max-w-[32ch]">
@@ -280,28 +282,33 @@ function WizardShell() {
       <header
         className={cn(
           "fissa",
+          /* Su telefono la testata è due righe sole — il nome e dove si è —
+             perché lo spazio sopra la piega va al passo, non alla cornice. */
           isEditorStep
-            ? "flex items-center gap-6"
-            : "flex flex-col gap-5 pb-1 md:flex-row md:items-center md:justify-between md:gap-10",
+            ? "flex flex-col gap-2 md:flex-row md:items-center md:gap-6"
+            : "flex flex-col gap-3 pb-1 md:flex-row md:items-center md:justify-between md:gap-10",
         )}
       >
-        <div className={cn("min-w-0", isEditorStep && "shrink-0")}>
-          {!isEditorStep && <p className="t-etichetta">Nuova campagna email</p>}
+        <div className={cn("min-w-0", isEditorStep && "md:shrink-0")}>
+          {!isEditorStep && <p className="t-etichetta hidden md:block">Nuova campagna email</p>}
           <NomeCampagna compatto={isEditorStep} />
         </div>
+        <AvanzamentoPassi passi={WIZARD_STEPS} corrente={state.step} className="md:hidden" />
         {/* Lo stepper dice dove sei, non cosa fare: sta in fila col titolo e
             occupa la larghezza che gli serve, non tutta quella disponibile. */}
-        <Stepper
-          steps={WIZARD_STEPS}
-          currentStepIndex={state.step}
-          furthestStepIndex={state.furthestStep}
-          onStepClick={(index) => dispatch({ type: "SET_STEP", step: index })}
-          variant={isEditorStep ? "esteso" : "compatto"}
-        />
+        <div className={cn("hidden md:block", isEditorStep && "md:min-w-0 md:flex-1")}>
+          <Stepper
+            steps={WIZARD_STEPS}
+            currentStepIndex={state.step}
+            furthestStepIndex={state.furthestStep}
+            onStepClick={(index) => dispatch({ type: "SET_STEP", step: index })}
+            variant={isEditorStep ? "esteso" : "compatto"}
+          />
+        </div>
       </header>
 
       {!isEditorStep && (
-        <div className="fissa h-px bg-gradient-to-r from-transparent via-border to-transparent" aria-hidden="true" />
+        <div className="fissa hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block" aria-hidden="true" />
       )}
 
       {localError && (
@@ -320,14 +327,26 @@ function WizardShell() {
            fondo ai filtri arrivava ai modelli già scorso a metà pagina.
            `pr-6`: senza, le card e i pulsanti toccavano la barra di scorrimento e la
            capsula verde sembrava il loro bordo. */
-        <div key={state.step} className="fill-scroll pr-6 pt-3">
+        /* Su telefono la barra di scorrimento non occupa spazio: il margine
+           destro resta solo da `md`, altrimenti le schede non arrivano al bordo. */
+        <div key={state.step} className="fill-scroll pt-1 md:pr-6 md:pt-3">
           <StepComponent onAvanti={handleNext} />
         </div>
       ) : (
-        <div key={state.step} className="fill-scroll pr-6 pt-3">
-          <div className="surface mx-auto max-w-3xl p-6">
+        <div key={state.step} className="fill-scroll pt-1 md:pr-6 md:pt-3">
+          <div className="surface mx-auto max-w-3xl p-4 md:p-6">
             <StepComponent />
           </div>
+        </div>
+      )}
+
+      {isLastStep && (
+        /* Sull'ultimo passo i comandi sono nel passo stesso; ma su telefono lo
+           stepper non c'è, e senza questa freccia non si tornerebbe indietro. */
+        <div className="fissa border-t border-border/60 pt-3 md:hidden">
+          <Button variant="outline" onClick={handleBack} className="h-11 rounded-full">
+            <ChevronLeft className="h-4 w-4" /> Torna all&apos;anteprima
+          </Button>
         </div>
       )}
 
@@ -337,21 +356,42 @@ function WizardShell() {
            chiara allargata oltre il contenuto si leggeva come una striscia
            storta. Resta il filo sopra, allineato al contenuto. */
         <div className="fissa border-t border-border/60 pt-3">
-          {/* Su telefono i tre comandi non ci stanno affiancati alla stessa
-              misura: «bozza» è la parola che si può perdere senza perdere il
-              senso, e il pulsante resta dove il pollice lo cerca. */}
+          {/* Su telefono «Indietro» è la sola freccia, come nelle app: il
+              pulsante primario resta intero a destra, e lo stato del
+              salvataggio automatico — che non chiede niente — si lascia alla
+              scrivania. Bersagli da 44 px sotto `md`. */}
           <div className="flex items-center justify-between gap-2 sm:gap-3">
-            <Button variant="outline" onClick={handleBack} disabled={state.step === 0}>
-              <ChevronLeft className="h-4 w-4" /> Indietro
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              disabled={state.step === 0}
+              aria-label="Indietro"
+              className="h-11 w-11 rounded-full px-0 sm:w-auto sm:px-4 md:h-9"
+            >
+              <ChevronLeft className="h-4 w-4" /> <span className="hidden sm:inline">Indietro</span>
             </Button>
-            <div className="flex items-center gap-2 sm:gap-3">
-              {isEditorStep && <AutoSaveBadge state={state.autoSave} />}
-              <Button variant="ghost" onClick={handleSaveDraft} disabled={state.saving || !state.campaignId}>
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              {isEditorStep && (
+                <span className="hidden sm:inline-flex">
+                  <AutoSaveBadge state={state.autoSave} />
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                onClick={handleSaveDraft}
+                disabled={state.saving || !state.campaignId}
+                className="h-11 md:h-9"
+              >
                 <Save className="h-4 w-4" />
                 <span className="sm:hidden">Salva</span>
                 <span className="hidden sm:inline">Salva bozza</span>
               </Button>
-              <Button variant="accent" onClick={() => handleNext()} disabled={state.saving || !canGoNext(state)}>
+              <Button
+                variant="accent"
+                onClick={() => handleNext()}
+                disabled={state.saving || !canGoNext(state)}
+                className="h-11 px-5 md:h-9 md:px-4"
+              >
                 {isEditorStep ? "Anteprima" : "Avanti"} <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

@@ -123,10 +123,11 @@ export function ServiceWaitlistCard({
         >
           {posizione}
         </span>
-        <span className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-[-0.01em]">
+        {/* Il nome non si taglia sul telefono: va a capo (da `md` la colonna è larga). */}
+        <span className="min-w-0 flex-1 break-words text-[17px] font-semibold leading-snug tracking-[-0.01em] md:truncate">
           {entry.guestName}
           {entry.isVip && (
-            <span className="ml-2 align-[2px] text-[11px] font-bold tracking-[0.1em] text-accent-strong">VIP</span>
+            <span className="ml-2 whitespace-nowrap align-[2px] text-xs font-bold tracking-[0.1em] text-accent-strong">VIP</span>
           )}
         </span>
 

@@ -22,7 +22,8 @@ export default async function PianiDemPage() {
       <header className="space-y-2">
         <Link
           href="/settings/marketing/piano"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          // 44 px d'altezza sul telefono, come gli altri «indietro» delle impostazioni.
+          className="-my-2.5 inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground md:my-0 md:min-h-0 md:text-xs"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Il tuo piano DEM
         </Link>

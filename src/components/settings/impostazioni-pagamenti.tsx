@@ -186,7 +186,7 @@ export function ImpostazioniPagamenti({
                   Apri il cruscotto Stripe
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[0.8125rem] md:text-xs text-muted-foreground">
                 Dal cruscotto Stripe si vedono incassi e bonifici, e si emettono i rimborsi.
               </p>
             </>
@@ -245,7 +245,7 @@ export function ImpostazioniPagamenti({
               <p className="text-sm font-medium">
                 {locale.qrPaymentsEnabled ? "Attivo" : "Spento"}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[0.8125rem] md:text-xs text-muted-foreground">
                 {!puoIncassare
                   ? "Collega Stripe per poterlo accendere."
                   : locale.qrPaymentsEnabled
@@ -266,7 +266,7 @@ export function ImpostazioniPagamenti({
           <div className="flex items-center justify-between gap-3 riquadro p-3">
             <div className="min-w-0">
               <p className="text-sm font-medium">Chiedi la mancia</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[0.8125rem] md:text-xs text-muted-foreground">
                 Prima di pagare, al cliente viene proposto di lasciare qualcosa al personale. Nessuna
                 percentuale è preselezionata.
               </p>
@@ -308,7 +308,7 @@ export function ImpostazioniPagamenti({
                   );
                 })}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[0.8125rem] md:text-xs text-muted-foreground">
                 Senza nessuna percentuale resta solo «importo personalizzato».
               </p>
             </div>
@@ -336,7 +336,7 @@ export function ImpostazioniPagamenti({
               />
               <span className="text-sm text-muted-foreground">{currency}</span>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[0.8125rem] md:text-xs text-muted-foreground">
               Sotto questa cifra la commissione si mangia il pagamento. Non vale quando il residuo
               del tavolo è più basso: un conto aperto per{" "}
               {formatCurrency(80, currency)} deve poter essere chiuso.

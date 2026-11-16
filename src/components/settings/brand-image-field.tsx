@@ -50,15 +50,15 @@ export function BrandImageField({
         <div className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="" className="h-14 w-14 rounded border border-border bg-white object-contain p-1" />
-          <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          <Button type="button" variant="outline" size="sm" className="h-11 text-sm md:h-9 md:text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
             {uploading ? "Carico..." : "Cambia logo"}
           </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
+          <Button type="button" variant="ghost" size="sm" className="h-11 text-sm md:h-9 md:text-xs" onClick={() => onChange("")}>
             {removeLabel}
           </Button>
         </div>
       ) : (
-        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+        <Button type="button" variant="outline" size="sm" className="h-11 text-sm md:h-9 md:text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
           <Upload className="h-3.5 w-3.5" />
           {uploading ? "Carico..." : "Carica"}
         </Button>

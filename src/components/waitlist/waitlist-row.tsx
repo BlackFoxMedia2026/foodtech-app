@@ -158,7 +158,7 @@ export function WaitlistRow({
                 invece che in righe da 12 px una sotto l'altra. */}
             <div className="mt-2.5 flex flex-wrap gap-2">
               {entry.phone && (
-                <a href={`tel:${entry.phone.replace(/\s+/g, "")}`} className="chip-ios hover:underline">
+                <a href={`tel:${entry.phone.replace(/\s+/g, "")}`} className="chip-ios hover:underline max-sm:!min-h-11">
                   <Phone className="h-3.5 w-3.5" aria-hidden="true" />
                   {entry.phone}
                 </a>
@@ -205,7 +205,10 @@ export function WaitlistRow({
         </div>
 
         {canManage && (
-          <div className="flex items-center gap-2 sm:gap-2.5 sm:pl-[60px] lg:shrink-0 lg:justify-end lg:pl-0">
+          // Sul telefono «Accomoda al T13» ha una riga sua, a tutta larghezza:
+          // accanto ad «Avvisa» e alla X non ci stava e il nome del tavolo
+          // finiva tagliato sotto l'icona.
+          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-2.5 sm:pl-[60px] lg:shrink-0 lg:justify-end lg:pl-0">
             {entry.status === "WAITING" && (
               <button
                 type="button"
@@ -241,7 +244,7 @@ export function WaitlistRow({
             */}
             <button
               type="button"
-              className="azione-ios azione-ios-pieno flex-1 sm:flex-none"
+              className="azione-ios azione-ios-pieno order-first basis-full sm:order-none sm:basis-auto sm:flex-none"
               disabled={busy !== null}
               aria-label={`Accomoda ${entry.guestName}${suggerito ? ` al tavolo ${suggerito.label}` : ""}`}
               onClick={() => setSeatOpen(true)}

@@ -43,7 +43,7 @@ function BookingCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-medium text-accent-strong">{formatTime(booking.startsAt)}</p>
-          <p className="truncate text-sm font-semibold text-card-foreground">{guestName}</p>
+          <p className="break-words text-sm font-semibold text-card-foreground">{guestName}</p>
           <p className="text-xs text-muted-foreground">{booking.partySize} persone</p>
           {fuoriPiantina && (
             <p className="text-xs text-muted-foreground">Su {fuoriPiantina}, che non è sulla piantina</p>
@@ -61,7 +61,7 @@ function BookingCard({
             {...attributes}
             aria-label="Trascina per assegnare un tavolo"
             aria-roledescription="draggable"
-            className="cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-secondary active:cursor-grabbing"
+            className="grid h-10 w-10 shrink-0 cursor-grab touch-none place-items-center rounded text-muted-foreground hover:bg-secondary active:cursor-grabbing"
           >
             <GripVertical className="h-4 w-4" />
           </button>
@@ -107,14 +107,14 @@ export function UnassignedPanel({
       <button
         type="button"
         onClick={onToggleCollapsed}
-        className="flex shrink-0 items-center justify-between gap-2 px-3 py-3 text-left"
+        className="flex min-h-11 shrink-0 items-center justify-between gap-2 px-3 py-3 text-left"
       >
         <span className="text-xs font-semibold uppercase tracking-widest text-cream">Da assegnare · {bookings.length}</span>
         <ChevronDown className={cn("h-4 w-4 text-cream/70 transition-transform", collapsed && "-rotate-90")} />
       </button>
       {!collapsed && (
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
-          <p className="text-[11px] text-cream/60">Prenotazioni senza un tavolo sulla piantina</p>
+          <p className="text-xs text-cream/70">Prenotazioni senza un tavolo sulla piantina</p>
           {bookings.length === 0 ? (
             <div className="rounded-md border border-dashed border-cream/20 p-4 text-center text-xs text-cream/70">
               {hiddenByServiceCount > 0 ? (

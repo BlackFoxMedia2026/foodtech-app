@@ -33,7 +33,8 @@ export function IndicatoreQuota({
     <Link
       href="/settings/marketing/piano"
       className={cn(
-        "inline-flex h-9 items-center gap-2 rounded-full border px-4 text-sm transition-colors",
+        // Mai su due righe: in una pillola alta 36 px il testo a capo esce dal bordo.
+        "inline-flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 text-sm transition-colors md:h-9",
         esaurita || sospeso
           ? "border-destructive/50 bg-destructive/20 text-ink hover:bg-destructive/25"
           : agliSgoccioli

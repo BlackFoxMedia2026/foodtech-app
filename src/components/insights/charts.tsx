@@ -104,7 +104,7 @@ export function WeekdayHeatmap({ data }: { data: { weekday: string; slot: string
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto">
-        <div className="grid min-w-[560px] grid-cols-[3.5rem_repeat(6,1fr)] gap-1.5 text-xs">
+        <div className="grid min-w-[18rem] grid-cols-[2.75rem_repeat(6,1fr)] gap-1 text-xs sm:min-w-[560px] sm:grid-cols-[3.5rem_repeat(6,1fr)] sm:gap-1.5">
           <div />
           {SLOT_ORDER.map((slot) => (
             <div key={slot} className="text-center text-muted-foreground">{slot}</div>
@@ -155,9 +155,16 @@ export function SourcesChart({ data }: { data: { source: string; count: number }
   }
 
   const labeled = data.map((d) => ({ ...d, label: SOURCE_LABELS[d.source] ?? d.source }));
+  const totale = labeled.reduce((s, d) => s + d.count, 0);
 
+  /*
+    La legenda scritta sotto la ciambella. Prima i nomi delle fonti stavano
+    solo nel suggerimento al passaggio del puntatore: su un telefono, dove il
+    passaggio non esiste, la ciambella erano sei spicchi di giallo senza nome.
+  */
   return (
-    <div className="h-64">
+    <div className="space-y-3">
+    <div className="h-52 sm:h-64">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie data={labeled} dataKey="count" nameKey="label" innerRadius={56} outerRadius={86} paddingAngle={4}>
@@ -168,6 +175,23 @@ export function SourcesChart({ data }: { data: { source: string; count: number }
           <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
         </PieChart>
       </ResponsiveContainer>
+    </div>
+      <ul className="grid gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2 sm:text-sm">
+        {labeled.map((d, i) => (
+          <li key={d.source} className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-border"
+              style={{ backgroundColor: PALETTE[i % PALETTE.length] }}
+            />
+            <span className="min-w-0 flex-1">{d.label}</span>
+            <span className="tabular-nums text-muted-foreground">
+              {d.count}
+              {totale > 0 && ` · ${Math.round((d.count / totale) * 100)}%`}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -254,6 +254,7 @@ export function TurniServizioSettings({
                       type="button"
                       size="icon"
                       variant="ghost"
+                      className="h-11 w-11 md:h-9 md:w-9"
                       aria-label={`Modifica ${fascia.nome}`}
                       onClick={() => apri(fascia)}
                     >
@@ -263,6 +264,7 @@ export function TurniServizioSettings({
                       type="button"
                       size="icon"
                       variant="ghost"
+                      className="h-11 w-11 md:h-9 md:w-9"
                       aria-label={`Elimina ${fascia.nome}`}
                       onClick={() => setDaEliminare(chiaveDi(fascia))}
                     >

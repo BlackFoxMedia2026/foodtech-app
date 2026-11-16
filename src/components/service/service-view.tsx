@@ -197,7 +197,7 @@ export function ServiceView({
           {m}
         </button>
       ))}
-      <span className="text-[11px] text-tertiary-foreground">min</span>
+      <span className="text-xs text-tertiary-foreground">min</span>
     </div>
   );
 

@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { TAB_SCHEDA, type TabScheda } from "@/lib/scheda-dipendente";
 import { cn } from "@/lib/utils";
@@ -21,6 +24,13 @@ import { cn } from "@/lib/utils";
  *
  * Il binario è largo quanto la pagina e le linguette si dividono lo spazio
  * (`flex-auto`): una barra corta a sinistra lasciava un buco a destra.
+ *
+ * ## Sul telefono (16 novembre 2026)
+ *
+ * Andando a capo, otto linguette su 358 px facevano tre righe: 130 px di
+ * comandi prima del contenuto. Sotto `md` il binario torna una riga sola che
+ * scorre, come le linguette di un'app: l'ultima linguetta tagliata dal bordo
+ * dice che ce ne sono altre, e quella aperta viene portata in vista.
  */
 export function Linguette({
   attiva,
@@ -35,14 +45,28 @@ export function Linguette({
   /** Un numero accanto al nome: documenti caricati, scadenze da sistemare. */
   contatori?: Partial<Record<TabScheda, number>>;
 }) {
+  const binario = useRef<HTMLUListElement>(null);
+
+  // Porta in vista la linguetta aperta quando il binario scorre (telefono).
+  // Solo lo scorrimento orizzontale del binario, mai quello della pagina.
+  useEffect(() => {
+    const ul = binario.current;
+    const li = ul?.querySelector<HTMLElement>("[aria-current=page]")?.parentElement;
+    if (!ul || !li || ul.scrollWidth <= ul.clientWidth) return;
+    ul.scrollLeft = li.offsetLeft - (ul.clientWidth - li.offsetWidth) / 2;
+  }, [attiva]);
+
   return (
     <nav aria-label="Sezioni della scheda">
-      <ul className="flex w-full flex-wrap gap-0.5 rounded-[14px] bg-[rgba(118,118,128,0.12)] p-[3px]">
+      <ul
+        ref={binario}
+        className="relative flex w-full gap-0.5 overflow-x-auto rounded-[14px] bg-[rgba(118,118,128,0.12)] p-[3px] [scrollbar-width:none] md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden"
+      >
         {TAB_SCHEDA.filter((t) => !nascoste.includes(t.chiave)).map((t) => {
           const eAttiva = t.chiave === attiva;
           const n = contatori[t.chiave];
           return (
-            <li key={t.chiave} className="flex-auto">
+            <li key={t.chiave} className="shrink-0 md:flex-auto md:shrink">
               <Link
                 href={t.chiave === "panoramica" ? base : `${base}?tab=${t.chiave}`}
                 scroll={false}
@@ -60,7 +84,7 @@ export function Linguette({
                 {typeof n === "number" && n > 0 && (
                   <span
                     className={cn(
-                      "grid h-5 min-w-[1.25rem] place-items-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums leading-none",
+                      "grid h-5 min-w-[1.25rem] place-items-center rounded-full px-1.5 text-xs md:text-[11px] font-semibold tabular-nums leading-none",
                       t.chiave === "documenti" ? "bg-veil-10 text-muted-foreground" : "bg-accent-strong text-cream",
                     )}
                   >

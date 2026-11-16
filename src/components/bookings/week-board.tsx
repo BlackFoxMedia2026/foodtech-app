@@ -100,7 +100,16 @@ export function WeekBoard({
         L'elasticità vale solo da `xl` in su, dove i giorni stanno su una riga
         sola. Sotto vanno a capo su due o quattro righe, a misura propria.
       */}
-      <div className="grid auto-rows-fr grid-cols-2 gap-3 lg:grid-cols-4 xl:max-h-[40rem] xl:min-h-0 xl:flex-1 xl:grid-cols-7 xl:gap-3.5 min-[1500px]:gap-4">
+      {/* Sul telefono le colonne diventano righe: la lunghezza della barra
+          fa il lavoro dell'altezza, e la settimana intera sta in uno schermo
+          invece che in quattro. */}
+      <ul className="surface divide-y divide-border overflow-hidden rounded-xl border border-border sm:hidden">
+        {giorni.map((g) => (
+          <RigaGiorno key={g.dateKey} g={g} onApri={onApriGiorno} />
+        ))}
+      </ul>
+
+      <div className="hidden auto-rows-fr grid-cols-2 gap-3 sm:grid lg:grid-cols-4 xl:max-h-[40rem] xl:min-h-0 xl:flex-1 xl:grid-cols-7 xl:gap-3.5 min-[1500px]:gap-4">
         {giorni.map((g) => (
           <ColonnaGiorno key={g.dateKey} g={g} onApri={onApriGiorno} />
         ))}
@@ -111,6 +120,83 @@ export function WeekBoard({
 
 function nomeGiorno(g: GiornoSettimana) {
   return `${GIORNI[g.weekday]} ${Number(g.dateKey.slice(8))}`;
+}
+
+/** Un giorno della settimana sul telefono: una riga, la barra in orizzontale. */
+function RigaGiorno({ g, onApri }: { g: GiornoSettimana; onApri?: () => void }) {
+  const pieno = g.occupazione;
+  const liberi = g.capienza != null ? g.capienza - g.coperti : null;
+  return (
+    <li>
+      <Link
+        href={`/bookings?day=${g.dateKey}`}
+        onClick={onApri}
+        aria-current={g.oggi ? "date" : undefined}
+        className="flex items-center gap-3 px-3 py-3 transition-colors active:bg-veil-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        {/* Il giorno come nel calendario del telefono: la sigla sopra, il
+            numero sotto; oggi è la capsula verde piena. */}
+        <span
+          className={cn(
+            "flex w-12 shrink-0 flex-col items-center rounded-xl py-1.5",
+            g.oggi ? "bg-[color:var(--oggi-fondo)] text-[color:var(--oggi-ink)]" : "bg-secondary text-foreground",
+          )}
+        >
+          <span className="t-etichetta text-xs leading-none text-current">{GIORNI[g.weekday]}</span>
+          <span className="mt-1 text-lg font-semibold leading-none tabular-nums">{Number(g.dateKey.slice(8))}</span>
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline justify-between gap-2">
+            <span className={cn("text-base font-semibold tabular-nums", g.passato && "text-muted-foreground")}>
+              {g.coperti} coperti
+            </span>
+            <span className="whitespace-nowrap text-sm text-muted-foreground">
+              {g.passato || liberi == null ? (
+                g.passato ? "giorno passato" : ""
+              ) : liberi >= 0 ? (
+                <>
+                  <span className="font-semibold text-foreground tabular-nums">{liberi}</span> liberi
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground tabular-nums">{-liberi}</span> oltre
+                </>
+              )}
+            </span>
+          </span>
+          {pieno != null && (
+            <span className="mt-1.5 flex items-center gap-2" aria-hidden="true">
+              <span className="barra-binario relative h-2 flex-1 overflow-hidden rounded-full bg-veil-10">
+                <span
+                  className={cn(
+                    "absolute inset-y-0 left-0 rounded-full",
+                    g.passato ? "bg-tertiary-foreground/45" : "barra-pieno bg-accent",
+                  )}
+                  style={{ width: `${Math.min(100, pieno)}%` }}
+                />
+              </span>
+              <span className="w-10 text-right text-[0.8125rem] font-semibold tabular-nums">{pieno}%</span>
+            </span>
+          )}
+          <span className="mt-1 flex items-center gap-3 text-[0.8125rem] text-muted-foreground">
+            <span>
+              {g.prenotazioni === 0
+                ? "nessuna prenotazione"
+                : `${g.prenotazioni} ${g.prenotazioni === 1 ? "prenotazione" : "prenotazioni"}`}
+            </span>
+            {g.inAttesa > 0 && (
+              <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                <span className="h-2 w-2 rounded-full bg-[color:var(--stato-dot-warn)]" aria-hidden="true" />
+                {g.inAttesa} da confermare
+              </span>
+            )}
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      </Link>
+    </li>
+  );
 }
 
 function ColonnaGiorno({ g, onApri }: { g: GiornoSettimana; onApri?: () => void }) {
@@ -263,8 +349,9 @@ export function NavigatoreSettimana({ settimana }: { settimana: Settimana }) {
       : `${g(primo)} ${m(primo)} – ${g(ultimo)} ${m(ultimo)}`;
 
   return (
-    <div className="flex shrink-0 items-center gap-2 min-[1280px]:gap-2.5 min-[1440px]:gap-3">
-      <div className={cn(ALTEZZA, "pastiglia flex items-center gap-1 rounded-full border border-border/70 bg-card/70 px-1")}>
+    // Come la capsula del giorno: a tutta larghezza sulla prima riga del telefono.
+    <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto min-[1280px]:gap-2.5 min-[1440px]:gap-3">
+      <div className={cn(ALTEZZA, "pastiglia flex min-w-0 flex-1 items-center justify-between gap-1 rounded-full border border-border/70 bg-card/70 px-1 sm:flex-none sm:justify-start")}>
         <Freccia verso="indietro" onClick={() => sposta(-1)} />
         <span className="whitespace-nowrap px-1.5 text-sm font-semibold tabular-nums min-[1500px]:px-2.5">{periodo}</span>
         <Freccia verso="avanti" onClick={() => sposta(1)} />

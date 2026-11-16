@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarPlus, ChevronDown, ListPlus, MoreHorizontal, Plus, UtensilsCrossed } from "lucide-react";
+import { CalendarPlus, ChevronDown, ListPlus, MoreHorizontal, Plus, Search, UtensilsCrossed } from "lucide-react";
+import { EVENTO_APRI_RICERCA } from "@/components/shell/ricerca-globale";
 import { cn } from "@/lib/utils";
 import {
   MOBILE_NAV,
@@ -101,9 +102,24 @@ export function MobileNav({
       {altroOpen && (
         <nav
           aria-label="Altre sezioni"
-          className="fixed inset-x-3 bottom-24 z-50 overflow-hidden riquadro bg-popover shadow-xl md:hidden"
+          className="fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 overflow-hidden riquadro bg-popover shadow-xl md:hidden"
         >
-          <ul className="max-h-[60vh] divide-y divide-border overflow-y-auto">
+          <ul className="max-h-[60dvh] divide-y divide-border overflow-y-auto">
+            {/* La ricerca sta qui sul telefono: in testata la lente toglieva
+                al titolo della pagina lo spazio per stare intero. */}
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setAltroOpen(false);
+                  window.dispatchEvent(new Event(EVENTO_APRI_RICERCA));
+                }}
+                className="flex min-h-[52px] w-full items-center gap-3 px-4 text-left text-sm text-muted-foreground"
+              >
+                <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+                Cerca
+              </button>
+            </li>
             {altreSezioni.map((item) => {
               const Icon = item.icon;
               const active = isNavActive(pathname, item);

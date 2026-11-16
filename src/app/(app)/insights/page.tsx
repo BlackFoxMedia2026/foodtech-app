@@ -320,7 +320,9 @@ export default async function InsightsPage({
             {/* Prima di tutto il resto: è la riga che si legge su un telefono. */}
             <SintesiPanel righe={sintesi} periodoGiorni={giorni} />
 
-            <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Due colonne anche sul telefono: una tessera per riga erano sette
+                schermate di numeri da scorrere prima del confronto. */}
+            <section className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3">
               <StatCard
                 icon={CalendarRange}
                 label="Prenotazioni totali"
@@ -352,13 +354,16 @@ export default async function InsightsPage({
         */}
               <StatCard
                 icon={CircleCheck}
-                label="Tasso completamento"
+                // «Prenotazioni completate» e non «Tasso completamento»: in una
+                // tessera da mezzo telefono «COMPLETAMENTO» usciva dal bordo,
+                // due parole invece vanno a capo.
+                label="Prenotazioni completate"
                 value={
                   quotaAffidabile(a.bookings) ? `${a.occupancyRate}%` : "—"
                 }
                 hint={
                   quotaAffidabile(a.bookings)
-                    ? "Prenotazioni completate"
+                    ? "Sul totale prenotazioni"
                     : perchePercentualeAssente(a.bookings)
                 }
                 trend={
@@ -457,7 +462,7 @@ export default async function InsightsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
                   <ComparisonStat
                     label="Prenotazioni"
                     current={a.bookings}
@@ -469,7 +474,7 @@ export default async function InsightsPage({
                     previous={prev.covers}
                   />
                   <ComparisonStat
-                    label="Tasso completamento"
+                    label="Completate"
                     current={a.occupancyRate}
                     previous={prev.occupancyRate}
                     format={(v) => `${v}%`}
@@ -600,7 +605,7 @@ export default async function InsightsPage({
               funnel={ponteRecensioni}
               giorni={giorniVoti}
             />
-            <section className="grid gap-6 lg:grid-cols-2">
+            <section className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
               <Card>
                 <CardHeader>
                   <CardTitle>Coperti per fascia oraria</CardTitle>
@@ -634,7 +639,7 @@ export default async function InsightsPage({
                 <SourcesChart data={a.sources} />
               </CardContent>
             </Card>
-            <section className="grid gap-4 md:grid-cols-2">
+            <section className="grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
               <Card>
                 <CardHeader>
                   <CardTitle>Nuovi ospiti</CardTitle>

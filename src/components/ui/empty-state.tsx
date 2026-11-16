@@ -37,7 +37,9 @@ export function EmptyState({
     <div
       className={cn(
         "rounded-md border border-dashed border-border text-center",
-        compact ? "px-4 py-8" : "px-6 py-12",
+        // Sul telefono meno aria sopra e sotto: mezzo schermo di vuoto per dire
+        // «non c'è niente» spinge l'azione sotto la piega.
+        compact ? "px-4 py-8" : "px-5 py-8 md:px-6 md:py-12",
         className,
       )}
     >

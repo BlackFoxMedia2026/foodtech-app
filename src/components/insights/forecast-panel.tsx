@@ -160,7 +160,7 @@ export function ForecastPanel({
                     </span>
                   </div>
                   {r.occupancyPct != null && <Barra pct={r.occupancyPct} forte={r.occupancyPct >= 85} />}
-                  <p className="text-[11px] text-tertiary-foreground">
+                  <p className="text-xs md:text-[11px] text-tertiary-foreground">
                     misurato su {r.giorni} {r.giorni === 1 ? "giornata" : "giornate"}
                   </p>
                 </li>

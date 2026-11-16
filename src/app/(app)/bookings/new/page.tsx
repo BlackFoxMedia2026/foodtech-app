@@ -76,10 +76,12 @@ export default async function NewBookingPage({
         </Link>
       </Button>
       <Card className="flex min-h-0 flex-1 flex-col">
-        <CardHeader className="fissa">
+        {/* Sul telefono il nome della pagina è già nella testata (DESIGN.md
+            §13): scritto due volte, a 390 px costava una riga di modulo. */}
+        <CardHeader className="fissa max-md:hidden">
           <CardTitle>Nuova prenotazione</CardTitle>
         </CardHeader>
-        <CardContent className="fill-scroll pr-0.5">
+        <CardContent className="fill-scroll overflow-x-hidden pr-0.5 max-md:pt-5">
           <BookingForm tables={tables} iniziale={iniziale} />
         </CardContent>
       </Card>

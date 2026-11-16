@@ -372,10 +372,14 @@ export function CalendarioTurni({
               conFiltriAttivi={conFiltriAttivi}
               interruttore={<StaffSwitch vista="turni" giorno={giornoSelezionato} className="shrink-0 xl:hidden" />}
               azione={bottoneNuovo}
+              settimana={settimanaEvidenziata}
+              giornoSelezionato={giornoSelezionato}
+              oggi={oggi}
+              onGiorno={(g) => vaiA(g)}
             />
 
             {nessunTurno && (
-              <p className="fissa riquadro tratteggiato px-3 py-2 text-xs text-muted-foreground">
+              <p className="fissa riquadro tratteggiato px-3 py-2 text-[13px] text-muted-foreground md:text-xs">
                 {conFiltriAttivi
                   ? "Nessun turno corrisponde ai filtri."
                   : canManageShifts
@@ -461,18 +465,18 @@ function BottoneNuovo({ onNuovo }: { onNuovo: (kind: WorkShiftKind) => void }) {
     verticale gli dà la misura giusta quando la riga non li allunga.
   */
   const base =
-    "inline-flex min-h-[2.25rem] items-center justify-center gap-1.5 bg-[color:var(--nuovo-turno)] py-2 text-sm font-medium text-cream transition-colors hover:bg-[color:var(--nuovo-turno-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    "inline-flex min-h-[2.75rem] md:min-h-[2.25rem] items-center justify-center gap-1.5 bg-[color:var(--nuovo-turno)] py-2 text-sm font-medium text-cream transition-colors hover:bg-[color:var(--nuovo-turno-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
   return (
     <div className="flex items-stretch overflow-hidden rounded-full">
-      <button type="button" onClick={() => onNuovo("WORK")} className={cn(base, "pl-3.5 pr-3")}>
+      <button type="button" onClick={() => onNuovo("WORK")} className={cn(base, "pl-2.5 pr-2 min-[380px]:pl-3 min-[380px]:pr-2.5 md:pl-3.5 md:pr-3")}>
         <Plus className="h-4 w-4" aria-hidden="true" />
         Nuovo turno
       </button>
       <span aria-hidden="true" className="w-px bg-veil-20" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button type="button" aria-label="Altri tipi di assegnazione" className={cn(base, "px-2")}>
+          <button type="button" aria-label="Altri tipi di assegnazione" className={cn(base, "px-1.5 min-[380px]:px-2")}>
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
           </button>
         </DropdownMenuTrigger>

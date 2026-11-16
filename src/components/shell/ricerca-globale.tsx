@@ -32,6 +32,9 @@ import { MINIMO_LETTERE, type EsitoRicerca } from "@/lib/ricerca-tipi";
  *   scritta adesso. Senza, chi digita in fretta vede lampeggiare i risultati
  *   di «Ro» sopra quelli di «Rossi».
  */
+/** Il segnale con cui un altro punto del guscio apre la ricerca. */
+export const EVENTO_APRI_RICERCA = "tavolo:apri-ricerca";
+
 export function RicercaGlobale() {
   const router = useRouter();
   const [aperta, setAperta] = useState(false);
@@ -58,6 +61,14 @@ export function RicercaGlobale() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [aperta]);
+
+  /* Sul telefono la lente non sta in testata (lascia il posto al titolo
+     intero): la ricerca si apre da «Altro», che manda questo segnale. */
+  useEffect(() => {
+    const apri = () => setAperta(true);
+    window.addEventListener(EVENTO_APRI_RICERCA, apri);
+    return () => window.removeEventListener(EVENTO_APRI_RICERCA, apri);
+  }, []);
 
   /* ---- la domanda -------------------------------------------------------- */
 
@@ -159,7 +170,7 @@ export function RicercaGlobale() {
         type="button"
         onClick={() => setAperta(true)}
         aria-label="Cerca un ospite o una prenotazione"
-        className="tondo-strumento tocco-comodo flex h-10 w-10 items-center justify-center rounded-lg md:h-[46px] md:w-[46px] border border-border text-muted-foreground transition-colors hover:border-line hover:text-foreground"
+        className="tondo-strumento tocco-comodo hidden h-10 w-10 md:flex items-center justify-center rounded-lg md:h-[46px] md:w-[46px] border border-border text-muted-foreground transition-colors hover:border-line hover:text-foreground"
       >
         <Search className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -168,7 +179,7 @@ export function RicercaGlobale() {
         <DialogContent className="top-[12%] max-w-xl translate-y-0 p-0">
           <DialogTitle className="sr-only">Cerca</DialogTitle>
 
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3 max-md:pr-14">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <input
               ref={campo}

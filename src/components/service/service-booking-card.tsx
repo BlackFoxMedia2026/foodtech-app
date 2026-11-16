@@ -480,7 +480,7 @@ export function ServiceBookingCard({
       {rigaCompatta ? (
         <div className="flex min-h-12 items-center gap-3 py-1.5 pl-3.5 pr-1.5 text-[15px]">
           {capsulaTavolo || <span className="font-semibold tabular-nums">{ora}</span>}
-          <span className="min-w-0 flex-1 truncate font-semibold">{booking.guestName}</span>
+          <span className="min-w-0 flex-1 break-words font-semibold md:truncate">{booking.guestName}</span>
           <span className="shrink-0 tabular-nums text-foreground/75">
             {booking.partySize}
             {previsione && <> · {previsione.testo}</>}
@@ -498,10 +498,11 @@ export function ServiceBookingCard({
                 {ora}
               </span>
             )}
-            <span className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-[-0.01em]">
+            {/* Il nome non si taglia sul telefono: va a capo (da `md` la colonna è larga). */}
+            <span className="min-w-0 flex-1 break-words text-[17px] font-semibold leading-snug tracking-[-0.01em] md:truncate">
               {booking.guestName}
               {booking.isVip && (
-                <span className="ml-2 align-[2px] text-[11px] font-bold tracking-[0.1em] text-accent-strong">VIP</span>
+                <span className="ml-2 whitespace-nowrap align-[2px] text-xs font-bold tracking-[0.1em] text-accent-strong">VIP</span>
               )}
             </span>
 

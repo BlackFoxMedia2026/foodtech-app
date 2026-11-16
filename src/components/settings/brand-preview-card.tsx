@@ -73,7 +73,7 @@ export function BrandPreviewCard({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-1" role="tablist" aria-label="Superficie da vedere">
+      <div className="flex flex-wrap gap-1.5 md:gap-1" role="tablist" aria-label="Superficie da vedere">
         {SUPERFICI.map((s) => (
           <button
             key={s.id}
@@ -81,7 +81,7 @@ export function BrandPreviewCard({
             role="tab"
             aria-selected={quale === s.id}
             onClick={() => setQuale(s.id)}
-            className={`tocco-comodo rounded-full px-2.5 py-1 text-xs transition-colors ${
+            className={`tocco-comodo inline-flex min-h-[40px] items-center rounded-full px-3.5 text-sm transition-colors md:min-h-0 md:px-2.5 md:py-1 md:text-xs ${
               quale === s.id ? "bg-segment text-segment-ink" : "bg-current/10 text-muted-foreground"
             }`}
           >

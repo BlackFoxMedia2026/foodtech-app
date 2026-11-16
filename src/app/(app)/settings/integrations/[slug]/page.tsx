@@ -43,7 +43,7 @@ export default async function IntegrazionePage({
   if (voce.nativa) redirect(voce.nativa.href);
 
   const indietro = (
-    <Button asChild variant="ghost" size="sm" className="fissa self-start">
+    <Button asChild variant="ghost" size="sm" className="fissa -ml-2 h-11 self-start text-sm md:ml-0 md:h-9 md:text-xs">
       <Link href="/settings/integrations">
         <ArrowLeft className="h-4 w-4" /> Integrazioni
       </Link>
@@ -83,7 +83,7 @@ export default async function IntegrazionePage({
   return (
     <div className="schermo animate-fade-in gap-3">
       {indietro}
-      <div className="fill-scroll pr-0.5">
+      <div className="fill-scroll max-md:[scrollbar-gutter:auto] md:pr-0.5">
         <div className="space-y-4 pb-6">
           {wizard && searchParams.consegna === "1" && (
             <p role="status" className="riquadro mx-auto max-w-2xl border-accent/40 bg-accent/10 p-3 text-sm">
@@ -110,7 +110,7 @@ export default async function IntegrazionePage({
             <p className="mx-auto max-w-2xl text-center">
               <Link
                 href={`/admin/integrazioni/${params.slug}`}
-                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                className="inline-flex min-h-[44px] items-center gap-1.5 text-[0.8125rem] text-muted-foreground underline-offset-4 md:min-h-0 md:text-xs hover:text-foreground hover:underline"
               >
                 <Wrench className="h-3.5 w-3.5" aria-hidden="true" /> Vista tecnica Foodtech
               </Link>

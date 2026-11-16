@@ -96,6 +96,41 @@ export function TestataOspite({
   const nome = `${ospite.firstName} ${ospite.lastName ?? ""}`.trim();
   const anonimizzato = ospite.anonymizedAt !== null;
 
+  // Il menu «•••» si disegna in due posti: accanto al nome sul telefono,
+  // accanto a «Modifica profilo» da `md`.
+  const menu = canManage && (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-11 w-11 shrink-0 md:h-9 md:w-9"
+          aria-label={`Altre azioni per ${nome}`}
+          title="Altre azioni"
+        >
+          <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel>Dati personali</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <a href={`/api/guests/${ospite.id}/export`} download>
+            <Download className="h-4 w-4" aria-hidden="true" /> Esporta i dati
+          </a>
+        </DropdownMenuItem>
+        {!anonimizzato && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setCancella(true)} className="text-destructive-soft">
+              <ShieldOff className="h-4 w-4" aria-hidden="true" /> Cancella i dati…
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   /*
     `flex-wrap` e non una griglia: i gruppi hanno larghezze molto diverse a
     seconda del cliente — un nome corto e nessun tag, o un nome doppio con
@@ -128,9 +163,16 @@ export function TestataOspite({
           faccia e nome restano invece saldati fra loro: quelli sì che non si
           separano mai.
         */}
+        {/*
+          Sul telefono: prima riga freccia, faccia, nome intero (va a capo,
+          non si tronca) e «•••» all'estremo destro come nella barra di
+          un'app; seconda riga le pillole e «Modifica», il gesto principale,
+          a portata di pollice. Prima «Modifica profilo» stava da solo su una
+          terza riga.
+        */}
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-          <div className="flex min-w-0 items-center gap-3">
-            <Button asChild variant="ghost" size="icon" className="-ml-2 h-8 w-8 shrink-0">
+          <div className="flex w-full min-w-0 items-center gap-3 md:w-auto">
+            <Button asChild variant="ghost" size="icon" className="-ml-2 h-11 w-11 shrink-0 md:h-8 md:w-8">
               <Link href="/guests" aria-label="Torna al CRM ospiti" title="CRM ospiti">
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               </Link>
@@ -140,11 +182,25 @@ export function TestataOspite({
               <AvatarFallback className="text-xs font-medium text-foreground">{initials(nome)}</AvatarFallback>
             </Avatar>
 
-            <h1 className="truncate text-display text-xl leading-none">{nome}</h1>
+            <h1 className="min-w-0 flex-1 break-words text-display text-xl leading-tight md:flex-none md:truncate md:leading-none">
+              {nome}
+            </h1>
+            {menu && <div className="ml-auto shrink-0 md:hidden">{menu}</div>}
           </div>
 
           <StatoPillola stato={stato} />
           <LoyaltyPill tier={ospite.loyaltyTier} />
+          {/* «Modifica» e non «Modifica profilo»: accanto alle due pillole la
+              parola intera mandava il pulsante da solo su una terza riga. */}
+          <Button
+            type="button"
+            variant="accent"
+            className="ml-auto h-11 md:hidden"
+            aria-label="Modifica profilo"
+            onClick={() => setModifica(true)}
+          >
+            <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica
+          </Button>
         </div>
 
         {/*
@@ -181,39 +237,8 @@ export function TestataOspite({
       {/* ------------------------------------------------ azioni, a destra */}
       {/* `ml-auto` le tiene all'estremo destro quando la riga sta tutta su una
           linea, e le manda a fondo riga — sempre a destra — quando va a capo. */}
-      <div className="ml-auto flex shrink-0 items-center gap-2">
-        {canManage && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                aria-label={`Altre azioni per ${nome}`}
-                title="Altre azioni"
-              >
-                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>Dati personali</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <a href={`/api/guests/${ospite.id}/export`} download>
-                  <Download className="h-4 w-4" aria-hidden="true" /> Esporta i dati
-                </a>
-              </DropdownMenuItem>
-              {!anonimizzato && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setCancella(true)} className="text-destructive-soft">
-                    <ShieldOff className="h-4 w-4" aria-hidden="true" /> Cancella i dati…
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+      <div className="ml-auto hidden shrink-0 items-center gap-2 md:flex">
+        {menu}
 
         <Button type="button" variant="accent" onClick={() => setModifica(true)}>
           <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica profilo

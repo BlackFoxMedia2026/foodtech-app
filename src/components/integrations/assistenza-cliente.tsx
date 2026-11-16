@@ -123,10 +123,10 @@ export function AssistenzaCliente({ dettaglio, puo }: { dettaglio: DettaglioClie
               />
             </div>
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3">
-              <input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={delega} onChange={(e) => setDelega(e.target.checked)} />
+              <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 md:mt-1 md:h-4 md:w-4" checked={delega} onChange={(e) => setDelega(e.target.checked)} />
               <span className="min-w-0 text-sm">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <ShieldCheck className="h-4 w-4 text-sage-strong" aria-hidden="true" />
+                <span className="block font-medium">
+                  <ShieldCheck className="-mt-0.5 mr-1.5 inline h-4 w-4 text-sage-strong" aria-hidden="true" />
                   Autorizzo Foodtech a configurare {nome} per 7 giorni
                 </span>
                 <span className="t-nota mt-1 block">

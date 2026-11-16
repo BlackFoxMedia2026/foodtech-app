@@ -291,7 +291,7 @@ function Riga({
 
       <span className="flex shrink-0 items-center gap-1">
         {e.ticketUrl && (
-          <Button asChild variant="ghost" size="sm">
+          <Button asChild variant="ghost" size="sm" className={BERSAGLIO}>
             <a
               href={e.ticketUrl}
               target="_blank"
@@ -312,6 +312,10 @@ function Riga({
     </li>
   );
 }
+
+/** Sul telefono le icone di riga sono tondi da 44 px: a 36 il dito prendeva
+ * il vicino. Da `md` tornano alla misura del pulsante piccolo. */
+const BERSAGLIO = "h-11 w-11 p-0 md:h-9 md:w-auto md:px-3";
 
 /** Pubblica o riporta in bozza. L'etichetta dice quale delle due, per nome. */
 function InterruttorePubblica({
@@ -359,6 +363,7 @@ function Comandi({
         onClick={() => onModifica(e)}
         disabled={busy === e.id}
         aria-label={`Modifica ${e.title}`}
+        className={BERSAGLIO}
       >
         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
       </Button>
@@ -368,6 +373,7 @@ function Comandi({
         onClick={() => void onElimina(e)}
         disabled={busy === e.id}
         aria-label={`Elimina ${e.title}`}
+        className={BERSAGLIO}
       >
         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
       </Button>

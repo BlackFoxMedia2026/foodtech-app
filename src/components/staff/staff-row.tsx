@@ -94,7 +94,7 @@ export function StaffRow({
   return (
     <div
       className={cn(
-        "group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 transition-colors sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,14rem)_auto_auto]",
+        "group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 px-3 py-2.5 sm:gap-x-3 sm:gap-y-2 transition-colors sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,14rem)_auto_auto]",
         "hover:bg-veil-4",
         !available && "opacity-70",
       )}
@@ -107,19 +107,22 @@ export function StaffRow({
         className="col-start-1 row-start-1 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={`Apri la scheda di ${fullName}`}
       >
-        <Avatar className="h-9 w-9">
+        <Avatar className="h-11 w-11 sm:h-9 sm:w-9">
           {person.photoUrl && <AvatarImage src={person.photoUrl} alt="" />}
           <AvatarFallback>{initials(fullName)}</AvatarFallback>
         </Avatar>
       </Link>
 
+      {/* Nome e ruolo sono un link solo: sul telefono il bersaglio era il
+          nome, alto 24 px. Il nome va a capo invece di troncarsi
+          («Chiara Lombar…»); da `sm` torna su una riga. */}
       <div className="col-start-2 row-start-1 min-w-0">
-        <Link href={scheda} className="block max-w-full truncate text-left">
-          <span className="text-sm font-medium text-card-foreground underline-offset-2 hover:underline">
+        <Link href={scheda} className="block min-h-11 max-w-full py-0.5 text-left sm:min-h-0 sm:py-0">
+          <span className="block break-words text-base font-medium leading-snug text-card-foreground underline-offset-2 hover:underline sm:truncate sm:text-sm">
             {fullName}
           </span>
+          <span className="block truncate text-[13px] text-muted-foreground sm:text-xs">{roleLabel}</span>
         </Link>
-        <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
       </div>
 
       {/*
@@ -127,7 +130,7 @@ export function StaffRow({
         scritta dentro l'etichetta di un bottone («Modifica assegnazione»), e
         per sapere dove fosse assegnato qualcuno bisognava aprire il dialogo.
       */}
-      <div className="col-span-2 col-start-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-3 sm:row-start-1">
+      <div className="col-span-2 col-start-2 row-start-3 min-w-0 empty:hidden sm:col-span-1 sm:col-start-3 sm:row-start-1">
         {/*
           «Nessuna assegnazione» si scrive solo a chi un'assegnazione potrebbe
           averla. Su un executive chef sarebbe una mancanza che non esiste —
@@ -135,7 +138,9 @@ export function StaffRow({
           brigata farebbe sembrare mezza pagina incompleta.
         */}
         {assignmentSummary ? (
-          <p className="truncate text-xs text-ink/70" title={assignmentSummary}>
+          // Sul telefono va a capo: i tavoli assegnati sono il dato, e
+          // «T9–T10, …» non dice quali.
+          <p className="text-[13px] text-ink/70 sm:truncate sm:text-xs" title={assignmentSummary}>
             {assignmentSummary}
           </p>
         ) : assignable && available ? (
@@ -143,10 +148,10 @@ export function StaffRow({
              piano, e smorzarlo di un altro 40% lo portava a 3.64:1 sul fondo
              reso, sotto la soglia. «Nessuna assegnazione» è l'unica cosa
              scritta su quella riga: se non si legge, la riga non dice niente. */
-          <p className="text-xs text-muted-foreground">Nessuna assegnazione</p>
+          <p className="text-[13px] text-muted-foreground sm:text-xs">Nessuna assegnazione</p>
         ) : null}
         {avviso && (
-          <Link href={`${scheda}`} className="mt-1 inline-block">
+          <Link href={`${scheda}`} className="mt-1 inline-flex min-h-10 items-center sm:min-h-0">
             <Badge tone={avviso.stato === "scaduto" ? "danger" : "warning"} className="gap-1">
               <AlertTriangle className="h-3 w-3" aria-hidden="true" />
               {avviso.testo}
@@ -156,7 +161,10 @@ export function StaffRow({
       </div>
 
       {/* Come sta */}
-      <div className="col-start-3 row-start-1 flex items-center justify-end gap-2 sm:col-start-4">
+      {/* Sul telefono lo stato scende sotto il nome: sulla stessa riga
+          lasciava al nome sessanta pixel e «Sara Fontana» andava a capo
+          sillaba per sillaba. */}
+      <div className="col-start-2 row-start-2 flex items-center justify-start gap-2 sm:col-start-4 sm:row-start-1 sm:justify-end">
         {canManageStaff ? (
           <StaffStatusSelect waiterId={person.id} status={person.status} />
         ) : (
@@ -173,7 +181,7 @@ export function StaffRow({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                className="h-11 w-11 p-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 sm:h-8 sm:w-8 sm:opacity-60"
                 aria-label={`Altre azioni per ${fullName}`}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -189,7 +197,7 @@ export function StaffRow({
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <span className="block h-8 w-8" aria-hidden="true" />
+          <span className="block h-8 w-0 sm:w-8" aria-hidden="true" />
         )}
         {assignable && (
           <AssignServiceDialog

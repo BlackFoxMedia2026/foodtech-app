@@ -79,10 +79,13 @@ export const PannelloContenuto = React.forwardRef<
         onInteractOutside?.(e);
       }}
       className={cn(
-        "pannello surface fixed z-40 flex flex-col overflow-hidden",
+        "pannello surface fixed z-50 flex flex-col overflow-hidden md:z-40",
         // Telefono: foglio dal basso, alto al massimo l'85% dello schermo —
         // resta un dito di pagina sopra, così si vede che c'è qualcosa dietro.
-        "inset-x-0 bottom-0 max-h-[85vh] rounded-t-xl border-x-0 border-b-0",
+        // Sta sopra la barra in basso (z-50, montato dopo di lei): a z-40 la
+        // barra copriva proprio la fascia delle azioni. Quello che si apre
+        // dal foglio (menu, finestre) si monta dopo e gli resta sopra.
+        "inset-x-0 bottom-0 max-h-[85dvh] rounded-t-[20px] border-x-0 border-b-0",
         // Da `md`: una scheda staccata. Sedici pixel d'aria sopra la testata,
         // sotto e a destra; quattro angoli tondi e il bordo che gira intero.
         "md:inset-x-auto md:bottom-4 md:right-4 md:top-20 md:max-h-none md:w-[420px] md:max-w-[92vw] md:rounded-xl md:border",
@@ -108,7 +111,7 @@ export function PannelloTesta({
     <div className={cn("fissa flex items-start justify-between gap-3 border-b border-border p-4", className)}>
       <div className="min-w-0">{children}</div>
       <PannelloClose
-        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+        className="-m-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground md:m-0 md:h-auto md:w-auto md:rounded-md md:p-1.5"
         aria-label="Chiudi"
       >
         <X className="h-4 w-4" aria-hidden="true" />

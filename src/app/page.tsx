@@ -167,10 +167,10 @@ export default function Landing() {
         <div className="container flex flex-col items-center justify-between gap-4 py-10 text-xs text-muted-foreground sm:flex-row">
           <p>© {new Date().getFullYear()} Tavolo — Made for hospitality teams.</p>
           <nav className="flex items-center gap-4">
-            <Link href="#features" className="transition-colors hover:text-foreground">
+            <Link href="#features" className="inline-flex min-h-[44px] items-center px-2 transition-colors hover:text-foreground sm:min-h-0 sm:px-0">
               Funzionalità
             </Link>
-            <Link href="/sign-in" className="transition-colors hover:text-foreground">
+            <Link href="/sign-in" className="inline-flex min-h-[44px] items-center px-2 transition-colors hover:text-foreground sm:min-h-0 sm:px-0">
               Accedi
             </Link>
           </nav>

@@ -175,7 +175,10 @@ export function TavoliHome({
  * tolto.
  */
 function RigaMioTavolo({ tavolo, scala }: { tavolo: TavoloStaff; scala: number }) {
+  // Quando il titolo è l'ospite, la targa va scritta qui: dentro il glifo è
+  // alta pochi pixel e su un telefono non si legge.
   const meta = [
+    tavolo.ospite ? `Tavolo ${tavolo.label}` : null,
     tavolo.ospiti ? `${tavolo.ospiti} ospiti` : `${tavolo.posti} posti`,
     tavolo.dalle,
   ]

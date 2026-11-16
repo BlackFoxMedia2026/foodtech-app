@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { PARTI, indirizzoParte } from "@/lib/parti-impostazioni";
+import { ArrowRight, ChevronRight } from "lucide-react";
+import { PARTI, indirizzoParte, type ParteId } from "@/lib/parti-impostazioni";
 import { SEGNI } from "./segni-impostazioni";
 
 /**
@@ -34,9 +34,66 @@ import { SEGNI } from "./segni-impostazioni";
  * combaciano non si crede più a nessuna delle due. Quello che manca si vede
  * dentro, con i bollini tratteggiati.
  */
+/**
+ * Sul telefono le sei schede diventano **gruppi di righe**, come le
+ * Impostazioni del telefono stesso: sei schede alte 190 px erano quattro
+ * schermate da scorrere per scegliere fra sei voci. Una riga dice le stesse
+ * cose — simbolo, nome, cosa c'è dentro — in un quarto dello spazio, e tutto
+ * l'indice sta in una schermata. I gruppi dicono di chi è la decisione, lo
+ * stesso criterio di `parti-impostazioni.ts`.
+ */
+const GRUPPI_TELEFONO: { titolo: string; parti: ParteId[] }[] = [
+  { titolo: "Il ristorante", parti: ["locale", "prenotazioni", "ospiti"] },
+  { titolo: "Comunicazione", parti: ["centralino", "marketing"] },
+  { titolo: "Account e sistema", parti: ["sistema"] },
+];
+
+function IndiceTelefono() {
+  return (
+    <div className="mt-5 space-y-6 md:hidden">
+      {GRUPPI_TELEFONO.map((gruppo) => (
+        <section key={gruppo.titolo} aria-label={gruppo.titolo}>
+          <h2 className="t-etichetta px-1">{gruppo.titolo}</h2>
+          <ul className="riquadro mt-2 overflow-hidden rounded-xl border-border/80">
+            {gruppo.parti.map((id) => {
+              const parte = PARTI.find((p) => p.id === id)!;
+              const { icona: Icona } = SEGNI[id];
+              return (
+                <li key={id} className="border-b border-border/60 last:border-b-0">
+                  <Link
+                    href={indirizzoParte(id)}
+                    className="flex min-h-[64px] items-center gap-3 px-4 py-3 transition-colors active:bg-current/5"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-muted/60">
+                      <Icona className="h-[1.1rem] w-[1.1rem] text-foreground" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-medium leading-snug text-foreground">
+                        {parte.titolo}
+                      </span>
+                      {/* Cosa c'è dentro, per intero: è ciò che fa trovare
+                          i turni senza aprire tre sezioni a caso. */}
+                      <span className="mt-0.5 block text-[0.8125rem] leading-snug text-muted-foreground">
+                        {parte.dentro.join(" · ")}
+                      </span>
+                    </span>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-tertiary-foreground" aria-hidden="true" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export function IndiceImpostazioni() {
   return (
-    <div className="mt-6 grid gap-3 sm:grid-cols-2 md:mt-8 md:gap-4 lg:grid-cols-3">
+    <>
+    <IndiceTelefono />
+    <div className="mt-6 hidden gap-3 sm:grid-cols-2 md:mt-8 md:grid md:gap-4 lg:grid-cols-3">
       {PARTI.map((parte) => {
         const { icona: Icona } = SEGNI[parte.id];
         return (
@@ -85,5 +142,6 @@ export function IndiceImpostazioni() {
         );
       })}
     </div>
+    </>
   );
 }

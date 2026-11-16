@@ -177,24 +177,26 @@ export function StaffPageClient({
             una casa a sinistra.
           */}
           <div className="fissa flex flex-wrap items-center gap-2.5 xl:hidden">
-            <StaffSwitch vista="persone" giorno={giorno} className="shrink-0" />
+            {/* Sul telefono l'interruttore prende la riga e i filtri diventano
+                un tondo da 44 px accanto, come nei Turni. */}
+            <StaffSwitch vista="persone" giorno={giorno} className="w-[calc(100%-3.375rem)] md:w-auto md:shrink-0" />
 
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   type="button"
                   className={cn(
-                    "flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                    "flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-full border text-xs font-medium transition-colors md:h-8 md:w-auto md:px-3",
                     conFiltriAttivi
                       ? "border-accent text-accent-strong"
                       : "border-border/70 text-foreground/90 hover:border-line-40",
                   )}
                 >
-                  <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-                  Filtri
+                  <SlidersHorizontal className="h-[18px] w-[18px] md:h-3.5 md:w-3.5" aria-hidden="true" />
+                  <span className="sr-only md:not-sr-only">Filtri</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-[260px] p-3">
+              <PopoverContent align="start" className="w-[min(300px,calc(100vw-2rem))] p-3 md:w-[260px]">
                 <BarraLaterale compatta vista="persone" {...barraProps} />
               </PopoverContent>
             </Popover>

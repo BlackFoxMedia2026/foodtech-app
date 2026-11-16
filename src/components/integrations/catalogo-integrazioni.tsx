@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { SchedaCliente } from "@/server/integrations/vista-cliente";
@@ -88,7 +88,29 @@ export function CatalogoIntegrazioni({ schede, puoCollegare }: { schede: SchedaC
               onChange={(e) => setCerca(e.target.value)}
               placeholder="Cerca un'integrazione"
               aria-label="Cerca un'integrazione"
-              className="pl-9"
+              className="h-11 pl-9 text-base md:h-9 md:text-sm"
+            />
+          </div>
+          {/* Sul telefono le pillole erano due file da 1086 e 511 px tagliate
+              al bordo: metà delle scelte non si vedeva e niente diceva che
+              scorressero. Due tendine native aprono il selettore del
+              telefono, che tutti sanno usare. Una sotto l'altra, a tutta
+              larghezza: affiancate, «Marketing e comunicazione» scelta
+              diventava «Marketing e co…». */}
+          <div className="grid grid-cols-1 gap-2 md:hidden">
+            <Tendina
+              etichetta="Categoria"
+              valore={categoria ?? ""}
+              onChange={(v) => setCategoria(v || null)}
+              opzioni={[{ valore: "", etichetta: "Tutte le categorie" }, ...categorie.map((c) => ({ valore: c, etichetta: c }))]}
+            />
+            <Tendina
+              etichetta="Stato"
+              valore={filtro}
+              onChange={(v) => setFiltro(v as FiltroStato)}
+              /* «Tutti gli stati» e non «Tutte»: da sola, sotto «Tutte le
+                 categorie», non si capiva di cosa. */
+              opzioni={filtri.map((f) => ({ valore: f.chiave, etichetta: f.chiave === "tutte" ? "Tutti gli stati" : f.etichetta }))}
             />
           </div>
           <FilaChip etichetta="Categorie">
@@ -141,7 +163,7 @@ export function CatalogoIntegrazioni({ schede, puoCollegare }: { schede: SchedaC
 function FilaChip({ etichetta, children }: { etichetta: string; children: React.ReactNode }) {
   return (
     <div
-      className="-mx-1 flex w-full min-w-0 gap-1.5 overflow-x-auto px-1 pb-1 md:w-auto md:flex-wrap md:overflow-visible md:pb-0"
+      className="hidden md:flex md:w-auto md:min-w-0 md:flex-wrap md:gap-1.5"
       role="group"
       aria-label={etichetta}
     >
@@ -170,7 +192,13 @@ function Sezione({ titolo, children }: { titolo: string; children: React.ReactNo
   return (
     <section className="space-y-2.5">
       <h2 className="t-etichetta">{titolo}</h2>
-      <ul className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{children}</ul>
+      {/* Sul telefono un gruppo di righe come nelle Impostazioni: trenta
+          schede alte 190 px erano sei schermate; una riga col nome e lo stato
+          ne fa stare dieci in una. Descrizione e pulsante sono nella pagina
+          dell'integrazione, a un tocco. */}
+      <ul className="min-w-0 max-md:overflow-hidden max-md:rounded-xl max-md:border max-md:border-border/80 max-md:bg-card/60 md:grid md:grid-cols-2 md:gap-3 xl:grid-cols-3">
+        {children}
+      </ul>
     </section>
   );
 }
@@ -181,28 +209,37 @@ function Scheda({ s, puoCollegare }: { s: SchedaCliente; puoCollegare: boolean }
   return (
     <li
       className={cn(
-        "group relative flex h-full min-w-0 flex-col gap-3 rounded-xl border bg-card/60 p-4 transition-colors hover:border-border-strong hover:bg-card",
-        daSistemare ? "border-accent/60" : s.stato === "COLLEGATO" ? "border-[color:var(--integ-bordo-collegata)]" : "border-border",
-        s.stato === "PROSSIMAMENTE" && "bg-card/30",
+        "group relative flex min-h-[64px] min-w-0 items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0",
+        "md:h-full md:flex-col md:items-stretch md:gap-3 md:rounded-xl md:border md:bg-card/60 md:p-4 md:transition-colors md:last:border-b md:hover:border-border-strong md:hover:bg-card",
+        daSistemare ? "md:border-accent/60" : s.stato === "COLLEGATO" ? "md:border-[color:var(--integ-bordo-collegata)]" : "md:border-border",
+        s.stato === "PROSSIMAMENTE" && "md:bg-card/30",
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3 md:flex-none md:items-start">
         <Logo src={s.logo} testo={s.monogramma} />
         <div className="min-w-0 flex-1">
           {/* Il nome è il collegamento, e copre tutta la scheda: il pulsante sta sopra. */}
-          <Link href={href} className="block truncate font-medium after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
+          <Link href={href} className="block text-base font-medium leading-snug after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring md:truncate md:text-[length:inherit] md:after:rounded-xl">
             {s.nome}
           </Link>
-          <p className="t-nota mt-0.5 flex flex-wrap items-center gap-1.5">
+          {/* Sul telefono, sotto il nome, lo stato: è la risposta che si cerca
+              in un elenco. La categoria la dice già il titolo del gruppo. */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 md:hidden">
+            <PillolaStato stato={s.stato} etichetta={s.etichettaStato} className="text-[0.8125rem]" />
+            {/* «In anteprima · Anteprima» diceva la stessa cosa due volte. */}
+            {s.anteprima && s.stato !== "PROSSIMAMENTE" && !/anteprima/i.test(s.etichettaStato) && <SegnoAnteprima />}
+          </div>
+          <p className="t-nota mt-0.5 hidden flex-wrap items-center gap-1.5 md:flex">
             {s.categoria}
             {s.anteprima && s.stato !== "PROSSIMAMENTE" && <SegnoAnteprima />}
           </p>
         </div>
+        <ChevronRight className="h-5 w-5 shrink-0 text-tertiary-foreground md:hidden" aria-hidden="true" />
       </div>
 
-      <p className="line-clamp-2 text-sm text-muted-foreground">{s.descrizione}</p>
+      <p className="hidden text-sm text-muted-foreground md:line-clamp-2">{s.descrizione}</p>
 
-      <div className="mt-auto flex min-h-9 items-center justify-between gap-2 border-t border-border/60 pt-3">
+      <div className="mt-auto hidden min-h-9 items-center justify-between gap-2 border-t border-border/60 pt-3 md:flex">
         <div className="min-w-0">
           <PillolaStato stato={s.stato} etichetta={s.etichettaStato} />
           {s.riga && <p className="mt-0.5 truncate t-nota">{s.riga}</p>}
@@ -219,5 +256,39 @@ function Scheda({ s, puoCollegare }: { s: SchedaCliente; puoCollegare: boolean }
         </div>
       </div>
     </li>
+  );
+}
+
+/** Una tendina nativa: sul telefono apre il selettore del sistema. */
+function Tendina({
+  etichetta,
+  valore,
+  onChange,
+  opzioni,
+}: {
+  etichetta: string;
+  valore: string;
+  onChange: (v: string) => void;
+  opzioni: { valore: string; etichetta: string }[];
+}) {
+  return (
+    <label className="relative block min-w-0">
+      <span className="sr-only">{etichetta}</span>
+      <select
+        value={valore}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 w-full min-w-0 appearance-none rounded-full border border-border bg-background pl-4 pr-9 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {opzioni.map((o) => (
+          <option key={o.valore} value={o.valore}>
+            {o.etichetta}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        aria-hidden="true"
+      />
+    </label>
   );
 }

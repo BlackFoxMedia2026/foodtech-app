@@ -59,14 +59,16 @@ export default async function EventiPage({
   return (
     <div className="schermo animate-fade-in mx-auto w-full max-w-4xl gap-4">
       <header className="fissa">
-        <p className="t-etichetta">Gestione</p>
-        <h1 className="text-display text-2xl">Eventi e gruppi</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        {/* Sul telefono il nome sta già nella testata (§13 di DESIGN.md):
+            ripeterlo qui spingeva l'elenco sotto la piega. */}
+        <p className="t-etichetta hidden md:block">Gestione</p>
+        <h1 className="text-display hidden text-2xl md:block">Eventi e gruppi</h1>
+        <p className="text-[15px] text-muted-foreground md:mt-1 md:text-sm">
           Le richieste per un gruppo grande o una festa: un preventivo da fare, una data da
           fissare, e poi finisce in agenda. Finché è una trattativa non occupa la sala.
         </p>
-        <p className="mt-2 text-sm">
-          <a className="underline" href={tutte ? "/eventi" : "/eventi?tutte=1"}>
+        <p className="mt-1 text-sm md:mt-2">
+          <a className="inline-flex min-h-11 items-center underline md:min-h-0" href={tutte ? "/eventi" : "/eventi?tutte=1"}>
             {tutte ? "Mostra solo quelle aperte" : "Mostra anche le chiuse"}
           </a>
         </p>

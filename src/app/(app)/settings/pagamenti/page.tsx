@@ -32,7 +32,7 @@ export default async function PagamentiSettingsPage() {
   if (!can(ctx.role, "manage_venue")) {
     return (
       <div className="schermo animate-fade-in gap-3">
-        <Button asChild variant="ghost" size="sm" className="fissa self-start">
+        <Button asChild variant="ghost" size="sm" className="fissa self-start -ml-2 h-11 text-sm md:ml-0 md:h-9 md:text-xs">
           <Link href="/settings">
             <ArrowLeft className="h-4 w-4" /> Impostazioni
           </Link>
@@ -67,7 +67,7 @@ export default async function PagamentiSettingsPage() {
 
   return (
     <div className="schermo animate-fade-in gap-3">
-      <Button asChild variant="ghost" size="sm" className="fissa self-start">
+      <Button asChild variant="ghost" size="sm" className="fissa self-start -ml-2 h-11 text-sm md:ml-0 md:h-9 md:text-xs">
         <Link href="/settings">
           <ArrowLeft className="h-4 w-4" /> Impostazioni
         </Link>

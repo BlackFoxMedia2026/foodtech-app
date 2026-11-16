@@ -44,7 +44,7 @@ export default async function CampaignsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-3 md:items-end md:gap-4">
         {/* Il titolo sta nella testata: qui resta la briciola che dice da
             quale sezione si arriva. */}
         <p className="t-etichetta">Marketing</p>
@@ -56,9 +56,12 @@ export default async function CampaignsPage() {
           inviare, non per essere studiato. Al clic porta al piano, dove c'è
           tutto il resto.
         */}
-        <div className="ml-auto flex items-center gap-3">
+        {/* Su telefono `contents`: la quota sale accanto alla briciola e
+            l'azione primaria prende la riga intera sotto. Affiancate, quota
+            e pulsante superavano i 358 px utili e allargavano la pagina. */}
+        <div className="contents md:ml-auto md:flex md:items-center md:gap-3">
           <IndicatoreQuota disponibili={quota.disponibili} limite={quota.limite} sospeso={quota.sospeso} />
-          <Button asChild variant="accent">
+          <Button asChild variant="accent" className="order-last h-11 w-full md:order-none md:h-9 md:w-auto">
             <Link href="/campaigns/new">
               <Plus className="h-4 w-4" /> Nuova campagna
             </Link>
@@ -235,7 +238,9 @@ function CardCampagna({ c, html, quando }: { c: CampaignWithResults; html: strin
           {partita ? (
             /* «Prenotazioni» è l'attribuzione vera (vedi
                `listCampaignsWithResults`), non il vecchio `bookedCount`. */
-            <dl className="mt-auto grid grid-cols-3 gap-2">
+            /* Su telefono la terza colonna è più larga: «Prenotazioni» è
+               la parola lunga, e troncarla nasconderebbe il numero che conta. */
+            <dl className="mt-auto grid grid-cols-[1fr_1fr_1.35fr] gap-2 md:grid-cols-3">
               <Numero tono="inviate" etichetta="Inviate" valore={NUM.format(c.sentCount)} />
               <Numero tono="aperte" etichetta="Aperte" valore={`${apertura}%`} barra={apertura} />
               <Numero
@@ -312,8 +317,15 @@ function Numero({
   const t = TONI[tono];
   const Icona = t.icona;
   return (
-    <div className={cn("rounded-xl px-3 py-2.5", t.fondo, spenta && "opacity-70")}>
-      <dt className={cn("flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider", t.testo)}>
+    <div className={cn("min-w-0 rounded-xl px-2.5 py-2.5 md:px-3", t.fondo, spenta && "opacity-70")}>
+      {/* Su telefono l'etichetta è a 12 px e senza maiuscoletto: in
+         maiuscolo spaziato «Prenotazioni» non entra in un terzo di scheda. */}
+      <dt
+        className={cn(
+          "flex items-center gap-1 whitespace-nowrap text-xs font-medium md:text-[10px] md:uppercase md:tracking-wider",
+          t.testo,
+        )}
+      >
         <Icona className="h-3 w-3 shrink-0" aria-hidden="true" />
         {etichetta}
       </dt>

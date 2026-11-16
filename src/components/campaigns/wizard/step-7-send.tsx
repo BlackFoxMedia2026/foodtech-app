@@ -61,7 +61,8 @@ function ChecklistRow({
   titolo: string;
 }) {
   const classe = cn(
-    "group -mx-2 flex w-[calc(100%+1rem)] items-start gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors",
+    // Su telefono ogni voce è un bersaglio da 44 px: si tocca per andare al punto da sistemare.
+    "group -mx-2 flex min-h-11 w-[calc(100%+1rem)] items-start gap-2 rounded-lg px-2 py-2.5 text-left text-[15px] transition-colors md:min-h-0 md:py-1.5 md:text-sm",
     "hover:bg-black/[0.04] focus-visible:bg-black/[0.04] focus-visible:outline-none",
   );
   const contenuto = (
@@ -206,16 +207,23 @@ export function Step7Send() {
             Questi sono i clienti che riceveranno la campagna. Puoi aggiungerne altri da un file, poi invia o programma.
           </p>
         </div>
-        <Button variant="accent" onClick={() => setAggiungiAperto(true)}>
+        {/* Su telefono l'azione primaria della schermata è «Invia»: aggiungere
+            contatti resta a portata, ma come pulsante secondario. */}
+        <Button variant="outline" onClick={() => setAggiungiAperto(true)} className="h-11 w-full rounded-full md:hidden">
+          <UserPlus className="h-4 w-4" aria-hidden="true" /> Aggiungi contatti
+        </Button>
+        <Button variant="accent" onClick={() => setAggiungiAperto(true)} className="hidden md:inline-flex">
           <UserPlus className="h-4 w-4" aria-hidden="true" /> Aggiungi contatti
         </Button>
       </header>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <TabellaDestinatari onAggiungi={() => setAggiungiAperto(true)} />
 
         {/* ------------------------------------------- controlli e invio */}
-        <aside className="space-y-4 xl:sticky xl:top-0">
+        {/* Su telefono i controlli e «Invia» vengono prima dell'elenco: con
+            l'elenco davanti, il pulsante stava venticinque righe più in basso. */}
+        <aside className="order-first space-y-4 xl:sticky xl:top-0 xl:order-none">
           <div className="surface space-y-4 p-5">
             <p className="t-etichetta">Pronta per partire?</p>
             <ul className="space-y-0.5">
@@ -266,7 +274,7 @@ export function Step7Send() {
 
             {error && <p className="text-sm text-destructive-soft">{error}</p>}
 
-            <Button variant="accent" className="w-full" onClick={handleSendNow} disabled={!canSend || busy}>
+            <Button variant="accent" className="h-12 w-full md:h-9" onClick={handleSendNow} disabled={!canSend || busy}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" aria-hidden="true" />}
               Invia ora a {NUM.format(destinatari)} {destinatari === 1 ? "cliente" : "clienti"}
             </Button>
@@ -436,7 +444,23 @@ function TabellaDestinatari({ onAggiungi }: { onAggiungi: () => void }) {
           </Button>
         </div>
       ) : (
-        <div className={cn("relative overflow-x-auto transition-opacity", carica && dati && "opacity-60")}>
+        <>
+        {/* Su telefono la tabella diventa un elenco: nome e origine sulla
+            prima riga, email e ultima visita sotto. Cinque colonne in 390 px
+            mandavano i nomi a capo parola per parola e l'email fuori vista. */}
+        <ul className={cn("divide-y divide-border/50 transition-opacity md:hidden", carica && dati && "opacity-60")}>
+          {!dati
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <li key={i} className="px-4 py-3.5">
+                  <span className="block h-4 w-2/3 animate-pulse rounded bg-secondary" />
+                </li>
+              ))
+            : dati.righe.map((r) => <RigaTelefono key={r.id} r={r} />)}
+          {dati && dati.trovati === 0 && dati.totale > 0 && (
+            <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nessuno corrisponde a «{cerca}».</li>
+          )}
+        </ul>
+        <div className={cn("relative hidden overflow-x-auto transition-opacity md:block", carica && dati && "opacity-60")}>
           <table className="w-full min-w-[620px] text-sm">
             <thead>
               <tr className="border-b border-border/60 text-left">
@@ -467,11 +491,12 @@ function TabellaDestinatari({ onAggiungi }: { onAggiungi: () => void }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* -------------------------------------------- pagine */}
       {dati && dati.trovati > 0 && (
-        <div className="flex items-center justify-between gap-3 border-t border-border/60 px-5 py-3 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 border-t border-border/60 px-4 py-2 text-[13px] text-muted-foreground md:px-5 md:py-3 md:text-xs">
           <span className="tabular-nums">
             {daA} di {NUM.format(dati.trovati)}
           </span>
@@ -479,6 +504,7 @@ function TabellaDestinatari({ onAggiungi }: { onAggiungi: () => void }) {
             <Button
               variant="ghost"
               size="icon"
+              className="h-11 w-11 md:h-9 md:w-9"
               aria-label="Pagina precedente"
               disabled={dati.pagina <= 1 || carica}
               onClick={() => setPagina((p) => Math.max(1, p - 1))}
@@ -491,6 +517,7 @@ function TabellaDestinatari({ onAggiungi }: { onAggiungi: () => void }) {
             <Button
               variant="ghost"
               size="icon"
+              className="h-11 w-11 md:h-9 md:w-9"
               aria-label="Pagina successiva"
               disabled={dati.pagina >= dati.pagine || carica}
               onClick={() => setPagina((p) => p + 1)}
@@ -501,6 +528,43 @@ function TabellaDestinatari({ onAggiungi }: { onAggiungi: () => void }) {
         </div>
       )}
     </section>
+  );
+}
+
+function Origine({ r }: { r: RigaDestinatario }) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium md:text-[11px]",
+        r.origine === "file" ? "bg-[#f6ecd6] text-[#8a6416]" : "bg-[#e2eee6] text-[#2c5545]",
+      )}
+    >
+      {r.origine === "file" ? "Da file" : "Filtri"}
+    </span>
+  );
+}
+
+/** La riga dell'elenco su telefono: l'email si può tagliare, il nome no. */
+function RigaTelefono({ r }: { r: RigaDestinatario }) {
+  return (
+    <li className="flex items-center gap-3 px-4 py-3">
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-muted-foreground"
+        aria-hidden="true"
+      >
+        {(r.nome.trim()[0] ?? r.email[0] ?? "?").toUpperCase()}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[15px] font-semibold leading-snug">{r.nome || "—"}</p>
+          <Origine r={r} />
+        </div>
+        <p className="truncate text-[13px] text-muted-foreground" title={r.email}>
+          {r.email}
+        </p>
+        <p className="text-[13px] text-muted-foreground">Ultima visita: {r.ultimaVisita ?? "mai"}</p>
+      </div>
+    </li>
   );
 }
 

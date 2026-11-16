@@ -10,14 +10,19 @@ export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 export const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 8, ...props }, ref) => (
+>(({ className, sideOffset = 8, collisionPadding = 12, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      /* Dodici pixel dal bordo dello schermo: a 360 px un menu largo 320
+         (le notifiche) toccava il vetro, o ne usciva. */
+      collisionPadding={collisionPadding}
       className={cn(
         "dropdown-content z-50 min-w-[220px] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg",
         className,
+        // Mai più largo dello schermo meno i due margini, qualunque `w-` passi la pagina.
+        "max-md:max-w-[calc(100vw-24px)]",
       )}
       {...props}
     />
@@ -36,7 +41,7 @@ export const DropdownMenuItem = React.forwardRef<
       // focus was invisible — data-[highlighted] is Radix's actual hover+
       // keyboard-nav state, darkened via a black overlay so it stays visible
       // regardless of the popover's own color.
-      "flex cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-popover-foreground/90 outline-none transition-colors data-[highlighted]:bg-black/15 data-[highlighted]:text-popover-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "flex min-h-[44px] cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-popover-foreground/90 outline-none transition-colors md:min-h-0 data-[highlighted]:bg-black/15 data-[highlighted]:text-popover-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
@@ -78,7 +83,7 @@ export const DropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      "flex cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-popover-foreground/90 outline-none transition-colors data-[highlighted]:bg-black/15 data-[highlighted]:text-popover-foreground data-[state=open]:bg-black/15",
+      "flex min-h-[44px] cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-popover-foreground/90 outline-none transition-colors md:min-h-0 data-[highlighted]:bg-black/15 data-[highlighted]:text-popover-foreground data-[state=open]:bg-black/15",
       className,
     )}
     {...props}
@@ -96,6 +101,8 @@ export const DropdownMenuSubContent = React.forwardRef<
       className={cn(
         "dropdown-content z-50 min-w-[220px] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg",
         className,
+        // Mai più largo dello schermo meno i due margini, qualunque `w-` passi la pagina.
+        "max-md:max-w-[calc(100vw-24px)]",
       )}
       {...props}
     />

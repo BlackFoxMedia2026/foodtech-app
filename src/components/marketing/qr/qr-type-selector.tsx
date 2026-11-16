@@ -97,7 +97,9 @@ function SchedaQr({
       onClick={onScegli}
       aria-pressed={selezionata}
       className={cn(
-        "group flex h-full flex-col gap-2 rounded-xl border p-4 text-left",
+        // Su telefono una riga per tipo, icona a sinistra: cinque schede alte
+        // in colonna non stavano in un foglio, e l'ultima finiva sotto la piega.
+        "group grid h-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 rounded-xl border px-3.5 py-3 text-left sm:flex sm:flex-col sm:items-stretch sm:gap-2 sm:p-4",
         "transition-[background-color,border-color,transform] duration-200",
         /* Il clic si sente: due pixel in giù e ritorno. Non è decorazione — su
            una griglia di cinque schede uguali è il solo modo di sapere quale
@@ -110,7 +112,7 @@ function SchedaQr({
     >
       <span
         className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
+          "row-span-2 flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
           selezionata ? "bg-accent-strong/20" : "bg-secondary/70 group-hover:bg-secondary",
         )}
       >
@@ -120,7 +122,9 @@ function SchedaQr({
         />
       </span>
       <span className="t-titolo-scheda">{scheda.titolo}</span>
-      <span className="text-xs leading-relaxed text-muted-foreground">{scheda.descrizione}</span>
+      <span className="col-start-2 text-[13px] leading-snug text-muted-foreground sm:text-xs sm:leading-relaxed">
+        {scheda.descrizione}
+      </span>
     </button>
   );
 }

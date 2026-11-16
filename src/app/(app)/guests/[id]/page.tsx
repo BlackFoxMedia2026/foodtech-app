@@ -177,7 +177,19 @@ export default async function GuestDetail({ params }: { params: { id: string } }
             icona={CalendarClock}
             etichetta="Ultima visita"
             corta="Ultima"
-            valore={ultima ? formatDate(ultima, "it-IT", ctx.venue.timezone) : "—"}
+            // L'anno solo se non è quello in corso: «15 nov 2026» nella tessera
+            // da mezzo schermo del telefono andava su due righe.
+            valore={
+              ultima
+                ? ultima.getFullYear() === new Date().getFullYear()
+                  ? new Intl.DateTimeFormat("it-IT", {
+                      day: "numeric",
+                      month: "short",
+                      timeZone: ctx.venue.timezone,
+                    }).format(ultima)
+                  : formatDate(ultima, "it-IT", ctx.venue.timezone)
+                : "—"
+            }
             nota={
               crm.visite.giorniDaUltima == null
                 ? "nessuna visita"

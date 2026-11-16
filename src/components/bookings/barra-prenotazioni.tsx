@@ -107,6 +107,9 @@ export function BarraPrenotazioni({
           Sparisce quando la barra va a capo, dove non separerebbe più niente. */}
       <span className="hidden h-6 w-px shrink-0 bg-border/70 lg:block" aria-hidden="true" />
 
+      {/* Su telefono la barra è di due righe: la data (a tutta larghezza), poi
+          servizio, filtri e vista. Il «+» della barra in basso fa già «Nuova
+          prenotazione», quindi qui la chiamata compare solo da `md`. */}
       <div className="flex shrink-0 items-center gap-2 min-[1500px]:gap-3">
         {servizio}
         {filtro}
@@ -209,7 +212,7 @@ export function SelettoreVista({ vista, onVista }: { vista: Vista; onVista: (v: 
             className={cn(
               TESTO,
               FUOCO,
-              "segmento flex h-full items-center gap-1.5 rounded-full border px-2 transition-colors min-[1280px]:px-2.5 min-[1440px]:px-3.5 min-[1500px]:gap-2 min-[1500px]:px-4",
+              "segmento flex h-full w-10 items-center justify-center gap-1.5 rounded-full border px-2 transition-colors sm:w-auto sm:justify-start min-[1280px]:px-2.5 min-[1440px]:px-3.5 min-[1500px]:gap-2 min-[1500px]:px-4",
               attiva
                 ? "border-accent-strong/55 bg-accent/15 font-semibold text-accent-strong"
                 : "border-transparent font-medium text-muted-foreground hover:bg-veil-6 hover:text-foreground",
@@ -278,7 +281,9 @@ export function FiltroStato({
             ALTEZZA,
             TESTO,
             FUOCO,
-            "pastiglia flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 font-medium transition-colors min-[1280px]:px-3 min-[1500px]:gap-2 min-[1500px]:px-4",
+            // Su telefono un tondo da 44 con l'icona: la parola e il chevron
+            // costavano lo spazio che serve al selettore della vista.
+            "pastiglia relative flex w-11 shrink-0 items-center justify-center gap-1.5 rounded-full border px-0 font-medium transition-colors sm:w-auto sm:justify-start sm:px-2.5 min-[1280px]:px-3 min-[1500px]:gap-2 min-[1500px]:px-4",
             attivi > 0
               ? "border-accent-strong/55 bg-accent/15 text-accent-strong"
               : "border-border/70 bg-card/70 text-foreground hover:border-border-strong/70 hover:bg-veil-6",
@@ -288,7 +293,7 @@ export function FiltroStato({
             className={cn("h-4 w-4 shrink-0", attivi === 0 && "text-accent-strong")}
             aria-hidden="true"
           />
-          <span className="whitespace-nowrap">
+          <span className="hidden whitespace-nowrap sm:inline">
             Filtri
             {attivi > 0 && <span className="tabular-nums"> · {attivi}</span>}
           </span>
@@ -302,9 +307,12 @@ export function FiltroStato({
             fingersi lo stesso numero, e quanto sia lo dice il menu.
           */}
           {attivi === 0 && inSospeso > 0 && (
-            <span className="h-2 w-2 shrink-0 rounded-full bg-accent-strong" aria-hidden="true" />
+            <span
+              className="absolute right-1.5 top-1.5 h-2 w-2 shrink-0 rounded-full bg-accent-strong sm:static"
+              aria-hidden="true"
+            />
           )}
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
+          <ChevronDown className="hidden h-3.5 w-3.5 shrink-0 opacity-70 sm:block" aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
 

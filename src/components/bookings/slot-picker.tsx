@@ -301,7 +301,9 @@ export function SlotPicker({
             className={
               perServizio
                 ? "grid grid-cols-4 gap-1.5 sm:grid-cols-5"
-                : "flex flex-wrap gap-2"
+                : // Sul telefono una griglia: orari in colonna e bersagli da 44 px; da
+                  // `md` la fila libera di sempre.
+                  "grid grid-cols-4 gap-2 md:flex md:flex-wrap"
             }
           >
             {shift.slots.map((slot) => {
@@ -324,7 +326,7 @@ export function SlotPicker({
                   className={cn(
                     perServizio
                       ? "h-9 rounded-full border text-sm font-medium tabular-nums transition-colors"
-                      : "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                      : "min-h-[44px] rounded-md border px-2 text-[15px] font-medium tabular-nums transition-colors md:min-h-0 md:px-3 md:py-1.5 md:text-sm",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     selected
                       ? "border-transparent bg-accent text-accent-foreground"

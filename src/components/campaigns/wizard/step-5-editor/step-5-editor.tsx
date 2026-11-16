@@ -355,7 +355,7 @@ function Workspace() {
                     type="button"
                     onClick={() => editor.setViewport(v)}
                     className={cn(
-                      "flex h-7 items-center gap-1.5 rounded px-3 text-[13px] transition-colors",
+                      "flex h-10 items-center gap-1.5 rounded px-3 text-sm transition-colors md:h-7 md:text-[13px]",
                       viewport === v ? "bg-segment text-segment-ink" : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -372,7 +372,7 @@ function Workspace() {
                     title="Annulla (⌘Z)"
                     disabled={!editor.canUndo}
                     onClick={editor.undo}
-                    className="flex h-8 w-8 items-center justify-center rounded-md border border-border disabled:opacity-35"
+                    className="flex h-11 w-11 items-center justify-center rounded-md border border-border disabled:opacity-35 md:h-8 md:w-8"
                   >
                     <Undo2 className="h-3.5 w-3.5" />
                   </button>
@@ -382,12 +382,14 @@ function Workspace() {
                     title="Ripristina (⌘⇧Z)"
                     disabled={!editor.canRedo}
                     onClick={editor.redo}
-                    className="flex h-8 w-8 items-center justify-center rounded-md border border-border disabled:opacity-35"
+                    className="flex h-11 w-11 items-center justify-center rounded-md border border-border disabled:opacity-35 md:h-8 md:w-8"
                   >
                     <Redo2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="flex h-8 items-center rounded-md border border-border">
+                {/* Lo zoom su telefono non serve: il foglio si adatta già al
+                    banco, e la barra non ci starebbe in 390 px. */}
+                <div className="hidden h-8 items-center rounded-md border border-border md:flex">
                   <button
                     type="button"
                     aria-label="Riduci"
@@ -417,7 +419,7 @@ function Workspace() {
               </p>
             )}
 
-            <div ref={banco} className="fill-scroll px-4 pb-24 pt-10">
+            <div ref={banco} className="fill-scroll px-3 pb-10 pt-4 md:px-4 md:pb-24 md:pt-10">
               <div
                 className="mx-auto"
                 style={{

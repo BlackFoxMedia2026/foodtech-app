@@ -101,10 +101,13 @@ export function AvvisiProvider({ children }: { children: React.ReactNode }) {
         momento in cui arriva il messaggio spesso non viene letta dai lettori
         di schermo, perché non era lì da annunciare.
       */}
+      {/* Sul telefono sta sopra la cima del «+», che sporge di 26 px sopra
+          la barra: con 5,5 rem e la linea della home di un iPhone gli
+          finiva addosso. */}
       <div
         aria-live="polite"
         aria-atomic="true"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(5.5rem,calc(env(safe-area-inset-bottom)+5rem))] md:inset-x-auto md:right-6 md:justify-end md:pb-6"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] md:inset-x-auto md:right-6 md:justify-end md:pb-6"
       >
         {avviso && (
           <div
@@ -127,7 +130,7 @@ export function AvvisiProvider({ children }: { children: React.ReactNode }) {
                   chiudi();
                   await fn?.();
                 }}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium transition-colors hover:bg-[color:var(--edge-light)]"
+                className="shrink-0 inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-medium md:min-h-0 md:px-2 transition-colors hover:bg-[color:var(--edge-light)]"
               >
                 <Undo2 className="h-3.5 w-3.5" aria-hidden="true" /> Annulla
               </button>
@@ -136,7 +139,7 @@ export function AvvisiProvider({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={chiudi}
               aria-label="Chiudi l'avviso"
-              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+              className="-my-1 grid h-10 w-10 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground md:my-0 md:block md:h-auto md:w-auto md:p-1"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>

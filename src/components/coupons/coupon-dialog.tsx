@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Stepper } from "@/components/ui/stepper";
+import { AvanzamentoPassi } from "@/components/marketing/avanzamento-passi";
 import { Textarea } from "@/components/ui/textarea";
 import { readApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -262,7 +262,7 @@ export function CouponDialog({
         apparirà nell'elenco — matrice col codice compresa.
       */}
       <DialogContent className="gap-0 p-0 sm:max-w-4xl md:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="flex flex-col gap-6 border-b border-border bg-[#c9a96a]/[0.07] p-6 md:border-b-0 md:border-r md:p-7">
+        <aside className="flex flex-col gap-4 border-b border-border bg-[#c9a96a]/[0.07] p-5 md:gap-6 md:border-b-0 md:border-r md:p-7">
           <DialogHeader>
             <DialogTitle>{d ? `Duplica «${d.name}»` : "Nuovo coupon"}</DialogTitle>
             <DialogDescription>
@@ -272,15 +272,9 @@ export function CouponDialog({
             </DialogDescription>
           </DialogHeader>
 
-          {/* Sul telefono i passi restano in riga, come nelle campagne. */}
-          <div className="md:hidden">
-            <Stepper
-              steps={PASSI}
-              currentStepIndex={passo}
-              furthestStepIndex={piuLontano}
-              onStepClick={vaiSePuoi}
-            />
-          </div>
+          {/* Sul telefono il passo e una barra, come nelle campagne: i tondi
+              da 28 px erano bersagli piccoli e ripetevano «Passo 1 di 3». */}
+          <AvanzamentoPassi passi={PASSI} corrente={passo} className="md:hidden" />
 
           <ol className="hidden flex-col md:flex">
             {PASSI.map((p, i) => {
@@ -341,16 +335,16 @@ export function CouponDialog({
         </aside>
 
         <form
-          className="flex min-h-[28rem] min-w-0 flex-col p-6 md:p-8"
+          className="flex min-h-[28rem] min-w-0 flex-col p-5 md:p-8"
           onSubmit={(e) => {
             e.preventDefault();
             avanti();
           }}
         >
-          <p className="t-etichetta">
+          <p className="t-etichetta hidden md:block">
             Passo {passo + 1} di {PASSI.length}
           </p>
-          <h3 className="mb-6 mt-1.5 text-display text-xl font-medium leading-tight text-foreground">
+          <h3 className="mb-5 md:mb-6 md:mt-1.5 text-display text-xl font-medium leading-tight text-foreground">
             {DOMANDE[passo]}
           </h3>
           <div className="flex-1">
@@ -359,7 +353,8 @@ export function CouponDialog({
               <div className="space-y-5">
                 <fieldset>
                   <legend className="sr-only">Che tipo di coupon</legend>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  {/* Una colonna sul telefono: in due, l'esempio si troncava a «Es. il 10% s…». */}
+                  <div className="grid gap-2.5 sm:grid-cols-2">
                     {TIPI.map((t) => {
                       const scelto = kind === t.value;
                       const Icona = t.icona;
@@ -389,7 +384,9 @@ export function CouponDialog({
                           </span>
                           <span className="min-w-0">
                             <span className="block text-sm font-semibold text-foreground">{t.label}</span>
-                            <span className="block truncate text-xs text-tertiary-foreground">{t.nota}</span>
+                            <span className="block text-[13px] text-tertiary-foreground sm:truncate sm:text-xs">
+                              {t.nota}
+                            </span>
                           </span>
                         </button>
                       );

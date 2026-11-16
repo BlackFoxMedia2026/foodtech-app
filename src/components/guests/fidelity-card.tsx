@@ -124,7 +124,7 @@ export function FidelityCard({
     */
     <div className="max-w-[24rem] space-y-3">
       <div
-        className={`relative rounded-xl border ${m.bordo} ${m.fondo} ${m.inchiostro} shadow-[0_10px_24px_rgba(0,0,0,0.35)]`}
+        className={`relative flex flex-col rounded-xl border ${m.bordo} ${m.fondo} ${m.inchiostro} shadow-[0_10px_24px_rgba(0,0,0,0.35)]`}
         /* La proporzione delle carte vere. `aspect-ratio` e non un'altezza
            fissa: sul telefono la carta si rimpicciolisce restando una carta,
            mentre un'altezza fissa l'avrebbe fatta diventare un quadrato. */
@@ -143,10 +143,14 @@ export function FidelityCard({
           className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[radial-gradient(120%_90%_at_12%_0%,rgba(255,255,255,0.16),transparent_58%)]"
         />
 
-        <div className="relative flex h-full flex-col justify-between gap-3 p-4 sm:p-5">
+        {/* `flex-1` e non `h-full`: con l'altezza presa dalla proporzione, su
+            360 px il fondo della tessera (punti, «iscritto dal») usciva dal
+            bordo. Così la proporzione resta quella della carta finché il
+            contenuto ci sta, e la carta si allunga quando non ci sta. */}
+        <div className="relative flex flex-1 flex-col justify-between gap-3 p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className={`text-[0.65rem] uppercase tracking-[0.18em] ${m.tenue}`}>{m.nome}</p>
+              <p className={`text-xs md:text-[0.65rem] uppercase tracking-[0.18em] ${m.tenue}`}>{m.nome}</p>
               <p className="truncate text-sm font-medium">{venue}</p>
             </div>
             {/* Il QR sta sulla carta, non accanto: è la carta che si
@@ -180,7 +184,7 @@ export function FidelityCard({
 
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className={`text-[0.65rem] uppercase tracking-[0.14em] ${m.tenue}`}>Punti</p>
+              <p className={`text-xs md:text-[0.65rem] uppercase tracking-[0.14em] ${m.tenue}`}>Punti</p>
               <p className="text-display text-2xl leading-none">{punti}</p>
               {valoreCents != null && valoreCents > 0 && (
                 <p className={`mt-1 text-xs ${m.tenue}`}>
@@ -189,7 +193,7 @@ export function FidelityCard({
               )}
             </div>
             <div className="text-right">
-              <p className={`text-[0.65rem] uppercase tracking-[0.14em] ${m.tenue}`}>Iscritto dal</p>
+              <p className={`text-xs md:text-[0.65rem] uppercase tracking-[0.14em] ${m.tenue}`}>Iscritto dal</p>
               <p className="text-sm tabular-nums">{formatDate(iscrittoIl)}</p>
             </div>
           </div>
