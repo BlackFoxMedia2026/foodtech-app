@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { findTablesForWalkIn, seatWalkIn, countWalkInsToday } from "@/server/walk-in";
+import { cercaOspitiPerNome } from "@/server/guests";
 import { findFreeTables } from "@/server/table-search";
 
 /**
@@ -157,5 +158,55 @@ describe("conteggio della serata", () => {
     expect(await countWalkInsToday(venueId, da, a)).toBe(partenza + 1);
 
     await db.booking.deleteMany({ where: { id: { in: [uno.id, due.id] } } });
+  });
+});
+
+describe("ospite già passato di qui", () => {
+  /** Un tavolo nuovo per ogni prova: gli altri test li lasciano occupati. */
+  async function tavoloLibero(label: string) {
+    const room = await db.room.findFirstOrThrow({ where: { venueId } });
+    return (await db.table.create({ data: { venueId, roomId: room.id, label, seats: 4 } })).id;
+  }
+
+  it("la ricerca trova nome e cognome scritti insieme, in qualunque ordine", async () => {
+    await db.guest.create({ data: { venueId, firstName: "Ginevra", lastName: "Testaferrata" } });
+    await db.guest.create({
+      data: { venueId, firstName: "Ginevra", lastName: "Anonimata", anonymizedAt: new Date() },
+    });
+
+    const trovati = await cercaOspitiPerNome(venueId, "testaferrata gin");
+    expect(trovati.map((o) => o.lastName)).toEqual(["Testaferrata"]);
+    // Chi ha chiesto di essere dimenticato non torna fuori dalla tendina.
+    expect((await cercaOspitiPerNome(venueId, "ginevra")).map((o) => o.lastName)).not.toContain("Anonimata");
+  });
+
+  it("scelto dalla tendina si collega alla scheda, senza crearne un'altra", async () => {
+    const ospite = await db.guest.create({ data: { venueId, firstName: "Ottavio", lastName: "Ricorrente" } });
+    const prima = await db.guest.count({ where: { venueId } });
+
+    const booking = await seatWalkIn(venueId, {
+      partySize: 2,
+      tableId: await tavoloLibero("K-osp1"),
+      guestId: ospite.id,
+    });
+
+    expect(booking.guestId).toBe(ospite.id);
+    expect(await db.guest.count({ where: { venueId } })).toBe(prima);
+  });
+
+  it("non collega la scheda di un altro locale", async () => {
+    const altro = await db.venue.create({
+      data: {
+        orgId: (await db.venue.findUniqueOrThrow({ where: { id: venueId } })).orgId,
+        name: `${PREFISSO}altro`,
+        slug: `${PREFISSO}a${Date.now()}`,
+        timezone: "Europe/Rome",
+      },
+    });
+    const estraneo = await db.guest.create({ data: { venueId: altro.id, firstName: "Estraneo" } });
+
+    await expect(
+      seatWalkIn(venueId, { partySize: 2, tableId: await tavoloLibero("K-osp2"), guestId: estraneo.id }),
+    ).rejects.toMatchObject({ code: "not_found" });
   });
 });

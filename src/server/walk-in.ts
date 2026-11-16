@@ -25,6 +25,8 @@ export const WalkInInput = z.object({
   tableId: z.string().min(1, "Serve il tavolo su cui accomodare."),
   /** Facoltativo di proposito: un walk-in senza nome è normale. */
   guestName: z.string().max(120).optional().nullable(),
+  /** La scheda scelta dalla tendina: si collega a quella, non se ne crea un'altra. */
+  guestId: z.string().min(1).optional().nullable(),
   phone: z.string().max(40).optional().nullable(),
   notes: z.string().max(500).optional().nullable(),
   /** Durata prevista: cambia quando il tavolo tornerà libero per gli altri. */
@@ -59,12 +61,33 @@ export async function seatWalkIn(venueId: string, raw: unknown, actor?: AuditAct
   const now = new Date();
 
   const nome = data.guestName?.trim();
+
+  // Una scheda scelta dalla tendina deve essere di questo locale e ancora
+  // riconoscibile: `createBooking` prende l'id così com'è.
+  let ospiteEsistente: { id: string; firstName: string; lastName: string | null } | null = null;
+  if (data.guestId) {
+    ospiteEsistente = await db.guest.findFirst({
+      where: { id: data.guestId, venueId, anonymizedAt: null },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!ospiteEsistente) {
+      // Il codice basta ad `apiErrorResponse` per farne un 404.
+      throw Object.assign(new Error("Questo ospite non c'è più nell'elenco. Cercalo di nuovo."), {
+        code: "not_found",
+      });
+    }
+  }
   const booking = await createBooking(
     venueId,
     {
       // Senza nome non si crea una scheda ospite: un «Tavolo 7, due persone»
       // nel CRM è rumore, e il CRM è il posto dove i nomi devono valere.
-      guest: nome
+      // Scelto dalla tendina: si collega alla scheda che c'è. Scritto e basta:
+      // è una persona mai vista, e le si apre una scheda.
+      guestId: ospiteEsistente?.id ?? null,
+      guest: ospiteEsistente
+        ? undefined
+        : nome
         ? {
             firstName: nome.split(" ")[0] || nome,
             lastName: nome.split(" ").slice(1).join(" ") || null,
@@ -88,7 +111,10 @@ export async function seatWalkIn(venueId: string, raw: unknown, actor?: AuditAct
   await recordAudit(actor, "booking.walk_in", "booking", booking.id, {
     persone: booking.partySize,
     tavolo: data.tableId,
-    ospite: nome || null,
+    ospite: ospiteEsistente
+      ? `${ospiteEsistente.firstName} ${ospiteEsistente.lastName ?? ""}`.trim()
+      : nome || null,
+    ospiteEsistente: !!ospiteEsistente,
   });
 
   return booking;

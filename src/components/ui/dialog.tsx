@@ -38,21 +38,31 @@ const FOGLIO_TELEFONO =
   "max-md:max-h-[92dvh] max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-[20px] " +
   "max-md:border-x-0 max-md:border-b-0 max-md:animate-foglio-sale max-md:pt-3";
 
+/*
+  Una finestra corta, da usare in piedi (il walk-in), sul telefono sta meglio
+  al centro: un foglio basso tiene i tasti schiacciati sul bordo. `centrata`
+  salta il foglio e la tiene in mezzo, con i margini ai lati.
+*/
+const CENTRATA_TELEFONO = "max-md:w-[calc(100vw-2rem)] max-md:rounded-[24px] max-md:pt-4";
+
 export const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { centrata?: boolean }
+>(({ className, children, centrata = false, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "surface fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 p-6 animate-finestra-entra",
+        // `minmax(0,1fr)`: senza, la colonna della griglia si allarga quanto la
+        // riga più lunga che non va a capo (un `truncate`) e il contenuto
+        // esce a destra invece di accorciarsi con i puntini.
+        "surface fixed left-[50%] top-[50%] z-50 grid grid-cols-[minmax(0,1fr)] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 p-6 animate-finestra-entra",
         // Se il contenuto supera la finestra (un form che si apre, una lista lunga)
         // il dialog non può crescere fuori schermo: si ferma e scorre dentro.
         "scorrimento max-h-[calc(100dvh-2rem)] overflow-y-auto",
         className,
-        FOGLIO_TELEFONO,
+        centrata ? CENTRATA_TELEFONO : FOGLIO_TELEFONO,
       )}
       {...props}
     >

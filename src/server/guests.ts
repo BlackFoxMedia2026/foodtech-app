@@ -255,3 +255,59 @@ export async function updateGuest(venueId: string, id: string, raw: unknown, act
   if (diff) await recordAudit(actor, "guest.update", "guest", id, diff);
   return updated;
 }
+
+/** Un ospite come lo mostra la tendina del walk-in: quanto basta a riconoscerlo. */
+export type OspiteTrovato = {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  /** Le ultime tre cifre: distinguono due Mario Rossi senza esporre il numero. */
+  telefonoFinale: string | null;
+  totalVisits: number;
+  lastVisitAt: Date | null;
+  allergies: string | null;
+};
+
+/**
+ * Cerca per nome mentre si scrive, per il walk-in.
+ *
+ * `listGuests` cerca il testo intero in ogni colonna, quindi «Mario Rossi»
+ * non trova nessuno: non c'è un campo che contenga tutte e due le parole.
+ * Qui ogni parola deve stare nel nome **o** nel cognome, in qualunque ordine:
+ * «rossi mar» trova Mario Rossi. Fuori le schede anonimizzate: quella persona
+ * ha chiesto di non essere più riconosciuta.
+ */
+export async function cercaOspitiPerNome(venueId: string, q: string, quanti = 6): Promise<OspiteTrovato[]> {
+  const parole = q.trim().split(/\s+/).filter(Boolean).slice(0, 4);
+  if (parole.length === 0 || q.trim().length < 2) return [];
+
+  const righe = await db.guest.findMany({
+    where: {
+      venueId,
+      anonymizedAt: null,
+      AND: parole.map((p) => ({
+        OR: [
+          { firstName: { contains: p, mode: "insensitive" as const } },
+          { lastName: { contains: p, mode: "insensitive" as const } },
+        ],
+      })),
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      totalVisits: true,
+      lastVisitAt: true,
+      allergies: true,
+    },
+    // Chi viene più spesso è più probabile che sia lui.
+    orderBy: [{ totalVisits: "desc" }, { lastVisitAt: { sort: "desc", nulls: "last" } }],
+    take: quanti,
+  });
+
+  return righe.map(({ phone, ...r }) => {
+    const cifre = phone?.replace(/\D/g, "") ?? "";
+    return { ...r, telefonoFinale: cifre.length >= 3 ? cifre.slice(-3) : null };
+  });
+}
