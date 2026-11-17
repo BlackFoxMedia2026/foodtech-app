@@ -1,4 +1,5 @@
 import { siglaProvincia } from "@/lib/province-sigle";
+import { codiceCatastale } from "@/server/codici-catastali";
 
 /**
  * Suggerimenti di comuni e indirizzi mentre si scrive, per la scheda della
@@ -26,6 +27,9 @@ export type Luogo = {
   cap: string;
   /** Solo fuori dall'Italia: «Spagna». */
   stato?: string;
+  /** Il codice catastale del comune italiano («L219» per Torino), per
+   * controllare il codice fiscale. Null all'estero o se non si trova. */
+  codiceCatastale?: string | null;
 };
 
 type Proprieta = {
@@ -67,7 +71,15 @@ function aLuogo(p: Proprieta, soloComuni: boolean): Luogo | null {
   const comuneLeggibile = estero ? `${comune}, ${stato}` : prov ? `${comune} (${prov})` : comune;
 
   if (soloComuni) {
-    return { etichetta: comuneLeggibile, via: "", comune, provincia: prov, cap: p.postcode ?? "", stato };
+    return {
+      etichetta: comuneLeggibile,
+      via: "",
+      comune,
+      provincia: prov,
+      cap: p.postcode ?? "",
+      stato,
+      codiceCatastale: estero || !prov ? null : codiceCatastale(comune, prov),
+    };
   }
   const nomeVia = p.street ?? (p.type === "street" ? p.name : undefined);
   if (!nomeVia) return null;
@@ -97,6 +109,31 @@ async function chiama(url: string): Promise<Proprieta[]> {
   }
 }
 
+/**
+ * Il civico scritto da chi compila: l'ultimo numero prima della virgola
+ * («Via Roma 12, Tor» → «12», «Corso Francia 5/b Torino» → «5/B»). Serve quando
+ * Photon conosce la via ma non quel numero: senza, scegliendo il
+ * suggerimento il civico sparirebbe.
+ */
+function civicoScritto(q: string): string | null {
+  const parole = q.split(",")[0].trim().split(/\s+/);
+  // Dalla terza parola in poi: «Via 4 Novembre» — il numero subito dopo
+  // «Via» è il nome della via, non il civico.
+  for (let i = parole.length - 1; i >= 2; i--) {
+    if (/^\d+[a-z]?(\/[a-z0-9]+)?$/i.test(parole[i])) return parole[i].toUpperCase();
+  }
+  return null;
+}
+
+/** Aggiunge il civico a una via che ne è senza — se non fa già parte del
+ * nome («Via 4 Novembre»: il 4 è la via, non il civico). */
+function conCivico(l: Luogo, civico: string) {
+  if (!l.via || l.via.split(/\s+/).includes(civico)) return;
+  const via = `${l.via} ${civico}`;
+  l.etichetta = l.etichetta.replace(l.via, via);
+  l.via = via;
+}
+
 /** Il riquadro dell'Italia (con San Marino e il Vaticano dentro). */
 const ITALIA = "&bbox=6.6,35.4,18.6,47.1";
 /** Una spinta leggera verso il centro Italia, per le ricerche fuori dal riquadro. */
@@ -122,10 +159,12 @@ export async function cercaLuoghi(testo: string, soloComuni: boolean): Promise<L
     proprieta = await chiama(`${base}&limit=8&layer=house&layer=street${SPINTA}`);
   }
 
+  const civico = soloComuni ? null : civicoScritto(q);
   const visti = new Set<string>();
   const out: Luogo[] = [];
   for (const p of proprieta) {
     const l = aLuogo(p, soloComuni);
+    if (l && civico && !p.housenumber) conCivico(l, civico);
     if (!l || visti.has(l.etichetta)) continue;
     visti.add(l.etichetta);
     out.push(l);

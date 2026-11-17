@@ -19,6 +19,17 @@ describe("codice fiscale", () => {
   });
 });
 
+describe("codice fiscale e comune di nascita", () => {
+  it("confronta le posizioni 12-15 con il codice catastale, omocodia compresa", async () => {
+    const { codiceCatastale } = await import("@/server/codici-catastali");
+    expect(codiceCatastale("Torino", "TO")).toBe("L219");
+    expect(codiceCatastale("Bozen", "BZ")).toBe("A952");
+    // RSSMRA80A01H501U è nato a Roma (H501).
+    expect(incoerenzeCf("RSSMRA80A01H501U", { codiceComune: "H501" })).toEqual([]);
+    expect(incoerenzeCf("RSSMRA80A01H501U", { codiceComune: "L219" })).toEqual(["luogo di nascita"]);
+  });
+});
+
 describe("IBAN", () => {
   it("accetta un IBAN italiano corretto scritto a gruppi", () => {
     expect(validaIban("it60 x054 2811 1010 0000 0123 456")).toMatchObject({ valido: true, paese: "IT" });

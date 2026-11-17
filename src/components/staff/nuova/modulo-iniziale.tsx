@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Briefcase, ChevronLeft, ChevronRight, CreditCard, FileSignature, House, Phone, UserRound } from "lucide-react";
+import { Briefcase, Check, ChevronLeft, ChevronRight, CreditCard, FileSignature, House, Phone, Save, UserRound } from "lucide-react";
 import type { StaffCapability, StaffPrimaryRole } from "@prisma/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,9 +20,11 @@ import {
   type SottoPasso,
 } from "@/components/staff/nuova/passi";
 import { CLASSE_AVANTI, CLASSE_INDIETRO, PiedePassi } from "@/components/staff/nuova/piede-passi";
+import { BozzeInSospeso } from "@/components/staff/nuova/bozze-in-sospeso";
+import type { BozzaStaff } from "@/server/staff-bozze";
 import { readApiError } from "@/lib/api-client";
 import { calcolaEta } from "@/lib/scheda-dipendente";
-import { formattaIban, validaIban } from "@/lib/validazione/iban";
+import { formattaIban, lunghezzaIban, normalizzaIban, validaIban } from "@/lib/validazione/iban";
 import { incoerenzeCf, normalizzaCf, validaCodiceFiscale } from "@/lib/validazione/codice-fiscale";
 import { ROLE_OPTIONS_BY_DEPARTMENT, staffDepartmentLabel } from "@/lib/staff-departments";
 import { DEFAULT_CAPABILITIES_BY_ROLE, STAFF_ROLE_DESCRIPTIONS, staffDepartmentOf, staffPrimaryRoleLabel } from "@/lib/staff-roles";
@@ -93,19 +95,40 @@ function telefonoValido(phone: string) {
  * lavora sulle sezioni vere della scheda, le stesse che si ritrovano
  * aprendola dopo.
  */
-export function ModuloIniziale({ canManageContracts }: { canManageContracts: boolean }) {
+export function ModuloIniziale({
+  canManageContracts,
+  bozza,
+  bozze,
+}: {
+  canManageContracts: boolean;
+  /** La registrazione salvata a metà da riprendere (`?bozza=…`). */
+  bozza: BozzaStaff | null;
+  /** Le altre in sospeso, da proporre a chi apre «Nuova persona». */
+  bozze: BozzaStaff[];
+}) {
   const router = useRouter();
   const oggi = useVenueToday();
   const ordine: Sotto[] = canManageContracts
     ? ["anagrafica", "contatti", "residenza", "ruolo", "pagamento", "contratto"]
     : ["anagrafica", "contatti", "residenza", "ruolo", "pagamento"];
-  const [sotto, setSotto] = useState<Sotto>("anagrafica");
-  const [valori, setValori] = useState<Valori>(VUOTO);
+  const d = bozza?.dati;
+  const [sotto, setSotto] = useState<Sotto>(() =>
+    bozza && (ordine as string[]).includes(bozza.passo) ? (bozza.passo as Sotto) : "anagrafica",
+  );
+  const [valori, setValori] = useState<Valori>(() => ({ ...VUOTO, ...(d?.valori ?? {}) }));
+  /** Il codice catastale del comune di nascita scelto dai suggerimenti. */
+  const [codiceComune, setCodiceComune] = useState<string | null>(d?.codiceComune ?? null);
   const [errori, setErrori] = useState<Errori>({});
-  const [primaryRole, setPrimaryRole] = useState<StaffPrimaryRole | null>(null);
-  const [capabilities, setCapabilities] = useState<StaffCapability[]>([]);
-  const capabilityToccate = useRef(false);
-  const [contratto, setContratto] = useState(EMPTY_CONTRACT_FORM);
+  const [primaryRole, setPrimaryRole] = useState<StaffPrimaryRole | null>((d?.primaryRole as StaffPrimaryRole | null) ?? null);
+  const [capabilities, setCapabilities] = useState<StaffCapability[]>((d?.capabilities as StaffCapability[] | undefined) ?? []);
+  const capabilityToccate = useRef(!!d?.primaryRole);
+  const [contratto, setContratto] = useState(() => ({ ...EMPTY_CONTRACT_FORM, ...(d?.contratto ?? {}) }) as typeof EMPTY_CONTRACT_FORM);
+  /** La bozza su cui si sta lavorando: nasce al primo «Salva». */
+  const idBozza = useRef<string | null>(bozza?.id ?? null);
+  const [salvataAlle, setSalvataAlle] = useState<string | null>(null);
+  const [salvandoBozza, setSalvandoBozza] = useState(false);
+  const [appenaSalvata, setAppenaSalvata] = useState(false);
+  const [ibanToccato, setIbanToccato] = useState(false);
   const [erroriContratto, setErroriContratto] = useState<ContractFormErrors>({});
   const [erroreForm, setErroreForm] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -141,22 +164,19 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
       manca("lastName", "Inserisci il cognome.");
       if (!valori.birthday) err.birthday = "Inserisci la data di nascita.";
       else if (valori.birthday > oggi) err.birthday = "La data di nascita non può essere futura.";
-      if (!valori.fiscalCode.trim()) err.fiscalCode = "Inserisci il codice fiscale.";
-      else {
-        const cf = validaCodiceFiscale(valori.fiscalCode);
-        if (!cf.valido) err.fiscalCode = cf.errore;
-      }
       manca("birthPlace", "Inserisci il luogo di nascita.");
       manca("nationality", "Inserisci la nazionalità.");
+      if (!valori.fiscalCode.trim()) err.fiscalCode = "Inserisci il codice fiscale.";
+      else if (!cfFormale.valido) err.fiscalCode = cfFormale.errore;
+      else if (incoerenze.length) err.fiscalCode = `Non corrisponde a: ${incoerenze.join(", ")}.`;
     }
     if (sotto === "contatti") {
       if (!valori.phone.trim()) err.phone = "Inserisci il numero di telefono.";
       else if (!telefonoValido(valori.phone)) err.phone = "Numero di telefono non valido.";
       if (!valori.email.trim()) err.email = "Inserisci l'email: serve per l'invito al gestionale.";
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valori.email.trim())) err.email = "Indirizzo email non valido.";
-      manca("emergencyContactName", "Indica chi chiamare in caso di emergenza.");
-      if (!valori.emergencyContactPhone.trim()) err.emergencyContactPhone = "Inserisci il numero.";
-      else if (!telefonoValido(valori.emergencyContactPhone)) err.emergencyContactPhone = "Numero non valido.";
+      // L'emergenza è facoltativa: si controlla solo il numero, se c'è.
+      if (valori.emergencyContactPhone.trim() && !telefonoValido(valori.emergencyContactPhone)) err.emergencyContactPhone = "Numero non valido.";
     }
     if (sotto === "residenza") {
       if (!valori.address.trim()) err.address = "Inserisci l'indirizzo.";
@@ -179,28 +199,110 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
     }
     setErrori(err);
     if (sotto === "contratto") {
-      const errC = isContractFormDirty(contratto) ? validateContractForm(contratto) : {};
+      const errC = contrattoIniziato ? validateContractForm(contratto) : {};
       setErroriContratto(errC);
       if (Object.keys(errC).length) return false;
     }
     return Object.keys(err).length === 0;
   }
 
-  /** Cosa del codice fiscale non torna con nome, cognome e nascita: un avviso, non un blocco. */
-  const cfValido = validaCodiceFiscale(valori.fiscalCode).valido;
-  const incoerenze = cfValido
-    ? incoerenzeCf(valori.fiscalCode, { cognome: valori.lastName, nome: valori.firstName, dataNascita: valori.birthday })
+  /*
+    Il codice fiscale, controllato mentre si scrive: appena ha 16 caratteri
+    si dice se è sbagliato — il carattere di controllo, o un pezzo che non
+    torna con nome, cognome, data o comune di nascita. Prima l'errore
+    compariva solo premendo «Avanti», e un codice sbagliato sembrava giusto.
+  */
+  const cfCompleto = normalizzaCf(valori.fiscalCode).length >= 16;
+  const cfFormale = validaCodiceFiscale(valori.fiscalCode);
+  const incoerenze = cfFormale.valido
+    ? incoerenzeCf(valori.fiscalCode, {
+        cognome: valori.lastName,
+        nome: valori.firstName,
+        dataNascita: valori.birthday,
+        codiceComune,
+      })
     : [];
+  const cfValido = cfFormale.valido && incoerenze.length === 0;
+  const erroreCfDalVivo = !cfCompleto
+    ? undefined
+    : !cfFormale.valido
+      ? cfFormale.errore
+      : incoerenze.length
+        ? `Non corrisponde a: ${incoerenze.join(", ")}.`
+        : undefined;
+  // Il contratto è facoltativo: conta come iniziato solo se si è scritto
+  // qualcosa oltre alla mansione, che si propone da sola dal ruolo.
+  const contrattoIniziato = isContractFormDirty({ ...contratto, contractualRole: "" });
   const ibanEsito = valori.iban.trim() ? validaIban(valori.iban) : null;
+  /*
+    Anche l'IBAN si controlla mentre si scrive: l'errore compare quando è
+    lungo quanto deve essere per il suo paese (27 caratteri in Italia), o
+    uscendo dal campo — non a metà, quando è incompleto per forza.
+  */
+  const ibanCompatto = normalizzaIban(valori.iban);
+  const ibanLungo = ibanCompatto.length >= (lunghezzaIban(ibanCompatto.slice(0, 2)) ?? 34);
+  const erroreIbanDalVivo = ibanEsito && !ibanEsito.valido && (ibanLungo || ibanToccato) ? ibanEsito.errore : undefined;
+  // Corretto l'IBAN, l'errore di «Avanti» non resta appeso.
+  const erroreIban = ibanEsito?.valido ? undefined : (erroreIbanDalVivo ?? errori.iban);
+
+  /*
+    «Salva»: la registrazione resta com'è, senza controlli — una bozza è a
+    metà per definizione — e si riprende da «Nuova persona», dal passo in
+    cui la si è lasciata. Si resta sulla pagina: chi vuole chiude, chi
+    voleva solo mettere al sicuro quel che ha scritto continua.
+  */
+  async function salvaBozza() {
+    setErroreForm(null);
+    setSalvandoBozza(true);
+    const corpo = JSON.stringify({
+      passo: sotto,
+      dati: {
+        valori,
+        codiceComune,
+        primaryRole,
+        capabilities,
+        ...(canManageContracts ? { contratto } : {}),
+      },
+    });
+    const intestazioni = { "content-type": "application/json" };
+    let res = idBozza.current
+      ? await fetch(`/api/staff/bozze/${idBozza.current}`, { method: "PUT", headers: intestazioni, body: corpo })
+      : null;
+    // Mai salvata, o eliminata da un'altra parte nel frattempo: se ne fa una nuova.
+    if (!res || res.status === 404) res = await fetch("/api/staff/bozze", { method: "POST", headers: intestazioni, body: corpo });
+    setSalvandoBozza(false);
+    if (!res.ok) {
+      setErroreForm(await readApiError(res, "Non è stato possibile salvare. Riprova."));
+      return;
+    }
+    const salvata = (await res.json()) as BozzaStaff;
+    if (idBozza.current !== salvata.id) {
+      idBozza.current = salvata.id;
+      // Ricaricando la pagina si riapre questa bozza, non un modulo vuoto.
+      window.history.replaceState(null, "", `/staff/nuova?bozza=${salvata.id}`);
+    }
+    setSalvataAlle(new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }));
+    // Sul telefono la nota del piede non si vede: lo dice il pulsante.
+    setAppenaSalvata(true);
+    window.setTimeout(() => setAppenaSalvata(false), 2500);
+  }
 
   function avanti() {
     if (!controlla()) return;
     if (ultimo) void registra();
-    else setSotto(ordine[indice + 1]);
+    else {
+      const prossimo = ordine[indice + 1];
+      // Il contratto propone come mansione il ruolo scelto prima: quasi
+      // sempre coincidono, e si cambia dalla tendina se no.
+      if (prossimo === "contratto" && primaryRole && !contratto.contractualRole) {
+        setContratto((c) => ({ ...c, contractualRole: staffPrimaryRoleLabel(primaryRole) }));
+      }
+      setSotto(prossimo);
+    }
   }
 
   async function registra() {
-    const contrattoCompilato = canManageContracts && isContractFormDirty(contratto);
+    const contrattoCompilato = canManageContracts && contrattoIniziato;
     setErroreForm(null);
     setSalvando(true);
 
@@ -234,6 +336,9 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
       return;
     }
     const creata = (await res.json()) as { id: string };
+    // Registrata: la bozza non serve più. Se la cancellazione non riesce,
+    // resta in elenco e si elimina a mano — la persona c'è comunque.
+    if (idBozza.current) await fetch(`/api/staff/bozze/${idBozza.current}`, { method: "DELETE" }).catch(() => null);
 
     if (contrattoCompilato) {
       const r = await fetch(`/api/waiters/${creata.id}/contracts`, {
@@ -278,11 +383,20 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
           }
           errore={erroreForm}
           nota={
-            ultimo
+            salvataAlle ? (
+              <span className="inline-flex items-center gap-1.5 text-[hsl(var(--turno-sala))]">
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                Salvata alle {salvataAlle}: puoi chiudere e riprenderla da «Nuova persona».
+              </span>
+            ) : ultimo
               ? "Con «Registra» la persona entra in organico. Documenti, formazione e accesso vengono dopo."
               : `${indice + 1} di ${ordine.length} prima della registrazione`
           }
         >
+          <button type="button" onClick={() => void salvaBozza()} disabled={salvando || salvandoBozza} className={CLASSE_INDIETRO}>
+            {appenaSalvata ? <Check className="h-4 w-4" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
+            {salvandoBozza ? "Salvo…" : appenaSalvata ? "Salvata" : "Salva"}
+          </button>
           <button type="submit" form="passo-corrente" disabled={salvando} className={CLASSE_AVANTI}>
             {etichettaAvanti}
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -290,6 +404,7 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
         </PiedePassi>
       }
     >
+      {!bozza && bozze.length > 0 && <BozzeInSospeso bozze={bozze} />}
       <form
         id="passo-corrente"
         key={sotto}
@@ -321,17 +436,45 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
               >
                 <Input id="birthday" type="date" max={oggi} value={valori.birthday} onChange={imposta("birthday")} aria-invalid={!!errori.birthday} />
               </CampoModulo>
+              <CampoModulo etichetta="Luogo di nascita *" htmlFor="birthPlace" errore={errori.birthPlace} nota="Scrivi le prime lettere e scegli il comune.">
+                <CampoLuogo
+                  id="birthPlace"
+                  tipo="comune"
+                  valore={valori.birthPlace}
+                  onCambia={(t) => {
+                    // Scritto a mano, il comune non ha più un codice certo.
+                    setCodiceComune(null);
+                    setValori((v) => ({ ...v, birthPlace: t }));
+                  }}
+                  onScegli={(l) => {
+                    setCodiceComune(l.codiceCatastale ?? null);
+                    setValori((v) => ({
+                      ...v,
+                      birthPlace: l.etichetta,
+                      // Nato in Italia: la nazionalità più probabile si propone, si cambia se serve.
+                      nationality: v.nationality || (l.stato ? v.nationality : "Italiana"),
+                    }));
+                  }}
+                  placeholder="Es. Torino"
+                  invalido={!!errori.birthPlace}
+                />
+              </CampoModulo>
+              <CampoModulo etichetta="Nazionalità *" htmlFor="nationality" errore={errori.nationality}>
+                <Input id="nationality" value={valori.nationality} onChange={imposta("nationality")} placeholder="Es. Italiana" aria-invalid={!!errori.nationality} />
+              </CampoModulo>
+              {/* Per ultimo: si controlla contro tutto quello che sta sopra —
+                  nome, cognome, data e comune di nascita. */}
               <CampoModulo
                 etichetta="Codice fiscale *"
                 htmlFor="fiscalCode"
-                errore={errori.fiscalCode}
+                errore={cfValido ? undefined : (erroreCfDalVivo ?? errori.fiscalCode)}
                 nota={
-                  incoerenze.length ? (
-                    <span className="text-accent-strong">Valido, ma non torna con: {incoerenze.join(", ")}. Controlla.</span>
-                  ) : cfValido ? (
-                    <span className="text-[hsl(var(--turno-sala))]">Codice fiscale valido.</span>
+                  cfValido ? (
+                    <span className="text-[hsl(var(--turno-sala))]">
+                      Codice fiscale valido{codiceComune ? ", e corrisponde ai dati qui sopra" : ""}.
+                    </span>
                   ) : (
-                    "Si controllano formato e carattere di controllo."
+                    "Si controlla con nome, cognome, data e luogo di nascita."
                   )
                 }
               >
@@ -344,29 +487,8 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
                   spellCheck={false}
                   autoComplete="off"
                   placeholder="RSSMRA80A01L219X"
-                  aria-invalid={!!errori.fiscalCode}
+                  aria-invalid={!cfValido && !!(erroreCfDalVivo ?? errori.fiscalCode)}
                 />
-              </CampoModulo>
-              <CampoModulo etichetta="Luogo di nascita *" htmlFor="birthPlace" errore={errori.birthPlace} nota="Scrivi le prime lettere e scegli il comune.">
-                <CampoLuogo
-                  id="birthPlace"
-                  tipo="comune"
-                  valore={valori.birthPlace}
-                  onCambia={(t) => setValori((v) => ({ ...v, birthPlace: t }))}
-                  onScegli={(l) =>
-                    setValori((v) => ({
-                      ...v,
-                      birthPlace: l.etichetta,
-                      // Nato in Italia: la nazionalità più probabile si propone, si cambia se serve.
-                      nationality: v.nationality || (l.stato ? v.nationality : "Italiana"),
-                    }))
-                  }
-                  placeholder="Es. Torino"
-                  invalido={!!errori.birthPlace}
-                />
-              </CampoModulo>
-              <CampoModulo etichetta="Nazionalità *" htmlFor="nationality" errore={errori.nationality}>
-                <Input id="nationality" value={valori.nationality} onChange={imposta("nationality")} placeholder="Es. Italiana" aria-invalid={!!errori.nationality} />
               </CampoModulo>
             </GrigliaCampi>
           </Sezione>
@@ -388,12 +510,12 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
                 </CampoModulo>
               </GrigliaCampi>
               <div>
-                <h3 className="t-etichetta mb-4 border-b border-border/60 pb-2 font-medium">In caso di emergenza</h3>
+                <h3 className="t-etichetta mb-4 border-b border-border/60 pb-2 font-medium">In caso di emergenza <span className="font-normal normal-case tracking-normal text-muted-foreground">· facoltativo</span></h3>
                 <GrigliaCampi colonne={2}>
-                  <CampoModulo etichetta="Chi chiamare *" htmlFor="emergencyContactName" errore={errori.emergencyContactName}>
+                  <CampoModulo etichetta="Chi chiamare" htmlFor="emergencyContactName" errore={errori.emergencyContactName}>
                     <Input id="emergencyContactName" value={valori.emergencyContactName} onChange={imposta("emergencyContactName")} placeholder="Es. Laura Bellini (moglie)" aria-invalid={!!errori.emergencyContactName} />
                   </CampoModulo>
-                  <CampoModulo etichetta="Numero *" htmlFor="emergencyContactPhone" errore={errori.emergencyContactPhone}>
+                  <CampoModulo etichetta="Numero" htmlFor="emergencyContactPhone" errore={errori.emergencyContactPhone}>
                     <Input id="emergencyContactPhone" type="tel" value={valori.emergencyContactPhone} onChange={imposta("emergencyContactPhone")} aria-invalid={!!errori.emergencyContactPhone} />
                   </CampoModulo>
                 </GrigliaCampi>
@@ -501,13 +623,11 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
                 etichetta="IBAN *"
                 htmlFor="iban"
                 largo
-                errore={errori.iban}
+                errore={erroreIban}
                 nota={
                   ibanEsito?.valido ? (
                     <span className="text-[hsl(var(--turno-sala))]">IBAN valido ({ibanEsito.paese}).</span>
-                  ) : (
-                    "Si controllano paese, lunghezza e cifra di controllo. Non dice che il conto esista né di chi sia."
-                  )
+                  ) : undefined
                 }
               >
                 <Input
@@ -515,12 +635,15 @@ export function ModuloIniziale({ canManageContracts }: { canManageContracts: boo
                   value={valori.iban}
                   autoFocus
                   onChange={(e) => setValori((v) => ({ ...v, iban: e.target.value.toUpperCase() }))}
-                  onBlur={() => ibanEsito?.valido && setValori((v) => ({ ...v, iban: formattaIban(v.iban) }))}
+                  onBlur={() => {
+                    setIbanToccato(true);
+                    if (ibanEsito?.valido) setValori((v) => ({ ...v, iban: formattaIban(v.iban) }));
+                  }}
                   className="font-mono tracking-wide"
                   spellCheck={false}
                   autoComplete="off"
                   placeholder="IT60 X054 2811 1010 0000 0123 456"
-                  aria-invalid={!!errori.iban}
+                  aria-invalid={!!erroreIban}
                 />
               </CampoModulo>
             </GrigliaCampi>

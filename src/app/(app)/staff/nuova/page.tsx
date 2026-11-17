@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, ChevronRight, CircleAlert, UserCog } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleAlert, Save, UserCog } from "lucide-react";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { origineFidata } from "@/lib/origine";
 import { headers } from "next/headers";
 import { getWaiterScheda, listPossibiliResponsabili } from "@/server/waiters";
 import { invitoAperto } from "@/server/staff-account";
 import { postaAttiva } from "@/server/email-invito-staff";
+import { getBozza, listBozze } from "@/server/staff-bozze";
 import { DatiPersonali } from "@/components/staff/scheda/dati-personali";
 import { Lavoro } from "@/components/staff/scheda/lavoro";
 import { Documenti } from "@/components/staff/scheda/documenti";
@@ -28,6 +29,7 @@ import { staffPrimaryRoleLabel } from "@/lib/staff-roles";
 import { ModuloIniziale } from "@/components/staff/nuova/modulo-iniziale";
 import { PassoAccesso } from "@/components/staff/nuova/passo-accesso";
 import { CLASSE_AVANTI, CLASSE_INDIETRO, PiedePassi } from "@/components/staff/nuova/piede-passi";
+import { verificaDocumenti } from "@/lib/documenti-obbligatori";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +50,8 @@ export const dynamic = "force-dynamic";
  * sezione vera della scheda**, con i suoi caricamenti e le sue regole: niente
  * seconda copia dei moduli di documenti e corsi da tenere allineata.
  * Chi si ferma a metà ha comunque una persona registrata, con i dati scritti.
+ * Prima di «Registra», invece, «Salva» mette il modulo da parte come bozza
+ * (`staff-bozze.ts`), da riprendere da qui.
  *
  * ## L'invito
  *
@@ -57,14 +61,29 @@ export const dynamic = "force-dynamic";
 export default async function NuovaPersonaPage({
   searchParams,
 }: {
-  searchParams: { id?: string; passo?: string; contratto?: string };
+  searchParams: { id?: string; passo?: string; contratto?: string; bozza?: string };
 }) {
   const ctx = await getActiveVenue();
   if (!can(ctx.role, "manage_staff")) notFound();
   const canManageContracts = can(ctx.role, "manage_contracts");
   const canManageVenue = can(ctx.role, "manage_venue");
 
-  if (!searchParams.id) return <ModuloIniziale canManageContracts={canManageContracts} />;
+  if (!searchParams.id) {
+    // Prima che la persona esista: un modulo nuovo, o una registrazione
+    // salvata a metà da riprendere (`?bozza=…`).
+    const [bozza, bozze] = await Promise.all([
+      searchParams.bozza ? getBozza(ctx.venueId, searchParams.bozza) : Promise.resolve(null),
+      listBozze(ctx.venueId),
+    ]);
+    return (
+      <ModuloIniziale
+        key={bozza?.id ?? "nuova"}
+        canManageContracts={canManageContracts}
+        bozza={bozza}
+        bozze={bozze}
+      />
+    );
+  }
 
   const scheda = await getWaiterScheda(ctx.venueId, searchParams.id);
   if (!scheda) notFound();
@@ -80,6 +99,17 @@ export default async function NuovaPersonaPage({
   const persona = aPersonaDTO(scheda);
   const contratti = aContrattiDTO(scheda);
   const nome = `${scheda.firstName} ${scheda.lastName}`;
+  const documenti = aDocumentiDTO(scheda);
+  const corsi = aCorsiDTO(scheda);
+  /*
+    I documenti obbligatori sono obbligatori anche qui: dal passo Documenti
+    non si va avanti finché ne manca uno. Chi non li ha sotto mano usa
+    «Salva ed esci» e li carica dalla scheda.
+  */
+  const mancanti =
+    passo === "documenti" && canManageContracts
+      ? verificaDocumenti(persona, documenti, corsi).filter((r) => r.stato !== "ok")
+      : [];
 
   const [responsabili, invito] = await Promise.all([
     passo === "lavoro" ? listPossibiliResponsabili(ctx.venueId, scheda.id) : Promise.resolve([]),
@@ -97,9 +127,26 @@ export default async function NuovaPersonaPage({
           </Link>
         ) : null
       }
-      nota={successivo ? "Ogni sezione si salva da sé: puoi saltarla e tornarci dalla scheda." : null}
+      nota={
+        mancanti.length
+          ? `Per andare avanti manca: ${mancanti.map((r) => r.label.toLowerCase()).join(", ")}.`
+          : successivo
+            ? "Ogni sezione si salva da sé: puoi saltarla e tornarci dalla scheda."
+            : null
+      }
     >
-      {successivo ? (
+      {successivo && (
+        // Da qui ogni sezione si salva da sola: «Salva» chiude la
+        // registrazione e porta alla scheda, dove si completa il resto.
+        <Link href={scheda_url} className={CLASSE_INDIETRO}>
+          <Save className="h-4 w-4" aria-hidden="true" /> Salva ed esci
+        </Link>
+      )}
+      {successivo && mancanti.length > 0 ? (
+        <span aria-disabled="true" className={`${CLASSE_AVANTI} pointer-events-none opacity-50`}>
+          Avanti <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </span>
+      ) : successivo ? (
         <Link href={qui(successivo)} scroll={false} className={CLASSE_AVANTI}>
           Avanti <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </Link>
@@ -146,10 +193,10 @@ export default async function NuovaPersonaPage({
             />
           )}
           {passo === "documenti" && (
-            <Documenti persona={persona} documenti={aDocumentiDTO(scheda)} contratti={contratti} canManage={canManageContracts} />
+            <Documenti persona={persona} documenti={documenti} contratti={contratti} corsi={corsi} canManage={canManageContracts} />
           )}
           {passo === "formazione" && (
-            <Formazione persona={persona} corsi={aCorsiDTO(scheda)} visite={aVisiteDTO(scheda)} canEdit />
+            <Formazione persona={persona} corsi={corsi} visite={aVisiteDTO(scheda)} canEdit />
           )}
           {passo === "account" &&
             (!canManageVenue ? (

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Eye, FileText, FolderOpen, Image as ImageIcon, MoreHorizontal, Pencil, Trash2, Upload } from "lucide-react";
+import { Check, CircleAlert, Download, Eye, FileText, FolderOpen, Image as ImageIcon, ListChecks, MoreHorizontal, Pencil, Trash2, Upload } from "lucide-react";
 import type { StaffDocumentCategory } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,8 @@ import {
 import { staffContractTypeLabel } from "@/lib/staff-contracts";
 import { formatNumber } from "@/lib/utils";
 import { CampoModulo, Sezione } from "./sezione";
-import type { ContrattoDTO, DocumentoDTO, PersonaDTO } from "./tipi";
+import { verificaDocumenti, type DocumentoRichiesto } from "@/lib/documenti-obbligatori";
+import type { ContrattoDTO, CorsoDTO, DocumentoDTO, PersonaDTO } from "./tipi";
 
 const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -52,6 +53,15 @@ function controllaFile(file: File): string | null {
 
 type Meta = { name: string; category: StaffDocumentCategory; expiresAt: string; notes: string };
 
+/** Un documento obbligatorio da caricare: categoria e nome già scelti. */
+type Preimpostato = Pick<DocumentoRichiesto, "categoria" | "label" | "conScadenza">;
+
+/** I tipi di «Altri documenti»: quelli che non sono fra gli obbligatori. Il
+ *  contratto si carica dalla linguetta Lavoro, col contratto stesso. */
+const ALTRE_CATEGORIE = CATEGORIE_DOCUMENTO.filter((c) =>
+  (["BUSTA_PAGA", "CERTIFICAZIONE", "ATTESTATO", "CERTIFICATO_MEDICO", "ALTRO"] as StaffDocumentCategory[]).includes(c.value),
+);
+
 /**
  * I documenti della persona: un archivio, non un elenco di allegati.
  *
@@ -70,16 +80,21 @@ export function Documenti({
   persona,
   documenti,
   contratti,
+  corsi = [],
   canManage,
 }: {
   persona: PersonaDTO;
   documenti: DocumentoDTO[];
   contratti: ContrattoDTO[];
+  /** Per l'HACCP: vale anche l'attestato caricato col corso in Formazione. */
+  corsi?: CorsoDTO[];
   canManage: boolean;
 }) {
   const router = useRouter();
   const avvisi = useAvvisi();
   const [caricaAperto, setCaricaAperto] = useState(false);
+  const [preimpostato, setPreimpostato] = useState<Preimpostato | null>(null);
+  const [categoriaLibera, setCategoriaLibera] = useState<StaffDocumentCategory>("ALTRO");
   const [inModifica, setInModifica] = useState<DocumentoDTO | null>(null);
   const [daEliminare, setDaEliminare] = useState<DocumentoDTO | null>(null);
   const [anteprima, setAnteprima] = useState<{ url: string; nome: string; mime: string } | null>(null);
@@ -97,6 +112,61 @@ export function Documenti({
 
   const contrattiConDocumento = contratti.filter((c) => c.document);
   const oggi = new Date();
+  const richiesti = verificaDocumenti(persona, documenti, corsi, oggi);
+  const caricati = richiesti.filter((r) => r.stato === "ok").length;
+  // I documenti che compaiono fra gli obbligatori non si ripetono sotto.
+  const usati = new Set(richiesti.map((r) => r.documento?.id).filter(Boolean));
+  const altri = documenti.filter((d) => !usati.has(d.id));
+
+  function apriCarica(p: Preimpostato | null, categoria: StaffDocumentCategory = "ALTRO") {
+    setPreimpostato(p);
+    setCategoriaLibera(categoria);
+    setCaricaAperto(true);
+  }
+
+  function rigaDocumento(d: DocumentoDTO, nome?: string, extra?: React.ReactNode) {
+    const url = `/api/waiters/${persona.id}/documents/${d.id}`;
+    return (
+      <RigaDocumento
+        key={d.id}
+        nome={nome ?? d.name}
+        categoria={nome ? d.name : categoriaDocumentoLabel(d.category)}
+        mime={d.mimeType}
+        file={d.originalFileName}
+        peso={d.fileSize}
+        caricatoIl={d.createdAt}
+        scadeIl={d.expiresAt}
+        oggi={oggi}
+        onVedi={() => setAnteprima({ url, nome: d.originalFileName, mime: d.mimeType })}
+        urlScarica={`${url}?download=1`}
+        extra={extra}
+        menu={menuDocumento(d)}
+      />
+    );
+  }
+
+  function menuDocumento(d: DocumentoDTO) {
+    return (
+      <>
+            <DropdownMenuItem onSelect={() => setInModifica(d)}>
+              <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica nome e scadenza
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                setSostituisco(d.id);
+                // Il click sull'input deve partire dopo che il menu ha chiuso.
+                window.setTimeout(() => sostituisciRef.current?.click(), 0);
+              }}
+            >
+              <Upload className="h-4 w-4" aria-hidden="true" /> Sostituisci file
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setDaEliminare(d)} className="text-destructive-soft">
+              <Trash2 className="h-4 w-4" aria-hidden="true" /> Elimina
+            </DropdownMenuItem>
+      </>
+    );
+  }
 
   async function sostituisci(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -130,30 +200,102 @@ export function Documenti({
   return (
     <div className="space-y-5">
       <Sezione
-        id="documenti"
-        titolo="Documenti"
-        icona={FolderOpen}
+        id="documenti-obbligatori"
+        titolo="Documenti obbligatori"
+        icona={ListChecks}
         descrizione={
-          documenti.length === 0
-            ? "Carta d'identità, permesso di soggiorno, buste paga, attestati: tutto in un posto."
-            : `${documenti.length} ${documenti.length === 1 ? "documento caricato" : "documenti caricati"}${contrattiConDocumento.length ? `, più ${contrattiConDocumento.length === 1 ? "il contratto firmato" : `${contrattiConDocumento.length} contratti firmati`}` : ""}.`
-        }
-        azione={
-          <Button type="button" variant="accent" onClick={() => setCaricaAperto(true)}>
-            <Upload className="h-4 w-4" aria-hidden="true" /> Carica documento
-          </Button>
+          caricati === richiesti.length
+            ? "Ci sono tutti."
+            : `${caricati} di ${richiesti.length} caricati. Servono tutti per lavorare in regola.`
         }
       >
-        {documenti.length === 0 && contrattiConDocumento.length === 0 ? (
-          <div className="riquadro tratteggiato p-10 text-center">
-            <FileText className="mx-auto mb-3 h-8 w-8 text-tertiary-foreground" aria-hidden="true" />
-            <p className="text-base font-medium">Nessun documento caricato</p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-              PDF o immagini, fino a 10 MB. Con una data di scadenza, il documento compare fra le scadenze della Panoramica.
-            </p>
-          </div>
-        ) : (
-          <ul className="-mx-2 divide-y divide-border/60">
+        <ul className="space-y-2">
+          {richiesti.map((r) => {
+            const d = r.documento;
+            if (r.stato === "ok" && r.daFormazione && !d) {
+              return <RigaRichiesto key={r.chiave} titolo={r.label} stato="ok" sottotitolo="Caricato con il corso HACCP, in Formazione" />;
+            }
+            if (!d) {
+              return (
+                <RigaRichiesto
+                  key={r.chiave}
+                  titolo={r.label}
+                  stato="mancante"
+                  sottotitolo={r.descrizione}
+                  azioni={
+                    <Button type="button" variant="accent" size="sm" onClick={() => apriCarica(r)}>
+                      <Upload className="h-4 w-4" aria-hidden="true" /> Carica
+                    </Button>
+                  }
+                />
+              );
+            }
+            const scadenza = d.expiresAt ? new Date(d.expiresAt) : null;
+            const stato = r.stato === "scaduto" ? "scaduto" : scadenza && statoScadenza(scadenza, oggi) === "in_scadenza" ? "in_scadenza" : "ok";
+            const url = `/api/waiters/${persona.id}/documents/${d.id}`;
+            return (
+              <RigaRichiesto
+                key={r.chiave}
+                titolo={r.label}
+                stato={stato}
+                sottotitolo={
+                  scadenza
+                    ? stato === "scaduto"
+                      ? `Scaduto il ${dataBreve(scadenza)}`
+                      : `Valido fino al ${dataBreve(scadenza)}`
+                    : `Caricato il ${dataBreve(d.createdAt)}`
+                }
+                azioni={
+                  <>
+                    {stato === "scaduto" ? (
+                      <Button type="button" variant="accent" size="sm" onClick={() => apriCarica(r)}>
+                        <Upload className="h-4 w-4" aria-hidden="true" /> Carica il nuovo
+                      </Button>
+                    ) : (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setAnteprima({ url, nome: d.originalFileName, mime: d.mimeType })}>
+                        <Eye className="h-4 w-4" aria-hidden="true" /> Visualizza
+                      </Button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="ghost" size="icon" aria-label={`Altre azioni per ${r.label}`}>
+                          <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-60">
+                        {stato === "scaduto" && (
+                          <DropdownMenuItem onSelect={() => setAnteprima({ url, nome: d.originalFileName, mime: d.mimeType })}>
+                            <Eye className="h-4 w-4" aria-hidden="true" /> Visualizza
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem asChild>
+                          <a href={`${url}?download=1`} download={d.originalFileName}>
+                            <Download className="h-4 w-4" aria-hidden="true" /> Scarica
+                          </a>
+                        </DropdownMenuItem>
+                        {menuDocumento(d)}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                }
+              />
+            );
+          })}
+        </ul>
+      </Sezione>
+
+      <Sezione
+        id="documenti"
+        titolo="Altri documenti"
+        icona={FolderOpen}
+        descrizione={
+          altri.length === 0 && contrattiConDocumento.length === 0
+            ? "Facoltativi. PDF o immagini, fino a 10 MB."
+            : `${altri.length + contrattiConDocumento.length} caricati. PDF o immagini, fino a 10 MB.`
+        }
+      >
+        {(altri.length > 0 || contrattiConDocumento.length > 0) && (
+          <ul className="-mx-2 mb-3 divide-y divide-border/60">
             {contrattiConDocumento.map((c) => {
               const url = `/api/waiters/${persona.id}/contracts/${c.id}/document`;
               return (
@@ -173,52 +315,32 @@ export function Documenti({
                 />
               );
             })}
-            {documenti.map((d) => {
-              const url = `/api/waiters/${persona.id}/documents/${d.id}`;
-              return (
-                <RigaDocumento
-                  key={d.id}
-                  nome={d.name}
-                  categoria={categoriaDocumentoLabel(d.category)}
-                  mime={d.mimeType}
-                  file={d.originalFileName}
-                  peso={d.fileSize}
-                  caricatoIl={d.createdAt}
-                  scadeIl={d.expiresAt}
-                  oggi={oggi}
-                  onVedi={() => setAnteprima({ url, nome: d.originalFileName, mime: d.mimeType })}
-                  urlScarica={`${url}?download=1`}
-                  menu={
-                    <>
-                      <DropdownMenuItem onSelect={() => setInModifica(d)}>
-                        <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica nome e scadenza
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setSostituisco(d.id);
-                          // Il click sull'input deve partire dopo che il menu ha chiuso.
-                          window.setTimeout(() => sostituisciRef.current?.click(), 0);
-                        }}
-                      >
-                        <Upload className="h-4 w-4" aria-hidden="true" /> Sostituisci file
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => setDaEliminare(d)} className="text-destructive-soft">
-                        <Trash2 className="h-4 w-4" aria-hidden="true" /> Elimina
-                      </DropdownMenuItem>
-                    </>
-                  }
-                />
-              );
-            })}
+            {altri.map((d) => rigaDocumento(d))}
           </ul>
         )}
+        {/* Uno per tipo, come gli obbligatori: si sceglie cosa caricare prima
+            del file, e il caricamento parte già con la categoria giusta. */}
+        <div className="flex flex-wrap gap-2">
+          {ALTRE_CATEGORIE.map((c) => (
+            <button
+              key={c.value}
+              type="button"
+              onClick={() => apriCarica(null, c.value)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/70 px-3.5 text-sm text-foreground/90 transition-colors hover:bg-veil-10"
+            >
+              <Upload className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" /> {c.label}
+            </button>
+          ))}
+        </div>
         <input ref={sostituisciRef} type="file" accept={ACCEPT} className="hidden" onChange={sostituisci} />
       </Sezione>
 
       <DialogoCarica
+        key={preimpostato?.categoria ?? `libero-${categoriaLibera}`}
         open={caricaAperto}
         onOpenChange={setCaricaAperto}
+        preimpostato={preimpostato}
+        categoriaIniziale={categoriaLibera}
         waiterId={persona.id}
         onFatto={() => {
           avvisi.mostra("Documento caricato");
@@ -299,6 +421,7 @@ function RigaDocumento({
   urlScarica,
   menu,
   nota,
+  extra,
 }: {
   nome: string;
   categoria: string;
@@ -312,17 +435,18 @@ function RigaDocumento({
   urlScarica: string;
   menu?: React.ReactNode;
   nota?: string;
+  extra?: React.ReactNode;
 }) {
   const scadenza = scadeIl ? new Date(scadeIl) : null;
   const stato = scadenza ? statoScadenza(scadenza, oggi) : null;
   return (
-    <li className="flex flex-col gap-3 px-2 py-4 sm:flex-row sm:items-center">
+    <li className="flex flex-col gap-2 px-2 py-2.5 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-veil-6 text-muted-foreground" aria-hidden="true">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-veil-6 text-muted-foreground" aria-hidden="true">
           {mime === "application/pdf" ? <FileText className="h-5 w-5" /> : <ImageIcon className="h-5 w-5" />}
         </span>
         <div className="min-w-0">
-          <p className="break-words text-base font-medium text-foreground md:text-lg">{nome}</p>
+          <p className="break-words text-base font-medium text-foreground">{nome}</p>
           <p className="text-sm text-muted-foreground">
             {categoria} · {tipoFile(mime)} · {pesoLeggibile(peso)} · caricato il {dataBreve(caricatoIl)}
           </p>
@@ -340,6 +464,7 @@ function RigaDocumento({
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
         {stato && <Badge tone={STATO_SCADENZA_TONE[stato]}>{STATO_SCADENZA_LABEL[stato]}</Badge>}
+        {extra}
         <Button type="button" variant="outline" size="sm" onClick={onVedi}>
           <Eye className="h-4 w-4" aria-hidden="true" /> Visualizza
         </Button>
@@ -398,16 +523,25 @@ function CampiMeta({ valori, onChange, idPrefix }: { valori: Meta; onChange: (m:
 function DialogoCarica({
   open,
   onOpenChange,
+  preimpostato,
+  categoriaIniziale = "ALTRO",
   waiterId,
   onFatto,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  /** Un documento obbligatorio: nome e categoria fissi, scadenza richiesta se ce l'ha. */
+  preimpostato: Preimpostato | null;
+  /** Il tipo scelto da «Altri documenti»: il nome resta da scrivere. */
+  categoriaIniziale?: StaffDocumentCategory;
   waiterId: string;
   onFatto: () => void;
 }) {
+  const vuoto: Meta = preimpostato
+    ? { name: preimpostato.label, category: preimpostato.categoria, expiresAt: "", notes: "" }
+    : { name: "", category: categoriaIniziale, expiresAt: "", notes: "" };
   const [file, setFile] = useState<File | null>(null);
-  const [meta, setMeta] = useState<Meta>({ name: "", category: "ALTRO", expiresAt: "", notes: "" });
+  const [meta, setMeta] = useState<Meta>(vuoto);
   const [errore, setErrore] = useState<string | null>(null);
   const [inCorso, setInCorso] = useState(false);
   const [trascino, setTrascino] = useState(false);
@@ -425,7 +559,7 @@ function DialogoCarica({
   function chiudi(o: boolean) {
     if (!o) {
       setFile(null);
-      setMeta({ name: "", category: "ALTRO", expiresAt: "", notes: "" });
+      setMeta(vuoto);
       setErrore(null);
     }
     onOpenChange(o);
@@ -435,6 +569,7 @@ function DialogoCarica({
     e.preventDefault();
     if (!file) return setErrore("Scegli un file da caricare.");
     if (!meta.name.trim()) return setErrore("Dai un nome al documento.");
+    if (preimpostato?.conScadenza && !meta.expiresAt) return setErrore("Inserisci la data di scadenza del documento.");
     setInCorso(true);
     setErrore(null);
     const fd = new FormData();
@@ -454,7 +589,7 @@ function DialogoCarica({
     <Dialog open={open} onOpenChange={chiudi}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Carica un documento</DialogTitle>
+          <DialogTitle>{preimpostato ? `Carica: ${preimpostato.label}` : "Carica un documento"}</DialogTitle>
           <DialogDescription>PDF, JPG, PNG o WebP, fino a 10 MB.</DialogDescription>
         </DialogHeader>
         <form onSubmit={invia} className="space-y-4" noValidate>
@@ -493,7 +628,17 @@ function DialogoCarica({
             )}
             <input ref={inputRef} type="file" accept={ACCEPT} className="hidden" onChange={(e) => scegli(e.target.files?.[0])} />
           </div>
-          <CampiMeta valori={meta} onChange={setMeta} idPrefix="nuovo" />
+          {preimpostato ? (
+            <CampoModulo
+              etichetta={preimpostato.conScadenza ? "Data di scadenza *" : "Data di scadenza"}
+              htmlFor="nuovo-expiresAt"
+              nota={preimpostato.conScadenza ? "Prima che scada, compare fra le scadenze della Panoramica." : "Facoltativa."}
+            >
+              <Input id="nuovo-expiresAt" type="date" value={meta.expiresAt} onChange={(e) => setMeta({ ...meta, expiresAt: e.target.value })} />
+            </CampoModulo>
+          ) : (
+            <CampiMeta valori={meta} onChange={setMeta} idPrefix="nuovo" />
+          )}
           {errore && <p className="text-sm text-destructive-soft">{errore}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => chiudi(false)} disabled={inCorso}>
@@ -566,5 +711,74 @@ function DialogoMeta({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const STILE_STATO = {
+  ok: {
+    icona: "bg-[hsl(var(--turno-sala))] text-white",
+    riga: "border-border/50 bg-card/60",
+    pillola: "bg-[hsl(var(--turno-sala)/0.12)] text-[hsl(var(--turno-sala))]",
+    testo: "Caricato",
+  },
+  in_scadenza: {
+    icona: "bg-accent-strong text-white",
+    riga: "border-border/50 bg-card/60",
+    pillola: "bg-accent/15 text-accent-strong",
+    testo: "In scadenza",
+  },
+  scaduto: {
+    icona: "bg-destructive text-white",
+    riga: "border-destructive/30 bg-destructive/5",
+    pillola: "bg-destructive/10 text-destructive-soft",
+    testo: "Scaduto",
+  },
+  mancante: {
+    icona: "border-2 border-dashed border-accent-strong/60 text-accent-strong",
+    riga: "border-dashed border-accent-strong/40 bg-accent/5",
+    pillola: "bg-accent/15 text-accent-strong",
+    testo: "Da caricare",
+  },
+} as const;
+
+/**
+ * Una riga degli obbligatori. Dice solo quello che serve a colpo d'occhio:
+ * cosa, se c'è (il pallino e la pillola), e fino a quando vale. Tipo e peso
+ * del file, il nome ripetuto, il conto dei giorni stanno nell'anteprima e
+ * nel menu, non qui. Quelli da caricare si staccano: bordo tratteggiato,
+ * fondo caldo, «Carica» pieno.
+ */
+function RigaRichiesto({
+  titolo,
+  stato,
+  sottotitolo,
+  azioni,
+}: {
+  titolo: string;
+  stato: keyof typeof STILE_STATO;
+  sottotitolo: string;
+  azioni?: React.ReactNode;
+}) {
+  const st = STILE_STATO[stato];
+  return (
+    <li className={`flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5 ${st.riga}`}>
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${st.icona}`} aria-hidden="true">
+        {stato === "mancante" ? (
+          <Upload className="h-3.5 w-3.5" />
+        ) : stato === "ok" ? (
+          <Check className="h-4 w-4" strokeWidth={2.5} />
+        ) : (
+          <CircleAlert className="h-4 w-4" />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base font-medium text-foreground">
+          {titolo}
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.pillola}`}>{st.testo}</span>
+        </p>
+        <p className="truncate text-sm text-muted-foreground">{sottotitolo}</p>
+      </div>
+      {azioni && <div className="flex shrink-0 items-center gap-1">{azioni}</div>}
+    </li>
   );
 }

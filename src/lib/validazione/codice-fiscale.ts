@@ -105,13 +105,26 @@ export function datiDaCf(raw: string): { anno: string; mese: number; giorno: num
 
 /**
  * Cosa del codice fiscale (già valido) non torna con cognome, nome, data di
- * nascita e sesso scritti nella scheda: vuoto se torna tutto, o se mancano i dati
- * per confrontare. Il comune di nascita non si controlla: servirebbe la
- * tabella dei codici catastali.
+ * nascita, sesso e comune di nascita scritti nella scheda: vuoto se torna
+ * tutto, o se mancano i dati per confrontare. Il comune si controlla solo se
+ * chi chiama conosce il suo codice catastale (vedi `server/codici-catastali.ts`).
  */
 export function incoerenzeCf(
   raw: string,
-  { cognome, nome, dataNascita, sesso }: { cognome?: string; nome?: string; dataNascita?: string; sesso?: string },
+  {
+    cognome,
+    nome,
+    dataNascita,
+    sesso,
+    codiceComune,
+  }: {
+    cognome?: string;
+    nome?: string;
+    dataNascita?: string;
+    sesso?: string;
+    /** Il codice catastale del luogo di nascita («L219»), se si conosce. */
+    codiceComune?: string | null;
+  },
 ): string[] {
   const cf = normalizzaCf(raw);
   const diverse: string[] = [];
@@ -122,6 +135,9 @@ export function incoerenzeCf(
   if (nascita && data && (data[1].slice(2) !== nascita.anno || Number(data[2]) !== nascita.mese || Number(data[3]) !== nascita.giorno))
     diverse.push("data di nascita");
   if (nascita && (sesso === "M" || sesso === "F") && nascita.sesso !== sesso) diverse.push("sesso");
+  // Posizioni 12-15: il comune (o lo Stato estero, «Z…»). Le cifre possono
+  // essere lettere per omocodia, per questo si confronta il codice ripulito.
+  if (codiceComune && senzaOmocodia(cf).slice(11, 15) !== codiceComune.toUpperCase()) diverse.push("luogo di nascita");
   return diverse;
 }
 

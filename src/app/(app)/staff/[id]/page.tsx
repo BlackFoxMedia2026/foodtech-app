@@ -145,7 +145,7 @@ export default async function SchedaDipendentePage({
             />
           )}
           {tab === "documenti" && (
-            <Documenti persona={persona} documenti={documenti} contratti={contratti} canManage={canManageContracts} />
+            <Documenti persona={persona} documenti={documenti} contratti={contratti} corsi={corsi} canManage={canManageContracts} />
           )}
           {tab === "formazione" && <Formazione persona={persona} corsi={corsi} visite={visite} canEdit={canManageStaff} />}
           {tab === "presenze" && presenze && <Presenze riepilogo={presenze} oggi={oggi} />}

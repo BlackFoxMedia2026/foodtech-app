@@ -164,9 +164,11 @@ export function eTabScheda(valore: string | undefined): valore is TabScheda {
 
 export const CATEGORIE_DOCUMENTO: { value: StaffDocumentCategory; label: string }[] = [
   { value: "CONTRATTO", label: "Contratto di lavoro" },
-  { value: "CARTA_IDENTITA", label: "Carta d'identità" },
+  { value: "CARTA_IDENTITA", label: "Documento di identità" },
   { value: "CODICE_FISCALE", label: "Codice fiscale" },
   { value: "PERMESSO_SOGGIORNO", label: "Permesso di soggiorno" },
+  { value: "SCHEDA_ANAGRAFICA", label: "Scheda anagrafica professionale" },
+  { value: "ATTESTATO_HACCP", label: "Attestato HACCP" },
   { value: "CERTIFICAZIONE", label: "Certificazione" },
   { value: "ATTESTATO", label: "Attestato" },
   { value: "CERTIFICATO_MEDICO", label: "Certificato medico" },

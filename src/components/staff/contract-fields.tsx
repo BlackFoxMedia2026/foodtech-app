@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ROLE_OPTIONS_BY_DEPARTMENT } from "@/lib/staff-departments";
 import { Badge } from "@/components/ui/badge";
 import type { ContractFormErrors, ContractFormValues } from "@/lib/contract-form";
 import { CONTRACT_STATUS_BADGE_TONE, CONTRACT_STATUS_LABELS, STAFF_CONTRACT_TYPES, getContractStatus, getContractStatusDetail } from "@/lib/staff-contracts";
@@ -102,11 +104,10 @@ export function ContractFields({
       </div>
       <div className="space-y-1.5">
         <Label htmlFor={`${idPrefix}-contractualRole`}>Mansione contrattuale</Label>
-        <Input
+        <CampoMansione
           id={`${idPrefix}-contractualRole`}
-          placeholder="Es. Chef de rang"
-          value={value.contractualRole}
-          onChange={(e) => onChange({ ...value, contractualRole: e.target.value })}
+          valore={value.contractualRole}
+          onCambia={(contractualRole) => onChange({ ...value, contractualRole })}
         />
       </div>
 
@@ -186,5 +187,67 @@ export function ContractFields({
         />
       </div>
     </div>
+  );
+}
+
+const ALTRA = "__altra";
+const MANSIONI = new Set(ROLE_OPTIONS_BY_DEPARTMENT.flatMap((g) => g.roles.map((r) => r.label)));
+
+/**
+ * La mansione del contratto: una tendina con i ruoli del personale, divisi
+ * per reparto, invece di un testo libero — «Chef de rang», «chef de rang» e
+ * «Chef di rango» erano tre mansioni diverse. Per quello che non c'è
+ * («Altra mansione…») si scrive a mano; un contratto già salvato con una
+ * mansione fuori elenco si apre direttamente così, senza perderla.
+ */
+function CampoMansione({ id, valore, onCambia }: { id: string; valore: string; onCambia: (v: string) => void }) {
+  const [aMano, setAMano] = useState(() => !!valore.trim() && !MANSIONI.has(valore.trim()));
+
+  if (aMano) {
+    return (
+      <div className="flex gap-2">
+        <Input id={id} autoFocus placeholder="Scrivi la mansione" value={valore} onChange={(e) => onCambia(e.target.value)} />
+        <button
+          type="button"
+          onClick={() => {
+            setAMano(false);
+            if (!MANSIONI.has(valore.trim())) onCambia("");
+          }}
+          className="shrink-0 rounded-full px-3 text-sm text-muted-foreground hover:bg-veil-10 hover:text-foreground"
+        >
+          Elenco
+        </button>
+      </div>
+    );
+  }
+  return (
+    <Select
+      value={MANSIONI.has(valore) ? valore : undefined}
+      onValueChange={(v) => {
+        if (v === ALTRA) {
+          setAMano(true);
+          onCambia("");
+        } else onCambia(v);
+      }}
+    >
+      <SelectTrigger id={id}>
+        <SelectValue placeholder="Scegli la mansione" />
+      </SelectTrigger>
+      <SelectContent>
+        {ROLE_OPTIONS_BY_DEPARTMENT.map((g) => (
+          <SelectGroup key={g.department}>
+            <SelectLabel>{g.label}</SelectLabel>
+            {g.roles.map((r) => (
+              <SelectItem key={r.value} value={r.label}>
+                {r.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+        <SelectGroup>
+          <SelectItem value={ALTRA}>Altra mansione…</SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 }

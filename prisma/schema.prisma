@@ -385,6 +385,7 @@ model Venue {
   members                      VenueMembership[]
   invites                      VenueInvite[]
   waiters                      Waiter[]
+  staffBozze                   StaffBozza[]
   waiterAssignments            WaiterAssignment[]
   staffAssignments             StaffAssignment[]
   workShifts                   WorkShift[]
@@ -430,6 +431,26 @@ model Venue {
 /// Il link si consegna a mano — si copia e si manda su WhatsApp, o si legge a
 /// voce a chi è nella stanza accanto — perché l'email di Tavolo è spenta e una
 /// funzione che dipende da una chiave che non c'è è una funzione che non c'è.
+/// Una registrazione di «Nuova persona» lasciata a metà con «Salva», da
+/// riprendere dopo. Vive solo prima che la persona esista: con «Registra»
+/// diventa un Waiter e la bozza si cancella.
+model StaffBozza {
+  id          String   @id @default(cuid())
+  venueId     String
+  /// I campi scritti fin lì, come li tiene il modulo (staff-bozze.ts).
+  dati        Json
+  /// Il sotto-passo da cui riprendere: «contatti», «residenza»…
+  passo       String
+  /// Nome e cognome, per riconoscerla nell'elenco. Vuoto se non scritti.
+  nome        String   @default("")
+  creataDa    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, updatedAt])
+}
+
 model VenueInvite {
   id         String    @id @default(cuid())
   venueId    String
@@ -2362,6 +2383,11 @@ enum StaffDocumentCategory {
   CERTIFICATO_MEDICO
   BUSTA_PAGA
   ALTRO
+  /// La scheda anagrafica professionale del Centro per l'impiego.
+  SCHEDA_ANAGRAFICA
+  /// L'attestato HACCP caricato fra i documenti obbligatori (quello di un
+  /// corso in Formazione resta ATTESTATO, collegato al corso).
+  ATTESTATO_HACCP
 }
 
 model StaffDocument {
