@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { ChefHat, Martini, Search, ShieldCheck, SlidersHorizontal, Users, UtensilsCrossed } from "lucide-react";
 import type { StaffCapability, StaffDepartment, StaffPrimaryRole, WaiterStatus, WorkShiftKind } from "@prisma/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { NewStaffDialog } from "@/components/staff/new-staff-dialog";
+import { NuovaPersonaPulsante } from "@/components/staff/nuova-persona-pulsante";
 import { StaffRow } from "@/components/staff/staff-row";
 import { StaffSwitch } from "@/components/staff/staff-switch";
 import { BarraLaterale } from "@/components/staff/calendario/barra-laterale";
@@ -47,7 +47,6 @@ export function StaffPageClient({
   tables,
   serviceOptions,
   canManageStaff,
-  canManageContracts,
   assignmentSummaryByStaffId,
   avvisiPerPersona,
   giorno,
@@ -60,7 +59,6 @@ export function StaffPageClient({
   tables: { id: string; label: string; seats: number }[];
   serviceOptions: string[];
   canManageStaff: boolean;
-  canManageContracts: boolean;
   assignmentSummaryByStaffId: Record<string, string>;
   /** L'avviso di scadenza per persona — contratto, visita medica, corsi,
    * documenti — solo per chi ne ha uno scaduto o vicino. */
@@ -105,7 +103,7 @@ export function StaffPageClient({
             {...barraProps}
             azione={
               canManageStaff ? (
-                <NewStaffDialog canManageContracts={canManageContracts} className="w-full" />
+                <NuovaPersonaPulsante className="w-full" />
               ) : undefined
             }
           />
@@ -145,7 +143,7 @@ export function StaffPageClient({
 
             {canManageStaff && (
               <div className="ml-auto">
-                <NewStaffDialog canManageContracts={canManageContracts} />
+                <NuovaPersonaPulsante />
               </div>
             )}
           </div>

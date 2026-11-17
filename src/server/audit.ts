@@ -101,6 +101,7 @@ export type AuditAction =
   | "waiter.note_create"
   | "waiter.note_delete"
   | "waiter.account_invite"
+  | "waiter.account_invite_email"
   | "waiter.account_email"
   | "waiter.account_password"
   | "waiter.account_reset_link"

@@ -3,6 +3,9 @@ import { fieldDiff, recordAudit, type AuditActor } from "./audit";
 import { StaffCapability, StaffDepartment, StaffPrimaryRole, WaiterStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { staffPrimaryRoleLabel } from "@/lib/staff-roles";
+import { normalizzaIban, validaIban } from "@/lib/validazione/iban";
+import { validaCodiceFiscale } from "@/lib/validazione/codice-fiscale";
+import { ApiError } from "@/lib/api-auth";
 
 export const WAITER_ROLES = [
   "Cameriere",
@@ -54,6 +57,14 @@ export const WaiterInput = z.object({
   province: z.string().trim().toUpperCase().max(8).nullable().optional(),
   emergencyContactName: testo(120),
   emergencyContactPhone: testo(40),
+  /** Il conto per stipendio e rimborsi: si salva normalizzato, il controllo
+   * formale sta in `controllaCodici`. */
+  iban: z
+    .string()
+    .transform((v) => normalizzaIban(v))
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .optional(),
   /** Le caratteristiche: tag liberi, senza doppioni e senza vuoti. */
   skills: z
     .array(z.string().trim().min(1).max(40))
@@ -178,8 +189,31 @@ export async function listPossibiliResponsabili(venueId: string, escludiId: stri
   });
 }
 
+/**
+ * Codice fiscale e IBAN: il controllo formale, lo stesso di Note Spese.
+ *
+ * In modifica si controlla **solo quello che cambia**: le schede esistenti
+ * possono avere un codice scritto prima che il controllo ci fosse, e chi
+ * corregge il telefono non deve trovarsi bloccato da un codice fiscale che
+ * non ha toccato.
+ */
+function controllaCodici(
+  data: { fiscalCode?: string | null; iban?: string | null },
+  prima?: { fiscalCode: string | null; iban: string | null },
+) {
+  if (data.fiscalCode && data.fiscalCode !== prima?.fiscalCode) {
+    const esito = validaCodiceFiscale(data.fiscalCode);
+    if (!esito.valido) throw new ApiError(422, "invalid_fiscal_code", `Codice fiscale: ${esito.errore}`);
+  }
+  if (data.iban && data.iban !== prima?.iban) {
+    const esito = validaIban(data.iban);
+    if (!esito.valido) throw new ApiError(422, "invalid_iban", `IBAN: ${esito.errore}`);
+  }
+}
+
 export async function createWaiter(venueId: string, raw: unknown, actor?: AuditActor) {
   const data = WaiterInput.parse(raw);
+  controllaCodici(data);
   const role = resolveRole(data);
   if (!role) throw new Error("role_required");
   const created = await db.waiter.create({ data: { venueId, ...data, role } });
@@ -194,6 +228,7 @@ export async function updateWaiter(venueId: string, id: string, raw: unknown, ac
   const data = WaiterUpdateInput.parse(raw);
   const existing = await db.waiter.findFirst({ where: { id, venueId } });
   if (!existing) throw new Error("not_found");
+  controllaCodici(data, existing);
   // Il responsabile deve essere di questo locale e non la persona stessa: il
   // locale lo decide la sessione, mai il corpo della richiesta.
   if (data.managerId) {

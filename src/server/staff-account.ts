@@ -7,6 +7,7 @@ import { eSuperAdmin } from "@/lib/super-admin";
 import { coincideConPreset } from "@/lib/scheda-dipendente";
 import { recordAudit, type AuditActor } from "./audit";
 import { invitaAlTeam } from "./team";
+import { inviaEmailInvitoStaff, type EsitoInvioInvito } from "./email-invito-staff";
 
 /**
  * L'account con cui una persona dell'organico entra in Tavolo.
@@ -122,6 +123,9 @@ function hashToken(token: string) {
 export const CreaAccessoInput = z.object({
   email: z.string().trim().toLowerCase().email().max(200).optional(),
   role: z.nativeEnum(StaffRole),
+  /** Mandare l'invito per email. Di serie sì: chi crea un accesso vuole che
+   * la persona lo riceva, non un link da copiare. */
+  inviaEmail: z.boolean().default(true),
 });
 
 /**
@@ -138,7 +142,9 @@ export async function creaAccesso(
   raw: unknown,
   baseUrl: string,
   actor?: AuditActor,
-): Promise<{ collegato: true } | { collegato: false; link: string; scadeIl: Date; email: string }> {
+): Promise<
+  { collegato: true } | { collegato: false; link: string; scadeIl: Date; email: string; email_invito: EsitoInvioInvito | "non_richiesta" }
+> {
   const persona = await personaConAccount(venueId, waiterId);
   if (persona.userId) throw new AccountError("ha_gia_account");
   const data = CreaAccessoInput.parse(raw);
@@ -164,7 +170,25 @@ export async function creaAccesso(
 
   const invito = await invitaAlTeam(venueId, { email, role: data.role }, baseUrl, actor);
   await recordAudit(actor, "waiter.account_invite", "waiter", waiterId, { email, ruolo: data.role, scadeIl: invito.scadeIl.toISOString() });
-  return { collegato: false, link: invito.link, scadeIl: invito.scadeIl, email };
+
+  // L'email con «Configura password». Se non parte, l'accesso resta creato
+  // e il link si vede nella scheda: chi chiama dice quale dei due è successo.
+  let esitoEmail: EsitoInvioInvito | "non_richiesta" = "non_richiesta";
+  if (data.inviaEmail) {
+    const locale = await db.venue.findUnique({ where: { id: venueId }, select: { name: true } });
+    esitoEmail = await inviaEmailInvitoStaff({
+      email,
+      nome: persona.firstName,
+      locale: locale?.name ?? "il tuo locale",
+      ruolo: persona.role || "membro del team",
+      link: invito.link,
+      scadeIl: invito.scadeIl,
+    });
+    if (esitoEmail === "inviata") {
+      await recordAudit(actor, "waiter.account_invite_email", "waiter", waiterId, { email });
+    }
+  }
+  return { collegato: false, link: invito.link, scadeIl: invito.scadeIl, email, email_invito: esitoEmail };
 }
 
 /** L'invito ancora aperto per questa persona, se c'è: la scheda lo mostra

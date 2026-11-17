@@ -2168,6 +2168,11 @@ model Waiter {
   province              String?             @db.VarChar(8)
   emergencyContactName  String?             @db.VarChar(120)
   emergencyContactPhone String?             @db.VarChar(40)
+  /// Il conto su cui ricevere lo stipendio e i rimborsi. Si salva normalizzato
+  /// (maiuscolo, senza spazi) e solo dopo il controllo formale in
+  /// lib/validazione/iban.ts: paese, lunghezza, cifra di controllo. Non dice
+  /// che il conto esista né di chi sia.
+  iban                  String?             @db.VarChar(34)
   /// Le caratteristiche: «Sommelier», «Inglese», «Apertura locale», «Auto
   /// propria». Testo libero e non enum, perché ogni locale ne inventa le sue;
   /// i suggerimenti stanno in lib/scheda-dipendente.ts. Diverse dalle

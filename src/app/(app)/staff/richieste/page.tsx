@@ -58,7 +58,6 @@ export default async function RichiestePage({ searchParams }: { searchParams: { 
       oggi={oggi}
       turniDelGiorno={turniDelGiorno.map((t) => ({ waiterId: t.waiterId, kind: t.kind }))}
       canManageStaff={can(ctx.role, "manage_staff")}
-      canManageContracts={can(ctx.role, "manage_contracts")}
     />
   );
 }

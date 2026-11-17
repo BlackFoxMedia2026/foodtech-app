@@ -43,6 +43,7 @@ export type PersonaDTO = {
   province: string | null;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
+  iban: string | null;
   skills: string[];
   managerId: string | null;
   manager: { id: string; nome: string; primaryRole: StaffPrimaryRole | null } | null;
@@ -160,6 +161,7 @@ export function aPersonaDTO(w: WaiterScheda): PersonaDTO {
     province: w.province,
     emergencyContactName: w.emergencyContactName,
     emergencyContactPhone: w.emergencyContactPhone,
+    iban: w.iban,
     skills: w.skills,
     managerId: w.managerId,
     manager: w.manager ? { id: w.manager.id, nome: `${w.manager.firstName} ${w.manager.lastName}`, primaryRole: w.manager.primaryRole } : null,

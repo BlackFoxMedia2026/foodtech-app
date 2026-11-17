@@ -5,7 +5,7 @@ import { SlidersHorizontal } from "lucide-react";
 import type { StaffDepartment, StaffPrimaryRole, WorkShiftKind } from "@prisma/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BarraLaterale } from "@/components/staff/calendario/barra-laterale";
-import { NewStaffDialog } from "@/components/staff/new-staff-dialog";
+import { NuovaPersonaPulsante } from "@/components/staff/nuova-persona-pulsante";
 import { RichiestePersonale } from "@/components/staff/richieste-personale";
 import { StaffSwitch } from "@/components/staff/staff-switch";
 import { filtriAttivi } from "@/components/staff/filtri-staff";
@@ -30,7 +30,6 @@ export function RichiestePagina({
   oggi,
   turniDelGiorno,
   canManageStaff,
-  canManageContracts,
 }: {
   richieste: Richiesta[];
   staff: {
@@ -43,7 +42,6 @@ export function RichiestePagina({
   oggi: string;
   turniDelGiorno: { waiterId: string; kind: WorkShiftKind }[];
   canManageStaff: boolean;
-  canManageContracts: boolean;
 }) {
   const { filtri, barraProps, passaFiltri } = useColonnaStaff({
     staff,
@@ -62,7 +60,7 @@ export function RichiestePagina({
 
   const conFiltri = filtriAttivi(filtri);
   const nuovaPersona = canManageStaff ? (
-    <NewStaffDialog canManageContracts={canManageContracts} className="w-full" />
+    <NuovaPersonaPulsante className="w-full" />
   ) : undefined;
 
   return (

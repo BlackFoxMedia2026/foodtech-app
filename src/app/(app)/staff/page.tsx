@@ -35,7 +35,6 @@ export default async function StaffPage({ searchParams }: { searchParams: { g?: 
   const giorno = searchParams.g && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.g) ? searchParams.g : oggi;
   const mode = ctx.venue.serviceAssignmentMode;
   const canManageStaff = can(ctx.role, "manage_staff");
-  const canManageContracts = can(ctx.role, "manage_contracts");
 
   const [waiters, rooms, tables, serviceOptions, todayAssignments, assegnazioniTavolo, avvisi, turniDelGiorno] = await Promise.all([
     listWaiters(ctx.venueId),
@@ -123,7 +122,6 @@ export default async function StaffPage({ searchParams }: { searchParams: { g?: 
       tables={tables}
       serviceOptions={serviceOptions}
       canManageStaff={canManageStaff}
-      canManageContracts={canManageContracts}
       assignmentSummaryByStaffId={riepilogoPerPersona}
       avvisiPerPersona={Object.fromEntries(avvisi)}
       giorno={giorno}

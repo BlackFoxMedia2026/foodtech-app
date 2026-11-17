@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Cake, Flag, HeartPulse, House, IdCard, Landmark, Mail, MapPin, Pencil, Phone, UserRound } from "lucide-react";
+import { Cake, CreditCard, Flag, HeartPulse, House, IdCard, Landmark, Mail, MapPin, Pencil, Phone, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAvvisi } from "@/components/ui/avvisi";
 import { useVenueToday } from "@/components/shell/venue-time-provider";
 import { readApiError } from "@/lib/api-client";
 import { calcolaEta, dataLunga, perCampoData } from "@/lib/scheda-dipendente";
+import { formattaIban, validaIban } from "@/lib/validazione/iban";
+import { validaCodiceFiscale } from "@/lib/validazione/codice-fiscale";
 import { Blocco, Contatto, Dischetto, Voce } from "./lettura";
 import { CampoModulo, GrigliaCampi, PiedeModifica, Sezione } from "./sezione";
 import type { PersonaDTO } from "./tipi";
@@ -28,6 +30,7 @@ type Valori = {
   email: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
+  iban: string;
 };
 
 type Errori = Partial<Record<keyof Valori, string>>;
@@ -48,6 +51,7 @@ function daPersona(p: PersonaDTO): Valori {
     email: p.email ?? "",
     emergencyContactName: p.emergencyContactName ?? "",
     emergencyContactPhone: p.emergencyContactPhone ?? "",
+    iban: p.iban ? formattaIban(p.iban) : "",
   };
 }
 
@@ -107,7 +111,15 @@ export function DatiPersonali({
     if (!valori.phone.trim()) err.phone = "Inserisci il numero di telefono.";
     else if (!telefonoValido(valori.phone)) err.phone = "Numero di telefono non valido.";
     if (valori.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valori.email)) err.email = "Indirizzo email non valido.";
-    if (valori.fiscalCode && !/^[A-Za-z0-9]{1,32}$/.test(valori.fiscalCode.trim())) err.fiscalCode = "Solo lettere e numeri.";
+    // Come sul server: si controlla solo quello che si è cambiato.
+    if (valori.fiscalCode.trim() && valori.fiscalCode.trim().toUpperCase() !== (persona.fiscalCode ?? "")) {
+      const cf = validaCodiceFiscale(valori.fiscalCode);
+      if (!cf.valido) err.fiscalCode = cf.errore;
+    }
+    if (valori.iban.trim() && formattaIban(valori.iban) !== (persona.iban ? formattaIban(persona.iban) : "")) {
+      const ib = validaIban(valori.iban);
+      if (!ib.valido) err.iban = ib.errore;
+    }
     if (valori.emergencyContactPhone && !telefonoValido(valori.emergencyContactPhone)) err.emergencyContactPhone = "Numero non valido.";
     if (Object.keys(err).length) {
       setErrori(err);
@@ -134,6 +146,7 @@ export function DatiPersonali({
         province: valori.province.trim() || null,
         emergencyContactName: valori.emergencyContactName,
         emergencyContactPhone: valori.emergencyContactPhone,
+        iban: valori.iban.trim() || null,
       }),
     });
     setSalvando(false);
@@ -186,6 +199,9 @@ export function DatiPersonali({
             </Voce>
             <Voce icona={Flag} etichetta="Nazionalità">
               {persona.nationality || null}
+            </Voce>
+            <Voce icona={CreditCard} etichetta="IBAN">
+              {persona.iban ? <span className="font-mono text-[0.95em] tracking-wide">{formattaIban(persona.iban)}</span> : null}
             </Voce>
           </Blocco>
 
@@ -321,6 +337,9 @@ export function DatiPersonali({
               </CampoModulo>
               <CampoModulo etichetta="Email personale" htmlFor="email" errore={errori.email} nota="Facoltativa. Serve anche per creare l'accesso al gestionale.">
                 <Input id="email" type="email" value={valori.email} onChange={imposta("email")} aria-invalid={!!errori.email} />
+              </CampoModulo>
+              <CampoModulo etichetta="IBAN" htmlFor="iban" errore={errori.iban} nota="Per stipendio e rimborsi. Si controllano paese, lunghezza e cifra di controllo.">
+                <Input id="iban" value={valori.iban} onChange={imposta("iban")} className="font-mono uppercase" spellCheck={false} autoComplete="off" aria-invalid={!!errori.iban} />
               </CampoModulo>
             </GrigliaCampi>
           </div>

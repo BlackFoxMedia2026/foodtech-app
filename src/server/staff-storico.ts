@@ -123,6 +123,8 @@ function traduci(action: string, diff: Diff): { titolo: string; dettaglio: strin
       return { titolo: "Nota interna eliminata", dettaglio: null };
     case "waiter.account_invite":
       return { titolo: d.collegato ? "Account collegato" : "Invito all'accesso creato", dettaglio: s("email") };
+    case "waiter.account_invite_email":
+      return { titolo: "Invito inviato per email", dettaglio: s("email") };
     case "waiter.account_email":
       return { titolo: "Email di accesso cambiata", dettaglio: s("da") && s("a") ? `${s("da")} → ${s("a")}` : null };
     case "waiter.account_password":

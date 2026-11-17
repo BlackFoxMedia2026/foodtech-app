@@ -80,7 +80,7 @@ function SenzaAccount({ persona, canManage, invito }: { persona: PersonaDTO; can
   const [role, setRole] = useState<StaffRole>("WAITER");
   const [inCorso, setInCorso] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
-  const [linkCreato, setLinkCreato] = useState<{ link: string; scadeIl: string } | null>(null);
+  const [linkCreato, setLinkCreato] = useState<{ link: string; scadeIl: string; emailInviata: boolean } | null>(null);
 
   async function crea(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -101,7 +101,7 @@ function SenzaAccount({ persona, canManage, invito }: { persona: PersonaDTO; can
       router.refresh();
       return;
     }
-    setLinkCreato({ link: esito.link, scadeIl: esito.scadeIl });
+    setLinkCreato({ link: esito.link, scadeIl: esito.scadeIl, emailInviata: esito.email_invito === "inviata" });
     router.refresh();
   }
 
@@ -144,12 +144,16 @@ function SenzaAccount({ persona, canManage, invito }: { persona: PersonaDTO; can
           <DialogHeader>
             <DialogTitle>Crea l&apos;accesso</DialogTitle>
             <DialogDescription>
-              Nasce un link da consegnare alla persona: aprendolo sceglie la password. Vale una settimana e una volta sola.
+              Alla persona arriva un&apos;email con il pulsante «Configura password». Il link vale una settimana e una volta sola.
             </DialogDescription>
           </DialogHeader>
           {linkCreato ? (
             <div className="space-y-3">
-              <p className="text-sm text-foreground">Invito creato. Consegna questo link a {persona.firstName}:</p>
+              <p className="text-sm text-foreground">
+                {linkCreato.emailInviata
+                  ? `Invito inviato a ${email}: dall'email ${persona.firstName} configura la password. Se non la trova, questo è lo stesso link:`
+                  : `Invito creato, ma l'email non è partita. Consegna questo link a ${persona.firstName}:`}
+              </p>
               <LinkDaConsegnare link={linkCreato.link} />
               <div className="flex justify-end">
                 <Button type="button" variant="accent" onClick={() => setAperto(false)}>
