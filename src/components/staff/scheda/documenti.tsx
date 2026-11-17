@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CircleAlert, Download, Eye, FileText, FolderOpen, Image as ImageIcon, ListChecks, MoreHorizontal, Pencil, Trash2, Upload } from "lucide-react";
+import { Download, Eye, FileText, FolderOpen, Image as ImageIcon, ListChecks, MoreHorizontal, Pencil, Trash2, Upload } from "lucide-react";
 import type { StaffDocumentCategory } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { staffContractTypeLabel } from "@/lib/staff-contracts";
 import { formatNumber } from "@/lib/utils";
 import { CampoModulo, Sezione } from "./sezione";
 import { verificaDocumenti, type DocumentoRichiesto } from "@/lib/documenti-obbligatori";
+import { RigaStato } from "./riga-stato";
 import type { ContrattoDTO, CorsoDTO, DocumentoDTO, PersonaDTO } from "./tipi";
 
 const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
@@ -213,11 +214,11 @@ export function Documenti({
           {richiesti.map((r) => {
             const d = r.documento;
             if (r.stato === "ok" && r.daFormazione && !d) {
-              return <RigaRichiesto key={r.chiave} titolo={r.label} stato="ok" sottotitolo="Caricato con il corso HACCP, in Formazione" />;
+              return <RigaStato key={r.chiave} titolo={r.label} stato="ok" sottotitolo="Caricato con il corso HACCP, in Formazione" />;
             }
             if (!d) {
               return (
-                <RigaRichiesto
+                <RigaStato
                   key={r.chiave}
                   titolo={r.label}
                   stato="mancante"
@@ -234,7 +235,7 @@ export function Documenti({
             const stato = r.stato === "scaduto" ? "scaduto" : scadenza && statoScadenza(scadenza, oggi) === "in_scadenza" ? "in_scadenza" : "ok";
             const url = `/api/waiters/${persona.id}/documents/${d.id}`;
             return (
-              <RigaRichiesto
+              <RigaStato
                 key={r.chiave}
                 titolo={r.label}
                 stato={stato}
@@ -629,13 +630,16 @@ function DialogoCarica({
             <input ref={inputRef} type="file" accept={ACCEPT} className="hidden" onChange={(e) => scegli(e.target.files?.[0])} />
           </div>
           {preimpostato ? (
-            <CampoModulo
-              etichetta={preimpostato.conScadenza ? "Data di scadenza *" : "Data di scadenza"}
-              htmlFor="nuovo-expiresAt"
-              nota={preimpostato.conScadenza ? "Prima che scada, compare fra le scadenze della Panoramica." : "Facoltativa."}
-            >
-              <Input id="nuovo-expiresAt" type="date" value={meta.expiresAt} onChange={(e) => setMeta({ ...meta, expiresAt: e.target.value })} />
-            </CampoModulo>
+            // Codice fiscale e scheda anagrafica non scadono: niente data da chiedere.
+            preimpostato.conScadenza && (
+              <CampoModulo
+                etichetta="Data di scadenza *"
+                htmlFor="nuovo-expiresAt"
+                nota="Prima che scada, compare fra le scadenze della Panoramica."
+              >
+                <Input id="nuovo-expiresAt" type="date" value={meta.expiresAt} onChange={(e) => setMeta({ ...meta, expiresAt: e.target.value })} />
+              </CampoModulo>
+            )
           ) : (
             <CampiMeta valori={meta} onChange={setMeta} idPrefix="nuovo" />
           )}
@@ -711,74 +715,5 @@ function DialogoMeta({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-const STILE_STATO = {
-  ok: {
-    icona: "bg-[hsl(var(--turno-sala))] text-white",
-    riga: "border-border/50 bg-card/60",
-    pillola: "bg-[hsl(var(--turno-sala)/0.12)] text-[hsl(var(--turno-sala))]",
-    testo: "Caricato",
-  },
-  in_scadenza: {
-    icona: "bg-accent-strong text-white",
-    riga: "border-border/50 bg-card/60",
-    pillola: "bg-accent/15 text-accent-strong",
-    testo: "In scadenza",
-  },
-  scaduto: {
-    icona: "bg-destructive text-white",
-    riga: "border-destructive/30 bg-destructive/5",
-    pillola: "bg-destructive/10 text-destructive-soft",
-    testo: "Scaduto",
-  },
-  mancante: {
-    icona: "border-2 border-dashed border-accent-strong/60 text-accent-strong",
-    riga: "border-dashed border-accent-strong/40 bg-accent/5",
-    pillola: "bg-accent/15 text-accent-strong",
-    testo: "Da caricare",
-  },
-} as const;
-
-/**
- * Una riga degli obbligatori. Dice solo quello che serve a colpo d'occhio:
- * cosa, se c'è (il pallino e la pillola), e fino a quando vale. Tipo e peso
- * del file, il nome ripetuto, il conto dei giorni stanno nell'anteprima e
- * nel menu, non qui. Quelli da caricare si staccano: bordo tratteggiato,
- * fondo caldo, «Carica» pieno.
- */
-function RigaRichiesto({
-  titolo,
-  stato,
-  sottotitolo,
-  azioni,
-}: {
-  titolo: string;
-  stato: keyof typeof STILE_STATO;
-  sottotitolo: string;
-  azioni?: React.ReactNode;
-}) {
-  const st = STILE_STATO[stato];
-  return (
-    <li className={`flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5 ${st.riga}`}>
-      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${st.icona}`} aria-hidden="true">
-        {stato === "mancante" ? (
-          <Upload className="h-3.5 w-3.5" />
-        ) : stato === "ok" ? (
-          <Check className="h-4 w-4" strokeWidth={2.5} />
-        ) : (
-          <CircleAlert className="h-4 w-4" />
-        )}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base font-medium text-foreground">
-          {titolo}
-          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.pillola}`}>{st.testo}</span>
-        </p>
-        <p className="truncate text-sm text-muted-foreground">{sottotitolo}</p>
-      </div>
-      {azioni && <div className="flex shrink-0 items-center gap-1">{azioni}</div>}
-    </li>
   );
 }

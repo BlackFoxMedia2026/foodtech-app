@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, GraduationCap, Pencil, Plus, Stethoscope, Trash2, Upload } from "lucide-react";
+import { Eye, GraduationCap, MoreHorizontal, Pencil, Plus, Stethoscope, Trash2, Upload } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { StaffMedicalFitness, StaffTrainingKind } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Campo, CampoModulo, GrigliaCampi, Sezione } from "./sezione";
 import type { CorsoDTO, PersonaDTO, VisitaDTO } from "./tipi";
+import { RigaStato } from "./riga-stato";
 
 const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
 
@@ -317,11 +319,12 @@ function Corsi({ persona, corsi, canEdit }: { persona: PersonaDTO; corsi: CorsoD
         )
       }
     >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <ul className="space-y-2">
         {schede.map(({ tipo, corso }) => (
-          <CartaCorso
+          <RigaCorso
             key={tipo.value}
             titolo={tipo.label}
+            obbligatorio={tipo.obbligatorio}
             corso={corso}
             oggi={oggi}
             canEdit={canEdit}
@@ -332,9 +335,10 @@ function Corsi({ persona, corsi, canEdit }: { persona: PersonaDTO; corsi: CorsoD
           />
         ))}
         {altri.map((c) => (
-          <CartaCorso
+          <RigaCorso
             key={c.id}
             titolo={nomeCorso(c)}
+            obbligatorio={false}
             corso={c}
             oggi={oggi}
             canEdit={canEdit}
@@ -344,7 +348,7 @@ function Corsi({ persona, corsi, canEdit }: { persona: PersonaDTO; corsi: CorsoD
             onVedi={setAnteprima}
           />
         ))}
-      </div>
+      </ul>
 
       {dialogo && (
         <DialogoCorso
@@ -363,8 +367,15 @@ function Corsi({ persona, corsi, canEdit }: { persona: PersonaDTO; corsi: CorsoD
   );
 }
 
-function CartaCorso({
+/**
+ * Un corso in una riga, come i documenti obbligatori: pallino e pillola per
+ * lo stato, una riga sola di dettagli (fino a quando vale, quando è stato
+ * fatto, chi l'ha tenuto), l'attestato a un clic. Modifica, nuova edizione e
+ * attestato da sostituire stanno nel menu.
+ */
+function RigaCorso({
   titolo,
+  obbligatorio,
   corso,
   oggi,
   canEdit,
@@ -374,6 +385,7 @@ function CartaCorso({
   onVedi,
 }: {
   titolo: string;
+  obbligatorio: boolean;
   corso: CorsoDTO | null;
   oggi: Date;
   canEdit: boolean;
@@ -382,85 +394,109 @@ function CartaCorso({
   onModifica?: () => void;
   onVedi: (a: { url: string; nome: string; mime: string }) => void;
 }) {
-  const stato: StatoScadenza = corso ? statoScadenza(corso.expiresAt ? new Date(corso.expiresAt) : null, oggi) : "assente";
-  return (
-    <article
-      className={cn(
-        "riquadro flex flex-col gap-4 p-5",
-        stato === "scaduto" && "border-destructive/40",
-        stato === "in_scadenza" && "border-accent/50",
-        stato === "assente" && "tratteggiato",
-      )}
-    >
-      <header className="flex items-start justify-between gap-3">
-        <h3 className="text-lg font-medium leading-tight text-foreground md:text-xl">{titolo}</h3>
-        <Badge tone={STATO_SCADENZA_TONE[stato]} className="shrink-0">
-          {STATO_SCADENZA_LABEL[stato]}
-        </Badge>
-      </header>
+  const router = useRouter();
+  const avvisi = useAvvisi();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [inCorso, setInCorso] = useState(false);
 
-      {corso ? (
-        <>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <div>
-              <dt className="t-etichetta">Completato</dt>
-              <dd className="mt-0.5 text-base text-foreground">{corso.completedAt ? dataBreve(corso.completedAt) : <span className="text-tertiary-foreground">—</span>}</dd>
-            </div>
-            <div>
-              <dt className="t-etichetta">Scadenza</dt>
-              <dd className={cn("mt-0.5 text-base", stato === "scaduto" ? "text-destructive-soft" : stato === "in_scadenza" ? "text-accent-strong" : "text-foreground")}>
-                {corso.expiresAt ? dataBreve(corso.expiresAt) : <span className="text-tertiary-foreground">Nessuna</span>}
-              </dd>
-            </div>
-            {corso.provider && (
-              <div>
-                <dt className="t-etichetta">Ente formatore</dt>
-                <dd className="mt-0.5 text-base text-foreground">{corso.provider}</dd>
-              </div>
-            )}
-            {corso.certificateNumber && (
-              <div>
-                <dt className="t-etichetta">N. attestato</dt>
-                <dd className="mt-0.5 text-base tabular-nums text-foreground">{corso.certificateNumber}</dd>
-              </div>
-            )}
-          </dl>
-          <Allegato
-            etichetta="Attestato"
-            allegato={corso.certificate}
-            urlUpload={`/api/waiters/${waiterId}/training/${corso.id}/attestato`}
-            urlVedi={corso.certificate ? `/api/waiters/${waiterId}/documents/${corso.certificate.id}` : null}
-            nomeSuggerito={`Attestato ${titolo}`}
-            canEdit={canEdit}
-            onVedi={onVedi}
-            compatto
-          />
-          {canEdit && onModifica && (
-            <div className="mt-auto flex gap-2 border-t border-border/60 pt-3">
-              <Button type="button" variant="ghost" size="sm" onClick={onModifica}>
-                <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica
+  async function caricaAttestato(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !corso) return;
+    if (!ACCEPT.split(",").includes(file.type)) return avvisi.problema("Carica un file PDF, JPG, PNG o WebP.");
+    if (file.size > 10 * 1024 * 1024) return avvisi.problema("Il file supera i 10 MB.");
+    setInCorso(true);
+    const fd = new FormData();
+    fd.set("file", file);
+    fd.set("name", `Attestato ${titolo}`);
+    const res = await fetch(`/api/waiters/${waiterId}/training/${corso.id}/attestato`, { method: "POST", body: fd });
+    setInCorso(false);
+    if (!res.ok) return avvisi.problema(await readApiError(res, "Impossibile caricare il file."));
+    avvisi.mostra("Attestato caricato");
+    router.refresh();
+  }
+
+  if (!corso) {
+    return (
+      <RigaStato
+        titolo={titolo}
+        stato={obbligatorio ? "mancante" : "facoltativo"}
+        pillola={obbligatorio ? "Mancante" : "Facoltativo"}
+        sottotitolo={obbligatorio ? "Obbligatorio: registra il corso e carica l'attestato." : "Nessun corso registrato."}
+        azioni={
+          canEdit && (
+            <Button type="button" variant={obbligatorio ? "accent" : "ghost"} size="sm" onClick={onAggiungi}>
+              <Plus className="h-4 w-4" aria-hidden="true" /> Aggiungi
+            </Button>
+          )
+        }
+      />
+    );
+  }
+
+  const scadenza = corso.expiresAt ? new Date(corso.expiresAt) : null;
+  const stato = statoScadenza(scadenza, oggi);
+  const dettagli = [
+    scadenza ? (stato === "scaduto" ? `Scaduto il ${dataBreve(scadenza)}` : `Valido fino al ${dataBreve(scadenza)}`) : "Senza scadenza",
+    corso.completedAt ? `fatto il ${dataBreve(corso.completedAt)}` : null,
+    corso.provider,
+    corso.certificate ? null : "attestato da caricare",
+  ].filter(Boolean);
+  const urlAttestato = corso.certificate ? `/api/waiters/${waiterId}/documents/${corso.certificate.id}` : null;
+  const vediAttestato = () =>
+    corso.certificate && urlAttestato && onVedi({ url: urlAttestato, nome: corso.certificate.originalFileName, mime: corso.certificate.mimeType });
+
+  return (
+    <>
+      <RigaStato
+        titolo={titolo}
+        stato={stato === "scaduto" ? "scaduto" : stato === "in_scadenza" ? "in_scadenza" : "ok"}
+        pillola={stato === "valido" ? "Valido" : undefined}
+        sottotitolo={dettagli.join(" · ")}
+        azioni={
+          <>
+            {corso.certificate ? (
+              <Button type="button" variant="ghost" size="sm" onClick={vediAttestato}>
+                <Eye className="h-4 w-4" aria-hidden="true" /> Attestato
               </Button>
-              {corso.kind !== "ALTRO" && (
-                <Button type="button" variant="ghost" size="sm" onClick={onAggiungi}>
-                  <Plus className="h-4 w-4" aria-hidden="true" /> Nuova edizione
+            ) : (
+              canEdit && (
+                <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={inCorso}>
+                  <Upload className="h-4 w-4" aria-hidden="true" /> {inCorso ? "Carico…" : "Carica attestato"}
                 </Button>
-              )}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground">Nessun corso registrato per questa persona.</p>
-          {canEdit && (
-            <div className="mt-auto">
-              <Button type="button" variant="outline" size="sm" onClick={onAggiungi}>
-                <Plus className="h-4 w-4" aria-hidden="true" /> Aggiungi corso
-              </Button>
-            </div>
-          )}
-        </>
-      )}
-    </article>
+              )
+            )}
+            {canEdit && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" aria-label={`Altre azioni per ${titolo}`}>
+                    <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {onModifica && (
+                    <DropdownMenuItem onSelect={onModifica}>
+                      <Pencil className="h-4 w-4" aria-hidden="true" /> Modifica
+                    </DropdownMenuItem>
+                  )}
+                  {corso.kind !== "ALTRO" && (
+                    <DropdownMenuItem onSelect={onAggiungi}>
+                      <Plus className="h-4 w-4" aria-hidden="true" /> Nuova edizione
+                    </DropdownMenuItem>
+                  )}
+                  {corso.certificate && (
+                    <DropdownMenuItem onSelect={() => window.setTimeout(() => inputRef.current?.click(), 0)}>
+                      <Upload className="h-4 w-4" aria-hidden="true" /> Sostituisci attestato
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </>
+        }
+      />
+      <input ref={inputRef} type="file" accept={ACCEPT} className="hidden" onChange={caricaAttestato} />
+    </>
   );
 }
 

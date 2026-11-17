@@ -135,6 +135,19 @@ export async function uploadStaffDocument(
     },
   });
 
+  /*
+    L'attestato HACCP caricato fra i documenti obbligatori è anche un corso:
+    si ritrova in Formazione (con la sua scadenza, fra le scadenze della
+    Panoramica e sulla card), invece di dire «HACCP · non presente» a chi
+    l'ha appena caricato. Corso e documento restano legati: la scadenza si
+    tiene allineata da entrambe le parti.
+  */
+  if (saved.category === "ATTESTATO_HACCP") {
+    await db.staffTraining.create({
+      data: { venueId, waiterId, kind: "HACCP", expiresAt: saved.expiresAt, certificateDocumentId: saved.id },
+    });
+  }
+
   await recordAudit(actor, "waiter.document_upload", "waiter", waiterId, {
     documento: saved.name,
     categoria: saved.category,
@@ -181,14 +194,26 @@ export async function updateStaffDocument(venueId: string, waiterId: string, doc
   const existing = await getStaffDocument(venueId, waiterId, docId);
   if (!existing) throw new StaffDocumentError("not_found");
   const data = StaffDocumentUpdateInput.parse(raw);
-  return db.staffDocument.update({ where: { id: docId }, data });
+  const saved = await db.staffDocument.update({ where: { id: docId }, data });
+  // Cambiata la scadenza dell'attestato, cambia anche quella del corso.
+  if (data.expiresAt !== undefined && existing.expiresAt?.getTime() !== saved.expiresAt?.getTime()) {
+    await db.staffTraining.updateMany({ where: { certificateDocumentId: docId, venueId }, data: { expiresAt: saved.expiresAt } });
+  }
+  return saved;
 }
 
 export async function deleteStaffDocument(venueId: string, waiterId: string, docId: string, actor?: AuditActor) {
   const existing = await getStaffDocument(venueId, waiterId, docId);
   if (!existing) throw new StaffDocumentError("not_found");
   // Le righe di corso/visita che lo puntavano restano, con il riferimento a
-  // null (onDelete: SetNull): si perde il file, non il corso.
+  // null (onDelete: SetNull): si perde il file, non il corso. Tranne il
+  // corso HACCP nato dall'attestato caricato fra gli obbligatori: senza
+  // l'attestato non c'è niente da tenere, e resterebbe un corso fantasma.
+  if (existing.category === "ATTESTATO_HACCP") {
+    await db.staffTraining.deleteMany({
+      where: { certificateDocumentId: docId, venueId, completedAt: null, provider: null, certificateNumber: null, notes: null },
+    });
+  }
   await db.staffDocument.delete({ where: { id: docId } });
   await del(existing.storageKey).catch(() => {});
   await recordAudit(actor, "waiter.document_delete", "waiter", waiterId, {
