@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Clock, X } from "lucide-react";
+import { Check, Clock, Inbox, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,10 +41,14 @@ export function RichiestePersonale({
   richieste,
   persone,
   canManage,
+  nascoste = 0,
 }: {
   richieste: Richiesta[];
   persone: { id: string; nome: string }[];
   canManage: boolean;
+  /** Le richieste che ci sono ma che i filtri della colonna tengono fuori:
+   * «nessuna richiesta» sarebbe falso, e si direbbe proprio quando ce ne sono. */
+  nascoste?: number;
 }) {
   const router = useRouter();
   const [inCorso, setInCorso] = useState<string | null>(null);
@@ -102,8 +106,8 @@ export function RichiestePersonale({
     new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long" });
 
   return (
-    <section className="space-y-3">
-      <header className="flex flex-wrap items-center justify-between gap-2">
+    <section className="riquadro fill flex min-h-0 flex-col overflow-hidden bg-card-sunken">
+      <header className="fissa flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-veil-5 px-4 py-3">
         <div>
           <h2 className="text-display text-lg">Richieste da decidere</h2>
           <p className="t-nota text-[13px] sm:text-xs">
@@ -123,6 +127,7 @@ export function RichiestePersonale({
         )}
       </header>
 
+      <div className="fill-scroll flex flex-col gap-3 p-3">
       {errore && (
         <p role="alert" className="text-sm text-destructive">
           {errore}
@@ -183,16 +188,33 @@ export function RichiestePersonale({
       )}
 
       {richieste.length === 0 ? (
-        <p className="t-nota text-[13px] sm:text-xs">
-          Nessuna richiesta in attesa. Quelle decise restano nella scheda della
-          persona.
-        </p>
+        <div className="grid flex-1 place-content-center gap-1 px-6 py-12 text-center">
+          <span className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-full bg-veil-10">
+            <Inbox className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          </span>
+          {nascoste > 0 ? (
+            <>
+              <p className="text-sm font-medium">Nessuna richiesta con questi filtri</p>
+              <p className="t-nota text-[13px] sm:text-xs">
+                {nascoste === 1 ? "Ce n'è una" : `Ce ne sono ${nascoste}`} di persone che i filtri
+                tengono fuori.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium">Nessuna richiesta in attesa</p>
+              <p className="t-nota text-[13px] sm:text-xs">
+                Quelle decise restano nella scheda della persona.
+              </p>
+            </>
+          )}
+        </div>
       ) : (
         <ul className="space-y-2">
           {richieste.map((r) => (
             <li
               key={r.id}
-              className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3"
+              className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3"
             >
               <Clock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <div className="min-w-[12rem] flex-1">
@@ -234,6 +256,7 @@ export function RichiestePersonale({
           ))}
         </ul>
       )}
+      </div>
     </section>
   );
 }

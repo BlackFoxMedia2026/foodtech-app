@@ -51,7 +51,7 @@ export function BarraLaterale({
   compatta = false,
 }: {
   /** Quale delle due facce è aperta: l'interruttore in cima lo dice. */
-  vista: "persone" | "turni";
+  vista: "persone" | "turni" | "richieste";
   mese: string;
   giornoSelezionato: string;
   oggi: string;
@@ -172,55 +172,109 @@ export function BarraLaterale({
       </section>
 
       {!compatta && (
-        <section className="riquadro bg-card/40 p-3.5">
-          <p className="flex items-center gap-2 text-sm font-medium">
-            <Users className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            {riepilogo.totale} {riepilogo.totale === 1 ? "membro staff" : "membri staff"}
-          </p>
-
-          {/* I tre numeri parlano del **giorno selezionato**, non di un «oggi»
-              generico: aprendo la settimana prossima, «8 in turno oggi» sarebbe
-              un numero vero riferito a una schermata che mostra altro. */}
-          <p className="t-nota mt-0.5">
-            {riepilogo.eOggi ? "Oggi" : <span className="capitalize">{etichettaGiornoBreve(riepilogo.giorno)}</span>}
-          </p>
-
-          <dl className="mt-3 space-y-1.5">
-            <VoceRiepilogo valore={riepilogo.inTurno} etichetta="In turno oggi" mostraOggi={riepilogo.eOggi} />
-            <VoceRiepilogo valore={riepilogo.assenti} etichetta="Assenti" mostraOggi />
-            <VoceRiepilogo valore={riepilogo.liberi} etichetta="Giorni liberi" mostraOggi />
-          </dl>
-
-          <Link
-            href="/staff"
-            className="group mt-3.5 flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Vedi dettagli
-            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-          </Link>
-        </section>
+        <RiquadroRiepilogo riepilogo={riepilogo} />
       )}
     </div>
   );
 }
 
-function VoceRiepilogo({
-  valore,
-  etichetta,
-  mostraOggi,
-}: {
-  valore: number;
-  etichetta: string;
-  mostraOggi: boolean;
-}) {
-  const testo = mostraOggi ? etichetta : etichetta.replace(" oggi", "");
+/**
+ * Com'è fatta la brigata nel giorno selezionato.
+ *
+ * Era una colonna di tre «0» con un'etichetta accanto: numeri giusti, ma da
+ * leggere uno a uno e senza un rapporto col totale. Ora il numero che conta —
+ * quanti lavorano — è grande e messo contro l'organico («8 su 13»), e una
+ * barra divisa mostra in un colpo d'occhio come si spartisce il resto. Gli
+ * stessi colori del calendario (riposo, assenza), così la chiave è una sola.
+ *
+ * «Senza turno» è il resto: chi quel giorno non ha nessuna riga. Prima non
+ * compariva, e i tre numeri sommati non tornavano mai col totale.
+ */
+function RiquadroRiepilogo({ riepilogo }: { riepilogo: Riepilogo }) {
+  const { totale, inTurno, assenti, liberi } = riepilogo;
+  const daPianificare = Math.max(0, totale - inTurno - assenti - liberi);
+  // Chi fa due turni nello stesso giorno conta due volte: la barra si misura
+  // sulla somma se la somma supera l'organico, così non trabocca.
+  const base = Math.max(1, totale, inTurno + assenti + liberi);
+
+  const voci = [
+    { chiave: "turno", valore: inTurno, etichetta: "In turno", colore: "bg-[hsl(var(--turno-sala))]" },
+    { chiave: "assenti", valore: assenti, etichetta: "Assenti", colore: "bg-[hsl(var(--turno-assenza))]" },
+    { chiave: "liberi", valore: liberi, etichetta: "Riposo", colore: "bg-[hsl(var(--turno-riposo))]" },
+    {
+      chiave: "vuoti",
+      valore: daPianificare,
+      etichetta: "Senza turno",
+      colore: "bg-[hsl(var(--border-strong)/0.35)]",
+    },
+  ];
+
   return (
-    <div className="flex items-baseline gap-2">
-      <dt className="sr-only">{testo}</dt>
-      <dd className="flex items-baseline gap-2">
-        <span className="w-4 text-sm font-semibold tabular-nums">{valore}</span>
-        <span className="text-xs text-muted-foreground">{testo}</span>
-      </dd>
-    </div>
+    <section className="riquadro bg-card/40 p-3.5">
+      <header className="flex items-center justify-between gap-2">
+        {/* I numeri parlano del **giorno selezionato**, non di un «oggi»
+            generico: aprendo la settimana prossima, «8 in turno oggi» sarebbe
+            un numero vero riferito a una schermata che mostra altro. */}
+        <p className="t-nota">
+          {riepilogo.eOggi ? "Oggi" : <span className="capitalize">{etichettaGiornoBreve(riepilogo.giorno)}</span>}
+        </p>
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Users className="h-3.5 w-3.5" aria-hidden="true" />
+          {totale}
+          <span className="sr-only">{totale === 1 ? " membro staff" : " membri staff"}</span>
+        </span>
+      </header>
+
+      <p className="mt-1.5 flex items-baseline gap-1.5">
+        <span className="text-display text-3xl leading-none tabular-nums">{inTurno}</span>
+        <span className="text-sm text-muted-foreground">
+          su {totale} in turno
+        </span>
+      </p>
+
+      <div
+        className="mt-3 flex h-2 w-full gap-0.5 overflow-hidden rounded-full"
+        role="img"
+        aria-label={voci.map((v) => `${v.valore} ${v.etichetta.toLowerCase()}`).join(", ")}
+      >
+        {voci
+          .filter((v) => v.valore > 0)
+          .map((v) => (
+            <span
+              key={v.chiave}
+              className={cn("h-full transition-[width] duration-300", v.colore)}
+              style={{ width: `${(v.valore / base) * 100}%` }}
+            />
+          ))}
+        {totale === 0 && <span className="h-full w-full bg-[hsl(var(--border-strong)/0.2)]" />}
+      </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
+        {voci.map((v) => (
+          <div key={v.chiave} className="flex min-w-0 items-center gap-1.5 text-xs">
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", v.colore)} aria-hidden="true" />
+            <dt className={cn("min-w-0 flex-1 truncate", v.valore === 0 ? "text-tertiary-foreground" : "text-foreground/80")}>
+              {v.etichetta}
+            </dt>
+            <dd
+              className={cn(
+                "tabular-nums",
+                v.valore === 0 ? "text-tertiary-foreground" : "font-semibold text-foreground",
+              )}
+            >
+              {v.valore}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <Link
+        href="/staff"
+        className="group mt-3 flex items-center gap-1 border-t border-border/60 pt-2.5 text-xs [@media(max-height:820px)]:hidden text-muted-foreground transition-colors hover:text-foreground"
+      >
+        Vedi dettagli
+        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+      </Link>
+    </section>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { ChefHat, Martini, Search, ShieldCheck, SlidersHorizontal, Users, UtensilsCrossed } from "lucide-react";
 import type { StaffCapability, StaffDepartment, StaffPrimaryRole, WaiterStatus, WorkShiftKind } from "@prisma/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,10 +8,10 @@ import { NewStaffDialog } from "@/components/staff/new-staff-dialog";
 import { StaffRow } from "@/components/staff/staff-row";
 import { StaffSwitch } from "@/components/staff/staff-switch";
 import { BarraLaterale } from "@/components/staff/calendario/barra-laterale";
-import { filtriAttivi as haFiltri, useFiltriStaff } from "@/components/staff/filtri-staff";
+import { filtriAttivi as haFiltri } from "@/components/staff/filtri-staff";
+import { useColonnaStaff } from "@/components/staff/colonna-staff";
 import { groupStaffByDepartment, staffDepartmentLabel } from "@/lib/staff-departments";
-import { staffDepartmentOf, STAFF_PRIMARY_ROLES } from "@/lib/staff-roles";
-import { etichettaGiornoBreve, primoDelMese, spostaMese } from "@/lib/turni";
+import { etichettaGiornoBreve } from "@/lib/turni";
 import { cn } from "@/lib/utils";
 
 export type StaffListItem = {
@@ -72,37 +71,13 @@ export function StaffPageClient({
   oggi: string;
   turniDelGiorno: { waiterId: string; kind: WorkShiftKind }[];
 }) {
-  const router = useRouter();
-  const [filtri, setFiltri] = useFiltriStaff();
-  const [meseMostrato, setMeseMostrato] = useState(() => primoDelMese(giorno));
-
-  /** Il turno di ciascuno nel giorno scelto: è quello che dà senso al filtro
-   * «stato» anche qui, dove non c'è un calendario da guardare. */
-  const turnoPerPersona = useMemo(
-    () => new Map(turniDelGiorno.map((t) => [t.waiterId, t.kind])),
-    [turniDelGiorno],
-  );
-
-  const ruoliDisponibili = useMemo(() => {
-    const presenti = new Set(staff.map((p) => p.primaryRole).filter(Boolean));
-    return STAFF_PRIMARY_ROLES.filter((r) => presenti.has(r.value)).map((r) => ({ value: r.value, label: r.label }));
-  }, [staff]);
-
-  const repartiDisponibili = useMemo(() => [...new Set(staff.map((p) => staffDepartmentOf(p)))], [staff]);
-
-  const riepilogo = useMemo(
-    () => ({
-      totale: staff.length,
-      inTurno: turniDelGiorno.filter((t) => t.kind === "WORK").length,
-      assenti: turniDelGiorno.filter(
-        (t) => t.kind === "VACATION" || t.kind === "LEAVE" || t.kind === "SICK_LEAVE",
-      ).length,
-      liberi: turniDelGiorno.filter((t) => t.kind === "REST" || t.kind === "UNAVAILABLE").length,
-      giorno,
-      eOggi: giorno === oggi,
-    }),
-    [staff.length, turniDelGiorno, giorno, oggi],
-  );
+  const { filtri, barraProps, passaFiltri } = useColonnaStaff({
+    staff,
+    giorno,
+    oggi,
+    turniDelGiorno,
+    percorso: "/staff",
+  });
 
   /*
     L'elenco filtrato.
@@ -113,51 +88,18 @@ export function StaffPageClient({
     La ricerca per nome invece resta locale: è una domanda che si fa e si
     esaurisce in questa pagina.
   */
-  const filtrati = useMemo(() => {
-    return staff.filter((p) => {
-      if (filtri.reparto !== "tutti" && staffDepartmentOf(p) !== filtri.reparto) return false;
-      if (filtri.ruolo !== "tutti" && p.primaryRole !== filtri.ruolo) return false;
-      if (filtri.stato !== "tutti") {
-        const kind = turnoPerPersona.get(p.id);
-        if (filtri.stato === "in-turno" && kind !== "WORK") return false;
-        if (filtri.stato === "riposo" && kind !== "REST" && kind !== "UNAVAILABLE") return false;
-        if (
-          filtri.stato === "assenza" &&
-          kind !== "VACATION" &&
-          kind !== "LEAVE" &&
-          kind !== "SICK_LEAVE"
-        ) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [staff, filtri, turnoPerPersona]);
+  const filtrati = useMemo(() => staff.filter(passaFiltri), [staff, passaFiltri]);
 
   const gruppi = useMemo(() => groupStaffByDepartment(filtrati), [filtrati]);
   const conFiltriAttivi = haFiltri(filtri);
 
-  const barraProps = {
-    mese: meseMostrato,
-    giornoSelezionato: giorno,
-    oggi,
-    giorniVisibili: [giorno],
-    onSeleziona: (g: string) => router.push(`/staff?g=${g}`, { scroll: false }),
-    onCambiaMese: (d: number) => setMeseMostrato(spostaMese(meseMostrato, d)),
-    filtri,
-    onFiltri: setFiltri,
-    ruoliDisponibili,
-    repartiDisponibili,
-    riepilogo,
-  };
-
   return (
-    <div className="schermo animate-fade-in gap-3">
+    <div className="schermo gap-3">
       <div className="fill flex min-h-0 gap-4">
         {/* La stessa colonna della vista Turni, con lo stesso interruttore in
             cima: passare da qui al calendario non cambia il contesto, cambia
             solo cosa c'è a destra. */}
-        <aside className="hidden min-h-0 shrink-0 overflow-y-auto pr-0.5 xl:block">
+        <aside className="hidden min-h-0 shrink-0 overflow-y-auto pb-2 pr-0.5 xl:block">
           <BarraLaterale
             vista="persone"
             {...barraProps}

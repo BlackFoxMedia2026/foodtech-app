@@ -325,7 +325,7 @@ export function CalendarioTurni({
   const nessunTurno = filtrati.length === 0;
 
   return (
-    <div className="schermo animate-fade-in gap-3">
+    <div className="schermo gap-3">
       {staff.length === 0 ? (
         <div className="riquadro tratteggiato fill grid place-content-center p-12 text-center text-sm text-muted-foreground">
           <p>Nessuna persona in organico.</p>
@@ -339,7 +339,7 @@ export function CalendarioTurni({
         </div>
       ) : (
         <div className="fill flex min-h-0 gap-4">
-          <aside className="hidden min-h-0 shrink-0 overflow-y-auto pr-0.5 xl:block">
+          <aside className="hidden min-h-0 shrink-0 overflow-y-auto pb-2 pr-0.5 xl:block">
             <BarraLaterale
               vista="turni"
               mese={meseMostrato}

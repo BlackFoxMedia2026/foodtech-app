@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { can, getActiveVenue } from "@/lib/tenant";
 import { listWaiters } from "@/server/waiters";
 import { daDecidere } from "@/server/staff-richieste";
-import { RichiestePersonale } from "@/components/staff/richieste-personale";
-import { StaffSwitch } from "@/components/staff/staff-switch";
+import { listShiftsForRange } from "@/server/work-shifts";
+import { todayInVenue } from "@/lib/venue-time";
+import { RichiestePagina } from "@/components/staff/richieste-pagina";
 
 /**
  * Ferie, permessi e cambi turno.
@@ -21,39 +22,43 @@ import { StaffSwitch } from "@/components/staff/staff-switch";
 
 export const dynamic = "force-dynamic";
 
-export default async function RichiestePage() {
+export default async function RichiestePage({ searchParams }: { searchParams: { g?: string } }) {
   const ctx = await getActiveVenue();
   if (!can(ctx.role, "manage_shifts")) notFound();
 
-  const [richieste, staff] = await Promise.all([
+  // Il giorno della colonna, come in Persone e Turni: passando da una vista
+  // all'altra resta quello.
+  const oggi = todayInVenue(ctx.venue.timezone);
+  const giorno = searchParams.g && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.g) ? searchParams.g : oggi;
+
+  const [richieste, staff, turniDelGiorno] = await Promise.all([
     daDecidere(ctx.venueId),
     listWaiters(ctx.venueId),
+    listShiftsForRange(ctx.venueId, giorno, giorno),
   ]);
 
   return (
-    <div className="schermo animate-fade-in mx-auto w-full max-w-3xl gap-4">
-      <div className="fissa">
-        <StaffSwitch vista="richieste" />
-      </div>
-
-      <div className="fill-scroll pr-0.5">
-        <RichiestePersonale
-          richieste={richieste.map((r) => ({
-            id: r.id,
-            tipoNome: r.tipoNome,
-            statoNome: r.statoNome,
-            dal: r.dal.toISOString(),
-            al: r.al.toISOString(),
-            motivo: r.motivo,
-            persona: r.persona,
-          }))}
-          persone={staff.map((p) => ({
-            id: p.id,
-            nome: `${p.firstName}${p.lastName ? ` ${p.lastName}` : ""}`,
-          }))}
-          canManage
-        />
-      </div>
-    </div>
+    <RichiestePagina
+      richieste={richieste.map((r) => ({
+        id: r.id,
+        tipoNome: r.tipoNome,
+        statoNome: r.statoNome,
+        dal: r.dal.toISOString(),
+        al: r.al.toISOString(),
+        motivo: r.motivo,
+        persona: r.persona,
+      }))}
+      staff={staff.map((p) => ({
+        id: p.id,
+        nome: `${p.firstName}${p.lastName ? ` ${p.lastName}` : ""}`,
+        primaryRole: p.primaryRole,
+        department: p.department,
+      }))}
+      giorno={giorno}
+      oggi={oggi}
+      turniDelGiorno={turniDelGiorno.map((t) => ({ waiterId: t.waiterId, kind: t.kind }))}
+      canManageStaff={can(ctx.role, "manage_staff")}
+      canManageContracts={can(ctx.role, "manage_contracts")}
+    />
   );
 }
