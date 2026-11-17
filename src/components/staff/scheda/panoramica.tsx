@@ -279,11 +279,19 @@ function Settimana({ oggi, turni }: { oggi: string; turni: TurnoProssimo[] }) {
 
               <div className="mt-auto flex flex-col gap-1.5 pt-3">
                 {libero ? (
-                  <span className={cn("text-sm", oggiE ? "text-cream/70" : "text-tertiary-foreground")}>Libero</span>
+                  // «Libero» faceva pensare a un giorno di riposo deciso: è solo un
+                  // giorno senza turni in calendario (il riposo ha il suo segno).
+                  <span className={cn("text-sm", oggiE ? "text-cream/70" : "text-tertiary-foreground")}>Nessun turno</span>
                 ) : (
                   g.turni.map((t, j) =>
                     t.kind === "WORK" && t.startMinute != null && t.endMinute != null ? (
                       <span key={j} className="min-w-0 leading-tight">
+                        {j === 0 && (
+                          <span className={cn("mb-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em]", oggiE ? "text-cream/80" : "text-[hsl(var(--turno-sala))]")}>
+                            <span className={cn("h-1.5 w-1.5 rounded-full", oggiE ? "bg-cream" : "bg-[hsl(var(--turno-sala))]")} aria-hidden="true" />
+                            Lavora
+                          </span>
+                        )}
                         <span className="block font-mono text-base font-medium tabular-nums">{intervalloCompatto(t.startMinute, t.endMinute)}</span>
                         {t.service && (
                           <span className={cn("block truncate text-xs", oggiE ? "text-cream/70" : "text-muted-foreground")}>{t.service}</span>

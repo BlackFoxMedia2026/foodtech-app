@@ -26,6 +26,16 @@ const DOT: Record<WaiterStatus, string> = {
   UNAVAILABLE: "border border-muted-foreground bg-transparent",
 };
 
+/** La pillola ha il colore dello stato: un contorno chiaro su fondo chiaro
+ * non si leggeva come un pulsante, né diceva lo stato prima di leggerlo. */
+const TINTA: Record<WaiterStatus, string> = {
+  ACTIVE: "border-sage-strong/35 bg-sage/15 text-foreground hover:bg-sage/25",
+  RESTING: "border-border-strong bg-veil-6 text-foreground hover:bg-veil-10",
+  VACATION: "border-accent-strong/40 bg-accent/15 text-foreground hover:bg-accent/25",
+  SICK_LEAVE: "border-destructive/35 bg-destructive/10 text-foreground hover:bg-destructive/15",
+  UNAVAILABLE: "border-border-strong bg-veil-4 text-muted-foreground hover:bg-veil-10",
+};
+
 /**
  * Lo stato di una persona, da cambiare in un gesto.
  *
@@ -70,17 +80,17 @@ export function StaffStatusSelect({
           variant="outline"
           size="sm"
           disabled={disabled || submitting}
-          className="h-11 gap-1.5 text-sm md:h-9 md:text-xs"
+          className={cn("h-11 gap-2 rounded-full border px-3.5 text-sm font-medium shadow-sm md:h-9", TINTA[status])}
           aria-label={`Stato: ${staffStatusLabel(status)}. Cambia`}
           title={error ?? undefined}
         >
           {submitting ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", error ? "bg-destructive" : DOT[status])} />
+            <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", error ? "bg-destructive" : DOT[status])} />
           )}
           <span>{staffStatusLabel(status)}</span>
-          <ChevronDown className="h-3 w-3 opacity-60" />
+          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
