@@ -181,11 +181,24 @@ function DialogoVisita({ waiterId, visita, onClose, onFatto }: { waiterId: strin
   const [errore, setErrore] = useState<string | null>(null);
   const [inCorso, setInCorso] = useState(false);
   const [confermaElimina, setConfermaElimina] = useState(false);
+  /** Il certificato del medico: obbligatorio per una visita nuova. */
+  const [certificato, setCertificato] = useState<File | null>(null);
+  const inputCertificato = useRef<HTMLInputElement>(null);
+  const haGiaCertificato = !!visita?.certificate;
+
+  function scegliCertificato(f: File | undefined) {
+    if (!f) return;
+    if (!ACCEPT.split(",").includes(f.type)) return setErrore("Il certificato va caricato come PDF, JPG, PNG o WebP.");
+    if (f.size > 10 * 1024 * 1024) return setErrore("Il certificato supera i 10 MB.");
+    setErrore(null);
+    setCertificato(f);
+  }
 
   async function salva(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!v.examinedAt) return setErrore("Inserisci la data della visita.");
     if (v.expiresAt && v.expiresAt < v.examinedAt) return setErrore("La scadenza non può precedere la visita.");
+    if (!certificato && !haGiaCertificato) return setErrore("Carica il certificato del medico.");
     setInCorso(true);
     setErrore(null);
     const res = await fetch(visita ? `/api/waiters/${waiterId}/medical/${visita.id}` : `/api/waiters/${waiterId}/medical`, {
@@ -193,8 +206,25 @@ function DialogoVisita({ waiterId, visita, onClose, onFatto }: { waiterId: strin
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ examinedAt: v.examinedAt, fitness: v.fitness, expiresAt: v.expiresAt || null, doctorName: v.doctorName.trim() || null, notes: v.notes.trim() || null }),
     });
+    if (!res.ok) {
+      setInCorso(false);
+      return setErrore(await readApiError(res, "Impossibile salvare la visita."));
+    }
+    const salvata = (await res.json()) as { id: string };
+    if (certificato) {
+      const fd = new FormData();
+      fd.set("file", certificato);
+      fd.set("name", `Certificato di idoneità ${dataBreve(v.examinedAt)}`);
+      const r = await fetch(`/api/waiters/${waiterId}/medical/${visita?.id ?? salvata.id}/certificato`, { method: "POST", body: fd });
+      if (!r.ok) {
+        // La visita c'è già: si dice del certificato, che si ricarica dalla riga.
+        setInCorso(false);
+        onClose();
+        onFatto("Visita registrata, ma il certificato non è stato caricato: riprova dalla visita.");
+        return;
+      }
+    }
     setInCorso(false);
-    if (!res.ok) return setErrore(await readApiError(res, "Impossibile salvare la visita."));
     onClose();
     onFatto(visita ? "Visita aggiornata" : "Visita registrata");
   }
@@ -214,7 +244,7 @@ function DialogoVisita({ waiterId, visita, onClose, onFatto }: { waiterId: strin
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{visita ? "Aggiorna la visita medica" : "Registra la visita medica"}</DialogTitle>
-          <DialogDescription>Data, giudizio di idoneità e prossima scadenza.</DialogDescription>
+          <DialogDescription>Data, giudizio di idoneità, prossima scadenza e certificato del medico.</DialogDescription>
         </DialogHeader>
         <form onSubmit={salva} className="space-y-4" noValidate>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -244,6 +274,44 @@ function DialogoVisita({ waiterId, visita, onClose, onFatto }: { waiterId: strin
             <CampoModulo etichetta="Note" htmlFor="notesVisita" largo>
               <Textarea id="notesVisita" value={v.notes} onChange={(e) => setV({ ...v, notes: e.target.value })} className="min-h-[60px]" placeholder="Es. prescrizioni, limitazioni." />
             </CampoModulo>
+          </div>
+          <div>
+            <p className="t-etichetta mb-1.5">{haGiaCertificato ? "Certificato del medico" : "Certificato del medico *"}</p>
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                scegliCertificato(e.dataTransfer.files?.[0]);
+              }}
+              className={cn(
+                "flex items-center gap-3 rounded-xl border border-dashed px-3 py-2.5",
+                certificato ? "border-border/70" : "border-accent-strong/40 bg-accent/5",
+              )}
+            >
+              <Upload className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <p className="min-w-0 flex-1 truncate text-sm">
+                {certificato ? (
+                  certificato.name
+                ) : haGiaCertificato ? (
+                  <span className="text-muted-foreground">Già caricato: scegline un altro per sostituirlo.</span>
+                ) : (
+                  <span className="text-muted-foreground">PDF o foto del giudizio di idoneità, fino a 10 MB.</span>
+                )}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={() => inputCertificato.current?.click()}>
+                {certificato ? "Cambia" : "Scegli file"}
+              </Button>
+              <input
+                ref={inputCertificato}
+                type="file"
+                accept={ACCEPT}
+                className="hidden"
+                onChange={(e) => {
+                  scegliCertificato(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+            </div>
           </div>
           {errore && <p className="text-sm text-destructive-soft">{errore}</p>}
           <div className="flex flex-wrap items-center justify-between gap-2">
