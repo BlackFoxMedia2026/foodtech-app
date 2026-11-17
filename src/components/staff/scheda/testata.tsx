@@ -3,19 +3,11 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Briefcase, CalendarRange, Camera, FileText, KeyRound, MoreHorizontal, Pencil, Phone, Trash2 } from "lucide-react";
+import { ArrowLeft, Camera, Pencil, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAvvisi } from "@/components/ui/avvisi";
 import { StaffStatusSelect } from "@/components/staff/staff-status-select";
 import { readApiError } from "@/lib/api-client";
@@ -41,9 +33,9 @@ import { nomeCompleto, type PersonaDTO } from "./tipi";
  * La foto è il centro della riga: una persona si riconosce dalla faccia prima
  * che dal nome. Chi gestisce lo staff la cambia toccandola.
  *
- * Le azioni: «Modifica profilo» è l'unica pillola; il resto — chiamare,
- * documenti, contratto, accesso, calendario — sta nel menu «•••», con
- * l'eliminazione in fondo, in rosso, dietro una conferma.
+ * Le azioni: «Modifica profilo» e, accanto, il cestino per eliminare la
+ * persona dallo staff, dietro una conferma. Documenti, contratto e accesso
+ * sono già le linguette sotto la testata.
  */
 export function Testata({
   persona,
@@ -163,47 +155,19 @@ export function Testata({
 
       {canManageStaff && (
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 md:h-9 md:w-9" aria-label={`Altre azioni per ${nome}`} title="Altre azioni">
-                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>{nome}</DropdownMenuLabel>
-              {persona.phone && (
-                <DropdownMenuItem asChild>
-                  <a href={`tel:${persona.phone}`}>
-                    <Phone className="h-4 w-4" aria-hidden="true" /> Chiama {persona.phone}
-                  </a>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem asChild>
-                <Link href={`${base}?tab=documenti`} scroll={false}>
-                  <FileText className="h-4 w-4" aria-hidden="true" /> Documenti
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`${base}?tab=lavoro`} scroll={false}>
-                  <Briefcase className="h-4 w-4" aria-hidden="true" /> Ruolo e contratto
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`${base}?tab=account`} scroll={false}>
-                  <KeyRound className="h-4 w-4" aria-hidden="true" /> Accesso al gestionale
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/staff/turni">
-                  <CalendarRange className="h-4 w-4" aria-hidden="true" /> Calendario turni
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setConfermaElimina(true)} className="text-destructive-soft">
-                <Trash2 className="h-4 w-4" aria-hidden="true" /> Elimina dallo staff
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Il menu «•••» ripeteva le linguette qui sotto (Documenti, Lavoro,
+              Account…): resta solo l'eliminazione, col suo cestino. */}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => setConfermaElimina(true)}
+            className="h-11 w-11 shrink-0 text-destructive-soft hover:bg-destructive/10 hover:text-destructive-soft md:h-9 md:w-9"
+            aria-label={`Elimina ${nome} dallo staff`}
+            title="Elimina dallo staff"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          </Button>
 
           <Button asChild variant="accent" className="h-11 md:h-9">
             <Link href={`${base}?tab=personali&modifica=1`} scroll={false} aria-label="Modifica profilo">
