@@ -24,6 +24,19 @@ const Coupon = z
     path: ["freeItem"],
   });
 
+const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Un colore come #0F2920");
+
+/** Lo stile dell'email: sette scelte chiuse (vedi lib/automazioni-email.ts). */
+const Stile = z.object({
+  colore: Hex,
+  sfondo: Hex,
+  carattere: z.enum(["sans", "serif", "modern", "classic"]),
+  allineamento: z.enum(["sinistra", "centro"]),
+  logo: z.boolean(),
+  pulsante: z.string().trim().min(1, "Scrivi cosa dice il pulsante").max(40),
+  forma: z.enum(["pillola", "morbido", "squadrato"]),
+});
+
 const Body = z.object({
   active: z.boolean().optional(),
   giorni: z.number().int().min(1).max(365).optional(),
@@ -31,6 +44,7 @@ const Body = z.object({
   intro: z.string().min(1).max(600).optional(),
   /** Un oggetto per mettere l'omaggio, `null` per toglierlo. */
   coupon: Coupon.nullable().optional(),
+  stile: Stile.optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { key: string } }) {

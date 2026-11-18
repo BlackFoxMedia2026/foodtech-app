@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Cake,
@@ -32,6 +32,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { accorda } from "@/lib/accordo";
 import { readApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { type AutomationStyle, emailAutomazione } from "@/lib/automazioni-email";
+import { StileEmail } from "@/components/automations/stile-email";
 import type { AutomationView } from "@/server/automations/engine";
 import type { AutomationCoupon, AutomationKey } from "@/server/automations/catalogue";
 
@@ -114,12 +116,15 @@ export function AutomationCard({
   canEdit,
   venueName,
   emailAttiva,
+  brand,
 }: {
   automation: AutomationView;
   canEdit: boolean;
   venueName: string;
   /** Senza email un'automazione accesa aspetta: lo stato non deve sembrare pronto. */
   emailAttiva: boolean;
+  /** Logo, colore e telefono del locale: servono allo stile e all'anteprima. */
+  brand: Brand;
 }) {
   const router = useRouter();
   const [inCorso, setInCorso] = useState<null | "switch" | "prova">(null);
@@ -303,6 +308,7 @@ export function AutomationCard({
           automation={a}
           canEdit={canEdit}
           venueName={venueName}
+          brand={brand}
           onChiudi={() => setAperto(false)}
           onProva={prova}
           provaInCorso={inCorso === "prova"}
@@ -319,7 +325,11 @@ export function AutomationCard({
 /* -------------------------------------------------------------------------- */
 
 /** La parte dell'email che il campo con il fuoco sta cambiando. */
-type Parte = "oggetto" | "testo" | "omaggio";
+type Parte = "oggetto" | "testo" | "omaggio" | "pulsante";
+
+export type Brand = { logoUrl: string | null; colore: string | null; telefono: string | null };
+
+type Vista = "scrivi" | "stile" | "anteprima";
 
 /**
  * La modifica di un'automazione è la modifica **di un'email**: quindi si
@@ -344,6 +354,7 @@ function FinestraMessaggio({
   automation: a,
   canEdit,
   venueName,
+  brand,
   onChiudi,
   onProva,
   provaInCorso,
@@ -353,6 +364,7 @@ function FinestraMessaggio({
   automation: AutomationView;
   canEdit: boolean;
   venueName: string;
+  brand: Brand;
   onChiudi: () => void;
   onProva: () => void;
   provaInCorso: boolean;
@@ -365,7 +377,8 @@ function FinestraMessaggio({
   const [intro, setIntro] = useState(a.intro);
   const [salvando, setSalvando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
-  const [vista, setVista] = useState<"scrivi" | "anteprima">("scrivi");
+  const [vista, setVista] = useState<Vista>("scrivi");
+  const [stile, setStile] = useState<AutomationStyle>(a.stile);
   const [evidenza, setEvidenza] = useState<Parte | null>(null);
 
   // L'omaggio: assente finché il locale non lo mette.
@@ -398,6 +411,7 @@ function FinestraMessaggio({
     giorni !== String(a.giorni) ||
     subject !== a.subject ||
     intro !== a.intro ||
+    JSON.stringify(stile) !== JSON.stringify(a.stile) ||
     JSON.stringify(omaggioDaSalvare()) !== JSON.stringify(a.coupon ?? null);
 
   const n = Number(giorni) || 0;
@@ -418,7 +432,13 @@ function FinestraMessaggio({
     const res = await fetch(`/api/automations/${a.key}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ giorni: Number(giorni), subject, intro, coupon: omaggioDaSalvare() }),
+      body: JSON.stringify({
+        giorni: Number(giorni),
+        subject,
+        intro,
+        coupon: omaggioDaSalvare(),
+        stile: { ...stile, pulsante: stile.pulsante.trim() || a.stile.pulsante },
+      }),
     });
     setSalvando(false);
     if (!res.ok) {
@@ -430,6 +450,28 @@ function FinestraMessaggio({
   }
 
   const anteprimaOmaggio = descriviOmaggio(omaggioDaSalvare());
+  // L'anteprima è l'HTML che parte davvero, con un ospite e un codice finti.
+  const html = emailAutomazione({
+    guestName: "Giulia",
+    venueName,
+    intro: intro || "…",
+    url: "#",
+    venuePhone: brand.telefono,
+    coupon: anteprimaOmaggio
+      ? {
+          code: "GIULIA-7K2Q",
+          descrizione: anteprimaOmaggio,
+          validUntil: new Date(Date.now() + (Number(giorniValidita) || 30) * 86_400_000),
+        }
+      : null,
+    unsubscribeUrl: "#",
+    stile,
+    logoUrl: brand.logoUrl,
+    origine: typeof window === "undefined" ? "" : window.location.origin,
+  });
+  // Sulla scrivania l'anteprima è sempre a sinistra: «anteprima» vale solo
+  // sul telefono, e lì la colonna dei campi mostra «Scrivi».
+  const colonna = vista === "stile" ? "stile" : "scrivi";
   const messaggio = errore ?? erroreProva ?? esitoProva;
 
   return (
@@ -439,9 +481,9 @@ function FinestraMessaggio({
         if (!v) chiudi();
       }}
     >
-      <DialogContent className="gap-0 p-0 md:h-[min(46rem,calc(100dvh-3rem))] md:max-w-[min(64rem,calc(100vw-3rem))] md:grid-rows-[auto_minmax(0,1fr)_auto] md:overflow-hidden">
+      <DialogContent className="gap-0 p-0 md:h-[min(52rem,calc(100dvh-2rem))] md:max-w-[min(72rem,calc(100vw-2rem))] md:grid-rows-[auto_minmax(0,1fr)_auto] md:overflow-hidden">
         {/* ── Testa: di che email si tratta ─────────────────────────────── */}
-        <DialogHeader className="border-b border-border px-5 pb-4 pt-1 md:px-6 md:pr-14 md:pt-5">
+        <DialogHeader className="border-b border-border px-5 pb-4 pt-1 md:px-6 md:pb-3.5 md:pr-14 md:pt-4">
           <div className="flex items-center gap-3">
             <span
               className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_6px_14px_-6px_rgba(16,32,26,0.5)]"
@@ -455,13 +497,15 @@ function FinestraMessaggio({
                 Email automatica
               </p>
               <DialogTitle className="mt-1 text-xl leading-tight text-card-foreground">{a.name}</DialogTitle>
-              <DialogDescription className="mt-0.5 leading-snug">{frase(a.key, n || a.giorni)}</DialogDescription>
+              <DialogDescription className="mt-0.5 leading-snug [@media(max-height:760px)]:sr-only">{frase(a.key, n || a.giorni)}</DialogDescription>
             </div>
           </div>
 
-          {/* Sul telefono le due colonne sono due viste. */}
-          <div className="mt-3 grid grid-cols-2 gap-1 rounded-full bg-[#c9a96a]/15 p-1 md:hidden">
-            {(["scrivi", "anteprima"] as const).map((v) => (
+          {/* Sotto i 1024 px le colonne sono tre viste: affiancate, sul tablet
+              l'email e i campi avevano 350 px a testa. Su uno schermo basso
+              la frase sotto il titolo si toglie (resta per i lettori di schermo). */}
+          <div className="mt-3 grid grid-cols-3 gap-1 rounded-full bg-[#c9a96a]/15 p-1 lg:hidden">
+            {(["scrivi", "stile", "anteprima"] as const).map((v) => (
               <button
                 key={v}
                 type="button"
@@ -472,39 +516,72 @@ function FinestraMessaggio({
                   vista === v ? "bg-card text-card-foreground shadow-sm" : "text-muted-foreground",
                 )}
               >
-                {v === "scrivi" ? "Scrivi" : "Anteprima"}
+                {v === "scrivi" ? "Scrivi" : v === "stile" ? "Stile" : "Anteprima"}
               </button>
             ))}
           </div>
         </DialogHeader>
 
-        <div className="md:grid md:min-h-0 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <div className="md:min-h-0 md:overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:overflow-hidden">
           {/* ── Sinistra: l'email come la riceve l'ospite ──────────────── */}
           <section
             aria-label="Anteprima dell'email"
             className={cn(
-              "bg-[#efe6d6]/70 px-4 py-5 md:overflow-y-auto md:border-r md:border-border md:px-8 md:py-7",
-              vista === "scrivi" && "max-md:hidden",
+              "min-h-full bg-[#efe6d6]/70 px-4 py-5 md:px-8 md:py-7 lg:overflow-y-auto lg:border-r lg:border-border",
+              vista !== "anteprima" && "max-lg:hidden",
             )}
           >
             <p className="t-nota mx-auto mb-3 max-w-[34rem]">Così la riceve l&apos;ospite</p>
-            <AnteprimaEmail
-              venueName={venueName}
-              subject={subject}
-              intro={intro}
-              omaggio={anteprimaOmaggio}
-              giorniValidita={Number(giorniValidita) || 30}
-              evidenza={evidenza}
-            />
+            <AnteprimaEmail venueName={venueName} subject={subject} html={html} evidenza={evidenza} />
           </section>
 
           {/* ── Destra: cosa si può cambiare ───────────────────────────── */}
           <div
             className={cn(
-              "space-y-6 px-5 py-5 md:overflow-y-auto md:px-6 md:py-6",
-              vista === "anteprima" && "max-md:hidden",
+              // Niente spazio sopra: il primo elemento visibile prende già il suo
+              // margine da `space-y-6` (le linguette, nascoste sotto lg, contano).
+              "space-y-6 px-5 pb-5 md:px-6 md:pb-6 lg:overflow-y-auto",
+              vista === "anteprima" && "max-lg:hidden",
             )}
           >
+            {/* Sulla scrivania: cosa dice, e come appare. Ferme in cima mentre
+                la colonna scorre: prima se ne andavano con il primo campo. */}
+            <div className="sticky top-0 z-10 -mx-6 hidden bg-[color:var(--card-fill)] px-6 pb-3 pt-5 shadow-[0_8px_12px_-12px_rgba(60,40,15,0.35)] lg:block">
+            <div
+              role="tablist"
+              aria-label="Cosa modificare"
+              className="grid grid-cols-2 gap-1 rounded-full bg-[#c9a96a]/15 p-1"
+            >
+              {(["scrivi", "stile"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="tab"
+                  aria-selected={colonna === v}
+                  onClick={() => setVista(v)}
+                  className={cn(
+                    "h-9 rounded-full text-sm font-medium transition-colors",
+                    colonna === v ? "bg-card text-card-foreground shadow-sm" : "text-muted-foreground",
+                  )}
+                >
+                  {v === "scrivi" ? "Contenuto" : "Stile"}
+                </button>
+              ))}
+            </div>
+            </div>
+
+            {colonna === "stile" ? (
+              <StileEmail
+                stile={stile}
+                onChange={setStile}
+                coloreLocale={brand.colore}
+                logoUrl={brand.logoUrl}
+                disabled={!canEdit}
+                onFocusPulsante={() => setEvidenza("pulsante")}
+                onBlurPulsante={() => setEvidenza(null)}
+              />
+            ) : (
+            <>
             <p className="flex gap-2.5 rounded-xl bg-[#c9a96a]/10 p-3 text-sm leading-snug text-muted-foreground ring-1 ring-inset ring-[#c9a96a]/25">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent-strong" aria-hidden="true" />
               {a.why}
@@ -676,6 +753,8 @@ function FinestraMessaggio({
                 </div>
               )}
             </section>
+            </>
+            )}
           </div>
         </div>
 
@@ -717,30 +796,73 @@ function FinestraMessaggio({
   );
 }
 
+/** Le parti che si accendono nell'anteprima: una regola per ognuna. */
+const PARTI: Parte[] = ["testo", "omaggio", "pulsante"];
+const SCHELETRO = `<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0}
+[data-parte]{border-radius:8px;transition:box-shadow .15s ease,background-color .15s ease}
+${PARTI.map(
+  (p) =>
+    `body[data-evidenza="${p}"] [data-parte="${p}"]{box-shadow:0 0 0 3px rgba(201,169,106,.75);background-color:rgba(201,169,106,.14)}`,
+).join("\n")}
+</style></head><body></body></html>`;
+
 /**
- * L'email come arriva nella casella: intestazione Da / A / Oggetto, poi il
- * corpo con saluto, testo, omaggio, pulsante e firma. La parte che si sta
- * modificando è accesa.
+ * L'email come arriva nella casella: intestazione Da / A / Oggetto, poi
+ * **l'HTML vero**, lo stesso che parte, dentro una cornice isolata — senza
+ * script, e con gli stili del prodotto che non ci entrano. La parte che si
+ * sta modificando è accesa.
+ *
+ * Il corpo si riscrive dentro la cornice invece di ricaricarla: a ogni tasto
+ * ricaricare farebbe lampeggiare l'anteprima.
  */
 function AnteprimaEmail({
   venueName,
   subject,
-  intro,
-  omaggio,
-  giorniValidita,
+  html,
   evidenza,
 }: {
   venueName: string;
   subject: string;
-  intro: string;
-  omaggio: string | null;
-  giorniValidita: number;
+  html: string;
   evidenza: Parte | null;
 }) {
-  const accesa = (p: Parte) => evidenza === p && "bg-[#c9a96a]/15 ring-2 ring-[#c9a96a]/60";
+  const cornice = useRef<HTMLIFrameElement>(null);
+  const [pronta, setPronta] = useState(false);
+  const [altezza, setAltezza] = useState(420);
+
+  const misura = useCallback(() => {
+    const doc = cornice.current?.contentDocument;
+    const corpo = doc?.body.firstElementChild;
+    const h = corpo ? Math.ceil(corpo.getBoundingClientRect().height) : 0;
+    // Nascosta (la vista «Scrivi» sul telefono) la cornice misura zero:
+    // quel numero non vale, si aspetta che torni visibile.
+    if (h > 0) setAltezza(h);
+  }, []);
+
+  // Si rimisura quando la cornice cambia larghezza: anche quando passa da
+  // nascosta a visibile, che sul telefono e sul tablet è il cambio di vista.
+  useEffect(() => {
+    const el = cornice.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const osservatore = new ResizeObserver(() => misura());
+    osservatore.observe(el);
+    return () => osservatore.disconnect();
+  }, [misura]);
+
+  useEffect(() => {
+    const doc = cornice.current?.contentDocument;
+    if (!pronta || !doc?.body) return;
+    doc.body.innerHTML = html;
+    doc.body.setAttribute("data-evidenza", evidenza ?? "");
+    // Nell'anteprima i link non portano da nessuna parte.
+    doc.querySelectorAll("a").forEach((l) => l.addEventListener("click", (e) => e.preventDefault()));
+    doc.querySelectorAll("img").forEach((img) => img.addEventListener("load", misura));
+    misura();
+  }, [pronta, html, evidenza, misura]);
 
   return (
-    <figure className="mx-auto max-w-[34rem] overflow-hidden rounded-xl border border-[#e2d5bd] bg-[#fffdf8] text-[#2F1F11] shadow-[0_18px_40px_-24px_rgba(60,40,15,0.45)]">
+    <figure className="mx-auto max-w-[36rem] overflow-hidden rounded-xl border border-[#e2d5bd] bg-[#fffdf8] text-[#2F1F11] shadow-[0_18px_40px_-24px_rgba(60,40,15,0.45)]">
       <dl className="space-y-1 border-b border-[#e8dcc6] bg-[#f6efe2] px-4 py-3 text-[13px] text-[#6b5a45]">
         <div className="flex gap-2">
           <dt className="w-16 shrink-0">Da</dt>
@@ -750,33 +872,25 @@ function AnteprimaEmail({
           <dt className="w-16 shrink-0">A</dt>
           <dd className="truncate">Giulia · ospite di esempio</dd>
         </div>
-        <div className={cn("-mx-1.5 flex gap-2 rounded-md px-1.5 py-0.5 transition-colors", accesa("oggetto"))}>
+        <div
+          className={cn(
+            "-mx-1.5 flex gap-2 rounded-md px-1.5 py-0.5 transition-colors",
+            evidenza === "oggetto" && "bg-[#c9a96a]/15 ring-2 ring-[#c9a96a]/60",
+          )}
+        >
           <dt className="w-16 shrink-0">Oggetto</dt>
           <dd className="truncate font-semibold text-[#2F1F11]">{subject || "Senza oggetto"}</dd>
         </div>
       </dl>
-
-      <div className="space-y-3 px-5 py-5 text-[14px] leading-relaxed">
-        <p>Ciao Giulia,</p>
-        <p className={cn("-mx-1.5 whitespace-pre-line rounded-md px-1.5 transition-colors", accesa("testo"))}>
-          {intro || "…"}
-        </p>
-        {omaggio && (
-          <div className={cn("rounded-xl border border-[#d8c9ae] p-3 text-center transition-colors", accesa("omaggio"))}>
-            <p className="text-[13px]">{omaggio}</p>
-            <p className="mt-1 text-lg font-semibold tracking-[0.15em]">GIULIA-7K2Q</p>
-            <p className="mt-1 text-[11px] text-[#6b5a45]">Valido {giorniValidita} giorni, solo per te.</p>
-          </div>
-        )}
-        <span className="inline-block rounded-full bg-[#0F2920] px-4 py-2 text-[13px] text-[#F2E7D0]">
-          Prenota un tavolo
-        </span>
-        <p className="text-[12px] text-[#6b5a45]">
-          A presto!
-          <br />
-          <strong className="text-[#2F1F11]">{venueName}</strong>
-        </p>
-      </div>
+      <iframe
+        ref={cornice}
+        title="Anteprima dell'email"
+        sandbox="allow-same-origin"
+        srcDoc={SCHELETRO}
+        onLoad={() => setPronta(true)}
+        className="block w-full border-0"
+        style={{ height: altezza }}
+      />
     </figure>
   );
 }

@@ -10,6 +10,7 @@ import {
 import { enqueueJob } from "@/server/jobs/queue";
 import { normalizzaEmail } from "@/server/dem/destinatari";
 import { PREVIEW_UNSUBSCRIBE_ID, signUnsubscribeToken } from "@/lib/unsubscribe-token";
+import { emailAutomazione, normalizzaStile, type AutomationStyle } from "@/lib/automazioni-email";
 import { createCoupon, descriviCoupon } from "@/server/coupons";
 import {
   AUTOMATIONS,
@@ -58,12 +59,17 @@ function giorniDi(def: AutomationDefinition, wf: AutomationWorkflow | null): num
   return Math.min(def.knob.max, Math.max(def.knob.min, scelto));
 }
 
-function testoDi(def: AutomationDefinition, wf: AutomationWorkflow | null): AutomationActions {
+function testoDi(
+  def: AutomationDefinition,
+  wf: AutomationWorkflow | null,
+): AutomationActions & { stile: AutomationStyle } {
   const actions = (wf?.actions as AutomationActions | null) ?? null;
   return {
     subject: actions?.subject?.trim() || def.defaults.subject,
     intro: actions?.intro?.trim() || def.defaults.intro,
     coupon: actions?.coupon ?? null,
+    // Normalizzato in lettura: il campo è JSON, e finisce in un `style`.
+    stile: normalizzaStile(actions?.stile),
   };
 }
 
@@ -230,52 +236,6 @@ function linkDisiscrizione(base: string, guestId: string): string {
   return `${base}/api/unsubscribe?token=${signUnsubscribeToken(guestId)}`;
 }
 
-function corpo(opts: {
-  guestName: string;
-  venueName: string;
-  intro: string;
-  url: string;
-  venuePhone: string | null;
-  coupon?: { code: string; descrizione: string; validUntil: Date } | null;
-  /** Il link di disiscrizione: lo stesso token e la stessa rotta delle campagne. */
-  unsubscribeUrl: string;
-}) {
-  const scadenza = opts.coupon
-    ? new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long" }).format(opts.coupon.validUntil)
-    : "";
-  return `
-    <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #2F1F11; max-width: 520px;">
-      <p style="font-size:16px;">Ciao ${opts.guestName},</p>
-      <p style="font-size:16px;">${opts.intro}</p>
-      ${
-        opts.coupon
-          ? `<div style="border:1px solid #d8c9ae;border-radius:12px;padding:16px;margin:16px 0;text-align:center;">
-               <p style="margin:0 0 6px;font-size:15px;">${opts.coupon.descrizione}</p>
-               <p style="margin:0;font-size:22px;letter-spacing:2px;font-weight:600;">${opts.coupon.code}</p>
-               <p style="margin:8px 0 0;font-size:13px;color:#6b5a45;">Valido fino al ${scadenza}, solo per te.</p>
-             </div>`
-          : ""
-      }
-      <p>
-        <a href="${opts.url}"
-           style="display:inline-block;background:#0F2920;color:#F2E7D0;text-decoration:none;padding:12px 20px;border-radius:999px;font-size:15px;">
-          Prenota un tavolo
-        </a>
-      </p>
-      ${
-        opts.venuePhone
-          ? `<p style="font-size:13px;color:#6b5a45;">Se preferisci sentirci, siamo allo ${opts.venuePhone}.</p>`
-          : ""
-      }
-      <p style="font-size:13px;color:#6b5a45;">A presto!<br/><strong>${opts.venueName}</strong></p>
-      <p style="font-size:11px;color:#8a7a65;margin-top:24px;">
-        Ricevi questa email perché hai acconsentito a ricevere comunicazioni da ${opts.venueName}.
-        <a href="${opts.unsubscribeUrl}" style="color:#8a7a65;">Non voglio più ricevere queste email</a>.
-      </p>
-    </div>
-  `;
-}
-
 /* -------------------------------------------------------------------------- */
 /*  Esecuzione                                                                */
 /* -------------------------------------------------------------------------- */
@@ -331,7 +291,7 @@ export async function runAutomation(
 
   const venue = await db.venue.findUniqueOrThrow({
     where: { id: venueId },
-    select: { name: true, phone: true },
+    select: { name: true, phone: true, brandLogoUrl: true },
   });
   const testo = testoDi(def, wf);
   const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -390,7 +350,7 @@ export async function runAutomation(
       workflowRunId: run.id,
       kind: automationKind(key),
       subject: testo.subject,
-      body: corpo({
+      body: emailAutomazione({
         guestName: destinatario.firstName,
         venueName: venue.name,
         intro: testo.intro,
@@ -398,6 +358,9 @@ export async function runAutomation(
         venuePhone: venue.phone,
         coupon,
         unsubscribeUrl: disiscrizione,
+        stile: testo.stile,
+        logoUrl: venue.brandLogoUrl,
+        origine: base,
       }),
       preview: `${def.name} — ${destinatario.reason}`,
     });
@@ -468,6 +431,8 @@ export type AutomationView = {
   intro: string;
   /** L'omaggio allegato, se il locale ne ha messo uno. */
   coupon: AutomationCoupon | null;
+  /** L'aspetto dell'email, già reso sicuro. */
+  stile: AutomationStyle;
   /** Quante persone toccherebbe oggi, con tutte le difese già applicate. */
   toccherebbeOggi: number;
   /** Fino a tre esempi, col motivo: rende il numero controllabile. */
@@ -514,6 +479,7 @@ export async function listAutomations(venueId: string, now: Date = new Date()): 
       subject: testo.subject,
       intro: testo.intro,
       coupon: testo.coupon ?? null,
+      stile: testo.stile,
       toccherebbeOggi: pronti.length,
       esempi: pronti.slice(0, 3).map((p) => ({ nome: p.firstName, reason: p.reason })),
       scartati,
@@ -539,7 +505,10 @@ export async function sendAutomationTest(venueId: string, key: AutomationKey, to
   const def = AUTOMATIONS[key];
   const wf = await ensureAutomation(venueId, key);
   const testo = testoDi(def, wf);
-  const venue = await db.venue.findUniqueOrThrow({ where: { id: venueId }, select: { name: true, phone: true } });
+  const venue = await db.venue.findUniqueOrThrow({
+    where: { id: venueId },
+    select: { name: true, phone: true, brandLogoUrl: true },
+  });
   const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const esito = await sendMessage({
@@ -549,7 +518,10 @@ export async function sendAutomationTest(venueId: string, key: AutomationKey, to
     to,
     kind: `${automationKind(key)}.test`,
     subject: `[prova] ${testo.subject}`,
-    body: corpo({
+    body: emailAutomazione({
+      stile: testo.stile,
+      logoUrl: venue.brandLogoUrl,
+      origine: base,
       guestName: "Mario",
       venueName: venue.name,
       intro: testo.intro,
@@ -593,6 +565,8 @@ export type AutomationUpdate = {
    * gesto possibile e distinguibile dal «non l'ho toccato».
    */
   coupon?: AutomationCoupon | null;
+  /** Lo stile dell'email; assente lo lascia com'è. */
+  stile?: AutomationStyle;
 };
 
 export async function updateAutomation(venueId: string, key: AutomationKey, input: AutomationUpdate) {
@@ -615,6 +589,7 @@ export async function updateAutomation(venueId: string, key: AutomationKey, inpu
         subject: input.subject?.trim() || testoAttuale.subject,
         intro: input.intro?.trim() || testoAttuale.intro,
         coupon: input.coupon === undefined ? testoAttuale.coupon ?? null : input.coupon,
+        stile: input.stile === undefined ? testoAttuale.stile : normalizzaStile(input.stile),
       } as unknown as Prisma.InputJsonValue,
     },
   });

@@ -1,6 +1,7 @@
 import type { AutomationTrigger } from "@prisma/client";
 import { db } from "@/lib/db";
 import { TAG_RULES } from "@/server/guest-intelligence";
+import type { AutomationStyle } from "@/lib/automazioni-email";
 
 /**
  * Le automazioni sono un **numero chiuso**, non un costruttore libero.
@@ -84,6 +85,8 @@ export type AutomationActions = {
   intro: string;
   /** L'omaggio, se il locale ne ha messo uno. */
   coupon?: AutomationCoupon | null;
+  /** L'aspetto dell'email: assente vuol dire quello di sempre. */
+  stile?: AutomationStyle | null;
 };
 
 export type AutomationDefinition = {

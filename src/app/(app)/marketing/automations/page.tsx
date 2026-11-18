@@ -101,6 +101,11 @@ export default async function AutomationsPage() {
                   canEdit={canEdit}
                   venueName={ctx.venue.name}
                   emailAttiva={emailPronta}
+                  brand={{
+                    logoUrl: ctx.venue.brandLogoUrl ?? null,
+                    colore: ctx.venue.brandAccent ?? null,
+                    telefono: ctx.venue.phone ?? null,
+                  }}
                 />
               </li>
             ))}
