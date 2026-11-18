@@ -40,11 +40,6 @@ function orologioDel(timeZone: string): Orologio {
   };
 }
 
-async function orologioDelLocale(venueId: string): Promise<Orologio> {
-  const venue = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
-  return orologioDel(venue?.timezone ?? DEFAULT_VENUE_TIMEZONE);
-}
-
 function bucketOf(startsAt: Date, orologio: Orologio) {
   const h = orologio(startsAt).ora;
   return h < 14 ? "12-14" : h < 17 ? "14-17" : h < 19 ? "17-19" : h < 21 ? "19-21" : h < 23 ? "21-23" : "23+";
@@ -95,6 +90,30 @@ function heatmapOf(bookings: BookingRow[], orologio: Orologio) {
     const [weekday, slot] = key.split("|");
     return { weekday, slot, covers };
   });
+}
+
+/**
+ * I coperti per giorno **del locale**, per il grafico «nel tempo».
+ *
+ * Contati come i coperti della tessera — tutte le prenotazioni del periodo —
+ * così la somma della curva è il numero scritto sopra.
+ */
+function perGiornoOf(bookings: BookingRow[], timeZone: string, conta: (b: BookingRow) => number): Record<string, number> {
+  const f = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+  const out: Record<string, number> = {};
+  for (const b of bookings) {
+    const k = f.format(b.startsAt);
+    out[k] = (out[k] ?? 0) + conta(b);
+  }
+  return out;
+}
+
+const COPERTI = (b: BookingRow) => b.partySize;
+const UNA = () => 1;
+
+async function fusoDelLocale(venueId: string): Promise<string> {
+  const venue = await db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } });
+  return venue?.timezone ?? DEFAULT_VENUE_TIMEZONE;
 }
 
 function sourcesOf(bookings: BookingRow[]) {
@@ -149,11 +168,14 @@ async function guestMetrics(venueId: string, bookings: BookingRow[], from: Date,
 export async function getAnalytics(venueId: string, from: Date, to: Date) {
   const bookings = await fetchBookingsInRange(venueId, from, to);
   const gm = await guestMetrics(venueId, bookings, from, to);
-  const orologio = await orologioDelLocale(venueId);
+  const fuso = await fusoDelLocale(venueId);
+  const orologio = orologioDel(fuso);
 
   return {
     ...coreMetrics(bookings),
     ...gm,
+    perGiorno: perGiornoOf(bookings, fuso, COPERTI),
+    prenotazioniPerGiorno: perGiornoOf(bookings, fuso, UNA),
     slots: slotsOf(bookings, orologio),
     heatmap: heatmapOf(bookings, orologio),
     sources: sourcesOf(bookings),
@@ -167,8 +189,9 @@ export async function getPreviousPeriodMetrics(venueId: string, from: Date, to: 
 
   const bookings = await fetchBookingsInRange(venueId, prevFrom, prevTo);
   const gm = await guestMetrics(venueId, bookings, prevFrom, prevTo);
+  const fuso = await fusoDelLocale(venueId);
 
-  return { ...coreMetrics(bookings), ...gm };
+  return { ...coreMetrics(bookings), ...gm, perGiorno: perGiornoOf(bookings, fuso, COPERTI), prenotazioniPerGiorno: perGiornoOf(bookings, fuso, UNA) };
 }
 
 export type PeriodMetrics = Awaited<ReturnType<typeof getPreviousPeriodMetrics>>;

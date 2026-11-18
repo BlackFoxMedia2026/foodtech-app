@@ -16,10 +16,10 @@
  * non «performance».
  */
 export const VISTE = [
-  { id: "andamento", titolo: "Com'è andata", sottotitolo: "il periodo in numeri" },
-  { id: "carta", titolo: "Cibo e carta", sottotitolo: "costo, margine, piatti" },
-  { id: "servizio", titolo: "Servizio", sottotitolo: "assenze, rotazione, attesa" },
-  { id: "domanda", titolo: "Domanda e ospiti", sottotitolo: "previsione, voti, fonti" },
+  { id: "andamento", titolo: "Com'è andata", corto: "Sintesi", sottotitolo: "il periodo in numeri" },
+  { id: "carta", titolo: "Cibo e carta", corto: "Carta", sottotitolo: "costo, margine, piatti" },
+  { id: "servizio", titolo: "Servizio", corto: "Servizio", sottotitolo: "assenze, rotazione, attesa" },
+  { id: "domanda", titolo: "Domanda e ospiti", corto: "Ospiti", sottotitolo: "previsione, voti, fonti" },
 ] as const;
 
 export type VistaId = (typeof VISTE)[number]["id"];

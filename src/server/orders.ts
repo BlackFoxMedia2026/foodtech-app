@@ -657,3 +657,27 @@ export async function incassoNelPeriodo(
   });
   return { totalCents: esito._sum.totalCents ?? 0, conti: esito._count };
 }
+
+/**
+ * L'incasso dei conti chiusi, giorno per giorno **del locale**: la curva del
+ * dettaglio «Incasso» in Analytics. Stessa regola di `incassoNelPeriodo`.
+ */
+export async function incassoPerGiorno(
+  venueId: string,
+  from: Date,
+  to: Date,
+  timeZone: string,
+): Promise<Record<string, number>> {
+  const conti = await db.order.findMany({
+    where: { venueId, status: "COMPLETED", completedAt: { gte: from, lte: to } },
+    select: { completedAt: true, totalCents: true },
+  });
+  const f = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+  const out: Record<string, number> = {};
+  for (const c of conti) {
+    if (!c.completedAt) continue;
+    const k = f.format(c.completedAt);
+    out[k] = (out[k] ?? 0) + c.totalCents;
+  }
+  return out;
+}

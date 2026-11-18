@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, ArrowDown, CalendarRange, CalendarX, CircleCheck, Gift, Receipt, UserX, Users } from "lucide-react";
+import { ArrowRight, ArrowUp, ArrowDown, CalendarRange, Receipt, Users, Wallet } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -7,11 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { StatCard } from "@/components/overview/stat-card";
 import { NpsPanel } from "@/components/surveys/nps-panel";
 import { ForecastPanel } from "@/components/insights/forecast-panel";
-import { FoodCostPanel } from "@/components/insights/food-cost-panel";
-import { MenuEngineeringPanel } from "@/components/insights/menu-engineering-panel";
+import { VistaCarta } from "@/components/insights/carta";
 import { WaitlistPanel } from "@/components/insights/waitlist-panel";
 import { RotazionePanel } from "@/components/insights/rotazione-panel";
 import { getFoodCost } from "@/server/food-cost";
@@ -25,7 +23,8 @@ import { waitlistReport } from "@/server/waitlist";
 import { debitoGiftCards } from "@/server/gift-cards";
 import { incassoNelPeriodo } from "@/server/orders";
 import { sintesiEsecutiva } from "@/server/sintesi-esecutiva";
-import { SintesiPanel } from "@/components/insights/sintesi-panel";
+import { EsitoPrenotazioni, FilaConfronto, RigheSintesi, TesseraConfronto, puntiNelTempo } from "@/components/insights/andamento";
+import { CopertiNelTempo, LegendaCurve } from "@/components/insights/coperti-nel-tempo";
 import { rotazioneTavoli } from "@/server/rotazione";
 import { resolveSegment } from "@/server/campaigns";
 import { Button } from "@/components/ui/button";
@@ -34,98 +33,19 @@ import {
   SourcesChart,
   WeekdayHeatmap,
 } from "@/components/insights/charts";
-import { PeriodSelector } from "@/components/insights/period-selector";
 import { SchedeViste } from "@/components/insights/schede-viste";
-import { VISTE, vistaDa } from "@/lib/viste-insights";
-import { ComparisonStat } from "@/components/insights/comparison-stat";
+import { vistaDa } from "@/lib/viste-insights";
 import { getActiveVenue } from "@/lib/tenant";
 import { getAnalytics, getPreviousPeriodMetrics } from "@/server/analytics";
 import { computeDelta } from "@/lib/period-delta";
-import { generateInsights, SOURCE_LABELS } from "@/lib/insight-rules";
 import { formatCurrency, cn } from "@/lib/utils";
-import { giornataInVenue, mezzanotteInVenue, shiftDateKey, todayInVenue } from "@/lib/venue-time";
+import { periodoDa } from "@/lib/periodo-insights";
 import { perchePercentualeAssente, quotaAffidabile } from "@/lib/quota";
 import { statoCentralino } from "@/server/licenza-centralino";
 import { numeriTelefono } from "@/server/voice/numeri";
 import { TelefonoPanel } from "@/components/insights/telefono-panel";
 
 export const dynamic = "force-dynamic";
-
-const PRESET_RANGE_KEYS = new Set([
-  "last7",
-  "last30",
-  "last90",
-  "currentMonth",
-  "currentYear",
-]);
-
-/**
- * Il periodo, in giorni **del locale**.
- *
- * Si ragiona su date `AAAA-MM-GG` e si trasformano in istanti solo alla fine,
- * con il fuso del locale: `startOfDay`/`endOfDay` e `new Date(anno, mese, 1)`
- * rispondevano nel fuso del processo — UTC su Vercel — e «oggi» cominciava
- * alle 02:00 italiane, lasciando la cena dell'una di notte nel giorno prima.
- */
-function computeRange(
-  searchParams: {
-    range?: string;
-    from?: string;
-    to?: string;
-  },
-  fuso: string,
-) {
-  const oggi = todayInVenue(fuso);
-  const DATA = /^\d{4}-\d{2}-\d{2}$/;
-  const periodo = (range: string, dal: string, al: string) => ({
-    range,
-    from: mezzanotteInVenue(dal, fuso),
-    to: giornataInVenue(mezzanotteInVenue(al, fuso), fuso).fine,
-    fromKey: dal,
-    toKey: al,
-  });
-
-  if (
-    searchParams.range === "custom" &&
-    searchParams.from &&
-    searchParams.to &&
-    DATA.test(searchParams.from) &&
-    DATA.test(searchParams.to)
-  ) {
-    return periodo("custom", searchParams.from, searchParams.to);
-  }
-
-  const key =
-    searchParams.range && PRESET_RANGE_KEYS.has(searchParams.range)
-      ? searchParams.range
-      : "last7";
-
-  if (key === "currentMonth") return periodo(key, `${oggi.slice(0, 8)}01`, oggi);
-  if (key === "currentYear") return periodo(key, `${oggi.slice(0, 5)}01-01`, oggi);
-  const days = key === "last30" ? 30 : key === "last90" ? 90 : 7;
-  /*
-    `- (days - 1)`, non `- days`. Oggi conta come uno dei giorni del periodo:
-    sottraendone sette da mezzanotte di oggi la finestra copriva **otto**
-    giorni di calendario, e la sintesi scriveva «gli ultimi 8 giorni» sotto una
-    pillola che dice «Ultimi 7 giorni». Lo stesso valeva per 30 e 90.
-  */
-  return periodo(key, shiftDateKey(oggi, -(days - 1)), oggi);
-}
-
-function trendFor(
-  current: number,
-  previous: number,
-  opts?: { higherIsBetter?: boolean; kind?: "count" | "rate" },
-) {
-  const delta = computeDelta(current, previous, opts);
-  /* `value` porta il **segno**, che diventa la freccia; `isGood` porta il
-     giudizio, che diventa il colore. Prima `positive` riceveva `isGood` e la
-     scheda ne ricavava la freccia: su ogni metrica «meglio se scende» la
-     freccia puntava dalla parte sbagliata. */
-  return delta.available
-    ? { value: delta.value, buono: delta.isGood }
-    : undefined;
-}
 
 function DeltaBadge({
   current,
@@ -168,7 +88,7 @@ export default async function InsightsPage({
   searchParams: { range?: string; from?: string; to?: string; vista?: string };
 }) {
   const ctx = await getActiveVenue();
-  const { range, from, to, fromKey, toKey } = computeRange(searchParams, ctx.venue.timezone);
+  const { from, to, fromKey, toKey } = periodoDa(searchParams, ctx.venue.timezone);
   const giorni = Math.max(
     1,
     Math.round((to.getTime() - from.getTime()) / 86_400_000),
@@ -266,15 +186,6 @@ export default async function InsightsPage({
     inattivi: inattivi.length,
   });
 
-  const insights = generateInsights({
-    current: a,
-    previous: prev,
-    slots: a.slots,
-    heatmap: a.heatmap,
-    sources: a.sources,
-    sourceLabels: SOURCE_LABELS,
-  });
-
   /**
    * Una vista per volta, scelta dall'indirizzo.
    *
@@ -288,6 +199,13 @@ export default async function InsightsPage({
    * tasto indietro che funziona, e nessun JavaScript per cambiarla.
    */
   const vistaAttiva = vistaDa(searchParams.vista);
+  /* Il periodo da portare nel dettaglio di un numero: aprendo «Coperti» si
+     guarda lo stesso periodo, e tornando indietro si ritrova la vista. */
+  const periodoQuery = new URLSearchParams(
+    Object.entries({ range: searchParams.range, from: searchParams.from, to: searchParams.to, vista: searchParams.vista }).filter(
+      (x): x is [string, string] => typeof x[1] === "string",
+    ),
+  ).toString();
 
   const pctNewGuests = a.totalGuests
     ? Math.round((a.newGuests / a.totalGuests) * 100)
@@ -298,259 +216,113 @@ export default async function InsightsPage({
 
   return (
     <div className="schermo animate-fade-in gap-3">
-      <header className="fissa flex flex-wrap items-center justify-between gap-3">
-        {/* Il titolo è nella testata: qui resta il sottotitolo, che dice
-            quale delle viste si sta guardando. */}
-        <p className="t-etichetta">
-          {VISTE.find((v) => v.id === vistaAttiva)!.sottotitolo}
-        </p>
-        <PeriodSelector
-          range={range}
-          from={fromKey}
-          to={toKey}
-        />
-      </header>
+      {/* In colonna flessibile: nella vista «Com'è andata» la riga della curva
+          prende l'altezza che avanza, e in fondo non resta un vuoto. */}
+      <div className="fill-scroll -mx-2 -mt-2 flex flex-col gap-4 px-2 pb-4 pt-2">
+        {/* Quattro numeri, ognuno col periodo prima **dentro** la tessera:
+            prima c'era anche un «Confronto periodi» che ripeteva gli
+            stessi numeri una seconda volta. */}
+        <FilaConfronto>
+          <TesseraConfronto
+            href={`/insights/coperti?${periodoQuery}`}
+            icona={Users}
+            etichetta="Coperti"
+            valore={String(a.covers)}
+            ora={a.covers}
+            prima={prev.covers}
+          />
+          <TesseraConfronto
+            href={`/insights/prenotazioni?${periodoQuery}`}
+            icona={CalendarRange}
+            etichetta="Prenotazioni"
+            valore={String(a.bookings)}
+            ora={a.bookings}
+            prima={prev.bookings}
+          />
+          <TesseraConfronto
+            href={`/insights/incasso?${periodoQuery}`}
+            icona={Wallet}
+            etichetta="Incasso"
+            valore={foodCost.conti > 0 ? formatCurrency(foodCost.incassoCents, ctx.venue.currency) : "—"}
+            ora={foodCost.incassoCents}
+            prima={incassoPrima.totalCents}
+            confrontabile={foodCost.conti > 0 && incassoPrima.conti > 0}
+          />
+          {/* Misurata sui conti chiusi: senza un conto, un trattino. */}
+          <TesseraConfronto
+            href={`/insights/spesa?${periodoQuery}`}
+            icona={Receipt}
+            etichetta="Spesa media"
+            valore={a.ospitiConConti > 0 ? formatCurrency(a.avgSpendCents, ctx.venue.currency) : "—"}
+            ora={a.avgSpendCents}
+            prima={prev.avgSpendCents}
+            confrontabile={a.ospitiConConti > 0 && prev.ospitiConConti > 0}
+          />
+        </FilaConfronto>
 
-      <SchedeViste />
+        {/* La barra **sotto** i numeri: i numeri del periodo valgono per
+            tutte e quattro le viste, la barra sceglie cosa guardare dopo. */}
+        <SchedeViste from={fromKey} to={toKey} />
 
-      <div className="fill-scroll space-y-4 pr-0.5">
         {/* ---- COM'È ANDATA ---- */}
         {vistaAttiva === "andamento" && (
           <>
-            {/* Prima di tutto il resto: è la riga che si legge su un telefono. */}
-            <SintesiPanel righe={sintesi} periodoGiorni={giorni} />
 
-            {/* Due colonne anche sul telefono: una tessera per riga erano sette
-                schermate di numeri da scorrere prima del confronto. */}
-            <section className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3">
-              <StatCard
-                icon={CalendarRange}
-                label="Prenotazioni totali"
-                value={String(a.bookings)}
-                hint="Nel periodo selezionato"
-                trend={trendFor(a.bookings, prev.bookings)}
-                emphasize
-              />
-              <StatCard
-                icon={Users}
-                label="Coperti totali"
-                value={String(a.covers)}
-                hint="Somma dei posti prenotati"
-                trend={trendFor(a.covers, prev.covers)}
-              />
-              {/*
-          Queste tre sono **percentuali**, e una percentuale su pochi casi dice
-          più di quello che sa: una prenotazione mancata su una sola fa
-          «100% di assenze». Con zero prenotazioni scrivevano «0%», cioè
-          «abbiamo misurato zero assenze» dove non c'era niente da misurare.
+            {/* La curva accanto alla sintesi: si guarda il disegno e si legge
+                il perché, senza scorrere. */}
+            <section className="grid gap-3 md:gap-4 lg:flex-1 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] [&>*]:min-w-0">
+              <Card className="card-notch flex flex-col">
+                <CardHeader className="flex-row flex-wrap items-start justify-between gap-x-4 gap-y-2 space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Coperti nel tempo</CardTitle>
+                    <CardDescription>
+                      {giorni > 62 ? "Settimana per settimana" : "Giorno per giorno"}, contro il periodo prima
+                    </CardDescription>
+                  </div>
+                  <div className="pt-1">
+                    <LegendaCurve />
+                  </div>
+                </CardHeader>
+                <CardContent className="flex min-h-0 flex-1 flex-col pb-4">
+                  <CopertiNelTempo punti={puntiNelTempo(fromKey, toKey, a.perGiorno, prev.perGiorno)} />
+                </CardContent>
+              </Card>
 
-          La regola era già scritta e applicata al pannello delle assenze, in
-          fondo a questa stessa pagina; queste tre schede la ignoravano. Ora
-          vive in `lib/quota.ts` e la rispettano entrambe.
-
-          Anche il confronto col periodo prima si mostra solo se **entrambi** i
-          periodi hanno una base: variare da una percentuale inventata a
-          un'altra non è una variazione.
-        */}
-              <StatCard
-                icon={CircleCheck}
-                // «Prenotazioni completate» e non «Tasso completamento»: in una
-                // tessera da mezzo telefono «COMPLETAMENTO» usciva dal bordo,
-                // due parole invece vanno a capo.
-                label="Prenotazioni completate"
-                value={
-                  quotaAffidabile(a.bookings) ? `${a.occupancyRate}%` : "—"
-                }
-                hint={
-                  quotaAffidabile(a.bookings)
-                    ? "Sul totale prenotazioni"
-                    : perchePercentualeAssente(a.bookings)
-                }
-                trend={
-                  quotaAffidabile(a.bookings) && quotaAffidabile(prev.bookings)
-                    ? trendFor(a.occupancyRate, prev.occupancyRate, {
-                        kind: "rate",
-                      })
-                    : undefined
-                }
-              />
-              <StatCard
-                icon={UserX}
-                label="No-show"
-                value={quotaAffidabile(a.bookings) ? `${a.noShowRate}%` : "—"}
-                hint={
-                  quotaAffidabile(a.bookings)
-                    ? "Sul totale prenotazioni"
-                    : perchePercentualeAssente(a.bookings)
-                }
-                trend={
-                  quotaAffidabile(a.bookings) && quotaAffidabile(prev.bookings)
-                    ? trendFor(a.noShowRate, prev.noShowRate, {
-                        higherIsBetter: false,
-                        kind: "rate",
-                      })
-                    : undefined
-                }
-              />
-              <StatCard
-                icon={CalendarX}
-                label="Cancellazioni"
-                value={quotaAffidabile(a.bookings) ? `${a.cancelRate}%` : "—"}
-                hint={
-                  quotaAffidabile(a.bookings)
-                    ? "Sul totale prenotazioni"
-                    : perchePercentualeAssente(a.bookings)
-                }
-                trend={
-                  quotaAffidabile(a.bookings) && quotaAffidabile(prev.bookings)
-                    ? trendFor(a.cancelRate, prev.cancelRate, {
-                        higherIsBetter: false,
-                        kind: "rate",
-                      })
-                    : undefined
-                }
-              />
-              {giftCard.carte > 0 && (
-                /* Non è un incasso del periodo: è denaro già incassato e non ancora
-             servito, cioè un debito verso i clienti. Sta fra i numeri
-             d'insieme perché è lì che qualcuno lo cerca a fine mese. */
-                <StatCard
-                  icon={Gift}
-                label="Debito gift card"
-                  value={formatCurrency(
-                    giftCard.residuoCents,
-                    ctx.venue.currency,
-                  )}
-                  hint={`${giftCard.carte} ${giftCard.carte === 1 ? "carta" : "carte"} da onorare — già incassate, cena da servire`}
-                />
-              )}
-              {/*
-          La spesa media è **misurata sui conti chiusi**, e va detto su quanti
-          ospiti: prima si calcolava da una colonna che nessuno scrive, quindi
-          su un locale vero mostrava «0,00 €» con accanto una freccia di
-          tendenza — il modo più efficace di far sembrare un dato mancante un
-          dato brutto. Senza nemmeno un conto chiuso il riquadro dice cosa
-          manca invece di mostrare uno zero.
-        */}
-              <StatCard
-                icon={Receipt}
-                label="Spesa media per visita"
-                value={
-                  a.ospitiConConti > 0
-                    ? formatCurrency(a.avgSpendCents, ctx.venue.currency)
-                    : "—"
-                }
-                hint={
-                  a.ospitiConConti > 0
-                    ? `Sui conti chiusi di ${a.ospitiConConti} ${a.ospitiConConti === 1 ? "ospite" : "ospiti"}`
-                    : "Nessun conto chiuso nel periodo: non c'è niente da misurare"
-                }
-                trend={
-                  a.ospitiConConti > 0 && prev.ospitiConConti > 0
-                    ? trendFor(a.avgSpendCents, prev.avgSpendCents)
-                    : undefined
-                }
-              />
+              <Card className="card-notch flex flex-col">
+                <CardHeader className="pb-1">
+                  <CardTitle>In breve</CardTitle>
+                  <CardDescription>I problemi per primi</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-1 flex-col">
+                  <RigheSintesi righe={sintesi} />
+                </CardContent>
+              </Card>
             </section>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Confronto periodi</CardTitle>
-                <CardDescription>
-                  Periodo selezionato rispetto a quello immediatamente
-                  precedente
-                </CardDescription>
+            {/* Completate, assenze e cancellazioni sono parti di un intero:
+                una barra sola invece di tre tessere da sommare a mente. */}
+            <Card className="card-notch">
+              <CardHeader className="flex-row items-baseline justify-between gap-3 space-y-0 pb-3">
+                <CardTitle>Come sono finite le prenotazioni</CardTitle>
+                <span className="text-xs text-muted-foreground">
+                  Su {a.bookings} · frecce in punti sul periodo prima
+                </span>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-                  <ComparisonStat
-                    label="Prenotazioni"
-                    current={a.bookings}
-                    previous={prev.bookings}
-                  />
-                  <ComparisonStat
-                    label="Coperti"
-                    current={a.covers}
-                    previous={prev.covers}
-                  />
-                  <ComparisonStat
-                    label="Completate"
-                    current={a.occupancyRate}
-                    previous={prev.occupancyRate}
-                    format={(v) => `${v}%`}
-                    kind="rate"
-                    nonDisponibile={
-                      quotaAffidabile(a.bookings)
-                        ? undefined
-                        : perchePercentualeAssente(a.bookings)
-                    }
-                  />
-                  <ComparisonStat
-                    label="No-show"
-                    current={a.noShowRate}
-                    previous={prev.noShowRate}
-                    format={(v) => `${v}%`}
-                    higherIsBetter={false}
-                    kind="rate"
-                    nonDisponibile={
-                      quotaAffidabile(a.bookings)
-                        ? undefined
-                        : perchePercentualeAssente(a.bookings)
-                    }
-                  />
-                  <ComparisonStat
-                    label="Cancellazioni"
-                    current={a.cancelRate}
-                    previous={prev.cancelRate}
-                    format={(v) => `${v}%`}
-                    higherIsBetter={false}
-                    kind="rate"
-                    nonDisponibile={
-                      quotaAffidabile(a.bookings)
-                        ? undefined
-                        : perchePercentualeAssente(a.bookings)
-                    }
-                  />
-                  {/* Un confronto fra due periodi ha senso solo se entrambi hanno
-                conti chiusi: «0 → 32 €» non è una crescita, è la comparsa
-                della misura. */}
-                  {a.ospitiConConti > 0 && prev.ospitiConConti > 0 && (
-                    <ComparisonStat
-                      label="Spesa media"
-                      current={a.avgSpendCents}
-                      previous={prev.avgSpendCents}
-                      format={(v) => formatCurrency(v, ctx.venue.currency)}
-                    />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Insight principali</CardTitle>
-                <CardDescription>
-                  Cosa dicono i dati di questo periodo
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {insights.length === 0 ? (
-                  <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-                    Non ci sono ancora abbastanza dati per generare insight
-                    affidabili.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {insights.map((insight, i) => (
-                      <li
-                        key={i}
-                        className="rounded-md border bg-secondary/30 p-3 text-sm"
-                      >
-                        {insight}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <EsitoPrenotazioni
+                  totale={a.bookings}
+                  completate={a.occupancyRate}
+                  noShow={a.noShowRate}
+                  cancellate={a.cancelRate}
+                  affidabile={quotaAffidabile(a.bookings)}
+                  perche={perchePercentualeAssente(a.bookings)}
+                  prima={{
+                    completate: prev.occupancyRate,
+                    noShow: prev.noShowRate,
+                    cancellate: prev.cancelRate,
+                    affidabile: quotaAffidabile(prev.bookings),
+                  }}
+                />
               </CardContent>
             </Card>
           </>
@@ -558,17 +330,13 @@ export default async function InsightsPage({
 
         {/* ---- CIBO E CARTA ---- */}
         {vistaAttiva === "carta" && (
-          <>
-            <FoodCostPanel report={foodCost} currency={ctx.venue.currency} />
-            {/* Stessa serata, stessi piatti: la classifica si calcola sul
-              rendiconto già letto invece di rifare le stesse letture. */}
-            {foodCost.conti > 0 && (
-              <MenuEngineeringPanel
-                dati={menuEngineering(foodCost)}
-                currency={ctx.venue.currency}
-              />
-            )}
-          </>
+          /* Stessa serata, stessi piatti: la matrice si calcola sul
+             rendiconto già letto invece di rifare le stesse letture. */
+          <VistaCarta
+            report={foodCost}
+            matrice={foodCost.conti > 0 ? menuEngineering(foodCost) : null}
+            currency={ctx.venue.currency}
+          />
         )}
 
         {/* ---- SERVIZIO ---- */}
