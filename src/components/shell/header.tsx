@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Agent } from "@/components/agent/agent";
 import { vociPrincipali, titoloPagina } from "@/components/shell/nav-items";
@@ -12,6 +12,7 @@ import { NotificationBell } from "./notification-bell";
 import { RicercaGlobale } from "./ricerca-globale";
 import { IndicatoreTelefono } from "@/components/telefono/indicatore-telefono";
 import { NavigazioneImpostazioni } from "@/components/settings/navigazione-impostazioni";
+import { cn } from "@/lib/utils";
 
 /**
  * La barra in alto è la navigazione **da scrivania**: su telefono le voci
@@ -68,6 +69,8 @@ export function Header({
     () => vociPrincipali(telefonoAttivo, role),
     [telefonoAttivo, role],
   );
+  /* Mentre si cerca, il campo prende il posto degli altri strumenti. */
+  const [cerca, setCerca] = useState(false);
   const inImpostazioni =
     pathname === "/settings" || pathname.startsWith("/settings/");
 
@@ -114,29 +117,65 @@ export function Header({
 
         {/* Su telefono il gruppo di destra si allarga per riempire lo spazio
             lasciato libero dalla navigazione. */}
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 md:gap-2">
-          {/* L'agente apre il gruppo. È l'unico dei quattro che non è
-              un'icona ma un oggetto con un alone, e in mezzo agli altri
-              quell'alone finiva addosso al cerchio della ricerca: adesso ha un
-              confine libero alla sua sinistra, dove c'è solo il vuoto fra la
-              navigazione e questo gruppo. */}
-          <Agent />
-          <RicercaGlobale />
-          {/* Il telefono **prima** delle notifiche: quando è acceso chiede
-              qualcosa che si fa adesso — una persona in linea, una da
-              richiamare — mentre una notifica si legge quando capita. E non
-              compare affatto quando non c'è niente da fare, così le icone in
-              testata restano tre. */}
-          <IndicatoreTelefono />
-          <NotificationBell />
-          {/* Sul telefono il profilo è la pagina «Altro» della barra in
-              basso: due strade per le impostazioni sullo stesso schermo
-              non insegnano dove stanno le cose. */}
-          <div className="hidden md:block">
-            <ProfileMenu user={user} role={role} conStaffApp={conStaffApp} />
+        <div className="ml-auto flex shrink-0 items-center">
+          {/* L'agente apre il gruppo: è l'unico con un alone, e a sinistra ha
+              solo il vuoto fra la navigazione e questo gruppo. Mentre si cerca,
+              agente, telefono, notifiche e profilo si fanno da parte e il
+              campo si allarga al loro posto (19 nov 2026). */}
+          <DaParte via={cerca}>
+            <Agent />
+          </DaParte>
+          <div className="ml-1.5 md:ml-2">
+            <RicercaGlobale aperta={cerca} onAperta={setCerca} />
           </div>
+          {/* Il telefono **prima** delle notifiche: quando è acceso chiede
+              qualcosa che si fa adesso. Non compare quando non c'è niente da
+              fare, così le icone in testata restano tre. */}
+          <DaParte via={cerca} spazio>
+            <IndicatoreTelefono />
+          </DaParte>
+          <DaParte via={cerca} spazio>
+            <NotificationBell />
+          </DaParte>
+          {/* Sul telefono il profilo è la pagina «Altro» della barra in basso. */}
+          <DaParte via={cerca} spazio className="hidden md:block">
+            <ProfileMenu user={user} role={role} conStaffApp={conStaffApp} />
+          </DaParte>
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * Uno strumento della testata che si fa da parte mentre si cerca: si
+ * stringe a zero, sfuma e rimpicciolisce. Il margine sta qui e non nel `gap`
+ * del gruppo, così da chiuso non lascia un buco.
+ */
+function DaParte({
+  via,
+  spazio = false,
+  className,
+  children,
+}: {
+  via: boolean;
+  spazio?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      aria-hidden={via || undefined}
+      inert={via || undefined}
+      className={cn(
+        "transition-[max-width,margin,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] empty:hidden",
+        via
+          ? "pointer-events-none ml-0 max-w-0 scale-75 overflow-hidden opacity-0"
+          : cn("max-w-16 opacity-100", spazio && "ml-1.5 md:ml-2"),
+        className,
+      )}
+    >
+      {children}
+    </div>
   );
 }

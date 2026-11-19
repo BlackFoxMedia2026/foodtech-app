@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarRange, Loader2, Search, UserRound } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { CalendarRange, CornerDownLeft, Loader2, Search, UserRound, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MINIMO_LETTERE, type EsitoRicerca } from "@/lib/ricerca-tipi";
 
@@ -11,64 +10,84 @@ import { MINIMO_LETTERE, type EsitoRicerca } from "@/lib/ricerca-tipi";
  * Cercare una persona da qualunque schermata.
  *
  * Non è una tavolozza dei comandi: non lancia azioni, trova **cose** — un
- * ospite, una prenotazione. La tavolozza è un'altra cosa e sta più avanti
- * nella coda dei lavori.
+ * ospite, una prenotazione.
  *
- * Perché un pulsante e non un campo nella barra: a 1440 px la barra in alto
- * porta già sei voci più «Altro» più tre comandi a destra, e un campo di
- * ricerca dentro quella fila l'avrebbe fatta tornare a scorrere in
- * orizzontale. Un pulsante costa quaranta pixel e apre una finestra che su
- * telefono e su scrivania è la stessa.
+ * **Nella testata, non in una finestra** (19 nov 2026). Il pulsante con la
+ * lente si allarga e diventa il campo; agente, notifiche e profilo si fanno
+ * da parte con un'animazione (lo decide `Header`, che riceve `aperta`), e i
+ * risultati scendono in un pannello sotto il campo. Prima era una finestra
+ * al centro dello schermo: per una riga di testo, troppo.
  *
  * Le scelte che la rendono usabile con una mano occupata:
  *
  * - **⌘K / Ctrl+K** la apre da qualunque schermata, e la scorciatoia non
- *   scatta quando si sta scrivendo in un campo — chi compila una prenotazione
- *   e scrive «k» non deve vedersi aprire una finestra;
- * - **frecce e Invio** scelgono senza toccare il mouse, e la riga scelta
- *   resta visibile perché si porta nel campo visivo da sola;
+ *   scatta quando si sta scrivendo in un campo;
+ * - **frecce e Invio** scelgono senza toccare il mouse, **Esc** o un clic
+ *   fuori la richiudono;
  * - **una domanda per volta**: le risposte in ritardo di una richiesta
  *   precedente si scartano confrontando la domanda che tornava con quella
- *   scritta adesso. Senza, chi digita in fretta vede lampeggiare i risultati
- *   di «Ro» sopra quelli di «Rossi».
+ *   scritta adesso.
  */
 /** Il segnale con cui un altro punto del guscio apre la ricerca. */
 export const EVENTO_APRI_RICERCA = "tavolo:apri-ricerca";
 
-export function RicercaGlobale() {
+export function RicercaGlobale({
+  aperta,
+  onAperta,
+}: {
+  aperta: boolean;
+  onAperta: (v: boolean) => void;
+}) {
   const router = useRouter();
-  const [aperta, setAperta] = useState(false);
   const [q, setQ] = useState("");
   const [esito, setEsito] = useState<EsitoRicerca | null>(null);
   const [inCorso, setInCorso] = useState(false);
   const [scelta, setScelta] = useState(0);
   const campo = useRef<HTMLInputElement>(null);
+  const radice = useRef<HTMLDivElement>(null);
+
+  const chiudi = useCallback(() => {
+    onAperta(false);
+    setQ("");
+    setEsito(null);
+  }, [onAperta]);
 
   /* ---- la scorciatoia ---------------------------------------------------- */
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey)) return;
-      // In un campo di testo la scorciatoia non c'entra: ⌘K in un editor è
-      // «inserisci un link», e qui dentro sarebbe un dispetto.
       const dove = e.target as HTMLElement | null;
       const scrivendo =
         dove?.tagName === "INPUT" || dove?.tagName === "TEXTAREA" || dove?.isContentEditable;
       if (scrivendo && !aperta) return;
       e.preventDefault();
-      setAperta(true);
+      onAperta(true);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [aperta]);
+  }, [aperta, onAperta]);
 
-  /* Sul telefono la lente non sta in testata (lascia il posto al titolo
-     intero): la ricerca si apre da «Altro», che manda questo segnale. */
   useEffect(() => {
-    const apri = () => setAperta(true);
+    const apri = () => onAperta(true);
     window.addEventListener(EVENTO_APRI_RICERCA, apri);
     return () => window.removeEventListener(EVENTO_APRI_RICERCA, apri);
-  }, []);
+  }, [onAperta]);
+
+  /* Aperta: il cursore va nel campo (dopo che ha cominciato ad allargarsi) e
+     un clic fuori la richiude. */
+  useEffect(() => {
+    if (!aperta) return;
+    const t = window.setTimeout(() => campo.current?.focus(), 60);
+    function fuori(e: PointerEvent) {
+      if (radice.current && !radice.current.contains(e.target as Node)) chiudi();
+    }
+    document.addEventListener("pointerdown", fuori);
+    return () => {
+      window.clearTimeout(t);
+      document.removeEventListener("pointerdown", fuori);
+    };
+  }, [aperta, chiudi]);
 
   /* ---- la domanda -------------------------------------------------------- */
 
@@ -79,15 +98,13 @@ export function RicercaGlobale() {
       setInCorso(false);
       return;
     }
-    // Duecento millesimi: il tempo di finire una parola. Senza attesa, ogni
-    // lettera è una lettura del database.
+    // Duecento millesimi: il tempo di finire una parola.
     const attesa = window.setTimeout(async () => {
       setInCorso(true);
       try {
         const res = await fetch(`/api/ricerca?q=${encodeURIComponent(domanda)}`);
         if (!res.ok) return;
         const dati: EsitoRicerca = await res.json();
-        // L'esito in ritardo di una domanda precedente si scarta.
         setEsito((prima) => (dati.q === domanda ? dati : prima));
         setScelta(0);
       } finally {
@@ -128,8 +145,8 @@ export function RicercaGlobale() {
         }).format(new Date(p.quando)),
         `${p.partySize} ${p.partySize === 1 ? "coperto" : "coperti"}`,
         p.tavolo,
-        // Perché questa riga è qui: chi ha cercato una stringa non riconosce
-        // un nome, riconosce il riferimento che ha letto al telefono.
+        // Chi ha cercato una stringa non riconosce un nome, riconosce il
+        // riferimento che ha letto al telefono.
         p.perRiferimento ? "trovata per riferimento" : null,
       ]
         .filter(Boolean)
@@ -139,15 +156,18 @@ export function RicercaGlobale() {
 
   const vai = useCallback(
     (href: string) => {
-      setAperta(false);
-      setQ("");
-      setEsito(null);
+      chiudi();
       router.push(href);
     },
-    [router],
+    [chiudi, router],
   );
 
   function onKeyCampo(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      chiudi();
+      return;
+    }
     if (righe.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -163,62 +183,87 @@ export function RicercaGlobale() {
 
   const troppiOspiti = (esito?.ospitiTotali ?? 0) - (esito?.ospiti.length ?? 0);
   const troppePrenotazioni = (esito?.prenotazioniTotali ?? 0) - (esito?.prenotazioni.length ?? 0);
+  const conDomanda = q.trim().length >= MINIMO_LETTERE;
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setAperta(true)}
-        aria-label="Cerca un ospite o una prenotazione"
-        className="tondo-strumento tocco-comodo hidden h-10 w-10 md:flex items-center justify-center rounded-lg md:h-[46px] md:w-[46px] border border-border text-muted-foreground transition-colors hover:border-line hover:text-foreground"
+    <div
+      ref={radice}
+      className={cn(
+        "relative",
+        // Sul telefono la lente non sta in testata; aperta da un segnale, il
+        // campo copre la testata intera.
+        aperta ? "max-md:fixed max-md:inset-x-3 max-md:top-[calc(env(safe-area-inset-top)+0.75rem)] max-md:z-50" : "hidden md:block",
+      )}
+    >
+      <div
+        className={cn(
+          "flex h-10 items-center overflow-hidden rounded-lg border transition-[width,background-color,border-color,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:h-[46px]",
+          aperta
+            ? "w-full border-border bg-card shadow-[0_6px_24px_-12px_rgba(16,32,26,0.35)] md:w-[13.5rem]"
+            : "tondo-strumento w-10 border-border text-muted-foreground hover:border-line hover:text-foreground md:w-[46px]",
+        )}
       >
-        <Search className="h-4 w-4" aria-hidden="true" />
-      </button>
+        <button
+          type="button"
+          onClick={() => (aperta ? campo.current?.focus() : onAperta(true))}
+          aria-label="Cerca un ospite o una prenotazione"
+          tabIndex={aperta ? -1 : 0}
+          className={cn(
+            "grid h-full w-10 shrink-0 place-items-center md:w-[46px]",
+            aperta && "text-sage-strong",
+          )}
+        >
+          {inCorso ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Search className="h-4 w-4" aria-hidden="true" />
+          )}
+        </button>
+        <input
+          ref={campo}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={onKeyCampo}
+          placeholder="Ospite o prenotazione"
+          aria-label="Cosa cerchi"
+          tabIndex={aperta ? 0 : -1}
+          aria-hidden={!aperta}
+          className={cn(
+            "min-w-0 flex-1 bg-transparent text-sm text-card-foreground outline-none transition-opacity duration-200 placeholder:text-muted-foreground/80",
+            aperta ? "opacity-100 delay-100" : "pointer-events-none opacity-0",
+          )}
+        />
+        {aperta && (
+          <button
+            type="button"
+            onClick={chiudi}
+            aria-label="Chiudi la ricerca"
+            className="mr-1.5 grid h-8 w-8 shrink-0 animate-fade-in place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
+      </div>
 
-      <Dialog open={aperta} onOpenChange={setAperta}>
-        <DialogContent className="top-[12%] max-w-xl translate-y-0 p-0">
-          <DialogTitle className="sr-only">Cerca</DialogTitle>
-
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3 max-md:pr-14">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <input
-              ref={campo}
-              autoFocus
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={onKeyCampo}
-              placeholder="Nome, telefono, email…"
-              aria-label="Cosa cerchi"
-              className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
-            />
-            {inCorso && (
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
-            )}
-          </div>
-
-          <div className="fill-scroll max-h-[60vh] px-2 py-2">
-            {q.trim().length < MINIMO_LETTERE ? (
-              <p className="px-2 py-3 text-sm text-muted-foreground">
-                Scrivi almeno {MINIMO_LETTERE} lettere, o le ultime cifre di un numero.
-              </p>
-            ) : righe.length === 0 ? (
-              <p className="px-2 py-3 text-sm text-muted-foreground">
-                {inCorso
-                  ? "Cerco…"
-                  : "Nessun ospite e nessuna prenotazione con questo nome o numero."}
+      {/* I risultati scendono sotto il campo, solo quando c'è una domanda. */}
+      {aperta && conDomanda && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-full animate-fade-in overflow-hidden rounded-2xl border border-border bg-popover shadow-[0_18px_40px_-18px_rgba(16,32,26,0.45)] md:w-[min(30rem,calc(100vw-1.5rem))]">
+          <div className="fill-scroll max-h-[60vh] p-1.5">
+            {righe.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                {inCorso ? "Cerco…" : "Nessun risultato"}
               </p>
             ) : (
               <ul>
                 {righe.map((r, i) => {
                   const Icona = r.icona;
-                  // L'etichetta compare sulla prima riga del suo tipo: quattro
-                  // nomi e sei orari senza un titolo sono un elenco solo, e
-                  // «Giulia Russo» due volte sembra un doppione.
+                  // L'etichetta compare sulla prima riga del suo tipo: senza,
+                  // «Giulia Russo» ospite e prenotazione sembra un doppione.
                   const primaDelTipo = i === 0 || righe[i - 1].tipo !== r.tipo;
                   return (
                     <li key={r.chiave}>
                       {primaDelTipo && (
-                        <p className="px-2 pb-0.5 pt-2 t-etichetta">
+                        <p className="px-3 pb-1 pt-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                           {r.tipo === "ospite" ? "Ospiti" : "Prenotazioni"}
                         </p>
                       )}
@@ -231,66 +276,54 @@ export function RicercaGlobale() {
                           if (i === scelta) el?.scrollIntoView({ block: "nearest" });
                         }}
                         className={cn(
-                          "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left",
-                          // `bg-current/10` su verde scuro non si vedeva: la
-                          // riga scelta deve stare addosso all'occhio, perché
-                          // è quella che Invio apre.
+                          "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
                           i === scelta ? "bg-secondary" : "hover:bg-current/5",
                         )}
                       >
-                        <Icona className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm">{r.titolo}</span>
-                          {r.dettaglio && <span className="block truncate t-nota">{r.dettaglio}</span>}
+                        <span
+                          className={cn(
+                            "grid h-9 w-9 shrink-0 place-items-center rounded-full",
+                            r.tipo === "ospite" ? "bg-sage-strong/10 text-sage-strong" : "bg-accent-strong/10 text-accent-strong",
+                          )}
+                        >
+                          <Icona className="h-4 w-4" aria-hidden="true" />
                         </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[15px] font-medium text-card-foreground">{r.titolo}</span>
+                          {r.dettaglio && (
+                            <span className="block truncate text-xs text-muted-foreground">{r.dettaglio}</span>
+                          )}
+                        </span>
+                        {i === scelta && (
+                          <CornerDownLeft className="hidden h-4 w-4 shrink-0 text-muted-foreground md:block" aria-hidden="true" />
+                        )}
                       </button>
                     </li>
                   );
                 })}
               </ul>
             )}
-
           </div>
 
-          <div className="border-t border-border px-4 py-2">
-            {(troppiOspiti > 0 || troppePrenotazioni > 0) && (
-              /*
-                Il tetto non nasconde il totale: «ci sono altri dodici Rossi»
-                è un'informazione, mostrarne sei e tacere è una bugia.
-
-                Sta **fuori** dalla regione che scorre: dentro finiva sotto il
-                bordo inferiore e si leggeva a metà, cioè non si leggeva.
-              */
-              <p className="t-nota">
-                {[
-                  troppiOspiti > 0
-                    ? troppiOspiti === 1
-                      ? "un altro ospite"
-                      : `altri ${troppiOspiti} ospiti`
-                    : null,
-                  troppePrenotazioni > 0
-                    ? troppePrenotazioni === 1
-                      ? "un'altra prenotazione"
-                      : `altre ${troppePrenotazioni} prenotazioni`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" e ")}{" "}
-                {troppiOspiti + troppePrenotazioni === 1 ? "corrisponde" : "corrispondono"}: restringi la
-                ricerca, o apri il CRM.
-              </p>
-            )}
-            {/*
-              Cosa cerca, scritto. Una ricerca che non dice il suo perimetro fa
-              concludere «non c'è» a chi cerca un piatto o un coupon.
-            */}
-            <p className="t-nota">
-              Cerca fra ospiti e prenotazioni delle prossime settimane — o il riferimento di una
-              prenotazione, in qualunque data. ⌘K per riaprirla.
+          {(troppiOspiti > 0 || troppePrenotazioni > 0) && (
+            /* Il tetto non nasconde il totale: tacere gli altri sarebbe una
+               bugia. */
+            <p className="border-t border-border/70 px-4 py-2 text-xs text-muted-foreground">
+              {[
+                troppiOspiti > 0 ? (troppiOspiti === 1 ? "+1 ospite" : `+${troppiOspiti} ospiti`) : null,
+                troppePrenotazioni > 0
+                  ? troppePrenotazioni === 1
+                    ? "+1 prenotazione"
+                    : `+${troppePrenotazioni} prenotazioni`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}{" "}
+              — scrivi qualcosa in più per restringere
             </p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

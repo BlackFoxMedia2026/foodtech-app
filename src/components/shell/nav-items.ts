@@ -467,6 +467,7 @@ const TITOLI_EXTRA: Record<string, string | [lungo: string, breve: string]> = {
   "/campaigns/new": ["Nuova campagna", "Nuova camp."],
   /* La quinta linguetta del telefono: profilo, sezioni, impostazioni. */
   "/altro": "Altro",
+  "/notifiche": "Notifiche",
 };
 
 /**
