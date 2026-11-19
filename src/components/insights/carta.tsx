@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, ChefHat, Info, Megaphone, RefreshCw, ThumbsUp, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Spiega } from "@/components/insights/spiega";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { FoodCostReport } from "@/server/food-cost";
 import {
@@ -25,23 +25,6 @@ import {
 /* -------------------------------------------------------------------------- */
 /*  Pezzi comuni                                                               */
 /* -------------------------------------------------------------------------- */
-
-function Spiega({ titolo, children }: { titolo: string; children: React.ReactNode }) {
-  return (
-    <Popover>
-      <PopoverTrigger
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground"
-        aria-label={titolo}
-      >
-        <Info className="h-4 w-4" aria-hidden="true" />
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-2 p-3.5 text-xs leading-relaxed text-muted-foreground">
-        <p className="font-semibold text-card-foreground">{titolo}</p>
-        {children}
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 /** L'anello: quanto si mangia la materia prima, quanto resta. */
 function Anello({ restaPct }: { restaPct: number }) {

@@ -16,7 +16,9 @@ import {
 } from "recharts";
 import { SOURCE_LABELS } from "@/lib/insight-rules";
 
-const PALETTE = ["#8a7510", "#cfad03", "#d9bf3d", "#e6d168", "#f2f0e7", "#e6e3d2", "#c9b139"];
+/* Solo il verde e l'oro della casa (19 nov 2026): prima erano sei gialli
+   accesi che nessun'altra pagina usa. */
+const PALETTE = ["#224639", "#b08a3e", "#5f8a72", "#c9a96a", "#74432d", "#a9bfae", "#e2d5bd"];
 
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
@@ -44,8 +46,8 @@ export function SlotChart({ data }: { data: { slot: string; covers: number }[] }
         <BarChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
           <defs>
             <linearGradient id="slotBarGradient" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0%" stopColor="#cfad03" />
-              <stop offset="100%" stopColor="#c9b139" />
+              <stop offset="0%" stopColor="#c9a96a" />
+              <stop offset="100%" stopColor="#b08a3e" stopOpacity={0.75} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -154,39 +156,55 @@ export function SourcesChart({ data }: { data: { source: string; count: number }
     );
   }
 
-  const labeled = data.map((d) => ({ ...d, label: SOURCE_LABELS[d.source] ?? d.source }));
+  const labeled = data
+    .map((d) => ({ ...d, label: SOURCE_LABELS[d.source] ?? d.source }))
+    .sort((x, y) => y.count - x.count);
   const totale = labeled.reduce((s, d) => s + d.count, 0);
+  const max = Math.max(1, ...labeled.map((d) => d.count));
 
   /*
-    La legenda scritta sotto la ciambella. Prima i nomi delle fonti stavano
-    solo nel suggerimento al passaggio del puntatore: su un telefono, dove il
-    passaggio non esiste, la ciambella erano sei spicchi di giallo senza nome.
+    La ciambella a sinistra con il totale dentro, le fonti a destra dalla più
+    usata, ognuna con la sua barra (19 nov 2026). Prima la ciambella stava
+    sola al centro di una card larga tutta la pagina e la legenda sotto, in
+    due colonne con i numeri lontani dai nomi.
   */
   return (
-    <div className="space-y-3">
-    <div className="h-52 sm:h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie data={labeled} dataKey="count" nameKey="label" innerRadius={56} outerRadius={86} paddingAngle={4}>
-            {labeled.map((_, i) => (
-              <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-            ))}
-          </Pie>
-          <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-      <ul className="grid gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2 sm:text-sm">
+    <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+      <div className="relative h-44 w-44 shrink-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={labeled} dataKey="count" nameKey="label" innerRadius={56} outerRadius={84} paddingAngle={3} stroke="none">
+              {labeled.map((_, i) => (
+                <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+              ))}
+            </Pie>
+            <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 grid place-content-center text-center">
+          <p className="font-mono text-3xl leading-none tabular-nums text-foreground">{totale}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">prenotazioni</p>
+        </div>
+      </div>
+      <ul className="w-full min-w-0 flex-1 space-y-2.5">
         {labeled.map((d, i) => (
-          <li key={d.source} className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-border"
-              style={{ backgroundColor: PALETTE[i % PALETTE.length] }}
-            />
-            <span className="min-w-0 flex-1">{d.label}</span>
-            <span className="tabular-nums text-muted-foreground">
-              {d.count}
+          <li key={d.source} className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)_4.5rem] items-center gap-3 text-sm">
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: PALETTE[i % PALETTE.length] }}
+              />
+              <span className="truncate text-card-foreground">{d.label}</span>
+            </span>
+            <span className="h-2 overflow-hidden rounded-full bg-border/50">
+              <span
+                className="block h-full rounded-full"
+                style={{ width: `${(d.count / max) * 100}%`, backgroundColor: PALETTE[i % PALETTE.length] }}
+              />
+            </span>
+            <span className="text-right font-mono text-xs tabular-nums text-muted-foreground">
+              <span className="text-foreground">{d.count}</span>
               {totale > 0 && ` · ${Math.round((d.count / totale) * 100)}%`}
             </span>
           </li>

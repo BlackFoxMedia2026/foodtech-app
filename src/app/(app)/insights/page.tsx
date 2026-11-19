@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUp, ArrowDown, CalendarRange, Receipt, Users, Wallet } from "lucide-react";
+import { CalendarRange, Receipt, Users, Wallet } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -7,14 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { NpsPanel } from "@/components/surveys/nps-panel";
-import { ForecastPanel } from "@/components/insights/forecast-panel";
+import { ChiEVenuto, Margine, Previsione, VotiOspiti } from "@/components/insights/domanda";
 import { VistaCarta } from "@/components/insights/carta";
-import { WaitlistPanel } from "@/components/insights/waitlist-panel";
-import { RotazionePanel } from "@/components/insights/rotazione-panel";
 import { getFoodCost } from "@/server/food-cost";
 import { getNoShowReport } from "@/server/no-show";
-import { NoShowPanel } from "@/components/insights/no-show-panel";
+import { VistaServizio } from "@/components/insights/servizio";
 import { getOccupancyByWeekday, getWeekForecast } from "@/server/forecast";
 import { getSurveyStats } from "@/server/surveys";
 import { reviewFunnel } from "@/server/reviews";
@@ -27,7 +24,6 @@ import { EsitoPrenotazioni, FilaConfronto, RigheSintesi, TesseraConfronto, punti
 import { CopertiNelTempo, LegendaCurve } from "@/components/insights/coperti-nel-tempo";
 import { rotazioneTavoli } from "@/server/rotazione";
 import { resolveSegment } from "@/server/campaigns";
-import { Button } from "@/components/ui/button";
 import {
   SlotChart,
   SourcesChart,
@@ -46,41 +42,6 @@ import { numeriTelefono } from "@/server/voice/numeri";
 import { TelefonoPanel } from "@/components/insights/telefono-panel";
 
 export const dynamic = "force-dynamic";
-
-function DeltaBadge({
-  current,
-  previous,
-}: {
-  current: number;
-  previous: number;
-}) {
-  const delta = computeDelta(current, previous);
-  if (!delta.available)
-    return (
-      <p className="text-xs text-muted-foreground">Confronto non disponibile</p>
-    );
-  if (delta.value === 0)
-    return (
-      <p className="text-xs text-muted-foreground">
-        Invariato rispetto al periodo precedente
-      </p>
-    );
-  return (
-    <p
-      className={cn(
-        "flex items-center gap-1 text-xs font-medium",
-        delta.isGood ? "text-sage-strong" : "text-destructive-soft",
-      )}
-    >
-      {delta.value > 0 ? (
-        <ArrowUp className="h-3 w-3" />
-      ) : (
-        <ArrowDown className="h-3 w-3" />
-      )}
-      {Math.abs(delta.value)}% rispetto al periodo precedente
-    </p>
-  );
-}
 
 export default async function InsightsPage({
   searchParams,
@@ -207,12 +168,6 @@ export default async function InsightsPage({
     ),
   ).toString();
 
-  const pctNewGuests = a.totalGuests
-    ? Math.round((a.newGuests / a.totalGuests) * 100)
-    : null;
-  const pctRepeatGuests = a.totalGuests
-    ? Math.round((a.repeatGuests / a.totalGuests) * 100)
-    : null;
 
   return (
     <div className="schermo animate-fade-in gap-3">
@@ -341,21 +296,17 @@ export default async function InsightsPage({
 
         {/* ---- SERVIZIO ---- */}
         {vistaAttiva === "servizio" && (
-          <>
-            <NoShowPanel report={assenze} currency={ctx.venue.currency} />
-            <RotazionePanel report={rotazione} />
-            <WaitlistPanel report={codaAttesa} />
-          </>
+          <VistaServizio assenze={assenze} rotazione={rotazione} coda={codaAttesa} currency={ctx.venue.currency} />
         )}
 
         {/* ---- DOMANDA E OSPITI ---- */}
         {vistaAttiva === "domanda" && (
           <>
-            <ForecastPanel
-              giorni={previsione}
-              occupazione={occupazione}
-              inattivi={inattivi.length}
-            />
+            {/* La settimana che arriva e i giorni con margine, affiancati. */}
+            <section className="grid gap-3 md:gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] [&>*]:min-w-0">
+              <Previsione giorni={previsione} />
+              <Margine occupazione={occupazione} inattivi={inattivi.length} />
+            </section>
 
             {/* Il telefono sta in «Domanda e ospiti» e non in una quinta vista:
               una telefonata è domanda che arriva da un altro canale, e le
@@ -368,11 +319,7 @@ export default async function InsightsPage({
                 periodoGiorni={giorni}
               />
             )}
-            <NpsPanel
-              stats={nps}
-              funnel={ponteRecensioni}
-              giorni={giorniVoti}
-            />
+            <VotiOspiti stats={nps} funnel={ponteRecensioni} giorni={giorniVoti} />
             <section className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
               <Card>
                 <CardHeader>
@@ -398,58 +345,18 @@ export default async function InsightsPage({
                 </CardContent>
               </Card>
             </section>
-            <Card>
-              <CardHeader>
-                <CardTitle>Fonti di prenotazione</CardTitle>
-                <CardDescription>Dove arrivano i tuoi ospiti</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SourcesChart data={a.sources} />
-              </CardContent>
-            </Card>
-            <section className="grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Nuovi ospiti</CardTitle>
-                  <CardDescription>
-                    Profili creati nel periodo selezionato
-                  </CardDescription>
+            {/* Da dove arrivano e chi sono, affiancati. */}
+            <section className="grid gap-3 md:gap-4 xl:grid-cols-2 [&>*]:min-w-0">
+              <Card className="card-notch">
+                <CardHeader className="pb-3">
+                  <CardTitle>Fonti di prenotazione</CardTitle>
+                  <CardDescription>Da dove arrivano i tuoi ospiti, dalla più usata</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-display text-4xl">{a.newGuests}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {pctNewGuests !== null
-                      ? `${pctNewGuests}% degli ospiti nel periodo`
-                      : "Nessun ospite nel periodo"}
-                  </p>
-                  <DeltaBadge current={a.newGuests} previous={prev.newGuests} />
+                <CardContent>
+                  <SourcesChart data={a.sources} />
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ospiti ricorrenti</CardTitle>
-                  <CardDescription>
-                    Hanno visitato più di una volta
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-display text-4xl">{a.repeatGuests}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {pctRepeatGuests !== null
-                      ? `${pctRepeatGuests}% degli ospiti nel periodo`
-                      : "Nessun ospite nel periodo"}
-                  </p>
-                  <DeltaBadge
-                    current={a.repeatGuests}
-                    previous={prev.repeatGuests}
-                  />
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/guests">
-                      Vai a Ospiti <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <ChiEVenuto ora={a} prima={prev} />
             </section>
           </>
         )}
