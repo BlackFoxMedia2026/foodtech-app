@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { PARTI, type ParteId } from "@/lib/parti-impostazioni";
+import { TrattiSfumati } from "@/components/ui/tessera-kpi";
+import { DischettoSezione } from "./indice-impostazioni";
 
 /**
  * Una sezione delle Impostazioni: la testata e i suoi gruppi.
@@ -29,13 +31,19 @@ export function SezioneImpostazioni({
 
   return (
     <section id={id} aria-labelledby={`titolo-${id}`}>
-      <header className="border-b border-border pb-3 md:pb-4">
-        <h2 id={`titolo-${id}`} className="t-titolo-pagina">
-          {parte.titolo}
-        </h2>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          {parte.sottotitolo}
-        </p>
+      <TrattiSfumati />
+      {/* La stessa cupola della scheda da cui si è entrati: si riconosce
+          dove si è arrivati senza leggere. */}
+      <header className="flex items-center gap-4">
+        <DischettoSezione id={id} grande />
+        <div className="min-w-0">
+          <h2 id={`titolo-${id}`} className="t-titolo-pagina">
+            {parte.titolo}
+          </h2>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            {parte.sottotitolo}
+          </p>
+        </div>
       </header>
 
       <div className="mt-5 space-y-4 md:mt-6 md:space-y-5">{children}</div>

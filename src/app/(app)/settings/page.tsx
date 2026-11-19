@@ -129,25 +129,31 @@ export default async function SettingsPage({
 
         {ctx.venue.onboardingStatus !== "COMPLETED" &&
           can(ctx.role, "manage_venue") && (
+            /* Una lastra con la sua cupola oro e un comando vero, non una
+               capsula sottile fra la frase e le schede: è l'unica cosa da
+               fare su questa pagina, e deve sembrarlo. */
             <Link
               href="/settings/brand"
-              className="mt-4 flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 py-2.5 pl-4 pr-3 text-[0.9375rem] transition-colors hover:bg-accent/15 md:inline-flex md:min-h-0 md:w-auto md:max-w-full md:rounded-full md:py-2 md:text-sm"
+              className="vetro card-notch group mt-5 flex items-center gap-4 p-4 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-lg md:p-5"
             >
-              <AlertTriangle
-                className="h-4 w-4 shrink-0 text-accent-strong"
-                aria-hidden="true"
-              />
-              <span className="min-w-0 flex-1 md:flex-none">
-                <span className="font-medium">
-                  Configurazione del brand incompleta
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent/20 text-accent-strong ring-1 ring-accent/40 md:h-12 md:w-12">
+                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.9375rem] font-semibold text-foreground md:text-base">
+                  Il brand non è completo
                 </span>
-                <span className="hidden text-muted-foreground sm:inline">
-                  {" "}
-                  — logo, colori e identità visiva
+                <span className="mt-0.5 block text-[0.8125rem] leading-snug text-muted-foreground md:text-sm">
+                  Logo, colori e identità visiva: li vedono i clienti sul
+                  modulo di prenotazione, sul portale Wi-Fi e nelle email.
                 </span>
               </span>
+              <span className="hidden h-10 shrink-0 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-[filter] group-hover:brightness-110 sm:inline-flex">
+                Completa
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </span>
               <ArrowRight
-                className="h-4 w-4 shrink-0 text-accent-strong"
+                className="h-5 w-5 shrink-0 text-accent-strong sm:hidden"
                 aria-hidden="true"
               />
             </Link>

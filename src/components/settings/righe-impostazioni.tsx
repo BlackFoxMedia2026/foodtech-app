@@ -64,11 +64,13 @@ export function GruppoImpostazioni({
     */
     <section
       className={cn(
-        "riquadro overflow-hidden rounded-xl border-border/80 bg-white/[0.02]",
+        /* Lo stesso materiale delle tessere della Panoramica (19 nov 2026):
+           vetro con lo spigolo vivo in alto a sinistra. */
+        "vetro card-notch overflow-hidden",
         className,
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border/60 px-4 py-3.5 md:px-5 md:py-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border/50 px-4 py-4 md:px-6 md:py-5">
         <div className="min-w-0">
           <h3 className="t-titolo-sezione">{titolo}</h3>
           {descrizione && (
@@ -82,7 +84,7 @@ export function GruppoImpostazioni({
         )}
       </div>
 
-      <div className="px-4 md:px-5">{children}</div>
+      <div className="px-4 md:px-6">{children}</div>
     </section>
   );
 }
