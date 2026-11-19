@@ -1,7 +1,7 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
-import { ChevronDown, GripVertical, Phone } from "lucide-react";
+import { ChevronDown, GripVertical, Phone, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ function BookingCard({
   // Hook is always called (React rules) — `disabled` is dnd-kit's own way to
   // turn a draggable off, so a read-only viewer sees the same card with no
   // drag affordance at all (brief section 47).
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  const { attributes, listeners, setNodeRef } = useDraggable({
     id: booking.id,
     data: { type: "booking", bookingId: booking.id, partySize: booking.partySize },
     disabled: !canManage,
@@ -34,42 +34,64 @@ function BookingCard({
   return (
     <div
       ref={setNodeRef}
-      style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
+      /* Niente `transform` qui: a seguire il puntatore è la copia nel
+         DragOverlay. Spostando anche l'originale, usciva dal pannello (che
+         taglia quello che sborda) e lasciava un buco al suo posto. */
       className={cn(
-        "space-y-1.5 riquadro bg-card p-2.5 shadow-sm transition-shadow",
-        isDragging && "opacity-40",
+        "rounded-2xl border border-border/50 bg-card p-3 shadow-sm transition-[box-shadow,opacity] hover:shadow-md",
+        isDragging && "border-dashed opacity-40 shadow-none",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-accent-strong">{formatTime(booking.startsAt)}</p>
-          <p className="break-words text-sm font-semibold text-card-foreground">{guestName}</p>
-          <p className="text-xs text-muted-foreground">{booking.partySize} persone</p>
-          {fuoriPiantina && (
-            <p className="text-xs text-muted-foreground">Su {fuoriPiantina}, che non è sulla piantina</p>
-          )}
-          {booking.guest?.phone && (
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Phone className="h-3 w-3" /> {booking.guest.phone}
-            </p>
-          )}
-        </div>
+      {/* Ora e nome su una riga, il resto sotto in piccolo: la scheda si legge
+          in un colpo d'occhio, come una riga dell'Elenco. */}
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-strong">
+          {formatTime(booking.startsAt)}
+        </span>
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-card-foreground" title={guestName}>
+          {guestName}
+        </p>
         {canManage && (
           <button
             type="button"
             {...listeners}
             {...attributes}
-            aria-label="Trascina per assegnare un tavolo"
+            aria-label="Trascina su un tavolo"
             aria-roledescription="draggable"
-            className="grid h-10 w-10 shrink-0 cursor-grab touch-none place-items-center rounded text-muted-foreground hover:bg-secondary active:cursor-grabbing"
+            title="Trascina su un tavolo"
+            className="-my-1 -mr-1 grid h-9 w-9 shrink-0 cursor-grab touch-none place-items-center rounded-full text-muted-foreground hover:bg-secondary active:cursor-grabbing"
           >
             <GripVertical className="h-4 w-4" />
           </button>
         )}
       </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Users className="h-3 w-3" aria-hidden="true" />
+          {booking.partySize} {booking.partySize === 1 ? "persona" : "persone"}
+        </span>
+        {booking.guest?.phone && (
+          <a href={`tel:${booking.guest.phone}`} className="flex items-center gap-1 hover:text-foreground">
+            <Phone className="h-3 w-3" aria-hidden="true" /> {booking.guest.phone}
+          </a>
+        )}
+      </div>
+      {fuoriPiantina && (
+        <p className="mt-2 rounded-lg bg-amber-500/10 px-2 py-1 text-xs text-amber-900 dark:text-amber-200">
+          Ha il tavolo {fuoriPiantina}, che non è sulla piantina
+        </p>
+      )}
       {canManage && (
-        <Button type="button" variant="outline" size="sm" className="w-full" onClick={onAssignClick}>
-          Assegna tavolo
+        /* Un fondo suo, il verde pieno dei tondi del back office: col solo
+           bordo, bianco su scheda bianca, non si capiva che fosse un bottone. */
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mt-2.5 h-9 w-full rounded-full bg-gradient-to-b from-[#3a6b54] to-[#2c5545] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_6px_14px_-8px_rgba(16,32,26,0.6)] hover:from-[#41775e] hover:to-[#2f5b4a] hover:text-white"
+          onClick={onAssignClick}
+        >
+          {fuoriPiantina ? "Cambia tavolo" : "Assegna tavolo"}
         </Button>
       )}
     </div>
@@ -103,24 +125,35 @@ export function UnassignedPanel({
   tavoloFuoriPiantina?: Record<string, string>;
 }) {
   return (
-    <div className="flex h-full flex-col bg-forest">
+    <div className="vetro-ios-scheda flex h-full flex-col rounded-[22px] border border-white/60">
       <button
         type="button"
         onClick={onToggleCollapsed}
-        className="flex min-h-11 shrink-0 items-center justify-between gap-2 px-3 py-3 text-left"
+        aria-expanded={!collapsed}
+        className="flex min-h-11 shrink-0 items-center gap-2 px-4 pb-2 pt-3.5 text-left"
       >
-        <span className="text-xs font-semibold uppercase tracking-widest text-cream">Da assegnare · {bookings.length}</span>
-        <ChevronDown className={cn("h-4 w-4 text-cream/70 transition-transform", collapsed && "-rotate-90")} />
+        <span className="text-display text-base font-semibold text-foreground">Da assegnare</span>
+        <span
+          className={cn(
+            "grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-xs font-semibold tabular-nums",
+            bookings.length > 0 ? "bg-accent text-accent-foreground" : "bg-secondary text-muted-foreground",
+          )}
+        >
+          {bookings.length}
+        </span>
+        <ChevronDown className={cn("ml-auto h-4 w-4 text-muted-foreground transition-transform", collapsed && "-rotate-90")} />
       </button>
       {!collapsed && (
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
-          <p className="text-xs text-cream/70">Prenotazioni senza un tavolo sulla piantina</p>
+          <p className="px-1 pb-1 text-xs text-muted-foreground">
+            {canManage ? "Trascinale su un tavolo, o tocca «Assegna tavolo»." : "Prenotazioni senza un tavolo sulla mappa."}
+          </p>
           {bookings.length === 0 ? (
-            <div className="rounded-md border border-dashed border-cream/20 p-4 text-center text-xs text-cream/70">
+            <div className="rounded-2xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
               {hiddenByServiceCount > 0 ? (
                 <>
                   <p>Nessuna prenotazione da assegnare per questo servizio.</p>
-                  <p className="mt-1 text-cream/50">
+                  <p className="mt-1">
                     {hiddenByServiceCount === 1
                       ? "1 prenotazione senza tavolo in un altro orario."
                       : `${hiddenByServiceCount} prenotazioni senza tavolo in altri orari.`}

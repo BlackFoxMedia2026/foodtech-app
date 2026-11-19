@@ -80,6 +80,12 @@ export default async function BookingsPage({
        quelli collegati alla sala, e la Mappa disegnava alle vecchie coordinate
        tavoli che in Sala erano fuori piantina: una sala vuota là, piena qui. */
     const sullaPiantina = idTavoliSullaPiantina(elementi);
+    const tavoliPiazzati = allTables.filter((t) => t.roomId === r.id && sullaPiantina.has(t.id));
+    /* Una sala che in Sala non ha ancora tavoli sulla piantina non resta una
+       mappa vuota: la Mappa mostra i suoi tavoli in griglia, dicendo che non
+       sono ancora disposti. Niente vecchie coordinate: la griglia non finge
+       di essere la sala. */
+    const suPiantina = tavoliPiazzati.length > 0;
     return {
       id: r.id,
       name: r.name,
@@ -88,7 +94,8 @@ export default async function BookingsPage({
       floorPlanUrl: r.floorPlanUrl,
       activeLayoutMode: r.activeLayoutMode,
       roomLayoutElements: elementi,
-      tables: allTables.filter((t) => t.roomId === r.id && sullaPiantina.has(t.id)),
+      tables: suPiantina ? tavoliPiazzati : allTables.filter((t) => t.roomId === r.id && t.active),
+      suPiantina,
     };
   });
 

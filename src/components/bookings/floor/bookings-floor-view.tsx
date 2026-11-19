@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { DndContext, DragOverlay, PointerSensor, pointerWithin, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, PointerSensor, pointerWithin, useSensor, useSensors, type DragEndEvent, type DragStartEvent, type DropAnimationFunction, type Modifier } from "@dnd-kit/core";
+import { getEventCoordinates } from "@dnd-kit/utilities";
 import type { BookingStatus, RoomLayoutMode, Table } from "@prisma/client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +15,7 @@ import { cn, formatTime } from "@/lib/utils";
 import { bookingsOverlap } from "@/lib/booking-time";
 import { BookingsFloorCanvas } from "./bookings-floor-canvas";
 import { UnassignedPanel } from "./unassigned-panel";
+import { GrigliaTavoli } from "./griglia-tavoli";
 import { AssignTableDialog } from "./assign-table-dialog";
 import { AssignBookingDialog } from "./assign-booking-dialog";
 import { BookingDetailDialog } from "./booking-detail-dialog";
@@ -28,12 +31,30 @@ type RoomWithTables = {
   activeLayoutMode: RoomLayoutMode | null;
   roomLayoutElements: unknown;
   tables: Table[];
+  /** false: in Sala nessun tavolo è sulla piantina; `tables` sono tutti
+   * quelli della sala e la Mappa li mostra in griglia. */
+  suPiantina?: boolean;
 };
 
 /** Bookings in these statuses still need a seat; CANCELLED/NO_SHOW don't
  * occupy a table and don't need one assigned — mirrors the server's
  * ACTIVE_STATUSES in booking-floor.ts so a cancelled booking never shows a
  * table as falsely occupied. */
+/** La copia trascinata col centro sotto il puntatore. Si afferra dalla
+ * maniglia, che sta sul bordo destro della scheda: senza questo la copia
+ * viaggiava tutta a sinistra del dito, e non si capiva su che tavolo cadeva.
+ * È il `snapCenterToCursor` di @dnd-kit/modifiers, che qui non è installato. */
+const centroSulPuntatore: Modifier = ({ activatorEvent, draggingNodeRect, transform }) => {
+  if (!draggingNodeRect || !activatorEvent) return transform;
+  const punto = getEventCoordinates(activatorEvent);
+  if (!punto) return transform;
+  return {
+    ...transform,
+    x: transform.x + punto.x - draggingNodeRect.left - draggingNodeRect.width / 2,
+    y: transform.y + punto.y - draggingNodeRect.top - draggingNodeRect.height / 2,
+  };
+};
+
 const NEEDS_TABLE_STATUSES = new Set<BookingStatus>(["CONFIRMED", "PENDING", "ARRIVED", "SEATED", "COMPLETED"]);
 
 export function BookingsFloorView({
@@ -75,6 +96,21 @@ export function BookingsFloorView({
   const [motivoDrop, setMotivoDrop] = useState("");
   const [banner, setBanner] = useState<string | null>(null);
 
+  /** Il tavolo su cui è appena caduta una prenotazione: l'animazione di
+   * rilascio lo legge per posare lì la copia, invece di riportarla al
+   * pannello come fa dnd-kit da solo. */
+  const dovePosare = useRef<{
+    rect: { left: number; top: number; width: number; height: number };
+    /** Mette la prenotazione sul tavolo nello stato della pagina. Si chiama
+     * a copia posata, non prima: dnd-kit anima il rilascio solo finché la
+     * scheda d'origine esiste, e toglierla subito dal pannello faceva
+     * sparire la copia di colpo. */
+    posa: () => void;
+  } | null>(null);
+  /** La prenotazione disegnata nella copia: resta finché la copia non ha
+   * finito di posarsi, anche se il trascinamento è già chiuso. */
+  const [inVolo, setInVolo] = useState<Row | null>(null);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const activeIndex = Math.max(0, rooms.findIndex((r) => r.id === activeRoomId));
@@ -99,8 +135,9 @@ export function BookingsFloorView({
     return needsTable.filter((r) => r.startsAt >= shiftWindow.start && r.startsAt <= shiftWindow.end);
   }, [rows, shiftWindow]);
 
-  /* I tavoli disegnati in Sala, in tutte le sale. `rooms` porta già solo
-     quelli (vedi bookings/page.tsx). */
+  /* I tavoli che la Mappa mostra, in tutte le sale: quelli disegnati in Sala,
+     o tutti quelli della sala quando la sala va in griglia (vedi
+     bookings/page.tsx). */
   const sullaPiantina = useMemo(() => new Set(rooms.flatMap((r) => r.tables.map((t) => t.id))), [rooms]);
   /** Ha bisogno di un tavolo che si veda: senza tavolo, o su un tavolo che in
    * Sala è fuori piantina — su questa mappa non comparirebbe da nessuna parte. */
@@ -163,6 +200,20 @@ export function BookingsFloorView({
   const selectedBooking = selectedTable ? bookingsByTableId[selectedTable.id]?.[0] ?? null : null;
   const assignPickerBooking = unassigned.find((b) => b.id === assignPickerBookingId) ?? assigned.find((b) => b.id === assignPickerBookingId) ?? null;
   const assignBookingForTable = activeRoom?.tables.find((t) => t.id === assignBookingForTableId) ?? null;
+
+  function selezionaTavolo(tableId: string) {
+    if (!tableId) {
+      setSelectedTableId(null);
+      return;
+    }
+    if (bookingsByTableId[tableId]?.length) {
+      setSelectedTableId(tableId);
+      return;
+    }
+    // Flusso inverso TAVOLO -> PRENOTAZIONE (brief section 26) —
+    // read-only viewers can still see the table, just can't act.
+    if (canManage) setAssignBookingForTableId(tableId);
+  }
 
   function showBanner(message: string) {
     setBanner(message);
@@ -228,11 +279,13 @@ export function BookingsFloorView({
     const booking = unassigned.find((b) => b.id === data.bookingId);
     if (!booking) return;
     setDraggingBooking({ id: booking.id, partySize: booking.partySize, startsAt: booking.startsAt, durationMin: booking.durationMin });
+    setInVolo(booking);
   }
 
   async function onDragEnd(event: DragEndEvent) {
     const dragged = draggingBooking;
     setDraggingBooking(null);
+    dovePosare.current = null;
     if (!dragged || !event.over) return;
     const tableData = event.over.data.current as { type: string; tableId: string; seats: number } | undefined;
     if (tableData?.type !== "table") return;
@@ -242,15 +295,71 @@ export function BookingsFloorView({
       setDropConfirm({ bookingId: dragged.id, tableId: tableData.tableId, tableLabel: table?.label ?? "", tableSeats: tableData.seats });
       return;
     }
+
+    /* La copia scende sul tavolo e, posata, il tavolo mostra la prenotazione
+       senza aspettare il server. Se il server dice di no, la prenotazione
+       torna nel pannello e un avviso spiega perché. */
+    const prima = unassigned.find((b) => b.id === dragged.id);
+    const tavolo = rooms.flatMap((r) => r.tables).find((t) => t.id === tableData.tableId) ?? null;
+    let posata = false;
+    const posa = () => {
+      if (posata) return;
+      posata = true;
+      if (prima) onBookingUpdated({ ...prima, tableId: tableData.tableId, table: tavolo });
+    };
+    dovePosare.current = { rect: event.over.rect, posa };
+    // Riserva: se l'animazione non parte (scheda già smontata, scheda
+    // nascosta) la prenotazione arriva comunque sul tavolo.
+    setTimeout(posa, 450);
     const result = await callAssign(dragged.id, tableData.tableId, false);
-    if (!result.ok) showBanner(result.message ?? "Impossibile assegnare il tavolo.");
+    if (!result.ok) {
+      posata = true;
+      if (prima) onBookingUpdated(prima);
+      showBanner(result.message ?? "Impossibile assegnare il tavolo.");
+    }
   }
+
+  /** Il rilascio: sul tavolo la copia ci scende sopra e si posa; altrove
+   * (fuori da un tavolo, o su uno troppo piccolo che chiede conferma) torna
+   * alla sua scheda nel pannello. */
+  const posaSulTavolo: DropAnimationFunction = ({ dragOverlay, transform }) => {
+    const posa = dovePosare.current;
+    dovePosare.current = null;
+    const meta = posa?.rect;
+    const el = dragOverlay.node;
+    const da = `translate3d(${transform.x}px, ${transform.y}px, 0)`;
+    if (!meta) {
+      return el
+        .animate([{ transform: da }, { transform: "translate3d(0, 0, 0)" }], { duration: 240, easing: "cubic-bezier(0.2, 0.9, 0.25, 1)", fill: "forwards" })
+        .finished.then(() => undefined);
+    }
+    const ora = el.getBoundingClientRect();
+    const dx = meta.left + meta.width / 2 - (ora.left + ora.width / 2);
+    const dy = meta.top + meta.height / 2 - (ora.top + ora.height / 2);
+    const a = `translate3d(${transform.x + dx}px, ${transform.y + dy}px, 0)`;
+    return el
+      .animate(
+        [
+          { transform: `${da} scale(1)`, opacity: 1 },
+          { transform: `${a} scale(0.92)`, opacity: 1, offset: 0.7 },
+          { transform: `${a} scale(0.82)`, opacity: 0 },
+        ],
+        { duration: 320, easing: "cubic-bezier(0.2, 0.9, 0.25, 1)", fill: "forwards" },
+      )
+      .finished.then(() => posa?.posa());
+  };
 
   if (!activeRoom) {
     return <div className="rounded-md border border-dashed p-12 text-center text-sm text-muted-foreground">Nessuna sala configurata.</div>;
   }
 
-  const draggingBookingObj = draggingBooking ? unassigned.find((b) => b.id === draggingBooking.id) : null;
+  const draggingBookingObj = inVolo;
+  /* Quanti tavoli di questa sala accoglierebbero la prenotazione trascinata:
+     se nessuno, la copia lo dice subito, invece di lasciare una griglia tutta
+     spenta senza spiegazione. */
+  const compatibiliPerDrag = draggingBooking
+    ? activeRoom.tables.filter((t) => t.active && t.seats >= draggingBooking.partySize && !occupiedTableIdsForDrag.has(t.id)).length
+    : 0;
 
   return (
     <DndContext
@@ -284,8 +393,23 @@ export function BookingsFloorView({
           )}
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-2 sm:flex-row">
-          <div className="surface min-h-[320px] flex-1 overflow-hidden rounded-xl sm:min-h-0" style={{ flexBasis: "72%" }}>
+        {/* La mappa prende tutto lo spazio, il pannello ha una larghezza sua:
+            a percentuale, su uno schermo da portatile restava una colonna da
+            180px dove ogni scheda andava a capo parola per parola. */}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 sm:flex-row">
+          <div className="surface min-h-[320px] min-w-0 flex-1 overflow-hidden rounded-xl sm:min-h-0">
+            {activeRoom.suPiantina === false ? (
+              <GrigliaTavoli
+                key={activeRoom.id}
+                tables={activeRoom.tables}
+                bookingsByTableId={bookingsByTableId}
+                roomId={activeRoom.id}
+                selectedTableId={selectedTableId}
+                onSelectTable={selezionaTavolo}
+                draggingPartySize={draggingBooking?.partySize ?? null}
+                occupiedTableIds={occupiedTableIdsForDrag}
+              />
+            ) : (
             <BookingsFloorCanvas
               key={activeRoom.id}
               tables={activeRoom.tables}
@@ -297,28 +421,19 @@ export function BookingsFloorView({
               height={activeRoom.height}
               roomId={activeRoom.id}
               selectedTableId={selectedTableId}
-              onSelectTable={(tableId) => {
-                if (!tableId) {
-                  setSelectedTableId(null);
-                  return;
-                }
-                const hasBooking = !!bookingsByTableId[tableId]?.length;
-                if (hasBooking) {
-                  setSelectedTableId(tableId);
-                  return;
-                }
-                // Flusso inverso TAVOLO -> PRENOTAZIONE (brief section 26) —
-                // read-only viewers can still see the table, just can't act.
-                if (canManage) setAssignBookingForTableId(tableId);
-              }}
+              onSelectTable={selezionaTavolo}
               draggingPartySize={draggingBooking?.partySize ?? null}
               occupiedTableIds={occupiedTableIdsForDrag}
             />
+            )}
           </div>
           {/* Chiuso, sul telefono il pannello è alto quanto la sua testata: col
               28% fisso restava un blocco verde vuoto sotto la mappa. */}
           <div
-            className={cn("min-h-0 basis-[28%] overflow-hidden rounded-xl sm:flex-1", panelCollapsed && "max-sm:basis-auto")}
+            className={cn(
+              "min-h-0 basis-[28%] overflow-hidden rounded-[22px] sm:w-[300px] sm:flex-none sm:basis-auto lg:w-[320px]",
+              panelCollapsed && "max-sm:basis-auto",
+            )}
           >
             <UnassignedPanel
               bookings={unassigned}
@@ -334,17 +449,40 @@ export function BookingsFloorView({
         </div>
       </div>
 
-      <DragOverlay>
-        {draggingBookingObj && (
-          <div className="w-56 rounded-md border border-accent bg-card p-2.5 shadow-xl">
-            <p className="text-xs font-medium text-accent-strong">{formatTime(draggingBookingObj.startsAt)}</p>
-            <p className="text-sm font-semibold text-card-foreground">
-              {draggingBookingObj.guest ? `${draggingBookingObj.guest.firstName} ${draggingBookingObj.guest.lastName ?? ""}`.trim() : "Walk-in"}
-            </p>
-            <p className="text-xs text-muted-foreground">{draggingBookingObj.partySize} persone</p>
-          </div>
+      {/* In un portale su <body>: il guscio in vetro ha `backdrop-filter`, che
+          fa da riferimento per `position: fixed`, e la copia trascinata finiva
+          spostata di quanto il guscio è distante dall'angolo della pagina. */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <DragOverlay
+            modifiers={[centroSulPuntatore]}
+            dropAnimation={posaSulTavolo}
+            zIndex={80}
+          >
+            {draggingBookingObj && (
+              <div className="w-64 -rotate-2 cursor-grabbing rounded-2xl border border-white/70 bg-card p-3 shadow-[0_24px_48px_-16px_rgba(16,32,26,0.55)]">
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-strong">
+                    {formatTime(draggingBookingObj.startsAt)}
+                  </span>
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-card-foreground">
+                    {draggingBookingObj.guest
+                      ? `${draggingBookingObj.guest.firstName} ${draggingBookingObj.guest.lastName ?? ""}`.trim()
+                      : "Walk-in"}
+                  </p>
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {draggingBookingObj.partySize} {draggingBookingObj.partySize === 1 ? "persona" : "persone"}
+                  {/* Durante l'atterraggio il trascinamento è già chiuso: il conto dei tavoli
+                      adatti non avrebbe più senso, resta solo il numero di persone. */}
+                  {draggingBooking &&
+                    (compatibiliPerDrag === 0 ? " · nessun tavolo libero abbastanza grande" : compatibiliPerDrag === 1 ? " · 1 tavolo adatto" : ` · ${compatibiliPerDrag} tavoli adatti`)}
+                </p>
+              </div>
+            )}
+          </DragOverlay>,
+          document.body,
         )}
-      </DragOverlay>
 
       <AssignTableDialog
         open={!!assignPickerBooking}

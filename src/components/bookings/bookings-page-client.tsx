@@ -32,6 +32,8 @@ type RoomWithTables = {
   activeLayoutMode: RoomLayoutMode | null;
   roomLayoutElements: unknown;
   tables: Table[];
+  /** false: nessun tavolo sulla piantina di Sala, `tables` sono tutti quelli della sala, in griglia. */
+  suPiantina?: boolean;
 };
 
 const VIEW_STORAGE_KEY = "tavolo.bookings.view";

@@ -1379,6 +1379,63 @@ export async function daiUnTavoloAChiNonCeLHa(db: PrismaClient, venueId: string,
   if (dati > 0) console.log(`   ${dati} prenotazioni senza tavolo: assegnate.`);
 }
 
+/**
+ * Lascia **due** prenotazioni di oggi senza tavolo: una a pranzo, una a cena.
+ *
+ * Il passo sopra dà un tavolo a tutte, e la colonna «Da assegnare» della
+ * Mappa restava sempre vuota: chi guardava la demo non vedeva mai la cosa che
+ * quella vista serve a fare, trascinare una prenotazione su un tavolo. Nella
+ * realtà succede ogni giorno — una prenotazione presa al telefono aspetta che
+ * chi accoglie scelga dove metterla.
+ *
+ * Solo prenotazioni ancora da venire e non ancora arrivate, così il tavolo
+ * tolto non è quello dove qualcuno sta già mangiando. La scelta è
+ * deterministica (il generatore seminato con l'id): rifare il seed lo stesso
+ * giorno toglie il tavolo alle stesse due, e il passo sopra le riprende al
+ * giro dopo, quindi niente si accumula.
+ *
+ * E solo prenotazioni che stanno in un tavolo: una da sette, con tavoli da
+ * sei, trascinata non accende nessun tavolo e chiede sempre di forzare. È
+ * la vista che si vuole mostrare a non vedersi.
+ */
+export async function lasciaDueDaAssegnare(db: PrismaClient, venueId: string, adesso = new Date()) {
+  const [venue, piuGrande] = await Promise.all([
+    db.venue.findUnique({ where: { id: venueId }, select: { timezone: true } }),
+    db.table.aggregate({ where: { venueId, active: true }, _max: { seats: true } }),
+  ]);
+  const postiMax = piuGrande._max.seats ?? 0;
+  const fuso = venue?.timezone ?? undefined;
+  const oggi = todayInVenue(fuso, adesso);
+
+  const candidate = await db.booking.findMany({
+    where: {
+      venueId,
+      deletedAt: null,
+      startsAt: { gt: adesso, lt: new Date(adesso.getTime() + 24 * 3600_000) },
+      status: { in: ["CONFIRMED", "PENDING"] },
+      tableId: { not: null },
+      partySize: { lte: postiMax },
+    },
+    select: { id: true, startsAt: true },
+  });
+  const diOggi = candidate.filter((b) => dateKeyInVenue(b.startsAt, fuso) === oggi);
+  const ora = (d: Date) =>
+    Number(new Intl.DateTimeFormat("it-IT", { hour: "2-digit", hour12: false, timeZone: fuso }).format(d));
+  const peso = (id: string) => caso(`da-assegnare:${id}`)();
+
+  const scelte: string[] = [];
+  for (const servizio of [diOggi.filter((b) => ora(b.startsAt) < 16), diOggi.filter((b) => ora(b.startsAt) >= 16)]) {
+    const prima = [...servizio].sort((a, b) => peso(a.id) - peso(b.id))[0];
+    if (prima) scelte.push(prima.id);
+  }
+  if (scelte.length === 0) return;
+
+  await db.booking.updateMany({ where: { id: { in: scelte } }, data: { tableId: null } });
+  console.log(
+    `   ${scelte.length === 1 ? "1 prenotazione di oggi lasciata" : `${scelte.length} prenotazioni di oggi lasciate`} da assegnare, per la Mappa.`,
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /*  12. Chi c'è in sala stasera                                               */
 /* -------------------------------------------------------------------------- */
@@ -1850,6 +1907,7 @@ export async function arricchisciVetrina(db: PrismaClient, venueId: string, nome
   // Prima i tavoli alle prenotazioni, poi il personale ai tavoli: il secondo
   // passo ha senso solo se il primo ha lasciato una sala popolata.
   await daiUnTavoloAChiNonCeLHa(db, venueId);
+  await lasciaDueDaAssegnare(db, venueId);
   await assegnaPersonaleDiOggi(db, venueId);
   await sistemaCampagnaDemo(db, venueId);
   await campagneDemoComplete(db, venueId);
