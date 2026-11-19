@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MoreHorizontal } from "lucide-react";
+import { ChevronDown, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -167,9 +168,13 @@ export function CopiaDaMisurare({
 /**
  * «Altro»: le voci che in questa larghezza non entrano.
  *
- * Marketing, se finisce qui, non diventa un menu dentro un menu: i suoi sette
- * strumenti si elencano sotto il suo nome, rientrati. Una tendina che ne apre
- * un'altra di lato, su un tablet, si chiude al primo dito che passa storto.
+ * Marketing, se finisce qui, non diventa un menu dentro un menu: una tendina
+ * che ne apre un'altra di lato, su un tablet, si chiude al primo dito che
+ * passa storto. Dal 19 nov 2026 però i suoi sette strumenti **non sono più
+ * sempre aperti**: elencati tutti, rientrati, facevano di «Altro» un elenco
+ * di dieci righe in cui Staff e Menu si perdevano. Marketing si apre **sul
+ * posto**, sotto il suo nome, con un tocco — e parte già aperto solo se si
+ * è in una delle sue pagine.
  */
 export function MenuAltro({
   voci,
@@ -182,6 +187,17 @@ export function MenuAltro({
   etichetta: string;
 }) {
   const pathname = usePathname();
+  const [aperti, setAperti] = useState<Set<string>>(
+    () => new Set(voci.filter((v) => v.sottovoci && sottovoceAttiva(pathname, v)).map((v) => v.href)),
+  );
+  function apriChiudi(href: string) {
+    setAperti((prima) => {
+      const dopo = new Set(prima);
+      if (dopo.has(href)) dopo.delete(href);
+      else dopo.add(href);
+      return dopo;
+    });
+  }
 
   return (
     <DropdownMenu>
@@ -213,28 +229,48 @@ export function MenuAltro({
 
           if (item.sottovoci) {
             const dentro = sottovoceAttiva(pathname, item);
+            const aperta = aperti.has(item.href);
             return (
               <div key={item.href} role="group" aria-label={item.label} className="py-0.5">
-                <div className="flex items-center gap-2.5 px-3 pb-1 pt-2 text-sm font-medium text-popover-foreground">
-                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  {item.label}
-                </div>
-                {item.sottovoci.map((voce) => {
-                  const VoceIcon = voce.icon;
-                  const attiva = dentro?.href === voce.href;
-                  return (
-                    <DropdownMenuItem key={voce.href} asChild className="min-h-[40px] pl-9">
-                      <Link
-                        href={voce.href}
-                        aria-current={attiva ? "page" : undefined}
-                        className={cn(attiva && "bg-black/20 font-medium text-accent-strong")}
-                      >
-                        <VoceIcon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden="true" />
-                        {voce.label}
-                      </Link>
-                    </DropdownMenuItem>
-                  );
-                })}
+                {/* La riga che apre e chiude: `preventDefault` tiene aperto
+                    il menu, così il tocco apre la tendina e non chiude tutto. */}
+                <DropdownMenuItem
+                  className="min-h-[44px] justify-between"
+                  aria-expanded={aperta}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    apriChiudi(item.href);
+                  }}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    {item.label}
+                    {dentro && !aperta && (
+                      <span className="text-xs font-normal text-muted-foreground">· {dentro.label}</span>
+                    )}
+                  </span>
+                  <ChevronDown
+                    className={cn("h-4 w-4 shrink-0 opacity-70 transition-transform duration-200", aperta && "rotate-180")}
+                    aria-hidden="true"
+                  />
+                </DropdownMenuItem>
+                {aperta &&
+                  item.sottovoci.map((voce) => {
+                    const VoceIcon = voce.icon;
+                    const attiva = dentro?.href === voce.href;
+                    return (
+                      <DropdownMenuItem key={voce.href} asChild className="min-h-[40px] pl-9">
+                        <Link
+                          href={voce.href}
+                          aria-current={attiva ? "page" : undefined}
+                          className={cn(attiva && "bg-black/20 font-medium text-accent-strong")}
+                        >
+                          <VoceIcon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden="true" />
+                          {voce.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
               </div>
             );
           }

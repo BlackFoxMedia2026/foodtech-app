@@ -1,6 +1,23 @@
 import { headers } from "next/headers";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, ArrowRight } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Crown,
+  Facebook,
+  Globe,
+  Hotel,
+  ImagePlus,
+  Instagram,
+  Mail,
+  MapPin,
+  Phone,
+  Store,
+  UtensilsCrossed,
+  Waves,
+  Wine,
+} from "lucide-react";
+import { CaricaImmagineBrand } from "@/components/settings/carica-immagine-brand";
 import { db } from "@/lib/db";
 import { getActiveVenue } from "@/lib/tenant";
 import { Badge } from "@/components/ui/badge";
@@ -260,13 +277,20 @@ export default async function SettingsPage({
   const embedSrc = `${baseUrl}/book?venue=${ctx.venueId}&embed=1`;
   const embedSnippet = `<iframe src="${embedSrc}" width="480" height="820" style="border:0;max-width:100%" title="Prenota un tavolo"></iframe>`;
 
-  const contatti = [v.phone, v.email, v.address].filter(Boolean) as string[];
-  const social = [
-    v.websiteUrl && "sito",
-    v.instagramUrl && "Instagram",
-    v.facebookUrl && "Facebook",
-    v.googleBusinessUrl && "Google",
-  ].filter(Boolean) as string[];
+  const contattiConIcona = [
+    v.phone && { icona: Phone, testo: v.phone },
+    v.email && { icona: Mail, testo: v.email },
+    v.address && { icona: MapPin, testo: v.address },
+  ].filter(Boolean) as { icona: typeof Phone; testo: string }[];
+  const socialConIcona = [
+    v.websiteUrl && { icona: Globe, nome: "Sito", url: v.websiteUrl },
+    v.instagramUrl && { icona: Instagram, nome: "Instagram", url: v.instagramUrl },
+    v.facebookUrl && { icona: Facebook, nome: "Facebook", url: v.facebookUrl },
+    v.googleBusinessUrl && { icona: MapPin, nome: "Google", url: v.googleBusinessUrl },
+  ].filter(Boolean) as { icona: typeof Globe; nome: string; url: string }[];
+  /* La stessa capacità che chiede `/api/venue/brand`: chi non l'ha vede il
+     biglietto e non i pulsanti, che il server gli rifiuterebbe. */
+  const puoGestireBrand = can(ctx.role, "manage_venue");
   const colori = [v.brandAccent, v.brandSecondaryColor].filter(
     Boolean,
   ) as string[];
@@ -287,40 +311,20 @@ export default async function SettingsPage({
         codice del widget, l'editor dei turni — sono righe `larga` e usano
         tutta la colonna.
       */}
-      <div className="mx-auto w-full max-w-4xl">
-        {/*
-          Il nome della pagina lo dice già la testata, accanto al marchio del
-          locale: qui resta la riga che aggiunge qualcosa, cioè di cosa si sta
-          parlando.
-        */}
-        {/* L'avviso del brand incompleto sta sull'**indice**, che è la prima
-            cosa che si apre: qui dentro, su una sezione che non c'entra,
-            sarebbe un compito che segue chi era entrato per cambiare un
-            turno. */}
-
-        {/*
-          La via di ritorno, in cima e su qualunque schermo.
-
-          La barra in alto porta alle altre sezioni, ma non all'**indice**: e
-          l'indice è il posto da cui si vede tutto. Senza questa riga l'unica
-          strada sarebbe il tasto indietro del browser, che su un tablet in
-          cucina non c'è.
-        */}
-        <Link
-          href="/settings"
-          /* Alto 44 sul telefono: è l'unica via di ritorno all'indice, e un
-             link alto quanto il suo testo si manca col pollice. */
-          className="-ml-1 mt-2 inline-flex min-h-[44px] items-center gap-2 px-1 text-[0.9375rem] text-muted-foreground transition-colors hover:text-foreground md:ml-0 md:mt-4 md:min-h-0 md:px-0 md:text-sm"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Tutte le impostazioni
-        </Link>
-
+      {/*
+        **Più larga, con una colonna di lato** (19 nov 2026). Era
+        `max-w-4xl`, una colonna di lettura in mezzo allo schermo: giusta per
+        tenere vicini nome e valore, ma su un monitor largo lasciava vuoti i
+        due lati. Adesso la colonna dei gruppi resta di quella misura e il
+        resto lo prende la colonna di lato di `SezioneImpostazioni` (nome
+        della sezione, via di ritorno, sommario dei gruppi).
+      */}
+      <div className="mx-auto w-full max-w-7xl">
         {/* Una sezione per volta: niente spaziatura fra sezioni da tenere,
             e niente terzo di schermata vuoto in fondo — serviva alla barra
             per accendere l'ultima voce mentre si scorreva, e quella barra
             adesso non osserva più niente. */}
-        <div className="mt-6 md:mt-8">
+        <div className="mt-2 md:mt-4">
           {/* ------------------------------------------------------------- */}
           {attiva === "locale" && (
             <SezioneImpostazioni id="locale">
@@ -329,114 +333,211 @@ export default async function SettingsPage({
                 descrizione="Come si presenta il locale al cliente: sul modulo di prenotazione, sul portale Wi-Fi, nelle email."
                 azione={
                   <Button asChild variant="outline" size="sm">
-                    <Link href="/settings/brand">Gestisci</Link>
+                    <Link href="/settings/brand">Modifica il brand</Link>
                   </Button>
                 }
               >
-                <RigaImpostazione
-                  nome="Logo del locale"
-                  descrizione="Compare in cima al modulo pubblico e nelle email agli ospiti."
-                >
-                  {v.brandLogoUrl ? (
-                    <img
-                      src={v.brandLogoUrl}
-                      alt=""
-                      className="h-10 w-10 rounded-md border border-border object-contain"
-                    />
-                  ) : (
-                    <ValoreVuoto>non caricato</ValoreVuoto>
-                  )}
-                </RigaImpostazione>
-
-                <RigaImpostazione
-                  nome="Nome pubblico"
-                  descrizione="Il nome che legge il cliente."
-                >
-                  <ValoreImpostazione>{v.name}</ValoreImpostazione>
-                </RigaImpostazione>
-
-                <RigaImpostazione nome="Colori del brand">
-                  {colori.length > 0 ? (
-                    <span className="flex items-center gap-2">
-                      {colori.map((c) => (
-                        <span
-                          key={c}
-                          title={c}
-                          className="h-5 w-5 rounded-full border border-border"
-                          style={{ backgroundColor: c }}
+                {/*
+                  **Il biglietto da visita, non sei righe** (19 nov 2026).
+                  Logo, copertina, colori e contatti erano sei righe di testo
+                  con «non caricato» a destra: per sapere come si presenta il
+                  locale bisognava immaginarlo. Adesso si vede, nella stessa
+                  composizione che trova il cliente — copertina, logo, nome —
+                  e logo e copertina si caricano da qui, senza passare dal
+                  modulo intero del brand.
+                */}
+                <div className="py-5">
+                  <div className="relative">
+                    <div
+                      className="relative h-36 overflow-hidden rounded-2xl bg-gradient-to-br from-primary/30 via-accent/25 to-muted md:h-44"
+                      style={
+                        !v.coverImage && colori.length > 0
+                          ? {
+                              backgroundImage: `linear-gradient(135deg, ${colori[0]} 0%, ${colori[1] ?? colori[0]} 100%)`,
+                            }
+                          : undefined
+                      }
+                    >
+                      {v.coverImage ? (
+                        <img
+                          src={v.coverImage}
+                          alt=""
+                          className="h-full w-full object-cover"
                         />
-                      ))}
-                      <ValoreImpostazione mono>
-                        {colori.join(" · ")}
-                      </ValoreImpostazione>
-                    </span>
-                  ) : (
-                    <ValoreVuoto>non scelti</ValoreVuoto>
-                  )}
-                </RigaImpostazione>
+                      ) : (
+                        <span className="absolute inset-0 grid place-items-center text-sm font-medium text-foreground/60">
+                          <span className="inline-flex items-center gap-2">
+                            <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                            Nessuna copertina
+                          </span>
+                        </span>
+                      )}
+                      {puoGestireBrand && (
+                        <CaricaImmagineBrand
+                          campo="coverImage"
+                          valore={v.coverImage}
+                          etichetta="copertina"
+                          variante={v.coverImage ? "scuro" : "chiaro"}
+                          className="absolute right-3 top-3 justify-end"
+                        />
+                      )}
+                    </div>
 
-                <RigaImpostazione nome="Immagine di copertina">
-                  {v.coverImage ? (
-                    <img
-                      src={v.coverImage}
-                      alt=""
-                      className="h-10 w-24 rounded-md border border-border object-cover"
-                    />
-                  ) : (
-                    <ValoreVuoto>non caricata</ValoreVuoto>
-                  )}
-                </RigaImpostazione>
+                    {/* Il logo sporge dalla copertina come sul modulo
+                        pubblico. Senza logo, l'iniziale del nome: un tondo
+                        vuoto sembrerebbe un caricamento non riuscito. */}
+                    <div className="absolute -bottom-9 left-4 grid h-20 w-20 place-items-center overflow-hidden rounded-2xl bg-white shadow-lg ring-4 ring-white/70 md:left-6 md:h-24 md:w-24">
+                      {v.brandLogoUrl ? (
+                        <img
+                          src={v.brandLogoUrl}
+                          alt={`Logo di ${v.name}`}
+                          className="h-full w-full object-contain p-2"
+                        />
+                      ) : (
+                        <span className="text-display text-3xl text-[#2c5545]">
+                          {v.name.trim().charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-                <RigaImpostazione
-                  nome="Contatti pubblici"
-                  descrizione="Telefono, email e indirizzo mostrati a chi prenota."
-                >
-                  {contatti.length > 0 ? (
-                    <ValoreImpostazione>
-                      {contatti.join(" · ")}
-                    </ValoreImpostazione>
-                  ) : (
-                    <ValoreVuoto />
-                  )}
-                </RigaImpostazione>
+                  {/* Sul telefono il nome prende la riga accanto al logo e
+                      il pulsante scende sotto: affiancati, il nome andava a
+                      capo una parola per riga. */}
+                  <div className="mt-3 flex flex-wrap items-start gap-3">
+                    <div className="min-w-0 flex-1 basis-full pl-24 sm:basis-0 md:pl-36">
+                      <p className="text-display text-xl leading-tight">
+                        {v.name}
+                      </p>
+                      <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">
+                        {v.brandLogoUrl
+                          ? "Il nome e il logo che legge il cliente."
+                          : "Senza logo, sul modulo e nelle email compare l'iniziale."}
+                      </p>
+                    </div>
+                    {puoGestireBrand && (
+                      <CaricaImmagineBrand
+                        campo="brandLogoUrl"
+                        valore={v.brandLogoUrl}
+                        etichetta="logo"
+                        className="max-sm:mt-4"
+                      />
+                    )}
+                  </div>
 
-                <RigaImpostazione nome="Presenza online">
-                  {social.length > 0 ? (
-                    <ValoreImpostazione>
-                      {social.join(" · ")}
-                    </ValoreImpostazione>
-                  ) : (
-                    <ValoreVuoto>nessun collegamento</ValoreVuoto>
-                  )}
-                </RigaImpostazione>
+                  {/* Tre riquadri e non tre righe: con la colonna più larga
+                      stanno affiancati, e ognuno si legge da solo. */}
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-foreground/[0.04] p-4">
+                      <p className="t-etichetta">Contatti</p>
+                      {contattiConIcona.length > 0 ? (
+                        <ul className="mt-2.5 space-y-2 text-sm">
+                          {contattiConIcona.map(({ icona: Icona, testo }) => (
+                            <li key={testo} className="flex items-start gap-2">
+                              <Icona className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                              <span className="min-w-0 break-words">{testo}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2.5">
+                          <ValoreVuoto>nessun contatto</ValoreVuoto>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl bg-foreground/[0.04] p-4">
+                      <p className="t-etichetta">Online</p>
+                      {socialConIcona.length > 0 ? (
+                        <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                          {socialConIcona.map(({ icona: Icona, nome, url }) => (
+                            <li key={nome}>
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium shadow-sm ring-1 ring-black/5 transition-colors hover:bg-white dark:bg-white/10 dark:ring-white/10"
+                              >
+                                <Icona className="h-3.5 w-3.5" aria-hidden="true" />
+                                {nome}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2.5">
+                          <ValoreVuoto>nessun collegamento</ValoreVuoto>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl bg-foreground/[0.04] p-4">
+                      <p className="t-etichetta">Colori</p>
+                      {colori.length > 0 ? (
+                        <ul className="mt-2.5 flex flex-wrap gap-3">
+                          {colori.map((c) => (
+                            <li key={c} className="flex items-center gap-2">
+                              <span
+                                className="h-8 w-8 rounded-full shadow-sm ring-2 ring-white dark:ring-white/20"
+                                style={{ backgroundColor: c }}
+                              />
+                              <span className="font-mono text-xs uppercase text-muted-foreground">
+                                {c}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2.5">
+                          <ValoreVuoto>non scelti</ValoreVuoto>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </GruppoImpostazioni>
 
               <GruppoImpostazioni
                 titolo="Locali del gruppo"
                 descrizione={ctx.org.name}
               >
-                {venues.map((locale) => (
-                  <RigaImpostazione
-                    key={locale.id}
-                    nome={locale.name}
-                    descrizione={[
-                      locale.city,
-                      NOME_TIPO_LOCALE[locale.kind] ?? locale.kind,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  >
-                    {locale.id === ctx.venueId ? (
-                      <Badge tone="gold">Attivo</Badge>
-                    ) : (
-                      /* Non è un'assenza: è l'altro locale del gruppo. Da
-                       quando il bollino tratteggiato vuol dire «qui manca
-                       qualcosa», usarlo qui direbbe che un ristorante è da
-                       configurare. */
-                      <ValoreImpostazione>secondario</ValoreImpostazione>
-                    )}
-                  </RigaImpostazione>
-                ))}
+                {/* A schede e non a righe: sono posti, ognuno col suo
+                    segno, e affiancati si contano a colpo d'occhio. */}
+                <RigaLibera>
+                  <ul className="grid gap-3 sm:grid-cols-2">
+                    {venues.map((locale) => {
+                      const Segno = SEGNO_TIPO_LOCALE[locale.kind] ?? Store;
+                      const attivo = locale.id === ctx.venueId;
+                      return (
+                        <li
+                          key={locale.id}
+                          className={
+                            attivo
+                              ? "flex items-center gap-3 rounded-2xl bg-primary/[0.07] p-4 ring-1 ring-primary/25"
+                              : "flex items-center gap-3 rounded-2xl bg-foreground/[0.04] p-4"
+                          }
+                        >
+                          <span className="vetro kpi-pastiglia grid h-11 w-11 shrink-0 place-items-center rounded-full">
+                            <Segno className="h-5 w-5" stroke="url(#trattoVetro)" aria-hidden="true" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-semibold leading-snug">
+                              {locale.name}
+                            </span>
+                            <span className="block text-[0.8125rem] text-muted-foreground">
+                              {[locale.city, NOME_TIPO_LOCALE[locale.kind] ?? locale.kind]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </span>
+                          </span>
+                          {/* «Stai qui» e non «Attivo»: anche l'altro locale
+                              è aperto, questo è quello che si sta guardando. */}
+                          {attivo && <Badge tone="gold">Stai qui</Badge>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </RigaLibera>
 
                 <RigaImpostazione
                   nome="Piano di abbonamento"
@@ -975,6 +1076,17 @@ const NOME_TIPO_LOCALE: Record<string, string> = {
   BAR: "Bar",
   HOTEL_RESTAURANT: "Ristorante d'albergo",
   PRIVATE_CLUB: "Club privato",
+};
+
+const SEGNO_TIPO_LOCALE: Record<
+  string,
+  React.ComponentType<{ className?: string; stroke?: string }>
+> = {
+  RESTAURANT: UtensilsCrossed,
+  BEACH_CLUB: Waves,
+  BAR: Wine,
+  HOTEL_RESTAURANT: Hotel,
+  PRIVATE_CLUB: Crown,
 };
 
 const NOME_PIANO: Record<string, string> = {

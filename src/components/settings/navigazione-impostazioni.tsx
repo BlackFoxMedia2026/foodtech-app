@@ -11,6 +11,7 @@ import { CopiaDaMisurare, IndicatoreFila, MenuAltro } from "@/components/shell/f
 import { useFilaAdattiva } from "@/components/shell/use-fila-adattiva";
 import { cn } from "@/lib/utils";
 import { SEGNI } from "./segni-impostazioni";
+import { DischettoSezione } from "./indice-impostazioni";
 
 /**
  * Entrare nelle Impostazioni è **un cambio di area**, non una pagina in più.
@@ -156,19 +157,16 @@ export function AltreSezioniMobile({ attiva }: { attiva: string }) {
           avere la stessa forma. */}
       <nav
         aria-label="Altre sezioni delle impostazioni"
-        className="riquadro mt-2 overflow-hidden rounded-xl border-border/80"
+        className="vetro card-notch mt-2 overflow-hidden"
       >
         {altre.map((parte) => {
-          const { icona: Icona } = SEGNI[parte.id];
           return (
             <Link
               key={parte.id}
               href={indirizzoParte(parte.id)}
-              className="flex min-h-[52px] items-center gap-3 border-b border-border/60 px-4 py-2 text-base transition-colors last:border-b-0 active:bg-current/5"
+              className="flex min-h-[60px] items-center gap-3 border-b border-border/50 px-4 py-2 text-base transition-colors last:border-b-0 active:bg-current/5"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted/60">
-                <Icona className="h-4 w-4 text-foreground" aria-hidden="true" />
-              </span>
+              <DischettoSezione id={parte.id} />
               <span className="min-w-0 flex-1 font-medium">{parte.titolo}</span>
               <span className="shrink-0 text-[0.8125rem] text-muted-foreground">
                 {parte.dentro.length} voci

@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
+import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { iconaGruppo } from "./icone-gruppi";
 
 /**
  * Le Impostazioni si **leggono scorrendo**, non aprendo.
@@ -36,6 +39,19 @@ import { cn } from "@/lib/utils";
  * «Salva») e sta in alto a destra, accanto al titolo: dentro le righe
  * competerebbe con i valori.
  */
+/** «Organizzazione del servizio» → `gruppo-organizzazione-del-servizio`. */
+export function idGruppo(titolo: string): string {
+  return (
+    "gruppo-" +
+    titolo
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+  );
+}
+
 export function GruppoImpostazioni({
   titolo,
   descrizione,
@@ -49,6 +65,7 @@ export function GruppoImpostazioni({
   children: ReactNode;
   className?: string;
 }) {
+  const IconaGruppo = iconaGruppo(titolo);
   return (
     /*
       La testata sta **dentro** la scheda, e non sopra.
@@ -63,7 +80,13 @@ export function GruppoImpostazioni({
       inizio, la sua fine, e il comando che vale per tutto quello che contiene.
     */
     <section
+      /* `data-gruppo` e l'`id` li legge il sommario nella colonna di lato
+         (`sommario-sezione.tsx`): ogni gruppo compare lì da solo, senza un
+         elenco scritto a mano che prima o poi diverge. */
+      data-gruppo={titolo}
+      id={idGruppo(titolo)}
       className={cn(
+        "scroll-mt-6",
         /* Lo stesso materiale delle tessere della Panoramica (19 nov 2026):
            vetro con lo spigolo vivo in alto a sinistra. */
         "vetro card-notch overflow-hidden",
@@ -71,16 +94,32 @@ export function GruppoImpostazioni({
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border/50 px-4 py-4 md:px-6 md:py-5">
-        <div className="min-w-0">
+        {/* La cupola del gruppo: un segno per scheda, si riconosce
+            scorrendo senza leggere il titolo. */}
+        <span className="vetro kpi-pastiglia grid h-11 w-11 shrink-0 place-items-center rounded-full md:h-12 md:w-12">
+          <IconaGruppo
+            className="h-5 w-5 md:h-6 md:w-6"
+            stroke="url(#trattoVetro)"
+            aria-hidden="true"
+          />
+        </span>
+        <div className="min-w-0 flex-1 self-center">
           <h3 className="t-titolo-sezione">{titolo}</h3>
           {descrizione && (
-            <p className="mt-0.5 max-w-2xl text-[0.8125rem] leading-relaxed text-muted-foreground md:text-sm">
+            <p className="mt-0.5 hidden max-w-2xl text-sm leading-relaxed text-muted-foreground md:block">
               {descrizione}
             </p>
           )}
         </div>
         {azione && (
           <div className="flex shrink-0 items-center gap-2">{azione}</div>
+        )}
+        {/* Sul telefono la frase va sotto, larga quanto la scheda: accanto
+            alla cupola restava una colonna di tre parole per riga. */}
+        {descrizione && (
+          <p className="order-last basis-full text-[0.8125rem] leading-relaxed text-muted-foreground md:hidden">
+            {descrizione}
+          </p>
         )}
       </div>
 
@@ -146,20 +185,18 @@ export function RigaImpostazione({
           className,
         )}
       >
-        <Nome
-          {...(htmlFor ? { htmlFor } : {})}
-          className={cn(
-            "block text-[0.9375rem] font-medium text-foreground",
-            htmlFor && "cursor-pointer",
-          )}
-        >
-          {nome}
-        </Nome>
-        {descrizione && (
-          <p className="mt-1 max-w-2xl text-[0.8125rem] leading-relaxed text-muted-foreground md:text-xs">
-            {descrizione}
-          </p>
-        )}
+        <div className="flex items-center gap-1.5">
+          <Nome
+            {...(htmlFor ? { htmlFor } : {})}
+            className={cn(
+              "min-w-0 text-[0.9375rem] font-medium text-foreground",
+              htmlFor && "cursor-pointer",
+            )}
+          >
+            {nome}
+          </Nome>
+          {descrizione && <SpiegaRiga nome={nome}>{descrizione}</SpiegaRiga>}
+        </div>
         {children && <div className="mt-3">{children}</div>}
       </div>
     );
@@ -173,6 +210,7 @@ export function RigaImpostazione({
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <div className="flex min-w-0 flex-[1_1_10rem] items-center gap-1.5 md:flex-1">
         <Nome
           {...(htmlFor ? { htmlFor } : {})}
           className={cn(
@@ -181,12 +219,14 @@ export function RigaImpostazione({
                parola per riga («Come / si / divide / il / lavoro»). Con una
                base vera, quando nome e controllo non stanno insieme il
                controllo scende sotto, e il nome resta leggibile. */
-            "min-w-0 flex-[1_1_10rem] text-[0.9375rem] font-medium text-foreground md:flex-1",
+            "min-w-0 text-[0.9375rem] font-medium text-foreground",
             htmlFor && "cursor-pointer",
           )}
         >
           {nome}
         </Nome>
+          {descrizione && <SpiegaRiga nome={nome}>{descrizione}</SpiegaRiga>}
+        </div>
         {children && (
           /* `min-w-0` e non `shrink-0`: un valore lungo — l'indirizzo del
              modulo di prenotazione — sforava il bordo della scheda sul
@@ -199,12 +239,35 @@ export function RigaImpostazione({
           </div>
         )}
       </div>
-      {descrizione && (
-        <p className="mt-1 max-w-2xl text-[0.8125rem] leading-relaxed text-muted-foreground md:text-xs">
-          {descrizione}
-        </p>
-      )}
     </div>
+  );
+}
+
+/**
+ * La spiegazione di una riga, dietro una «i» (19 nov 2026).
+ *
+ * Stava sotto ogni riga, sempre: «la parte che si legge la prima volta e mai
+ * più», ripetuta quaranta volte, ed era la ragione per cui ogni pagina delle
+ * Impostazioni sembrava «tutto testo». Adesso c'è, a un tocco, come le regole
+ * di Analytics: nome e valore restano soli e si leggono a colpo d'occhio.
+ */
+function SpiegaRiga({ nome, children }: { nome: ReactNode; children: ReactNode }) {
+  return (
+    <Popover>
+      <PopoverTrigger
+        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-tertiary-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground data-[state=open]:bg-foreground/[0.08] data-[state=open]:text-foreground"
+        aria-label="Cosa vuol dire"
+      >
+        <Info className="h-4 w-4" aria-hidden="true" />
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-72 space-y-1.5 p-3.5 text-[0.8125rem] leading-relaxed text-muted-foreground"
+      >
+        <p className="font-semibold text-card-foreground">{nome}</p>
+        <div>{children}</div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
